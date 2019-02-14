@@ -21,8 +21,9 @@ func Provider() terraform.ResourceProvider {
 			},
 		},
 		ResourcesMap: map[string]*schema.Resource{
-			"launchdarkly_project":     resourceProject(),
-			"launchdarkly_environment": resourceEnvironment(),
+			"launchdarkly_project":      resourceProject(),
+			"launchdarkly_environment":  resourceEnvironment(),
+			"launchdarkly_feature_flag": resourceFeatureFlag(),
 		},
 		ConfigureFunc: providerConfigure,
 	}

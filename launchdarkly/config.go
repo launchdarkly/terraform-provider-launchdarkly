@@ -2,7 +2,8 @@ package launchdarkly
 
 import (
 	"context"
-	"github.com/launchdarkly/api-client-go"
+
+	ldapi "github.com/launchdarkly/api-client-go"
 )
 
 // Config is used to configure the creation of a LaunchDarkly client.

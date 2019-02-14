@@ -2,10 +2,10 @@ package launchdarkly
 
 import (
 	"fmt"
-	"github.com/launchdarkly/api-client-go"
 	"strings"
 
 	"github.com/hashicorp/terraform/helper/schema"
+	ldapi "github.com/launchdarkly/api-client-go"
 )
 
 func resourceEnvironment() *schema.Resource {
@@ -21,7 +21,7 @@ func resourceEnvironment() *schema.Resource {
 		},
 
 		Schema: map[string]*schema.Schema{
-			"project_key": &schema.Schema{
+			projKey: &schema.Schema{
 				Type:     schema.TypeString,
 				Optional: true,
 				Default:  "default",
@@ -62,19 +62,14 @@ func resourceEnvironment() *schema.Resource {
 				Type:     schema.TypeBool,
 				Optional: true,
 			},
-			"tags": &schema.Schema{
-				Type:     schema.TypeSet,
-				Set:      stringSchemaSet,
-				Elem:     &schema.Schema{Type: schema.TypeString},
-				Optional: true,
-			},
+			"tags": tagsSchema(),
 		},
 	}
 }
 
 func resourceEnvironmentCreate(d *schema.ResourceData, metaRaw interface{}) error {
 	client := metaRaw.(*Client)
-	projectKey := d.Get("project_key").(string)
+	projectKey := d.Get(projKey).(string)
 	key := d.Get("key").(string)
 	name := d.Get("name").(string)
 	color := d.Get("color").(string)
@@ -92,7 +87,8 @@ func resourceEnvironmentCreate(d *schema.ResourceData, metaRaw interface{}) erro
 		return fmt.Errorf("failed to create environment: [%+v] for project key: %s", envPost, projectKey)
 	}
 
-	// LaunchDarkly's api does not allow some fields to be passed in during env creation so we do an update
+	// LaunchDarkly's api does not allow some fields to be passed in during env creation so we do an update:
+	// https://apidocs.launchdarkly.com/docs/create-environment
 	err = resourceEnvironmentUpdate(d, metaRaw)
 	if err != nil {
 		return fmt.Errorf("failed to update environment with name %q key %q for projectKey %q: %v", name, key, projectKey, err)
@@ -104,7 +100,7 @@ func resourceEnvironmentCreate(d *schema.ResourceData, metaRaw interface{}) erro
 
 func resourceEnvironmentRead(d *schema.ResourceData, metaRaw interface{}) error {
 	client := metaRaw.(*Client)
-	projectKey := d.Get("project_key").(string)
+	projectKey := d.Get(projKey).(string)
 	key := d.Get("key").(string)
 
 	env, _, err := client.LaunchDarkly.EnvironmentsApi.GetEnvironment(client.Ctx, projectKey, key)
@@ -126,7 +122,7 @@ func resourceEnvironmentRead(d *schema.ResourceData, metaRaw interface{}) error 
 
 func resourceEnvironmentUpdate(d *schema.ResourceData, metaRaw interface{}) error {
 	client := metaRaw.(*Client)
-	projectKey := d.Get("project_key").(string)
+	projectKey := d.Get(projKey).(string)
 	key := d.Get("key").(string)
 	name := d.Get("name")
 	color := d.Get("color")
@@ -154,7 +150,7 @@ func resourceEnvironmentUpdate(d *schema.ResourceData, metaRaw interface{}) erro
 
 func resourceEnvironmentDelete(d *schema.ResourceData, metaRaw interface{}) error {
 	client := metaRaw.(*Client)
-	projectKey := d.Get("project_key").(string)
+	projectKey := d.Get(projKey).(string)
 	key := d.Get("key").(string)
 
 	_, err := client.LaunchDarkly.EnvironmentsApi.DeleteEnvironment(client.Ctx, projectKey, key)
@@ -166,7 +162,7 @@ func resourceEnvironmentDelete(d *schema.ResourceData, metaRaw interface{}) erro
 }
 
 func resourceEnvironmentExists(d *schema.ResourceData, metaRaw interface{}) (bool, error) {
-	return environmentExists(d.Get("key").(string), d.Get("project_key").(string), metaRaw.(*Client))
+	return environmentExists(d.Get("key").(string), d.Get(projKey).(string), metaRaw.(*Client))
 }
 
 func environmentExists(key string, projectKey string, meta *Client) (bool, error) {
@@ -182,7 +178,7 @@ func environmentExists(key string, projectKey string, meta *Client) (bool, error
 }
 
 func resourceEnvironmentImport(d *schema.ResourceData, meta interface{}) ([]*schema.ResourceData, error) {
-	project := "default"
+	project := defaultProjectKey
 	key := d.Id()
 
 	if strings.Contains(d.Id(), "/") {
@@ -195,7 +191,7 @@ func resourceEnvironmentImport(d *schema.ResourceData, meta interface{}) ([]*sch
 		project, key = parts[0], parts[1]
 	}
 
-	d.Set("project_key", project)
+	d.Set(projKey, project)
 	d.Set("key", key)
 	d.SetId(key)
 

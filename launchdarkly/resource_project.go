@@ -2,9 +2,15 @@ package launchdarkly
 
 import (
 	"fmt"
-	"github.com/launchdarkly/api-client-go"
+
+	ldapi "github.com/launchdarkly/api-client-go"
 
 	"github.com/hashicorp/terraform/helper/schema"
+)
+
+const (
+	defaultProjectKey = "default"
+	projKey           = "project_key"
 )
 
 func resourceProject() *schema.Resource {
@@ -29,13 +35,8 @@ func resourceProject() *schema.Resource {
 				Type:     schema.TypeString,
 				Required: true,
 			},
-			"tags": &schema.Schema{
-				Type:     schema.TypeSet,
-				Set:      stringSchemaSet,
-				Elem:     &schema.Schema{Type: schema.TypeString},
-				Optional: true,
-			},
-			//TODO: specify environments here as described here: https://github.com/launchdarkly/ld-openapi/issues/7
+			"tags":         tagsSchema(),
+			"environments": environmentsSchema(),
 		},
 	}
 }
@@ -44,10 +45,15 @@ func resourceProjectCreate(d *schema.ResourceData, metaRaw interface{}) error {
 	client := metaRaw.(*Client)
 	key := d.Get("key").(string)
 	name := d.Get("name").(string)
+	envs := environmentsSetFromResourceData(d)
 
 	projectBody := ldapi.ProjectBody{
 		Name: name,
 		Key:  key,
+	}
+
+	if len(envs) > 0 {
+		projectBody.Environments = envs
 	}
 
 	_, err := client.LaunchDarkly.ProjectsApi.PostProject(client.Ctx, projectBody)
@@ -74,6 +80,7 @@ func resourceProjectRead(d *schema.ResourceData, metaRaw interface{}) error {
 		return fmt.Errorf("failed to get project with key %q: %v", key, err)
 	}
 
+	d.Set("environments", environmentsToResourceData(project.Environments))
 	d.Set("key", project.Key)
 	d.Set("name", project.Name)
 	d.Set("tags", project.Tags)
