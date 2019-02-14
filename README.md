@@ -5,6 +5,7 @@ Work in Progress.
 Currently supported resources:
 - project
 - environment
+- feature flag (partial)
 
 ## Development requirements:
 - golang 1.11+
