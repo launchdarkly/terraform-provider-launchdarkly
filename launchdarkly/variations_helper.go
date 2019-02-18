@@ -15,16 +15,16 @@ func variationsSchema() *schema.Schema {
 		Optional: true,
 		Elem: &schema.Resource{
 			Schema: map[string]*schema.Schema{
-				"name": {
+				name: {
 					Type:     schema.TypeString,
 					Optional: true,
 				},
-				"description": {
+				description: {
 					Type:     schema.TypeString,
 					Optional: true,
 				},
 				//TODO: enable other types by specifying them explicitly in the schema and then enforcing the type for each variation
-				"value": {
+				value: {
 					Type:     schema.TypeString,
 					Required: true,
 				},
@@ -34,7 +34,7 @@ func variationsSchema() *schema.Schema {
 }
 
 func variationsSetFromResourceData(d *schema.ResourceData) []ldapi.Variation {
-	schemaVariations := d.Get("variations").(*schema.Set)
+	schemaVariations := d.Get(variations).(*schema.Set)
 
 	variations := make([]ldapi.Variation, schemaVariations.Len())
 	for i, variation := range schemaVariations.List() {
@@ -46,9 +46,9 @@ func variationsSetFromResourceData(d *schema.ResourceData) []ldapi.Variation {
 func variationFromResourceData(variation interface{}) ldapi.Variation {
 	variationMap := variation.(map[string]interface{})
 	return ldapi.Variation{
-		Name:        variationMap["name"].(string),
-		Description: variationMap["description"].(string),
-		Value:       ptr(variationMap["value"]),
+		Name:        variationMap[name].(string),
+		Description: variationMap[description].(string),
+		Value:       ptr(variationMap[value]),
 	}
 }
 
@@ -57,9 +57,9 @@ func transformVariationsToResourceData(variations []ldapi.Variation) interface{}
 
 	for i, variation := range variations {
 		transformed[i] = map[string]interface{}{
-			"name":        variation.Name,
-			"description": variation.Description,
-			"value":       variation.Value,
+			name:        variation.Name,
+			description: variation.Description,
+			value:       variation.Value,
 		}
 	}
 	return transformed

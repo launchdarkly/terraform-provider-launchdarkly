@@ -10,17 +10,17 @@ import (
 
 func TestVariationsSetFromResourceData(t *testing.T) {
 	resourceData := schema.TestResourceDataRaw(t,
-		map[string]*schema.Schema{"variations": variationsSchema()},
-		map[string]interface{}{"variations": []map[string]interface{}{
+		map[string]*schema.Schema{variations: variationsSchema()},
+		map[string]interface{}{variations: []map[string]interface{}{
 			{
-				"name":        "nameValue",
-				"description": "descValue",
-				"value":       "a string value",
+				name:        "nameValue",
+				description: "descValue",
+				value:       "a string value",
 			},
 			{
-				"name":        "nameValue2",
-				"description": "descValue2",
-				"value":       "another string value",
+				name:        "nameValue2",
+				description: "descValue2",
+				value:       "another string value",
 			},
 		}},
 	)

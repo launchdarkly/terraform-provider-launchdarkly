@@ -22,51 +22,51 @@ func resourceFeatureFlag() *schema.Resource {
 		},
 
 		Schema: map[string]*schema.Schema{
-			projKey: &schema.Schema{
+			project_key: &schema.Schema{
 				Type:     schema.TypeString,
 				Optional: true,
 				ForceNew: true,
 			},
-			"key": &schema.Schema{
+			key: &schema.Schema{
 				Type:     schema.TypeString,
 				Required: true,
 				ForceNew: true,
 			},
-			"name": &schema.Schema{
+			name: &schema.Schema{
 				Type:     schema.TypeString,
 				Required: true,
 			},
-			"description": &schema.Schema{
+			description: &schema.Schema{
 				Type:     schema.TypeString,
 				Optional: true,
 			},
-			"variations": variationsSchema(),
-			"temporary": {
+			variations: variationsSchema(),
+			temporary: {
 				Type:     schema.TypeBool,
 				Optional: true,
 				Default:  false,
 			},
-			"include_in_snippet": {
+			include_in_snippet: {
 				Type:     schema.TypeBool,
 				Optional: true,
 				Default:  false,
 			},
-			"tags": tagsSchema(),
+			tags: tagsSchema(),
 			//TODO waiting on https://github.com/launchdarkly/api-client-go/issues/1
-			//"custom_properties": {
+			//custom_properties: {
 			//	Type:     schema.TypeList,
 			//	Optional: true,
 			//	Elem: &schema.Resource{
 			//		Schema: map[string]*schema.Schema{
-			//			"key": {
+			//			key: {
 			//				Type:     schema.TypeString,
 			//				Required: true,
 			//			},
-			//			"name": {
+			//			name: {
 			//				Type:     schema.TypeString,
 			//				Required: true,
 			//			},
-			//			"value": {
+			//			value: {
 			//				Type:     schema.TypeList,
 			//				Required: true,
 			//				//TODO: can these be other types?
@@ -80,13 +80,13 @@ func resourceFeatureFlag() *schema.Resource {
 }
 
 type JsonCustomProperty struct {
-	Name  string   `json:"name"`
-	Value []string `json:"value"`
+	Name  string   `json:name`
+	Value []string `json:value`
 }
 
 func resourceFeatureFlagCreate(d *schema.ResourceData, metaRaw interface{}) error {
 	client := metaRaw.(*Client)
-	projectKey := d.Get(projKey).(string)
+	projectKey := d.Get(project_key).(string)
 
 	if exists, err := projectExists(projectKey, client); !exists {
 		if err != nil {
@@ -95,12 +95,12 @@ func resourceFeatureFlagCreate(d *schema.ResourceData, metaRaw interface{}) erro
 		return fmt.Errorf("Cannot find project with key %q", projectKey)
 	}
 
-	key := d.Get("key").(string)
-	description := d.Get("description").(string)
-	name := d.Get("name").(string)
-	tags := stringSetFromResourceData(d, "tags")
-	includeInSnippet := d.Get("include_in_snippet").(bool)
-	temporary := d.Get("temporary").(bool)
+	key := d.Get(key).(string)
+	description := d.Get(description).(string)
+	name := d.Get(name).(string)
+	tags := stringSetFromResourceData(d, tags)
+	includeInSnippet := d.Get(include_in_snippet).(bool)
+	temporary := d.Get(temporary).(bool)
 
 	flag := ldapi.FeatureFlagBody{
 		Name:             name,
@@ -131,8 +131,8 @@ func resourceFeatureFlagCreate(d *schema.ResourceData, metaRaw interface{}) erro
 
 func resourceFeatureFlagRead(d *schema.ResourceData, metaRaw interface{}) error {
 	client := metaRaw.(*Client)
-	projectKey := d.Get(projKey).(string)
-	key := d.Get("key").(string)
+	projectKey := d.Get(project_key).(string)
+	key := d.Get(key).(string)
 
 	flag, _, err := client.LaunchDarkly.FeatureFlagsApi.GetFeatureFlag(client.Ctx, projectKey, key, nil)
 
@@ -143,28 +143,28 @@ func resourceFeatureFlagRead(d *schema.ResourceData, metaRaw interface{}) error 
 	//TODO waiting on https://github.com/launchdarkly/api-client-go/issues/1
 	// transformedCustomProperties := transformCustomPropertiesFromLaunchDarklyFormat(flag.CustomProperties)
 
-	d.Set("key", flag.Key)
-	d.Set("name", flag.Name)
-	d.Set("description", flag.Description)
-	d.Set("variations", transformVariationsToResourceData(flag.Variations))
-	d.Set("tags", flag.Tags)
-	d.Set("include_in_snippet", flag.IncludeInSnippet)
-	d.Set("temporary", flag.Temporary)
+	d.Set(key, flag.Key)
+	d.Set(name, flag.Name)
+	d.Set(description, flag.Description)
+	d.Set(variations, transformVariationsToResourceData(flag.Variations))
+	d.Set(tags, flag.Tags)
+	d.Set(include_in_snippet, flag.IncludeInSnippet)
+	d.Set(temporary, flag.Temporary)
 	return nil
 }
 
 func resourceFeatureFlagUpdate(d *schema.ResourceData, metaRaw interface{}) error {
 	client := metaRaw.(*Client)
-	key := d.Get("key").(string)
-	projectKey := d.Get(projKey).(string)
-	description := d.Get("description").(string)
-	name := d.Get("name").(string)
-	tags := stringSetFromResourceData(d, "tags")
-	includeInSnippet := d.Get("include_in_snippet").(bool)
-	temporary := d.Get("temporary").(bool)
+	key := d.Get(key).(string)
+	projectKey := d.Get(project_key).(string)
+	description := d.Get(description).(string)
+	name := d.Get(name).(string)
+	tags := stringSetFromResourceData(d, tags)
+	includeInSnippet := d.Get(include_in_snippet).(bool)
+	temporary := d.Get(temporary).(bool)
 
 	//TODO waiting on https://github.com/launchdarkly/api-client-go/issues/1
-	//customProperties := d.Get("custom_properties").([]interface{})
+	//customProperties := d.Get(custom_properties).([]interface{})
 
 	patch := ldapi.PatchComment{
 		Comment: "Terraform",
@@ -188,8 +188,8 @@ func resourceFeatureFlagUpdate(d *schema.ResourceData, metaRaw interface{}) erro
 
 func resourceFeatureFlagDelete(d *schema.ResourceData, metaRaw interface{}) error {
 	client := metaRaw.(*Client)
-	projectKey := d.Get(projKey).(string)
-	key := d.Get("key").(string)
+	projectKey := d.Get(project_key).(string)
+	key := d.Get(key).(string)
 
 	_, err := client.LaunchDarkly.FeatureFlagsApi.DeleteFeatureFlag(client.Ctx, projectKey, key)
 	if err != nil {
@@ -201,8 +201,8 @@ func resourceFeatureFlagDelete(d *schema.ResourceData, metaRaw interface{}) erro
 
 func resourceFeatureFlagExists(d *schema.ResourceData, metaRaw interface{}) (bool, error) {
 	client := metaRaw.(*Client)
-	projectKey := d.Get(projKey).(string)
-	key := d.Get("key").(string)
+	projectKey := d.Get(project_key).(string)
+	key := d.Get(key).(string)
 
 	_, httpResponse, err := client.LaunchDarkly.FeatureFlagsApi.GetFeatureFlag(client.Ctx, projectKey, key, nil)
 	if httpResponse != nil && httpResponse.StatusCode == 404 {
@@ -228,8 +228,8 @@ func resourceFeatureFlagImport(d *schema.ResourceData, meta interface{}) ([]*sch
 		projectKey, key = parts[0], parts[1]
 	}
 
-	d.Set(projKey, projectKey)
-	d.Set("key", key)
+	d.Set(project_key, projectKey)
+	d.Set(key, key)
 	d.SetId(key)
 
 	if err := resourceFeatureFlagRead(d, meta); err != nil {
@@ -244,11 +244,11 @@ func transformCustomPropertiesFromTerraformFormat(properties []interface{}) map[
 
 	for _, raw := range properties {
 		value := raw.(map[string]interface{})
-		key := value["key"].(string)
-		name := value["name"].(string)
+		key := value[key].(string)
+		name := value[name].(string)
 
 		var values []string
-		for _, v := range value["value"].([]interface{}) {
+		for _, v := range value[value].([]interface{}) {
 			values = append(values, v.(string))
 		}
 
@@ -266,9 +266,9 @@ func transformCustomPropertiesFromLaunchDarklyFormat(properties map[string]JsonC
 
 	for key, body := range properties {
 		sub := make(map[string]interface{})
-		sub["key"] = key
-		sub["name"] = body.Name
-		sub["value"] = body.Value
+		sub[key] = key
+		sub[name] = body.Name
+		sub[value] = body.Value
 
 		transformed = append(transformed, sub)
 	}

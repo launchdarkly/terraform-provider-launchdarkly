@@ -21,59 +21,59 @@ func resourceEnvironment() *schema.Resource {
 		},
 
 		Schema: map[string]*schema.Schema{
-			projKey: &schema.Schema{
+			project_key: &schema.Schema{
 				Type:     schema.TypeString,
 				Optional: true,
-				Default:  "default",
+				Default:  defaultProjectKey,
 				ForceNew: true,
 			},
-			"key": &schema.Schema{
+			key: &schema.Schema{
 				Type:     schema.TypeString,
 				Required: true,
 				ForceNew: true,
 			},
-			"name": &schema.Schema{
+			name: &schema.Schema{
 				Type:     schema.TypeString,
 				Required: true,
 			},
-			"api_key": &schema.Schema{
+			api_key: &schema.Schema{
 				Type:      schema.TypeString,
 				Computed:  true,
 				Sensitive: true,
 			},
-			"mobile_key": &schema.Schema{
+			mobile_key: &schema.Schema{
 				Type:      schema.TypeString,
 				Computed:  true,
 				Sensitive: true,
 			},
-			"color": &schema.Schema{
+			color: &schema.Schema{
 				Type:     schema.TypeString,
 				Required: true,
 			},
-			"default_ttl": &schema.Schema{
+			default_ttl: &schema.Schema{
 				Type:     schema.TypeInt,
 				Optional: true,
 			},
-			"secure_mode": &schema.Schema{
+			secure_mode: &schema.Schema{
 				Type:     schema.TypeBool,
 				Optional: true,
 			},
-			"default_track_events": &schema.Schema{
+			default_track_events: &schema.Schema{
 				Type:     schema.TypeBool,
 				Optional: true,
 			},
-			"tags": tagsSchema(),
+			tags: tagsSchema(),
 		},
 	}
 }
 
 func resourceEnvironmentCreate(d *schema.ResourceData, metaRaw interface{}) error {
 	client := metaRaw.(*Client)
-	projectKey := d.Get(projKey).(string)
-	key := d.Get("key").(string)
-	name := d.Get("name").(string)
-	color := d.Get("color").(string)
-	defaultTtl := float32(d.Get("default_ttl").(int))
+	projectKey := d.Get(project_key).(string)
+	key := d.Get(key).(string)
+	name := d.Get(name).(string)
+	color := d.Get(color).(string)
+	defaultTtl := float32(d.Get(default_ttl).(int))
 
 	envPost := ldapi.EnvironmentPost{
 		Name:       name,
@@ -100,36 +100,36 @@ func resourceEnvironmentCreate(d *schema.ResourceData, metaRaw interface{}) erro
 
 func resourceEnvironmentRead(d *schema.ResourceData, metaRaw interface{}) error {
 	client := metaRaw.(*Client)
-	projectKey := d.Get(projKey).(string)
-	key := d.Get("key").(string)
+	projectKey := d.Get(project_key).(string)
+	key := d.Get(key).(string)
 
 	env, _, err := client.LaunchDarkly.EnvironmentsApi.GetEnvironment(client.Ctx, projectKey, key)
 	if err != nil {
 		return fmt.Errorf("failed to get environment with key %q for project key: %q: %v", key, projectKey, err)
 	}
 
-	d.Set("key", env.Key)
-	d.Set("name", env.Name)
-	d.Set("api_key", env.ApiKey)
-	d.Set("mobile_key", env.MobileKey)
-	d.Set("color", env.Color)
-	d.Set("default_ttl", env.DefaultTtl)
-	d.Set("secure_mode", env.SecureMode)
-	d.Set("default_track_events", env.DefaultTrackEvents)
-	d.Set("tags", env.Tags)
+	d.Set(key, env.Key)
+	d.Set(name, env.Name)
+	d.Set(api_key, env.ApiKey)
+	d.Set(mobile_key, env.MobileKey)
+	d.Set(color, env.Color)
+	d.Set(default_ttl, env.DefaultTtl)
+	d.Set(secure_mode, env.SecureMode)
+	d.Set(default_track_events, env.DefaultTrackEvents)
+	d.Set(tags, env.Tags)
 	return nil
 }
 
 func resourceEnvironmentUpdate(d *schema.ResourceData, metaRaw interface{}) error {
 	client := metaRaw.(*Client)
-	projectKey := d.Get(projKey).(string)
-	key := d.Get("key").(string)
-	name := d.Get("name")
-	color := d.Get("color")
-	defaultTtl := d.Get("default_ttl")
-	secureMode := d.Get("secure_mode")
-	defaultTrackEvents := d.Get("default_track_events")
-	tags := stringSetFromResourceData(d, "tags")
+	projectKey := d.Get(project_key).(string)
+	key := d.Get(key).(string)
+	name := d.Get(name)
+	color := d.Get(color)
+	defaultTtl := d.Get(default_ttl)
+	secureMode := d.Get(secure_mode)
+	defaultTrackEvents := d.Get(default_track_events)
+	tags := stringSetFromResourceData(d, tags)
 
 	patch := []ldapi.PatchOperation{
 		patchReplace("/name", &name),
@@ -150,8 +150,8 @@ func resourceEnvironmentUpdate(d *schema.ResourceData, metaRaw interface{}) erro
 
 func resourceEnvironmentDelete(d *schema.ResourceData, metaRaw interface{}) error {
 	client := metaRaw.(*Client)
-	projectKey := d.Get(projKey).(string)
-	key := d.Get("key").(string)
+	projectKey := d.Get(project_key).(string)
+	key := d.Get(key).(string)
 
 	_, err := client.LaunchDarkly.EnvironmentsApi.DeleteEnvironment(client.Ctx, projectKey, key)
 	if err != nil {
@@ -162,7 +162,7 @@ func resourceEnvironmentDelete(d *schema.ResourceData, metaRaw interface{}) erro
 }
 
 func resourceEnvironmentExists(d *schema.ResourceData, metaRaw interface{}) (bool, error) {
-	return environmentExists(d.Get("key").(string), d.Get(projKey).(string), metaRaw.(*Client))
+	return environmentExists(d.Get(key).(string), d.Get(project_key).(string), metaRaw.(*Client))
 }
 
 func environmentExists(key string, projectKey string, meta *Client) (bool, error) {
@@ -191,8 +191,8 @@ func resourceEnvironmentImport(d *schema.ResourceData, meta interface{}) ([]*sch
 		project, key = parts[0], parts[1]
 	}
 
-	d.Set(projKey, project)
-	d.Set("key", key)
+	d.Set(project_key, project)
+	d.Set(key, key)
 	d.SetId(key)
 
 	if err := resourceEnvironmentRead(d, meta); err != nil {

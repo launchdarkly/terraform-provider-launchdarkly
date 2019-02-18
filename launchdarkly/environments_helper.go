@@ -16,19 +16,19 @@ func environmentsSchema() *schema.Schema {
 			Schema: map[string]*schema.Schema{
 				// TODO: enable same fields as environment post for consistency.
 				//  Will require updates to each env after project creation.
-				"name": {
+				name: {
 					Type:     schema.TypeString,
 					Required: true,
 				},
-				"key": {
+				key: {
 					Type:     schema.TypeString,
 					Required: true,
 				},
-				"color": {
+				color: {
 					Type:     schema.TypeString,
 					Optional: true,
 				},
-				"default_ttl": {
+				default_ttl: {
 					Type:     schema.TypeFloat,
 					Optional: true,
 				},
@@ -38,7 +38,7 @@ func environmentsSchema() *schema.Schema {
 }
 
 func environmentsSetFromResourceData(d *schema.ResourceData) []ldapi.EnvironmentPost {
-	schemaEnvs := d.Get("environments").(*schema.Set)
+	schemaEnvs := d.Get(environments).(*schema.Set)
 
 	envs := make([]ldapi.EnvironmentPost, schemaEnvs.Len())
 	for i, env := range schemaEnvs.List() {
@@ -50,10 +50,10 @@ func environmentsSetFromResourceData(d *schema.ResourceData) []ldapi.Environment
 func environmentFromResourceData(env interface{}) ldapi.EnvironmentPost {
 	envMap := env.(map[string]interface{})
 	return ldapi.EnvironmentPost{
-		Name:       envMap["name"].(string),
-		Key:        envMap["key"].(string),
-		Color:      envMap["color"].(string),
-		DefaultTtl: float32(envMap["default_ttl"].(float64)),
+		Name:       envMap[name].(string),
+		Key:        envMap[key].(string),
+		Color:      envMap[color].(string),
+		DefaultTtl: float32(envMap[default_ttl].(float64)),
 	}
 }
 
@@ -62,10 +62,10 @@ func environmentsToResourceData(envs []ldapi.Environment) interface{} {
 
 	for i, variation := range envs {
 		transformed[i] = map[string]interface{}{
-			"name":        variation.Name,
-			"key":         variation.Key,
-			"color":       variation.Color,
-			"default_ttl": variation.DefaultTtl,
+			name:        variation.Name,
+			key:         variation.Key,
+			color:       variation.Color,
+			default_ttl: variation.DefaultTtl,
 		}
 	}
 	return transformed

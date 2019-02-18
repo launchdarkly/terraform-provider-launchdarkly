@@ -8,11 +8,6 @@ import (
 	"github.com/hashicorp/terraform/helper/schema"
 )
 
-const (
-	defaultProjectKey = "default"
-	projKey           = "project_key"
-)
-
 func resourceProject() *schema.Resource {
 	return &schema.Resource{
 		Create: resourceProjectCreate,
@@ -26,25 +21,25 @@ func resourceProject() *schema.Resource {
 		},
 
 		Schema: map[string]*schema.Schema{
-			"key": &schema.Schema{
+			key: &schema.Schema{
 				Type:     schema.TypeString,
 				Required: true,
 				ForceNew: true,
 			},
-			"name": &schema.Schema{
+			name: &schema.Schema{
 				Type:     schema.TypeString,
 				Required: true,
 			},
-			"tags":         tagsSchema(),
-			"environments": environmentsSchema(),
+			tags:         tagsSchema(),
+			environments: environmentsSchema(),
 		},
 	}
 }
 
 func resourceProjectCreate(d *schema.ResourceData, metaRaw interface{}) error {
 	client := metaRaw.(*Client)
-	key := d.Get("key").(string)
-	name := d.Get("name").(string)
+	key := d.Get(key).(string)
+	name := d.Get(name).(string)
 	envs := environmentsSetFromResourceData(d)
 
 	projectBody := ldapi.ProjectBody{
@@ -73,25 +68,25 @@ func resourceProjectCreate(d *schema.ResourceData, metaRaw interface{}) error {
 
 func resourceProjectRead(d *schema.ResourceData, metaRaw interface{}) error {
 	client := metaRaw.(*Client)
-	key := d.Get("key").(string)
+	key := d.Get(key).(string)
 
 	project, _, err := client.LaunchDarkly.ProjectsApi.GetProject(client.Ctx, key)
 	if err != nil {
 		return fmt.Errorf("failed to get project with key %q: %v", key, err)
 	}
 
-	d.Set("environments", environmentsToResourceData(project.Environments))
-	d.Set("key", project.Key)
-	d.Set("name", project.Name)
-	d.Set("tags", project.Tags)
+	d.Set(environments, environmentsToResourceData(project.Environments))
+	d.Set(key, project.Key)
+	d.Set(name, project.Name)
+	d.Set(tags, project.Tags)
 	return nil
 }
 
 func resourceProjectUpdate(d *schema.ResourceData, metaRaw interface{}) error {
 	client := metaRaw.(*Client)
-	key := d.Get("key").(string)
-	name := d.Get("name")
-	tags := stringSetFromResourceData(d, "tags")
+	key := d.Get(key).(string)
+	name := d.Get(name)
+	tags := stringSetFromResourceData(d, tags)
 
 	patch := []ldapi.PatchOperation{
 		patchReplace("/name", &name),
@@ -108,7 +103,7 @@ func resourceProjectUpdate(d *schema.ResourceData, metaRaw interface{}) error {
 
 func resourceProjectDelete(d *schema.ResourceData, metaRaw interface{}) error {
 	client := metaRaw.(*Client)
-	key := d.Get("key").(string)
+	key := d.Get(key).(string)
 
 	_, err := client.LaunchDarkly.ProjectsApi.DeleteProject(client.Ctx, key)
 	if err != nil {
@@ -119,7 +114,7 @@ func resourceProjectDelete(d *schema.ResourceData, metaRaw interface{}) error {
 }
 
 func resourceProjectExists(d *schema.ResourceData, metaRaw interface{}) (bool, error) {
-	return projectExists(d.Get("key").(string), metaRaw.(*Client))
+	return projectExists(d.Get(key).(string), metaRaw.(*Client))
 }
 
 func projectExists(key string, meta *Client) (bool, error) {
@@ -137,7 +132,7 @@ func projectExists(key string, meta *Client) (bool, error) {
 
 func resourceProjectImport(d *schema.ResourceData, meta interface{}) ([]*schema.ResourceData, error) {
 	d.SetId(d.Id())
-	d.Set("key", d.Id())
+	d.Set(key, d.Id())
 
 	if err := resourceProjectRead(d, meta); err != nil {
 		return nil, err

@@ -6,7 +6,7 @@ import (
 )
 
 const (
-	apiKey = "api_key"
+	apiKey = api_key
 )
 
 // Provider returns a terraform.ResourceProvider.
