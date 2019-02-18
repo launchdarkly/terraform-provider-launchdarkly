@@ -243,12 +243,12 @@ func transformCustomPropertiesFromTerraformFormat(properties []interface{}) map[
 	transformed := make(map[string]JsonCustomProperty)
 
 	for _, raw := range properties {
-		value := raw.(map[string]interface{})
-		key := value[key].(string)
-		name := value[name].(string)
+		val := raw.(map[string]interface{})
+		key := val[key].(string)
+		name := val[name].(string)
 
 		var values []string
-		for _, v := range value[value].([]interface{}) {
+		for _, v := range val[value].([]interface{}) {
 			values = append(values, v.(string))
 		}
 
