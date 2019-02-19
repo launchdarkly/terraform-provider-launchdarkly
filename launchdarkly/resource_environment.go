@@ -112,7 +112,7 @@ func resourceEnvironmentUpdate(d *schema.ResourceData, metaRaw interface{}) erro
 	}
 
 	if _, ok := d.GetOk(tags); ok {
-		tagSet := stringSetFromResourceData(d, tags)
+		tagSet := stringsFromResourceData(d, tags)
 		patch = append(patch, patchReplace("/tags", &tagSet))
 	}
 

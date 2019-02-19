@@ -98,7 +98,7 @@ func resourceFeatureFlagCreate(d *schema.ResourceData, metaRaw interface{}) erro
 	key := d.Get(key).(string)
 	description := d.Get(description).(string)
 	name := d.Get(name).(string)
-	tags := stringSetFromResourceData(d, tags)
+	tags := stringsFromResourceData(d, tags)
 	includeInSnippet := d.Get(include_in_snippet).(bool)
 	temporary := d.Get(temporary).(bool)
 
@@ -106,7 +106,7 @@ func resourceFeatureFlagCreate(d *schema.ResourceData, metaRaw interface{}) erro
 		Name:             name,
 		Key:              key,
 		Description:      description,
-		Variations:       variationsSetFromResourceData(d),
+		Variations:       variationsFromResourceData(d),
 		Temporary:        temporary,
 		Tags:             tags,
 		IncludeInSnippet: includeInSnippet,
@@ -146,7 +146,7 @@ func resourceFeatureFlagRead(d *schema.ResourceData, metaRaw interface{}) error 
 	d.Set(key, flag.Key)
 	d.Set(name, flag.Name)
 	d.Set(description, flag.Description)
-	d.Set(variations, transformVariationsToResourceData(flag.Variations))
+	d.Set(variations, variationsToResourceData(flag.Variations))
 	d.Set(tags, flag.Tags)
 	d.Set(include_in_snippet, flag.IncludeInSnippet)
 	d.Set(temporary, flag.Temporary)
@@ -159,7 +159,7 @@ func resourceFeatureFlagUpdate(d *schema.ResourceData, metaRaw interface{}) erro
 	projectKey := d.Get(project_key).(string)
 	description := d.Get(description).(string)
 	name := d.Get(name).(string)
-	tags := stringSetFromResourceData(d, tags)
+	tags := stringsFromResourceData(d, tags)
 	includeInSnippet := d.Get(include_in_snippet).(bool)
 	temporary := d.Get(temporary).(bool)
 

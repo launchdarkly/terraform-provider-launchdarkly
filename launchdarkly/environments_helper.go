@@ -47,7 +47,7 @@ func environmentSchema() map[string]*schema.Schema {
 	}
 }
 
-func environmentPostSetFromResourceData(d *schema.ResourceData) []ldapi.EnvironmentPost {
+func environmentPostsFromResourceData(d *schema.ResourceData) []ldapi.EnvironmentPost {
 	schemaEnvs := d.Get(environments).(*schema.Set)
 
 	envs := make([]ldapi.EnvironmentPost, schemaEnvs.Len())

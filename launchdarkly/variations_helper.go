@@ -33,7 +33,7 @@ func variationsSchema() *schema.Schema {
 	}
 }
 
-func variationsSetFromResourceData(d *schema.ResourceData) []ldapi.Variation {
+func variationsFromResourceData(d *schema.ResourceData) []ldapi.Variation {
 	schemaVariations := d.Get(variations).(*schema.Set)
 
 	variations := make([]ldapi.Variation, schemaVariations.Len())
@@ -52,7 +52,7 @@ func variationFromResourceData(variation interface{}) ldapi.Variation {
 	}
 }
 
-func transformVariationsToResourceData(variations []ldapi.Variation) interface{} {
+func variationsToResourceData(variations []ldapi.Variation) interface{} {
 	transformed := make([]interface{}, len(variations))
 
 	for i, variation := range variations {

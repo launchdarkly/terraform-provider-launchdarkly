@@ -14,11 +14,11 @@ func tagsSchema() *schema.Schema {
 	}
 }
 
-func stringSetFromResourceData(d *schema.ResourceData, key string) []string {
-	return stringSetFromSchemaSet(d.Get(key).(*schema.Set))
+func stringsFromResourceData(d *schema.ResourceData, key string) []string {
+	return stringsFromSchemaSet(d.Get(key).(*schema.Set))
 }
 
-func stringSetFromSchemaSet(schemaSet *schema.Set) []string {
+func stringsFromSchemaSet(schemaSet *schema.Set) []string {
 	strs := make([]string, schemaSet.Len())
 	for i, tag := range schemaSet.List() {
 		strs[i] = tag.(string)

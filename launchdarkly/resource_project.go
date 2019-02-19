@@ -47,7 +47,7 @@ func resourceProjectCreate(d *schema.ResourceData, metaRaw interface{}) error {
 	client := metaRaw.(*Client)
 	projectKey := d.Get(key).(string)
 	name := d.Get(name).(string)
-	envs := environmentPostSetFromResourceData(d)
+	envs := environmentPostsFromResourceData(d)
 
 	projectBody := ldapi.ProjectBody{
 		Name: name,
@@ -92,7 +92,7 @@ func resourceProjectCreate(d *schema.ResourceData, metaRaw interface{}) error {
 		}
 
 		if tagSet, ok := envMap[tags]; ok {
-			tagSet = stringSetFromSchemaSet(tagSet.(*schema.Set))
+			tagSet = stringsFromSchemaSet(tagSet.(*schema.Set))
 			patch = append(patch, patchReplace("/tags", &tagSet))
 		}
 		if len(patch) > 0 {
@@ -126,7 +126,7 @@ func resourceProjectUpdate(d *schema.ResourceData, metaRaw interface{}) error {
 	client := metaRaw.(*Client)
 	projectKey := d.Get(key).(string)
 	name := d.Get(name)
-	tags := stringSetFromResourceData(d, tags)
+	tags := stringsFromResourceData(d, tags)
 
 	patch := []ldapi.PatchOperation{
 		patchReplace("/name", &name),

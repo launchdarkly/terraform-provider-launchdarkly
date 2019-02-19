@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestVariationsSetFromResourceData(t *testing.T) {
+func TestVariationsFromResourceData(t *testing.T) {
 	resourceData := schema.TestResourceDataRaw(t,
 		map[string]*schema.Schema{variations: variationsSchema()},
 		map[string]interface{}{variations: []map[string]interface{}{
@@ -30,7 +30,7 @@ func TestVariationsSetFromResourceData(t *testing.T) {
 		{"nameValue2", "descValue2", ptr("another string value")},
 	}
 
-	actualVariations := variationsSetFromResourceData(resourceData)
+	actualVariations := variationsFromResourceData(resourceData)
 
 	require.Len(t, actualVariations, 2)
 	require.ElementsMatch(t, expectedVariations, actualVariations)
