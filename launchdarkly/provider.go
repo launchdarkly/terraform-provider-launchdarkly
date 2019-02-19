@@ -6,7 +6,8 @@ import (
 )
 
 const (
-	apiKey = api_key
+	apiKey                   = "api_key"
+	launchDarklyApiKeyEnvVar = "LAUNCHDARKLY_API_KEY"
 )
 
 // Provider returns a terraform.ResourceProvider.
@@ -16,7 +17,7 @@ func Provider() terraform.ResourceProvider {
 			apiKey: {
 				Type:        schema.TypeString,
 				Required:    true,
-				DefaultFunc: schema.EnvDefaultFunc("LAUNCHDARKLY_API_KEY", nil),
+				DefaultFunc: schema.EnvDefaultFunc(launchDarklyApiKeyEnvVar, nil),
 				Description: "The LaunchDarkly API key",
 			},
 		},

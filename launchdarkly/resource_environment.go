@@ -5,10 +5,18 @@ import (
 	"strings"
 
 	"github.com/hashicorp/terraform/helper/schema"
-	ldapi "github.com/launchdarkly/api-client-go"
+	"github.com/launchdarkly/api-client-go"
 )
 
 func resourceEnvironment() *schema.Resource {
+	envSchema := environmentSchema()
+	envSchema[project_key] = &schema.Schema{
+		Type:     schema.TypeString,
+		Optional: true,
+		Default:  defaultProjectKey,
+		ForceNew: true,
+	}
+
 	return &schema.Resource{
 		Create: resourceEnvironmentCreate,
 		Read:   resourceEnvironmentRead,
@@ -19,51 +27,7 @@ func resourceEnvironment() *schema.Resource {
 		Importer: &schema.ResourceImporter{
 			State: resourceEnvironmentImport,
 		},
-
-		Schema: map[string]*schema.Schema{
-			project_key: &schema.Schema{
-				Type:     schema.TypeString,
-				Optional: true,
-				Default:  defaultProjectKey,
-				ForceNew: true,
-			},
-			key: &schema.Schema{
-				Type:     schema.TypeString,
-				Required: true,
-				ForceNew: true,
-			},
-			name: &schema.Schema{
-				Type:     schema.TypeString,
-				Required: true,
-			},
-			api_key: &schema.Schema{
-				Type:      schema.TypeString,
-				Computed:  true,
-				Sensitive: true,
-			},
-			mobile_key: &schema.Schema{
-				Type:      schema.TypeString,
-				Computed:  true,
-				Sensitive: true,
-			},
-			color: &schema.Schema{
-				Type:     schema.TypeString,
-				Required: true,
-			},
-			default_ttl: &schema.Schema{
-				Type:     schema.TypeInt,
-				Optional: true,
-			},
-			secure_mode: &schema.Schema{
-				Type:     schema.TypeBool,
-				Optional: true,
-			},
-			default_track_events: &schema.Schema{
-				Type:     schema.TypeBool,
-				Optional: true,
-			},
-			tags: tagsSchema(),
-		},
+		Schema: envSchema,
 	}
 }
 
@@ -73,7 +37,7 @@ func resourceEnvironmentCreate(d *schema.ResourceData, metaRaw interface{}) erro
 	key := d.Get(key).(string)
 	name := d.Get(name).(string)
 	color := d.Get(color).(string)
-	defaultTtl := float32(d.Get(default_ttl).(int))
+	defaultTtl := float32(d.Get(default_ttl).(float64))
 
 	envPost := ldapi.EnvironmentPost{
 		Name:       name,
@@ -122,22 +86,34 @@ func resourceEnvironmentRead(d *schema.ResourceData, metaRaw interface{}) error 
 
 func resourceEnvironmentUpdate(d *schema.ResourceData, metaRaw interface{}) error {
 	client := metaRaw.(*Client)
+
+	//required fields
 	projectKey := d.Get(project_key).(string)
 	key := d.Get(key).(string)
 	name := d.Get(name)
 	color := d.Get(color)
-	defaultTtl := d.Get(default_ttl)
-	secureMode := d.Get(secure_mode)
-	defaultTrackEvents := d.Get(default_track_events)
-	tags := stringSetFromResourceData(d, tags)
 
 	patch := []ldapi.PatchOperation{
 		patchReplace("/name", &name),
 		patchReplace("/color", &color),
-		patchReplace("/defaultTtl", &defaultTtl),
-		patchReplace("/secureMode", &secureMode),
-		patchReplace("/defaultTrackEvents", &defaultTrackEvents),
-		patchReplace("/tags", &tags),
+	}
+
+	// optional fields
+	if defaultTtl, ok := d.GetOk(default_ttl); ok {
+		patch = append(patch, patchReplace("/defaultTtl", &defaultTtl))
+	}
+
+	if secureMode, ok := d.GetOk(secure_mode); ok {
+		patch = append(patch, patchReplace("/secureMode", &secureMode))
+	}
+
+	if defaultTrackEvents, ok := d.GetOk(default_track_events); ok {
+		patch = append(patch, patchReplace("/defaultTrackEvents", &defaultTrackEvents))
+	}
+
+	if _, ok := d.GetOk(tags); ok {
+		tagSet := stringSetFromResourceData(d, tags)
+		patch = append(patch, patchReplace("/tags", &tagSet))
 	}
 
 	_, _, err := client.LaunchDarkly.EnvironmentsApi.PatchEnvironment(client.Ctx, projectKey, key, patch)

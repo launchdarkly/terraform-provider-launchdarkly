@@ -8,23 +8,25 @@ import (
 func tagsSchema() *schema.Schema {
 	return &schema.Schema{
 		Type:     schema.TypeSet,
-		Set:      stringSchemaSetFunc,
+		Set:      stringHash,
 		Elem:     &schema.Schema{Type: schema.TypeString},
 		Optional: true,
 	}
 }
 
 func stringSetFromResourceData(d *schema.ResourceData, key string) []string {
-	tags := d.Get(key).(*schema.Set)
+	return stringSetFromSchemaSet(d.Get(key).(*schema.Set))
+}
 
-	strs := make([]string, tags.Len())
-	for i, tag := range tags.List() {
+func stringSetFromSchemaSet(schemaSet *schema.Set) []string {
+	strs := make([]string, schemaSet.Len())
+	for i, tag := range schemaSet.List() {
 		strs[i] = tag.(string)
 	}
 	return strs
 }
 
 // https://godoc.org/github.com/hashicorp/terraform/helper/schema#SchemaSetFunc
-func stringSchemaSetFunc(value interface{}) int {
+func stringHash(value interface{}) int {
 	return hashcode.String(value.(string))
 }

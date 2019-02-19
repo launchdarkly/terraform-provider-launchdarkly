@@ -11,7 +11,7 @@ import (
 func variationsSchema() *schema.Schema {
 	return &schema.Schema{
 		Type:     schema.TypeSet,
-		Set:      variationsSchemaSetFunc,
+		Set:      variationHash,
 		Optional: true,
 		Elem: &schema.Resource{
 			Schema: map[string]*schema.Schema{
@@ -66,7 +66,7 @@ func transformVariationsToResourceData(variations []ldapi.Variation) interface{}
 }
 
 // https://godoc.org/github.com/hashicorp/terraform/helper/schema#SchemaSetFunc
-func variationsSchemaSetFunc(value interface{}) int {
+func variationHash(value interface{}) int {
 	v := variationFromResourceData(value).Value
 	if v == nil {
 		return 0

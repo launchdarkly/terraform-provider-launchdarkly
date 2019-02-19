@@ -3,7 +3,7 @@ package launchdarkly
 import (
 	"fmt"
 
-	ldapi "github.com/launchdarkly/api-client-go"
+	"github.com/launchdarkly/api-client-go"
 
 	"github.com/hashicorp/terraform/helper/schema"
 )
@@ -30,21 +30,28 @@ func resourceProject() *schema.Resource {
 				Type:     schema.TypeString,
 				Required: true,
 			},
-			tags:         tagsSchema(),
-			environments: environmentsSchema(),
+			tags: tagsSchema(),
+			environments: &schema.Schema{
+				Type:     schema.TypeSet,
+				Set:      environmentHash,
+				Optional: true,
+				Elem: &schema.Resource{
+					Schema: environmentSchema(),
+				},
+			},
 		},
 	}
 }
 
 func resourceProjectCreate(d *schema.ResourceData, metaRaw interface{}) error {
 	client := metaRaw.(*Client)
-	key := d.Get(key).(string)
+	projectKey := d.Get(key).(string)
 	name := d.Get(name).(string)
-	envs := environmentsSetFromResourceData(d)
+	envs := environmentPostSetFromResourceData(d)
 
 	projectBody := ldapi.ProjectBody{
 		Name: name,
-		Key:  key,
+		Key:  projectKey,
 	}
 
 	if len(envs) > 0 {
@@ -53,26 +60,59 @@ func resourceProjectCreate(d *schema.ResourceData, metaRaw interface{}) error {
 
 	_, err := client.LaunchDarkly.ProjectsApi.PostProject(client.Ctx, projectBody)
 	if err != nil {
-		return fmt.Errorf("failed to create project with name %s and key %s: %v", name, key, err)
+		return fmt.Errorf("failed to create project with name %s and projectKey %s: %v", name, projectKey, err)
 	}
 
 	// LaunchDarkly's api does not allow tags to be passed in during project creation so we do an update
 	err = resourceProjectUpdate(d, metaRaw)
 	if err != nil {
-		return fmt.Errorf("failed to update project with name %s and key %s: %v", name, key, err)
+		return fmt.Errorf("failed to update project with name %s and projectKey %s: %v", name, projectKey, err)
 	}
 
-	d.SetId(key)
+	// update envs if needed
+	schemaEnvs := d.Get(environments).(*schema.Set)
+	for _, env := range schemaEnvs.List() {
+		envMap := env.(map[string]interface{})
+		envKey := envMap[key].(string)
+
+		// we already posted the projectKey, name, color, and default_ttl, so we skip patching those fields.
+		var patch []ldapi.PatchOperation
+
+		// optional fields:
+		if defaultTtl, ok := envMap[default_ttl]; ok {
+			patch = append(patch, patchReplace("/defaultTtl", &defaultTtl))
+		}
+
+		if secureMode, ok := envMap[secure_mode]; ok {
+			patch = append(patch, patchReplace("/secureMode", &secureMode))
+		}
+
+		if defaultTrackEvents, ok := envMap[default_track_events]; ok {
+			patch = append(patch, patchReplace("/defaultTrackEvents", &defaultTrackEvents))
+		}
+
+		if tagSet, ok := envMap[tags]; ok {
+			tagSet = stringSetFromSchemaSet(tagSet.(*schema.Set))
+			patch = append(patch, patchReplace("/tags", &tagSet))
+		}
+		if len(patch) > 0 {
+			_, _, err := client.LaunchDarkly.EnvironmentsApi.PatchEnvironment(client.Ctx, projectKey, envKey, patch)
+			if err != nil {
+				return fmt.Errorf("failed to update environment with key %q for project: %q: %+v", envKey, projectKey, err)
+			}
+		}
+	}
+	d.SetId(projectKey)
 	return resourceProjectRead(d, metaRaw)
 }
 
 func resourceProjectRead(d *schema.ResourceData, metaRaw interface{}) error {
 	client := metaRaw.(*Client)
-	key := d.Get(key).(string)
+	projectKey := d.Get(key).(string)
 
-	project, _, err := client.LaunchDarkly.ProjectsApi.GetProject(client.Ctx, key)
+	project, _, err := client.LaunchDarkly.ProjectsApi.GetProject(client.Ctx, projectKey)
 	if err != nil {
-		return fmt.Errorf("failed to get project with key %q: %v", key, err)
+		return fmt.Errorf("failed to get project with key %q: %v", projectKey, err)
 	}
 
 	d.Set(environments, environmentsToResourceData(project.Environments))
@@ -84,7 +124,7 @@ func resourceProjectRead(d *schema.ResourceData, metaRaw interface{}) error {
 
 func resourceProjectUpdate(d *schema.ResourceData, metaRaw interface{}) error {
 	client := metaRaw.(*Client)
-	key := d.Get(key).(string)
+	projectKey := d.Get(key).(string)
 	name := d.Get(name)
 	tags := stringSetFromResourceData(d, tags)
 
@@ -93,9 +133,9 @@ func resourceProjectUpdate(d *schema.ResourceData, metaRaw interface{}) error {
 		patchReplace("/tags", &tags),
 	}
 
-	_, _, err := client.LaunchDarkly.ProjectsApi.PatchProject(client.Ctx, key, patch)
+	_, _, err := client.LaunchDarkly.ProjectsApi.PatchProject(client.Ctx, projectKey, patch)
 	if err != nil {
-		return fmt.Errorf("failed to update project with key %q: %s", key, err)
+		return fmt.Errorf("failed to update project with key %q: %s", projectKey, err)
 	}
 
 	return resourceProjectRead(d, metaRaw)
@@ -103,11 +143,11 @@ func resourceProjectUpdate(d *schema.ResourceData, metaRaw interface{}) error {
 
 func resourceProjectDelete(d *schema.ResourceData, metaRaw interface{}) error {
 	client := metaRaw.(*Client)
-	key := d.Get(key).(string)
+	projectKey := d.Get(key).(string)
 
-	_, err := client.LaunchDarkly.ProjectsApi.DeleteProject(client.Ctx, key)
+	_, err := client.LaunchDarkly.ProjectsApi.DeleteProject(client.Ctx, projectKey)
 	if err != nil {
-		return fmt.Errorf("failed to delete project with key %q: %s", key, err)
+		return fmt.Errorf("failed to delete project with key %q: %s", projectKey, err)
 	}
 
 	return nil
@@ -117,14 +157,14 @@ func resourceProjectExists(d *schema.ResourceData, metaRaw interface{}) (bool, e
 	return projectExists(d.Get(key).(string), metaRaw.(*Client))
 }
 
-func projectExists(key string, meta *Client) (bool, error) {
-	_, httpResponse, err := meta.LaunchDarkly.ProjectsApi.GetProject(meta.Ctx, key)
+func projectExists(projectKey string, meta *Client) (bool, error) {
+	_, httpResponse, err := meta.LaunchDarkly.ProjectsApi.GetProject(meta.Ctx, projectKey)
 	if httpResponse != nil && httpResponse.StatusCode == 404 {
 		fmt.Println("got 404 when getting project. returning false.")
 		return false, nil
 	}
 	if err != nil {
-		return false, fmt.Errorf("failed to get project with key %q: %v", key, err)
+		return false, fmt.Errorf("failed to get project with key %q: %v", projectKey, err)
 	}
 
 	return true, nil

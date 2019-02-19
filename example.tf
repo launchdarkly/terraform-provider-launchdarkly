@@ -8,6 +8,9 @@ resource "launchdarkly_project" "exampleproject1" {
       name = "defined in project post"
       key = "projDefinedEnv"
       color = "0000f0"
+      default_ttl = 100.0
+      secure_mode = true
+      default_track_events = false
     }
   ]
 }
@@ -16,14 +19,15 @@ resource "launchdarkly_environment" "staging" {
   name = "Staging"
   key = "staging"
   color = "ff00ff"
-  secure_mode = true,
-  default_track_events = false,
+  secure_mode = true
+  default_track_events = false
   tags = [
     "tags",
     "are",
     "not",
     "ordered",
-  ]
+  ],
+  default_ttl = 100.0
 
   project_key = "${launchdarkly_project.exampleproject1.key}"
 }
