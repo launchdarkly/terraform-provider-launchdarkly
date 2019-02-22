@@ -45,6 +45,7 @@ resource "launchdarkly_feature_flag" "multivariate-flag-2" {
   key = "multivariate-flag-2"
   name = "multivariate-flag-2 name"
   description = "this is a multivariate flag because we explicitly define the variations"
+  variation_type = "string"
   variations = [
     {
       name = "variation1"
@@ -78,6 +79,25 @@ resource "launchdarkly_feature_flag" "multivariate-flag-2" {
   //      name = "Some Property"
   //      value = "very special custom property"
   //    }]
+}
+
+
+resource "launchdarkly_feature_flag" "multivariate-flag-3" {
+  project_key = "${launchdarkly_project.exampleproject1.key}"
+  key = "multivariate-flag-3"
+  name = "multivariate-flag-3 with json variations"
+  description = "this is a multivariate flag because we explicitly define the variations"
+  variation_type = "json"
+  variations = [
+    {
+      name = "variation1"
+      description = "a description"
+      value = "{\"key1\": 3}"
+    },
+    {
+      value = "{\"key1\": \"sdfsdf\"}"
+    },
+  ]
 }
 
 output "api_key" {

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	ldapi "github.com/launchdarkly/api-client-go"
+	"github.com/launchdarkly/api-client-go"
 
 	"github.com/hashicorp/terraform/helper/schema"
 )
@@ -40,7 +40,8 @@ func resourceFeatureFlag() *schema.Resource {
 				Type:     schema.TypeString,
 				Optional: true,
 			},
-			variations: variationsSchema(),
+			variation_type: variationTypeSchema(),
+			variations:     variationsSchema(),
 			temporary: {
 				Type:     schema.TypeBool,
 				Optional: true,
@@ -97,22 +98,29 @@ func resourceFeatureFlagCreate(d *schema.ResourceData, metaRaw interface{}) erro
 
 	key := d.Get(key).(string)
 	description := d.Get(description).(string)
-	name := d.Get(name).(string)
+	flagName := d.Get(name).(string)
 	tags := stringsFromResourceData(d, tags)
 	includeInSnippet := d.Get(include_in_snippet).(bool)
 	temporary := d.Get(temporary).(bool)
 
+	variationType := d.Get(variation_type).(string)
+
+	variations, err := variationsFromResourceData(d, variationType)
+	if err != nil {
+		return fmt.Errorf("Failed to create flag %q in project %q: %s", key, projectKey, err)
+	}
+
 	flag := ldapi.FeatureFlagBody{
-		Name:             name,
+		Name:             flagName,
 		Key:              key,
 		Description:      description,
-		Variations:       variationsFromResourceData(d),
+		Variations:       variations,
 		Temporary:        temporary,
 		Tags:             tags,
 		IncludeInSnippet: includeInSnippet,
 	}
 
-	_, _, err := client.LaunchDarkly.FeatureFlagsApi.PostFeatureFlag(client.Ctx, projectKey, flag, nil)
+	_, _, err = client.LaunchDarkly.FeatureFlagsApi.PostFeatureFlag(client.Ctx, projectKey, flag, nil)
 
 	if err != nil {
 		return fmt.Errorf("Failed to create flag %q in project %q: %s", key, projectKey, err)
@@ -122,7 +130,7 @@ func resourceFeatureFlagCreate(d *schema.ResourceData, metaRaw interface{}) erro
 	// https://apidocs.launchdarkly.com/docs/create-feature-flag
 	err = resourceFeatureFlagUpdate(d, metaRaw)
 	if err != nil {
-		return fmt.Errorf("failed to update flag with name %q key %q for projectKey %q: %v", name, key, projectKey, err)
+		return fmt.Errorf("failed to update flag with name %q key %q for projectKey %q: %v", flagName, key, projectKey, err)
 	}
 
 	d.SetId(key)

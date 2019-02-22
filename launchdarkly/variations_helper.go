@@ -1,11 +1,14 @@
 package launchdarkly
 
 import (
+	"encoding/json"
 	"fmt"
+	"strconv"
 
 	"github.com/hashicorp/terraform/helper/hashcode"
 	"github.com/hashicorp/terraform/helper/schema"
-	ldapi "github.com/launchdarkly/api-client-go"
+	"github.com/launchdarkly/api-client-go"
+	"github.com/pkg/errors"
 )
 
 func variationsSchema() *schema.Schema {
@@ -23,7 +26,6 @@ func variationsSchema() *schema.Schema {
 					Type:     schema.TypeString,
 					Optional: true,
 				},
-				//TODO: enable other types by specifying them explicitly in the schema and then enforcing the type for each variation
 				value: {
 					Type:     schema.TypeString,
 					Required: true,
@@ -33,23 +35,70 @@ func variationsSchema() *schema.Schema {
 	}
 }
 
-func variationsFromResourceData(d *schema.ResourceData) []ldapi.Variation {
-	schemaVariations := d.Get(variations).(*schema.Set)
-
-	variations := make([]ldapi.Variation, schemaVariations.Len())
-	for i, variation := range schemaVariations.List() {
-		variations[i] = variationFromResourceData(variation)
+func variationTypeSchema() *schema.Schema {
+	return &schema.Schema{
+		Type:         schema.TypeString,
+		Optional:     true,
+		Default:      "bool",
+		Description:  "Default: bool. Must be one of: float, bool, string, json",
+		ValidateFunc: nil,
 	}
-	return variations
 }
 
-func variationFromResourceData(variation interface{}) ldapi.Variation {
+func variationsFromResourceData(d *schema.ResourceData, variationType string) ([]ldapi.Variation, error) {
+	schemaVariations := d.Get(variations).(*schema.Set)
+	if variationType == "bool" {
+		if schemaVariations.Len() > 0 {
+			return nil, fmt.Errorf("%s=bool cannot be set along with variations! Please specify variation_type", variation_type)
+		}
+		return nil, nil
+	}
+
+	variations := make([]ldapi.Variation, schemaVariations.Len())
+	list := schemaVariations.List()
+	for i, variation := range list {
+		v, err := variationFromResourceData(variation, variationType)
+		if err != nil {
+			return nil, err
+		}
+		variations[i] = v
+	}
+	return variations, nil
+}
+
+func variationFromResourceData(variation interface{}, variationType string) (ldapi.Variation, error) {
 	variationMap := variation.(map[string]interface{})
+	var val interface{}
+
+	v := variationMap[value]
+	// all types get represented as a string in terraform world.
+	valueString := v.(string)
+	var err error
+
+	switch variationType {
+	case "string":
+		val = valueString
+	case "float":
+		val, err = strconv.ParseFloat(valueString, 64)
+		if err != nil {
+			return ldapi.Variation{}, errors.Wrapf(err, "Expected string: %q to parse as a float.", valueString)
+		}
+	case "json":
+		var jsonMap map[string]interface{}
+		err = json.Unmarshal([]byte(valueString), &jsonMap)
+		if err != nil {
+			return ldapi.Variation{}, errors.Wrapf(err, "Expected string: %q to be valid json.", valueString)
+		}
+		val = jsonMap
+	default:
+		return ldapi.Variation{}, fmt.Errorf("unexpected variation type: %q must be one of: string,float,json", variationType)
+	}
+
 	return ldapi.Variation{
 		Name:        variationMap[name].(string),
 		Description: variationMap[description].(string),
-		Value:       ptr(variationMap[value]),
-	}
+		Value:       &val,
+	}, nil
 }
 
 func variationsToResourceData(variations []ldapi.Variation) interface{} {
@@ -66,10 +115,7 @@ func variationsToResourceData(variations []ldapi.Variation) interface{} {
 }
 
 // https://godoc.org/github.com/hashicorp/terraform/helper/schema#SchemaSetFunc
-func variationHash(value interface{}) int {
-	v := variationFromResourceData(value).Value
-	if v == nil {
-		return 0
-	}
-	return hashcode.String(fmt.Sprintf("%v", *v))
+func variationHash(val interface{}) int {
+	variationMap := val.(map[string]interface{})
+	return hashcode.String(fmt.Sprintf("%v", variationMap[value]))
 }

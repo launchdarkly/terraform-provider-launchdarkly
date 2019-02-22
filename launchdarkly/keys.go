@@ -22,4 +22,6 @@ const (
 	value                = "value"
 	//TODO waiting on https://github.com/launchdarkly/api-client-go/issues/1
 	//custom_properties    = "custom_properties"
+
+	variation_type = "variation_type"
 )
