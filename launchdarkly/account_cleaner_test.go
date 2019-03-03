@@ -24,7 +24,7 @@ func TestCleanAccount(t *testing.T) {
 	_, response, err := client.ProjectsApi.GetProject(ctx, "dummy-project")
 
 	if response.StatusCode == 404 {
-		_, err = client.ProjectsApi.PostProject(ctx, ldapi.ProjectBody{Name: "dummy-project", Key: "dummy-project"})
+		_, _, err = client.ProjectsApi.PostProject(ctx, ldapi.ProjectBody{Name: "dummy-project", Key: "dummy-project"})
 		require.NoError(t, err)
 	} else {
 		require.NoError(t, err)

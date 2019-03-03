@@ -58,7 +58,7 @@ func resourceProjectCreate(d *schema.ResourceData, metaRaw interface{}) error {
 		projectBody.Environments = envs
 	}
 
-	_, err := client.LaunchDarkly.ProjectsApi.PostProject(client.Ctx, projectBody)
+	_, _, err := client.LaunchDarkly.ProjectsApi.PostProject(client.Ctx, projectBody)
 	if err != nil {
 		return fmt.Errorf("failed to create project with name %s and projectKey %s: %v", name, projectKey, err)
 	}

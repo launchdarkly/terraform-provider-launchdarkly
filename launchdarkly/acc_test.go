@@ -110,7 +110,7 @@ func cleanAccount(unused *terraform.State) error {
 	_, response, err := client.ProjectsApi.GetProject(ctx, "dummy-project")
 
 	if response.StatusCode == 404 {
-		_, err = client.ProjectsApi.PostProject(ctx, ldapi.ProjectBody{Name: "dummy-project", Key: "dummy-project"})
+		_, _, err = client.ProjectsApi.PostProject(ctx, ldapi.ProjectBody{Name: "dummy-project", Key: "dummy-project"})
 		if err != nil {
 			return err
 		}

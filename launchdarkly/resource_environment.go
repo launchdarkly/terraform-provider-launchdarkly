@@ -46,7 +46,7 @@ func resourceEnvironmentCreate(d *schema.ResourceData, metaRaw interface{}) erro
 		DefaultTtl: defaultTtl,
 	}
 
-	_, err := client.LaunchDarkly.EnvironmentsApi.PostEnvironment(client.Ctx, projectKey, envPost)
+	_, _, err := client.LaunchDarkly.EnvironmentsApi.PostEnvironment(client.Ctx, projectKey, envPost)
 	if err != nil {
 		return fmt.Errorf("failed to create environment: [%+v] for project key: %s", envPost, projectKey)
 	}
