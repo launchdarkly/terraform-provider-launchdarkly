@@ -35,6 +35,19 @@ resource "launchdarkly_project" "exampleproject1" {
   ]
 }
 `
+
+	webhookCreate = `
+resource "launchdarkly_webhook" "examplewebhook1" {
+  name = "example-webhook"
+  url = "http://webhooks.com"
+  tags = [
+    "terraform"
+  ]
+  secret = "THIS IS SUPER SECRET"
+  sign = true,
+  on = true,
+}
+`
 )
 
 func TestAccExample(t *testing.T) {
@@ -50,6 +63,27 @@ func TestAccExample(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: projectCreate,
+				Check:  resource.ComposeTestCheckFunc(),
+			},
+		},
+		IDRefreshName:   "",
+		IDRefreshIgnore: nil,
+	})
+}
+
+func TestWebhookAccExample(t *testing.T) {
+	//projectKey := "accTestProject"
+
+	resource.Test(t, resource.TestCase{
+		IsUnitTest:                false,
+		PreCheck:                  func() { checkCredentialsEnvVar(t) },
+		Providers:                 testAccProviders,
+		ProviderFactories:         nil,
+		PreventPostDestroyRefresh: false,
+		CheckDestroy:              nil,
+		Steps: []resource.TestStep{
+			{
+				Config: webhookCreate,
 				Check:  resource.ComposeTestCheckFunc(),
 			},
 		},

@@ -25,6 +25,7 @@ func Provider() terraform.ResourceProvider {
 			"launchdarkly_project":      resourceProject(),
 			"launchdarkly_environment":  resourceEnvironment(),
 			"launchdarkly_feature_flag": resourceFeatureFlag(),
+			"launchdarkly_webhook":      resourceWebhook(),
 		},
 		ConfigureFunc: providerConfigure,
 	}

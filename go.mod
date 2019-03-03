@@ -1,6 +1,9 @@
 module terraform-provider-launchdarkly
 
+replace github.com/launchdarkly/api-client-go => /Users/drichelson/workspace/ld-openapi/targets/api-client-go
+
 require (
+	github.com/antihax/optional v0.0.0-20180407024304-ca021399b1a6 // indirect
 	github.com/apparentlymart/go-cidr v1.0.0 // indirect
 	github.com/blang/semver v3.5.1+incompatible // indirect
 	github.com/hashicorp/go-getter v1.0.1 // indirect
@@ -13,7 +16,7 @@ require (
 	github.com/hashicorp/hil v0.0.0-20190129155652-59d7c1fee952 // indirect
 	github.com/hashicorp/logutils v1.0.0 // indirect
 	github.com/hashicorp/terraform v0.11.11
-	github.com/launchdarkly/api-client-go v0.0.0-20190111200008-3cb23d7484ad
+	github.com/launchdarkly/api-client-go v0.0.0-20190220214824-9c043706d6d0
 	github.com/mitchellh/cli v1.0.0 // indirect
 	github.com/mitchellh/copystructure v1.0.0 // indirect
 	github.com/mitchellh/go-homedir v1.1.0 // indirect

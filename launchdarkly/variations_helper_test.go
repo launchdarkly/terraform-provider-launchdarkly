@@ -34,8 +34,8 @@ func TestVariationsFromResourceData(t *testing.T) {
 					},
 				}},
 			expected: []ldapi.Variation{
-				{"nameValue", "descValue", ptr("a string value")},
-				{"nameValue2", "descValue2", ptr("another string value")},
+				{Name: "nameValue", Description: "descValue", Value: ptr("a string value")},
+				{Name: "nameValue2", Description: "descValue2", Value: ptr("another string value")},
 			},
 			expectedError: nil,
 		},
@@ -56,8 +56,8 @@ func TestVariationsFromResourceData(t *testing.T) {
 					},
 				}},
 			expected: []ldapi.Variation{
-				{"nameValue", "descValue", ptr(10000.0112)},
-				{"nameValue2", "descValue2", ptr(0.231)},
+				{Name: "nameValue", Description: "descValue", Value: ptr(10000.0112)},
+				{Name: "nameValue2", Description: "descValue2", Value: ptr(0.231)},
 			},
 			expectedError: nil,
 		},
@@ -78,8 +78,8 @@ func TestVariationsFromResourceData(t *testing.T) {
 					},
 				}},
 			expected: []ldapi.Variation{
-				{"nameValue", "descValue", ptr(map[string]interface{}{"key1": "value1"})},
-				{"nameValue2", "descValue2", ptr(map[string]interface{}{"key1": "value2"})},
+				{Name: "nameValue", Description: "descValue", Value: ptr(map[string]interface{}{"key1": "value1"})},
+				{Name: "nameValue2", Description: "descValue2", Value: ptr(map[string]interface{}{"key1": "value2"})},
 			},
 			expectedError: nil,
 		},

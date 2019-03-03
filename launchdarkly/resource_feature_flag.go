@@ -80,10 +80,10 @@ func resourceFeatureFlag() *schema.Resource {
 	}
 }
 
-type JsonCustomProperty struct {
-	Name  string   `json:name`
-	Value []string `json:value`
-}
+//type JsonCustomProperty struct {
+//	Name  string   `json:name`
+//	Value []string `json:value`
+//}
 
 func resourceFeatureFlagCreate(d *schema.ResourceData, metaRaw interface{}) error {
 	client := metaRaw.(*Client)
@@ -247,39 +247,39 @@ func resourceFeatureFlagImport(d *schema.ResourceData, meta interface{}) ([]*sch
 	return []*schema.ResourceData{d}, nil
 }
 
-func transformCustomPropertiesFromTerraformFormat(properties []interface{}) map[string]JsonCustomProperty {
-	transformed := make(map[string]JsonCustomProperty)
-
-	for _, raw := range properties {
-		val := raw.(map[string]interface{})
-		key := val[key].(string)
-		name := val[name].(string)
-
-		var values []string
-		for _, v := range val[value].([]interface{}) {
-			values = append(values, v.(string))
-		}
-
-		transformed[key] = JsonCustomProperty{
-			Name:  name,
-			Value: values,
-		}
-	}
-
-	return transformed
-}
-
-func transformCustomPropertiesFromLaunchDarklyFormat(properties map[string]JsonCustomProperty) interface{} {
-	transformed := make([]map[string]interface{}, 0)
-
-	for key, body := range properties {
-		sub := make(map[string]interface{})
-		sub[key] = key
-		sub[name] = body.Name
-		sub[value] = body.Value
-
-		transformed = append(transformed, sub)
-	}
-
-	return transformed
-}
+//func transformCustomPropertiesFromTerraformFormat(properties []interface{}) map[string]JsonCustomProperty {
+//	transformed := make(map[string]JsonCustomProperty)
+//
+//	for _, raw := range properties {
+//		val := raw.(map[string]interface{})
+//		key := val[key].(string)
+//		name := val[name].(string)
+//
+//		var values []string
+//		for _, v := range val[value].([]interface{}) {
+//			values = append(values, v.(string))
+//		}
+//
+//		transformed[key] = JsonCustomProperty{
+//			Name:  name,
+//			Value: values,
+//		}
+//	}
+//
+//	return transformed
+//}
+//
+//func transformCustomPropertiesFromLaunchDarklyFormat(properties map[string]JsonCustomProperty) interface{} {
+//	transformed := make([]map[string]interface{}, 0)
+//
+//	for key, body := range properties {
+//		sub := make(map[string]interface{})
+//		sub[key] = key
+//		sub[name] = body.Name
+//		sub[value] = body.Value
+//
+//		transformed = append(transformed, sub)
+//	}
+//
+//	return transformed
+//}

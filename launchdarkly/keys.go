@@ -24,4 +24,9 @@ const (
 	//custom_properties    = "custom_properties"
 
 	variation_type = "variation_type"
+	url            = "url"
+	secret         = "secret"
+	sign           = "sign"
+	on             = "on"
+	_id            = "_id"
 )
