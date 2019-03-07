@@ -5,6 +5,7 @@ const (
 	// The name of each constant is the same as its value.
 	defaultProjectKey    = "default"
 	project_key          = "project_key"
+	env_key              = "env_key"
 	key                  = "key"
 	name                 = "name"
 	tags                 = "tags"
@@ -29,4 +30,10 @@ const (
 	sign           = "sign"
 	on             = "on"
 	_id            = "_id"
+	resources      = "resources"
+	actions        = "actions"
+	effect         = "effect"
+	policy         = "policy"
+	excluded       = "excluded"
+	included       = "included"
 )

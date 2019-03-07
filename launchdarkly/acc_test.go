@@ -48,6 +48,17 @@ resource "launchdarkly_webhook" "examplewebhook1" {
   on = true,
 }
 `
+
+	customRoleCreate = `
+resource "launchdarkly_custom_role" "exampleCustomRole1" {
+  key = "custom-role-key-1"
+  name = "custom-role-name-1"
+  description= "crd"
+  policy = [{
+
+}]
+}
+`
 )
 
 func TestAccExample(t *testing.T) {
@@ -92,11 +103,39 @@ func TestWebhookAccExample(t *testing.T) {
 	})
 }
 
+func TestCustomRoleAccExample(t *testing.T) {
+	//projectKey := "accTestProject"
+	//because our account doesn't have custom roles enabled.
+
+	t.SkipNow()
+	resource.Test(t, resource.TestCase{
+		IsUnitTest: true,
+		PreCheck: func() {
+			checkCredentialsEnvVar(t)
+		},
+		Providers:                 testAccProviders,
+		ProviderFactories:         nil,
+		PreventPostDestroyRefresh: false,
+		CheckDestroy:              nil,
+		Steps: []resource.TestStep{
+			{
+				Config: customRoleCreate,
+				Check:  resource.ComposeTestCheckFunc(),
+			},
+		},
+		IDRefreshName:   "",
+		IDRefreshIgnore: nil,
+	})
+}
+
 func checkCredentialsEnvVar(t *testing.T) {
 	if v := os.Getenv(launchDarklyApiKeyEnvVar); v == "" {
 		t.Fatalf("%s env var must be set for acceptance tests", launchDarklyApiKeyEnvVar)
 	}
-	TestCleanAccount(t)
+	err := cleanAccount(nil)
+	if err != nil {
+		t.Error(err)
+	}
 }
 
 func cleanAccount(unused *terraform.State) error {
