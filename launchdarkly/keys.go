@@ -35,4 +35,11 @@ const (
 	included             = "included"
 	custom_properties    = "custom_properties"
 	values               = "values"
+	rules                = "rules"
+	email                = "email"
+	first_name           = "first_name"
+	last_name            = "last_name"
+	role                 = "role"
+	custom_roles         = "custom_roles"
+	id                   = "id"
 )

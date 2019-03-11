@@ -4,12 +4,14 @@ package launchdarkly
 
 import (
 	"context"
+	"fmt"
 	"github.com/hashicorp/terraform/helper/resource"
 	"github.com/hashicorp/terraform/helper/schema"
 	"github.com/hashicorp/terraform/terraform"
 	"github.com/launchdarkly/api-client-go"
 	"os"
 	"testing"
+	"time"
 )
 
 var (
@@ -101,6 +103,17 @@ resource "launchdarkly_custom_role" "exampleCustomRole1" {
 }]
 }
 `
+
+	teamMemberCreate = `
+resource "launchdarkly_team_member" "teamMember2" {
+    "email" = "member.%d@example.com",
+    "first_name" = "first",
+    "last_name" = "last",
+    "role" = "admin",
+    "custom_roles" = []
+  }
+
+`
 )
 
 func TestAccExample(t *testing.T) {
@@ -169,7 +182,7 @@ func TestCustomRoleAccExample(t *testing.T) {
 	//projectKey := "accTestProject"
 
 	resource.Test(t, resource.TestCase{
-		IsUnitTest: true,
+		IsUnitTest: false,
 		PreCheck: func() {
 			checkCredentialsEnvVar(t)
 		},
@@ -180,6 +193,29 @@ func TestCustomRoleAccExample(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: customRoleCreate,
+				Check:  resource.ComposeTestCheckFunc(),
+			},
+		},
+		IDRefreshName:   "",
+		IDRefreshIgnore: nil,
+	})
+}
+
+func TestTeamMemberAcc(t *testing.T) {
+	//projectKey := "accTestProject"
+
+	resource.Test(t, resource.TestCase{
+		IsUnitTest: false,
+		PreCheck: func() {
+			checkCredentialsEnvVar(t)
+		},
+		Providers:                 testAccProviders,
+		ProviderFactories:         nil,
+		PreventPostDestroyRefresh: false,
+		CheckDestroy:              nil,
+		Steps: []resource.TestStep{
+			{
+				Config: fmt.Sprintf(teamMemberCreate, time.Now().Nanosecond()),
 				Check:  resource.ComposeTestCheckFunc(),
 			},
 		},
