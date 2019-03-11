@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestCustomPropertiesFromResourceData(t *testing.T) {
+func TestCustomPropertiesRoundTripConversion(t *testing.T) {
 	testCases := []struct {
 		name             string
 		customProperties map[string]interface{}
@@ -18,13 +18,27 @@ func TestCustomPropertiesFromResourceData(t *testing.T) {
 			name: "basic custom property",
 			customProperties: map[string]interface{}{
 				custom_properties: []map[string]interface{}{
-					{key: "cp1",
+					{
+						key:   "cp1",
 						name:  "nameValue",
-						value: []interface{}{"a cp value"},
+						value: []string{"a cp value"},
 					},
 				},
 			},
 			expected: map[string]ldapi.CustomProperty{"cp1": {"nameValue", []string{"a cp value"}}},
+		},
+		{
+			name: "Multiple custom properties",
+			customProperties: map[string]interface{}{
+				custom_properties: []map[string]interface{}{
+					{
+						key:   "cp2",
+						name:  "nameValue2",
+						value: []string{"a cp value1", "a cp value2", "a cp value3"},
+					},
+				},
+			},
+			expected: map[string]ldapi.CustomProperty{"cp2": {"nameValue2", []string{"a cp value1", "a cp value2", "a cp value3"}}},
 		},
 	}
 
@@ -37,6 +51,10 @@ func TestCustomPropertiesFromResourceData(t *testing.T) {
 
 			actual := customPropertiesFromResourceData(resourceData)
 			require.Equal(t, tc.expected, actual)
+
+			actualRaw := customPropertiesToResourceData(actual)
+			require.Equal(t, tc.customProperties[custom_properties], actualRaw)
+
 		})
 	}
 }

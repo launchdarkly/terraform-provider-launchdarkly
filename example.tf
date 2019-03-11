@@ -64,21 +64,20 @@ resource "launchdarkly_feature_flag" "multivariate-flag-2" {
     "is",
     "unordered"
   ]
-  // TODO: https://github.com/launchdarkly/api-client-go/issues/1
-  //  custom_properties = [
-  //    {
-  //      key = "some.property"
-  //      name = "Some Property"
-  //      value = [
-  //        "value1",
-  //        "value2",
-  //        "value3"]
-  //    },
-  //    {
-  //      key = "some.property2"
-  //      name = "Some Property"
-  //      value = "very special custom property"
-  //    }]
+  custom_properties = [
+    {
+      key = "some.property"
+      name = "Some Property"
+      value = [
+        "value1",
+        "value2",
+        "value3"]
+    },
+    {
+      key = "some.property2"
+      name = "Some Property"
+      value = ["very special custom property"]
+    }]
 }
 
 

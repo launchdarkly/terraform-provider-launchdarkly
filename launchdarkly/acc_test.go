@@ -35,6 +35,48 @@ resource "launchdarkly_project" "exampleproject1" {
   ]
 }
 `
+	featureFlagCreate = projectCreate + `
+resource "launchdarkly_feature_flag" "multivariate-flag-2" {
+  project_key = "${launchdarkly_project.exampleproject1.key}"
+  key = "multivariate-flag-2"
+  name = "multivariate-flag-2 name"
+  description = "this is a multivariate flag because we explicitly define the variations"
+  variation_type = "string"
+  variations = [
+    {
+      name = "variation1"
+      description = "a description"
+      value = "string1"
+    },
+    {
+      value = "string2"
+    },
+    {
+      value = "another option"
+    },
+  ]
+  tags = [
+    "this",
+    "is",
+    "unordered"
+  ]
+  custom_properties = [
+    {
+      key = "some.property"
+      name = "Some Property"
+      value = [
+        "value1",
+        "value2",
+        "value3"
+]
+    },
+    {
+      key = "some.property2"
+      name = "Some Property"
+      value = ["very special custom property"]
+    }]
+}
+`
 
 	webhookCreate = `
 resource "launchdarkly_webhook" "examplewebhook1" {
@@ -82,6 +124,26 @@ func TestAccExample(t *testing.T) {
 	})
 }
 
+func TestFeatureFlagAcc(t *testing.T) {
+	//projectKey := "accTestProject"
+
+	resource.Test(t, resource.TestCase{
+		IsUnitTest:                false,
+		PreCheck:                  func() { checkCredentialsEnvVar(t) },
+		Providers:                 testAccProviders,
+		ProviderFactories:         nil,
+		PreventPostDestroyRefresh: false,
+		CheckDestroy:              nil,
+		Steps: []resource.TestStep{
+			{
+				Config: featureFlagCreate,
+				Check:  resource.ComposeTestCheckFunc(),
+			},
+		},
+		IDRefreshName:   "",
+		IDRefreshIgnore: nil,
+	})
+}
 func TestWebhookAccExample(t *testing.T) {
 	//projectKey := "accTestProject"
 
@@ -105,9 +167,7 @@ func TestWebhookAccExample(t *testing.T) {
 
 func TestCustomRoleAccExample(t *testing.T) {
 	//projectKey := "accTestProject"
-	//because our account doesn't have custom roles enabled.
 
-	t.SkipNow()
 	resource.Test(t, resource.TestCase{
 		IsUnitTest: true,
 		PreCheck: func() {
