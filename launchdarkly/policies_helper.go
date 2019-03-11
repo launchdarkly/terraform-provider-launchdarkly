@@ -23,7 +23,7 @@ func policyArraySchema() *schema.Schema {
 					Required: true,
 				},
 				actions: {
-					Type: schema.TypeString,
+					Type: schema.TypeList,
 					Elem: &schema.Schema{
 						Type: schema.TypeString,
 					},
@@ -53,10 +53,17 @@ func policiesFromResourceData(d *schema.ResourceData) []ldapi.Policy {
 func policyFromResourceData(val interface{}) ldapi.Policy {
 	policyMap := val.(map[string]interface{})
 	p := ldapi.Policy{
-		Resources: policyMap[resources].([]string),
-		Actions:   policyMap[actions].([]string),
+		Resources: []string{},
+		Actions:   []string{},
 		Effect:    policyMap[effect].(string),
 	}
+	for _, r := range policyMap[resources].([]interface{}) {
+		p.Resources = append(p.Resources, r.(string))
+	}
+	for _, a := range policyMap[actions].([]interface{}) {
+		p.Actions = append(p.Actions, a.(string))
+	}
+
 	sort.Strings(p.Actions)
 	sort.Strings(p.Resources)
 	return p

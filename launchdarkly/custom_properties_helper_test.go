@@ -25,7 +25,10 @@ func TestCustomPropertiesRoundTripConversion(t *testing.T) {
 					},
 				},
 			},
-			expected: map[string]ldapi.CustomProperty{"cp1": {"nameValue", []string{"a cp value"}}},
+			expected: map[string]ldapi.CustomProperty{"cp1": {
+				Name:  "nameValue",
+				Value: []string{"a cp value"}},
+			},
 		},
 		{
 			name: "Multiple custom properties",
@@ -38,7 +41,10 @@ func TestCustomPropertiesRoundTripConversion(t *testing.T) {
 					},
 				},
 			},
-			expected: map[string]ldapi.CustomProperty{"cp2": {"nameValue2", []string{"a cp value1", "a cp value2", "a cp value3"}}},
+			expected: map[string]ldapi.CustomProperty{"cp2": {
+				Name:  "nameValue2",
+				Value: []string{"a cp value1", "a cp value2", "a cp value3"}},
+			},
 		},
 	}
 

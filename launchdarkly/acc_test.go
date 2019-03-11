@@ -99,6 +99,9 @@ resource "launchdarkly_custom_role" "exampleCustomRole1" {
   name = "custom-role-name-1"
   description= "crd"
   policy = [{
+ actions = ["*"]
+effect = "allow"
+resources = ["proj/*:env/production"]
 
 }]
 }
@@ -106,23 +109,23 @@ resource "launchdarkly_custom_role" "exampleCustomRole1" {
 
 	teamMemberCreate = `
 resource "launchdarkly_team_member" "teamMember2" {
-    "email" = "member.%d@example.com"
-    "first_name" = "first"
-    "last_name" = "last"
-    "role" = "admin"
-    "custom_roles" = []
+    email = "member.%d@example.com"
+    first_name = "first"
+    last_name = "last"
+    role = "admin"
+    custom_roles = []
   }
 
 `
 
 	segmentCreate = `
 resource "launchdarkly_segment" "segment3" {
-    "key" = "segmentKey1"
-"project_key" = "dummy-project"
-"env_key" = "test"
-  	"name" = "segment name"
-"description" = "segment description"
-"tags" = ["segmentTag1", "segmentTag2"]
+    key = "segmentKey1"
+project_key = "dummy-project"
+env_key = "test"
+  	name = "segment name"
+description = "segment description"
+tags = ["segmentTag1", "segmentTag2"]
 }
 
 `

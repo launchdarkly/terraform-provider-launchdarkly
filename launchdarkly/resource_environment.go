@@ -58,7 +58,7 @@ func resourceEnvironmentCreate(d *schema.ResourceData, metaRaw interface{}) erro
 		return fmt.Errorf("failed to update environment with name %q key %q for projectKey %q: %v", name, key, projectKey, err)
 	}
 
-	d.SetId(key)
+	d.SetId(projectKey + "/" + key)
 	return resourceEnvironmentRead(d, metaRaw)
 }
 
@@ -72,6 +72,7 @@ func resourceEnvironmentRead(d *schema.ResourceData, metaRaw interface{}) error 
 		return fmt.Errorf("failed to get environment with key %q for project key: %q: %v", key, projectKey, err)
 	}
 
+	d.SetId(projectKey + "/" + key)
 	d.Set(key, env.Key)
 	d.Set(name, env.Name)
 	d.Set(api_key, env.ApiKey)
@@ -154,21 +155,18 @@ func environmentExists(projectKey string, key string, meta *Client) (bool, error
 }
 
 func resourceEnvironmentImport(d *schema.ResourceData, meta interface{}) ([]*schema.ResourceData, error) {
-	project := defaultProjectKey
-	key := d.Id()
+	id := d.Id()
 
-	if strings.Contains(d.Id(), "/") {
-		parts := strings.SplitN(d.Id(), "/", 2)
-
-		if len(parts) != 2 || parts[0] == "" || parts[1] == "" {
-			return nil, fmt.Errorf("ID must have format <key> or <project>/<key>")
-		}
-
-		project, key = parts[0], parts[1]
+	if strings.Count(id, "/") != 1 {
+		return nil, fmt.Errorf("found unexpected environment id format: %q expected format: 'project_key/env_key'", id)
 	}
 
-	d.Set(project_key, project)
-	d.Set(key, key)
+	parts := strings.SplitN(d.Id(), "/", 2)
+
+	projectKey, envKey := parts[0], parts[1]
+
+	d.Set(project_key, projectKey)
+	d.Set(key, envKey)
 	d.SetId(key)
 
 	if err := resourceEnvironmentRead(d, meta); err != nil {

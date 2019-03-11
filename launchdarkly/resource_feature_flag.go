@@ -106,7 +106,7 @@ func resourceFeatureFlagCreate(d *schema.ResourceData, metaRaw interface{}) erro
 		return fmt.Errorf("failed to update flag with name %q key %q for projectKey %q: %v", flagName, key, projectKey, err)
 	}
 
-	d.SetId(key)
+	d.SetId(projectKey + "/" + key)
 	return resourceFeatureFlagRead(d, metaRaw)
 }
 
@@ -193,22 +193,18 @@ func resourceFeatureFlagExists(d *schema.ResourceData, metaRaw interface{}) (boo
 }
 
 func resourceFeatureFlagImport(d *schema.ResourceData, meta interface{}) ([]*schema.ResourceData, error) {
-	projectKey := defaultProjectKey
-	key := d.Id()
+	id := d.Id()
 
-	if strings.Contains(d.Id(), "/") {
-		parts := strings.SplitN(d.Id(), "/", 2)
-
-		if len(parts) != 2 || parts[0] == "" || parts[1] == "" {
-			return nil, fmt.Errorf("ID must have format <key> or <project>/<key>")
-		}
-
-		projectKey, key = parts[0], parts[1]
+	if strings.Count(id, "/") != 1 {
+		return nil, fmt.Errorf("found unexpected flag id format: %q expected format: 'project_key/flag_key'", id)
 	}
 
+	parts := strings.SplitN(d.Id(), "/", 2)
+
+	projectKey, flagKey := parts[0], parts[1]
+
 	d.Set(project_key, projectKey)
-	d.Set(key, key)
-	d.SetId(key)
+	d.Set(key, flagKey)
 
 	if err := resourceFeatureFlagRead(d, meta); err != nil {
 		return nil, err
