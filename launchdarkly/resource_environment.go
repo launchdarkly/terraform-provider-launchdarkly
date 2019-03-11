@@ -138,10 +138,10 @@ func resourceEnvironmentDelete(d *schema.ResourceData, metaRaw interface{}) erro
 }
 
 func resourceEnvironmentExists(d *schema.ResourceData, metaRaw interface{}) (bool, error) {
-	return environmentExists(d.Get(key).(string), d.Get(project_key).(string), metaRaw.(*Client))
+	return environmentExists(d.Get(project_key).(string), d.Get(key).(string), metaRaw.(*Client))
 }
 
-func environmentExists(key string, projectKey string, meta *Client) (bool, error) {
+func environmentExists(projectKey string, key string, meta *Client) (bool, error) {
 	_, httpResponse, err := meta.LaunchDarkly.EnvironmentsApi.GetEnvironment(meta.Ctx, projectKey, key)
 	if httpResponse != nil && httpResponse.StatusCode == 404 {
 		return false, nil

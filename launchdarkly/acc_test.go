@@ -106,12 +106,24 @@ resource "launchdarkly_custom_role" "exampleCustomRole1" {
 
 	teamMemberCreate = `
 resource "launchdarkly_team_member" "teamMember2" {
-    "email" = "member.%d@example.com",
-    "first_name" = "first",
-    "last_name" = "last",
-    "role" = "admin",
+    "email" = "member.%d@example.com"
+    "first_name" = "first"
+    "last_name" = "last"
+    "role" = "admin"
     "custom_roles" = []
   }
+
+`
+
+	segmentCreate = `
+resource "launchdarkly_segment" "segment3" {
+    "key" = "segmentKey1"
+"project_key" = "dummy-project"
+"env_key" = "test"
+  	"name" = "segment name"
+"description" = "segment description"
+"tags" = ["segmentTag1", "segmentTag2"]
+}
 
 `
 )
@@ -216,6 +228,28 @@ func TestTeamMemberAcc(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: fmt.Sprintf(teamMemberCreate, time.Now().Nanosecond()),
+				Check:  resource.ComposeTestCheckFunc(),
+			},
+		},
+		IDRefreshName:   "",
+		IDRefreshIgnore: nil,
+	})
+}
+func TestSegmentAcc(t *testing.T) {
+	//projectKey := "accTestProject"
+
+	resource.Test(t, resource.TestCase{
+		IsUnitTest: false,
+		PreCheck: func() {
+			checkCredentialsEnvVar(t)
+		},
+		Providers:                 testAccProviders,
+		ProviderFactories:         nil,
+		PreventPostDestroyRefresh: false,
+		CheckDestroy:              nil,
+		Steps: []resource.TestStep{
+			{
+				Config: segmentCreate,
 				Check:  resource.ComposeTestCheckFunc(),
 			},
 		},

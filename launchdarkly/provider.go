@@ -27,8 +27,8 @@ func Provider() terraform.ResourceProvider {
 			"launchdarkly_feature_flag": resourceFeatureFlag(),
 			"launchdarkly_webhook":      resourceWebhook(),
 			"launchdarkly_custom_role":  resourceCustomRole(),
-			//"launchdarkly_segments": resourceSegments(),
-			"launchdarkly_team_member": resourceTeamMember(),
+			"launchdarkly_segment":      resourceSegment(),
+			"launchdarkly_team_member":  resourceTeamMember(),
 		},
 		ConfigureFunc: providerConfigure,
 	}
