@@ -20,7 +20,6 @@ func policyArraySchema() *schema.Schema {
 					Elem: &schema.Schema{
 						Type: schema.TypeString,
 					},
-					//MinItems:    1,
 					Required: true,
 				},
 				actions: {

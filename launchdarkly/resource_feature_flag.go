@@ -52,38 +52,11 @@ func resourceFeatureFlag() *schema.Resource {
 				Optional: true,
 				Default:  false,
 			},
-			tags: tagsSchema(),
-			//TODO waiting on https://github.com/launchdarkly/api-client-go/issues/1
-			//custom_properties: {
-			//	Type:     schema.TypeList,
-			//	Optional: true,
-			//	Elem: &schema.Resource{
-			//		Schema: map[string]*schema.Schema{
-			//			key: {
-			//				Type:     schema.TypeString,
-			//				Required: true,
-			//			},
-			//			name: {
-			//				Type:     schema.TypeString,
-			//				Required: true,
-			//			},
-			//			value: {
-			//				Type:     schema.TypeList,
-			//				Required: true,
-			//				//TODO: can these be other types?
-			//				Elem:     &schema.Schema{Type: schema.TypeString},
-			//			},
-			//		},
-			//	},
-			//},
+			tags:              tagsSchema(),
+			custom_properties: customPropertiesSchema(),
 		},
 	}
 }
-
-//type JsonCustomProperty struct {
-//	Name  string   `json:name`
-//	Value []string `json:value`
-//}
 
 func resourceFeatureFlagCreate(d *schema.ResourceData, metaRaw interface{}) error {
 	client := metaRaw.(*Client)
@@ -148,8 +121,7 @@ func resourceFeatureFlagRead(d *schema.ResourceData, metaRaw interface{}) error 
 		return fmt.Errorf("Failed to get flag %q of project %q: %s", key, projectKey, err)
 	}
 
-	//TODO waiting on https://github.com/launchdarkly/api-client-go/issues/1
-	// transformedCustomProperties := transformCustomPropertiesFromLaunchDarklyFormat(flag.CustomProperties)
+	transformedCustomProperties := customPropertiesToResourceData(flag.CustomProperties)
 
 	d.Set(key, flag.Key)
 	d.Set(name, flag.Name)
@@ -158,6 +130,7 @@ func resourceFeatureFlagRead(d *schema.ResourceData, metaRaw interface{}) error 
 	d.Set(tags, flag.Tags)
 	d.Set(include_in_snippet, flag.IncludeInSnippet)
 	d.Set(temporary, flag.Temporary)
+	d.Set(custom_properties, transformedCustomProperties)
 	return nil
 }
 
@@ -170,9 +143,7 @@ func resourceFeatureFlagUpdate(d *schema.ResourceData, metaRaw interface{}) erro
 	tags := stringsFromResourceData(d, tags)
 	includeInSnippet := d.Get(include_in_snippet).(bool)
 	temporary := d.Get(temporary).(bool)
-
-	//TODO waiting on https://github.com/launchdarkly/api-client-go/issues/1
-	//customProperties := d.Get(custom_properties).([]interface{})
+	customProperties := customPropertiesFromResourceData(d)
 
 	patch := ldapi.PatchComment{
 		Comment: "Terraform",
@@ -182,8 +153,7 @@ func resourceFeatureFlagUpdate(d *schema.ResourceData, metaRaw interface{}) erro
 			patchReplace("/tags", tags),
 			patchReplace("/includeInSnippet", includeInSnippet),
 			patchReplace("/temporary", temporary),
-			//TODO waiting on https://github.com/launchdarkly/api-client-go/issues/1
-			// patchReplace("/customProperties", transformCustomPropertiesFromTerraformFormat(customProperties)),
+			patchReplace("/customProperties", customProperties),
 		}}
 
 	_, _, err := client.LaunchDarkly.FeatureFlagsApi.PatchFeatureFlag(client.Ctx, projectKey, key, patch)
@@ -246,40 +216,3 @@ func resourceFeatureFlagImport(d *schema.ResourceData, meta interface{}) ([]*sch
 
 	return []*schema.ResourceData{d}, nil
 }
-
-//func transformCustomPropertiesFromTerraformFormat(properties []interface{}) map[string]JsonCustomProperty {
-//	transformed := make(map[string]JsonCustomProperty)
-//
-//	for _, raw := range properties {
-//		val := raw.(map[string]interface{})
-//		key := val[key].(string)
-//		name := val[name].(string)
-//
-//		var values []string
-//		for _, v := range val[value].([]interface{}) {
-//			values = append(values, v.(string))
-//		}
-//
-//		transformed[key] = JsonCustomProperty{
-//			Name:  name,
-//			Value: values,
-//		}
-//	}
-//
-//	return transformed
-//}
-//
-//func transformCustomPropertiesFromLaunchDarklyFormat(properties map[string]JsonCustomProperty) interface{} {
-//	transformed := make([]map[string]interface{}, 0)
-//
-//	for key, body := range properties {
-//		sub := make(map[string]interface{})
-//		sub[key] = key
-//		sub[name] = body.Name
-//		sub[value] = body.Value
-//
-//		transformed = append(transformed, sub)
-//	}
-//
-//	return transformed
-//}
