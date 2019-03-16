@@ -64,7 +64,7 @@ func resourceWebhookCreate(d *schema.ResourceData, metaRaw interface{}) error {
 
 	webhook, _, err := client.LaunchDarkly.WebhooksApi.PostWebhook(client.Ctx, webhookBody)
 	if err != nil {
-		return errors.Wrapf(err, "failed to create webhook with name %q", webhookName)
+		return fmt.Errorf("failed to create webhook with name %q: %s", webhookName, handleLdapiErr(err))
 	}
 
 	d.SetId(webhook.Id)
@@ -84,7 +84,7 @@ func resourceWebhookRead(d *schema.ResourceData, metaRaw interface{}) error {
 
 	webhook, _, err := client.LaunchDarkly.WebhooksApi.GetWebhook(client.Ctx, webhookId)
 	if err != nil {
-		return errors.Wrapf(err, "failed to get webhook with id %q", webhookId)
+		return fmt.Errorf("failed to get webhook with id %q: %s", webhookId, handleLdapiErr(err))
 	}
 
 	d.Set(url, webhook.Url)
@@ -93,7 +93,7 @@ func resourceWebhookRead(d *schema.ResourceData, metaRaw interface{}) error {
 	d.Set(name, webhook.Name)
 	err = d.Set(tags, webhook.Tags)
 	if err != nil {
-		return fmt.Errorf("could not set tags on webhook with id %q: %v", webhookId, err)
+		return fmt.Errorf("failed to set tags on webhook with id %q: %v", webhookId, err)
 	}
 	return nil
 }
@@ -117,7 +117,7 @@ func resourceWebhookUpdate(d *schema.ResourceData, metaRaw interface{}) error {
 
 	_, _, err := client.LaunchDarkly.WebhooksApi.PatchWebhook(client.Ctx, webhookId, patch)
 	if err != nil {
-		return errors.Wrapf(err, "failed to update webhook with id %q", webhookId)
+		return fmt.Errorf("failed to update webhook with id %q: %s", webhookId, handleLdapiErr(err))
 	}
 
 	return resourceWebhookRead(d, metaRaw)
@@ -129,7 +129,7 @@ func resourceWebhookDelete(d *schema.ResourceData, metaRaw interface{}) error {
 
 	_, err := client.LaunchDarkly.WebhooksApi.DeleteWebhook(client.Ctx, webhookId)
 	if err != nil {
-		return errors.Wrapf(err, "failed to delete webhook with id %q", webhookId)
+		return fmt.Errorf("failed to delete webhook with id %q: %s", webhookId, handleLdapiErr(err))
 	}
 
 	return nil
@@ -145,7 +145,7 @@ func webhookExists(webhookId string, meta *Client) (bool, error) {
 		return false, nil
 	}
 	if err != nil {
-		return false, errors.Wrapf(err, "failed to get webhook with id %q", webhookId)
+		return false, fmt.Errorf("failed to get webhook with id %q: %s", webhookId, handleLdapiErr(err))
 	}
 
 	return true, nil

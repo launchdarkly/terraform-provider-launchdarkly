@@ -31,10 +31,10 @@ func resourceProject() *schema.Resource {
 			},
 			tags: tagsSchema(),
 			environments: &schema.Schema{
-				Type: schema.TypeSet,
-				Set:  environmentHash,
-				// TODO: set a default environment or allow none and use LD's default environments.
-				Required: true,
+				Type:     schema.TypeSet,
+				Set:      environmentHash,
+				Optional: true,
+				Computed: true,
 				Elem: &schema.Resource{
 					Schema: environmentSchema(),
 				},

@@ -75,32 +75,28 @@ func resourceFeatureFlagCreate(d *schema.ResourceData, metaRaw interface{}) erro
 	includeInSnippet := d.Get(include_in_snippet).(bool)
 	temporary := d.Get(temporary).(bool)
 
-	variations, err := variationsFromResourceData(d)
-	if err != nil {
-		return fmt.Errorf("Failed to create flag %q in project %q: %s", key, projectKey, err)
-	}
-
 	flag := ldapi.FeatureFlagBody{
 		Name:             flagName,
 		Key:              key,
 		Description:      description,
-		Variations:       variations,
+		Variations:       variationsFromResourceData(d),
 		Temporary:        temporary,
 		Tags:             tags,
 		IncludeInSnippet: includeInSnippet,
 	}
 
-	_, _, err = client.LaunchDarkly.FeatureFlagsApi.PostFeatureFlag(client.Ctx, projectKey, flag, nil)
+	_, _, err := client.LaunchDarkly.FeatureFlagsApi.PostFeatureFlag(client.Ctx, projectKey, flag, nil)
 
 	if err != nil {
-		return fmt.Errorf("Failed to create flag %q in project %q: %s", key, projectKey, err)
+		return fmt.Errorf("failed to create flag %q in project %q: %s", key, projectKey, handleLdapiErr(err))
 	}
 
 	// LaunchDarkly's api does not allow some fields to be passed in during flag creation so we do an update:
 	// https://apidocs.launchdarkly.com/docs/create-feature-flag
 	err = resourceFeatureFlagUpdate(d, metaRaw)
 	if err != nil {
-		return fmt.Errorf("failed to update flag with name %q key %q for projectKey %q: %v", flagName, key, projectKey, err)
+		return fmt.Errorf("failed to update flag with name %q key %q for projectKey %q: %s",
+			flagName, key, projectKey, handleLdapiErr(err))
 	}
 
 	d.SetId(projectKey + "/" + key)
@@ -115,7 +111,7 @@ func resourceFeatureFlagRead(d *schema.ResourceData, metaRaw interface{}) error 
 	flag, _, err := client.LaunchDarkly.FeatureFlagsApi.GetFeatureFlag(client.Ctx, projectKey, key, nil)
 
 	if err != nil {
-		return fmt.Errorf("Failed to get flag %q of project %q: %s", key, projectKey, err)
+		return fmt.Errorf("failed to get flag %q of project %q: %s", key, projectKey, handleLdapiErr(err))
 	}
 
 	transformedCustomProperties := customPropertiesToResourceData(flag.CustomProperties)
@@ -128,17 +124,17 @@ func resourceFeatureFlagRead(d *schema.ResourceData, metaRaw interface{}) error 
 
 	err = d.Set(variations, variationsToResourceData(flag.Variations))
 	if err != nil {
-		return fmt.Errorf("could not set variations on flag with key %q: %v", flag.Key, err)
+		return fmt.Errorf("failed to set variations on flag with key %q: %v", flag.Key, err)
 	}
 
 	err = d.Set(tags, flag.Tags)
 	if err != nil {
-		return fmt.Errorf("could not set tags on flag with key %q: %v", flag.Key, err)
+		return fmt.Errorf("failed to set tags on flag with key %q: %v", flag.Key, err)
 	}
 
 	err = d.Set(custom_properties, transformedCustomProperties)
 	if err != nil {
-		return fmt.Errorf("could not set custom properties on flag with key %q: %v", flag.Key, err)
+		return fmt.Errorf("failed to set custom properties on flag with key %q: %v", flag.Key, err)
 	}
 	return nil
 }
@@ -167,7 +163,7 @@ func resourceFeatureFlagUpdate(d *schema.ResourceData, metaRaw interface{}) erro
 
 	_, _, err := client.LaunchDarkly.FeatureFlagsApi.PatchFeatureFlag(client.Ctx, projectKey, key, patch)
 	if err != nil {
-		return fmt.Errorf("Failed to update flag %q in project %q: %s", key, projectKey, err)
+		return fmt.Errorf("failed to update flag %q in project %q: %s", key, projectKey, handleLdapiErr(err))
 	}
 
 	return resourceFeatureFlagRead(d, metaRaw)
@@ -180,7 +176,7 @@ func resourceFeatureFlagDelete(d *schema.ResourceData, metaRaw interface{}) erro
 
 	_, err := client.LaunchDarkly.FeatureFlagsApi.DeleteFeatureFlag(client.Ctx, projectKey, key)
 	if err != nil {
-		return fmt.Errorf("Failed to delete flag %q from project %q: %s", key, projectKey, err)
+		return fmt.Errorf("failed to delete flag %q from project %q: %s", key, projectKey, handleLdapiErr(err))
 	}
 
 	return nil
@@ -196,7 +192,7 @@ func resourceFeatureFlagExists(d *schema.ResourceData, metaRaw interface{}) (boo
 		return false, nil
 	}
 	if err != nil {
-		return false, fmt.Errorf("Failed to check if flag %q exists in project %q: %s", key, projectKey, err)
+		return false, fmt.Errorf("failed to check if flag %q exists in project %q: %s", key, projectKey, handleLdapiErr(err))
 	}
 	return true, nil
 }

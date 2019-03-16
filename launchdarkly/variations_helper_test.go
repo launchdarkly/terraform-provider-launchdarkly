@@ -1,20 +1,18 @@
 package launchdarkly
 
 import (
-	"github.com/pkg/errors"
+	"github.com/stretchr/testify/assert"
 	"testing"
 
 	"github.com/hashicorp/terraform/helper/schema"
 	"github.com/launchdarkly/api-client-go"
-	"github.com/stretchr/testify/require"
 )
 
 func TestVariationsFromResourceData(t *testing.T) {
 	testCases := []struct {
-		name          string
-		variations    map[string]interface{}
-		expected      []ldapi.Variation
-		expectedError error
+		name       string
+		variations map[string]interface{}
+		expected   []ldapi.Variation
 	}{
 		{
 			name: "string variations",
@@ -35,75 +33,22 @@ func TestVariationsFromResourceData(t *testing.T) {
 				{Name: "nameValue", Description: "descValue", Value: ptr("a string value")},
 				{Name: "nameValue2", Description: "descValue2", Value: ptr("another string value")},
 			},
-			expectedError: nil,
 		},
 		{
-			name: "float variations",
+			name: "boolean variations",
 			variations: map[string]interface{}{
 				variations: []map[string]interface{}{
 					{
-						name:        "nameValue",
-						description: "descValue",
-						value:       "10000.0112",
+						value: "true",
 					},
 					{
-						name:        "nameValue2",
-						description: "descValue2",
-						value:       "0.231",
+						value: "false",
 					},
 				}},
 			expected: []ldapi.Variation{
-				{Name: "nameValue", Description: "descValue", Value: ptr(10000.0112)},
-				{Name: "nameValue2", Description: "descValue2", Value: ptr(0.231)},
+				{Value: ptr(true)},
+				{Value: ptr(false)},
 			},
-			expectedError: nil,
-		},
-		{
-			name: "json variations",
-			variations: map[string]interface{}{
-				variations: []map[string]interface{}{
-					{
-						name:        "nameValue",
-						description: "descValue",
-						value:       `{"key1":"value1"}`,
-					},
-					{
-						name:        "nameValue2",
-						description: "descValue2",
-						value:       `{"key1":"value2"}`,
-					},
-				}},
-			expected: []ldapi.Variation{
-				{Name: "nameValue", Description: "descValue", Value: ptr(map[string]interface{}{"key1": "value1"})},
-				{Name: "nameValue2", Description: "descValue2", Value: ptr(map[string]interface{}{"key1": "value2"})},
-			},
-			expectedError: nil,
-		},
-		{
-			name: "unparsable float variation",
-			variations: map[string]interface{}{
-				variations: []map[string]interface{}{
-					{
-						name:        "nameValue",
-						description: "descValue",
-						value:       "not a float",
-					},
-				}},
-			expected:      []ldapi.Variation{},
-			expectedError: errors.New("Expected string: \"not a float\" to parse as a float.: strconv.ParseFloat: parsing \"not a float\": invalid syntax"),
-		},
-		{
-			name: "invalid json",
-			variations: map[string]interface{}{
-				variations: []map[string]interface{}{
-					{
-						name:        "nameValue",
-						description: "descValue",
-						value:       "not actual json",
-					},
-				}},
-			expected:      []ldapi.Variation{},
-			expectedError: errors.New("Expected string: \"not actual json\" to be valid json.: invalid character 'o' in literal null (expecting 'u')"),
 		},
 	}
 
@@ -114,13 +59,8 @@ func TestVariationsFromResourceData(t *testing.T) {
 				tc.variations,
 			)
 
-			actualVariations, err := variationsFromResourceData(resourceData)
-			if tc.expectedError != nil {
-				require.EqualError(t, err, tc.expectedError.Error())
-			} else {
-				require.NoError(t, err)
-				require.ElementsMatch(t, tc.expected, actualVariations)
-			}
+			actualVariations := variationsFromResourceData(resourceData)
+			assert.ElementsMatch(t, tc.expected, actualVariations)
 		})
 	}
 }

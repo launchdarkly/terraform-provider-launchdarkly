@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/hashicorp/terraform/helper/schema"
 	"github.com/launchdarkly/api-client-go"
-	"github.com/pkg/errors"
 )
 
 func resourceCustomRole() *schema.Resource {
@@ -53,7 +52,7 @@ func resourceCustomRoleCreate(d *schema.ResourceData, metaRaw interface{}) error
 
 	_, _, err := client.LaunchDarkly.CustomRolesApi.PostCustomRole(client.Ctx, customRoleBody)
 	if err != nil {
-		return errors.Wrapf(err, "failed to create custom role with name %q", customRoleName)
+		return fmt.Errorf("failed to create custom role with name %q: %s", customRoleName, handleLdapiErr(err))
 	}
 
 	d.SetId(customRoleKey)
@@ -66,7 +65,7 @@ func resourceCustomRoleRead(d *schema.ResourceData, metaRaw interface{}) error {
 
 	customRole, _, err := client.LaunchDarkly.CustomRolesApi.GetCustomRole(client.Ctx, customRoleId)
 	if err != nil {
-		return errors.Wrapf(err, "failed to get custom role with id %q", customRoleId)
+		return fmt.Errorf("failed to get custom role with id %q: %s", customRoleId, handleLdapiErr(err))
 	}
 
 	d.Set(key, customRole.Key)
@@ -94,7 +93,7 @@ func resourceCustomRoleUpdate(d *schema.ResourceData, metaRaw interface{}) error
 
 	_, _, err := client.LaunchDarkly.CustomRolesApi.PatchCustomRole(client.Ctx, customRoleKey, patch)
 	if err != nil {
-		return errors.Wrapf(err, "failed to update custom role with key %q", customRoleKey)
+		return fmt.Errorf("failed to update custom role with key %q: %s", customRoleKey, handleLdapiErr(err))
 	}
 
 	return resourceCustomRoleRead(d, metaRaw)
@@ -106,7 +105,7 @@ func resourceCustomRoleDelete(d *schema.ResourceData, metaRaw interface{}) error
 
 	_, err := client.LaunchDarkly.CustomRolesApi.DeleteCustomRole(client.Ctx, customRoleKey)
 	if err != nil {
-		return errors.Wrapf(err, "failed to delete custom role with key %q", customRoleKey)
+		return fmt.Errorf("failed to delete custom role with key %q: %s", customRoleKey, handleLdapiErr(err))
 	}
 
 	return nil
@@ -122,7 +121,7 @@ func customRoleExists(customRoleKey string, meta *Client) (bool, error) {
 		return false, nil
 	}
 	if err != nil {
-		return false, errors.Wrapf(err, "failed to get custom role with key %q", customRoleKey)
+		return false, fmt.Errorf("failed to get custom role with key %q: %s", customRoleKey, handleLdapiErr(err))
 	}
 
 	return true, nil

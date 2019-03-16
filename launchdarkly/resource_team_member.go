@@ -98,7 +98,7 @@ func resourceTeamMemberRead(d *schema.ResourceData, metaRaw interface{}) error {
 	d.Set(role, member.Role)
 	err = d.Set(custom_roles, member.CustomRoles)
 	if err != nil {
-		return fmt.Errorf("could not set custom roles on team member with id %q: %v", member.Id, err)
+		return fmt.Errorf("failed to set custom roles on team member with id %q: %v", member.Id, err)
 	}
 	return nil
 }
@@ -120,7 +120,7 @@ func resourceTeamMemberUpdate(d *schema.ResourceData, metaRaw interface{}) error
 
 	_, _, err := client.LaunchDarkly.TeamMembersApi.PatchMember(client.Ctx, memberId, patch)
 	if err != nil {
-		return fmt.Errorf("failed to update team member with id %q: %s", memberId, err)
+		return fmt.Errorf("failed to update team member with id %q: %s", memberId, handleLdapiErr(err))
 	}
 
 	return resourceTeamMemberRead(d, metaRaw)
@@ -131,7 +131,7 @@ func resourceTeamMemberDelete(d *schema.ResourceData, metaRaw interface{}) error
 
 	_, err := client.LaunchDarkly.TeamMembersApi.DeleteMember(client.Ctx, d.Id())
 	if err != nil {
-		return fmt.Errorf("failed to delete team member with id %q: %s", d.Id(), err)
+		return fmt.Errorf("failed to delete team member with id %q: %s", d.Id(), handleLdapiErr(err))
 	}
 
 	return nil
@@ -147,7 +147,7 @@ func teamMemberExists(memberId string, meta *Client) (bool, error) {
 		return false, nil
 	}
 	if err != nil {
-		return false, fmt.Errorf("failed to get team member with id %q: %v", memberId, err)
+		return false, fmt.Errorf("failed to get team member with id %q: %v", memberId, handleLdapiErr(err))
 	}
 
 	return true, nil

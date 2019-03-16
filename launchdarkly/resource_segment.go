@@ -92,14 +92,15 @@ func resourceSegmentCreate(d *schema.ResourceData, metaRaw interface{}) error {
 	_, _, err := client.LaunchDarkly.UserSegmentsApi.PostUserSegment(client.Ctx, projectKey, envKey, segment)
 
 	if err != nil {
-		return fmt.Errorf("failed to create segment %q in project %q: %s", key, projectKey, err)
+		return fmt.Errorf("failed to create segment %q in project %q: %s", key, projectKey, handleLdapiErr(err))
 	}
 
 	// LaunchDarkly's api does not allow some fields to be passed in during segment creation so we do an update:
 	// https://apidocs.launchdarkly.com/reference#create-segment
 	err = resourceSegmentUpdate(d, metaRaw)
 	if err != nil {
-		return fmt.Errorf("failed to update segment with name %q key %q for projectKey %q: %v", segmentName, key, projectKey, err)
+		return fmt.Errorf("failed to update segment with name %q key %q for projectKey %q: %s",
+			segmentName, key, projectKey, handleLdapiErr(err))
 	}
 
 	d.SetId(projectKey + "/" + envKey + "/" + key)
@@ -115,7 +116,7 @@ func resourceSegmentRead(d *schema.ResourceData, metaRaw interface{}) error {
 	segment, _, err := client.LaunchDarkly.UserSegmentsApi.GetUserSegment(client.Ctx, projectKey, envKey, segmentKey)
 
 	if err != nil {
-		return fmt.Errorf("failed to get segment %q of project %q: %s", segmentKey, projectKey, err)
+		return fmt.Errorf("failed to get segment %q of project %q: %s", segmentKey, projectKey, handleLdapiErr(err))
 	}
 
 	d.Set(name, segment.Name)
@@ -123,17 +124,17 @@ func resourceSegmentRead(d *schema.ResourceData, metaRaw interface{}) error {
 
 	err = d.Set(tags, segment.Tags)
 	if err != nil {
-		return fmt.Errorf("could not set tags on segment with key %q: %v", segmentKey, err)
+		return fmt.Errorf("failed to set tags on segment with key %q: %v", segmentKey, err)
 	}
 
 	err = d.Set(included, segment.Included)
 	if err != nil {
-		return fmt.Errorf("could not set included on segment with key %q: %v", segmentKey, err)
+		return fmt.Errorf("failed to set included on segment with key %q: %v", segmentKey, err)
 	}
 
 	err = d.Set(excluded, segment.Excluded)
 	if err != nil {
-		return fmt.Errorf("could not set excluded on segment with key %q: %v", segmentKey, err)
+		return fmt.Errorf("failed to set excluded on segment with key %q: %v", segmentKey, err)
 	}
 
 	return nil
@@ -161,7 +162,7 @@ func resourceSegmentUpdate(d *schema.ResourceData, metaRaw interface{}) error {
 
 	_, _, err := client.LaunchDarkly.UserSegmentsApi.PatchUserSegment(client.Ctx, projectKey, envKey, key, patch)
 	if err != nil {
-		return fmt.Errorf("failed to update segment %q in project %q: %s", key, projectKey, err)
+		return fmt.Errorf("failed to update segment %q in project %q: %s", key, projectKey, handleLdapiErr(err))
 	}
 
 	return resourceSegmentRead(d, metaRaw)
@@ -175,7 +176,7 @@ func resourceSegmentDelete(d *schema.ResourceData, metaRaw interface{}) error {
 
 	_, err := client.LaunchDarkly.UserSegmentsApi.DeleteUserSegment(client.Ctx, projectKey, envKey, key)
 	if err != nil {
-		return fmt.Errorf("failed to delete segment %q from project %q: %s", key, projectKey, err)
+		return fmt.Errorf("failed to delete segment %q from project %q: %s", key, projectKey, handleLdapiErr(err))
 	}
 
 	return nil
@@ -192,7 +193,8 @@ func resourceSegmentExists(d *schema.ResourceData, metaRaw interface{}) (bool, e
 		return false, nil
 	}
 	if err != nil {
-		return false, fmt.Errorf("failed to check if segment %q exists in project %q: %s", key, projectKey, err)
+		return false, fmt.Errorf("failed to check if segment %q exists in project %q: %s",
+			key, projectKey, handleLdapiErr(err))
 	}
 	return true, nil
 }

@@ -38,29 +38,39 @@ func variationsSchema() *schema.Schema {
 	}
 }
 
-func variationsFromResourceData(d *schema.ResourceData) ([]ldapi.Variation, error) {
+func variationsFromResourceData(d *schema.ResourceData) []ldapi.Variation {
 	schemaVariations := d.Get(variations).(*schema.Set)
 
 	variations := make([]ldapi.Variation, schemaVariations.Len())
 	list := schemaVariations.List()
-	for i, variation := range list {
-		v, err := variationFromResourceData(variation)
-		if err != nil {
-			return nil, err
+
+	// special case of boolean variations:
+	if len(list) == 2 {
+		values := []string{
+			list[0].(map[string]interface{})[value].(string),
+			list[1].(map[string]interface{})[value].(string),
 		}
-		variations[i] = v
+		if values[0] == "true" && values[1] == "false" {
+			variations[0] = ldapi.Variation{Value: ptr(true)}
+			variations[1] = ldapi.Variation{Value: ptr(false)}
+			return variations
+		}
 	}
-	return variations, nil
+
+	for i, variation := range list {
+		variations[i] = variationFromResourceData(variation)
+	}
+	return variations
 }
 
-func variationFromResourceData(variation interface{}) (ldapi.Variation, error) {
+func variationFromResourceData(variation interface{}) ldapi.Variation {
 	variationMap := variation.(map[string]interface{})
 	v := variationMap[value]
 	return ldapi.Variation{
 		Name:        variationMap[name].(string),
 		Description: variationMap[description].(string),
 		Value:       &v,
-	}, nil
+	}
 }
 
 func variationsToResourceData(variations []ldapi.Variation) interface{} {

@@ -47,7 +47,7 @@ func resourceEnvironmentCreate(d *schema.ResourceData, metaRaw interface{}) erro
 
 	_, _, err := client.LaunchDarkly.EnvironmentsApi.PostEnvironment(client.Ctx, projectKey, envPost)
 	if err != nil {
-		return fmt.Errorf("failed to create environment: [%+v] for project key: %s", envPost, projectKey)
+		return fmt.Errorf("failed to create environment: [%+v] for project key: %s: %s", envPost, projectKey, handleLdapiErr(err))
 	}
 
 	// LaunchDarkly's api does not allow some fields to be passed in during env creation so we do an update:
@@ -68,7 +68,7 @@ func resourceEnvironmentRead(d *schema.ResourceData, metaRaw interface{}) error 
 
 	env, _, err := client.LaunchDarkly.EnvironmentsApi.GetEnvironment(client.Ctx, projectKey, key)
 	if err != nil {
-		return fmt.Errorf("failed to get environment with key %q for project key: %q: %v", key, projectKey, err)
+		return fmt.Errorf("failed to get environment with key %q for project key: %q: %v", key, projectKey, handleLdapiErr(err))
 	}
 
 	d.SetId(projectKey + "/" + key)
@@ -121,7 +121,7 @@ func resourceEnvironmentUpdate(d *schema.ResourceData, metaRaw interface{}) erro
 
 	_, _, err := client.LaunchDarkly.EnvironmentsApi.PatchEnvironment(client.Ctx, projectKey, key, patch)
 	if err != nil {
-		return fmt.Errorf("failed to update environment with key %q for project: %q: %s", key, projectKey, err)
+		return fmt.Errorf("failed to update environment with key %q for project: %q: %s", key, projectKey, handleLdapiErr(err))
 	}
 
 	return resourceEnvironmentRead(d, metaRaw)
@@ -134,7 +134,7 @@ func resourceEnvironmentDelete(d *schema.ResourceData, metaRaw interface{}) erro
 
 	_, err := client.LaunchDarkly.EnvironmentsApi.DeleteEnvironment(client.Ctx, projectKey, key)
 	if err != nil {
-		return fmt.Errorf("failed to delete project with key %q for project %q: %s", key, projectKey, err)
+		return fmt.Errorf("failed to delete project with key %q for project %q: %s", key, projectKey, handleLdapiErr(err))
 	}
 
 	return nil
@@ -150,7 +150,7 @@ func environmentExists(projectKey string, key string, meta *Client) (bool, error
 		return false, nil
 	}
 	if err != nil {
-		return false, fmt.Errorf("failed to get project with key %q for project %q: %v", key, projectKey, err)
+		return false, fmt.Errorf("failed to get project with key %q for project %q: %v", key, projectKey, handleLdapiErr(err))
 	}
 
 	return true, nil
