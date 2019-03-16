@@ -18,7 +18,7 @@ type Client struct {
 }
 
 // New returns a configured LaunchDarkly client.
-func (c *Config) New() (interface{}, error) {
+func (c *Config) New() interface{} {
 	ctx := context.WithValue(context.Background(), ldapi.ContextAPIKey, ldapi.APIKey{
 		Key: c.APIKey,
 	})
@@ -26,5 +26,5 @@ func (c *Config) New() (interface{}, error) {
 	return &Client{
 		LaunchDarkly: ldapi.NewAPIClient(ldapi.NewConfiguration()),
 		Ctx:          ctx,
-	}, nil
+	}
 }

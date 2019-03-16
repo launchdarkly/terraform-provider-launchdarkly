@@ -38,5 +38,5 @@ func providerConfigure(d *schema.ResourceData) (interface{}, error) {
 	config := Config{
 		APIKey: d.Get(apiKey).(string),
 	}
-	return config.New()
+	return config.New(), nil
 }

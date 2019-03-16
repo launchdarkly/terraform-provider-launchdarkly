@@ -47,6 +47,24 @@ resource "launchdarkly_project" "exampleproject3" {
 }`)
 }
 
+func TestAccEnvironmentCreate(t *testing.T) {
+	testAcc(t, `
+resource "launchdarkly_project" "projForEnvTest" {
+	name = "project for testing environment creation"
+	key = "projForEnvTest"
+}
+
+resource "launchdarkly_environment" "staging1" {
+	name = "Staging1"
+  	key = "staging1"
+  	color = "ff00ff"
+  	secure_mode = true
+  	default_track_events = false
+  	default_ttl = 100.0
+  	project_key = "${launchdarkly_project.projForEnvTest.key}"
+}`)
+}
+
 func TestFeatureFlagMultiVariateAcc(t *testing.T) {
 	testAcc(t, projectCreateWithEnv+`
 resource "launchdarkly_feature_flag" "multivariate-flag-2" {
