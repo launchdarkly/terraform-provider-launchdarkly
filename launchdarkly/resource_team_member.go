@@ -106,14 +106,11 @@ func resourceTeamMemberRead(d *schema.ResourceData, metaRaw interface{}) error {
 func resourceTeamMemberUpdate(d *schema.ResourceData, metaRaw interface{}) error {
 	client := metaRaw.(*Client)
 	memberId := d.Id()
-	firstName := d.Get(first_name).(string)
-	lastName := d.Get(last_name).(string)
-	memberRole := d.Get(role).(ldapi.Role)
+	memberRole := d.Get(role).(string)
 	customRolesRaw := d.Get(custom_roles).(*schema.Set).List()
 
 	patch := []ldapi.PatchOperation{
-		patchReplace("/firstName", &firstName),
-		patchReplace("/lastName", &lastName),
+		// these appear to be the only fields we are allowed to update:
 		patchReplace("/role", &memberRole),
 		patchReplace("/customRoles", &customRolesRaw),
 	}

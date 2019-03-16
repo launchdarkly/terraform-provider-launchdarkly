@@ -80,10 +80,7 @@ func resourceEnvironmentRead(d *schema.ResourceData, metaRaw interface{}) error 
 	d.Set(default_ttl, env.DefaultTtl)
 	d.Set(secure_mode, env.SecureMode)
 	d.Set(default_track_events, env.DefaultTrackEvents)
-	//err = d.Set(tags, env.Tags)
-	//if err != nil {
-	//	return fmt.Errorf("could not set tags on environment with key %q: %v", env.Key, err)
-	//}
+	//TODO: tags
 	return nil
 }
 
@@ -99,25 +96,11 @@ func resourceEnvironmentUpdate(d *schema.ResourceData, metaRaw interface{}) erro
 	patch := []ldapi.PatchOperation{
 		patchReplace("/name", &name),
 		patchReplace("/color", &color),
+		patchReplace("/defaultTtl", d.Get(default_ttl)),
+		patchReplace("/secureMode", d.Get(secure_mode)),
+		patchReplace("/defaultTrackEvents", d.Get(default_track_events)),
 	}
-
-	// optional fields
-	if defaultTtl, ok := d.GetOk(default_ttl); ok {
-		patch = append(patch, patchReplace("/defaultTtl", &defaultTtl))
-	}
-
-	if secureMode, ok := d.GetOk(secure_mode); ok {
-		patch = append(patch, patchReplace("/secureMode", &secureMode))
-	}
-
-	if defaultTrackEvents, ok := d.GetOk(default_track_events); ok {
-		patch = append(patch, patchReplace("/defaultTrackEvents", &defaultTrackEvents))
-	}
-
-	//if _, ok := d.GetOk(tags); ok {
-	//	tagSet := stringsFromResourceData(d, tags)
-	//	patch = append(patch, patchReplace("/tags", &tagSet))
-	//}
+	//TODO: tags
 
 	_, _, err := client.ld.EnvironmentsApi.PatchEnvironment(client.ctx, projectKey, key, patch)
 	if err != nil {

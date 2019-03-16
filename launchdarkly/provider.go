@@ -35,5 +35,5 @@ func Provider() terraform.ResourceProvider {
 }
 
 func providerConfigure(d *schema.ResourceData) (interface{}, error) {
-	return NewClient(d.Get(apiKey).(string)), nil
+	return NewClient(d.Get(apiKey).(string))
 }

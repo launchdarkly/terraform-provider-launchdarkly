@@ -1,10 +1,14 @@
 package launchdarkly
 
 // Based on https://www.terraform.io/docs/extend/testing/acceptance-tests/testcase.html
+// These tests are intended to exercise as many code paths as possible and show examples for each resource.
+// The general pattern for each resource:
+// 1. Create the resource
+// 2. Update the resource
+// 3. Import resource (see testAcc function)
 
 import (
 	"fmt"
-	"github.com/stretchr/testify/require"
 	"os"
 	"testing"
 	"time"
@@ -12,27 +16,14 @@ import (
 	"github.com/hashicorp/terraform/helper/resource"
 	"github.com/hashicorp/terraform/helper/schema"
 	"github.com/hashicorp/terraform/terraform"
-	"github.com/launchdarkly/api-client-go"
 )
 
 const (
-	projectCreateWithEnv = `
-resource "launchdarkly_project" "exampleproject2" {
-  name = "example-project"
-  key = "example-project2"
-  tags = [ "terraform" ]
-  environments = [
-    {
-      name = "defined in project post"
-      key = "projDefinedEnv"
-      color = "0000f0"
-      default_ttl = 100.0
-      secure_mode = true
-      default_track_events = false
-    }
-  ]
-}
-`
+	testProject = `
+resource "launchdarkly_project" "testProject" {
+	name = "testProject"
+	key = "test-project"
+}`
 )
 
 var (
@@ -41,27 +32,77 @@ var (
 	}
 )
 
-func TestAccProjectCreateWithEnv(t *testing.T) {
-	testAcc(t, projectCreateWithEnv, "launchdarkly_project.exampleproject2")
-}
-
-func TestAccProjectCreateWithoutEnv(t *testing.T) {
-	testAcc(t, `
-resource "launchdarkly_project" "exampleproject3" {
-	name = "example-project3"
-	key = "example-project3"
+func TestAccProject(t *testing.T) {
+	projectCreate := `
+resource "launchdarkly_project" "exampleproject2" {
+	key = "example-project2"
+	name = "example project 2"
 	tags = [ "terraform" ]
-}`,
-		"launchdarkly_project.exampleproject3")
+}`
+	projectUpdate := `
+resource "launchdarkly_project" "exampleproject2" {
+	key = "example-project2"
+	name = "example project 2"
+	tags = []
+}`
+
+	testAcc(t, "launchdarkly_project.exampleproject2", projectCreate, projectUpdate)
 }
 
-func TestAccEnvironmentCreate(t *testing.T) {
-	testAcc(t, `
-resource "launchdarkly_project" "projForEnvTest" {
-	name = "project for testing environment creation"
-	key = "projForEnvTest"
+func TestAccProjectWithEnvironments(t *testing.T) {
+	projectWithEnvsCreate := `
+resource "launchdarkly_project" "exampleproject1" {
+  key = "example-project1"
+  name = "example project 1"
+  tags = [ "terraform", "terraform2" ]
+  environments = [
+    {
+      name = "defined in project post 1"
+      key = "projDefinedEnv1"
+      color = "0000f0"
+      default_ttl = 100.0
+      secure_mode = true
+      default_track_events = false
+    },
+	{
+      name = "defined in project post 2"
+      key = "projDefinedEnv2"
+      color = "0000ff"
+      secure_mode = false
+      default_track_events = true
+    }
+  ]
+}
+`
+
+	projectWithEnvsUpdate := `
+resource "launchdarkly_project" "exampleproject1" {
+  key = "example-project1"
+  name = "example project 1 with updated name"
+  tags = [ "terraform1" ]
+  environments = [
+	{
+      key = "projDefinedEnv1"
+      name = "defined in project post 1 (update)"
+      color = "000000"
+      default_ttl = 100.0
+      secure_mode = false
+      default_track_events = true
+    },
+	{
+      key = "projDefinedEnv2"
+      name = "defined in project post 2 (update)"
+      color = "ffffff"
+    }
+  ]
+}
+`
+
+	testAcc(t, "launchdarkly_project.exampleproject1", projectWithEnvsCreate, projectWithEnvsUpdate)
 }
 
+func TestAccEnvironment(t *testing.T) {
+	envCreate := testProject + `
 resource "launchdarkly_environment" "staging1" {
 	name = "Staging1"
   	key = "staging1"
@@ -69,17 +110,29 @@ resource "launchdarkly_environment" "staging1" {
   	secure_mode = true
   	default_track_events = false
   	default_ttl = 100.0
-  	project_key = "${launchdarkly_project.projForEnvTest.key}"
-}`,
-		"launchdarkly_project.projForEnvTest")
+  	project_key = "${launchdarkly_project.testProject.key}"
+}`
+
+	envUpdate := testProject + `
+resource "launchdarkly_environment" "staging1" {
+	name = "Staging1 (update)"
+  	key = "staging1"
+  	color = "ff00fa"
+  	secure_mode = false
+  	default_track_events = true
+  	default_ttl = 500.0
+  	project_key = "${launchdarkly_project.testProject.key}"
+}`
+
+	testAcc(t, "launchdarkly_environment.staging1", envCreate, envUpdate)
 }
 
-func TestFeatureFlagMultiVariateAcc(t *testing.T) {
-	testAcc(t, projectCreateWithEnv+`
-resource "launchdarkly_feature_flag" "multivariate-flag-2" {
-	project_key = "${launchdarkly_project.exampleproject2.key}"
-	key = "multivariate-flag-2"
-	name = "multivariate-flag-2 name"
+func TestAccFeatureFlagMultivariate(t *testing.T) {
+	featureFlagCreate := testProject + `
+resource "launchdarkly_feature_flag" "multivariate-flag-1" {
+	project_key = "${launchdarkly_project.testProject.key}"
+	key = "multivariate-flag-1"
+	name = "multivariate flag 1 name"
 	description = "this is a multivariate flag because we explicitly define the variations"
 	variations = [
     	{
@@ -115,35 +168,128 @@ resource "launchdarkly_feature_flag" "multivariate-flag-2" {
       	value = ["very special custom property"]
     	}
 	]
-}`,
-		"launchdarkly_feature_flag.multivariate-flag-2")
+}`
+
+	featureFlagUpdate := testProject + `
+resource "launchdarkly_project" "projForFlagTest" {
+	name = "project for testing flags"
+	key = "projForFlagTest"
+}
+
+resource "launchdarkly_feature_flag" "multivariate-flag-1" {
+	project_key = "${launchdarkly_project.testProject.key}"
+	key = "multivariate-flag-1"
+	name = "multivariate flag 1 name (update)"
+	description = "updated description"
+	variations = [
+    	{
+      		name = "variation1"
+      		description = "a description we updated"
+			value = "string1"
+		},
+    	{
+      		value = "string2"
+		},
+    	{
+      		value = "another option"
+    	},
+  	]
+  	tags = [
+    	"this",
+    	"is"
+  	]
+  	custom_properties = [
+    	{
+      		key = "some.property"
+      		name = "Some Property"
+      		value = [
+        		"value1",
+        		"value2",
+        		"value3",
+				"now with this new updated value!!!!"
+			]
+    	},
+    	{
+      	key = "some.property2"
+      	name = "Some Property"
+      	value = ["very special updated property"]
+    	}
+	]
+}`
+
+	testAcc(t, "launchdarkly_feature_flag.multivariate-flag-1", featureFlagCreate, featureFlagUpdate)
 }
 
 func TestFeatureFlagDefaultBooleanVariationsAcc(t *testing.T) {
-	testAcc(t, projectCreateWithEnv+`
+	featureFlagCreateBoolean := testProject + `
 resource "launchdarkly_feature_flag" "boolean-flag-1" {
-  	project_key = "${launchdarkly_project.exampleproject2.key}"
+  	project_key = "${launchdarkly_project.testProject.key}"
   	key = "boolean-flag-1"
   	name = "boolean-flag-1 name"
   	description = "this is a boolean flag by default because we omitted the variations field"
+}`
+
+	featureFlagUpdateBoolean := testProject + `
+resource "launchdarkly_feature_flag" "boolean-flag-1" {
+  	project_key = "${launchdarkly_project.testProject.key}"
+  	key = "boolean-flag-1"
+  	name = "boolean-flag-1 name (updated)"
+  	description = "updated description"
+  	tags = ["new_tag_who_dis"]
+}`
+
+	testAcc(t, "launchdarkly_feature_flag.boolean-flag-1", featureFlagCreateBoolean, featureFlagUpdateBoolean)
 }
-`,
-		"launchdarkly_feature_flag.boolean-flag-1")
+
+func TestSegmentAcc(t *testing.T) {
+	segmentCreate := testProject + `
+resource "launchdarkly_segment" "segment3" {
+    key = "segmentKey1"
+	project_key = "dummy-project"
+	env_key = "test"
+  	name = "segment name"
+	description = "segment description"
+	tags = ["segmentTag1", "segmentTag2"]
+	included = ["user1", "user2"]
+	excluded = ["user3", "user4"]
+}`
+	segmentUpdate := testProject + `
+resource "launchdarkly_segment" "segment3" {
+    key = "segmentKey1"
+	project_key = "dummy-project"
+	env_key = "test"
+  	name = "segment name"
+	description = "segment description"
+	tags = ["segmentTag1", "segmentTag2"]
+	included = ["user1", "user2", "user3", "user4"]
+	excluded = []
+}`
+
+	testAcc(t, "launchdarkly_segment.segment3", segmentCreate, segmentUpdate)
 }
+
 func TestWebhookAccExample(t *testing.T) {
-	testAcc(t, `
+	webhookCreate := `
 resource "launchdarkly_webhook" "examplewebhook1" {
 	name = "example-webhook"
 	url = "http://webhooks.com"
 	tags = [ "terraform" ]
 	on = true
-}`,
-		"launchdarkly_webhook.examplewebhook1")
+}`
+	webhookUpdate := `
+resource "launchdarkly_webhook" "examplewebhook1" {
+	name = "example-webhook"
+	url = "http://webhooks.com/updatedUrl"
+	tags = [ "terraform" ]
+	on = true
+}`
+
+	testAcc(t, "launchdarkly_webhook.examplewebhook1", webhookCreate, webhookUpdate)
 }
 
-func TestCustomRoleAccExample(t *testing.T) {
+func TestCustomRoleAcc(t *testing.T) {
 	customRoleCreate := `
-resource "launchdarkly_custom_role" "exampleCustomRole1" {
+resource "launchdarkly_custom_role" "customRole1" {
 	key = "custom-role-key-1"
 	name = "custom-role-name-1"
 	description= "crd"
@@ -158,7 +304,7 @@ resource "launchdarkly_custom_role" "exampleCustomRole1" {
 `
 
 	customRoleUpdate := `
-resource "launchdarkly_custom_role" "exampleCustomRole1" {
+resource "launchdarkly_custom_role" "customRole1" {
 	key = "custom-role-key-1"
 	name = "custom-role-name-1"
 	description= "crd"
@@ -171,125 +317,56 @@ resource "launchdarkly_custom_role" "exampleCustomRole1" {
 	]
 }
 `
-
-	resource.Test(t, resource.TestCase{
-		PreCheck: func() {
-			checkCredentialsEnvVar(t)
-		},
-		Providers: providers,
-		Steps: []resource.TestStep{
-			{
-				Config: customRoleCreate,
-				Check: func(state *terraform.State) error {
-					fmt.Println(state)
-					return nil
-				},
-			},
-			{
-				Config: customRoleUpdate,
-				Check: func(state *terraform.State) error {
-					fmt.Println(state)
-					return nil
-				},
-			},
-			{
-				ResourceName:      "launchdarkly_custom_role.exampleCustomRole1",
-				ImportState:       true,
-				ImportStateVerify: true,
-			},
-		},
-	})
-
+	testAcc(t, "launchdarkly_custom_role.customRole1", customRoleCreate, customRoleUpdate)
 }
 
 func TestTeamMemberAcc(t *testing.T) {
-	testAcc(t, fmt.Sprintf(`
-resource "launchdarkly_team_member" "teamMember2" {
+	nanos := time.Now().Nanosecond()
+
+	teamMemberCreate := fmt.Sprintf(`
+resource "launchdarkly_team_member" "teamMember1" {
     email = "member.%d@example.com"
     first_name = "first"
     last_name = "last"
     role = "admin"
     custom_roles = []
-}`, time.Now().Nanosecond()),
-		"launchdarkly_team_member.teamMember2")
+}`, nanos)
+
+	teamMemberUpdate := fmt.Sprintf(`
+resource "launchdarkly_team_member" "teamMember1" {
+    email = "member.%d@example.com"
+    first_name = "first"
+    last_name = "last"
+    role = "writer"
+    custom_roles = []
+}`, nanos)
+
+	testAcc(t, "launchdarkly_team_member.teamMember1", teamMemberCreate, teamMemberUpdate)
 }
 
-func TestSegmentAcc(t *testing.T) {
-	testAcc(t, `
-resource "launchdarkly_segment" "segment3" {
-    key = "segmentKey1"
-	project_key = "dummy-project"
-	env_key = "test"
-  	name = "segment name"
-	description = "segment description"
-	tags = ["segmentTag1", "segmentTag2"]
-	included = ["user1", "user2"]
-	excluded = ["user3", "user4"]
-}`,
-		"launchdarkly_segment.segment3")
-}
-
-func testAcc(t *testing.T, config string, resourceName string) {
-
-	resource.Test(t, resource.TestCase{
+func testAcc(t *testing.T, resourceName string, config ...string) {
+	testCase := resource.TestCase{
 		PreCheck: func() {
 			checkCredentialsEnvVar(t)
 		},
 		Providers: providers,
-		Steps: []resource.TestStep{
-			{
-				Config: config,
-				Check: func(state *terraform.State) error {
-					fmt.Println(state)
-					return nil
-				},
-			},
-			{
-				ResourceName:      resourceName,
-				ImportState:       true,
-				ImportStateVerify: true,
-			},
-		},
+	}
+
+	for _, c := range config {
+		testCase.Steps = append(testCase.Steps, resource.TestStep{Config: c})
+	}
+
+	testCase.Steps = append(testCase.Steps, resource.TestStep{
+		ResourceName:      resourceName,
+		ImportState:       true,
+		ImportStateVerify: true,
 	})
+
+	resource.Test(t, testCase)
 }
 
 func checkCredentialsEnvVar(t *testing.T) {
 	if v := os.Getenv(launchDarklyApiKeyEnvVar); v == "" {
-		t.Fatalf("%s env var must be set for acceptance tests", launchDarklyApiKeyEnvVar)
+		t.Errorf("%s env var must be set for acceptance tests", launchDarklyApiKeyEnvVar)
 	}
-	err := cleanAccount()
-	require.NoError(t, err)
-}
-
-func cleanAccount() error {
-	c := NewClient(os.Getenv(launchDarklyApiKeyEnvVar))
-
-	// make sure we have a dummy project
-	_, response, err := c.ld.ProjectsApi.GetProject(c.ctx, "dummy-project")
-
-	if response.StatusCode == 404 {
-		_, _, err = c.ld.ProjectsApi.PostProject(c.ctx, ldapi.ProjectBody{Name: "dummy-project", Key: "dummy-project"})
-		if err != nil {
-			return err
-		}
-	} else {
-		if err != nil {
-			return err
-		}
-	}
-	projects, _, err := c.ld.ProjectsApi.GetProjects(c.ctx)
-	if err != nil {
-		return err
-	}
-
-	// delete all but dummy project
-	for _, p := range projects.Items {
-		if p.Key != "dummy-project" {
-			_, err := c.ld.ProjectsApi.DeleteProject(c.ctx, p.Key)
-			if err != nil {
-				return err
-			}
-		}
-	}
-	return nil
 }

@@ -1,6 +1,6 @@
 module terraform-provider-launchdarkly
 
-replace github.com/launchdarkly/api-client-go => github.com/drichelson/api-client-go v0.0.0-20190311214431-b6270e051fee
+replace github.com/launchdarkly/api-client-go => github.com/drichelson/api-client-go v0.0.0-20190316191407-aef5c04e4a7d
 
 require (
 	github.com/antihax/optional v0.0.0-20180407024304-ca021399b1a6 // indirect

@@ -2,6 +2,7 @@ package launchdarkly
 
 import (
 	"context"
+	"errors"
 	"github.com/launchdarkly/api-client-go"
 )
 
@@ -12,12 +13,16 @@ type Client struct {
 	ctx    context.Context
 }
 
-func NewClient(apiKey string) *Client {
+func NewClient(apiKey string) (*Client, error) {
+	if apiKey == "" {
+		return nil, errors.New("apiKey cannot be empty")
+	}
+
 	return &Client{
 		apiKey: apiKey,
 		ld:     ldapi.NewAPIClient(ldapi.NewConfiguration()),
 		ctx: context.WithValue(context.Background(), ldapi.ContextAPIKey, ldapi.APIKey{
 			Key: apiKey,
 		}),
-	}
+	}, nil
 }

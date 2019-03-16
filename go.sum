@@ -54,8 +54,8 @@ github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/dgrijalva/jwt-go v0.0.0-20160617170158-f0777076321a/go.mod h1:E3ru+11k8xSBh+hMPgOLZmtrrCbhqsmaPHjLKYnJCaQ=
 github.com/dnaeon/go-vcr v0.0.0-20170218072653-87d4990451a8/go.mod h1:aBB1+wY4s93YsC3HHjMBMrwTj2R9FHDzUr9KyGc8n1E=
-github.com/drichelson/api-client-go v0.0.0-20190311214431-b6270e051fee h1:YWKDdFMRAiyvCCVpwed7XtsShuwyaLPUlneXZ6YoB9w=
-github.com/drichelson/api-client-go v0.0.0-20190311214431-b6270e051fee/go.mod h1:w319WrqBXEXDWqX3ufkoDRKpvb8lGQWfHcdqMgRf58I=
+github.com/drichelson/api-client-go v0.0.0-20190316191407-aef5c04e4a7d h1:VW+fQuAkGmMo8Te1Eeda0KsEWXzEdOAMKfr/pQNvGaM=
+github.com/drichelson/api-client-go v0.0.0-20190316191407-aef5c04e4a7d/go.mod h1:w319WrqBXEXDWqX3ufkoDRKpvb8lGQWfHcdqMgRf58I=
 github.com/dylanmei/iso8601 v0.1.0/go.mod h1:w9KhXSgIyROl1DefbMYIE7UVSIvELTbMrCfx+QkYnoQ=
 github.com/dylanmei/winrmtest v0.0.0-20170819153634-c2fbb09e6c08/go.mod h1:VBVDFSBXCIW8JaHQpI8lldSKfYaLMzP9oyq6IJ4fhzY=
 github.com/fatih/color v1.7.0 h1:DkWD4oS2D8LGGgTQ6IvwJJXSL5Vp2ffcQg58nFV38Ys=
