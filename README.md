@@ -1,22 +1,34 @@
-# Terraform Provider for LaunchDarkly
+Terraform Provider for LaunchDarkly
+=====
 
-Work in Progress.
+- http://www.launchdarkly.com
+- https://www.terraform.io/
 
-Currently supported resources:
-- project
-- environment
-- feature flag (partial)
-- Custom Roles
+This terraform provider covers the resources found in the [LaunchDarkly API docs](https://apidocs.launchdarkly.com/reference). 
+The API client used is the generated [api-client-go](https://github.com/launchdarkly/api-client-go) which is based on the OpenAPI spec found [here](https://github.com/launchdarkly/ld-openapi). 
 
-## Development requirements:
+Requirements:
+-------
 - golang 1.12+ (1.11 should also work)
 - make
-- terraform 0.11.13+
+- terraform 0.11.13+ (earlier versions may work)
 
-#  WARNING: Use a test/demo account since various make targets/acceptance tests may wipe out all existing projects/settings!!
+Building The Provider
+---------------------
+This project uses [go modules](https://github.com/golang/go/wiki/Modules)
 
-## To run example:
-```bash
- LAUNCHDARKLY_API_KEY=<api key> make build apply
+1. Clone the project: `git clone https://github.com/launchdarkly/terraform-provider-launchdarkly`
+1. make build
 
+Run unit tests:
+`make test`
+
+Run acceptance tests (Be sure to use a test account as this will create/destroy real resources!):
+```
+LAUNCHDARKLY_API_KEY=YOUR_API_KEY make testacc
+```
+
+Run example:
+```
+LAUNCHDARKLY_API_KEY=YOUR_API_KEY make apply
 ```
