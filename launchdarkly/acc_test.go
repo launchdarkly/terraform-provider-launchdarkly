@@ -5,6 +5,7 @@ package launchdarkly
 import (
 	"context"
 	"fmt"
+	"github.com/stretchr/testify/require"
 	"os"
 	"testing"
 	"time"
@@ -199,9 +200,7 @@ func checkCredentialsEnvVar(t *testing.T) {
 		t.Fatalf("%s env var must be set for acceptance tests", launchDarklyApiKeyEnvVar)
 	}
 	err := cleanAccount()
-	if err != nil {
-		t.Error(err)
-	}
+	require.NoError(t, err)
 }
 
 func cleanAccount() error {
