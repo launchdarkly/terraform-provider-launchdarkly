@@ -3,7 +3,6 @@ package launchdarkly
 // Based on https://www.terraform.io/docs/extend/testing/acceptance-tests/testcase.html
 
 import (
-	"context"
 	"fmt"
 	"github.com/stretchr/testify/require"
 	"os"
@@ -13,7 +12,7 @@ import (
 	"github.com/hashicorp/terraform/helper/resource"
 	"github.com/hashicorp/terraform/helper/schema"
 	"github.com/hashicorp/terraform/terraform"
-	ldapi "github.com/launchdarkly/api-client-go"
+	"github.com/launchdarkly/api-client-go"
 )
 
 const (
@@ -36,8 +35,14 @@ resource "launchdarkly_project" "exampleproject2" {
 `
 )
 
+var (
+	providers = map[string]terraform.ResourceProvider{
+		"launchdarkly": Provider().(*schema.Provider),
+	}
+)
+
 func TestAccProjectCreateWithEnv(t *testing.T) {
-	testAcc(t, projectCreateWithEnv)
+	testAcc(t, projectCreateWithEnv, "launchdarkly_project.exampleproject2")
 }
 
 func TestAccProjectCreateWithoutEnv(t *testing.T) {
@@ -46,7 +51,8 @@ resource "launchdarkly_project" "exampleproject3" {
 	name = "example-project3"
 	key = "example-project3"
 	tags = [ "terraform" ]
-}`)
+}`,
+		"launchdarkly_project.exampleproject3")
 }
 
 func TestAccEnvironmentCreate(t *testing.T) {
@@ -64,7 +70,8 @@ resource "launchdarkly_environment" "staging1" {
   	default_track_events = false
   	default_ttl = 100.0
   	project_key = "${launchdarkly_project.projForEnvTest.key}"
-}`)
+}`,
+		"launchdarkly_project.projForEnvTest")
 }
 
 func TestFeatureFlagMultiVariateAcc(t *testing.T) {
@@ -108,7 +115,8 @@ resource "launchdarkly_feature_flag" "multivariate-flag-2" {
       	value = ["very special custom property"]
     	}
 	]
-}`)
+}`,
+		"launchdarkly_feature_flag.multivariate-flag-2")
 }
 
 func TestFeatureFlagDefaultBooleanVariationsAcc(t *testing.T) {
@@ -119,7 +127,8 @@ resource "launchdarkly_feature_flag" "boolean-flag-1" {
   	name = "boolean-flag-1 name"
   	description = "this is a boolean flag by default because we omitted the variations field"
 }
-`)
+`,
+		"launchdarkly_feature_flag.boolean-flag-1")
 }
 func TestWebhookAccExample(t *testing.T) {
 	testAcc(t, `
@@ -127,14 +136,13 @@ resource "launchdarkly_webhook" "examplewebhook1" {
 	name = "example-webhook"
 	url = "http://webhooks.com"
 	tags = [ "terraform" ]
-  	secret = "THIS IS SUPER SECRET"
-	sign = true
 	on = true
-}`)
+}`,
+		"launchdarkly_webhook.examplewebhook1")
 }
 
 func TestCustomRoleAccExample(t *testing.T) {
-	testAcc(t, `
+	customRoleCreate := `
 resource "launchdarkly_custom_role" "exampleCustomRole1" {
 	key = "custom-role-key-1"
 	name = "custom-role-name-1"
@@ -146,7 +154,52 @@ resource "launchdarkly_custom_role" "exampleCustomRole1" {
 		resources = ["proj/*:env/production"]
 	}
 	]
-}`)
+}
+`
+
+	customRoleUpdate := `
+resource "launchdarkly_custom_role" "exampleCustomRole1" {
+	key = "custom-role-key-1"
+	name = "custom-role-name-1"
+	description= "crd"
+	policy = [
+	{
+		actions = ["*"]	
+		effect = "deny"
+		resources = ["proj/*:env/production"]
+	}
+	]
+}
+`
+
+	resource.Test(t, resource.TestCase{
+		PreCheck: func() {
+			checkCredentialsEnvVar(t)
+		},
+		Providers: providers,
+		Steps: []resource.TestStep{
+			{
+				Config: customRoleCreate,
+				Check: func(state *terraform.State) error {
+					fmt.Println(state)
+					return nil
+				},
+			},
+			{
+				Config: customRoleUpdate,
+				Check: func(state *terraform.State) error {
+					fmt.Println(state)
+					return nil
+				},
+			},
+			{
+				ResourceName:      "launchdarkly_custom_role.exampleCustomRole1",
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
+		},
+	})
+
 }
 
 func TestTeamMemberAcc(t *testing.T) {
@@ -157,7 +210,8 @@ resource "launchdarkly_team_member" "teamMember2" {
     last_name = "last"
     role = "admin"
     custom_roles = []
-}`, time.Now().Nanosecond()))
+}`, time.Now().Nanosecond()),
+		"launchdarkly_team_member.teamMember2")
 }
 
 func TestSegmentAcc(t *testing.T) {
@@ -169,29 +223,33 @@ resource "launchdarkly_segment" "segment3" {
   	name = "segment name"
 	description = "segment description"
 	tags = ["segmentTag1", "segmentTag2"]
-}`)
+	included = ["user1", "user2"]
+	excluded = ["user3", "user4"]
+}`,
+		"launchdarkly_segment.segment3")
 }
 
-func testAcc(t *testing.T, config string) {
+func testAcc(t *testing.T, config string, resourceName string) {
+
 	resource.Test(t, resource.TestCase{
-		IsUnitTest: false,
 		PreCheck: func() {
 			checkCredentialsEnvVar(t)
 		},
-		Providers: map[string]terraform.ResourceProvider{
-			"launchdarkly": Provider().(*schema.Provider),
-		},
-		ProviderFactories:         nil,
-		PreventPostDestroyRefresh: false,
-		CheckDestroy:              nil,
+		Providers: providers,
 		Steps: []resource.TestStep{
 			{
 				Config: config,
-				Check:  resource.ComposeTestCheckFunc(),
+				Check: func(state *terraform.State) error {
+					fmt.Println(state)
+					return nil
+				},
+			},
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
 			},
 		},
-		IDRefreshName:   "",
-		IDRefreshIgnore: nil,
 	})
 }
 
@@ -204,17 +262,13 @@ func checkCredentialsEnvVar(t *testing.T) {
 }
 
 func cleanAccount() error {
-	ctx := context.WithValue(context.Background(), ldapi.ContextAPIKey, ldapi.APIKey{
-		Key: os.Getenv(launchDarklyApiKeyEnvVar),
-	})
-
-	client := ldapi.NewAPIClient(ldapi.NewConfiguration())
+	c := NewClient(os.Getenv(launchDarklyApiKeyEnvVar))
 
 	// make sure we have a dummy project
-	_, response, err := client.ProjectsApi.GetProject(ctx, "dummy-project")
+	_, response, err := c.ld.ProjectsApi.GetProject(c.ctx, "dummy-project")
 
 	if response.StatusCode == 404 {
-		_, _, err = client.ProjectsApi.PostProject(ctx, ldapi.ProjectBody{Name: "dummy-project", Key: "dummy-project"})
+		_, _, err = c.ld.ProjectsApi.PostProject(c.ctx, ldapi.ProjectBody{Name: "dummy-project", Key: "dummy-project"})
 		if err != nil {
 			return err
 		}
@@ -223,7 +277,7 @@ func cleanAccount() error {
 			return err
 		}
 	}
-	projects, _, err := client.ProjectsApi.GetProjects(ctx)
+	projects, _, err := c.ld.ProjectsApi.GetProjects(c.ctx)
 	if err != nil {
 		return err
 	}
@@ -231,7 +285,7 @@ func cleanAccount() error {
 	// delete all but dummy project
 	for _, p := range projects.Items {
 		if p.Key != "dummy-project" {
-			_, err := client.ProjectsApi.DeleteProject(ctx, p.Key)
+			_, err := c.ld.ProjectsApi.DeleteProject(c.ctx, p.Key)
 			if err != nil {
 				return err
 			}

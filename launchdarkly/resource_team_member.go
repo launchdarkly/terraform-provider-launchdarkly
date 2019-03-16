@@ -72,7 +72,7 @@ func resourceTeamMemberCreate(d *schema.ResourceData, metaRaw interface{}) error
 		CustomRoles: customRoles,
 	}
 
-	members, _, err := client.LaunchDarkly.TeamMembersApi.PostMembers(client.Ctx, []ldapi.MembersBody{membersBody})
+	members, _, err := client.ld.TeamMembersApi.PostMembers(client.ctx, []ldapi.MembersBody{membersBody})
 	if err != nil {
 		return fmt.Errorf("failed to create team member with email: %s: %v", memberEmail, handleLdapiErr(err))
 	}
@@ -85,7 +85,7 @@ func resourceTeamMemberRead(d *schema.ResourceData, metaRaw interface{}) error {
 	client := metaRaw.(*Client)
 	memberId := d.Id()
 
-	member, _, err := client.LaunchDarkly.TeamMembersApi.GetMember(client.Ctx, memberId)
+	member, _, err := client.ld.TeamMembersApi.GetMember(client.ctx, memberId)
 	if err != nil {
 		return fmt.Errorf("failed to get member with id %q: %v", memberId, err)
 	}
@@ -118,7 +118,7 @@ func resourceTeamMemberUpdate(d *schema.ResourceData, metaRaw interface{}) error
 		patchReplace("/customRoles", &customRolesRaw),
 	}
 
-	_, _, err := client.LaunchDarkly.TeamMembersApi.PatchMember(client.Ctx, memberId, patch)
+	_, _, err := client.ld.TeamMembersApi.PatchMember(client.ctx, memberId, patch)
 	if err != nil {
 		return fmt.Errorf("failed to update team member with id %q: %s", memberId, handleLdapiErr(err))
 	}
@@ -129,7 +129,7 @@ func resourceTeamMemberUpdate(d *schema.ResourceData, metaRaw interface{}) error
 func resourceTeamMemberDelete(d *schema.ResourceData, metaRaw interface{}) error {
 	client := metaRaw.(*Client)
 
-	_, err := client.LaunchDarkly.TeamMembersApi.DeleteMember(client.Ctx, d.Id())
+	_, err := client.ld.TeamMembersApi.DeleteMember(client.ctx, d.Id())
 	if err != nil {
 		return fmt.Errorf("failed to delete team member with id %q: %s", d.Id(), handleLdapiErr(err))
 	}
@@ -142,7 +142,7 @@ func resourceTeamMemberExists(d *schema.ResourceData, metaRaw interface{}) (bool
 }
 
 func teamMemberExists(memberId string, meta *Client) (bool, error) {
-	_, httpResponse, err := meta.LaunchDarkly.TeamMembersApi.GetMember(meta.Ctx, memberId)
+	_, httpResponse, err := meta.ld.TeamMembersApi.GetMember(meta.ctx, memberId)
 	if httpResponse != nil && httpResponse.StatusCode == 404 {
 		return false, nil
 	}

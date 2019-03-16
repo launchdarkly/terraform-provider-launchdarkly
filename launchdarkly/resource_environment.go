@@ -45,12 +45,12 @@ func resourceEnvironmentCreate(d *schema.ResourceData, metaRaw interface{}) erro
 		DefaultTtl: defaultTtl,
 	}
 
-	_, _, err := client.LaunchDarkly.EnvironmentsApi.PostEnvironment(client.Ctx, projectKey, envPost)
+	_, _, err := client.ld.EnvironmentsApi.PostEnvironment(client.ctx, projectKey, envPost)
 	if err != nil {
 		return fmt.Errorf("failed to create environment: [%+v] for project key: %s: %s", envPost, projectKey, handleLdapiErr(err))
 	}
 
-	// LaunchDarkly's api does not allow some fields to be passed in during env creation so we do an update:
+	// ld's api does not allow some fields to be passed in during env creation so we do an update:
 	// https://apidocs.launchdarkly.com/docs/create-environment
 	err = resourceEnvironmentUpdate(d, metaRaw)
 	if err != nil {
@@ -66,7 +66,7 @@ func resourceEnvironmentRead(d *schema.ResourceData, metaRaw interface{}) error 
 	projectKey := d.Get(project_key).(string)
 	key := d.Get(key).(string)
 
-	env, _, err := client.LaunchDarkly.EnvironmentsApi.GetEnvironment(client.Ctx, projectKey, key)
+	env, _, err := client.ld.EnvironmentsApi.GetEnvironment(client.ctx, projectKey, key)
 	if err != nil {
 		return fmt.Errorf("failed to get environment with key %q for project key: %q: %v", key, projectKey, handleLdapiErr(err))
 	}
@@ -119,7 +119,7 @@ func resourceEnvironmentUpdate(d *schema.ResourceData, metaRaw interface{}) erro
 	//	patch = append(patch, patchReplace("/tags", &tagSet))
 	//}
 
-	_, _, err := client.LaunchDarkly.EnvironmentsApi.PatchEnvironment(client.Ctx, projectKey, key, patch)
+	_, _, err := client.ld.EnvironmentsApi.PatchEnvironment(client.ctx, projectKey, key, patch)
 	if err != nil {
 		return fmt.Errorf("failed to update environment with key %q for project: %q: %s", key, projectKey, handleLdapiErr(err))
 	}
@@ -132,7 +132,7 @@ func resourceEnvironmentDelete(d *schema.ResourceData, metaRaw interface{}) erro
 	projectKey := d.Get(project_key).(string)
 	key := d.Get(key).(string)
 
-	_, err := client.LaunchDarkly.EnvironmentsApi.DeleteEnvironment(client.Ctx, projectKey, key)
+	_, err := client.ld.EnvironmentsApi.DeleteEnvironment(client.ctx, projectKey, key)
 	if err != nil {
 		return fmt.Errorf("failed to delete project with key %q for project %q: %s", key, projectKey, handleLdapiErr(err))
 	}
@@ -145,7 +145,7 @@ func resourceEnvironmentExists(d *schema.ResourceData, metaRaw interface{}) (boo
 }
 
 func environmentExists(projectKey string, key string, meta *Client) (bool, error) {
-	_, httpResponse, err := meta.LaunchDarkly.EnvironmentsApi.GetEnvironment(meta.Ctx, projectKey, key)
+	_, httpResponse, err := meta.ld.EnvironmentsApi.GetEnvironment(meta.ctx, projectKey, key)
 	if httpResponse != nil && httpResponse.StatusCode == 404 {
 		return false, nil
 	}

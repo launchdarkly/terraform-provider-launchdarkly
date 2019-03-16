@@ -51,7 +51,7 @@ func resourceCustomRoleCreate(d *schema.ResourceData, metaRaw interface{}) error
 		Policy:      customRolePolicies,
 	}
 
-	_, _, err := client.LaunchDarkly.CustomRolesApi.PostCustomRole(client.Ctx, customRoleBody)
+	_, _, err := client.ld.CustomRolesApi.PostCustomRole(client.ctx, customRoleBody)
 	if err != nil {
 		return fmt.Errorf("failed to create custom role with name %q: %s", customRoleName, handleLdapiErr(err))
 	}
@@ -64,7 +64,7 @@ func resourceCustomRoleRead(d *schema.ResourceData, metaRaw interface{}) error {
 	client := metaRaw.(*Client)
 	customRoleId := d.Id()
 
-	customRole, _, err := client.LaunchDarkly.CustomRolesApi.GetCustomRole(client.Ctx, customRoleId)
+	customRole, _, err := client.ld.CustomRolesApi.GetCustomRole(client.ctx, customRoleId)
 	if err != nil {
 		return fmt.Errorf("failed to get custom role with id %q: %s", customRoleId, handleLdapiErr(err))
 	}
@@ -92,7 +92,7 @@ func resourceCustomRoleUpdate(d *schema.ResourceData, metaRaw interface{}) error
 		patchReplace("/policy", &customRolePolicies),
 	}
 
-	_, _, err := client.LaunchDarkly.CustomRolesApi.PatchCustomRole(client.Ctx, customRoleKey, patch)
+	_, _, err := client.ld.CustomRolesApi.PatchCustomRole(client.ctx, customRoleKey, patch)
 	if err != nil {
 		return fmt.Errorf("failed to update custom role with key %q: %s", customRoleKey, handleLdapiErr(err))
 	}
@@ -104,7 +104,7 @@ func resourceCustomRoleDelete(d *schema.ResourceData, metaRaw interface{}) error
 	client := metaRaw.(*Client)
 	customRoleKey := d.Id()
 
-	_, err := client.LaunchDarkly.CustomRolesApi.DeleteCustomRole(client.Ctx, customRoleKey)
+	_, err := client.ld.CustomRolesApi.DeleteCustomRole(client.ctx, customRoleKey)
 	if err != nil {
 		return fmt.Errorf("failed to delete custom role with key %q: %s", customRoleKey, handleLdapiErr(err))
 	}
@@ -117,7 +117,7 @@ func resourceCustomRoleExists(d *schema.ResourceData, metaRaw interface{}) (bool
 }
 
 func customRoleExists(customRoleKey string, meta *Client) (bool, error) {
-	_, httpResponse, err := meta.LaunchDarkly.CustomRolesApi.GetCustomRole(meta.Ctx, customRoleKey)
+	_, httpResponse, err := meta.ld.CustomRolesApi.GetCustomRole(meta.ctx, customRoleKey)
 	if httpResponse != nil && httpResponse.StatusCode == 404 {
 		return false, nil
 	}

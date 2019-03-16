@@ -30,10 +30,6 @@ func resourceWebhook() *schema.Resource {
 				Optional:  true,
 				Sensitive: true,
 			},
-			sign: &schema.Schema{
-				Type:     schema.TypeBool,
-				Required: true,
-			},
 			on: &schema.Schema{
 				Type:     schema.TypeBool,
 				Required: true,
@@ -51,26 +47,30 @@ func resourceWebhookCreate(d *schema.ResourceData, metaRaw interface{}) error {
 	client := metaRaw.(*Client)
 	webhookUrl := d.Get(url).(string)
 	webhookSecret := d.Get(secret).(string)
-	webhookSign := d.Get(sign).(bool)
-	webhookOn := d.Get(sign).(bool)
+	webhookOn := d.Get(on).(bool)
 	webhookName := d.Get(name).(string)
 
 	webhookBody := ldapi.WebhookBody{
 		Url:    webhookUrl,
 		Secret: webhookSecret,
-		Sign:   webhookSign,
 		On:     webhookOn,
 		Name:   webhookName,
 	}
 
-	webhook, _, err := client.LaunchDarkly.WebhooksApi.PostWebhook(client.Ctx, webhookBody)
+	// The sign field isn't returned when GETting a webhook so terraform can't import it properly.
+	// We hide the field from terraform to avoid import problems.
+	if webhookSecret != "" {
+		webhookBody.Sign = true
+	}
+
+	webhook, _, err := client.ld.WebhooksApi.PostWebhook(client.ctx, webhookBody)
 	if err != nil {
 		return fmt.Errorf("failed to create webhook with name %q: %s", webhookName, handleLdapiErr(err))
 	}
 
 	d.SetId(webhook.Id)
 
-	// LaunchDarkly's api does not allow tags to be passed in during webhook creation so we do an update
+	// ld's api does not allow tags to be passed in during webhook creation so we do an update
 	err = resourceWebhookUpdate(d, metaRaw)
 	if err != nil {
 		return errors.Wrapf(err, "During webhook creation. Webhook name: %q", webhookName)
@@ -83,7 +83,7 @@ func resourceWebhookRead(d *schema.ResourceData, metaRaw interface{}) error {
 	client := metaRaw.(*Client)
 	webhookId := d.Id()
 
-	webhook, _, err := client.LaunchDarkly.WebhooksApi.GetWebhook(client.Ctx, webhookId)
+	webhook, _, err := client.ld.WebhooksApi.GetWebhook(client.ctx, webhookId)
 	if err != nil {
 		return fmt.Errorf("failed to get webhook with id %q: %s", webhookId, handleLdapiErr(err))
 	}
@@ -116,7 +116,7 @@ func resourceWebhookUpdate(d *schema.ResourceData, metaRaw interface{}) error {
 		patchReplace("/tags", &webhookTags),
 	}
 
-	_, _, err := client.LaunchDarkly.WebhooksApi.PatchWebhook(client.Ctx, webhookId, patch)
+	_, _, err := client.ld.WebhooksApi.PatchWebhook(client.ctx, webhookId, patch)
 	if err != nil {
 		return fmt.Errorf("failed to update webhook with id %q: %s", webhookId, handleLdapiErr(err))
 	}
@@ -128,7 +128,7 @@ func resourceWebhookDelete(d *schema.ResourceData, metaRaw interface{}) error {
 	client := metaRaw.(*Client)
 	webhookId := d.Id()
 
-	_, err := client.LaunchDarkly.WebhooksApi.DeleteWebhook(client.Ctx, webhookId)
+	_, err := client.ld.WebhooksApi.DeleteWebhook(client.ctx, webhookId)
 	if err != nil {
 		return fmt.Errorf("failed to delete webhook with id %q: %s", webhookId, handleLdapiErr(err))
 	}
@@ -141,7 +141,7 @@ func resourceWebhookExists(d *schema.ResourceData, metaRaw interface{}) (bool, e
 }
 
 func webhookExists(webhookId string, meta *Client) (bool, error) {
-	_, httpResponse, err := meta.LaunchDarkly.WebhooksApi.GetWebhook(meta.Ctx, webhookId)
+	_, httpResponse, err := meta.ld.WebhooksApi.GetWebhook(meta.ctx, webhookId)
 	if httpResponse != nil && httpResponse.StatusCode == 404 {
 		return false, nil
 	}

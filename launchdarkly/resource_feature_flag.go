@@ -85,13 +85,13 @@ func resourceFeatureFlagCreate(d *schema.ResourceData, metaRaw interface{}) erro
 		IncludeInSnippet: includeInSnippet,
 	}
 
-	_, _, err := client.LaunchDarkly.FeatureFlagsApi.PostFeatureFlag(client.Ctx, projectKey, flag, nil)
+	_, _, err := client.ld.FeatureFlagsApi.PostFeatureFlag(client.ctx, projectKey, flag, nil)
 
 	if err != nil {
 		return fmt.Errorf("failed to create flag %q in project %q: %s", key, projectKey, handleLdapiErr(err))
 	}
 
-	// LaunchDarkly's api does not allow some fields to be passed in during flag creation so we do an update:
+	// ld's api does not allow some fields to be passed in during flag creation so we do an update:
 	// https://apidocs.launchdarkly.com/docs/create-feature-flag
 	err = resourceFeatureFlagUpdate(d, metaRaw)
 	if err != nil {
@@ -108,7 +108,7 @@ func resourceFeatureFlagRead(d *schema.ResourceData, metaRaw interface{}) error 
 	projectKey := d.Get(project_key).(string)
 	key := d.Get(key).(string)
 
-	flag, _, err := client.LaunchDarkly.FeatureFlagsApi.GetFeatureFlag(client.Ctx, projectKey, key, nil)
+	flag, _, err := client.ld.FeatureFlagsApi.GetFeatureFlag(client.ctx, projectKey, key, nil)
 
 	if err != nil {
 		return fmt.Errorf("failed to get flag %q of project %q: %s", key, projectKey, handleLdapiErr(err))
@@ -161,7 +161,7 @@ func resourceFeatureFlagUpdate(d *schema.ResourceData, metaRaw interface{}) erro
 			patchReplace("/customProperties", customProperties),
 		}}
 
-	_, _, err := client.LaunchDarkly.FeatureFlagsApi.PatchFeatureFlag(client.Ctx, projectKey, key, patch)
+	_, _, err := client.ld.FeatureFlagsApi.PatchFeatureFlag(client.ctx, projectKey, key, patch)
 	if err != nil {
 		return fmt.Errorf("failed to update flag %q in project %q: %s", key, projectKey, handleLdapiErr(err))
 	}
@@ -174,7 +174,7 @@ func resourceFeatureFlagDelete(d *schema.ResourceData, metaRaw interface{}) erro
 	projectKey := d.Get(project_key).(string)
 	key := d.Get(key).(string)
 
-	_, err := client.LaunchDarkly.FeatureFlagsApi.DeleteFeatureFlag(client.Ctx, projectKey, key)
+	_, err := client.ld.FeatureFlagsApi.DeleteFeatureFlag(client.ctx, projectKey, key)
 	if err != nil {
 		return fmt.Errorf("failed to delete flag %q from project %q: %s", key, projectKey, handleLdapiErr(err))
 	}
@@ -187,7 +187,7 @@ func resourceFeatureFlagExists(d *schema.ResourceData, metaRaw interface{}) (boo
 	projectKey := d.Get(project_key).(string)
 	key := d.Get(key).(string)
 
-	_, httpResponse, err := client.LaunchDarkly.FeatureFlagsApi.GetFeatureFlag(client.Ctx, projectKey, key, nil)
+	_, httpResponse, err := client.ld.FeatureFlagsApi.GetFeatureFlag(client.ctx, projectKey, key, nil)
 	if httpResponse != nil && httpResponse.StatusCode == 404 {
 		return false, nil
 	}

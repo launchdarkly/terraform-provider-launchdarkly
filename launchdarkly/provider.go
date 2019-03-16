@@ -18,7 +18,7 @@ func Provider() terraform.ResourceProvider {
 				Type:        schema.TypeString,
 				Required:    true,
 				DefaultFunc: schema.EnvDefaultFunc(launchDarklyApiKeyEnvVar, nil),
-				Description: "The LaunchDarkly API key",
+				Description: "The ld API key",
 			},
 		},
 		ResourcesMap: map[string]*schema.Resource{
@@ -35,8 +35,5 @@ func Provider() terraform.ResourceProvider {
 }
 
 func providerConfigure(d *schema.ResourceData) (interface{}, error) {
-	config := Config{
-		APIKey: d.Get(apiKey).(string),
-	}
-	return config.New(), nil
+	return NewClient(d.Get(apiKey).(string)), nil
 }

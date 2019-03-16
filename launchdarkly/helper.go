@@ -27,5 +27,4 @@ func handleLdapiErr(err error) string {
 	}
 
 	return err.Error()
-
 }

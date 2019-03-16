@@ -89,13 +89,13 @@ func resourceSegmentCreate(d *schema.ResourceData, metaRaw interface{}) error {
 		Tags:        tags,
 	}
 
-	_, _, err := client.LaunchDarkly.UserSegmentsApi.PostUserSegment(client.Ctx, projectKey, envKey, segment)
+	_, _, err := client.ld.UserSegmentsApi.PostUserSegment(client.ctx, projectKey, envKey, segment)
 
 	if err != nil {
 		return fmt.Errorf("failed to create segment %q in project %q: %s", key, projectKey, handleLdapiErr(err))
 	}
 
-	// LaunchDarkly's api does not allow some fields to be passed in during segment creation so we do an update:
+	// ld's api does not allow some fields to be passed in during segment creation so we do an update:
 	// https://apidocs.launchdarkly.com/reference#create-segment
 	err = resourceSegmentUpdate(d, metaRaw)
 	if err != nil {
@@ -113,7 +113,7 @@ func resourceSegmentRead(d *schema.ResourceData, metaRaw interface{}) error {
 	envKey := d.Get(env_key).(string)
 	segmentKey := d.Get(key).(string)
 
-	segment, _, err := client.LaunchDarkly.UserSegmentsApi.GetUserSegment(client.Ctx, projectKey, envKey, segmentKey)
+	segment, _, err := client.ld.UserSegmentsApi.GetUserSegment(client.ctx, projectKey, envKey, segmentKey)
 
 	if err != nil {
 		return fmt.Errorf("failed to get segment %q of project %q: %s", segmentKey, projectKey, handleLdapiErr(err))
@@ -160,7 +160,7 @@ func resourceSegmentUpdate(d *schema.ResourceData, metaRaw interface{}) error {
 		patchReplace("/excluded", excluded),
 	}
 
-	_, _, err := client.LaunchDarkly.UserSegmentsApi.PatchUserSegment(client.Ctx, projectKey, envKey, key, patch)
+	_, _, err := client.ld.UserSegmentsApi.PatchUserSegment(client.ctx, projectKey, envKey, key, patch)
 	if err != nil {
 		return fmt.Errorf("failed to update segment %q in project %q: %s", key, projectKey, handleLdapiErr(err))
 	}
@@ -174,7 +174,7 @@ func resourceSegmentDelete(d *schema.ResourceData, metaRaw interface{}) error {
 	envKey := d.Get(env_key).(string)
 	key := d.Get(key).(string)
 
-	_, err := client.LaunchDarkly.UserSegmentsApi.DeleteUserSegment(client.Ctx, projectKey, envKey, key)
+	_, err := client.ld.UserSegmentsApi.DeleteUserSegment(client.ctx, projectKey, envKey, key)
 	if err != nil {
 		return fmt.Errorf("failed to delete segment %q from project %q: %s", key, projectKey, handleLdapiErr(err))
 	}
@@ -188,7 +188,7 @@ func resourceSegmentExists(d *schema.ResourceData, metaRaw interface{}) (bool, e
 	envKey := d.Get(env_key).(string)
 	key := d.Get(key).(string)
 
-	_, httpResponse, err := client.LaunchDarkly.UserSegmentsApi.GetUserSegment(client.Ctx, projectKey, envKey, key)
+	_, httpResponse, err := client.ld.UserSegmentsApi.GetUserSegment(client.ctx, projectKey, envKey, key)
 	if httpResponse != nil && httpResponse.StatusCode == 404 {
 		return false, nil
 	}
