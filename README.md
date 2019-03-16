@@ -18,7 +18,7 @@ Building The Provider
 This project uses [go modules](https://github.com/golang/go/wiki/Modules)
 
 1. Clone the project: `git clone https://github.com/launchdarkly/terraform-provider-launchdarkly`
-1. make build
+1. `make build`
 
 Run unit tests:
 `make test`
