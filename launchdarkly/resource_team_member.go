@@ -83,11 +83,11 @@ func resourceTeamMemberCreate(d *schema.ResourceData, metaRaw interface{}) error
 
 func resourceTeamMemberRead(d *schema.ResourceData, metaRaw interface{}) error {
 	client := metaRaw.(*Client)
-	memberId := d.Id()
+	memberID := d.Id()
 
-	member, _, err := client.ld.TeamMembersApi.GetMember(client.ctx, memberId)
+	member, _, err := client.ld.TeamMembersApi.GetMember(client.ctx, memberID)
 	if err != nil {
-		return fmt.Errorf("failed to get member with id %q: %v", memberId, err)
+		return fmt.Errorf("failed to get member with id %q: %v", memberID, err)
 	}
 
 	d.SetId(member.Id)
@@ -105,7 +105,7 @@ func resourceTeamMemberRead(d *schema.ResourceData, metaRaw interface{}) error {
 
 func resourceTeamMemberUpdate(d *schema.ResourceData, metaRaw interface{}) error {
 	client := metaRaw.(*Client)
-	memberId := d.Id()
+	memberID := d.Id()
 	memberRole := d.Get(role).(string)
 	customRolesRaw := d.Get(custom_roles).(*schema.Set).List()
 
@@ -115,9 +115,9 @@ func resourceTeamMemberUpdate(d *schema.ResourceData, metaRaw interface{}) error
 		patchReplace("/customRoles", &customRolesRaw),
 	}
 
-	_, _, err := client.ld.TeamMembersApi.PatchMember(client.ctx, memberId, patch)
+	_, _, err := client.ld.TeamMembersApi.PatchMember(client.ctx, memberID, patch)
 	if err != nil {
-		return fmt.Errorf("failed to update team member with id %q: %s", memberId, handleLdapiErr(err))
+		return fmt.Errorf("failed to update team member with id %q: %s", memberID, handleLdapiErr(err))
 	}
 
 	return resourceTeamMemberRead(d, metaRaw)
@@ -138,13 +138,13 @@ func resourceTeamMemberExists(d *schema.ResourceData, metaRaw interface{}) (bool
 	return teamMemberExists(d.Id(), metaRaw.(*Client))
 }
 
-func teamMemberExists(memberId string, meta *Client) (bool, error) {
-	_, httpResponse, err := meta.ld.TeamMembersApi.GetMember(meta.ctx, memberId)
+func teamMemberExists(memberID string, meta *Client) (bool, error) {
+	_, httpResponse, err := meta.ld.TeamMembersApi.GetMember(meta.ctx, memberID)
 	if httpResponse != nil && httpResponse.StatusCode == 404 {
 		return false, nil
 	}
 	if err != nil {
-		return false, fmt.Errorf("failed to get team member with id %q: %v", memberId, handleLdapiErr(err))
+		return false, fmt.Errorf("failed to get team member with id %q: %v", memberID, handleLdapiErr(err))
 	}
 
 	return true, nil

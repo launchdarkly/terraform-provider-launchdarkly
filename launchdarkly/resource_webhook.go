@@ -45,13 +45,13 @@ func resourceWebhook() *schema.Resource {
 
 func resourceWebhookCreate(d *schema.ResourceData, metaRaw interface{}) error {
 	client := metaRaw.(*Client)
-	webhookUrl := d.Get(url).(string)
+	webhookURL := d.Get(url).(string)
 	webhookSecret := d.Get(secret).(string)
 	webhookOn := d.Get(on).(bool)
 	webhookName := d.Get(name).(string)
 
 	webhookBody := ldapi.WebhookBody{
-		Url:    webhookUrl,
+		Url:    webhookURL,
 		Secret: webhookSecret,
 		On:     webhookOn,
 		Name:   webhookName,
@@ -81,11 +81,11 @@ func resourceWebhookCreate(d *schema.ResourceData, metaRaw interface{}) error {
 
 func resourceWebhookRead(d *schema.ResourceData, metaRaw interface{}) error {
 	client := metaRaw.(*Client)
-	webhookId := d.Id()
+	webhookID := d.Id()
 
-	webhook, _, err := client.ld.WebhooksApi.GetWebhook(client.ctx, webhookId)
+	webhook, _, err := client.ld.WebhooksApi.GetWebhook(client.ctx, webhookID)
 	if err != nil {
-		return fmt.Errorf("failed to get webhook with id %q: %s", webhookId, handleLdapiErr(err))
+		return fmt.Errorf("failed to get webhook with id %q: %s", webhookID, handleLdapiErr(err))
 	}
 
 	d.Set(url, webhook.Url)
@@ -94,31 +94,31 @@ func resourceWebhookRead(d *schema.ResourceData, metaRaw interface{}) error {
 	d.Set(name, webhook.Name)
 	err = d.Set(tags, webhook.Tags)
 	if err != nil {
-		return fmt.Errorf("failed to set tags on webhook with id %q: %v", webhookId, err)
+		return fmt.Errorf("failed to set tags on webhook with id %q: %v", webhookID, err)
 	}
 	return nil
 }
 
 func resourceWebhookUpdate(d *schema.ResourceData, metaRaw interface{}) error {
 	client := metaRaw.(*Client)
-	webhookId := d.Id()
-	webhookUrl := d.Get(url).(string)
+	webhookID := d.Id()
+	webhookURL := d.Get(url).(string)
 	webhookSecret := d.Get(secret).(string)
 	webhookOn := d.Get(on).(bool)
 	webhookName := d.Get(name).(string)
 	webhookTags := stringsFromResourceData(d, tags)
 
 	patch := []ldapi.PatchOperation{
-		patchReplace("/url", &webhookUrl),
+		patchReplace("/url", &webhookURL),
 		patchReplace("/secret", &webhookSecret),
 		patchReplace("/on", &webhookOn),
 		patchReplace("/name", &webhookName),
 		patchReplace("/tags", &webhookTags),
 	}
 
-	_, _, err := client.ld.WebhooksApi.PatchWebhook(client.ctx, webhookId, patch)
+	_, _, err := client.ld.WebhooksApi.PatchWebhook(client.ctx, webhookID, patch)
 	if err != nil {
-		return fmt.Errorf("failed to update webhook with id %q: %s", webhookId, handleLdapiErr(err))
+		return fmt.Errorf("failed to update webhook with id %q: %s", webhookID, handleLdapiErr(err))
 	}
 
 	return resourceWebhookRead(d, metaRaw)
@@ -126,11 +126,11 @@ func resourceWebhookUpdate(d *schema.ResourceData, metaRaw interface{}) error {
 
 func resourceWebhookDelete(d *schema.ResourceData, metaRaw interface{}) error {
 	client := metaRaw.(*Client)
-	webhookId := d.Id()
+	webhookID := d.Id()
 
-	_, err := client.ld.WebhooksApi.DeleteWebhook(client.ctx, webhookId)
+	_, err := client.ld.WebhooksApi.DeleteWebhook(client.ctx, webhookID)
 	if err != nil {
-		return fmt.Errorf("failed to delete webhook with id %q: %s", webhookId, handleLdapiErr(err))
+		return fmt.Errorf("failed to delete webhook with id %q: %s", webhookID, handleLdapiErr(err))
 	}
 
 	return nil
@@ -140,13 +140,13 @@ func resourceWebhookExists(d *schema.ResourceData, metaRaw interface{}) (bool, e
 	return webhookExists(d.Id(), metaRaw.(*Client))
 }
 
-func webhookExists(webhookId string, meta *Client) (bool, error) {
-	_, httpResponse, err := meta.ld.WebhooksApi.GetWebhook(meta.ctx, webhookId)
+func webhookExists(webhookID string, meta *Client) (bool, error) {
+	_, httpResponse, err := meta.ld.WebhooksApi.GetWebhook(meta.ctx, webhookID)
 	if httpResponse != nil && httpResponse.StatusCode == 404 {
 		return false, nil
 	}
 	if err != nil {
-		return false, fmt.Errorf("failed to get webhook with id %q: %s", webhookId, handleLdapiErr(err))
+		return false, fmt.Errorf("failed to get webhook with id %q: %s", webhookID, handleLdapiErr(err))
 	}
 
 	return true, nil

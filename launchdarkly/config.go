@@ -3,7 +3,8 @@ package launchdarkly
 import (
 	"context"
 	"errors"
-	"github.com/launchdarkly/api-client-go"
+
+	ldapi "github.com/launchdarkly/api-client-go"
 )
 
 // Client is used by the provider to access the ld API.
@@ -13,7 +14,7 @@ type Client struct {
 	ctx    context.Context
 }
 
-func NewClient(apiKey string) (*Client, error) {
+func newClient(apiKey string) (*Client, error) {
 	if apiKey == "" {
 		return nil, errors.New("apiKey cannot be empty")
 	}

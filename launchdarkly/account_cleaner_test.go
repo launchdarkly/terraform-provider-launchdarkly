@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/launchdarkly/api-client-go"
+	ldapi "github.com/launchdarkly/api-client-go"
 	"github.com/stretchr/testify/require"
 )
 
@@ -26,7 +26,7 @@ func TestCleanAccount(t *testing.T) {
 }
 
 func cleanAccount() error {
-	c, err := NewClient(os.Getenv(launchDarklyApiKeyEnvVar))
+	c, err := newClient(os.Getenv(launchDarklyAPIKeyEnvVar))
 	if err != nil {
 		return err
 	}

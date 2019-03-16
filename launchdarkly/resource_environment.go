@@ -36,13 +36,13 @@ func resourceEnvironmentCreate(d *schema.ResourceData, metaRaw interface{}) erro
 	key := d.Get(key).(string)
 	name := d.Get(name).(string)
 	color := d.Get(color).(string)
-	defaultTtl := float32(d.Get(default_ttl).(float64))
+	defaultTTL := float32(d.Get(default_ttl).(float64))
 
 	envPost := ldapi.EnvironmentPost{
 		Name:       name,
 		Key:        key,
 		Color:      color,
-		DefaultTtl: defaultTtl,
+		DefaultTtl: defaultTTL,
 	}
 
 	_, _, err := client.ld.EnvironmentsApi.PostEnvironment(client.ctx, projectKey, envPost)

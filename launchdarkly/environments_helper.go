@@ -66,15 +66,15 @@ func environmentPostFromResourceData(env interface{}) ldapi.EnvironmentPost {
 		Color: envMap[color].(string),
 	}
 
-	if defaultTtl, ok := envMap[default_ttl]; ok {
+	if defaultTTL, ok := envMap[default_ttl]; ok {
 		// What's up with the type assertions/casting?
 		// 1. terraform stores the value as an untyped float64, so we coerce float64 from the interface{}
 		// 2. ld api expects a float32 so we cast it to float32
 
 		//TODO: figure out how to not have to do this
-		if f64, ok := defaultTtl.(float64); ok {
+		if f64, ok := defaultTTL.(float64); ok {
 			envPost.DefaultTtl = float32(f64)
-		} else if f32, ok := defaultTtl.(float32); ok {
+		} else if f32, ok := defaultTTL.(float32); ok {
 			envPost.DefaultTtl = f32
 		}
 	}

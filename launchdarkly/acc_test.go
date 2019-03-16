@@ -366,7 +366,7 @@ func testAcc(t *testing.T, resourceName string, config ...string) {
 }
 
 func checkCredentialsEnvVar(t *testing.T) {
-	if v := os.Getenv(launchDarklyApiKeyEnvVar); v == "" {
-		t.Errorf("%s env var must be set for acceptance tests", launchDarklyApiKeyEnvVar)
+	if v := os.Getenv(launchDarklyAPIKeyEnvVar); v == "" {
+		t.Errorf("%s env var must be set for acceptance tests", launchDarklyAPIKeyEnvVar)
 	}
 }

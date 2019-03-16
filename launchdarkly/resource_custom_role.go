@@ -62,11 +62,11 @@ func resourceCustomRoleCreate(d *schema.ResourceData, metaRaw interface{}) error
 
 func resourceCustomRoleRead(d *schema.ResourceData, metaRaw interface{}) error {
 	client := metaRaw.(*Client)
-	customRoleId := d.Id()
+	customRoleID := d.Id()
 
-	customRole, _, err := client.ld.CustomRolesApi.GetCustomRole(client.ctx, customRoleId)
+	customRole, _, err := client.ld.CustomRolesApi.GetCustomRole(client.ctx, customRoleID)
 	if err != nil {
-		return fmt.Errorf("failed to get custom role with id %q: %s", customRoleId, handleLdapiErr(err))
+		return fmt.Errorf("failed to get custom role with id %q: %s", customRoleID, handleLdapiErr(err))
 	}
 
 	d.Set(key, customRole.Key)
@@ -74,7 +74,7 @@ func resourceCustomRoleRead(d *schema.ResourceData, metaRaw interface{}) error {
 	d.Set(description, customRole.Description)
 	err = d.Set(policy, policiesToResourceData(customRole.Policy))
 	if err != nil {
-		return fmt.Errorf("could not set policy on custom role with id %q: %v", customRoleId, err)
+		return fmt.Errorf("could not set policy on custom role with id %q: %v", customRoleID, err)
 	}
 	return nil
 }

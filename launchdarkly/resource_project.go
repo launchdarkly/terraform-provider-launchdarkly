@@ -79,8 +79,8 @@ func resourceProjectCreate(d *schema.ResourceData, metaRaw interface{}) error {
 		var patch []ldapi.PatchOperation
 
 		// optional fields:
-		if defaultTtl, ok := envMap[default_ttl]; ok {
-			patch = append(patch, patchReplace("/defaultTtl", &defaultTtl))
+		if defaultTTL, ok := envMap[default_ttl]; ok {
+			patch = append(patch, patchReplace("/defaultTtl", &defaultTTL))
 		}
 
 		if secureMode, ok := envMap[secure_mode]; ok {
