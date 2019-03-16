@@ -67,14 +67,14 @@ func resourceSegmentCreate(d *schema.ResourceData, metaRaw interface{}) error {
 		if err != nil {
 			return err
 		}
-		return fmt.Errorf("Cannot find project with key %q", projectKey)
+		return fmt.Errorf("failed to find project with key %q", projectKey)
 	}
 
 	if exists, err := environmentExists(projectKey, envKey, client); !exists {
 		if err != nil {
 			return err
 		}
-		return fmt.Errorf("Cannot find environment with key %q", envKey)
+		return fmt.Errorf("failed to find environment with key %q", envKey)
 	}
 
 	key := d.Get(key).(string)
@@ -92,7 +92,7 @@ func resourceSegmentCreate(d *schema.ResourceData, metaRaw interface{}) error {
 	_, _, err := client.LaunchDarkly.UserSegmentsApi.PostUserSegment(client.Ctx, projectKey, envKey, segment)
 
 	if err != nil {
-		return fmt.Errorf("Failed to create segment %q in project %q: %s", key, projectKey, err)
+		return fmt.Errorf("failed to create segment %q in project %q: %s", key, projectKey, err)
 	}
 
 	// LaunchDarkly's api does not allow some fields to be passed in during segment creation so we do an update:
@@ -110,19 +110,32 @@ func resourceSegmentRead(d *schema.ResourceData, metaRaw interface{}) error {
 	client := metaRaw.(*Client)
 	projectKey := d.Get(project_key).(string)
 	envKey := d.Get(env_key).(string)
-	key := d.Get(key).(string)
+	segmentKey := d.Get(key).(string)
 
-	segment, _, err := client.LaunchDarkly.UserSegmentsApi.GetUserSegment(client.Ctx, projectKey, envKey, key)
+	segment, _, err := client.LaunchDarkly.UserSegmentsApi.GetUserSegment(client.Ctx, projectKey, envKey, segmentKey)
 
 	if err != nil {
-		return fmt.Errorf("Failed to get segment %q of project %q: %s", key, projectKey, err)
+		return fmt.Errorf("failed to get segment %q of project %q: %s", segmentKey, projectKey, err)
 	}
 
 	d.Set(name, segment.Name)
 	d.Set(description, segment.Description)
-	d.Set(tags, segment.Tags)
-	d.Set(included, segment.Included)
-	d.Set(excluded, segment.Excluded)
+
+	err = d.Set(tags, segment.Tags)
+	if err != nil {
+		return fmt.Errorf("could not set tags on segment with key %q: %v", segmentKey, err)
+	}
+
+	err = d.Set(included, segment.Included)
+	if err != nil {
+		return fmt.Errorf("could not set included on segment with key %q: %v", segmentKey, err)
+	}
+
+	err = d.Set(excluded, segment.Excluded)
+	if err != nil {
+		return fmt.Errorf("could not set excluded on segment with key %q: %v", segmentKey, err)
+	}
+
 	return nil
 }
 
@@ -148,7 +161,7 @@ func resourceSegmentUpdate(d *schema.ResourceData, metaRaw interface{}) error {
 
 	_, _, err := client.LaunchDarkly.UserSegmentsApi.PatchUserSegment(client.Ctx, projectKey, envKey, key, patch)
 	if err != nil {
-		return fmt.Errorf("Failed to update segment %q in project %q: %s", key, projectKey, err)
+		return fmt.Errorf("failed to update segment %q in project %q: %s", key, projectKey, err)
 	}
 
 	return resourceSegmentRead(d, metaRaw)
@@ -162,7 +175,7 @@ func resourceSegmentDelete(d *schema.ResourceData, metaRaw interface{}) error {
 
 	_, err := client.LaunchDarkly.UserSegmentsApi.DeleteUserSegment(client.Ctx, projectKey, envKey, key)
 	if err != nil {
-		return fmt.Errorf("Failed to delete segment %q from project %q: %s", key, projectKey, err)
+		return fmt.Errorf("failed to delete segment %q from project %q: %s", key, projectKey, err)
 	}
 
 	return nil
@@ -179,7 +192,7 @@ func resourceSegmentExists(d *schema.ResourceData, metaRaw interface{}) (bool, e
 		return false, nil
 	}
 	if err != nil {
-		return false, fmt.Errorf("Failed to check if segment %q exists in project %q: %s", key, projectKey, err)
+		return false, fmt.Errorf("failed to check if segment %q exists in project %q: %s", key, projectKey, err)
 	}
 	return true, nil
 }
@@ -193,12 +206,11 @@ func resourceSegmentImport(d *schema.ResourceData, meta interface{}) ([]*schema.
 
 	parts := strings.SplitN(d.Id(), "/", 3)
 
-	projectKey, envKey, key := parts[0], parts[1], parts[2]
+	projectKey, envKey, segmentKey := parts[0], parts[1], parts[2]
 
 	d.Set(project_key, projectKey)
 	d.Set(env_key, envKey)
-	d.Set(key, key)
-	d.SetId(key)
+	d.Set(key, segmentKey)
 
 	if err := resourceSegmentRead(d, meta); err != nil {
 		return nil, err

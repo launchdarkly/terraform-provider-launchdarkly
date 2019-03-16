@@ -1,6 +1,7 @@
 package launchdarkly
 
 import (
+	"fmt"
 	"github.com/hashicorp/terraform/helper/schema"
 	"github.com/launchdarkly/api-client-go"
 	"github.com/pkg/errors"
@@ -56,13 +57,6 @@ func resourceCustomRoleCreate(d *schema.ResourceData, metaRaw interface{}) error
 	}
 
 	d.SetId(customRoleKey)
-
-	// LaunchDarkly's api does not allow tags to be passed in during webhook creation so we do an update
-	//err = resourceWebhookUpdate(d, metaRaw)
-	//if err != nil {
-	//	return errors.Wrapf(err, "During webhook creation. Webhook name: %q", webhookName)
-	//}
-
 	return resourceCustomRoleRead(d, metaRaw)
 }
 
@@ -78,7 +72,10 @@ func resourceCustomRoleRead(d *schema.ResourceData, metaRaw interface{}) error {
 	d.Set(key, customRole.Key)
 	d.Set(name, customRole.Name)
 	d.Set(description, customRole.Description)
-	d.Set(policy, policiesToResourceData(customRole.Policy))
+	err = d.Set(policy, policiesToResourceData(customRole.Policy))
+	if err != nil {
+		return fmt.Errorf("could not set policy on custom role with id %q: %v", customRoleId, err)
+	}
 	return nil
 }
 

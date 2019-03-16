@@ -1,6 +1,7 @@
 package launchdarkly
 
 import (
+	"fmt"
 	"github.com/hashicorp/terraform/helper/schema"
 	"github.com/launchdarkly/api-client-go"
 	"github.com/pkg/errors"
@@ -90,7 +91,10 @@ func resourceWebhookRead(d *schema.ResourceData, metaRaw interface{}) error {
 	d.Set(secret, webhook.Secret)
 	d.Set(on, webhook.On)
 	d.Set(name, webhook.Name)
-	d.Set(tags, webhook.Tags)
+	err = d.Set(tags, webhook.Tags)
+	if err != nil {
+		return fmt.Errorf("could not set tags on webhook with id %q: %v", webhookId, err)
+	}
 	return nil
 }
 

@@ -3,7 +3,6 @@ package launchdarkly
 const (
 	// keys used in terraform files referencing keys in launchdarkly resource objects.
 	// The name of each constant is the same as its value.
-	defaultProjectKey    = "default"
 	project_key          = "project_key"
 	env_key              = "env_key"
 	key                  = "key"
@@ -21,7 +20,6 @@ const (
 	temporary            = "temporary"
 	include_in_snippet   = "include_in_snippet"
 	value                = "value"
-	variation_type       = "variation_type"
 	url                  = "url"
 	secret               = "secret"
 	sign                 = "sign"

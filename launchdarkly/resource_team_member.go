@@ -43,7 +43,7 @@ func resourceTeamMember() *schema.Resource {
 			},
 			custom_roles: &schema.Schema{
 				Type:     schema.TypeSet,
-				Set:      stringHash,
+				Set:      schema.HashString,
 				Elem:     &schema.Schema{Type: schema.TypeString},
 				Optional: true,
 			},
@@ -74,11 +74,7 @@ func resourceTeamMemberCreate(d *schema.ResourceData, metaRaw interface{}) error
 
 	members, _, err := client.LaunchDarkly.TeamMembersApi.PostMembers(client.Ctx, []ldapi.MembersBody{membersBody})
 	if err != nil {
-		if swaggerErr, ok := err.(ldapi.GenericSwaggerError); ok {
-			return fmt.Errorf("failed to create team member with email: %s: %v %s", memberEmail, swaggerErr.Error(), swaggerErr.Body())
-		}
-
-		return fmt.Errorf("failed to create team member with email: %s: %v", memberEmail, err)
+		return fmt.Errorf("failed to create team member with email: %s: %v", memberEmail, handleLdapiErr(err))
 	}
 
 	d.SetId(members.Items[0].Id)
@@ -100,8 +96,10 @@ func resourceTeamMemberRead(d *schema.ResourceData, metaRaw interface{}) error {
 	d.Set(first_name, member.FirstName)
 	d.Set(last_name, member.LastName)
 	d.Set(role, member.Role)
-	d.Set(custom_roles, member.CustomRoles)
-
+	err = d.Set(custom_roles, member.CustomRoles)
+	if err != nil {
+		return fmt.Errorf("could not set custom roles on team member with id %q: %v", member.Id, err)
+	}
 	return nil
 }
 
@@ -156,7 +154,6 @@ func teamMemberExists(memberId string, meta *Client) (bool, error) {
 }
 
 func resourceTeamMemberImport(d *schema.ResourceData, meta interface{}) ([]*schema.ResourceData, error) {
-	d.SetId(d.Id())
 	d.Set(_id, d.Id())
 
 	if err := resourceTeamMemberRead(d, meta); err != nil {

@@ -1,14 +1,13 @@
 package launchdarkly
 
 import (
-	"github.com/hashicorp/terraform/helper/hashcode"
 	"github.com/hashicorp/terraform/helper/schema"
 )
 
 func tagsSchema() *schema.Schema {
 	return &schema.Schema{
 		Type:     schema.TypeSet,
-		Set:      stringHash,
+		Set:      schema.HashString,
 		Elem:     &schema.Schema{Type: schema.TypeString},
 		Optional: true,
 	}
@@ -24,9 +23,4 @@ func stringsFromSchemaSet(schemaSet *schema.Set) []string {
 		strs[i] = tag.(string)
 	}
 	return strs
-}
-
-// https://godoc.org/github.com/hashicorp/terraform/helper/schema#SchemaSetFunc
-func stringHash(value interface{}) int {
-	return hashcode.String(value.(string))
 }

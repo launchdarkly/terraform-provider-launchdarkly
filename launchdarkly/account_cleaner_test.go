@@ -10,7 +10,7 @@ import (
 )
 
 func TestCleanAccount(t *testing.T) {
-	t.SkipNow()
+	//t.SkipNow()
 	apiKey := os.Getenv(launchDarklyApiKeyEnvVar)
 	require.NotEmpty(t, apiKey)
 

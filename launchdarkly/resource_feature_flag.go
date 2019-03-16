@@ -40,8 +40,7 @@ func resourceFeatureFlag() *schema.Resource {
 				Type:     schema.TypeString,
 				Optional: true,
 			},
-			variation_type: variationTypeSchema(),
-			variations:     variationsSchema(),
+			variations: variationsSchema(),
 			temporary: {
 				Type:     schema.TypeBool,
 				Optional: true,
@@ -76,9 +75,7 @@ func resourceFeatureFlagCreate(d *schema.ResourceData, metaRaw interface{}) erro
 	includeInSnippet := d.Get(include_in_snippet).(bool)
 	temporary := d.Get(temporary).(bool)
 
-	variationType := d.Get(variation_type).(string)
-
-	variations, err := variationsFromResourceData(d, variationType)
+	variations, err := variationsFromResourceData(d)
 	if err != nil {
 		return fmt.Errorf("Failed to create flag %q in project %q: %s", key, projectKey, err)
 	}
@@ -126,11 +123,23 @@ func resourceFeatureFlagRead(d *schema.ResourceData, metaRaw interface{}) error 
 	d.Set(key, flag.Key)
 	d.Set(name, flag.Name)
 	d.Set(description, flag.Description)
-	d.Set(variations, variationsToResourceData(flag.Variations))
-	d.Set(tags, flag.Tags)
 	d.Set(include_in_snippet, flag.IncludeInSnippet)
 	d.Set(temporary, flag.Temporary)
-	d.Set(custom_properties, transformedCustomProperties)
+
+	err = d.Set(variations, variationsToResourceData(flag.Variations))
+	if err != nil {
+		return fmt.Errorf("could not set variations on flag with key %q: %v", flag.Key, err)
+	}
+
+	err = d.Set(tags, flag.Tags)
+	if err != nil {
+		return fmt.Errorf("could not set tags on flag with key %q: %v", flag.Key, err)
+	}
+
+	err = d.Set(custom_properties, transformedCustomProperties)
+	if err != nil {
+		return fmt.Errorf("could not set custom properties on flag with key %q: %v", flag.Key, err)
+	}
 	return nil
 }
 
@@ -198,11 +207,8 @@ func resourceFeatureFlagImport(d *schema.ResourceData, meta interface{}) ([]*sch
 	if strings.Count(id, "/") != 1 {
 		return nil, fmt.Errorf("found unexpected flag id format: %q expected format: 'project_key/flag_key'", id)
 	}
-
 	parts := strings.SplitN(d.Id(), "/", 2)
-
 	projectKey, flagKey := parts[0], parts[1]
-
 	d.Set(project_key, projectKey)
 	d.Set(key, flagKey)
 

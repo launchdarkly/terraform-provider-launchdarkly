@@ -24,7 +24,6 @@ func resourceProject() *schema.Resource {
 			key: &schema.Schema{
 				Type:     schema.TypeString,
 				Required: true,
-				ForceNew: true,
 			},
 			name: &schema.Schema{
 				Type:     schema.TypeString,
@@ -32,9 +31,10 @@ func resourceProject() *schema.Resource {
 			},
 			tags: tagsSchema(),
 			environments: &schema.Schema{
-				Type:     schema.TypeSet,
-				Set:      environmentHash,
-				Optional: true,
+				Type: schema.TypeSet,
+				Set:  environmentHash,
+				// TODO: set a default environment or allow none and use LD's default environments.
+				Required: true,
 				Elem: &schema.Resource{
 					Schema: environmentSchema(),
 				},
@@ -60,7 +60,7 @@ func resourceProjectCreate(d *schema.ResourceData, metaRaw interface{}) error {
 
 	_, _, err := client.LaunchDarkly.ProjectsApi.PostProject(client.Ctx, projectBody)
 	if err != nil {
-		return fmt.Errorf("failed to create project with name %s and projectKey %s: %v", name, projectKey, err)
+		return fmt.Errorf("failed to create project with name %s and projectKey %s: %v", name, projectKey, handleLdapiErr(err))
 	}
 
 	// LaunchDarkly's api does not allow tags to be passed in during project creation so we do an update
@@ -91,10 +91,6 @@ func resourceProjectCreate(d *schema.ResourceData, metaRaw interface{}) error {
 			patch = append(patch, patchReplace("/defaultTrackEvents", &defaultTrackEvents))
 		}
 
-		if tagSet, ok := envMap[tags]; ok {
-			tagSet = stringsFromSchemaSet(tagSet.(*schema.Set))
-			patch = append(patch, patchReplace("/tags", &tagSet))
-		}
 		if len(patch) > 0 {
 			_, _, err := client.LaunchDarkly.EnvironmentsApi.PatchEnvironment(client.Ctx, projectKey, envKey, patch)
 			if err != nil {
@@ -115,10 +111,18 @@ func resourceProjectRead(d *schema.ResourceData, metaRaw interface{}) error {
 		return fmt.Errorf("failed to get project with key %q: %v", projectKey, err)
 	}
 
-	d.Set(environments, environmentsToResourceData(project.Environments))
 	d.Set(key, project.Key)
 	d.Set(name, project.Name)
-	d.Set(tags, project.Tags)
+
+	envsRaw := environmentsToResourceData(project.Environments)
+	err = d.Set(environments, envsRaw)
+	if err != nil {
+		return fmt.Errorf("could not set environments on project with key %q: %v", project.Key, err)
+	}
+	err = d.Set(tags, project.Tags)
+	if err != nil {
+		return fmt.Errorf("could not set tags on project with key %q: %v", project.Key, err)
+	}
 	return nil
 }
 
@@ -135,7 +139,7 @@ func resourceProjectUpdate(d *schema.ResourceData, metaRaw interface{}) error {
 
 	_, _, err := client.LaunchDarkly.ProjectsApi.PatchProject(client.Ctx, projectKey, patch)
 	if err != nil {
-		return fmt.Errorf("failed to update project with key %q: %s", projectKey, err)
+		return fmt.Errorf("failed to update project with key %q: %s", projectKey, handleLdapiErr(err))
 	}
 
 	return resourceProjectRead(d, metaRaw)
@@ -147,7 +151,7 @@ func resourceProjectDelete(d *schema.ResourceData, metaRaw interface{}) error {
 
 	_, err := client.LaunchDarkly.ProjectsApi.DeleteProject(client.Ctx, projectKey)
 	if err != nil {
-		return fmt.Errorf("failed to delete project with key %q: %s", projectKey, err)
+		return fmt.Errorf("failed to delete project with key %q: %s", projectKey, handleLdapiErr(err))
 	}
 
 	return nil
@@ -164,14 +168,13 @@ func projectExists(projectKey string, meta *Client) (bool, error) {
 		return false, nil
 	}
 	if err != nil {
-		return false, fmt.Errorf("failed to get project with key %q: %v", projectKey, err)
+		return false, fmt.Errorf("failed to get project with key %q: %v", projectKey, handleLdapiErr(err))
 	}
 
 	return true, nil
 }
 
 func resourceProjectImport(d *schema.ResourceData, meta interface{}) ([]*schema.ResourceData, error) {
-	d.SetId(d.Id())
 	d.Set(key, d.Id())
 
 	if err := resourceProjectRead(d, meta); err != nil {

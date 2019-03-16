@@ -1,6 +1,6 @@
-resource "launchdarkly_project" "exampleproject1" {
+resource "launchdarkly_project" "exampleproject2" {
   name = "example-project"
-  key = "example-project"
+  key = "example-project2"
   tags = [
     "terraform"]
   environments = [
@@ -21,19 +21,13 @@ resource "launchdarkly_environment" "staging" {
   color = "ff00ff"
   secure_mode = true
   default_track_events = false
-  tags = [
-    "tags",
-    "are",
-    "not",
-    "ordered",
-  ],
   default_ttl = 100.0
 
-  project_key = "${launchdarkly_project.exampleproject1.key}"
+  project_key = "${launchdarkly_project.exampleproject2.key}"
 }
 
 resource "launchdarkly_feature_flag" "boolean-flag-1" {
-  project_key = "${launchdarkly_project.exampleproject1.key}"
+  project_key = "${launchdarkly_project.exampleproject2.key}"
   key = "boolean-flag-1"
   name = "boolean-flag-1 name"
   description = "this is a boolean flag by default because we omitted the variations field"
@@ -41,11 +35,10 @@ resource "launchdarkly_feature_flag" "boolean-flag-1" {
 
 
 resource "launchdarkly_feature_flag" "multivariate-flag-2" {
-  project_key = "${launchdarkly_project.exampleproject1.key}"
+  project_key = "${launchdarkly_project.exampleproject2.key}"
   key = "multivariate-flag-2"
   name = "multivariate-flag-2 name"
   description = "this is a multivariate flag because we explicitly define the variations"
-  variation_type = "string"
   variations = [
     {
       name = "variation1"
@@ -78,25 +71,6 @@ resource "launchdarkly_feature_flag" "multivariate-flag-2" {
       name = "Some Property"
       value = ["very special custom property"]
     }]
-}
-
-
-resource "launchdarkly_feature_flag" "multivariate-flag-3" {
-  project_key = "${launchdarkly_project.exampleproject1.key}"
-  key = "multivariate-flag-3"
-  name = "multivariate-flag-3 with json variations"
-  description = "this is a multivariate flag because we explicitly define the variations"
-  variation_type = "json"
-  variations = [
-    {
-      name = "variation1"
-      description = "a description"
-      value = "{\"key1\": 3}"
-    },
-    {
-      value = "{\"key1\": \"sdfsdf\"}"
-    },
-  ]
 }
 
 output "api_key" {

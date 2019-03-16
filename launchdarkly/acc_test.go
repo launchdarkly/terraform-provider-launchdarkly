@@ -19,12 +19,11 @@ var (
 		"launchdarkly": Provider().(*schema.Provider),
 	}
 
-	projectCreate = `
-resource "launchdarkly_project" "exampleproject1" {
+	projectCreateWithEnv = `
+resource "launchdarkly_project" "exampleproject2" {
   name = "example-project"
-  key = "example-project"
-  tags = [
-    "terraform"]
+  key = "example-project2"
+  tags = [ "terraform" ]
   environments = [
     {
       name = "defined in project post"
@@ -37,13 +36,21 @@ resource "launchdarkly_project" "exampleproject1" {
   ]
 }
 `
-	featureFlagCreate = projectCreate + `
+	featureFlagBooleanCreate = projectCreateWithEnv + `
+resource "launchdarkly_feature_flag" "boolean-flag-1" {
+  project_key = "${launchdarkly_project.exampleproject2.key}"
+  key = "boolean-flag-1"
+  name = "boolean-flag-1 name"
+  description = "this is a boolean flag by default because we omitted the variations field"
+}
+`
+
+	featureFlagMultiVariateCreate = projectCreateWithEnv + `
 resource "launchdarkly_feature_flag" "multivariate-flag-2" {
-  project_key = "${launchdarkly_project.exampleproject1.key}"
+  project_key = "${launchdarkly_project.exampleproject2.key}"
   key = "multivariate-flag-2"
   name = "multivariate-flag-2 name"
   description = "this is a multivariate flag because we explicitly define the variations"
-  variation_type = "string"
   variations = [
     {
       name = "variation1"
@@ -131,7 +138,7 @@ tags = ["segmentTag1", "segmentTag2"]
 `
 )
 
-func TestAccExample(t *testing.T) {
+func TestAccProjectCreateWithEnv(t *testing.T) {
 	//projectKey := "accTestProject"
 
 	resource.Test(t, resource.TestCase{
@@ -143,7 +150,7 @@ func TestAccExample(t *testing.T) {
 		CheckDestroy:              nil,
 		Steps: []resource.TestStep{
 			{
-				Config: projectCreate,
+				Config: projectCreateWithEnv,
 				Check:  resource.ComposeTestCheckFunc(),
 			},
 		},
@@ -152,7 +159,7 @@ func TestAccExample(t *testing.T) {
 	})
 }
 
-func TestFeatureFlagAcc(t *testing.T) {
+func TestFeatureFlagMultiVariateAcc(t *testing.T) {
 	//projectKey := "accTestProject"
 
 	resource.Test(t, resource.TestCase{
@@ -164,7 +171,28 @@ func TestFeatureFlagAcc(t *testing.T) {
 		CheckDestroy:              nil,
 		Steps: []resource.TestStep{
 			{
-				Config: featureFlagCreate,
+				Config: featureFlagMultiVariateCreate,
+				Check:  resource.ComposeTestCheckFunc(),
+			},
+		},
+		IDRefreshName:   "",
+		IDRefreshIgnore: nil,
+	})
+}
+
+func TestFeatureFlagBooleanAcc(t *testing.T) {
+	//projectKey := "accTestProject"
+
+	resource.Test(t, resource.TestCase{
+		IsUnitTest:                false,
+		PreCheck:                  func() { checkCredentialsEnvVar(t) },
+		Providers:                 testAccProviders,
+		ProviderFactories:         nil,
+		PreventPostDestroyRefresh: false,
+		CheckDestroy:              nil,
+		Steps: []resource.TestStep{
+			{
+				Config: featureFlagBooleanCreate,
 				Check:  resource.ComposeTestCheckFunc(),
 			},
 		},

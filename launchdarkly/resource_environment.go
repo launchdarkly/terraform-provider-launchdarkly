@@ -13,7 +13,6 @@ func resourceEnvironment() *schema.Resource {
 	envSchema[project_key] = &schema.Schema{
 		Type:     schema.TypeString,
 		Optional: true,
-		Default:  defaultProjectKey,
 		ForceNew: true,
 	}
 
@@ -81,7 +80,10 @@ func resourceEnvironmentRead(d *schema.ResourceData, metaRaw interface{}) error 
 	d.Set(default_ttl, env.DefaultTtl)
 	d.Set(secure_mode, env.SecureMode)
 	d.Set(default_track_events, env.DefaultTrackEvents)
-	d.Set(tags, env.Tags)
+	//err = d.Set(tags, env.Tags)
+	//if err != nil {
+	//	return fmt.Errorf("could not set tags on environment with key %q: %v", env.Key, err)
+	//}
 	return nil
 }
 
@@ -112,10 +114,10 @@ func resourceEnvironmentUpdate(d *schema.ResourceData, metaRaw interface{}) erro
 		patch = append(patch, patchReplace("/defaultTrackEvents", &defaultTrackEvents))
 	}
 
-	if _, ok := d.GetOk(tags); ok {
-		tagSet := stringsFromResourceData(d, tags)
-		patch = append(patch, patchReplace("/tags", &tagSet))
-	}
+	//if _, ok := d.GetOk(tags); ok {
+	//	tagSet := stringsFromResourceData(d, tags)
+	//	patch = append(patch, patchReplace("/tags", &tagSet))
+	//}
 
 	_, _, err := client.LaunchDarkly.EnvironmentsApi.PatchEnvironment(client.Ctx, projectKey, key, patch)
 	if err != nil {
@@ -167,7 +169,6 @@ func resourceEnvironmentImport(d *schema.ResourceData, meta interface{}) ([]*sch
 
 	d.Set(project_key, projectKey)
 	d.Set(key, envKey)
-	d.SetId(key)
 
 	if err := resourceEnvironmentRead(d, meta); err != nil {
 		return nil, err

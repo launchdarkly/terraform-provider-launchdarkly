@@ -12,14 +12,12 @@ import (
 func TestVariationsFromResourceData(t *testing.T) {
 	testCases := []struct {
 		name          string
-		variationType string
 		variations    map[string]interface{}
 		expected      []ldapi.Variation
 		expectedError error
 	}{
 		{
-			name:          "string variations",
-			variationType: "string",
+			name: "string variations",
 			variations: map[string]interface{}{
 				variations: []map[string]interface{}{
 					{
@@ -40,8 +38,7 @@ func TestVariationsFromResourceData(t *testing.T) {
 			expectedError: nil,
 		},
 		{
-			name:          "float variations",
-			variationType: "float",
+			name: "float variations",
 			variations: map[string]interface{}{
 				variations: []map[string]interface{}{
 					{
@@ -62,8 +59,7 @@ func TestVariationsFromResourceData(t *testing.T) {
 			expectedError: nil,
 		},
 		{
-			name:          "json variations",
-			variationType: "json",
+			name: "json variations",
 			variations: map[string]interface{}{
 				variations: []map[string]interface{}{
 					{
@@ -84,8 +80,7 @@ func TestVariationsFromResourceData(t *testing.T) {
 			expectedError: nil,
 		},
 		{
-			name:          "unparsable float variation",
-			variationType: "float",
+			name: "unparsable float variation",
 			variations: map[string]interface{}{
 				variations: []map[string]interface{}{
 					{
@@ -98,8 +93,7 @@ func TestVariationsFromResourceData(t *testing.T) {
 			expectedError: errors.New("Expected string: \"not a float\" to parse as a float.: strconv.ParseFloat: parsing \"not a float\": invalid syntax"),
 		},
 		{
-			name:          "invalid json",
-			variationType: "json",
+			name: "invalid json",
 			variations: map[string]interface{}{
 				variations: []map[string]interface{}{
 					{
@@ -111,17 +105,6 @@ func TestVariationsFromResourceData(t *testing.T) {
 			expected:      []ldapi.Variation{},
 			expectedError: errors.New("Expected string: \"not actual json\" to be valid json.: invalid character 'o' in literal null (expecting 'u')"),
 		},
-		{
-			name:          "unknown variation type",
-			variationType: "yaml",
-			variations: map[string]interface{}{
-				variations: []map[string]interface{}{
-					{value: `some yaml}`},
-					{value: `some more yaml`},
-				}},
-			expected:      []ldapi.Variation{},
-			expectedError: errors.New("unexpected variation type: \"yaml\" must be one of: string,float,json"),
-		},
 	}
 
 	for _, tc := range testCases {
@@ -131,7 +114,7 @@ func TestVariationsFromResourceData(t *testing.T) {
 				tc.variations,
 			)
 
-			actualVariations, err := variationsFromResourceData(resourceData, tc.variationType)
+			actualVariations, err := variationsFromResourceData(resourceData)
 			if tc.expectedError != nil {
 				require.EqualError(t, err, tc.expectedError.Error())
 			} else {
