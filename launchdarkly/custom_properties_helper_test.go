@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform/helper/schema"
-	"github.com/launchdarkly/api-client-go"
+	ldapi "github.com/launchdarkly/api-client-go"
 	"github.com/stretchr/testify/require"
 )
 

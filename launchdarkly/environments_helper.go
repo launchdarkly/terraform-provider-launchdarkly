@@ -2,7 +2,7 @@ package launchdarkly
 
 import (
 	"github.com/hashicorp/terraform/helper/schema"
-	"github.com/launchdarkly/api-client-go"
+	ldapi "github.com/launchdarkly/api-client-go"
 )
 
 func environmentSchema() map[string]*schema.Schema {

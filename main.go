@@ -1,8 +1,9 @@
 package main
 
 import (
-	"github.com/hashicorp/terraform/plugin"
 	"terraform-provider-launchdarkly/launchdarkly"
+
+	"github.com/hashicorp/terraform/plugin"
 )
 
 func main() {

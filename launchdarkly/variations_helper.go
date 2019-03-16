@@ -2,9 +2,10 @@ package launchdarkly
 
 import (
 	"fmt"
+
 	"github.com/hashicorp/terraform/helper/hashcode"
 	"github.com/hashicorp/terraform/helper/schema"
-	"github.com/launchdarkly/api-client-go"
+	ldapi "github.com/launchdarkly/api-client-go"
 )
 
 func variationsSchema() *schema.Schema {

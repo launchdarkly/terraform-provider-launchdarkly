@@ -4,7 +4,7 @@ all: lint test testacc build
 
 lint:
 	go vet ./...
-	# golint -set_exit_status ./...
+	golint -set_exit_status
 
 test:
 	go test $(TEST) -v $(TESTARGS)

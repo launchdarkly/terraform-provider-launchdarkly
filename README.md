@@ -9,9 +9,9 @@ Currently supported resources:
 - Custom Roles
 
 ## Development requirements:
-- golang 1.11+
+- golang 1.12+ (1.11 should also work)
 - make
-- terraform
+- terraform 0.11.13+
 
 #  WARNING: Use a test/demo account since various make targets/acceptance tests may wipe out all existing projects/settings!!
 

@@ -2,10 +2,11 @@ package launchdarkly
 
 import (
 	"fmt"
+	"sort"
+
 	"github.com/hashicorp/terraform/helper/hashcode"
 	"github.com/hashicorp/terraform/helper/schema"
-	"github.com/launchdarkly/api-client-go"
-	"sort"
+	ldapi "github.com/launchdarkly/api-client-go"
 )
 
 func customPropertiesSchema() *schema.Schema {

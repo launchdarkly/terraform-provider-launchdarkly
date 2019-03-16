@@ -1,11 +1,12 @@
 package launchdarkly
 
 import (
-	"github.com/stretchr/testify/assert"
 	"testing"
 
+	ldapi "github.com/launchdarkly/api-client-go"
+	"github.com/stretchr/testify/assert"
+
 	"github.com/hashicorp/terraform/helper/schema"
-	"github.com/launchdarkly/api-client-go"
 )
 
 func TestVariationsFromResourceData(t *testing.T) {
