@@ -32,3 +32,7 @@ Run example:
 ```
 LAUNCHDARKLY_API_KEY=YOUR_API_KEY make apply
 ```
+
+Known issues:
+------
+1. Tags for environments is not yet supported. Stay tuned.
