@@ -11,11 +11,11 @@
 package ldapi
 
 type Statement struct {
-	Resources *Resources `json:"resources,omitempty"`
+	Resources []string `json:"resources,omitempty"`
 	// Targeted resource will be those resources NOT in this list. The \"resources`\" field must be empty to use this field.
-	Notresources *Resources `json:"notresources,omitempty"`
-	Actions *Actions `json:"actions,omitempty"`
+	Notresources []string `json:"notresources,omitempty"`
+	Actions []string `json:"actions,omitempty"`
 	// Targeted actions will be those actions NOT in this list. The \"actions\" field must be empty to use this field.
-	Notactions *Actions `json:"notactions,omitempty"`
+	Notactions []string `json:"notactions,omitempty"`
 	Effect string `json:"effect,omitempty"`
 }

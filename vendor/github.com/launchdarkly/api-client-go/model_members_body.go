@@ -15,6 +15,6 @@ type MembersBody struct {
 	FirstName string `json:"firstName,omitempty"`
 	LastName string `json:"lastName,omitempty"`
 	Role *Role `json:"role,omitempty"`
-	CustomRoles []CustomRoleKeyOrId `json:"customRoles,omitempty"`
+	CustomRoles []string `json:"customRoles,omitempty"`
 	InlineRole *Statements `json:"inlineRole,omitempty"`
 }

@@ -91,11 +91,11 @@ func resourceTeamMemberRead(d *schema.ResourceData, metaRaw interface{}) error {
 	}
 
 	d.SetId(member.Id)
-	d.Set(_id, member.Id)
-	d.Set(email, member.Email)
-	d.Set(first_name, member.FirstName)
-	d.Set(last_name, member.LastName)
-	d.Set(role, member.Role)
+	_ = d.Set(_id, member.Id)
+	_ = d.Set(email, member.Email)
+	_ = d.Set(first_name, member.FirstName)
+	_ = d.Set(last_name, member.LastName)
+	_ = d.Set(role, member.Role)
 	err = d.Set(custom_roles, member.CustomRoles)
 	if err != nil {
 		return fmt.Errorf("failed to set custom roles on team member with id %q: %v", member.Id, err)
@@ -151,7 +151,7 @@ func teamMemberExists(memberID string, meta *Client) (bool, error) {
 }
 
 func resourceTeamMemberImport(d *schema.ResourceData, meta interface{}) ([]*schema.ResourceData, error) {
-	d.Set(_id, d.Id())
+	_ = d.Set(_id, d.Id())
 
 	if err := resourceTeamMemberRead(d, meta); err != nil {
 		return nil, err

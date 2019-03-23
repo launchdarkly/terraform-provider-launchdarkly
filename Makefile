@@ -1,12 +1,8 @@
+BUILD := $(abspath ./build)
+TOOLS_BIN := $(BUILD)/tools
+
 .DEFAULT_GOAL	:= build
 
-SHELL 	:= /bin/bash
-PKG 		:= github.com/launchdarkly/terraform-provider-launchdarkly
-
-# Pure Go sources (not vendored and not generated)
-GOFILES		= $(shell find . -type f -name '*.go' -not -path "./vendor/*")
-GODIRS		= $(shell go list -f '{{.Dir}}' ./... \
-						| grep -vFf <(go list -f '{{.Dir}}' ./vendor/...))
 # old start:
 all:  check test build
 
@@ -41,43 +37,27 @@ testacc:
 	TF_ACC=1 go test ./launchdarkly -v $(TESTARGS)
 
 .PHONY: check
-check: format.check vet lint
+check: format.check lint
 
 .PHONY: format
-format: tools.goimports
-	@echo "--> formatting code with 'goimports' tool"
-	@goimports -local $(PKG) -w -l $(GOFILES)
+format: tools.golangci-lint
+	@echo "--> formatting code with 'goimports' tool via golangci-lint"
+	$(TOOLS_BIN)/golangci-lint run --disable-all --enable goimports --fix
 
 .PHONY: format.check
-format.check: tools.goimports
-	@echo "--> checking code formatting with 'goimports' tool"
-	@goimports -local $(PKG) -l $(GOFILES) | sed -e "s/^/\?\t/" | tee >(test -z)
-
-.PHONY: vet
-vet:
-	@echo "--> checking code correctness with 'go vet' tool"
-	@go vet ./...
+format.check: tools.golangci-lint
+	@echo "--> checking code formatting with 'goimports' tool via golangci-lint"
+	$(TOOLS_BIN)/golangci-lint run --disable-all --enable goimports
 
 .PHONY: lint
-lint: tools.golint
-	@echo "--> checking code style with 'golint' tool"
-	@echo $(GODIRS) | xargs -n 1 golint | grep -v keys.go || true
+lint: tools.golangci-lint
+	@echo "--> checking code style with golangci-lint"
+	$(TOOLS_BIN)/golangci-lint run
 
 #---------------
 #-- tools
 #---------------
-.PHONY: tools tools.goimports tools.golint
+.PHONY: tools.golangci-lint
 
-tools: tools.goimports tools.golint
-
-tools.goimports:
-	@command -v goimports >/dev/null ; if [ $$? -ne 0 ]; then \
-		echo "--> installing goimports"; \
-		go get golang.org/x/tools/cmd/goimports; \
-	fi
-
-tools.golint:
-	@command -v golint >/dev/null ; if [ $$? -ne 0 ]; then \
-		echo "--> installing golint"; \
-		go get -u golang.org/x/lint/golint; \
-	fi
+tools.golangci-lint:
+	GOBIN=$(TOOLS_BIN) go install -mod=vendor github.com/golangci/golangci-lint/cmd/golangci-lint

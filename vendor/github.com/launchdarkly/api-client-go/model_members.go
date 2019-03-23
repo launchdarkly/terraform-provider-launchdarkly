@@ -12,5 +12,5 @@ package ldapi
 
 type Members struct {
 	Links *Links `json:"_links,omitempty"`
-	Items *Member `json:"items,omitempty"`
+	Items []Member `json:"items,omitempty"`
 }

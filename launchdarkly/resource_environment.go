@@ -72,14 +72,14 @@ func resourceEnvironmentRead(d *schema.ResourceData, metaRaw interface{}) error 
 	}
 
 	d.SetId(projectKey + "/" + key)
-	d.Set(key, env.Key)
-	d.Set(name, env.Name)
-	d.Set(api_key, env.ApiKey)
-	d.Set(mobile_key, env.MobileKey)
-	d.Set(color, env.Color)
-	d.Set(default_ttl, env.DefaultTtl)
-	d.Set(secure_mode, env.SecureMode)
-	d.Set(default_track_events, env.DefaultTrackEvents)
+	_ = d.Set(key, env.Key)
+	_ = d.Set(name, env.Name)
+	_ = d.Set(api_key, env.ApiKey)
+	_ = d.Set(mobile_key, env.MobileKey)
+	_ = d.Set(color, env.Color)
+	_ = d.Set(default_ttl, env.DefaultTtl)
+	_ = d.Set(secure_mode, env.SecureMode)
+	_ = d.Set(default_track_events, env.DefaultTrackEvents)
 	//TODO: tags
 	return nil
 }
@@ -150,8 +150,8 @@ func resourceEnvironmentImport(d *schema.ResourceData, meta interface{}) ([]*sch
 
 	projectKey, envKey := parts[0], parts[1]
 
-	d.Set(project_key, projectKey)
-	d.Set(key, envKey)
+	_ = d.Set(project_key, projectKey)
+	_ = d.Set(key, envKey)
 
 	if err := resourceEnvironmentRead(d, meta); err != nil {
 		return nil, err

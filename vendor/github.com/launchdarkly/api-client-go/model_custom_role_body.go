@@ -15,6 +15,7 @@ type CustomRoleBody struct {
 	Name string `json:"name"`
 	// Description of the custom role.
 	Description string `json:"description,omitempty"`
-	Key *CustomRoleKeyOrId `json:"key"`
+	// The 20-hexdigit id or the key for a custom role.
+	Key string `json:"key"`
 	Policy []Policy `json:"policy"`
 }

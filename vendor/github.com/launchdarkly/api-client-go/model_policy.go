@@ -11,8 +11,8 @@
 package ldapi
 
 type Policy struct {
-	Resources *Resources `json:"resources,omitempty"`
-	Actions *Actions `json:"actions,omitempty"`
+	Resources []string `json:"resources,omitempty"`
+	Actions []string `json:"actions,omitempty"`
 	// Effect of the policy - allow or deny.
 	Effect string `json:"effect,omitempty"`
 }

@@ -16,6 +16,8 @@ type Member struct {
 	Id string `json:"_id,omitempty"`
 	Role *Role `json:"role,omitempty"`
 	Email string `json:"email,omitempty"`
+	FirstName string `json:"firstName,omitempty"`
+	LastName string `json:"lastName,omitempty"`
 	PendingInvite bool `json:"_pendingInvite,omitempty"`
 	IsBeta bool `json:"isBeta,omitempty"`
 	CustomRoles []string `json:"customRoles,omitempty"`

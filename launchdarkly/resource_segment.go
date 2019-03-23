@@ -119,8 +119,8 @@ func resourceSegmentRead(d *schema.ResourceData, metaRaw interface{}) error {
 		return fmt.Errorf("failed to get segment %q of project %q: %s", segmentKey, projectKey, handleLdapiErr(err))
 	}
 
-	d.Set(name, segment.Name)
-	d.Set(description, segment.Description)
+	_ = d.Set(name, segment.Name)
+	_ = d.Set(description, segment.Description)
 
 	err = d.Set(tags, segment.Tags)
 	if err != nil {
@@ -210,9 +210,9 @@ func resourceSegmentImport(d *schema.ResourceData, meta interface{}) ([]*schema.
 
 	projectKey, envKey, segmentKey := parts[0], parts[1], parts[2]
 
-	d.Set(project_key, projectKey)
-	d.Set(env_key, envKey)
-	d.Set(key, segmentKey)
+	_ = d.Set(project_key, projectKey)
+	_ = d.Set(env_key, envKey)
+	_ = d.Set(key, segmentKey)
 
 	if err := resourceSegmentRead(d, meta); err != nil {
 		return nil, err

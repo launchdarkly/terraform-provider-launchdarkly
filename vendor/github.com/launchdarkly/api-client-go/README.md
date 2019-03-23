@@ -78,17 +78,13 @@ Class | Method | HTTP request | Description
 
 ## Documentation For Models
 
- - [Action](docs/Action.md)
- - [Actions](docs/Actions.md)
  - [AuditLogEntries](docs/AuditLogEntries.md)
  - [AuditLogEntry](docs/AuditLogEntry.md)
  - [AuditLogEntryTarget](docs/AuditLogEntryTarget.md)
  - [Clause](docs/Clause.md)
  - [CustomProperty](docs/CustomProperty.md)
- - [CustomPropertyValues](docs/CustomPropertyValues.md)
  - [CustomRole](docs/CustomRole.md)
  - [CustomRoleBody](docs/CustomRoleBody.md)
- - [CustomRoleKeyOrId](docs/CustomRoleKeyOrId.md)
  - [CustomRoles](docs/CustomRoles.md)
  - [Environment](docs/Environment.md)
  - [EnvironmentPost](docs/EnvironmentPost.md)
@@ -112,8 +108,6 @@ Class | Method | HTTP request | Description
  - [Project](docs/Project.md)
  - [ProjectBody](docs/ProjectBody.md)
  - [Projects](docs/Projects.md)
- - [Resource](docs/Resource.md)
- - [Resources](docs/Resources.md)
  - [Role](docs/Role.md)
  - [Rollout](docs/Rollout.md)
  - [Rule](docs/Rule.md)
@@ -156,6 +150,9 @@ import (
 
 func main() {
 	apiKey := os.Getenv("LD_API_KEY")
+	if apiKey == "" {
+		panic("LD_API_KEY env var was empty!")
+	}
 	client := ldapi.NewAPIClient(ldapi.NewConfiguration())
 	ctx := context.WithValue(context.Background(), ldapi.ContextAPIKey, ldapi.APIKey{
 		Key: apiKey,

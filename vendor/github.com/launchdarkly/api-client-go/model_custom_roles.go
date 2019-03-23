@@ -12,5 +12,5 @@ package ldapi
 
 type CustomRoles struct {
 	Links *Links `json:"_links,omitempty"`
-	Items *CustomRole `json:"items,omitempty"`
+	Items []CustomRole `json:"items,omitempty"`
 }

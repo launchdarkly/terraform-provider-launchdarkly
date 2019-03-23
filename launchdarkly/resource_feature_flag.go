@@ -116,11 +116,11 @@ func resourceFeatureFlagRead(d *schema.ResourceData, metaRaw interface{}) error 
 
 	transformedCustomProperties := customPropertiesToResourceData(flag.CustomProperties)
 
-	d.Set(key, flag.Key)
-	d.Set(name, flag.Name)
-	d.Set(description, flag.Description)
-	d.Set(include_in_snippet, flag.IncludeInSnippet)
-	d.Set(temporary, flag.Temporary)
+	_ = d.Set(key, flag.Key)
+	_ = d.Set(name, flag.Name)
+	_ = d.Set(description, flag.Description)
+	_ = d.Set(include_in_snippet, flag.IncludeInSnippet)
+	_ = d.Set(temporary, flag.Temporary)
 
 	err = d.Set(variations, variationsToResourceData(flag.Variations))
 	if err != nil {
@@ -205,8 +205,8 @@ func resourceFeatureFlagImport(d *schema.ResourceData, meta interface{}) ([]*sch
 	}
 	parts := strings.SplitN(d.Id(), "/", 2)
 	projectKey, flagKey := parts[0], parts[1]
-	d.Set(project_key, projectKey)
-	d.Set(key, flagKey)
+	_ = d.Set(project_key, projectKey)
+	_ = d.Set(key, flagKey)
 
 	if err := resourceFeatureFlagRead(d, meta); err != nil {
 		return nil, err

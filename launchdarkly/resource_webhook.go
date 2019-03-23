@@ -88,10 +88,10 @@ func resourceWebhookRead(d *schema.ResourceData, metaRaw interface{}) error {
 		return fmt.Errorf("failed to get webhook with id %q: %s", webhookID, handleLdapiErr(err))
 	}
 
-	d.Set(url, webhook.Url)
-	d.Set(secret, webhook.Secret)
-	d.Set(on, webhook.On)
-	d.Set(name, webhook.Name)
+	_ = d.Set(url, webhook.Url)
+	_ = d.Set(secret, webhook.Secret)
+	_ = d.Set(on, webhook.On)
+	_ = d.Set(name, webhook.Name)
 	err = d.Set(tags, webhook.Tags)
 	if err != nil {
 		return fmt.Errorf("failed to set tags on webhook with id %q: %v", webhookID, err)

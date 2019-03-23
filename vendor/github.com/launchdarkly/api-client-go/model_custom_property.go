@@ -14,5 +14,6 @@ package ldapi
 type CustomProperty struct {
 	// The name of the property.
 	Name string `json:"name"`
-	Value *CustomPropertyValues `json:"value,omitempty"`
+	// Values for this property.
+	Value []string `json:"value,omitempty"`
 }

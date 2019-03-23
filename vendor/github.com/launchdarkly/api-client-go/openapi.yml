@@ -48,7 +48,7 @@ paths:
         - $ref: '#/parameters/ProjectPostRequest'
       responses:
         '201':
-          $ref: '#/responses/Standard201'
+          $ref: '#/responses/Project2xx'
         '400':
           $ref: '#/responses/Standard400'
         '401':
@@ -65,7 +65,7 @@ paths:
         - $ref: '#/parameters/ProjectKey'
       responses:
         '200':
-          $ref: '#/responses/Projects200'
+          $ref: '#/responses/Project2xx'
         '401':
           $ref: '#/responses/Standard401'
         '404':
@@ -80,7 +80,7 @@ paths:
         - $ref: '#/parameters/PatchRequest'
       responses:
         '200':
-          $ref: '#/responses/Projects200'
+          $ref: '#/responses/Project2xx'
         '400':
           $ref: '#/responses/Standard400'
         '401':
@@ -119,7 +119,7 @@ paths:
         - $ref: '#/parameters/EnvironmentPostRequest'
       responses:
         '201':
-          $ref: '#/responses/Standard201'
+          $ref: '#/responses/Environment2xx'
         '400':
           $ref: '#/responses/Standard400'
         '401':
@@ -137,9 +137,7 @@ paths:
         - $ref: '#/parameters/EnvironmentKey'
       responses:
         '200':
-          description: Environment response.
-          schema:
-            $ref: '#/definitions/Environment'
+          $ref: '#/responses/Environment2xx'
         '401':
           $ref: '#/responses/Standard401'
         '404':
@@ -155,9 +153,7 @@ paths:
         - $ref: '#/parameters/PatchRequest'
       responses:
         '200':
-          description: Environment response.
-          schema:
-            $ref: '#/definitions/Environment'
+          $ref: '#/responses/Environment2xx'
         '400':
           $ref: '#/responses/Standard400'
         '401':
@@ -363,7 +359,7 @@ paths:
         - $ref: '#/parameters/UserSegmentPostRequest'
       responses:
         '201':
-          $ref: '#/responses/Standard201'
+          $ref: '#/responses/UserSegment2xx'
         '400':
           $ref: '#/responses/Standard400'
         '401':
@@ -382,9 +378,7 @@ paths:
         - $ref: '#/parameters/UserSegmentKey'
       responses:
         '200':
-          description: User segment response.
-          schema:
-            $ref: '#/definitions/UserSegment'
+          $ref: '#/responses/UserSegment2xx'
         '401':
           $ref: '#/responses/Standard401'
         '404':
@@ -401,7 +395,7 @@ paths:
         - $ref: '#/parameters/PatchOnly'
       responses:
         '200':
-          $ref: '#/responses/UserSegment200'
+          $ref: '#/responses/UserSegment2xx'
         '400':
           $ref: '#/responses/Standard400'
         '401':
@@ -632,7 +626,7 @@ paths:
         - $ref: '#/parameters/WebhookPostRequest'
       responses:
         '201':
-          $ref: '#/responses/Webhooks201'
+          $ref: '#/responses/Webhook2xx'
         '400':
           $ref: '#/responses/Standard400'
         '401':
@@ -647,7 +641,7 @@ paths:
         - $ref: '#/parameters/ResourceId'
       responses:
         '200':
-          $ref: '#/responses/Webhooks200'
+          $ref: '#/responses/Webhook2xx'
         '401':
           $ref: '#/responses/Standard401'
         '404':
@@ -662,7 +656,7 @@ paths:
         - $ref: '#/parameters/PatchRequest'
       responses:
         '200':
-          $ref: '#/responses/Webhooks200'
+          $ref: '#/responses/Webhook2xx'
         '400':
           $ref: '#/responses/Standard400'
         '401':
@@ -707,7 +701,7 @@ paths:
         - $ref: '#/parameters/CustomRolePostRequest'
       responses:
         '201':
-          $ref: '#/responses/Standard201'
+          $ref: '#/responses/CustomRole2xx'
         '400':
           $ref: '#/responses/Standard400'
         '401':
@@ -724,7 +718,7 @@ paths:
         - $ref: '#/parameters/CustomRoleKey'
       responses:
         '200':
-          $ref: '#/responses/CustomRole200'
+          $ref: '#/responses/CustomRole2xx'
         '400':
           $ref: '#/responses/Standard400'
         '401':
@@ -739,7 +733,7 @@ paths:
         - $ref: '#/parameters/PatchRequest'
       responses:
         '200':
-          $ref: '#/responses/CustomRole200'
+          $ref: '#/responses/CustomRole2xx'
         '400':
           $ref: '#/responses/Standard400'
         '401':
@@ -770,7 +764,7 @@ paths:
       operationId: getMembers
       responses:
         '200':
-          description: Projects response.
+          description: Members response.
           schema:
             $ref: '#/definitions/Members'
         '401':
@@ -784,7 +778,9 @@ paths:
         - $ref: '#/parameters/MembersPostRequest'
       responses:
         '201':
-          $ref: '#/responses/Standard201'
+          description: Members response.
+          schema:
+            $ref: '#/definitions/Members'
         '400':
           $ref: '#/responses/Standard400'
         '401':
@@ -801,7 +797,7 @@ paths:
         - $ref: '#/parameters/MemberId'
       responses:
         '200':
-          $ref: '#/responses/Member200'
+          $ref: '#/responses/Member2xx'
         '400':
           $ref: '#/responses/Standard400'
         '401':
@@ -816,7 +812,7 @@ paths:
         - $ref: '#/parameters/PatchRequest'
       responses:
         '200':
-          $ref: '#/responses/Member200'
+          $ref: '#/responses/Member2xx'
         '400':
           $ref: '#/responses/Standard400'
         '401':
@@ -1020,6 +1016,12 @@ definitions:
       email:
         type: string
         example: user@launchdarkly.com
+      firstName:
+        type: string
+        example: Alan
+      lastName:
+        type: string
+        example: Turing
       _pendingInvite:
         type: boolean
       isBeta:
@@ -1036,7 +1038,9 @@ definitions:
       _links:
         $ref: '#/definitions/Links'
       items:
-        $ref: '#/definitions/Member'
+        type: array
+        items:
+          $ref: '#/definitions/Member'
   FeatureFlagConfig:
     type: object
     properties:
@@ -1553,16 +1557,32 @@ definitions:
     type: object
     properties:
       resources:
-        $ref: '#/definitions/Resources'
+        type: array
+        items:
+          type: string
+          description: A resource specifier string
+          example: 'proj/*:env/*:flag/my-flag'
       notresources:
-        $ref: '#/definitions/Resources'
+        type: array
+        items:
+          type: string
+          description: A resource specifier string
+          example: 'proj/*:env/*:flag/my-flag'
         description: >-
           Targeted resource will be those resources NOT in this list. The
           "resources`" field must be empty to use this field.
       actions:
-        $ref: '#/definitions/Actions'
+        type: array
+        items:
+          type: string
+          description: An action to perform on a resource.
+          example: updateOn
       notactions:
-        $ref: '#/definitions/Actions'
+        type: array
+        items:
+          type: string
+          description: An action to perform on a resource.
+          example: updateOn
         description: >-
           Targeted actions will be those actions NOT in this list. The "actions"
           field must be empty to use this field.
@@ -1571,22 +1591,6 @@ definitions:
         enum:
           - allow
           - deny
-  Resources:
-    type: array
-    items:
-      $ref: '#/definitions/Resource'
-  Resource:
-    type: string
-    description: A resource specifier string
-    example: 'proj/*:env/*:flag/my-flag'
-  Actions:
-    type: array
-    items:
-      $ref: '#/definitions/Action'
-  Action:
-    type: string
-    description: An action to perform on a resource.
-    example: updateOn
   Role:
     type: string
     enum:
@@ -1594,10 +1598,6 @@ definitions:
       - reader
       - admin
       - owner
-  CustomRoleKeyOrId:
-    type: string
-    description: The 20-hexdigit id or the key for a custom role.
-    example: revenue-team
   CustomRole:
     type: object
     properties:
@@ -1608,7 +1608,9 @@ definitions:
         description: Name of the custom role.
         example: revenue team
       key:
-        $ref: '#/definitions/CustomRoleKeyOrId'
+        type: string
+        description: The 20-hexdigit id or the key for a custom role.
+        example: revenue-team
       description:
         type: string
         description: Description of the custom role.
@@ -1627,14 +1629,24 @@ definitions:
       _links:
         $ref: '#/definitions/Links'
       items:
-        $ref: '#/definitions/CustomRole'
+        type: array
+        items:
+          $ref: '#/definitions/CustomRole'
   Policy:
     type: object
     properties:
       resources:
-        $ref: '#/definitions/Resources'
+        type: array
+        items:
+          type: string
+          description: A resource specifier string
+          example: 'proj/*:env/*:flag/my-flag'
       actions:
-        $ref: '#/definitions/Actions'
+        type: array
+        items:
+          type: string
+          description: An action to perform on a resource.
+          example: updateOn
       effect:
         type: string
         description: Effect of the policy - allow or deny.
@@ -1667,17 +1679,15 @@ definitions:
         description: The name of the property.
         example: My property
       value:
-        $ref: '#/definitions/CustomPropertyValues'
+        type: array
+        description: Values for this property.
+        items:
+          type: string
+          example:
+            - Value 1
+            - Value 2
     required:
       - name
-  CustomPropertyValues:
-    type: array
-    description: Values for this property.
-    items:
-      type: string
-    example:
-      - Value 1
-      - Value 2
 responses:
   Standard201:
     description: Resource created.
@@ -1695,30 +1705,30 @@ responses:
     description: A list of links to available resources in the API.
     schema:
       $ref: '#/definitions/Links'
-  Webhooks200:
+  Webhook2xx:
     description: Webhook response.
     schema:
       $ref: '#/definitions/Webhook'
-  Webhooks201:
-    description: Webhook response.
-    schema:
-      $ref: '#/definitions/Webhook'
-  UserSegment200:
+  UserSegment2xx:
     description: User segment response.
     schema:
       $ref: '#/definitions/UserSegment'
-  Projects200:
+  Project2xx:
     description: Successful Project response.
     schema:
       $ref: '#/definitions/Project'
-  Member200:
+  Member2xx:
     description: Member response.
     schema:
       $ref: '#/definitions/Member'
-  CustomRole200:
+  CustomRole2xx:
     description: Custom role response.
     schema:
       $ref: '#/definitions/CustomRole'
+  Environment2xx:
+    description: Environment response.
+    schema:
+      $ref: '#/definitions/Environment'
 parameters:
   ResourceId:
     name: resourceId
@@ -2045,7 +2055,9 @@ parameters:
           customRoles:
             type: array
             items:
-              $ref: '#/definitions/CustomRoleKeyOrId'
+              type: string
+              description: The 20-hexdigit id or the key for a custom role.
+              example: revenue-team
           inlineRole:
             $ref: '#/definitions/Statements'
         required:
@@ -2073,7 +2085,9 @@ parameters:
           description: Description of the custom role.
           example: Description of revenue team role here
         key:
-          $ref: '#/definitions/CustomRoleKeyOrId'
+          type: string
+          description: The 20-hexdigit id or the key for a custom role.
+          example: revenue-team
         policy:
           type: array
           items:

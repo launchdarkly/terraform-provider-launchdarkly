@@ -111,8 +111,8 @@ func resourceProjectRead(d *schema.ResourceData, metaRaw interface{}) error {
 		return fmt.Errorf("failed to get project with key %q: %v", projectKey, err)
 	}
 
-	d.Set(key, project.Key)
-	d.Set(name, project.Name)
+	_ = d.Set(key, project.Key)
+	_ = d.Set(name, project.Name)
 
 	envsRaw := environmentsToResourceData(project.Environments)
 	err = d.Set(environments, envsRaw)
@@ -175,7 +175,7 @@ func projectExists(projectKey string, meta *Client) (bool, error) {
 }
 
 func resourceProjectImport(d *schema.ResourceData, meta interface{}) ([]*schema.ResourceData, error) {
-	d.Set(key, d.Id())
+	_ = d.Set(key, d.Id())
 
 	if err := resourceProjectRead(d, meta); err != nil {
 		return nil, err
