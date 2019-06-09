@@ -10,7 +10,7 @@ info:
   license:
     name: Apache 2.0
     url: 'http://www.apache.org/licenses/LICENSE-2.0.html'
-  version: 2.0.14
+  version: 2.0.15
 host: app.launchdarkly.com
 basePath: /api/v2
 schemes:

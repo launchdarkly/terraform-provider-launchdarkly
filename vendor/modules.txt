@@ -268,7 +268,7 @@ github.com/kisielk/gotool
 github.com/kisielk/gotool/internal/load
 # github.com/konsorten/go-windows-terminal-sequences v1.0.2
 github.com/konsorten/go-windows-terminal-sequences
-# github.com/launchdarkly/api-client-go v0.0.0-20190220214824-9c043706d6d0 => github.com/drichelson/api-client-go v0.0.0-20190316191407-aef5c04e4a7d
+# github.com/launchdarkly/api-client-go v0.0.0-20190323002856-89f2f9e19e46
 github.com/launchdarkly/api-client-go
 # github.com/magiconair/properties v1.8.0
 github.com/magiconair/properties

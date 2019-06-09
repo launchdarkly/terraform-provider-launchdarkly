@@ -3,7 +3,6 @@ TOOLS_BIN := $(BUILD)/tools
 
 .DEFAULT_GOAL	:= build
 
-# old start:
 all:  check test build
 
 .PHONY: build

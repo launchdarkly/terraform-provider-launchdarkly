@@ -1,7 +1,5 @@
 module terraform-provider-launchdarkly
 
-replace github.com/launchdarkly/api-client-go => github.com/drichelson/api-client-go v0.0.0-20190316191407-aef5c04e4a7d
-
 require (
 	github.com/OpenPeeDeeP/depguard v0.0.0-20181229194401-1f388ab2d810 // indirect
 	github.com/StackExchange/wmi v0.0.0-20181212234831-e0a55b97c705 // indirect
@@ -40,7 +38,7 @@ require (
 	github.com/kisielk/errcheck v1.2.0 // indirect
 	github.com/konsorten/go-windows-terminal-sequences v1.0.2 // indirect
 	github.com/kr/pty v1.1.4 // indirect
-	github.com/launchdarkly/api-client-go v0.0.0-20190220214824-9c043706d6d0
+	github.com/launchdarkly/api-client-go v0.0.0-20190323002856-89f2f9e19e46
 	github.com/mattn/go-colorable v0.1.1 // indirect
 	github.com/mattn/go-isatty v0.0.7 // indirect
 	github.com/mitchellh/cli v1.0.0 // indirect
