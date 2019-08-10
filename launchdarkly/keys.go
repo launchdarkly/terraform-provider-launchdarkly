@@ -36,4 +36,13 @@ const (
 	last_name            = "last_name"
 	role                 = "role"
 	custom_roles         = "custom_roles"
+	rules                = "rules"
+	attribute            = "attribute"
+	op                   = "op"
+	values               = "values"
+	negate               = "negate"
+	clauses              = "clauses"
+	clause               = "clause"
+	weight               = "weight"
+	bucketby             = "bucketby"
 )

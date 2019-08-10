@@ -54,6 +54,7 @@ func resourceSegment() *schema.Resource {
 				Elem:     &schema.Schema{Type: schema.TypeString},
 				Optional: true,
 			},
+			rules: userSegmentRulesSchema(),
 		},
 	}
 }
@@ -137,6 +138,12 @@ func resourceSegmentRead(d *schema.ResourceData, metaRaw interface{}) error {
 		return fmt.Errorf("failed to set excluded on segment with key %q: %v", segmentKey, err)
 	}
 
+	err = d.Set(rules, userSegmentRulesToResourceData(segment.Rules))
+	if err != nil {
+		return fmt.Errorf("failed to set excluded on segment with key %q: %v", segmentKey, err)
+	}
+	return nil
+
 	return nil
 }
 
@@ -150,7 +157,7 @@ func resourceSegmentUpdate(d *schema.ResourceData, metaRaw interface{}) error {
 	tags := stringsFromResourceData(d, tags)
 	included := d.Get(included).([]interface{})
 	excluded := d.Get(excluded).([]interface{})
-
+	rules := rulesFromResourceData(d, rules)
 	patch := []ldapi.PatchOperation{
 		patchReplace("/name", name),
 		patchReplace("/description", description),
@@ -158,6 +165,7 @@ func resourceSegmentUpdate(d *schema.ResourceData, metaRaw interface{}) error {
 		patchReplace("/temporary", temporary),
 		patchReplace("/included", included),
 		patchReplace("/excluded", excluded),
+		patchReplace("/rules", rules),
 	}
 
 	_, _, err := client.ld.UserSegmentsApi.PatchUserSegment(client.ctx, projectKey, envKey, key, patch)
@@ -219,4 +227,71 @@ func resourceSegmentImport(d *schema.ResourceData, meta interface{}) ([]*schema.
 	}
 
 	return []*schema.ResourceData{d}, nil
+}
+
+func userSegmentRulesSchema() *schema.Schema {
+	return &schema.Schema{
+		Type:     schema.TypeList,
+		Optional: true,
+		Elem: &schema.Resource{
+			Schema: map[string]*schema.Schema{
+				"clauses": clauseSchema(),
+				"weight": &schema.Schema{
+					Type:     schema.TypeInt,
+					Elem:     &schema.Schema{Type: schema.TypeInt},
+					Optional: true,
+				},
+				"bucketby": &schema.Schema{
+					Type:     schema.TypeString,
+					Elem:     &schema.Schema{Type: schema.TypeString},
+					Optional: true,
+				},
+			},
+		},
+	}
+}
+
+func rulesFromResourceData(d *schema.ResourceData, metaRaw interface{}) []ldapi.UserSegmentRule {
+	schemaRules := d.Get(rules).([]interface{})
+	//schemaRules := d.Get(rules).([]interface{})
+	rules := make([]ldapi.UserSegmentRule, len(schemaRules))
+	//list := schemaRules.List()
+	for i, rule := range schemaRules {
+		v := ruleFromResourceData(rule)
+		rules[i] = v
+	}
+
+	return rules
+}
+
+func ruleFromResourceData(val interface{}) ldapi.UserSegmentRule {
+	ruleMap := val.(map[string]interface{})
+	r := ldapi.UserSegmentRule{
+		Weight:   int32(ruleMap[weight].(int)),
+		BucketBy: ruleMap[bucketby].(string),
+	}
+	for _, c := range ruleMap[clauses].([]interface{}) {
+		r.Clauses = append(r.Clauses, clauseFromResourceData(c))
+	}
+
+	return r
+}
+
+func userSegmentRulesToResourceData(rules []ldapi.UserSegmentRule) interface{} {
+	transformed := make([]interface{}, len(rules))
+
+	for i, r := range rules {
+		transformed[i] = map[string]interface{}{
+			clauses:  clausesToResourceData(r.Clauses),
+			weight:   r.Weight,
+			bucketby: r.BucketBy,
+		}
+
+		//clauses = make([]interface{}, len(r.Clauses))
+		//j, c := range clauses {
+		//	clauses = append(clauses, clausesToResourceData)
+		//}
+	}
+
+	return transformed
 }
