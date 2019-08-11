@@ -20,8 +20,9 @@ func clauseSchema() *schema.Schema {
 					Required: true,
 				},
 				"op": {
-					Type:     schema.TypeString,
-					Required: true,
+					Type:         schema.TypeString,
+					Required:     true,
+					ValidateFunc: validateOp(),
 				},
 				"values": {
 					Type: schema.TypeList,

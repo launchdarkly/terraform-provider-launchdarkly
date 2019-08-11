@@ -231,25 +231,3 @@ func resourceSegmentImport(d *schema.ResourceData, meta interface{}) ([]*schema.
 
 	return []*schema.ResourceData{d}, nil
 }
-
-func userSegmentRulesSchema() *schema.Schema {
-	return &schema.Schema{
-		Type:     schema.TypeList,
-		Optional: true,
-		Elem: &schema.Resource{
-			Schema: map[string]*schema.Schema{
-				"clauses": clauseSchema(),
-				"weight": &schema.Schema{
-					Type:     schema.TypeInt,
-					Elem:     &schema.Schema{Type: schema.TypeInt},
-					Optional: true,
-				},
-				"bucketby": &schema.Schema{
-					Type:     schema.TypeString,
-					Elem:     &schema.Schema{Type: schema.TypeString},
-					Optional: true,
-				},
-			},
-		},
-	}
-}
