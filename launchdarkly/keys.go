@@ -44,5 +44,5 @@ const (
 	clauses              = "clauses"
 	clause               = "clause"
 	weight               = "weight"
-	bucketby             = "bucketby"
+	bucket_by            = "bucket_by"
 )

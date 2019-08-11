@@ -23,17 +23,20 @@ func resourceSegment() *schema.Resource {
 
 		Schema: map[string]*schema.Schema{
 			project_key: &schema.Schema{
-				Type:     schema.TypeString,
-				Optional: true,
-				ForceNew: true,
+				Type:         schema.TypeString,
+				Optional:     true,
+				ForceNew:     true,
+				ValidateFunc: validateKey(),
 			},
 			env_key: &schema.Schema{
-				Type:     schema.TypeString,
-				Required: true,
+				Type:         schema.TypeString,
+				Required:     true,
+				ValidateFunc: validateKey(),
 			},
 			key: &schema.Schema{
-				Type:     schema.TypeString,
-				Required: true,
+				Type:         schema.TypeString,
+				Required:     true,
+				ValidateFunc: validateKey(),
 			},
 			name: &schema.Schema{
 				Type:     schema.TypeString,
@@ -54,7 +57,7 @@ func resourceSegment() *schema.Resource {
 				Elem:     &schema.Schema{Type: schema.TypeString},
 				Optional: true,
 			},
-			rules: userSegmentRulesSchema(),
+			rules: segmentRulesSchema(),
 		},
 	}
 }
@@ -138,7 +141,7 @@ func resourceSegmentRead(d *schema.ResourceData, metaRaw interface{}) error {
 		return fmt.Errorf("failed to set excluded on segment with key %q: %v", segmentKey, err)
 	}
 
-	err = d.Set(rules, userSegmentRulesToResourceData(segment.Rules))
+	err = d.Set(rules, segmentRulesToResourceData(segment.Rules))
 	if err != nil {
 		return fmt.Errorf("failed to set excluded on segment with key %q: %v", segmentKey, err)
 	}
@@ -157,7 +160,7 @@ func resourceSegmentUpdate(d *schema.ResourceData, metaRaw interface{}) error {
 	tags := stringsFromResourceData(d, tags)
 	included := d.Get(included).([]interface{})
 	excluded := d.Get(excluded).([]interface{})
-	rules := rulesFromResourceData(d, rules)
+	rules := segmentRulesFromResourceData(d, rules)
 	patch := []ldapi.PatchOperation{
 		patchReplace("/name", name),
 		patchReplace("/description", description),
@@ -251,47 +254,47 @@ func userSegmentRulesSchema() *schema.Schema {
 	}
 }
 
-func rulesFromResourceData(d *schema.ResourceData, metaRaw interface{}) []ldapi.UserSegmentRule {
-	schemaRules := d.Get(rules).([]interface{})
-	//schemaRules := d.Get(rules).([]interface{})
-	rules := make([]ldapi.UserSegmentRule, len(schemaRules))
-	//list := schemaRules.List()
-	for i, rule := range schemaRules {
-		v := ruleFromResourceData(rule)
-		rules[i] = v
-	}
+// func segmentRulesFromResourceData(d *schema.ResourceData, metaRaw interface{}) []ldapi.UserSegmentRule {
+// 	schemaRules := d.Get(rules).([]interface{})
+// 	//schemaRules := d.Get(rules).([]interface{})
+// 	rules := make([]ldapi.UserSegmentRule, len(schemaRules))
+// 	//list := schemaRules.List()
+// 	for i, rule := range schemaRules {
+// 		v := ruleFromResourceData(rule)
+// 		rules[i] = v
+// 	}
 
-	return rules
-}
+// 	return rules
+// }
 
-func ruleFromResourceData(val interface{}) ldapi.UserSegmentRule {
-	ruleMap := val.(map[string]interface{})
-	r := ldapi.UserSegmentRule{
-		Weight:   int32(ruleMap[weight].(int)),
-		BucketBy: ruleMap[bucketby].(string),
-	}
-	for _, c := range ruleMap[clauses].([]interface{}) {
-		r.Clauses = append(r.Clauses, clauseFromResourceData(c))
-	}
+// func segmentRuleFromResourceData(val interface{}) ldapi.UserSegmentRule {
+// 	ruleMap := val.(map[string]interface{})
+// 	r := ldapi.UserSegmentRule{
+// 		Weight:   int32(ruleMap[weight].(int)),
+// 		BucketBy: ruleMap[bucketby].(string),
+// 	}
+// 	for _, c := range ruleMap[clauses].([]interface{}) {
+// 		r.Clauses = append(r.Clauses, clauseFromResourceData(c))
+// 	}
 
-	return r
-}
+// 	return r
+// }
 
-func userSegmentRulesToResourceData(rules []ldapi.UserSegmentRule) interface{} {
-	transformed := make([]interface{}, len(rules))
+// func userSegmentRulesToResourceData(rules []ldapi.UserSegmentRule) interface{} {
+// 	transformed := make([]interface{}, len(rules))
 
-	for i, r := range rules {
-		transformed[i] = map[string]interface{}{
-			clauses:  clausesToResourceData(r.Clauses),
-			weight:   r.Weight,
-			bucketby: r.BucketBy,
-		}
+// 	for i, r := range rules {
+// 		transformed[i] = map[string]interface{}{
+// 			clauses:  clausesToResourceData(r.Clauses),
+// 			weight:   r.Weight,
+// 			bucketby: r.BucketBy,
+// 		}
 
-		//clauses = make([]interface{}, len(r.Clauses))
-		//j, c := range clauses {
-		//	clauses = append(clauses, clausesToResourceData)
-		//}
-	}
+// 		//clauses = make([]interface{}, len(r.Clauses))
+// 		//j, c := range clauses {
+// 		//	clauses = append(clauses, clausesToResourceData)
+// 		//}
+// 	}
 
-	return transformed
-}
+// 	return transformed
+// }
