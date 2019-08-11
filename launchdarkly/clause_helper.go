@@ -69,11 +69,6 @@ func clausesToResourceData(clauses []ldapi.Clause) interface{} {
 			values:    c.Values,
 			negate:    c.Negate,
 		}
-		//log.Printf("[INFO] %s", c.Values)
-		//values := make([]interface{}, len(c.Values))
-		//for j, v := range values {
-		//	c.Values = append(c.Values, v.(map[string]interface{}))
-		//}
 	}
 	return transformed
 }
