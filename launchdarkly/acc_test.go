@@ -241,33 +241,6 @@ resource "launchdarkly_feature_flag" "boolean-flag-1" {
 	testAcc(t, "launchdarkly_feature_flag.boolean-flag-1", featureFlagCreateBoolean, featureFlagUpdateBoolean)
 }
 
-func TestSegmentAcc(t *testing.T) {
-	segmentCreate := testProject + `
-resource "launchdarkly_segment" "segment3" {
-    key = "segmentKey1"
-	project_key = "dummy-project"
-	env_key = "test"
-  	name = "segment name"
-	description = "segment description"
-	tags = ["segmentTag1", "segmentTag2"]
-	included = ["user1", "user2"]
-	excluded = ["user3", "user4"]
-}`
-	segmentUpdate := testProject + `
-resource "launchdarkly_segment" "segment3" {
-    key = "segmentKey1"
-	project_key = "dummy-project"
-	env_key = "test"
-  	name = "segment name"
-	description = "segment description"
-	tags = ["segmentTag1", "segmentTag2"]
-	included = ["user1", "user2", "user3", "user4"]
-	excluded = []
-}`
-
-	testAcc(t, "launchdarkly_segment.segment3", segmentCreate, segmentUpdate)
-}
-
 func TestWebhookAccExample(t *testing.T) {
 	webhookCreate := `
 resource "launchdarkly_webhook" "examplewebhook1" {
