@@ -23,17 +23,20 @@ func resourceSegment() *schema.Resource {
 
 		Schema: map[string]*schema.Schema{
 			project_key: &schema.Schema{
-				Type:     schema.TypeString,
-				Optional: true,
-				ForceNew: true,
+				Type:         schema.TypeString,
+				Optional:     true,
+				ForceNew:     true,
+				ValidateFunc: validateKey(),
 			},
 			env_key: &schema.Schema{
-				Type:     schema.TypeString,
-				Required: true,
+				Type:         schema.TypeString,
+				Required:     true,
+				ValidateFunc: validateKey(),
 			},
 			key: &schema.Schema{
-				Type:     schema.TypeString,
-				Required: true,
+				Type:         schema.TypeString,
+				Required:     true,
+				ValidateFunc: validateKey(),
 			},
 			name: &schema.Schema{
 				Type:     schema.TypeString,
@@ -54,6 +57,7 @@ func resourceSegment() *schema.Resource {
 				Elem:     &schema.Schema{Type: schema.TypeString},
 				Optional: true,
 			},
+			rules: segmentRulesSchema(),
 		},
 	}
 }
@@ -137,6 +141,12 @@ func resourceSegmentRead(d *schema.ResourceData, metaRaw interface{}) error {
 		return fmt.Errorf("failed to set excluded on segment with key %q: %v", segmentKey, err)
 	}
 
+	err = d.Set(rules, segmentRulesToResourceData(segment.Rules))
+	if err != nil {
+		return fmt.Errorf("failed to set excluded on segment with key %q: %v", segmentKey, err)
+	}
+	return nil
+
 	return nil
 }
 
@@ -150,7 +160,7 @@ func resourceSegmentUpdate(d *schema.ResourceData, metaRaw interface{}) error {
 	tags := stringsFromResourceData(d, tags)
 	included := d.Get(included).([]interface{})
 	excluded := d.Get(excluded).([]interface{})
-
+	rules := segmentRulesFromResourceData(d, rules)
 	patch := []ldapi.PatchOperation{
 		patchReplace("/name", name),
 		patchReplace("/description", description),
@@ -158,6 +168,7 @@ func resourceSegmentUpdate(d *schema.ResourceData, metaRaw interface{}) error {
 		patchReplace("/temporary", temporary),
 		patchReplace("/included", included),
 		patchReplace("/excluded", excluded),
+		patchReplace("/rules", rules),
 	}
 
 	_, _, err := client.ld.UserSegmentsApi.PatchUserSegment(client.ctx, projectKey, envKey, key, patch)
