@@ -42,7 +42,6 @@ const (
 	values               = "values"
 	negate               = "negate"
 	clauses              = "clauses"
-	clause               = "clause"
 	weight               = "weight"
 	bucket_by            = "bucket_by"
 )

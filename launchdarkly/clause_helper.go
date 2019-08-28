@@ -1,9 +1,6 @@
 package launchdarkly
 
 import (
-	"fmt"
-
-	"github.com/hashicorp/terraform/helper/hashcode"
 	"github.com/hashicorp/terraform/helper/schema"
 
 	ldapi "github.com/launchdarkly/api-client-go"
@@ -40,12 +37,6 @@ func clauseSchema() *schema.Schema {
 	}
 }
 
-// https://godoc.org/github.com/hashicorp/terraform/helper/schema#SchemaSetFunc
-func clauseHash(val interface{}) int {
-	clause := clauseFromResourceData(val)
-	return hashcode.String(fmt.Sprintf("%v", clause))
-}
-
 func clauseFromResourceData(val interface{}) ldapi.Clause {
 	clauseMap := val.(map[string]interface{})
 	c := ldapi.Clause{
@@ -53,10 +44,7 @@ func clauseFromResourceData(val interface{}) ldapi.Clause {
 		Op:        clauseMap[op].(string),
 		Negate:    clauseMap[negate].(bool),
 	}
-	for _, v := range clauseMap[values].([]interface{}) {
-		c.Values = append(c.Values, v)
-	}
-
+	c.Values = append(c.Values, clauseMap[values].([]interface{})...)
 	return c
 }
 

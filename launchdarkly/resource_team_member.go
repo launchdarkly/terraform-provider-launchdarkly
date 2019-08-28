@@ -110,7 +110,7 @@ func resourceTeamMemberUpdate(d *schema.ResourceData, metaRaw interface{}) error
 	customRolesRaw := d.Get(custom_roles).(*schema.Set).List()
 
 	patch := []ldapi.PatchOperation{
-		// these appear to be the only fields we are allowed to update:
+		// these are the only fields we are allowed to update:
 		patchReplace("/role", &memberRole),
 		patchReplace("/customRoles", &customRolesRaw),
 	}

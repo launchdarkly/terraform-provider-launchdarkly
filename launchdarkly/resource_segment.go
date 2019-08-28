@@ -146,8 +146,6 @@ func resourceSegmentRead(d *schema.ResourceData, metaRaw interface{}) error {
 		return fmt.Errorf("failed to set excluded on segment with key %q: %v", segmentKey, err)
 	}
 	return nil
-
-	return nil
 }
 
 func resourceSegmentUpdate(d *schema.ResourceData, metaRaw interface{}) error {
