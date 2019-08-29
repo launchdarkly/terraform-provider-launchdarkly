@@ -1,49 +1,52 @@
-resource "launchdarkly_project" "exampleproject2" {
+resource "launchdarkly_project" "example" {
   name = "example-project"
-  key = "example-project2"
+  key  = "example-project"
+
   tags = [
-    "terraform"]
+    "terraform",
+  ]
+
   environments = [
     {
-      name = "defined in project post"
-      key = "projDefinedEnv"
-      color = "0000f0"
-      default_ttl = 100.0
-      secure_mode = true
+      name                 = "defined in project post"
+      key                  = "proj_defined_env"
+      color                = "0000f0"
+      default_ttl          = 100.0
+      secure_mode          = true
       default_track_events = false
-    }
+    },
   ]
 }
 
 resource "launchdarkly_environment" "staging" {
-  name = "Staging"
-  key = "staging"
-  color = "ff00ff"
-  secure_mode = true
+  name                 = "Staging"
+  key                  = "staging"
+  color                = "ff00ff"
+  secure_mode          = true
   default_track_events = false
-  default_ttl = 100.0
+  default_ttl          = 100.0
 
-  project_key = "${launchdarkly_project.exampleproject2.key}"
+  project_key = "${launchdarkly_project.example.key}"
 }
 
-resource "launchdarkly_feature_flag" "boolean-flag-1" {
-  project_key = "${launchdarkly_project.exampleproject2.key}"
-  key = "boolean-flag-1"
-  name = "boolean-flag-1 name"
+resource "launchdarkly_feature_flag" "boolean" {
+  project_key = "${launchdarkly_project.example.key}"
+  key         = "boolean-flag-1"
+  name        = "boolean-flag-1 name"
   description = "this is a boolean flag by default because we omitted the variations field"
 }
 
-
-resource "launchdarkly_feature_flag" "multivariate-flag-2" {
-  project_key = "${launchdarkly_project.exampleproject2.key}"
-  key = "multivariate-flag-2"
-  name = "multivariate-flag-2 name"
+resource "launchdarkly_feature_flag" "multivariate" {
+  project_key = "${launchdarkly_project.example.key}"
+  key         = "multivariate-flag"
+  name        = "multivariate-flag name"
   description = "this is a multivariate flag because we explicitly define the variations"
+
   variations = [
     {
-      name = "variation1"
+      name        = "variation1"
       description = "a description"
-      value = "string1"
+      value       = "string1"
     },
     {
       value = "string2"
@@ -52,25 +55,30 @@ resource "launchdarkly_feature_flag" "multivariate-flag-2" {
       value = "another option"
     },
   ]
+
   tags = [
     "this",
     "is",
-    "unordered"
+    "unordered",
   ]
+
   custom_properties = [
     {
-      key = "some.property"
+      key  = "some.property"
       name = "Some Property"
+
       value = [
         "value1",
         "value2",
-        "value3"]
+        "value3",
+      ]
     },
     {
-      key = "some.property2"
-      name = "Some Property"
+      key   = "some.property2"
+      name  = "Some Property"
       value = ["very special custom property"]
-    }]
+    },
+  ]
 }
 
 output "api_key" {

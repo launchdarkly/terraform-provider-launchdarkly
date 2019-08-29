@@ -10,14 +10,14 @@ import (
 
 const (
 	testAccSegmentCreate = `
-resource "launchdarkly_project" "testProject" {
+resource "launchdarkly_project" "test" {
 	name = "testProject"
 	key = "test-project"
 }
 
-resource "launchdarkly_segment" "segment3" {
+resource "launchdarkly_segment" "test" {
     key = "segmentKey1"
-	project_key = "${launchdarkly_project.testProject.key}"
+	project_key = "${launchdarkly_project.test.key}"
 	env_key = "test"
   	name = "segment name"
 	description = "segment description"
@@ -27,13 +27,13 @@ resource "launchdarkly_segment" "segment3" {
 }`
 
 	testAccSegmentUpdate = `
-resource "launchdarkly_project" "testProject" {
+resource "launchdarkly_project" "test" {
 	name = "testProject"
 	key = "test-project"
 }
-resource "launchdarkly_segment" "segment3" {
+resource "launchdarkly_segment" "test" {
     key = "segmentKey1"
-	project_key = "${launchdarkly_project.testProject.key}"
+	project_key = "${launchdarkly_project.test.key}"
 	env_key = "test"
   	name = "segment name"
 	description = "segment description"
@@ -62,7 +62,7 @@ resource "launchdarkly_segment" "segment3" {
 )
 
 func TestAccSegment_Create(t *testing.T) {
-	resourceName := "launchdarkly_segment.segment3"
+	resourceName := "launchdarkly_segment.test"
 	resource.Test(t, resource.TestCase{
 		PreCheck: func() {
 			testAccPreCheck(t)
@@ -72,7 +72,7 @@ func TestAccSegment_Create(t *testing.T) {
 			{
 				Config: testAccSegmentCreate,
 				Check: resource.ComposeTestCheckFunc(
-					testAccCheckProjectExists("launchdarkly_project.testProject"),
+					testAccCheckProjectExists("launchdarkly_project.test"),
 					testAccCheckSegmentExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, "key", "segmentKey1"),
 					resource.TestCheckResourceAttr(resourceName, "project_key", "test-project"),
@@ -95,7 +95,7 @@ func TestAccSegment_Create(t *testing.T) {
 }
 
 func TestAccSegment_Update(t *testing.T) {
-	resourceName := "launchdarkly_segment.segment3"
+	resourceName := "launchdarkly_segment.test"
 	resource.Test(t, resource.TestCase{
 		PreCheck: func() {
 			testAccPreCheck(t)
@@ -105,7 +105,7 @@ func TestAccSegment_Update(t *testing.T) {
 			{
 				Config: testAccSegmentCreate,
 				Check: resource.ComposeTestCheckFunc(
-					testAccCheckProjectExists("launchdarkly_project.testProject"),
+					testAccCheckProjectExists("launchdarkly_project.test"),
 					testAccCheckSegmentExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, "key", "segmentKey1"),
 					resource.TestCheckResourceAttr(resourceName, "project_key", "test-project"),
@@ -126,7 +126,7 @@ func TestAccSegment_Update(t *testing.T) {
 			{
 				Config: testAccSegmentUpdate,
 				Check: resource.ComposeTestCheckFunc(
-					testAccCheckProjectExists("launchdarkly_project.testProject"),
+					testAccCheckProjectExists("launchdarkly_project.test"),
 					testAccCheckSegmentExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, "key", "segmentKey1"),
 					resource.TestCheckResourceAttr(resourceName, "project_key", "test-project"),

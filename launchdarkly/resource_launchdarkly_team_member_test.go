@@ -11,7 +11,7 @@ import (
 
 func testAccTeamMemberCreate(rName string) string {
 	return fmt.Sprintf(`
-resource "launchdarkly_team_member" "teamMember1" {
+resource "launchdarkly_team_member" "test" {
 	email = "%s@example.com"
 	first_name = "first"
 	last_name = "last"
@@ -23,7 +23,7 @@ resource "launchdarkly_team_member" "teamMember1" {
 
 func testAccTeamMemberUpdate(rName string) string {
 	return fmt.Sprintf(`
-resource "launchdarkly_team_member" "teamMember1" {
+resource "launchdarkly_team_member" "test" {
 	email = "%s@example.com"
 	first_name = "first"
 	last_name = "last"
@@ -35,7 +35,7 @@ resource "launchdarkly_team_member" "teamMember1" {
 
 func TestAccTeamMember_Create(t *testing.T) {
 	randomName := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
-	resourceName := "launchdarkly_team_member.teamMember1"
+	resourceName := "launchdarkly_team_member.test"
 	resource.Test(t, resource.TestCase{
 		PreCheck: func() {
 			testAccPreCheck(t)
@@ -59,7 +59,7 @@ func TestAccTeamMember_Create(t *testing.T) {
 
 func TestAccTeamMember_Update(t *testing.T) {
 	randomName := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
-	resourceName := "launchdarkly_team_member.teamMember1"
+	resourceName := "launchdarkly_team_member.test"
 	resource.Test(t, resource.TestCase{
 		PreCheck: func() {
 			testAccPreCheck(t)

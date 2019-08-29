@@ -10,14 +10,14 @@ import (
 
 const (
 	testAccProjectCreate = `
-resource "launchdarkly_project" "testproject" {
+resource "launchdarkly_project" "test" {
 	key = "test-project"
 	name = "test project"
 	tags = [ "terraform", "test" ]
 }
 `
 	testAccProjectUpdate = `
-resource "launchdarkly_project" "testproject" {
+resource "launchdarkly_project" "test" {
 	key = "test-project"
 	name = "awesome test project"
 	tags = []
@@ -26,7 +26,7 @@ resource "launchdarkly_project" "testproject" {
 )
 
 func TestAccProject_Create(t *testing.T) {
-	resourceName := "launchdarkly_project.testproject"
+	resourceName := "launchdarkly_project.test"
 	resource.Test(t, resource.TestCase{
 		PreCheck: func() {
 			testAccPreCheck(t)
@@ -49,7 +49,7 @@ func TestAccProject_Create(t *testing.T) {
 }
 
 func TestAccProject_Update(t *testing.T) {
-	resourceName := "launchdarkly_project.testproject"
+	resourceName := "launchdarkly_project.test"
 	resource.Test(t, resource.TestCase{
 		PreCheck: func() {
 			testAccPreCheck(t)

@@ -10,7 +10,7 @@ import (
 
 const (
 	testAccWebhookCreate = `
-resource "launchdarkly_webhook" "examplewebhook1" {
+resource "launchdarkly_webhook" "test" {
 	name = "example-webhook"
 	url = "http://webhooks.com"
 	tags = [ "terraform" ]
@@ -19,7 +19,7 @@ resource "launchdarkly_webhook" "examplewebhook1" {
 `
 
 	testAccWebhookUpdate = `
-resource "launchdarkly_webhook" "examplewebhook1" {
+resource "launchdarkly_webhook" "test" {
 	name = "Example Webhook"
 	url = "http://webhooks.com/updatedUrl"
 	tags = [ "terraform", "updated" ]
@@ -29,7 +29,7 @@ resource "launchdarkly_webhook" "examplewebhook1" {
 )
 
 func TestAccWebhook_Create(t *testing.T) {
-	resourceName := "launchdarkly_webhook.examplewebhook1"
+	resourceName := "launchdarkly_webhook.test"
 	resource.Test(t, resource.TestCase{
 		PreCheck: func() {
 			testAccPreCheck(t)
@@ -52,7 +52,7 @@ func TestAccWebhook_Create(t *testing.T) {
 }
 
 func TestAccWebhook_Update(t *testing.T) {
-	resourceName := "launchdarkly_webhook.examplewebhook1"
+	resourceName := "launchdarkly_webhook.test"
 	resource.Test(t, resource.TestCase{
 		PreCheck: func() {
 			testAccPreCheck(t)

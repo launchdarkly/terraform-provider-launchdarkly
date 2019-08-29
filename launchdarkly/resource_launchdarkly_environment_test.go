@@ -10,41 +10,41 @@ import (
 
 const (
 	testAccEnvironmentCreate = `
-resource "launchdarkly_project" "testProject" {
+resource "launchdarkly_project" "test" {
 	name = "testProject"
 	key = "test-project"
 }
 
-resource "launchdarkly_environment" "staging1" {
+resource "launchdarkly_environment" "staging" {
 	name = "Staging1"
   	key = "staging1"
   	color = "ff00ff"
   	secure_mode = true
   	default_track_events = false
   	default_ttl = 100.0
-  	project_key = "${launchdarkly_project.testProject.key}"
+  	project_key = "${launchdarkly_project.test.key}"
 }
 `
 	testAccEnvironmentUpdate = `
-resource "launchdarkly_project" "testProject" {
+resource "launchdarkly_project" "test" {
 	name = "testProject"
 	key = "test-project"
 }
 
-resource "launchdarkly_environment" "staging1" {
+resource "launchdarkly_environment" "staging" {
 	name = "The real staging1"
   	key = "staging1"
   	color = "000000"
   	secure_mode = false
   	default_track_events = true
   	default_ttl = 3
-  	project_key = "${launchdarkly_project.testProject.key}"
+  	project_key = "${launchdarkly_project.test.key}"
 }
 `
 )
 
 func TestAccEnvironment_Create(t *testing.T) {
-	resourceName := "launchdarkly_environment.staging1"
+	resourceName := "launchdarkly_environment.staging"
 	resource.Test(t, resource.TestCase{
 		PreCheck: func() {
 			testAccPreCheck(t)
@@ -54,7 +54,7 @@ func TestAccEnvironment_Create(t *testing.T) {
 			{
 				Config: testAccEnvironmentCreate,
 				Check: resource.ComposeTestCheckFunc(
-					testAccCheckProjectExists("launchdarkly_project.testProject"),
+					testAccCheckProjectExists("launchdarkly_project.test"),
 					testAccCheckEnvironmentExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, "name", "Staging1"),
 					resource.TestCheckResourceAttr(resourceName, "key", "staging1"),
@@ -70,7 +70,7 @@ func TestAccEnvironment_Create(t *testing.T) {
 }
 
 func TestAccEnvironment_Update(t *testing.T) {
-	resourceName := "launchdarkly_environment.staging1"
+	resourceName := "launchdarkly_environment.staging"
 	resource.Test(t, resource.TestCase{
 		PreCheck: func() {
 			testAccPreCheck(t)
@@ -80,7 +80,7 @@ func TestAccEnvironment_Update(t *testing.T) {
 			{
 				Config: testAccEnvironmentCreate,
 				Check: resource.ComposeTestCheckFunc(
-					testAccCheckProjectExists("launchdarkly_project.testProject"),
+					testAccCheckProjectExists("launchdarkly_project.test"),
 					testAccCheckEnvironmentExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, "name", "Staging1"),
 					resource.TestCheckResourceAttr(resourceName, "key", "staging1"),
@@ -94,7 +94,7 @@ func TestAccEnvironment_Update(t *testing.T) {
 			{
 				Config: testAccEnvironmentUpdate,
 				Check: resource.ComposeTestCheckFunc(
-					testAccCheckProjectExists("launchdarkly_project.testProject"),
+					testAccCheckProjectExists("launchdarkly_project.test"),
 					testAccCheckEnvironmentExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, "name", "The real staging1"),
 					resource.TestCheckResourceAttr(resourceName, "key", "staging1"),

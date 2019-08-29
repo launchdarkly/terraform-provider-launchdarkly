@@ -13,7 +13,7 @@ import (
 
 const (
 	testAccCustomRoleCreate = `
-resource "launchdarkly_custom_role" "customRole1" {
+resource "launchdarkly_custom_role" "test" {
 	key = "custom-role-key-1"
 	name = "custom-role-name-1"
 	description= "crd"
@@ -27,7 +27,7 @@ resource "launchdarkly_custom_role" "customRole1" {
 }
 `
 	testAccCustomRoleUpdate = `
-resource "launchdarkly_custom_role" "customRole1" {
+resource "launchdarkly_custom_role" "test" {
 	key = "custom-role-key-1"
 	name = "Custom role - deny production"
 	description= "Deny all actions on production environments"
@@ -43,7 +43,7 @@ resource "launchdarkly_custom_role" "customRole1" {
 )
 
 func TestAccCustomRole_Create(t *testing.T) {
-	resourceName := "launchdarkly_custom_role.customRole1"
+	resourceName := "launchdarkly_custom_role.test"
 	policy := ldapi.Policy{
 		Resources: []string{"proj/*:env/production"},
 		Actions:   []string{"*"},
@@ -75,7 +75,7 @@ func TestAccCustomRole_Create(t *testing.T) {
 }
 
 func TestAccCustomRole_Update(t *testing.T) {
-	resourceName := "launchdarkly_custom_role.customRole1"
+	resourceName := "launchdarkly_custom_role.test"
 	policy := ldapi.Policy{
 		Resources: []string{"proj/*:env/production"},
 		Actions:   []string{"*"},
