@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/hashicorp/terraform/helper/acctest"
 	"github.com/hashicorp/terraform/helper/hashcode"
 	"github.com/hashicorp/terraform/helper/resource"
 	"github.com/hashicorp/terraform/terraform"
@@ -38,6 +39,30 @@ resource "launchdarkly_feature_flag" "basic-flag" {
 	temporary = true
 }
 `
+	// The email must be set with a random name using fmt.Sprintf for this test to work since LD does
+	// not support creating members with the same email address more than once.
+	testAccFeatureFlagWithMaintainer = `
+resource "launchdarkly_team_member" "teamMember1" {
+	email = "%s@example.com"
+	first_name = "first"
+	last_name = "last"
+	role = "admin"
+	custom_roles = []
+}
+
+resource "launchdarkly_project" "testProject" {
+	name = "testProject"
+	key = "test-project"
+}
+
+resource "launchdarkly_feature_flag" "maintained-flag" {
+	project_key = "${launchdarkly_project.testProject.key}"
+	key = "maintained-flag"
+	name = "Maintained feature flag"
+	maintainer_id = "${launchdarkly_team_member.teamMember1.id}"
+}
+`
+
 	testAccFeatureFlagCreateMultivariate = `
 resource "launchdarkly_project" "testProject" {
 	name = "testProject"
@@ -141,6 +166,31 @@ func TestAccFeatureFlag_Update(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, testAccTagKey("terraform"), "terraform"),
 					resource.TestCheckResourceAttr(resourceName, "include_in_snippet", "true"),
 					resource.TestCheckResourceAttr(resourceName, "temporary", "true"),
+				),
+			},
+		},
+	})
+}
+
+func TestAccFeatureFlag_WithMaintainer(t *testing.T) {
+	randomName := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	resourceName := "launchdarkly_feature_flag.maintained-flag"
+	resource.Test(t, resource.TestCase{
+		PreCheck: func() {
+			testAccPreCheck(t)
+		},
+		Providers: testAccProviders,
+		Steps: []resource.TestStep{
+			{
+				Config: fmt.Sprintf(testAccFeatureFlagWithMaintainer, randomName),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckProjectExists("launchdarkly_project.testProject"),
+					testAccCheckMemberExists("launchdarkly_team_member.teamMember1"),
+					testAccCheckFeatureFlagExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, "name", "Maintained feature flag"),
+					resource.TestCheckResourceAttr(resourceName, "key", "maintained-flag"),
+					resource.TestCheckResourceAttr(resourceName, "project_key", "test-project"),
+					resource.TestCheckResourceAttrPair(resourceName, "maintainer_id", "launchdarkly_team_member.teamMember1", "id"),
 				),
 			},
 		},

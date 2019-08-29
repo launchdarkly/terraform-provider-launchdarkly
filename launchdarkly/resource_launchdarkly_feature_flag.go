@@ -36,6 +36,11 @@ func resourceFeatureFlag() *schema.Resource {
 				Type:     schema.TypeString,
 				Required: true,
 			},
+			maintainer_id: &schema.Schema{
+				Type:     schema.TypeString,
+				Computed: true,
+				Optional: true,
+			},
 			description: &schema.Schema{
 				Type:     schema.TypeString,
 				Optional: true,
@@ -118,6 +123,7 @@ func resourceFeatureFlagRead(d *schema.ResourceData, metaRaw interface{}) error 
 
 	_ = d.Set(key, flag.Key)
 	_ = d.Set(name, flag.Name)
+	_ = d.Set(maintainer_id, flag.MaintainerId)
 	_ = d.Set(description, flag.Description)
 	_ = d.Set(include_in_snippet, flag.IncludeInSnippet)
 	_ = d.Set(temporary, flag.Temporary)
@@ -160,6 +166,12 @@ func resourceFeatureFlagUpdate(d *schema.ResourceData, metaRaw interface{}) erro
 			patchReplace("/temporary", temporary),
 			patchReplace("/customProperties", customProperties),
 		}}
+
+	// Only update the maintainer ID if is specified in the schema
+	maintainerID, ok := d.GetOk(maintainer_id)
+	if ok {
+		patch.Patch = append(patch.Patch, patchReplace("/maintainerId", maintainerID.(string)))
+	}
 
 	_, _, err := client.ld.FeatureFlagsApi.PatchFeatureFlag(client.ctx, projectKey, key, patch)
 	if err != nil {

@@ -16,6 +16,7 @@ const (
 	secure_mode          = "secure_mode"
 	default_track_events = "default_track_events"
 	description          = "description"
+	maintainer_id        = "maintainer_id"
 	variations           = "variations"
 	temporary            = "temporary"
 	include_in_snippet   = "include_in_snippet"

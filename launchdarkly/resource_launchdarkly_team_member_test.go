@@ -11,26 +11,26 @@ import (
 
 func testAccTeamMemberCreate(rName string) string {
 	return fmt.Sprintf(`
-	resource "launchdarkly_team_member" "teamMember1" {
-		email = "%s@example.com"
-		first_name = "first"
-		last_name = "last"
-		role = "admin"
-		custom_roles = []
-	}
-	`, rName)
+resource "launchdarkly_team_member" "teamMember1" {
+	email = "%s@example.com"
+	first_name = "first"
+	last_name = "last"
+	role = "admin"
+	custom_roles = []
+}
+`, rName)
 }
 
 func testAccTeamMemberUpdate(rName string) string {
 	return fmt.Sprintf(`
-	resource "launchdarkly_team_member" "teamMember1" {
-		email = "%s@example.com"
-		first_name = "first"
-		last_name = "last"
-		role = "writer"
-		custom_roles = []
-	}
-	`, rName)
+resource "launchdarkly_team_member" "teamMember1" {
+	email = "%s@example.com"
+	first_name = "first"
+	last_name = "last"
+	role = "writer"
+	custom_roles = []
+}
+`, rName)
 }
 
 func TestAccTeamMember_Create(t *testing.T) {
