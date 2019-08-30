@@ -106,7 +106,11 @@ func resourceProjectRead(d *schema.ResourceData, metaRaw interface{}) error {
 	client := metaRaw.(*Client)
 	projectKey := d.Get(key).(string)
 
-	project, _, err := client.ld.ProjectsApi.GetProject(client.ctx, projectKey)
+	project, res, err := client.ld.ProjectsApi.GetProject(client.ctx, projectKey)
+	if isStatusNotFound(res) {
+		d.SetId("")
+		return nil
+	}
 	if err != nil {
 		return fmt.Errorf("failed to get project with key %q: %v", projectKey, err)
 	}
@@ -162,8 +166,8 @@ func resourceProjectExists(d *schema.ResourceData, metaRaw interface{}) (bool, e
 }
 
 func projectExists(projectKey string, meta *Client) (bool, error) {
-	_, httpResponse, err := meta.ld.ProjectsApi.GetProject(meta.ctx, projectKey)
-	if httpResponse != nil && httpResponse.StatusCode == 404 {
+	_, res, err := meta.ld.ProjectsApi.GetProject(meta.ctx, projectKey)
+	if isStatusNotFound(res) {
 		fmt.Println("got 404 when getting project. returning false.")
 		return false, nil
 	}

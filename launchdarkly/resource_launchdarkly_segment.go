@@ -117,7 +117,11 @@ func resourceSegmentRead(d *schema.ResourceData, metaRaw interface{}) error {
 	envKey := d.Get(env_key).(string)
 	segmentKey := d.Get(key).(string)
 
-	segment, _, err := client.ld.UserSegmentsApi.GetUserSegment(client.ctx, projectKey, envKey, segmentKey)
+	segment, res, err := client.ld.UserSegmentsApi.GetUserSegment(client.ctx, projectKey, envKey, segmentKey)
+	if isStatusNotFound(res) {
+		d.SetId("")
+		return nil
+	}
 
 	if err != nil {
 		return fmt.Errorf("failed to get segment %q of project %q: %s", segmentKey, projectKey, handleLdapiErr(err))
@@ -197,8 +201,8 @@ func resourceSegmentExists(d *schema.ResourceData, metaRaw interface{}) (bool, e
 	envKey := d.Get(env_key).(string)
 	key := d.Get(key).(string)
 
-	_, httpResponse, err := client.ld.UserSegmentsApi.GetUserSegment(client.ctx, projectKey, envKey, key)
-	if httpResponse != nil && httpResponse.StatusCode == 404 {
+	_, res, err := client.ld.UserSegmentsApi.GetUserSegment(client.ctx, projectKey, envKey, key)
+	if isStatusNotFound(res) {
 		return false, nil
 	}
 	if err != nil {

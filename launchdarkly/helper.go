@@ -2,6 +2,7 @@ package launchdarkly
 
 import (
 	"fmt"
+	"net/http"
 
 	ldapi "github.com/launchdarkly/api-client-go"
 )
@@ -26,4 +27,11 @@ func handleLdapiErr(err error) error {
 		return fmt.Errorf("%s: %s", swaggerErr.Error(), string(swaggerErr.Body()))
 	}
 	return err
+}
+
+func isStatusNotFound(response *http.Response) bool {
+	if response != nil && response.StatusCode == http.StatusNotFound {
+		return true
+	}
+	return false
 }

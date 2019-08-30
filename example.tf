@@ -81,6 +81,38 @@ resource "launchdarkly_feature_flag" "multivariate" {
   ]
 }
 
+resource "launchdarkly_custom_role" "example" {
+  key         = "example-role-key-1"
+  name        = "example role"
+  description = "This is an example role"
+
+  policy = [
+    {
+      actions   = ["*"]
+      effect    = "allow"
+      resources = ["proj/*:env/production"]
+    },
+  ]
+}
+
+resource "launchdarkly_segment" "example" {
+  key         = "segmentKey1"
+  project_key = "${launchdarkly_project.example.key}"
+  env_key     = "${launchdarkly_environment.staging.key}"
+  name        = "segment name"
+  description = "segment description"
+  tags        = ["segmentTag1", "segmentTag2"]
+  included    = ["user1", "user2"]
+  excluded    = ["user3", "user4"]
+}
+
+resource "launchdarkly_webhook" "example" {
+  name = "Example Webhook"
+  url  = "http://webhooks.com/webhook"
+  tags = ["terraform"]
+  on   = false
+}
+
 output "api_key" {
   value = "${launchdarkly_environment.staging.api_key}"
 }

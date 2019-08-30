@@ -113,7 +113,11 @@ func resourceFeatureFlagRead(d *schema.ResourceData, metaRaw interface{}) error 
 	projectKey := d.Get(project_key).(string)
 	key := d.Get(key).(string)
 
-	flag, _, err := client.ld.FeatureFlagsApi.GetFeatureFlag(client.ctx, projectKey, key, nil)
+	flag, res, err := client.ld.FeatureFlagsApi.GetFeatureFlag(client.ctx, projectKey, key, nil)
+	if isStatusNotFound(res) {
+		d.SetId("")
+		return nil
+	}
 
 	if err != nil {
 		return fmt.Errorf("failed to get flag %q of project %q: %s", key, projectKey, handleLdapiErr(err))
@@ -199,8 +203,8 @@ func resourceFeatureFlagExists(d *schema.ResourceData, metaRaw interface{}) (boo
 	projectKey := d.Get(project_key).(string)
 	key := d.Get(key).(string)
 
-	_, httpResponse, err := client.ld.FeatureFlagsApi.GetFeatureFlag(client.ctx, projectKey, key, nil)
-	if httpResponse != nil && httpResponse.StatusCode == 404 {
+	_, res, err := client.ld.FeatureFlagsApi.GetFeatureFlag(client.ctx, projectKey, key, nil)
+	if isStatusNotFound(res) {
 		return false, nil
 	}
 	if err != nil {

@@ -85,7 +85,11 @@ func resourceTeamMemberRead(d *schema.ResourceData, metaRaw interface{}) error {
 	client := metaRaw.(*Client)
 	memberID := d.Id()
 
-	member, _, err := client.ld.TeamMembersApi.GetMember(client.ctx, memberID)
+	member, res, err := client.ld.TeamMembersApi.GetMember(client.ctx, memberID)
+	if isStatusNotFound(res) {
+		d.SetId("")
+		return nil
+	}
 	if err != nil {
 		return fmt.Errorf("failed to get member with id %q: %v", memberID, err)
 	}
@@ -139,8 +143,8 @@ func resourceTeamMemberExists(d *schema.ResourceData, metaRaw interface{}) (bool
 }
 
 func teamMemberExists(memberID string, meta *Client) (bool, error) {
-	_, httpResponse, err := meta.ld.TeamMembersApi.GetMember(meta.ctx, memberID)
-	if httpResponse != nil && httpResponse.StatusCode == 404 {
+	_, res, err := meta.ld.TeamMembersApi.GetMember(meta.ctx, memberID)
+	if isStatusNotFound(res) {
 		return false, nil
 	}
 	if err != nil {

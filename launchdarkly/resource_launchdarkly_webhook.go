@@ -4,8 +4,9 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/terraform/helper/schema"
-	ldapi "github.com/launchdarkly/api-client-go"
 	"github.com/pkg/errors"
+
+	ldapi "github.com/launchdarkly/api-client-go"
 )
 
 func resourceWebhook() *schema.Resource {
@@ -83,7 +84,11 @@ func resourceWebhookRead(d *schema.ResourceData, metaRaw interface{}) error {
 	client := metaRaw.(*Client)
 	webhookID := d.Id()
 
-	webhook, _, err := client.ld.WebhooksApi.GetWebhook(client.ctx, webhookID)
+	webhook, res, err := client.ld.WebhooksApi.GetWebhook(client.ctx, webhookID)
+	if isStatusNotFound(res) {
+		d.SetId("")
+		return nil
+	}
 	if err != nil {
 		return fmt.Errorf("failed to get webhook with id %q: %s", webhookID, handleLdapiErr(err))
 	}
@@ -141,8 +146,8 @@ func resourceWebhookExists(d *schema.ResourceData, metaRaw interface{}) (bool, e
 }
 
 func webhookExists(webhookID string, meta *Client) (bool, error) {
-	_, httpResponse, err := meta.ld.WebhooksApi.GetWebhook(meta.ctx, webhookID)
-	if httpResponse != nil && httpResponse.StatusCode == 404 {
+	_, res, err := meta.ld.WebhooksApi.GetWebhook(meta.ctx, webhookID)
+	if isStatusNotFound(res) {
 		return false, nil
 	}
 	if err != nil {

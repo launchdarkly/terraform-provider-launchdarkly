@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/terraform/helper/schema"
+
 	ldapi "github.com/launchdarkly/api-client-go"
 )
 
@@ -64,7 +65,11 @@ func resourceCustomRoleRead(d *schema.ResourceData, metaRaw interface{}) error {
 	client := metaRaw.(*Client)
 	customRoleID := d.Id()
 
-	customRole, _, err := client.ld.CustomRolesApi.GetCustomRole(client.ctx, customRoleID)
+	customRole, res, err := client.ld.CustomRolesApi.GetCustomRole(client.ctx, customRoleID)
+	if isStatusNotFound(res) {
+		d.SetId("")
+		return nil
+	}
 	if err != nil {
 		return fmt.Errorf("failed to get custom role with id %q: %s", customRoleID, handleLdapiErr(err))
 	}
@@ -117,8 +122,8 @@ func resourceCustomRoleExists(d *schema.ResourceData, metaRaw interface{}) (bool
 }
 
 func customRoleExists(customRoleKey string, meta *Client) (bool, error) {
-	_, httpResponse, err := meta.ld.CustomRolesApi.GetCustomRole(meta.ctx, customRoleKey)
-	if httpResponse != nil && httpResponse.StatusCode == 404 {
+	_, res, err := meta.ld.CustomRolesApi.GetCustomRole(meta.ctx, customRoleKey)
+	if isStatusNotFound(res) {
 		return false, nil
 	}
 	if err != nil {

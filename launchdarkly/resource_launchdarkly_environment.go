@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/hashicorp/terraform/helper/schema"
+
 	ldapi "github.com/launchdarkly/api-client-go"
 )
 
@@ -66,7 +67,11 @@ func resourceEnvironmentRead(d *schema.ResourceData, metaRaw interface{}) error 
 	projectKey := d.Get(project_key).(string)
 	key := d.Get(key).(string)
 
-	env, _, err := client.ld.EnvironmentsApi.GetEnvironment(client.ctx, projectKey, key)
+	env, res, err := client.ld.EnvironmentsApi.GetEnvironment(client.ctx, projectKey, key)
+	if isStatusNotFound(res) {
+		d.SetId("")
+		return nil
+	}
 	if err != nil {
 		return fmt.Errorf("failed to get environment with key %q for project key: %q: %v", key, projectKey, handleLdapiErr(err))
 	}
@@ -128,8 +133,8 @@ func resourceEnvironmentExists(d *schema.ResourceData, metaRaw interface{}) (boo
 }
 
 func environmentExists(projectKey string, key string, meta *Client) (bool, error) {
-	_, httpResponse, err := meta.ld.EnvironmentsApi.GetEnvironment(meta.ctx, projectKey, key)
-	if httpResponse != nil && httpResponse.StatusCode == 404 {
+	_, res, err := meta.ld.EnvironmentsApi.GetEnvironment(meta.ctx, projectKey, key)
+	if isStatusNotFound(res) {
 		return false, nil
 	}
 	if err != nil {
