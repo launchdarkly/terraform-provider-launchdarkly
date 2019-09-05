@@ -3,28 +3,27 @@ package launchdarkly
 import (
 	"testing"
 
+	"github.com/hashicorp/terraform/helper/schema"
 	ldapi "github.com/launchdarkly/api-client-go"
 	"github.com/stretchr/testify/assert"
-
-	"github.com/hashicorp/terraform/helper/schema"
 )
 
 func TestVariationsFromResourceData(t *testing.T) {
 	testCases := []struct {
-		name       string
-		variations map[string]interface{}
-		expected   []ldapi.Variation
+		name     string
+		vars     map[string]interface{}
+		expected []ldapi.Variation
 	}{
 		{
 			name: "string variations",
-			variations: map[string]interface{}{
-				variations: []map[string]interface{}{
-					{
+			vars: map[string]interface{}{
+				variations: []interface{}{
+					map[string]interface{}{
 						name:        "nameValue",
 						description: "descValue",
 						value:       "a string value",
 					},
-					{
+					map[string]interface{}{
 						name:        "nameValue2",
 						description: "descValue2",
 						value:       "another string value",
@@ -37,12 +36,12 @@ func TestVariationsFromResourceData(t *testing.T) {
 		},
 		{
 			name: "boolean variations",
-			variations: map[string]interface{}{
-				variations: []map[string]interface{}{
-					{
+			vars: map[string]interface{}{
+				variations: []interface{}{
+					map[string]interface{}{
 						value: "true",
 					},
-					{
+					map[string]interface{}{
 						value: "false",
 					},
 				}},
@@ -57,7 +56,7 @@ func TestVariationsFromResourceData(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			resourceData := schema.TestResourceDataRaw(t,
 				map[string]*schema.Schema{variations: variationsSchema()},
-				tc.variations,
+				tc.vars,
 			)
 
 			actualVariations := variationsFromResourceData(resourceData)

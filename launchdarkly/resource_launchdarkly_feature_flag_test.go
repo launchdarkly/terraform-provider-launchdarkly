@@ -18,7 +18,7 @@ resource "launchdarkly_project" "test" {
 }
 
 resource "launchdarkly_feature_flag" "basic" {
-	project_key = "${launchdarkly_project.test.key}"
+	project_key = launchdarkly_project.test.key
 	key = "basic-flag"
 	name = "Basic feature flag"
 }
@@ -30,7 +30,7 @@ resource "launchdarkly_project" "test" {
 }
 
 resource "launchdarkly_feature_flag" "basic" {
-	project_key = "${launchdarkly_project.test.key}"
+	project_key = launchdarkly_project.test.key
 	key = "basic-flag"
 	name = "Less basic feature flag"
 	description = "this is a boolean flag by default becausethe variations field is omitted"
@@ -56,10 +56,10 @@ resource "launchdarkly_project" "test" {
 }
 
 resource "launchdarkly_feature_flag" "maintained" {
-	project_key = "${launchdarkly_project.test.key}"
+	project_key = launchdarkly_project.test.key
 	key = "maintained-flag"
 	name = "Maintained feature flag"
-	maintainer_id = "${launchdarkly_team_member.test.id}"
+	maintainer_id = launchdarkly_team_member.test.id
 }
 `
 
@@ -70,44 +70,40 @@ resource "launchdarkly_project" "test" {
 }
 
 resource "launchdarkly_feature_flag" "multivariate" {
-	project_key = "${launchdarkly_project.test.key}"
+	project_key = launchdarkly_project.test.key
 	key = "multivariate-flag-1"
 	name = "multivariate flag 1 name"
 	description = "this is a multivariate flag because we explicitly define the variations"
-	variations = [
-    	{
-      		name = "variation1"
-      		description = "a description"
-			value = "string1"
-		},
-    	{
-      		value = "string2"
-		},
-    	{
-      		value = "another option"
-    	},
-  	]
+	variations {
+		name = "variation1"
+		description = "a description"
+		value = "string1"
+	}
+    variations {
+		value = "string2"
+	}
+    variations {
+		value = "another option"
+	}
   	tags = [
     	"this",
     	"is",
     	"unordered"
   	]
-  	custom_properties = [
-    	{
-      		key = "some.property"
-      		name = "Some Property"
-      		value = [
-        		"value1",
-        		"value2",
-        		"value3"
-			]
-    	},
-    	{
-      	key = "some.property2"
-      	name = "Some Property"
-      	value = ["very special custom property"]
-    	}
-	]
+  	custom_properties {
+		key = "some.property"
+		name = "Some Property"
+		value = [
+			"value1",
+			"value2",
+			"value3"
+		]
+	}
+	custom_properties {
+		key = "some.property2"
+		name = "Some Property"
+		value = ["very special custom property"]
+	}
 }
 `
 )

@@ -4,9 +4,8 @@ import (
 	"fmt"
 	"strings"
 
-	ldapi "github.com/launchdarkly/api-client-go"
-
 	"github.com/hashicorp/terraform/helper/schema"
+	ldapi "github.com/launchdarkly/api-client-go"
 )
 
 func resourceSegment() *schema.Resource {

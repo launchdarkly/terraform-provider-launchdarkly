@@ -63,14 +63,18 @@ func customPropertyFromResourceData(val interface{}) (string, ldapi.CustomProper
 	return customPropertyMap[key].(string), cp
 }
 
-func customPropertiesToResourceData(customProperties map[string]ldapi.CustomProperty) []map[string]interface{} {
-	transformed := make([]map[string]interface{}, 0)
+func customPropertiesToResourceData(customProperties map[string]ldapi.CustomProperty) []interface{} {
+	transformed := make([]interface{}, 0)
 
 	for k, cp := range customProperties {
+		var values []interface{}
+		for _, v := range cp.Value {
+			values = append(values, v)
+		}
 		cpRaw := map[string]interface{}{
 			key:   k,
 			name:  cp.Name,
-			value: cp.Value,
+			value: values,
 		}
 		transformed = append(transformed, cpRaw)
 	}

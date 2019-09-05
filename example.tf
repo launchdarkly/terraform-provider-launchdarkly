@@ -6,16 +6,14 @@ resource "launchdarkly_project" "example" {
     "terraform",
   ]
 
-  environments = [
-    {
-      name                 = "defined in project post"
-      key                  = "proj_defined_env"
-      color                = "0000f0"
-      default_ttl          = 100.0
-      secure_mode          = true
-      default_track_events = false
-    },
-  ]
+  environments {
+    name                 = "defined in project post"
+    key                  = "proj_defined_env"
+    color                = "0000f0"
+    default_ttl          = 100
+    secure_mode          = true
+    default_track_events = false
+  }
 }
 
 resource "launchdarkly_environment" "staging" {
@@ -24,37 +22,35 @@ resource "launchdarkly_environment" "staging" {
   color                = "ff00ff"
   secure_mode          = true
   default_track_events = false
-  default_ttl          = 100.0
+  default_ttl          = 100
 
-  project_key = "${launchdarkly_project.example.key}"
+  project_key = launchdarkly_project.example.key
 }
 
 resource "launchdarkly_feature_flag" "boolean" {
-  project_key = "${launchdarkly_project.example.key}"
+  project_key = launchdarkly_project.example.key
   key         = "boolean-flag-1"
   name        = "boolean-flag-1 name"
   description = "this is a boolean flag by default because we omitted the variations field"
 }
 
 resource "launchdarkly_feature_flag" "multivariate" {
-  project_key = "${launchdarkly_project.example.key}"
+  project_key = launchdarkly_project.example.key
   key         = "multivariate-flag"
   name        = "multivariate-flag name"
   description = "this is a multivariate flag because we explicitly define the variations"
 
-  variations = [
-    {
-      name        = "variation1"
-      description = "a description"
-      value       = "string1"
-    },
-    {
-      value = "string2"
-    },
-    {
-      value = "another option"
-    },
-  ]
+  variations {
+    name        = "variation1"
+    description = "a description"
+    value       = "string1"
+  }
+  variations {
+    value = "string2"
+  }
+  variations {
+    value = "another option"
+  }
 
   tags = [
     "this",
@@ -62,23 +58,21 @@ resource "launchdarkly_feature_flag" "multivariate" {
     "unordered",
   ]
 
-  custom_properties = [
-    {
-      key  = "some.property"
-      name = "Some Property"
+  custom_properties {
+    key  = "some.property"
+    name = "Some Property"
 
-      value = [
-        "value1",
-        "value2",
-        "value3",
-      ]
-    },
-    {
-      key   = "some.property2"
-      name  = "Some Property"
-      value = ["very special custom property"]
-    },
-  ]
+    value = [
+      "value1",
+      "value2",
+      "value3",
+    ]
+  }
+  custom_properties {
+    key   = "some.property2"
+    name  = "Some Property"
+    value = ["very special custom property"]
+  }
 }
 
 resource "launchdarkly_custom_role" "example" {
@@ -86,19 +80,17 @@ resource "launchdarkly_custom_role" "example" {
   name        = "example role"
   description = "This is an example role"
 
-  policy = [
-    {
-      actions   = ["*"]
-      effect    = "allow"
-      resources = ["proj/*:env/production"]
-    },
-  ]
+  policy {
+    actions   = ["*"]
+    effect    = "allow"
+    resources = ["proj/*:env/production"]
+  }
 }
 
 resource "launchdarkly_segment" "example" {
   key         = "segmentKey1"
-  project_key = "${launchdarkly_project.example.key}"
-  env_key     = "${launchdarkly_environment.staging.key}"
+  project_key = launchdarkly_project.example.key
+  env_key     = launchdarkly_environment.staging.key
   name        = "segment name"
   description = "segment description"
   tags        = ["segmentTag1", "segmentTag2"]
@@ -114,9 +106,10 @@ resource "launchdarkly_webhook" "example" {
 }
 
 output "api_key" {
-  value = "${launchdarkly_environment.staging.api_key}"
+  value = launchdarkly_environment.staging.api_key
 }
 
 output "mobile_key" {
-  value = "${launchdarkly_environment.staging.mobile_key}"
+  value = launchdarkly_environment.staging.mobile_key
 }
+

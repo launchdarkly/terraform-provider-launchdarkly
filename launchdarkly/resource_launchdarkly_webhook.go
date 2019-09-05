@@ -4,9 +4,8 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/terraform/helper/schema"
-	"github.com/pkg/errors"
-
 	ldapi "github.com/launchdarkly/api-client-go"
+	"github.com/pkg/errors"
 )
 
 func resourceWebhook() *schema.Resource {

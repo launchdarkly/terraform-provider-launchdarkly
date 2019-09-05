@@ -17,7 +17,7 @@ resource "launchdarkly_project" "test" {
 
 resource "launchdarkly_segment" "test" {
     key = "segmentKey1"
-	project_key = "${launchdarkly_project.test.key}"
+	project_key = launchdarkly_project.test.key
 	env_key = "test"
   	name = "segment name"
 	description = "segment description"
@@ -33,31 +33,29 @@ resource "launchdarkly_project" "test" {
 }
 resource "launchdarkly_segment" "test" {
     key = "segmentKey1"
-	project_key = "${launchdarkly_project.test.key}"
+	project_key = launchdarkly_project.test.key
 	env_key = "test"
   	name = "segment name"
 	description = "segment description"
 	tags = ["segmentTag1", "segmentTag2"]
 	included = ["user1", "user2", "user3", "user4"]
 	excluded = []
-	rules = [
-        {
-        clauses = [{
-            attribute = "test_att",
-            op = "in",
-            values = ["test"],
-            negate = false,
-            },
-            {
-            attribute = "test_att_1",
-            op = "endsWith",
-            values = ["test2"],
-            negate = true,
-            }],
-        weight = 50000,
-        bucket_by = "bucket"
+	rules {
+		clauses {
+			attribute = "test_att"
+			op = "in"
+			values = ["test"]
+			negate = false
 		}
-	]
+		clauses {
+			attribute = "test_att_1"
+			op = "endsWith"
+			values = ["test2"]
+			negate = true
+		}
+		weight = 50000
+		bucket_by = "bucket"
+	}
 }`
 )
 

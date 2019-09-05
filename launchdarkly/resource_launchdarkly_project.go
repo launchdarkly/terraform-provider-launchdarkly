@@ -3,9 +3,8 @@ package launchdarkly
 import (
 	"fmt"
 
-	ldapi "github.com/launchdarkly/api-client-go"
-
 	"github.com/hashicorp/terraform/helper/schema"
+	ldapi "github.com/launchdarkly/api-client-go"
 )
 
 func resourceProject() *schema.Resource {

@@ -22,7 +22,7 @@ resource "launchdarkly_environment" "staging" {
   	secure_mode = true
   	default_track_events = false
   	default_ttl = 100.0
-  	project_key = "${launchdarkly_project.test.key}"
+  	project_key = launchdarkly_project.test.key
 }
 `
 	testAccEnvironmentUpdate = `
@@ -38,7 +38,7 @@ resource "launchdarkly_environment" "staging" {
   	secure_mode = false
   	default_track_events = true
   	default_ttl = 3
-  	project_key = "${launchdarkly_project.test.key}"
+  	project_key = launchdarkly_project.test.key
 }
 `
 )

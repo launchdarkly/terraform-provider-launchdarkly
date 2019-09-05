@@ -7,7 +7,6 @@ import (
 	"github.com/hashicorp/terraform/helper/hashcode"
 	"github.com/hashicorp/terraform/helper/resource"
 	"github.com/hashicorp/terraform/terraform"
-
 	ldapi "github.com/launchdarkly/api-client-go"
 )
 
@@ -17,13 +16,11 @@ resource "launchdarkly_custom_role" "test" {
 	key = "custom-role-key-1"
 	name = "custom-role-name-1"
 	description= "crd"
-	policy = [
-	{
+	policy {
 		actions = ["*"]	
 		effect = "allow"
 		resources = ["proj/*:env/production"]
 	}
-	]
 }
 `
 	testAccCustomRoleUpdate = `
@@ -31,13 +28,11 @@ resource "launchdarkly_custom_role" "test" {
 	key = "custom-role-key-1"
 	name = "Custom role - deny production"
 	description= "Deny all actions on production environments"
-	policy = [
-	{
+	policy {
 		actions = ["*"]	
 		effect = "deny"
 		resources = ["proj/*:env/production"]
 	}
-	]
 }
 `
 )
