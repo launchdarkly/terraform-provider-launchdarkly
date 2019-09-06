@@ -8,8 +8,8 @@ The API client used is the generated [api-client-go](https://github.com/launchda
 
 ## Requirements:
 
-- golang 1.12+ (1.11 should also work)
-- make
+- golang 1.11+
+- GNUmake
 - terraform 0.12.0+
 
 ## Building The Provider
@@ -45,4 +45,3 @@ See acceptance tests in `launchdarkly/resource_launchdarkly_*_test.go` for many 
 
 1. Tags for environments is not yet supported. Stay tuned.
 1. ~~Update terraform to [0.12](https://www.terraform.io/upgrade-guides/0-12.html)~~ This may help address tags for environments!
-1. Add CI build
