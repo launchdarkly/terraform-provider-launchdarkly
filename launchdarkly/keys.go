@@ -17,6 +17,7 @@ const (
 	default_track_events = "default_track_events"
 	description          = "description"
 	maintainer_id        = "maintainer_id"
+	variation_type       = "variation_type"
 	variations           = "variations"
 	temporary            = "temporary"
 	include_in_snippet   = "include_in_snippet"

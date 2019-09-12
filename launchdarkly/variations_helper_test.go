@@ -17,6 +17,7 @@ func TestVariationsFromResourceData(t *testing.T) {
 		{
 			name: "string variations",
 			vars: map[string]interface{}{
+				variation_type: "string",
 				variations: []interface{}{
 					map[string]interface{}{
 						name:        "nameValue",
@@ -37,6 +38,7 @@ func TestVariationsFromResourceData(t *testing.T) {
 		{
 			name: "boolean variations",
 			vars: map[string]interface{}{
+				variation_type: "boolean",
 				variations: []interface{}{
 					map[string]interface{}{
 						value: "true",
@@ -55,7 +57,7 @@ func TestVariationsFromResourceData(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			resourceData := schema.TestResourceDataRaw(t,
-				map[string]*schema.Schema{variations: variationsSchema()},
+				map[string]*schema.Schema{variation_type: variationTypeSchema(), variations: variationsSchema()},
 				tc.vars,
 			)
 

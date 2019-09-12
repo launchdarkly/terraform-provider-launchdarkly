@@ -17,6 +17,21 @@ func patchReplace(path string, value interface{}) ldapi.PatchOperation {
 	}
 }
 
+func patchAdd(path string, value interface{}) ldapi.PatchOperation {
+	return ldapi.PatchOperation{
+		Op:    "add",
+		Path:  path,
+		Value: &value,
+	}
+}
+
+func patchRemove(path string) ldapi.PatchOperation {
+	return ldapi.PatchOperation{
+		Op:   "remove",
+		Path: path,
+	}
+}
+
 // handleLdapiErr extracts the error message and body from a ldapi.GenericSwaggerError or simply returns the
 // error  if it is not a ldapi.GenericSwaggerError
 func handleLdapiErr(err error) error {

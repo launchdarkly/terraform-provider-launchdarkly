@@ -21,30 +21,31 @@ func resourceFeatureFlag() *schema.Resource {
 		},
 
 		Schema: map[string]*schema.Schema{
-			project_key: &schema.Schema{
+			project_key: {
 				Type:     schema.TypeString,
 				Optional: true,
 				ForceNew: true,
 			},
-			key: &schema.Schema{
+			key: {
 				Type:     schema.TypeString,
 				Required: true,
 				ForceNew: true,
 			},
-			name: &schema.Schema{
+			name: {
 				Type:     schema.TypeString,
 				Required: true,
 			},
-			maintainer_id: &schema.Schema{
+			maintainer_id: {
 				Type:     schema.TypeString,
 				Computed: true,
 				Optional: true,
 			},
-			description: &schema.Schema{
+			description: {
 				Type:     schema.TypeString,
 				Optional: true,
 			},
-			variations: variationsSchema(),
+			variation_type: variationTypeSchema(),
+			variations:     variationsSchema(),
 			temporary: {
 				Type:     schema.TypeBool,
 				Optional: true,
@@ -131,6 +132,11 @@ func resourceFeatureFlagRead(d *schema.ResourceData, metaRaw interface{}) error 
 	_ = d.Set(include_in_snippet, flag.IncludeInSnippet)
 	_ = d.Set(temporary, flag.Temporary)
 
+	err = d.Set(variation_type, variationsToVariationType(flag.Variations))
+	if err != nil {
+		return fmt.Errorf("failed to set variation type on flag with key %q: %v", flag.Key, err)
+	}
+
 	err = d.Set(variations, variationsToResourceData(flag.Variations))
 	if err != nil {
 		return fmt.Errorf("failed to set variations on flag with key %q: %v", flag.Key, err)
@@ -169,6 +175,9 @@ func resourceFeatureFlagUpdate(d *schema.ResourceData, metaRaw interface{}) erro
 			patchReplace("/temporary", temporary),
 			patchReplace("/customProperties", customProperties),
 		}}
+
+	variationPatches := variationPatchesFromResourceData(d)
+	patch.Patch = append(patch.Patch, variationPatches...)
 
 	// Only update the maintainer ID if is specified in the schema
 	maintainerID, ok := d.GetOk(maintainer_id)

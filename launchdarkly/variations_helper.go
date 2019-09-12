@@ -3,17 +3,31 @@ package launchdarkly
 import (
 	"fmt"
 
-	"github.com/hashicorp/terraform/helper/hashcode"
 	"github.com/hashicorp/terraform/helper/schema"
 	ldapi "github.com/launchdarkly/api-client-go"
 )
 
+const (
+	BOOL_VARIATION   = "boolean"
+	STRING_VARIATION = "string"
+)
+
+func variationTypeSchema() *schema.Schema {
+	return &schema.Schema{
+		Type:         schema.TypeString,
+		Required:     true,
+		ForceNew:     true,
+		Description:  "The uniform type for all variations. Can be either `boolean` or `string`.",
+		ValidateFunc: validateVariationType,
+	}
+}
+
 func variationsSchema() *schema.Schema {
 	return &schema.Schema{
-		Type:     schema.TypeSet,
-		Set:      variationHash,
+		Type:     schema.TypeList,
 		Optional: true,
 		Computed: true,
+		MinItems: 2,
 		Elem: &schema.Resource{
 			Schema: map[string]*schema.Schema{
 				name: {
@@ -28,9 +42,7 @@ func variationsSchema() *schema.Schema {
 					Type:     schema.TypeString,
 					Required: true,
 					StateFunc: func(i interface{}) string {
-						// LD allows arbitrary types here (*interface{}), but terraform wants a strong type here
-						// As a compromise we only really support bool (default) and strings which works fine using this
-						// technique:
+						// This will work for bool and string variation_types
 						return fmt.Sprintf("%v", i)
 					},
 				},
@@ -39,32 +51,70 @@ func variationsSchema() *schema.Schema {
 	}
 }
 
-func variationsFromResourceData(d *schema.ResourceData) []ldapi.Variation {
-	schemaVariations := d.Get(variations).(*schema.Set)
+func variationPatchesFromResourceData(d *schema.ResourceData) []ldapi.PatchOperation {
+	var patches []ldapi.PatchOperation
+	variationType := d.Get(variation_type).(string)
+	old, new := d.GetChange(variations)
+	oldVariations := variationsFromSchemaData(old, variationType)
+	newVariations := variationsFromSchemaData(new, variationType)
 
-	variations := make([]ldapi.Variation, schemaVariations.Len())
-	list := schemaVariations.List()
-
-	// special case of boolean variations:
-	if len(list) == 2 {
-		values := []string{
-			list[0].(map[string]interface{})[value].(string),
-			list[1].(map[string]interface{})[value].(string),
-		}
-		if values[0] == "true" && values[1] == "false" {
-			variations[0] = ldapi.Variation{Value: ptr(true)}
-			variations[1] = ldapi.Variation{Value: ptr(false)}
-			return variations
-		}
+	if len(oldVariations) == 0 {
+		// This can only happen when the resource is first created. Since this is handled in the creation POSTm
+		// variation patches are not necessary.
+		return patches
 	}
 
+	// remove any unnecessary variations from the end of the variation slice
+	for idx := len(newVariations); idx < len(oldVariations); idx++ {
+		patches = append(patches, patchRemove(fmt.Sprintf("/variations/%d", idx)))
+	}
+
+	for idx, variation := range newVariations {
+		if idx < len(oldVariations) {
+			patches = append(patches, patchReplace(fmt.Sprintf("/variations/%d/value", idx), variation.Value))
+			patches = append(patches, patchReplace(fmt.Sprintf("/variations/%d/name", idx), variation.Name))
+			patches = append(patches, patchReplace(fmt.Sprintf("/variations/%d/description", idx), variation.Description))
+		} else {
+			patches = append(patches, patchAdd(fmt.Sprintf("/variations/%d", idx), variation))
+		}
+	}
+	return patches
+}
+
+func variationsFromSchemaData(schemaVariations interface{}, variationType string) []ldapi.Variation {
+	list := schemaVariations.([]interface{})
+	variations := make([]ldapi.Variation, len(list))
+
 	for i, variation := range list {
-		variations[i] = variationFromResourceData(variation)
+		switch variationType {
+		case "boolean":
+			variations[i] = boolVariationFromResourceData(variation)
+		case "string":
+			variations[i] = stringVariationFromResourceData(variation)
+		default:
+			variations[i] = boolVariationFromResourceData(variation)
+		}
 	}
 	return variations
 }
 
-func variationFromResourceData(variation interface{}) ldapi.Variation {
+func variationsFromResourceData(d *schema.ResourceData) []ldapi.Variation {
+	schemaVariations := d.Get(variations)
+	variationType := d.Get(variation_type).(string)
+	return variationsFromSchemaData(schemaVariations, variationType)
+}
+
+func boolVariationFromResourceData(variation interface{}) ldapi.Variation {
+	variationMap := variation.(map[string]interface{})
+	v := variationMap[value].(string) == "true"
+	return ldapi.Variation{
+		Name:        variationMap[name].(string),
+		Description: variationMap[description].(string),
+		Value:       ptr(v),
+	}
+}
+
+func stringVariationFromResourceData(variation interface{}) ldapi.Variation {
 	variationMap := variation.(map[string]interface{})
 	v := variationMap[value]
 	return ldapi.Variation{
@@ -87,8 +137,29 @@ func variationsToResourceData(variations []ldapi.Variation) interface{} {
 	return transformed
 }
 
-// https://godoc.org/github.com/hashicorp/terraform/helper/schema#SchemaSetFunc
-func variationHash(val interface{}) int {
-	variationMap := val.(map[string]interface{})
-	return hashcode.String(fmt.Sprintf("%v", variationMap[value]))
+func variationsToVariationType(variations []ldapi.Variation) string {
+	// since all variations have a uniform type, checking the first variation is sufficient
+	variationValue := *variations[0].Value
+	var variationType string
+	switch variationValue.(type) {
+	case bool:
+		variationType = BOOL_VARIATION
+	case string:
+		variationType = STRING_VARIATION
+	default:
+		variationType = BOOL_VARIATION
+	}
+	return variationType
+}
+
+func validateVariationType(val interface{}, key string) (warns []string, errs []error) {
+	value := val.(string)
+	switch value {
+	// TODO: add Number and JSON
+	case BOOL_VARIATION, STRING_VARIATION:
+		break
+	default:
+		errs = append(errs, fmt.Errorf("%q contains an invalid value %q. Valid values are `boolean` and `string`", key, value))
+	}
+	return
 }

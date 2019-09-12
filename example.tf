@@ -5,15 +5,6 @@ resource "launchdarkly_project" "example" {
   tags = [
     "terraform",
   ]
-
-  environments {
-    name                 = "defined in project post"
-    key                  = "proj_defined_env"
-    color                = "0000f0"
-    default_ttl          = 100
-    secure_mode          = true
-    default_track_events = false
-  }
 }
 
 resource "launchdarkly_environment" "staging" {
@@ -27,11 +18,27 @@ resource "launchdarkly_environment" "staging" {
   project_key = launchdarkly_project.example.key
 }
 
-resource "launchdarkly_feature_flag" "boolean" {
+resource "launchdarkly_feature_flag" "basic" {
   project_key = launchdarkly_project.example.key
-  key         = "boolean-flag-1"
-  name        = "boolean-flag-1 name"
-  description = "this is a boolean flag by default because we omitted the variations field"
+  key         = "basic-flag"
+  name        = "Basic feature flag"
+
+  variation_type = "boolean"
+  variations {
+    name  = "The true variation"
+    value = true
+  }
+  variations {
+    value = false
+  }
+}
+
+resource "launchdarkly_feature_flag" "boolean" {
+  project_key    = launchdarkly_project.example.key
+  key            = "boolean-flag-1"
+  name           = "boolean-flag-1 name"
+  variation_type = "boolean"
+  description    = "this is a boolean flag by default because we omitted the variations field"
 }
 
 resource "launchdarkly_feature_flag" "multivariate" {
@@ -40,6 +47,7 @@ resource "launchdarkly_feature_flag" "multivariate" {
   name        = "multivariate-flag name"
   description = "this is a multivariate flag because we explicitly define the variations"
 
+  variation_type = "string"
   variations {
     name        = "variation1"
     description = "a description"

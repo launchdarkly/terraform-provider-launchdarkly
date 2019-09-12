@@ -21,6 +21,7 @@ resource "launchdarkly_feature_flag" "basic" {
 	project_key = launchdarkly_project.test.key
 	key = "basic-flag"
 	name = "Basic feature flag"
+	variation_type = "boolean"
 }
 `
 	testAccFeatureFlagUpdate = `
@@ -33,6 +34,7 @@ resource "launchdarkly_feature_flag" "basic" {
 	project_key = launchdarkly_project.test.key
 	key = "basic-flag"
 	name = "Less basic feature flag"
+	variation_type = "boolean"
 	description = "this is a boolean flag by default becausethe variations field is omitted"
 	tags = ["update", "terraform"]
 	include_in_snippet = true
@@ -59,6 +61,7 @@ resource "launchdarkly_feature_flag" "maintained" {
 	project_key = launchdarkly_project.test.key
 	key = "maintained-flag"
 	name = "Maintained feature flag"
+	variation_type = "boolean"
 	maintainer_id = launchdarkly_team_member.test.id
 }
 `
@@ -74,6 +77,7 @@ resource "launchdarkly_feature_flag" "multivariate" {
 	key = "multivariate-flag-1"
 	name = "multivariate flag 1 name"
 	description = "this is a multivariate flag because we explicitly define the variations"
+	variation_type = "string"
 	variations {
 		name = "variation1"
 		description = "a description"
@@ -84,6 +88,57 @@ resource "launchdarkly_feature_flag" "multivariate" {
 	}
     variations {
 		value = "another option"
+	}
+  	tags = [
+    	"this",
+    	"is",
+    	"unordered"
+  	]
+  	custom_properties {
+		key = "some.property"
+		name = "Some Property"
+		value = [
+			"value1",
+			"value2",
+			"value3"
+		]
+	}
+	custom_properties {
+		key = "some.property2"
+		name = "Some Property"
+		value = ["very special custom property"]
+	}
+}
+`
+
+	testAccFeatureFlagUpdateMultivariate = `
+resource "launchdarkly_project" "test" {
+	name = "testProject"
+	key = "test-project"
+}
+
+resource "launchdarkly_feature_flag" "multivariate" {
+	project_key = launchdarkly_project.test.key
+	key = "multivariate-flag-1"
+	name = "multivariate flag 1 name"
+	description = "this is a multivariate flag because we explicitly define the variations"
+	variation_type = "string"
+	variations {
+		name = "variation1"
+		description = "a description"
+		value = "string1"
+	}
+	variations {
+		value = "string2"
+		description = "a new description"
+	}
+	variations {
+		value = "another option"
+	}
+	variations {
+		value = "a new variation"
+		description = "This one was added upon update"
+		name = "the new variation"
 	}
   	tags = [
     	"this",
@@ -121,9 +176,13 @@ func TestAccFeatureFlag_Basic(t *testing.T) {
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckProjectExists("launchdarkly_project.test"),
 					testAccCheckFeatureFlagExists(resourceName),
-					resource.TestCheckResourceAttr(resourceName, "name", "Basic feature flag"),
-					resource.TestCheckResourceAttr(resourceName, "key", "basic-flag"),
-					resource.TestCheckResourceAttr(resourceName, "project_key", "test-project"),
+					resource.TestCheckResourceAttr(resourceName, name, "Basic feature flag"),
+					resource.TestCheckResourceAttr(resourceName, key, "basic-flag"),
+					resource.TestCheckResourceAttr(resourceName, project_key, "test-project"),
+					resource.TestCheckResourceAttr(resourceName, variation_type, "boolean"),
+					resource.TestCheckResourceAttr(resourceName, "variations.#", "2"),
+					resource.TestCheckResourceAttr(resourceName, "variations.0.value", "true"),
+					resource.TestCheckResourceAttr(resourceName, "variations.1.value", "false"),
 				),
 			},
 		},
@@ -211,11 +270,11 @@ func TestAccFeatureFlag_CreateMultivariate(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "project_key", "test-project"),
 					resource.TestCheckResourceAttr(resourceName, "description", "this is a multivariate flag because we explicitly define the variations"),
 					resource.TestCheckResourceAttr(resourceName, "variations.#", "3"),
-					resource.TestCheckResourceAttr(resourceName, testAccVariationKey("string1", "description"), "a description"),
-					resource.TestCheckResourceAttr(resourceName, testAccVariationKey("string1", "name"), "variation1"),
-					resource.TestCheckResourceAttr(resourceName, testAccVariationKey("string1", "value"), "string1"),
-					resource.TestCheckResourceAttr(resourceName, testAccVariationKey("string2", "value"), "string2"),
-					resource.TestCheckResourceAttr(resourceName, testAccVariationKey("another option", "value"), "another option"),
+					resource.TestCheckResourceAttr(resourceName, "variations.0.description", "a description"),
+					resource.TestCheckResourceAttr(resourceName, "variations.0.name", "variation1"),
+					resource.TestCheckResourceAttr(resourceName, "variations.0.value", "string1"),
+					resource.TestCheckResourceAttr(resourceName, "variations.1.value", "string2"),
+					resource.TestCheckResourceAttr(resourceName, "variations.2.value", "another option"),
 					resource.TestCheckResourceAttr(resourceName, "tags.#", "3"),
 					resource.TestCheckResourceAttr(resourceName, testAccTagKey("this"), "this"),
 					resource.TestCheckResourceAttr(resourceName, testAccTagKey("is"), "is"),
@@ -237,8 +296,79 @@ func TestAccFeatureFlag_CreateMultivariate(t *testing.T) {
 	})
 }
 
-func testAccVariationKey(val string, subKey string) string {
-	return fmt.Sprintf("variations.%d.%s", hashcode.String(val), subKey)
+func TestAccFeatureFlag_UpdateMultivariate(t *testing.T) {
+	resourceName := "launchdarkly_feature_flag.multivariate"
+	resource.Test(t, resource.TestCase{
+		PreCheck: func() {
+			testAccPreCheck(t)
+		},
+		Providers: testAccProviders,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccFeatureFlagCreateMultivariate,
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckProjectExists("launchdarkly_project.test"),
+					testAccCheckFeatureFlagExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, "variations.#", "3"),
+					resource.TestCheckResourceAttr(resourceName, "variations.0.description", "a description"),
+					resource.TestCheckResourceAttr(resourceName, "variations.0.name", "variation1"),
+					resource.TestCheckResourceAttr(resourceName, "variations.0.value", "string1"),
+					resource.TestCheckResourceAttr(resourceName, "variations.1.value", "string2"),
+					resource.TestCheckResourceAttr(resourceName, "variations.2.value", "another option"),
+				),
+			},
+			{
+				Config: testAccFeatureFlagUpdateMultivariate,
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckProjectExists("launchdarkly_project.test"),
+					testAccCheckFeatureFlagExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, "name", "multivariate flag 1 name"),
+					resource.TestCheckResourceAttr(resourceName, "key", "multivariate-flag-1"),
+					resource.TestCheckResourceAttr(resourceName, "project_key", "test-project"),
+					resource.TestCheckResourceAttr(resourceName, "description", "this is a multivariate flag because we explicitly define the variations"),
+					resource.TestCheckResourceAttr(resourceName, "variations.#", "4"),
+					resource.TestCheckResourceAttr(resourceName, "variations.0.description", "a description"),
+					resource.TestCheckResourceAttr(resourceName, "variations.0.name", "variation1"),
+					resource.TestCheckResourceAttr(resourceName, "variations.0.value", "string1"),
+					resource.TestCheckResourceAttr(resourceName, "variations.1.value", "string2"),
+					resource.TestCheckResourceAttr(resourceName, "variations.1.description", "a new description"),
+					resource.TestCheckResourceAttr(resourceName, "variations.2.value", "another option"),
+					resource.TestCheckResourceAttr(resourceName, "variations.3.value", "a new variation"),
+					resource.TestCheckResourceAttr(resourceName, "variations.3.name", "the new variation"),
+					resource.TestCheckResourceAttr(resourceName, "variations.3.description", "This one was added upon update"),
+					resource.TestCheckResourceAttr(resourceName, "tags.#", "3"),
+					resource.TestCheckResourceAttr(resourceName, testAccTagKey("this"), "this"),
+					resource.TestCheckResourceAttr(resourceName, testAccTagKey("is"), "is"),
+					resource.TestCheckResourceAttr(resourceName, testAccTagKey("unordered"), "unordered"),
+					resource.TestCheckResourceAttr(resourceName, "custom_properties.#", "2"),
+					resource.TestCheckResourceAttr(resourceName, testAccCustomPropertyKey("some.property", "key"), "some.property"),
+					resource.TestCheckResourceAttr(resourceName, testAccCustomPropertyKey("some.property", "name"), "Some Property"),
+					resource.TestCheckResourceAttr(resourceName, testAccCustomPropertyKey("some.property", "value.#"), "3"),
+					resource.TestCheckResourceAttr(resourceName, testAccCustomPropertyKey("some.property", "value.0"), "value1"),
+					resource.TestCheckResourceAttr(resourceName, testAccCustomPropertyKey("some.property", "value.1"), "value2"),
+					resource.TestCheckResourceAttr(resourceName, testAccCustomPropertyKey("some.property", "value.2"), "value3"),
+					resource.TestCheckResourceAttr(resourceName, testAccCustomPropertyKey("some.property2", "key"), "some.property2"),
+					resource.TestCheckResourceAttr(resourceName, testAccCustomPropertyKey("some.property2", "name"), "Some Property"),
+					resource.TestCheckResourceAttr(resourceName, testAccCustomPropertyKey("some.property2", "value.#"), "1"),
+					resource.TestCheckResourceAttr(resourceName, testAccCustomPropertyKey("some.property2", "value.0"), "very special custom property"),
+				),
+			},
+			{
+				// Ensure variation Delete operations are working
+				Config: testAccFeatureFlagCreateMultivariate,
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckProjectExists("launchdarkly_project.test"),
+					testAccCheckFeatureFlagExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, "variations.#", "3"),
+					resource.TestCheckResourceAttr(resourceName, "variations.0.description", "a description"),
+					resource.TestCheckResourceAttr(resourceName, "variations.0.name", "variation1"),
+					resource.TestCheckResourceAttr(resourceName, "variations.0.value", "string1"),
+					resource.TestCheckResourceAttr(resourceName, "variations.1.value", "string2"),
+					resource.TestCheckResourceAttr(resourceName, "variations.2.value", "another option"),
+				),
+			},
+		},
+	})
 }
 
 func testAccCustomPropertyKey(key string, subKey string) string {
