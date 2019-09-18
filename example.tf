@@ -13,7 +13,7 @@ resource "launchdarkly_environment" "staging" {
   color                = "ff00ff"
   secure_mode          = true
   default_track_events = false
-  default_ttl          = 100
+  default_ttl          = 10
 
   project_key = launchdarkly_project.example.key
 }
@@ -121,3 +121,6 @@ output "mobile_key" {
   value = launchdarkly_environment.staging.mobile_key
 }
 
+output "client_side_id" {
+  value = launchdarkly_environment.staging.client_side_id
+}

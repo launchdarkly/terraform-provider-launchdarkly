@@ -6,29 +6,40 @@ import (
 
 	"github.com/hashicorp/terraform/helper/hashcode"
 	"github.com/hashicorp/terraform/helper/schema"
+	"github.com/hashicorp/terraform/helper/validation"
 	ldapi "github.com/launchdarkly/api-client-go"
 )
+
+// https://docs.launchdarkly.com/docs/custom-properties
+const CUSTOM_PROPERTY_CHAR_LIMIT = 64
+const CUSTOM_PROPERTY_ITEM_LIMIT = 64
 
 func customPropertiesSchema() *schema.Schema {
 	return &schema.Schema{
 		Type:     schema.TypeSet,
 		Optional: true,
 		Set:      customPropertyHash,
+		MaxItems: CUSTOM_PROPERTY_ITEM_LIMIT,
 		Elem: &schema.Resource{
 			Schema: map[string]*schema.Schema{
 				key: {
-					Type:     schema.TypeString,
-					Required: true,
+					Type:         schema.TypeString,
+					Required:     true,
+					ValidateFunc: validation.StringLenBetween(1, CUSTOM_PROPERTY_CHAR_LIMIT),
 				},
 				name: {
-					Type:     schema.TypeString,
-					Required: true,
+					Type:         schema.TypeString,
+					Required:     true,
+					ValidateFunc: validation.StringLenBetween(1, CUSTOM_PROPERTY_CHAR_LIMIT),
 				},
 				value: {
-					Type: schema.TypeList,
-					//Set:      stringHash,
+					Type:     schema.TypeList,
 					Required: true,
-					Elem:     &schema.Schema{Type: schema.TypeString},
+					MaxItems: CUSTOM_PROPERTY_ITEM_LIMIT,
+					Elem: &schema.Schema{
+						Type:         schema.TypeString,
+						ValidateFunc: validation.StringLenBetween(1, CUSTOM_PROPERTY_CHAR_LIMIT),
+					},
 				},
 			},
 		},

@@ -22,18 +22,23 @@ func resourceFeatureFlag() *schema.Resource {
 
 		Schema: map[string]*schema.Schema{
 			project_key: {
-				Type:     schema.TypeString,
-				Optional: true,
-				ForceNew: true,
+				Type:         schema.TypeString,
+				Required:     true,
+				ForceNew:     true,
+				Description:  "The feature flag's project key",
+				ValidateFunc: validateKey(),
 			},
 			key: {
-				Type:     schema.TypeString,
-				Required: true,
-				ForceNew: true,
+				Type:         schema.TypeString,
+				Required:     true,
+				ForceNew:     true,
+				ValidateFunc: validateKey(),
+				Description:  "The human-readable name of the feature flag",
 			},
 			name: {
-				Type:     schema.TypeString,
-				Required: true,
+				Type:        schema.TypeString,
+				Required:    true,
+				Description: "The feature flag's description",
 			},
 			maintainer_id: {
 				Type:     schema.TypeString,

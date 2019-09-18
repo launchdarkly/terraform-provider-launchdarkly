@@ -21,7 +21,7 @@ resource "launchdarkly_environment" "staging" {
   	color = "ff00ff"
   	secure_mode = true
   	default_track_events = false
-  	default_ttl = 100.0
+  	default_ttl = 50
   	project_key = launchdarkly_project.test.key
 }
 `
@@ -61,7 +61,7 @@ func TestAccEnvironment_Create(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "color", "ff00ff"),
 					resource.TestCheckResourceAttr(resourceName, "secure_mode", "true"),
 					resource.TestCheckResourceAttr(resourceName, "default_track_events", "false"),
-					resource.TestCheckResourceAttr(resourceName, "default_ttl", "100"),
+					resource.TestCheckResourceAttr(resourceName, "default_ttl", "50"),
 					resource.TestCheckResourceAttr(resourceName, "project_key", "test-project"),
 				),
 			},
@@ -87,7 +87,7 @@ func TestAccEnvironment_Update(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "color", "ff00ff"),
 					resource.TestCheckResourceAttr(resourceName, "secure_mode", "true"),
 					resource.TestCheckResourceAttr(resourceName, "default_track_events", "false"),
-					resource.TestCheckResourceAttr(resourceName, "default_ttl", "100"),
+					resource.TestCheckResourceAttr(resourceName, "default_ttl", "50"),
 					resource.TestCheckResourceAttr(resourceName, "project_key", "test-project"),
 				),
 			},

@@ -19,13 +19,13 @@ func TestEnvironmentPostFromResourceData(t *testing.T) {
 				name:        "envName",
 				key:         "envKey",
 				color:       "000000",
-				default_ttl: 100.0,
+				default_ttl: 50,
 			},
 			ldapi.EnvironmentPost{
 				Name:       "envName",
 				Key:        "envKey",
 				Color:      "000000",
-				DefaultTtl: 100.0,
+				DefaultTtl: 50,
 			},
 		},
 		{

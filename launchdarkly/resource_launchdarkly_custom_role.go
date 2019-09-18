@@ -21,8 +21,10 @@ func resourceCustomRole() *schema.Resource {
 
 		Schema: map[string]*schema.Schema{
 			key: &schema.Schema{
-				Type:     schema.TypeString,
-				Required: true,
+				Type:         schema.TypeString,
+				Required:     true,
+				ForceNew:     true,
+				ValidateFunc: validateKey(),
 			},
 			name: &schema.Schema{
 				Type:     schema.TypeString,

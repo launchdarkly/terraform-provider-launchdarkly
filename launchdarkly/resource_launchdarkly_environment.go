@@ -11,9 +11,10 @@ import (
 func resourceEnvironment() *schema.Resource {
 	envSchema := environmentSchema()
 	envSchema[project_key] = &schema.Schema{
-		Type:     schema.TypeString,
-		Optional: true,
-		ForceNew: true,
+		Type:         schema.TypeString,
+		Optional:     true,
+		ForceNew:     true,
+		ValidateFunc: validateKey(),
 	}
 
 	return &schema.Resource{
@@ -36,7 +37,7 @@ func resourceEnvironmentCreate(d *schema.ResourceData, metaRaw interface{}) erro
 	key := d.Get(key).(string)
 	name := d.Get(name).(string)
 	color := d.Get(color).(string)
-	defaultTTL := float32(d.Get(default_ttl).(float64))
+	defaultTTL := float32(d.Get(default_ttl).(int))
 
 	envPost := ldapi.EnvironmentPost{
 		Name:       name,
@@ -80,8 +81,9 @@ func resourceEnvironmentRead(d *schema.ResourceData, metaRaw interface{}) error 
 	_ = d.Set(name, env.Name)
 	_ = d.Set(api_key, env.ApiKey)
 	_ = d.Set(mobile_key, env.MobileKey)
+	_ = d.Set(client_side_id, env.Id)
 	_ = d.Set(color, env.Color)
-	_ = d.Set(default_ttl, env.DefaultTtl)
+	_ = d.Set(default_ttl, int(env.DefaultTtl))
 	_ = d.Set(secure_mode, env.SecureMode)
 	_ = d.Set(default_track_events, env.DefaultTrackEvents)
 	//TODO: tags

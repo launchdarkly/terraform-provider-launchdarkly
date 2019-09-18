@@ -11,6 +11,7 @@ const (
 	environments         = "environments"
 	api_key              = "api_key"
 	mobile_key           = "mobile_key"
+	client_side_id       = "client_side_id"
 	color                = "color"
 	default_ttl          = "default_ttl"
 	secure_mode          = "secure_mode"

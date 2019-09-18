@@ -9,9 +9,15 @@ import (
 )
 
 func validateKey() schema.SchemaValidateFunc {
-	return validation.All(
-		validation.StringMatch(regexp.MustCompile(`^[a-zA-Z0-9_.-]*$`), "Must contain only letters, numbers, dashes, and underscores"),
-		validation.StringLenBetween(1, 20))
+	return validation.StringMatch(
+		regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9_.-]*$`),
+		"Must contain only letters, numbers, '.', '-', or '_' and must start with an alphanumeric",
+	)
+}
+
+// Some keys are also limited in length
+func validateLengthLimitedKey() schema.SchemaValidateFunc {
+	return validation.All(validateKey(), validation.StringLenBetween(1, 20))
 }
 
 func validateOp() schema.SchemaValidateFunc {

@@ -15,10 +15,10 @@ const (
 resource "launchdarkly_custom_role" "test" {
 	key = "custom-role-key-1"
 	name = "custom-role-name-1"
-	description= "crd"
+	description= "Deny all actions on production environments"
 	policy {
 		actions = ["*"]	
-		effect = "allow"
+		effect = "deny"
 		resources = ["proj/*:env/production"]
 	}
 }
@@ -26,12 +26,12 @@ resource "launchdarkly_custom_role" "test" {
 	testAccCustomRoleUpdate = `
 resource "launchdarkly_custom_role" "test" {
 	key = "custom-role-key-1"
-	name = "Custom role - deny production"
-	description= "Deny all actions on production environments"
+	name = "Custom role - allow staging"
+	description= "Allow all actions on staging environments"
 	policy {
 		actions = ["*"]	
-		effect = "deny"
-		resources = ["proj/*:env/production"]
+		effect = "allow"
+		resources = ["proj/*:env/staging"]
 	}
 }
 `
@@ -42,7 +42,7 @@ func TestAccCustomRole_Create(t *testing.T) {
 	policy := ldapi.Policy{
 		Resources: []string{"proj/*:env/production"},
 		Actions:   []string{"*"},
-		Effect:    "allow",
+		Effect:    "deny",
 	}
 	resource.Test(t, resource.TestCase{
 		PreCheck: func() {
@@ -56,13 +56,13 @@ func TestAccCustomRole_Create(t *testing.T) {
 					testAccCheckCustomRoleExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, "key", "custom-role-key-1"),
 					resource.TestCheckResourceAttr(resourceName, "name", "custom-role-name-1"),
-					resource.TestCheckResourceAttr(resourceName, "description", "crd"),
+					resource.TestCheckResourceAttr(resourceName, "description", "Deny all actions on production environments"),
 					resource.TestCheckResourceAttr(resourceName, "policy.#", "1"),
 					resource.TestCheckResourceAttr(resourceName, testAccPolicyKey(policy, "actions.#"), "1"),
 					resource.TestCheckResourceAttr(resourceName, testAccPolicyKey(policy, "actions.0"), "*"),
 					resource.TestCheckResourceAttr(resourceName, testAccPolicyKey(policy, "resources.#"), "1"),
 					resource.TestCheckResourceAttr(resourceName, testAccPolicyKey(policy, "resources.0"), "proj/*:env/production"),
-					resource.TestCheckResourceAttr(resourceName, testAccPolicyKey(policy, effect), "allow"),
+					resource.TestCheckResourceAttr(resourceName, testAccPolicyKey(policy, effect), "deny"),
 				),
 			},
 		},
@@ -72,9 +72,9 @@ func TestAccCustomRole_Create(t *testing.T) {
 func TestAccCustomRole_Update(t *testing.T) {
 	resourceName := "launchdarkly_custom_role.test"
 	policy := ldapi.Policy{
-		Resources: []string{"proj/*:env/production"},
+		Resources: []string{"proj/*:env/staging"},
 		Actions:   []string{"*"},
-		Effect:    "deny",
+		Effect:    "allow",
 	}
 	resource.Test(t, resource.TestCase{
 		PreCheck: func() {
@@ -93,14 +93,14 @@ func TestAccCustomRole_Update(t *testing.T) {
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckCustomRoleExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, "key", "custom-role-key-1"),
-					resource.TestCheckResourceAttr(resourceName, "name", "Custom role - deny production"),
-					resource.TestCheckResourceAttr(resourceName, "description", "Deny all actions on production environments"),
+					resource.TestCheckResourceAttr(resourceName, "name", "Custom role - allow staging"),
+					resource.TestCheckResourceAttr(resourceName, "description", "Allow all actions on staging environments"),
 					resource.TestCheckResourceAttr(resourceName, "policy.#", "1"),
 					resource.TestCheckResourceAttr(resourceName, testAccPolicyKey(policy, "actions.#"), "1"),
 					resource.TestCheckResourceAttr(resourceName, testAccPolicyKey(policy, "actions.0"), "*"),
 					resource.TestCheckResourceAttr(resourceName, testAccPolicyKey(policy, "resources.#"), "1"),
-					resource.TestCheckResourceAttr(resourceName, testAccPolicyKey(policy, "resources.0"), "proj/*:env/production"),
-					resource.TestCheckResourceAttr(resourceName, testAccPolicyKey(policy, effect), "deny"),
+					resource.TestCheckResourceAttr(resourceName, testAccPolicyKey(policy, "resources.0"), "proj/*:env/staging"),
+					resource.TestCheckResourceAttr(resourceName, testAccPolicyKey(policy, effect), "allow"),
 				),
 			},
 		},

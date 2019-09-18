@@ -147,17 +147,11 @@ resource "launchdarkly_feature_flag" "multivariate" {
   	]
   	custom_properties {
 		key = "some.property"
-		name = "Some Property"
+		name = "Some Property Updated"
 		value = [
 			"value1",
-			"value2",
 			"value3"
 		]
-	}
-	custom_properties {
-		key = "some.property2"
-		name = "Some Property"
-		value = ["very special custom property"]
 	}
 }
 `
@@ -315,6 +309,17 @@ func TestAccFeatureFlag_UpdateMultivariate(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "variations.0.value", "string1"),
 					resource.TestCheckResourceAttr(resourceName, "variations.1.value", "string2"),
 					resource.TestCheckResourceAttr(resourceName, "variations.2.value", "another option"),
+					resource.TestCheckResourceAttr(resourceName, "custom_properties.#", "2"),
+					resource.TestCheckResourceAttr(resourceName, testAccCustomPropertyKey("some.property", "key"), "some.property"),
+					resource.TestCheckResourceAttr(resourceName, testAccCustomPropertyKey("some.property", "name"), "Some Property"),
+					resource.TestCheckResourceAttr(resourceName, testAccCustomPropertyKey("some.property", "value.#"), "3"),
+					resource.TestCheckResourceAttr(resourceName, testAccCustomPropertyKey("some.property", "value.0"), "value1"),
+					resource.TestCheckResourceAttr(resourceName, testAccCustomPropertyKey("some.property", "value.1"), "value2"),
+					resource.TestCheckResourceAttr(resourceName, testAccCustomPropertyKey("some.property", "value.2"), "value3"),
+					resource.TestCheckResourceAttr(resourceName, testAccCustomPropertyKey("some.property2", "key"), "some.property2"),
+					resource.TestCheckResourceAttr(resourceName, testAccCustomPropertyKey("some.property2", "name"), "Some Property"),
+					resource.TestCheckResourceAttr(resourceName, testAccCustomPropertyKey("some.property2", "value.#"), "1"),
+					resource.TestCheckResourceAttr(resourceName, testAccCustomPropertyKey("some.property2", "value.0"), "very special custom property"),
 				),
 			},
 			{
@@ -340,17 +345,12 @@ func TestAccFeatureFlag_UpdateMultivariate(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, testAccTagKey("this"), "this"),
 					resource.TestCheckResourceAttr(resourceName, testAccTagKey("is"), "is"),
 					resource.TestCheckResourceAttr(resourceName, testAccTagKey("unordered"), "unordered"),
-					resource.TestCheckResourceAttr(resourceName, "custom_properties.#", "2"),
+					resource.TestCheckResourceAttr(resourceName, "custom_properties.#", "1"),
 					resource.TestCheckResourceAttr(resourceName, testAccCustomPropertyKey("some.property", "key"), "some.property"),
-					resource.TestCheckResourceAttr(resourceName, testAccCustomPropertyKey("some.property", "name"), "Some Property"),
-					resource.TestCheckResourceAttr(resourceName, testAccCustomPropertyKey("some.property", "value.#"), "3"),
+					resource.TestCheckResourceAttr(resourceName, testAccCustomPropertyKey("some.property", "name"), "Some Property Updated"),
+					resource.TestCheckResourceAttr(resourceName, testAccCustomPropertyKey("some.property", "value.#"), "2"),
 					resource.TestCheckResourceAttr(resourceName, testAccCustomPropertyKey("some.property", "value.0"), "value1"),
-					resource.TestCheckResourceAttr(resourceName, testAccCustomPropertyKey("some.property", "value.1"), "value2"),
-					resource.TestCheckResourceAttr(resourceName, testAccCustomPropertyKey("some.property", "value.2"), "value3"),
-					resource.TestCheckResourceAttr(resourceName, testAccCustomPropertyKey("some.property2", "key"), "some.property2"),
-					resource.TestCheckResourceAttr(resourceName, testAccCustomPropertyKey("some.property2", "name"), "Some Property"),
-					resource.TestCheckResourceAttr(resourceName, testAccCustomPropertyKey("some.property2", "value.#"), "1"),
-					resource.TestCheckResourceAttr(resourceName, testAccCustomPropertyKey("some.property2", "value.0"), "very special custom property"),
+					resource.TestCheckResourceAttr(resourceName, testAccCustomPropertyKey("some.property", "value.1"), "value3"),
 				),
 			},
 			{

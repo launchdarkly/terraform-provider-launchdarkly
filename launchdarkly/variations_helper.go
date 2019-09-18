@@ -51,6 +51,18 @@ func variationsSchema() *schema.Schema {
 	}
 }
 
+func validateVariationType(val interface{}, key string) (warns []string, errs []error) {
+	value := val.(string)
+	switch value {
+	// TODO: add Number and JSON
+	case BOOL_VARIATION, STRING_VARIATION:
+		break
+	default:
+		errs = append(errs, fmt.Errorf("%q contains an invalid value %q. Valid values are `boolean` and `string`", key, value))
+	}
+	return warns, errs
+}
+
 func variationPatchesFromResourceData(d *schema.ResourceData) []ldapi.PatchOperation {
 	var patches []ldapi.PatchOperation
 	variationType := d.Get(variation_type).(string)
@@ -150,16 +162,4 @@ func variationsToVariationType(variations []ldapi.Variation) string {
 		variationType = BOOL_VARIATION
 	}
 	return variationType
-}
-
-func validateVariationType(val interface{}, key string) (warns []string, errs []error) {
-	value := val.(string)
-	switch value {
-	// TODO: add Number and JSON
-	case BOOL_VARIATION, STRING_VARIATION:
-		break
-	default:
-		errs = append(errs, fmt.Errorf("%q contains an invalid value %q. Valid values are `boolean` and `string`", key, value))
-	}
-	return
 }

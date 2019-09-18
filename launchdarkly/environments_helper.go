@@ -2,14 +2,17 @@ package launchdarkly
 
 import (
 	"github.com/hashicorp/terraform/helper/schema"
+	"github.com/hashicorp/terraform/helper/validation"
 	ldapi "github.com/launchdarkly/api-client-go"
 )
 
 func environmentSchema() map[string]*schema.Schema {
 	return map[string]*schema.Schema{
 		key: &schema.Schema{
-			Type:     schema.TypeString,
-			Required: true,
+			Type:         schema.TypeString,
+			Required:     true,
+			ForceNew:     true,
+			ValidateFunc: validateKey(),
 		},
 		name: &schema.Schema{
 			Type:     schema.TypeString,
@@ -25,13 +28,20 @@ func environmentSchema() map[string]*schema.Schema {
 			Computed:  true,
 			Sensitive: true,
 		},
+		client_side_id: {
+			Type:      schema.TypeString,
+			Computed:  true,
+			Sensitive: true,
+		},
 		color: &schema.Schema{
 			Type:     schema.TypeString,
 			Required: true,
 		},
 		default_ttl: &schema.Schema{
-			Type:     schema.TypeFloat,
+			Type:     schema.TypeInt,
 			Optional: true,
+			// Default TTL should be between 0 and 60 minutes: https://docs.launchdarkly.com/docs/environments
+			ValidateFunc: validation.IntBetween(0, 60),
 		},
 		secure_mode: &schema.Schema{
 			Type:     schema.TypeBool,
@@ -67,16 +77,7 @@ func environmentPostFromResourceData(env interface{}) ldapi.EnvironmentPost {
 	}
 
 	if defaultTTL, ok := envMap[default_ttl]; ok {
-		// What's up with the type assertions/casting?
-		// 1. terraform stores the value as an untyped float64, so we coerce float64 from the interface{}
-		// 2. ld api expects a float32 so we cast it to float32
-
-		//TODO: figure out how to not have to do this
-		if f64, ok := defaultTTL.(float64); ok {
-			envPost.DefaultTtl = float32(f64)
-		} else if f32, ok := defaultTTL.(float32); ok {
-			envPost.DefaultTtl = f32
-		}
+		envPost.DefaultTtl = float32(defaultTTL.(int))
 	}
 	return envPost
 }
@@ -90,8 +91,9 @@ func environmentsToResourceData(envs []ldapi.Environment) *schema.Set {
 			name:                 env.Name,
 			api_key:              env.ApiKey,
 			mobile_key:           env.MobileKey,
+			client_side_id:       env.Id,
 			color:                env.Color,
-			default_ttl:          env.DefaultTtl,
+			default_ttl:          int(env.DefaultTtl),
 			secure_mode:          env.SecureMode,
 			default_track_events: env.DefaultTrackEvents,
 			//tags:                 env.Tags,
