@@ -41,6 +41,29 @@ resource "launchdarkly_feature_flag" "basic" {
 	temporary = true
 }
 `
+
+	testAccFeatureFlagNumber = `
+resource "launchdarkly_project" "test" {
+	name = "testProject"
+	key = "test-project"
+}
+
+resource "launchdarkly_feature_flag" "number" {
+	project_key = launchdarkly_project.test.key
+	key         = "numeric-flag"
+	name        = "Number feature flag"
+  
+	variation_type = "number"
+	variations {
+	  name  = "The first variation"
+	  value = 12.5
+	}
+	variations {
+	  value = 0
+	}
+  }
+`
+
 	// The email must be set with a random name using fmt.Sprintf for this test to work since LD does
 	// not support creating members with the same email address more than once.
 	testAccFeatureFlagWithMaintainer = `
@@ -215,6 +238,32 @@ func TestAccFeatureFlag_Update(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, testAccTagKey("terraform"), "terraform"),
 					resource.TestCheckResourceAttr(resourceName, "include_in_snippet", "true"),
 					resource.TestCheckResourceAttr(resourceName, "temporary", "true"),
+				),
+			},
+		},
+	})
+}
+
+func TestAccFeatureFlag_Number(t *testing.T) {
+	resourceName := "launchdarkly_feature_flag.number"
+	resource.Test(t, resource.TestCase{
+		PreCheck: func() {
+			testAccPreCheck(t)
+		},
+		Providers: testAccProviders,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccFeatureFlagNumber,
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckProjectExists("launchdarkly_project.test"),
+					testAccCheckFeatureFlagExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, name, "Number feature flag"),
+					resource.TestCheckResourceAttr(resourceName, key, "numeric-flag"),
+					resource.TestCheckResourceAttr(resourceName, project_key, "test-project"),
+					resource.TestCheckResourceAttr(resourceName, variation_type, "number"),
+					resource.TestCheckResourceAttr(resourceName, "variations.#", "2"),
+					resource.TestCheckResourceAttr(resourceName, "variations.0.value", "12.5"),
+					resource.TestCheckResourceAttr(resourceName, "variations.1.value", "0"),
 				),
 			},
 		},

@@ -2,6 +2,7 @@ package launchdarkly
 
 import (
 	"fmt"
+	"reflect"
 	"strconv"
 
 	"github.com/hashicorp/terraform/helper/schema"
@@ -56,7 +57,7 @@ func variationsSchema() *schema.Schema {
 func validateVariationType(val interface{}, key string) (warns []string, errs []error) {
 	value := val.(string)
 	switch value {
-	// TODO: add Number and JSON
+	// TODO: add JSON
 	case BOOL_VARIATION, STRING_VARIATION, NUMBER_VARIATION:
 		break
 	default:
@@ -117,7 +118,7 @@ func variationsFromSchemaData(schemaVariations interface{}, variationType string
 		case NUMBER_VARIATION:
 			variations[i], err = numberVariationFromResourceData(variation)
 		default:
-			variations[i] = boolVariationFromResourceData(variation)
+			return variations, fmt.Errorf("invalid variation type: %q", variationType)
 		}
 		if err != nil {
 			return variations, err
@@ -159,14 +160,14 @@ func stringVariationFromResourceData(variation interface{}) ldapi.Variation {
 func numberVariationFromResourceData(variation interface{}) (ldapi.Variation, error) {
 	variationMap := variation.(map[string]interface{})
 	stringValue := variationMap[value].(string)
-	v, err := strconv.ParseFloat(stringValue, 32)
+	v, err := strconv.ParseFloat(stringValue, 64)
 	if err != nil {
 		return ldapi.Variation{}, fmt.Errorf("%q is an invalid number variation value. %v", stringValue, err)
 	}
 	return ldapi.Variation{
 		Name:        variationMap[name].(string),
 		Description: variationMap[description].(string),
-		Value:       ptr(float32(v)),
+		Value:       ptr(v),
 	}, nil
 }
 
@@ -183,7 +184,7 @@ func variationsToResourceData(variations []ldapi.Variation) interface{} {
 	return transformed
 }
 
-func variationsToVariationType(variations []ldapi.Variation) string {
+func variationsToVariationType(variations []ldapi.Variation) (string, error) {
 	// since all variations have a uniform type, checking the first variation is sufficient
 	variationValue := *variations[0].Value
 	var variationType string
@@ -192,10 +193,10 @@ func variationsToVariationType(variations []ldapi.Variation) string {
 		variationType = BOOL_VARIATION
 	case string:
 		variationType = STRING_VARIATION
-	case float32:
+	case float64:
 		variationType = NUMBER_VARIATION
 	default:
-		variationType = BOOL_VARIATION
+		return "", fmt.Errorf("unknown variation type: %q", reflect.TypeOf(variationValue))
 	}
-	return variationType
+	return variationType, nil
 }

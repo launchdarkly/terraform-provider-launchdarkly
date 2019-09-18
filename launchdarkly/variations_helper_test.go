@@ -58,7 +58,7 @@ func TestVariationsFromResourceData(t *testing.T) {
 				variation_type: "number",
 				variations: []interface{}{
 					map[string]interface{}{
-						value: "32.5",
+						value: 32.5,
 					},
 					map[string]interface{}{
 						value: 12,
@@ -68,9 +68,9 @@ func TestVariationsFromResourceData(t *testing.T) {
 					},
 				}},
 			expected: []ldapi.Variation{
-				{Value: ptr(float32(32.5))},
-				{Value: ptr(float32(12))},
-				{Value: ptr(float32(0))},
+				{Value: ptr(float64(32.5))},
+				{Value: ptr(float64(12))},
+				{Value: ptr(float64(0))},
 			},
 		},
 	}

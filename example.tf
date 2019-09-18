@@ -33,6 +33,21 @@ resource "launchdarkly_feature_flag" "basic" {
   }
 }
 
+resource "launchdarkly_feature_flag" "number" {
+  project_key = launchdarkly_project.example.key
+  key         = "numeric-flag"
+  name        = "Number feature flag"
+
+  variation_type = "number"
+  variations {
+    name  = "The first variation"
+    value = 12.5
+  }
+  variations {
+    value = 0
+  }
+}
+
 resource "launchdarkly_feature_flag" "boolean" {
   project_key    = launchdarkly_project.example.key
   key            = "boolean-flag-1"

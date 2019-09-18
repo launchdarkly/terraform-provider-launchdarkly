@@ -141,7 +141,11 @@ func resourceFeatureFlagRead(d *schema.ResourceData, metaRaw interface{}) error 
 	_ = d.Set(include_in_snippet, flag.IncludeInSnippet)
 	_ = d.Set(temporary, flag.Temporary)
 
-	err = d.Set(variation_type, variationsToVariationType(flag.Variations))
+	variationType, err := variationsToVariationType(flag.Variations)
+	if err != nil {
+		return fmt.Errorf("failed to determine variation type on flag with key %q: %v", flag.Key, err)
+	}
+	err = d.Set(variation_type, variationType)
 	if err != nil {
 		return fmt.Errorf("failed to set variation type on flag with key %q: %v", flag.Key, err)
 	}
