@@ -69,7 +69,12 @@ func variationPatchesFromResourceData(d *schema.ResourceData) ([]ldapi.PatchOper
 	var patches []ldapi.PatchOperation
 	variationType := d.Get(variation_type).(string)
 	old, new := d.GetChange(variations)
+
 	oldVariations, err := variationsFromSchemaData(old, variationType)
+	if err != nil {
+		return patches, err
+	}
+
 	newVariations, err := variationsFromSchemaData(new, variationType)
 	if err != nil {
 		return patches, err
@@ -100,7 +105,6 @@ func variationPatchesFromResourceData(d *schema.ResourceData) ([]ldapi.PatchOper
 
 func variationsFromSchemaData(schemaVariations interface{}, variationType string) ([]ldapi.Variation, error) {
 	list := schemaVariations.([]interface{})
-	fmt.Println(len(list))
 	variations := make([]ldapi.Variation, len(list))
 
 	var err error
@@ -119,7 +123,6 @@ func variationsFromSchemaData(schemaVariations interface{}, variationType string
 			return variations, err
 		}
 	}
-	fmt.Println(variations)
 	return variations, nil
 }
 
@@ -157,7 +160,6 @@ func numberVariationFromResourceData(variation interface{}) (ldapi.Variation, er
 	variationMap := variation.(map[string]interface{})
 	stringValue := variationMap[value].(string)
 	v, err := strconv.ParseFloat(stringValue, 32)
-	fmt.Println(v)
 	if err != nil {
 		return ldapi.Variation{}, fmt.Errorf("%q is an invalid number variation value. %v", stringValue, err)
 	}

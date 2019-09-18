@@ -58,7 +58,7 @@ func TestVariationsFromResourceData(t *testing.T) {
 				variation_type: "number",
 				variations: []interface{}{
 					map[string]interface{}{
-						value: 32.5,
+						value: "32.5",
 					},
 					map[string]interface{}{
 						value: 12,
@@ -87,9 +87,8 @@ func TestVariationsFromResourceData(t *testing.T) {
 			for idx, expected := range tc.expected {
 				assert.Equal(t, expected.Name, actualVariations[idx].Name)
 				assert.Equal(t, expected.Description, actualVariations[idx].Description)
-				assert.Equal(t, *expected.Value, *actualVariations[idx].Value)
+				assert.Equal(t, expected.Value, actualVariations[idx].Value)
 			}
-			// assert.ElementsMatch(t, tc.expected, actualVariations)
 		})
 	}
 }
