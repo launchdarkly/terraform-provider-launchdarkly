@@ -52,6 +52,27 @@ func TestVariationsFromResourceData(t *testing.T) {
 				{Value: ptr(false)},
 			},
 		},
+		{
+			name: "number variations",
+			vars: map[string]interface{}{
+				variation_type: "number",
+				variations: []interface{}{
+					map[string]interface{}{
+						value: 32.5,
+					},
+					map[string]interface{}{
+						value: 12,
+					},
+					map[string]interface{}{
+						value: 0,
+					},
+				}},
+			expected: []ldapi.Variation{
+				{Value: ptr(float32(32.5))},
+				{Value: ptr(float32(12))},
+				{Value: ptr(float32(0))},
+			},
+		},
 	}
 
 	for _, tc := range testCases {
@@ -61,8 +82,14 @@ func TestVariationsFromResourceData(t *testing.T) {
 				tc.vars,
 			)
 
-			actualVariations := variationsFromResourceData(resourceData)
-			assert.ElementsMatch(t, tc.expected, actualVariations)
+			actualVariations, err := variationsFromResourceData(resourceData)
+			assert.NoError(t, err)
+			for idx, expected := range tc.expected {
+				assert.Equal(t, expected.Name, actualVariations[idx].Name)
+				assert.Equal(t, expected.Description, actualVariations[idx].Description)
+				assert.Equal(t, *expected.Value, *actualVariations[idx].Value)
+			}
+			// assert.ElementsMatch(t, tc.expected, actualVariations)
 		})
 	}
 }

@@ -85,17 +85,21 @@ func resourceFeatureFlagCreate(d *schema.ResourceData, metaRaw interface{}) erro
 	includeInSnippet := d.Get(include_in_snippet).(bool)
 	temporary := d.Get(temporary).(bool)
 
+	variations, err := variationsFromResourceData(d)
+	if err != nil {
+		return fmt.Errorf("invalid variations: %v", err)
+	}
 	flag := ldapi.FeatureFlagBody{
 		Name:             flagName,
 		Key:              key,
 		Description:      description,
-		Variations:       variationsFromResourceData(d),
+		Variations:       variations,
 		Temporary:        temporary,
 		Tags:             tags,
 		IncludeInSnippet: includeInSnippet,
 	}
 
-	_, _, err := client.ld.FeatureFlagsApi.PostFeatureFlag(client.ctx, projectKey, flag, nil)
+	_, _, err = client.ld.FeatureFlagsApi.PostFeatureFlag(client.ctx, projectKey, flag, nil)
 
 	if err != nil {
 		return fmt.Errorf("failed to create flag %q in project %q: %s", key, projectKey, handleLdapiErr(err))
@@ -181,7 +185,10 @@ func resourceFeatureFlagUpdate(d *schema.ResourceData, metaRaw interface{}) erro
 			patchReplace("/customProperties", customProperties),
 		}}
 
-	variationPatches := variationPatchesFromResourceData(d)
+	variationPatches, err := variationPatchesFromResourceData(d)
+	if err != nil {
+		return fmt.Errorf("failed to build variation patches. %v", err)
+	}
 	patch.Patch = append(patch.Patch, variationPatches...)
 
 	// Only update the maintainer ID if is specified in the schema
@@ -190,7 +197,7 @@ func resourceFeatureFlagUpdate(d *schema.ResourceData, metaRaw interface{}) erro
 		patch.Patch = append(patch.Patch, patchReplace("/maintainerId", maintainerID.(string)))
 	}
 
-	_, _, err := client.ld.FeatureFlagsApi.PatchFeatureFlag(client.ctx, projectKey, key, patch)
+	_, _, err = client.ld.FeatureFlagsApi.PatchFeatureFlag(client.ctx, projectKey, key, patch)
 	if err != nil {
 		return fmt.Errorf("failed to update flag %q in project %q: %s", key, projectKey, handleLdapiErr(err))
 	}
