@@ -55,11 +55,38 @@ resource "launchdarkly_feature_flag" "number" {
   
 	variation_type = "number"
 	variations {
-	  name  = "The first variation"
 	  value = 12.5
 	}
 	variations {
 	  value = 0
+	}
+  }
+`
+
+	testAccFeatureFlagJson = `
+resource "launchdarkly_project" "test" {
+	name = "testProject"
+	key = "test-project"
+}
+
+resource "launchdarkly_feature_flag" "json" {
+	project_key = launchdarkly_project.test.key
+	key         = "json-flag"
+	name        = "JSON feature flag"
+  
+	variation_type = "json"
+	variations {
+	  value = <<EOF
+	  {"foo": "bar"}
+	  EOF
+	}
+	variations {
+	  value = <<EOF
+	  {
+		"foo": "baz",
+		"extra": {"nested": "json"}
+	  }
+	  EOF
 	}
   }
 `
@@ -264,6 +291,32 @@ func TestAccFeatureFlag_Number(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "variations.#", "2"),
 					resource.TestCheckResourceAttr(resourceName, "variations.0.value", "12.5"),
 					resource.TestCheckResourceAttr(resourceName, "variations.1.value", "0"),
+				),
+			},
+		},
+	})
+}
+
+func TestAccFeatureFlag_JSON(t *testing.T) {
+	resourceName := "launchdarkly_feature_flag.json"
+	resource.Test(t, resource.TestCase{
+		PreCheck: func() {
+			testAccPreCheck(t)
+		},
+		Providers: testAccProviders,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccFeatureFlagJson,
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckProjectExists("launchdarkly_project.test"),
+					testAccCheckFeatureFlagExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, name, "JSON feature flag"),
+					resource.TestCheckResourceAttr(resourceName, key, "json-flag"),
+					resource.TestCheckResourceAttr(resourceName, project_key, "test-project"),
+					resource.TestCheckResourceAttr(resourceName, variation_type, "json"),
+					resource.TestCheckResourceAttr(resourceName, "variations.#", "2"),
+					resource.TestCheckResourceAttr(resourceName, "variations.0.value", `{"foo":"bar"}`),
+					resource.TestCheckResourceAttr(resourceName, "variations.1.value", `{"extra":{"nested":"json"},"foo":"baz"}`),
 				),
 			},
 		},

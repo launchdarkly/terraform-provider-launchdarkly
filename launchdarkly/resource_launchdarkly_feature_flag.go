@@ -150,7 +150,11 @@ func resourceFeatureFlagRead(d *schema.ResourceData, metaRaw interface{}) error 
 		return fmt.Errorf("failed to set variation type on flag with key %q: %v", flag.Key, err)
 	}
 
-	err = d.Set(variations, variationsToResourceData(flag.Variations))
+	parsedVariations, err := variationsToResourceData(flag.Variations, variationType)
+	if err != nil {
+		return fmt.Errorf("failed to parse variations on flag with key %q: %v", flag.Key, err)
+	}
+	err = d.Set(variations, parsedVariations)
 	if err != nil {
 		return fmt.Errorf("failed to set variations on flag with key %q: %v", flag.Key, err)
 	}

@@ -6,6 +6,7 @@ import (
 	"github.com/hashicorp/terraform/helper/schema"
 	ldapi "github.com/launchdarkly/api-client-go"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestVariationsFromResourceData(t *testing.T) {
@@ -73,6 +74,28 @@ func TestVariationsFromResourceData(t *testing.T) {
 				{Value: ptr(float64(0))},
 			},
 		},
+		{
+			name: "json variations",
+			vars: map[string]interface{}{
+				variation_type: "json",
+				variations: []interface{}{
+					map[string]interface{}{
+						value: `{ "foo": "bar" }`,
+					},
+					map[string]interface{}{
+						value: `{ "foo": "baz", "extra": {"nested": "json"} }`,
+					},
+				}},
+			expected: []ldapi.Variation{
+				{Value: ptr(map[string]interface{}{"foo": "bar"})},
+				{Value: ptr(map[string]interface{}{
+					"foo": "baz",
+					"extra": map[string]interface{}{
+						"nested": "json",
+					},
+				})},
+			},
+		},
 	}
 
 	for _, tc := range testCases {
@@ -83,11 +106,11 @@ func TestVariationsFromResourceData(t *testing.T) {
 			)
 
 			actualVariations, err := variationsFromResourceData(resourceData)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			for idx, expected := range tc.expected {
 				assert.Equal(t, expected.Name, actualVariations[idx].Name)
 				assert.Equal(t, expected.Description, actualVariations[idx].Description)
-				assert.Equal(t, expected.Value, actualVariations[idx].Value)
+				assert.Equal(t, *expected.Value, *actualVariations[idx].Value)
 			}
 		})
 	}

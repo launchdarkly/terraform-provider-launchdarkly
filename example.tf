@@ -48,6 +48,27 @@ resource "launchdarkly_feature_flag" "number" {
   }
 }
 
+resource "launchdarkly_feature_flag" "json" {
+  project_key = launchdarkly_project.example.key
+  key         = "json-flag"
+  name        = "JSON feature flag"
+
+  variation_type = "json"
+  variations {
+    value = <<EOF
+    {"foo": "bar"}
+    EOF
+  }
+  variations {
+    value = <<EOF
+    {
+      "foo": "baz",
+      "extra": {"nested": "json"}
+    }
+    EOF
+  }
+}
+
 resource "launchdarkly_feature_flag" "boolean" {
   project_key    = launchdarkly_project.example.key
   key            = "boolean-flag-1"

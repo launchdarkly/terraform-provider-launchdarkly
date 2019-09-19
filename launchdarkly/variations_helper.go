@@ -1,11 +1,14 @@
 package launchdarkly
 
 import (
+	"encoding/json"
 	"fmt"
 	"reflect"
 	"strconv"
+	"strings"
 
 	"github.com/hashicorp/terraform/helper/schema"
+	"github.com/hashicorp/terraform/helper/structure"
 	ldapi "github.com/launchdarkly/api-client-go"
 )
 
@@ -13,14 +16,16 @@ const (
 	BOOL_VARIATION   = "boolean"
 	STRING_VARIATION = "string"
 	NUMBER_VARIATION = "number"
+	JSON_VARIATION   = "json"
 )
 
 func variationTypeSchema() *schema.Schema {
 	return &schema.Schema{
-		Type:         schema.TypeString,
-		Required:     true,
-		ForceNew:     true,
-		Description:  "The uniform type for all variations. Can be either `boolean` or `string`.",
+		Type:     schema.TypeString,
+		Required: true,
+		ForceNew: true,
+		Description: fmt.Sprintf("The uniform type for all variations. Can be either %q, %q, %q, or %q.",
+			BOOL_VARIATION, STRING_VARIATION, NUMBER_VARIATION, JSON_VARIATION),
 		ValidateFunc: validateVariationType,
 	}
 }
@@ -42,11 +47,16 @@ func variationsSchema() *schema.Schema {
 					Optional: true,
 				},
 				value: {
-					Type:     schema.TypeString,
-					Required: true,
+					Type:         schema.TypeString,
+					Required:     true,
+					ValidateFunc: validateVariationValue,
 					StateFunc: func(i interface{}) string {
-						// This will work for bool and string variation_types
-						return fmt.Sprintf("%v", i)
+						// All values are stored as strings in TF state
+						v, err := structure.NormalizeJsonString(i)
+						if err != nil {
+							return fmt.Sprintf("%v", i)
+						}
+						return v
 					},
 				},
 			},
@@ -58,10 +68,20 @@ func validateVariationType(val interface{}, key string) (warns []string, errs []
 	value := val.(string)
 	switch value {
 	// TODO: add JSON
-	case BOOL_VARIATION, STRING_VARIATION, NUMBER_VARIATION:
+	case BOOL_VARIATION, STRING_VARIATION, NUMBER_VARIATION, JSON_VARIATION:
 		break
 	default:
 		errs = append(errs, fmt.Errorf("%q contains an invalid value %q. Valid values are `boolean` and `string`", key, value))
+	}
+	return warns, errs
+}
+
+func validateVariationValue(val interface{}, key string) (warns []string, errs []error) {
+	value := strings.TrimSpace(val.(string))
+	if strings.HasPrefix(value, "{") {
+		if !json.Valid([]byte(value)) {
+			warns = append(warns, fmt.Sprintf("%q starts with a '{' but is not valid JSON. received: %q", key, value))
+		}
 	}
 	return warns, errs
 }
@@ -117,6 +137,8 @@ func variationsFromSchemaData(schemaVariations interface{}, variationType string
 			variations[i] = stringVariationFromResourceData(variation)
 		case NUMBER_VARIATION:
 			variations[i], err = numberVariationFromResourceData(variation)
+		case JSON_VARIATION:
+			variations[i], err = jsonVariationFromResourceData(variation)
 		default:
 			return variations, fmt.Errorf("invalid variation type: %q", variationType)
 		}
@@ -171,22 +193,55 @@ func numberVariationFromResourceData(variation interface{}) (ldapi.Variation, er
 	}, nil
 }
 
-func variationsToResourceData(variations []ldapi.Variation) interface{} {
-	transformed := make([]interface{}, len(variations))
+func jsonVariationFromResourceData(variation interface{}) (ldapi.Variation, error) {
+	variationMap := variation.(map[string]interface{})
+	stringValue := variationMap[value].(string)
+	var v map[string]interface{}
+	err := json.Unmarshal([]byte(stringValue), &v)
+	if err != nil {
+		return ldapi.Variation{}, fmt.Errorf("%q is an invalid json variation value. %v", stringValue, err)
+	}
+	return ldapi.Variation{
+		Name:        variationMap[name].(string),
+		Description: variationMap[description].(string),
+		Value:       ptr(v),
+	}, nil
+}
 
-	for i, variation := range variations {
-		transformed[i] = map[string]interface{}{
+func variationsToResourceData(variations []ldapi.Variation, variationType string) (interface{}, error) {
+	transformed := make([]interface{}, 0, len(variations))
+
+	for _, variation := range variations {
+		var v string
+		if variationType != JSON_VARIATION {
+			v = fmt.Sprintf("%v", *variation.Value)
+		} else {
+			byteVal, err := json.Marshal(*variation.Value)
+			if err != nil {
+				return transformed, fmt.Errorf("unable to marshal json variation: %v", err)
+			}
+			v, err = structure.NormalizeJsonString(string(byteVal))
+			if err != nil {
+				return transformed, fmt.Errorf("unable to normalize json variation: %v", err)
+			}
+		}
+
+		transformed = append(transformed, map[string]interface{}{
 			name:        variation.Name,
 			description: variation.Description,
-			value:       fmt.Sprintf("%v", *variation.Value),
-		}
+			value:       v,
+		})
 	}
-	return transformed
+	return transformed, nil
 }
 
 func variationsToVariationType(variations []ldapi.Variation) (string, error) {
 	// since all variations have a uniform type, checking the first variation is sufficient
-	variationValue := *variations[0].Value
+	valPtr := variations[0].Value
+	if valPtr == nil {
+		return "", fmt.Errorf("nil variation value: %v", valPtr)
+	}
+	variationValue := *valPtr
 	var variationType string
 	switch variationValue.(type) {
 	case bool:
@@ -195,6 +250,8 @@ func variationsToVariationType(variations []ldapi.Variation) (string, error) {
 		variationType = STRING_VARIATION
 	case float64:
 		variationType = NUMBER_VARIATION
+	case map[string]interface{}:
+		variationType = JSON_VARIATION
 	default:
 		return "", fmt.Errorf("unknown variation type: %q", reflect.TypeOf(variationValue))
 	}

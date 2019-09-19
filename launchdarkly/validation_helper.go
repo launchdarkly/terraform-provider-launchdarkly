@@ -15,11 +15,6 @@ func validateKey() schema.SchemaValidateFunc {
 	)
 }
 
-// Some keys are also limited in length
-func validateLengthLimitedKey() schema.SchemaValidateFunc {
-	return validation.All(validateKey(), validation.StringLenBetween(1, 20))
-}
-
 func validateOp() schema.SchemaValidateFunc {
 	return func(i interface{}, k string) (s []string, es []error) {
 		v, ok := i.(string)
