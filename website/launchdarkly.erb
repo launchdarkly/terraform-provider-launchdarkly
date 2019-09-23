@@ -1,0 +1,41 @@
+<% wrap_layout :inner do %>
+  <% content_for :sidebar do %>
+    <div class="docs-sidebar hidden-print affix-top" role="complementary">
+      <ul class="nav docs-sidenav">
+        <li>
+          <a href="/docs/providers/index.html">All Providers</a>
+        </li>
+        <li>
+          <a href="/docs/providers/launchdarkly/index.html">LaunchDarkly Provider</a>
+        </li>
+        <li>
+          <a href="#">Resources</a>
+          <ul class="nav nav-visible">
+            <li>
+              <a href="/docs/providers/launchdarkly/r/project.html">launchdarkly_project</a>
+            </li>
+            <li>
+              <a href="/docs/providers/launchdarkly/r/environment.html">launchdarkly_environment</a>
+            </li>
+            <li>
+              <a href="/docs/providers/launchdarkly/r/feature_flag.html">launchdarkly_feature_flag</a>
+            </li>
+            <li>
+              <a href="/docs/providers/launchdarkly/r/segment.html">launchdarkly_segment</a>
+            </li>
+            <li>
+              <a href="/docs/providers/launchdarkly/r/webhook.html">launchdarkly_webhook</a>
+            </li>
+            <li>
+              <a href="/docs/providers/launchdarkly/r/custom_role.html">launchdarkly_custom_role</a>
+            </li>
+            <li>
+              <a href="/docs/providers/launchdarkly/r/team_member.html">launchdarkly_team_member</a>
+            </li>
+          </ul>
+        </li>
+      </ul>
+    </div>
+  <% end %>
+  <%= yield %>
+<% end %>

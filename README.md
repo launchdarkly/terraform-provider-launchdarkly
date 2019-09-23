@@ -39,6 +39,8 @@ LAUNCHDARKLY_API_KEY=YOUR_API_KEY make apply
 
 ## More examples:
 
+See the resource markdown files in `website/docs/r` for resource-specific examples and documentation.
+
 See acceptance tests in `launchdarkly/resource_launchdarkly_*_test.go` for many examples.
 
 ## Known issues/Next steps:
