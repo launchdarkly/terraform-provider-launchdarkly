@@ -1,24 +1,47 @@
 package launchdarkly
 
 import (
+	"fmt"
+
 	"github.com/hashicorp/terraform/helper/schema"
 	"github.com/hashicorp/terraform/terraform"
 )
 
+// Environment Variables
 const (
-	apiKey                   = "api_key"
-	launchDarklyAPIKeyEnvVar = "LAUNCHDARKLY_API_KEY"
+	LAUNCHDARKLY_ACCESS_TOKEN = "LAUNCHDARKLY_ACCESS_TOKEN"
+	LAUNCHDARKLY_API_HOST     = "LAUNCHDARKLY_API_HOST"
+	LAUNCHDARKLY_OAUTH_TOKEN  = "LAUNCHDARKLY_OAUTH_TOKEN"
+)
+
+// Provider keys
+const (
+	access_token = "access_token"
+	oauth_token  = "oauth_token"
+	api_host     = "api_host"
 )
 
 // Provider returns a terraform.ResourceProvider.
 func Provider() terraform.ResourceProvider {
 	return &schema.Provider{
 		Schema: map[string]*schema.Schema{
-			apiKey: {
+			access_token: {
 				Type:        schema.TypeString,
-				Required:    true,
-				DefaultFunc: schema.EnvDefaultFunc(launchDarklyAPIKeyEnvVar, nil),
-				Description: "The ld API key",
+				Optional:    true,
+				DefaultFunc: schema.EnvDefaultFunc(LAUNCHDARKLY_ACCESS_TOKEN, nil),
+				Description: "The LaunchDarkly API key",
+			},
+			oauth_token: {
+				Type:        schema.TypeString,
+				Optional:    true,
+				DefaultFunc: schema.EnvDefaultFunc(LAUNCHDARKLY_OAUTH_TOKEN, nil),
+				Description: "The LaunchDarkly OAuth token",
+			},
+			api_host: {
+				Type:        schema.TypeString,
+				Optional:    true,
+				DefaultFunc: schema.EnvDefaultFunc(LAUNCHDARKLY_API_HOST, "https://app.launchdarkly.com"),
+				Description: "The LaunchDarkly host address, e.g. https://app.launchdarkly.com",
 			},
 		},
 		ResourcesMap: map[string]*schema.Resource{
@@ -35,5 +58,17 @@ func Provider() terraform.ResourceProvider {
 }
 
 func providerConfigure(d *schema.ResourceData) (interface{}, error) {
-	return newClient(d.Get(apiKey).(string))
+	host := d.Get(api_host).(string)
+	accessToken := d.Get(access_token).(string)
+	oauthToken := d.Get(oauth_token).(string)
+
+	if oauthToken == "" && accessToken == "" {
+		return nil, fmt.Errorf("either an %q or %q must be specified.", api_key, oauth_token)
+	}
+
+	if oauthToken != "" {
+		return newClient(oauthToken, host, true)
+	}
+
+	return newClient(accessToken, host, false)
 }

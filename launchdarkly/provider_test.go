@@ -23,8 +23,8 @@ func init() {
 }
 
 func testAccPreCheck(t *testing.T) {
-	if v := os.Getenv(launchDarklyAPIKeyEnvVar); v == "" {
-		t.Fatalf("%s env var must be set for acceptance tests", launchDarklyAPIKeyEnvVar)
+	if v := os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN); v == "" {
+		t.Fatalf("%s env var must be set for acceptance tests", LAUNCHDARKLY_ACCESS_TOKEN)
 	}
 }
 

@@ -26,7 +26,7 @@ func TestCleanAccount(t *testing.T) {
 }
 
 func cleanAccount() error {
-	c, err := newClient(os.Getenv(launchDarklyAPIKeyEnvVar))
+	c, err := newClient(os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN), os.Getenv(LAUNCHDARKLY_API_HOST), false)
 	if err != nil {
 		return err
 	}

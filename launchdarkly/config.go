@@ -3,27 +3,47 @@ package launchdarkly
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	ldapi "github.com/launchdarkly/api-client-go"
 )
 
+const Version = "0.0.1"
+
 // Client is used by the provider to access the ld API.
 type Client struct {
-	apiKey string
-	ld     *ldapi.APIClient
-	ctx    context.Context
+	apiKey  string
+	apiHost string
+	ld      *ldapi.APIClient
+	ctx     context.Context
 }
 
-func newClient(apiKey string) (*Client, error) {
-	if apiKey == "" {
-		return nil, errors.New("apiKey cannot be empty")
+func newClient(token string, apiHost string, oauth bool) (*Client, error) {
+	if token == "" {
+		return nil, errors.New("token cannot be empty")
+	}
+	basePath := "https://app.launchdarkly.com/api/v2"
+	if apiHost != "" {
+		basePath = fmt.Sprintf("%s/api/v2", apiHost)
+	}
+
+	cfg := &ldapi.Configuration{
+		BasePath:      basePath,
+		DefaultHeader: make(map[string]string),
+		UserAgent:     fmt.Sprintf("launchdarkly-terraform-provider/%s", Version),
+	}
+
+	ctx := context.WithValue(context.Background(), ldapi.ContextAPIKey, ldapi.APIKey{
+		Key: token,
+	})
+	if oauth {
+		ctx = context.WithValue(context.Background(), ldapi.ContextAccessToken, token)
 	}
 
 	return &Client{
-		apiKey: apiKey,
-		ld:     ldapi.NewAPIClient(ldapi.NewConfiguration()),
-		ctx: context.WithValue(context.Background(), ldapi.ContextAPIKey, ldapi.APIKey{
-			Key: apiKey,
-		}),
+		apiKey:  token,
+		apiHost: apiHost,
+		ld:      ldapi.NewAPIClient(cfg),
+		ctx:     ctx,
 	}, nil
 }
