@@ -16,7 +16,7 @@ Use the navigation to the left to read about the available resources.
 ```hcl
 # Configure the LaunchDarkly provider
 provider "launchdarkly" {
-  api_key = var.launchdarkly_api_key
+  access_token = var.launchdarkly_access_token
 }
 
 # Create a new project
@@ -34,4 +34,8 @@ resource "launchdarkly_feature_flag" "terraform" {
 
 The following argument is supported:
 
-- `api_key` - (Required) The [personal access token](https://docs.launchdarkly.com/docs/api-access-tokens) used to authenticate with LaunchDarkly. This can also be set via the `LAUNCHDARKLY_API_KEY` environment variable.
+- `access_token` - (Optional) The [personal access token](https://docs.launchdarkly.com/docs/api-access-tokens) used to authenticate with LaunchDarkly. This can also be set via the `LAUNCHDARKLY_ACCESS_TOKEN` environment variable. Either `access_token` or `oauth_token` must be provided.
+
+- `oauth_token` - (Optional) An OAuth V2 token used to authenticate with LaunchDarkly. This can also be set via the `LAUNCHDARKLY_OAUTH_TOKEN` environment variable. Either `access_token` or `oauth_token` must be provided.
+
+- `api_host` - (Optional) The LaunchDarkly host address. If this argument is not specified, the default host address of `https://app.launchdarkly.com` will be used.

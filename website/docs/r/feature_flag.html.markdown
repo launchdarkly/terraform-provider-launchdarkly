@@ -92,7 +92,7 @@ Nested `custom_properties` have the following structure:
 
 In addition to the arguments above, the following attribute is exported:
 
-- `id` - The unique environment ID in the format `project_key/flag_key`.
+- `id` - The unique feature flag ID in the format `project_key/flag_key`.
 
 ## Import
 

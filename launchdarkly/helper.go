@@ -9,6 +9,10 @@ import (
 
 func ptr(v interface{}) *interface{} { return &v }
 
+func intPtr(i int) *int {
+	return &i
+}
+
 func patchReplace(path string, value interface{}) ldapi.PatchOperation {
 	return ldapi.PatchOperation{
 		Op:    "replace",

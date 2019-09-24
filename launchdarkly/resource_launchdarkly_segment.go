@@ -30,11 +30,13 @@ func resourceSegment() *schema.Resource {
 			env_key: &schema.Schema{
 				Type:         schema.TypeString,
 				Required:     true,
+				ForceNew:     true,
 				ValidateFunc: validateKey(),
 			},
 			key: &schema.Schema{
 				Type:         schema.TypeString,
 				Required:     true,
+				ForceNew:     true,
 				ValidateFunc: validateKey(),
 			},
 			name: &schema.Schema{

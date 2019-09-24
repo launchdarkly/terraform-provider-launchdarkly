@@ -25,7 +25,7 @@ Run unit tests:
 Run acceptance tests (Be sure to use a test account as this will create/destroy real resources!):
 
 ```
-LAUNCHDARKLY_API_KEY=YOUR_API_KEY make testacc
+LAUNCHDARKLY_ACCESS_TOKEN=YOUR_ACCESS_TOKEN make testacc
 ```
 
 Note: you may need to clean your account before running the acceptance tests.
@@ -34,7 +34,7 @@ Do this by commenting out the `t.SkipNow()` line in [launchdarkly/account_cleane
 Run [example.tf](example.tf):
 
 ```
-LAUNCHDARKLY_API_KEY=YOUR_API_KEY make apply
+LAUNCHDARKLY_ACCESS_TOKEN=YOUR_ACCESS_TOKEN make apply
 ```
 
 ## More examples:

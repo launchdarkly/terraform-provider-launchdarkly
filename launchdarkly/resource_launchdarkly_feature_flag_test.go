@@ -494,7 +494,7 @@ func testAccCheckFeatureFlagExists(resourceName string) resource.TestCheckFunc {
 		client := testAccProvider.Meta().(*Client)
 		_, _, err := client.ld.FeatureFlagsApi.GetFeatureFlag(client.ctx, projKey, flagKey, nil)
 		if err != nil {
-			return fmt.Errorf("received an error getting environment. %s", err)
+			return fmt.Errorf("received an error getting feature flag. %s", err)
 		}
 		return nil
 	}

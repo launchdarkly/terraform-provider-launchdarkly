@@ -44,7 +44,52 @@ resource "launchdarkly_feature_flag" "number" {
     value = 12.5
   }
   variations {
-    value = 0
+    value = 10
+  }
+  variations {
+    value = 99
+  }
+}
+
+resource "launchdarkly_feature_flag_environment" "number_env" {
+  flag_id = launchdarkly_feature_flag.number.id
+  env_key = launchdarkly_environment.staging.key
+
+  targeting_enabled = true
+
+
+  prerequisites {
+    flag_key  = launchdarkly_feature_flag.basic.key
+    variation = 0
+  }
+  user_targets {
+    values = ["user0"]
+  }
+  user_targets {
+    values = ["user1", "user2"]
+  }
+  user_targets {
+    values = []
+  }
+
+  rules {
+    clauses {
+      attribute = "country"
+      op        = "startsWith"
+      values    = ["great", "de", "united"]
+      negate    = false
+    }
+    clauses {
+      attribute = "segmentMatch"
+      op        = "segmentMatch"
+      values    = [launchdarkly_segment.example.key]
+      negate    = false
+    }
+    variation = 0
+  }
+
+  flag_fallthrough {
+    rollout_weights = [60000, 40000, 0]
   }
 }
 
@@ -132,7 +177,7 @@ resource "launchdarkly_custom_role" "example" {
 }
 
 resource "launchdarkly_segment" "example" {
-  key         = "segmentKey1"
+  key         = "segment-key1"
   project_key = launchdarkly_project.example.key
   env_key     = launchdarkly_environment.staging.key
   name        = "segment name"

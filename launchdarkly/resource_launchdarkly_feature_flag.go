@@ -133,7 +133,6 @@ func resourceFeatureFlagRead(d *schema.ResourceData, metaRaw interface{}) error 
 	}
 
 	transformedCustomProperties := customPropertiesToResourceData(flag.CustomProperties)
-
 	_ = d.Set(key, flag.Key)
 	_ = d.Set(name, flag.Name)
 	_ = d.Set(maintainer_id, flag.MaintainerId)
@@ -168,6 +167,7 @@ func resourceFeatureFlagRead(d *schema.ResourceData, metaRaw interface{}) error 
 	if err != nil {
 		return fmt.Errorf("failed to set custom properties on flag with key %q: %v", flag.Key, err)
 	}
+	d.SetId(projectKey + "/" + key)
 	return nil
 }
 
@@ -244,11 +244,10 @@ func resourceFeatureFlagExists(d *schema.ResourceData, metaRaw interface{}) (boo
 func resourceFeatureFlagImport(d *schema.ResourceData, meta interface{}) ([]*schema.ResourceData, error) {
 	id := d.Id()
 
-	if strings.Count(id, "/") != 1 {
-		return nil, fmt.Errorf("found unexpected flag id format: %q expected format: 'project_key/flag_key'", id)
+	projectKey, flagKey, err := flagIdToKeys(id)
+	if err != nil {
+		return nil, err
 	}
-	parts := strings.SplitN(d.Id(), "/", 2)
-	projectKey, flagKey := parts[0], parts[1]
 	_ = d.Set(project_key, projectKey)
 	_ = d.Set(key, flagKey)
 
@@ -257,4 +256,13 @@ func resourceFeatureFlagImport(d *schema.ResourceData, meta interface{}) ([]*sch
 	}
 
 	return []*schema.ResourceData{d}, nil
+}
+
+func flagIdToKeys(id string) (projectKey string, flagKey string, err error) {
+	if strings.Count(id, "/") != 1 {
+		return "", "", fmt.Errorf("found unexpected flag id format: %q expected format: 'project_key/flag_key'", id)
+	}
+	parts := strings.SplitN(id, "/", 2)
+	projectKey, flagKey = parts[0], parts[1]
+	return projectKey, flagKey, nil
 }
