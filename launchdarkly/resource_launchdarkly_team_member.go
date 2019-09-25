@@ -20,27 +20,24 @@ func resourceTeamMember() *schema.Resource {
 		},
 
 		Schema: map[string]*schema.Schema{
-			_id: &schema.Schema{
-				Type:     schema.TypeString,
-				Computed: true,
-			},
-			email: &schema.Schema{
+			email: {
 				Type:     schema.TypeString,
 				Required: true,
 			},
-			first_name: &schema.Schema{
+			first_name: {
 				Type:     schema.TypeString,
 				Optional: true,
 			},
-			last_name: &schema.Schema{
+			last_name: {
 				Type:     schema.TypeString,
 				Optional: true,
 			},
-			role: &schema.Schema{
-				Type:     schema.TypeString,
-				Optional: true,
+			role: {
+				Type:         schema.TypeString,
+				Optional:     true,
+				ValidateFunc: validateTeamMemberRole,
 			},
-			custom_roles: &schema.Schema{
+			custom_roles: {
 				Type:     schema.TypeSet,
 				Set:      schema.HashString,
 				Elem:     &schema.Schema{Type: schema.TypeString},
@@ -48,6 +45,17 @@ func resourceTeamMember() *schema.Resource {
 			},
 		},
 	}
+}
+
+func validateTeamMemberRole(val interface{}, key string) (warns []string, errs []error) {
+	v := val.(string)
+	switch v {
+	case "reader", "writer", "admin":
+		// Do nothing
+	default:
+		errs = append(errs, fmt.Errorf("%q must be either `reader`, `writer`, or `admin`. Got: %s", key, v))
+	}
+	return warns, errs
 }
 
 func resourceTeamMemberCreate(d *schema.ResourceData, metaRaw interface{}) error {
@@ -94,7 +102,6 @@ func resourceTeamMemberRead(d *schema.ResourceData, metaRaw interface{}) error {
 	}
 
 	d.SetId(member.Id)
-	_ = d.Set(_id, member.Id)
 	_ = d.Set(email, member.Email)
 	_ = d.Set(first_name, member.FirstName)
 	_ = d.Set(last_name, member.LastName)
@@ -154,8 +161,6 @@ func teamMemberExists(memberID string, meta *Client) (bool, error) {
 }
 
 func resourceTeamMemberImport(d *schema.ResourceData, meta interface{}) ([]*schema.ResourceData, error) {
-	_ = d.Set(_id, d.Id())
-
 	if err := resourceTeamMemberRead(d, meta); err != nil {
 		return nil, err
 	}
