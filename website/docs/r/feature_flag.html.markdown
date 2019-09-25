@@ -52,13 +52,13 @@ resource "launchdarkly_feature_flag" "building_materials" {
 
 - `project_key` - (Required) The feature flag's project key.
 
-- `key` - (Required) The unique feature flag key that is used to reference the flag in your application code.
+- `key` - (Required) The unique feature flag key that references the flag in your application code.
 
 - `name` - (Required) The human-readable name of the feature flag.
 
-- `variation_type` - (Required) The feature flag's variation type. Can be `boolean`, `string`, `number` or `json`.
+- `variation_type` - (Required) The feature flag's variation type: `boolean`, `string`, `number` or `json`.
 
-- `variations` - (Required) List of nested blocks describing the variations associated with the feature flag. At least two variations must be specified. The structure of this block is described below.
+- `variations` - (Required) List of nested blocks describing the variations associated with the feature flag. You must specify at least two variations. To learn more, read [Nested Variations Blocks](#nested-variations).
 
 - `description` - (Optional) The feature flag's description.
 
@@ -66,20 +66,22 @@ resource "launchdarkly_feature_flag" "building_materials" {
 
 - `maintainer_id` - (Optional) The feature flag maintainer's team member ID.
 
-- `temporary` - (Optional) Whether or not the flag is a temporary flag.
+- `temporary` - (Optional) Specifies whether the flag is a temporary flag.
 
-- `include_in_snippet` - (Optional) Whether or not this flag should be made available to the client-side JavaScript SDK.
+- `include_in_snippet` - (Optional) Specifies whether this flag should be made available to the client-side JavaScript SDK.
 
-- `custom_properties` - (Optional) List of nested blocks describing the feature flag's [custom properties](https://docs.launchdarkly.com/docs/custom-properties). The structure of this block is described below.
+- `custom_properties` - (Optional) List of nested blocks describing the feature flag's [custom properties](https://docs.launchdarkly.com/docs/custom-properties). To learn more, read [Nested Custom Properties](#custom-properties).
 
+### <a id="nested-variations"></a>Nested Variations Blocks
 Nested `variations` blocks have the following structure:
 
-- `value` - (Required) The variation value. The value's type must correspond to the `variation_type` argument. For example, when `variation_type = "boolean"` acceptable variations values are restricted to `true` or `false`.
+- `value` - (Required) The variation value. The value's type must correspond to the `variation_type` argument. For example:  `variation_type = "boolean"` accepts only `true` or `false`.
 
 - `name` - (Optional) The name of the variation.
 
 - `description` - (Optional) The variation's description.
 
+### <a id="custom-properties"></a>Nested Custom Properties
 Nested `custom_properties` have the following structure:
 
 - `key` - (Required) The unique custom property key.
@@ -94,9 +96,11 @@ In addition to the arguments above, the following attribute is exported:
 
 - `id` - The unique feature flag ID in the format `project_key/flag_key`.
 
-## Import
+## Importing Feature Flags
 
-LaunchDarkly feature flags can be imported using the ID of the feature flag in the format `project_key/flag_key`, e.g.
+You can import a feature flag using the feature flag's ID in the format `project_key/flag_key`.
+
+For example:
 
 ```
 $ terraform import launchdarkly_feature_flag.building_materials example-project/building-materials
