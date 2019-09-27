@@ -67,7 +67,6 @@ func variationsSchema() *schema.Schema {
 func validateVariationType(val interface{}, key string) (warns []string, errs []error) {
 	value := val.(string)
 	switch value {
-	// TODO: add JSON
 	case BOOL_VARIATION, STRING_VARIATION, NUMBER_VARIATION, JSON_VARIATION:
 		break
 	default:
@@ -102,7 +101,7 @@ func variationPatchesFromResourceData(d *schema.ResourceData) ([]ldapi.PatchOper
 	}
 
 	if len(oldVariations) == 0 {
-		// This can only happen when the resource is first created. Since this is handled in the creation POSTm
+		// This can only happen when the resource is first created. Since this is handled in the creation POST,
 		// variation patches are not necessary.
 		return patches, nil
 	}

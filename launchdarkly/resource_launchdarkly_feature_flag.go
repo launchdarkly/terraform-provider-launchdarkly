@@ -2,6 +2,7 @@ package launchdarkly
 
 import (
 	"fmt"
+	"net/http"
 	"strings"
 
 	"github.com/hashicorp/terraform/helper/schema"
@@ -205,7 +206,9 @@ func resourceFeatureFlagUpdate(d *schema.ResourceData, metaRaw interface{}) erro
 		patch.Patch = append(patch.Patch, patchReplace("/maintainerId", maintainerID.(string)))
 	}
 
-	_, _, err = client.ld.FeatureFlagsApi.PatchFeatureFlag(client.ctx, projectKey, key, patch)
+	_, _, err = repeatUntilNoConflict(func() (interface{}, *http.Response, error) {
+		return client.ld.FeatureFlagsApi.PatchFeatureFlag(client.ctx, projectKey, key, patch)
+	})
 	if err != nil {
 		return fmt.Errorf("failed to update flag %q in project %q: %s", key, projectKey, handleLdapiErr(err))
 	}

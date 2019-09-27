@@ -2,6 +2,8 @@ package launchdarkly
 
 import (
 	"fmt"
+	"log"
+	"net/http"
 	"strings"
 
 	"github.com/hashicorp/terraform/helper/schema"
@@ -21,39 +23,39 @@ func resourceSegment() *schema.Resource {
 		},
 
 		Schema: map[string]*schema.Schema{
-			project_key: &schema.Schema{
+			project_key: {
 				Type:         schema.TypeString,
 				Optional:     true,
 				ForceNew:     true,
 				ValidateFunc: validateKey(),
 			},
-			env_key: &schema.Schema{
+			env_key: {
 				Type:         schema.TypeString,
 				Required:     true,
 				ForceNew:     true,
 				ValidateFunc: validateKey(),
 			},
-			key: &schema.Schema{
+			key: {
 				Type:         schema.TypeString,
 				Required:     true,
 				ForceNew:     true,
 				ValidateFunc: validateKey(),
 			},
-			name: &schema.Schema{
+			name: {
 				Type:     schema.TypeString,
 				Required: true,
 			},
-			description: &schema.Schema{
+			description: {
 				Type:     schema.TypeString,
 				Optional: true,
 			},
 			tags: tagsSchema(),
-			included: &schema.Schema{
+			included: {
 				Type:     schema.TypeList,
 				Elem:     &schema.Schema{Type: schema.TypeString},
 				Optional: true,
 			},
-			excluded: &schema.Schema{
+			excluded: {
 				Type:     schema.TypeList,
 				Elem:     &schema.Schema{Type: schema.TypeString},
 				Optional: true,
@@ -174,7 +176,9 @@ func resourceSegmentUpdate(d *schema.ResourceData, metaRaw interface{}) error {
 		patchReplace("/rules", rules),
 	}
 
-	_, _, err := client.ld.UserSegmentsApi.PatchUserSegment(client.ctx, projectKey, envKey, key, patch)
+	_, _, err := repeatUntilNoConflict(func() (interface{}, *http.Response, error) {
+		return client.ld.UserSegmentsApi.PatchUserSegment(client.ctx, projectKey, envKey, key, patch)
+	})
 	if err != nil {
 		return fmt.Errorf("failed to update segment %q in project %q: %s", key, projectKey, handleLdapiErr(err))
 	}
@@ -233,4 +237,18 @@ func resourceSegmentImport(d *schema.ResourceData, meta interface{}) ([]*schema.
 	}
 
 	return []*schema.ResourceData{d}, nil
+}
+
+// If multiple patches are issued at the same time by terraform we can get a conflict. If this happens, wait a random interval
+func segmentUpdateWithConflicts(client *Client, projectKey string, envKey string, key string, patch []ldapi.PatchOperation) error {
+	_, res, err := client.ld.UserSegmentsApi.PatchUserSegment(client.ctx, projectKey, envKey, key, patch)
+	for retryCount := 0; res.StatusCode == http.StatusConflict && retryCount < MAX_409_RETRIES; retryCount++ {
+		log.Printf("[DEBUG] received a 409 updating segment: %s/%s/%s. retrying", projectKey, envKey, key)
+		randomRetrySleep()
+		_, res, err = client.ld.UserSegmentsApi.PatchUserSegment(client.ctx, projectKey, envKey, key, patch)
+	}
+	if err != nil {
+		return err
+	}
+	return nil
 }

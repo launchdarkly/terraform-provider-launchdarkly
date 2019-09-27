@@ -2,10 +2,36 @@ package launchdarkly
 
 import (
 	"fmt"
+	"log"
+	"math/rand"
 	"net/http"
+	"time"
 
 	ldapi "github.com/launchdarkly/api-client-go"
 )
+
+const MAX_409_RETRIES = 5
+
+func repeatUntilNoConflict(apiCall func() (interface{}, *http.Response, error)) (interface{}, *http.Response, error) {
+	obj, res, err := apiCall()
+	for retryCount := 0; res.StatusCode == http.StatusConflict && retryCount < MAX_409_RETRIES; retryCount++ {
+		log.Println("[DEBUG] received a 409 conflict. retrying")
+		randomRetrySleep()
+		obj, res, err = apiCall()
+	}
+	return obj, res, err
+}
+
+var randomRetrySleepSeeded = false
+
+// Sleep for a random interval between 200ms and 500ms
+func randomRetrySleep() {
+	if !randomRetrySleepSeeded {
+		rand.Seed(time.Now().UnixNano())
+	}
+	n := rand.Intn(300) + 200
+	time.Sleep(time.Duration(n) * time.Millisecond)
+}
 
 func ptr(v interface{}) *interface{} { return &v }
 

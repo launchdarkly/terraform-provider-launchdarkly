@@ -2,6 +2,8 @@ package launchdarkly
 
 import (
 	"fmt"
+	"log"
+	"net/http"
 
 	"github.com/hashicorp/terraform/helper/schema"
 	ldapi "github.com/launchdarkly/api-client-go"
@@ -20,17 +22,17 @@ func resourceCustomRole() *schema.Resource {
 		},
 
 		Schema: map[string]*schema.Schema{
-			key: &schema.Schema{
+			key: {
 				Type:         schema.TypeString,
 				Required:     true,
 				ForceNew:     true,
 				ValidateFunc: validateKey(),
 			},
-			name: &schema.Schema{
+			name: {
 				Type:     schema.TypeString,
 				Required: true,
 			},
-			description: &schema.Schema{
+			description: {
 				Type:     schema.TypeString,
 				Optional: true,
 			},
@@ -98,7 +100,9 @@ func resourceCustomRoleUpdate(d *schema.ResourceData, metaRaw interface{}) error
 		patchReplace("/policy", &customRolePolicies),
 	}
 
-	_, _, err := client.ld.CustomRolesApi.PatchCustomRole(client.ctx, customRoleKey, patch)
+	_, _, err := repeatUntilNoConflict(func() (interface{}, *http.Response, error) {
+		return client.ld.CustomRolesApi.PatchCustomRole(client.ctx, customRoleKey, patch)
+	})
 	if err != nil {
 		return fmt.Errorf("failed to update custom role with key %q: %s", customRoleKey, handleLdapiErr(err))
 	}
@@ -142,4 +146,18 @@ func resourceCustomRoleImport(d *schema.ResourceData, meta interface{}) ([]*sche
 	}
 
 	return []*schema.ResourceData{d}, nil
+}
+
+// If multiple patches are issued at the same time by terraform we can get a conflict. If this happens, wait a random interval
+func customRoleUpdateWithConflicts(client *Client, customRoleKey string, patch []ldapi.PatchOperation) error {
+	_, res, err := client.ld.CustomRolesApi.PatchCustomRole(client.ctx, customRoleKey, patch)
+	for retryCount := 0; res.StatusCode == http.StatusConflict && retryCount < MAX_409_RETRIES; retryCount++ {
+		log.Printf("[DEBUG] received a 409 updating custom role: %q. retrying", customRoleKey)
+		randomRetrySleep()
+		_, res, err = client.ld.CustomRolesApi.PatchCustomRole(client.ctx, customRoleKey, patch)
+	}
+	if err != nil {
+		return err
+	}
+	return nil
 }

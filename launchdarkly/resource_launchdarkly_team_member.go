@@ -2,6 +2,7 @@ package launchdarkly
 
 import (
 	"fmt"
+	"net/http"
 
 	"github.com/hashicorp/terraform/helper/schema"
 	ldapi "github.com/launchdarkly/api-client-go"
@@ -125,7 +126,9 @@ func resourceTeamMemberUpdate(d *schema.ResourceData, metaRaw interface{}) error
 		patchReplace("/customRoles", &customRolesRaw),
 	}
 
-	_, _, err := client.ld.TeamMembersApi.PatchMember(client.ctx, memberID, patch)
+	_, _, err := repeatUntilNoConflict(func() (interface{}, *http.Response, error) {
+		return client.ld.TeamMembersApi.PatchMember(client.ctx, memberID, patch)
+	})
 	if err != nil {
 		return fmt.Errorf("failed to update team member with id %q: %s", memberID, handleLdapiErr(err))
 	}

@@ -2,6 +2,7 @@ package launchdarkly
 
 import (
 	"fmt"
+	"net/http"
 
 	"github.com/hashicorp/terraform/helper/schema"
 	ldapi "github.com/launchdarkly/api-client-go"
@@ -142,7 +143,9 @@ func resourceProjectUpdate(d *schema.ResourceData, metaRaw interface{}) error {
 		patchReplace("/tags", &tags),
 	}
 
-	_, _, err := client.ld.ProjectsApi.PatchProject(client.ctx, projectKey, patch)
+	_, _, err := repeatUntilNoConflict(func() (interface{}, *http.Response, error) {
+		return client.ld.ProjectsApi.PatchProject(client.ctx, projectKey, patch)
+	})
 	if err != nil {
 		return fmt.Errorf("failed to update project with key %q: %s", projectKey, handleLdapiErr(err))
 	}

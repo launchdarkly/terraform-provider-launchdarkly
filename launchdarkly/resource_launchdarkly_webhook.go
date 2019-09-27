@@ -2,6 +2,7 @@ package launchdarkly
 
 import (
 	"fmt"
+	"net/http"
 
 	"github.com/hashicorp/terraform/helper/schema"
 	ldapi "github.com/launchdarkly/api-client-go"
@@ -21,20 +22,20 @@ func resourceWebhook() *schema.Resource {
 		},
 
 		Schema: map[string]*schema.Schema{
-			url: &schema.Schema{
+			url: {
 				Type:     schema.TypeString,
 				Required: true,
 			},
-			secret: &schema.Schema{
+			secret: {
 				Type:      schema.TypeString,
 				Optional:  true,
 				Sensitive: true,
 			},
-			on: &schema.Schema{
+			on: {
 				Type:     schema.TypeBool,
 				Required: true,
 			},
-			name: &schema.Schema{
+			name: {
 				Type:     schema.TypeString,
 				Optional: true,
 			},
@@ -120,7 +121,9 @@ func resourceWebhookUpdate(d *schema.ResourceData, metaRaw interface{}) error {
 		patchReplace("/tags", &webhookTags),
 	}
 
-	_, _, err := client.ld.WebhooksApi.PatchWebhook(client.ctx, webhookID, patch)
+	_, _, err := repeatUntilNoConflict(func() (interface{}, *http.Response, error) {
+		return client.ld.WebhooksApi.PatchWebhook(client.ctx, webhookID, patch)
+	})
 	if err != nil {
 		return fmt.Errorf("failed to update webhook with id %q: %s", webhookID, handleLdapiErr(err))
 	}

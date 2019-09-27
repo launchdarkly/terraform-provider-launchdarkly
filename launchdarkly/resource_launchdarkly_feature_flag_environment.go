@@ -3,6 +3,7 @@ package launchdarkly
 import (
 	"fmt"
 	"log"
+	"net/http"
 	"strings"
 
 	"github.com/hashicorp/terraform/helper/schema"
@@ -98,7 +99,9 @@ func resourceFeatureFlagEnvironmentCreate(d *schema.ResourceData, metaRaw interf
 
 	log.Printf("[DEBUG] %+v\n", patch)
 
-	_, _, err = client.ld.FeatureFlagsApi.PatchFeatureFlag(client.ctx, projectKey, flagKey, patch)
+	_, _, err = repeatUntilNoConflict(func() (interface{}, *http.Response, error) {
+		return client.ld.FeatureFlagsApi.PatchFeatureFlag(client.ctx, projectKey, flagKey, patch)
+	})
 	if err != nil {
 		return fmt.Errorf("failed to update flag %q in project %q: %s", flagKey, projectKey, handleLdapiErr(err))
 	}
@@ -195,12 +198,12 @@ func resourceFeatureFlagEnvironmentUpdate(d *schema.ResourceData, metaRaw interf
 		}}
 
 	log.Printf("[DEBUG] %+v\n", patch)
-
-	_, _, err = client.ld.FeatureFlagsApi.PatchFeatureFlag(client.ctx, projectKey, flagKey, patch)
+	_, _, err = repeatUntilNoConflict(func() (interface{}, *http.Response, error) {
+		return client.ld.FeatureFlagsApi.PatchFeatureFlag(client.ctx, projectKey, flagKey, patch)
+	})
 	if err != nil {
 		return fmt.Errorf("failed to update flag %q in project %q, environment %q: %s", flagKey, projectKey, envKey, handleLdapiErr(err))
 	}
-
 	return resourceFeatureFlagEnvironmentRead(d, metaRaw)
 }
 
@@ -248,7 +251,9 @@ func resourceFeatureFlagEnvironmentDelete(d *schema.ResourceData, metaRaw interf
 		}}
 	log.Printf("[DEBUG] %+v\n", patch)
 
-	_, _, err = client.ld.FeatureFlagsApi.PatchFeatureFlag(client.ctx, projectKey, flagKey, patch)
+	_, _, err = repeatUntilNoConflict(func() (interface{}, *http.Response, error) {
+		return client.ld.FeatureFlagsApi.PatchFeatureFlag(client.ctx, projectKey, flagKey, patch)
+	})
 	if err != nil {
 		return fmt.Errorf("failed to update flag %q in project %q, environment %q: %s", flagKey, projectKey, envKey, handleLdapiErr(err))
 	}

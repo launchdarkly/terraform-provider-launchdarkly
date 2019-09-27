@@ -2,6 +2,7 @@ package launchdarkly
 
 import (
 	"fmt"
+	"net/http"
 	"strings"
 
 	"github.com/hashicorp/terraform/helper/schema"
@@ -86,7 +87,6 @@ func resourceEnvironmentRead(d *schema.ResourceData, metaRaw interface{}) error 
 	_ = d.Set(default_ttl, int(env.DefaultTtl))
 	_ = d.Set(secure_mode, env.SecureMode)
 	_ = d.Set(default_track_events, env.DefaultTrackEvents)
-	//TODO: tags
 	return nil
 }
 
@@ -106,9 +106,10 @@ func resourceEnvironmentUpdate(d *schema.ResourceData, metaRaw interface{}) erro
 		patchReplace("/secureMode", d.Get(secure_mode)),
 		patchReplace("/defaultTrackEvents", d.Get(default_track_events)),
 	}
-	//TODO: tags
 
-	_, _, err := client.ld.EnvironmentsApi.PatchEnvironment(client.ctx, projectKey, key, patch)
+	_, _, err := repeatUntilNoConflict(func() (interface{}, *http.Response, error) {
+		return client.ld.EnvironmentsApi.PatchEnvironment(client.ctx, projectKey, key, patch)
+	})
 	if err != nil {
 		return fmt.Errorf("failed to update environment with key %q for project: %q: %s", key, projectKey, handleLdapiErr(err))
 	}
