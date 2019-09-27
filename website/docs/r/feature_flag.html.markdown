@@ -43,8 +43,6 @@ resource "launchdarkly_feature_flag" "building_materials" {
     "multivariate",
     "building-materials",
   ]
-
-  maintainer_id = launchdarkly_team_member.piglet.id
 }
 ```
 
@@ -73,15 +71,17 @@ resource "launchdarkly_feature_flag" "building_materials" {
 - `custom_properties` - (Optional) List of nested blocks describing the feature flag's [custom properties](https://docs.launchdarkly.com/docs/custom-properties). To learn more, read [Nested Custom Properties](#custom-properties).
 
 ### <a id="nested-variations"></a>Nested Variations Blocks
+
 Nested `variations` blocks have the following structure:
 
-- `value` - (Required) The variation value. The value's type must correspond to the `variation_type` argument. For example:  `variation_type = "boolean"` accepts only `true` or `false`.
+- `value` - (Required) The variation value. The value's type must correspond to the `variation_type` argument. For example: `variation_type = "boolean"` accepts only `true` or `false`.
 
 - `name` - (Optional) The name of the variation.
 
 - `description` - (Optional) The variation's description.
 
 ### <a id="custom-properties"></a>Nested Custom Properties
+
 Nested `custom_properties` have the following structure:
 
 - `key` - (Required) The unique custom property key.
@@ -96,7 +96,7 @@ In addition to the arguments above, the following attribute is exported:
 
 - `id` - The unique feature flag ID in the format `project_key/flag_key`.
 
-## Importing Feature Flags
+## Import
 
 You can import a feature flag using the feature flag's ID in the format `project_key/flag_key`.
 
