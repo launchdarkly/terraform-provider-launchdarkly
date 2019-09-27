@@ -11,7 +11,7 @@ Provides a LaunchDarkly team member resource.
 
 This resource allows you to create and manage team members within your LaunchDarkly organization.
 
--> **Note:** Team members can only be managed with "admin" level personal access tokens. Read [managing teams](https://docs.launchdarkly.com/docs/teams) for more information on LaunchDarkly team member roles.
+-> **Note:** You can only manage team members with "admin" level personal access tokens. To learn more, read [Managing Teams](https://docs.launchdarkly.com/docs/teams).
 
 ## Example Usage
 
@@ -28,11 +28,11 @@ resource "launchdarkly_team_member" "example" {
 
 - `email` - (Required) The unique email address associated with the team member.
 
-- `first_name` - (Optional) The team member's first name.
+- `first_name` - (Optional) The team member's given name.
 
-- `last_name` - (Optional) The team member's last name.
+- `last_name` - (Optional) The team member's family name.
 
-- `role` - (Optional) The role associated with team member. Available options are `reader`, `writer`, or `admin`. If unspecified, `reader` will be applied.
+- `role` - (Optional) The role associated with team member. Supported roles are `reader`, `writer`, or `admin`. If you don't specify a role, `reader` is assigned by default.
 
 - `custom_role` - (Optional) The list of custom roles keys associated with the team member. Custom roles are only available to customers on enterprise plans. To learn more about enterprise plans, contact sales@launchdarkly.com.
 
@@ -40,7 +40,7 @@ resource "launchdarkly_team_member" "example" {
 
 ## Attributes Reference
 
-In addition to the arguments above, the following attribute is exported:
+In addition to the arguments above, the provider exports the following attribute:
 
 - `id` - The ID of the team member.
 
