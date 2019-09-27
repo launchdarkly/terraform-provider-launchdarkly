@@ -26,7 +26,7 @@ resource "launchdarkly_webhook" "example" {
 
 - `url` - (Required) - The URL of the remote webhook.
 
-- `on` - (Required) - Whether the webhook is enabled or not.
+- `on` - (Required) - Specifies whether the webhook is enabled.
 
 - `name` - (Optional) - The webhook's human-readable name.
 
@@ -36,7 +36,7 @@ resource "launchdarkly_webhook" "example" {
 
 ## Attributes Reference
 
-In addition to the arguments above, the following attribute is exported:
+In addition to the arguments above, the provider exports following attribute:
 
 - `id` - The unique webhook ID.
 
