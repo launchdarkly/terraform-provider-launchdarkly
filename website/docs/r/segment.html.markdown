@@ -28,7 +28,7 @@ resource "launchdarkly_segment" "example" {
 
 ## Argument Reference
 
-- `key` - (Required) The unique key that will be used to reference the segment.
+- `key` - (Required) The unique key that references the segment.
 
 - `project_key` - (Required) The segment's project key.
 
@@ -44,15 +44,19 @@ resource "launchdarkly_segment" "example" {
 
 - `excluded` - (Optional) List of user excluded from the segment.
 
-- `rules` - (Optional) List of nested custom rule blocks to apply to the segment. The structure of this block is described below.
+- `rules` - (Optional) List of nested custom rule blocks to apply to the segment. To learn more, read [Nested Rules Blocks](#rules-blocks).
+
+### <a id='rules-blocks'>Nested Rules Blocks</a>
 
 Nested `rules` blocks have the following structure:
 
 - `weight` - (Optional) The integer weight of the rule (between 1 and 100000).
 
-- `bucket_by` - (Optional) The operator used to bucket users. Available options are `in`, `endsWith`, `startsWith`, `matches`, `contains`, `lessThan`, `lessThanOrEqual`, `greaterThanOrEqual`, `before`, `after`, `segmentMatch`, `semVerEqual`, `semVerLessThan`, and `semVerGreaterThan`.
+- `bucket_by` - (Optional) The operator used to group users together. Available options are `in`, `endsWith`, `startsWith`, `matches`, `contains`, `lessThan`, `lessThanOrEqual`, `greaterThanOrEqual`, `before`, `after`, `segmentMatch`, `semVerEqual`, `semVerLessThan`, and `semVerGreaterThan`.
 
-- `clauses` - (Optional) List of nested custom rule clause blocks. The structure of this block is described below.
+- `clauses` - (Optional) List of nested custom rule clause blocks. To learn more, read [Nested Clauses Blocks](#clauses-blocks).
+
+### <a id='rules-blocks'>Nested Rules Blocks</a>
 
 Nested `clauses` blocks have the following structure:
 
@@ -66,7 +70,7 @@ Nested `clauses` blocks have the following structure:
 
 ## Attributes Reference
 
-In addition to the arguments above, the following attribute is exported:
+In addition to the arguments above, the provider exports the following attribute:
 
 - `id` - The unique environment ID in the format `project_key/env_key/segment_key`.
 

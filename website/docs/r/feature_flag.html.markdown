@@ -92,7 +92,7 @@ Nested `custom_properties` have the following structure:
 
 ## Attributes Reference
 
-In addition to the arguments above, the following attribute is exported:
+In addition to the arguments above, the provider exports the following attribute:
 
 - `id` - The unique feature flag ID in the format `project_key/flag_key`.
 
