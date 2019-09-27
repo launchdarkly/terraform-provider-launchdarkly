@@ -44,7 +44,7 @@ resource "launchdarkly_environment" "staging" {
 
 ## Attribute Reference
 
-In addition to the arguments above, the provider exports the following attributes:
+In addition to the arguments above, the resource exports the following attributes:
 
 - `id` - The unique environment ID in the format `project_key/environment_key`.
 

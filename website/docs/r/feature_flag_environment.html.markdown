@@ -121,7 +121,7 @@ Nested `flag_fallthrough` blocks have the following structure:
 
 ## Attributes Reference
 
-In addition to the arguments above, the provider exports the following attribute:
+In addition to the arguments above, the resource exports the following attribute:
 
 - `id` - The unique feature flag environment ID in the format `project_key/env_key/flag_key`.
 

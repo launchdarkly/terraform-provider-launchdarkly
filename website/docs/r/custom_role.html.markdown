@@ -31,17 +31,15 @@ resource "launchdarkly_custom_role" "example" {
 
 ## Argument Reference
 
-The following arguments are supported:
-
-- `key` - (Required) The unique key that will be used to reference the custom role.
+- `key` - (Required) The unique key that references the custom role.
 
 - `name` - (Required) The human-readable name for the custom role.
 
 - `description` - (Optional) The description of the custom role.
 
-- `policy` - (Required) The custom role policy block. Custom role policies are documented below.
+- `policy` - (Required) The custom role policy block. To learn more, read [Policies in custom roles](https://docs.launchdarkly.com/docs/policies-in-custom-roles).
 
-Custom role `policy` blocks are composed as follows:
+Custom role `policy` blocks are composed of the following arguments:
 
 - `effect` - (Required) - Either `allow` or `deny`. This argument defines whether the statement allows or denies access to the named resources and actions.
 
@@ -49,11 +47,11 @@ Custom role `policy` blocks are composed as follows:
 
 - `actions` - (Required) The list of action specifiers defining the actions to which the statement applies.
 
-See [Policies in custom roles](https://docs.launchdarkly.com/docs/policies-in-custom-roles) for more information on how policies work in LaunchDarkly custom roles.
-
 ## Import
 
-LaunchDarkly custom roles can be imported using an existing custom role `key`, e.g.
+You can import LaunchDarkly custom roles by using an existing custom role `key`.
+
+For example:
 
 ```
 $ terraform import launchdarkly_custom_role.example example-role-key-1

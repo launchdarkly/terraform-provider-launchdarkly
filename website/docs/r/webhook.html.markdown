@@ -36,7 +36,7 @@ resource "launchdarkly_webhook" "example" {
 
 ## Attributes Reference
 
-In addition to the arguments above, the provider exports following attribute:
+In addition to the arguments above, the resource exports following attribute:
 
 - `id` - The unique webhook ID.
 

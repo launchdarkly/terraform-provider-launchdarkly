@@ -40,7 +40,7 @@ resource "launchdarkly_team_member" "example" {
 
 ## Attributes Reference
 
-In addition to the arguments above, the provider exports the following attribute:
+In addition to the arguments above, the resource exports the following attribute:
 
 - `id` - The ID of the team member.
 
