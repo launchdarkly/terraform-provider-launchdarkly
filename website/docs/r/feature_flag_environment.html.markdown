@@ -63,19 +63,21 @@ resource "launchdarkly_feature_flag_environment" "number_env" {
 
 - `env_key` - (Required) The environment key.
 
-- `targeting_enabled` - (Optional) Whether or not targeting is enabled.
+- `targeting_enabled` - (Optional) Whether targeting is enabled.
 
-- `track_events` - (Optional) Whether or not to send event data back to LaunchDarkly.
+- `track_events` - (Optional) Whether to send event data back to LaunchDarkly.
 
 - `off_variation` - (Optional) The index of the variation to serve if targeting is disabled.
 
 - `prerequisites` - (Optional) List of nested blocks describing prerequisite feature flags rules. The structure of this block is described below.
 
-- `user_targets` - (Optional) List of nested blocks describing the individual user targets for each variation. The order of the `user_targets` blocks determines the index of the variation to serve if a `user_target` is matched. The structure of this block is described below.
+- `user_targets` - (Optional) List of nested blocks describing the individual user targets for each variation. The order of the `user_targets` blocks determines the index of the variation to serve if a `user_target` is matched. To learn more, read [Nested User Target Blocks](#user-target-blocks).
 
-- `rules` - (Optional) List of logical targeting rules. The structure of this block is described below.
+- `rules` - (Optional) List of logical targeting rules. To learn more, read [Nested Rules Blocks](#rules-blocks).
 
-- `flag_fallthrough` - (Optional) Nested block describing the default variation to serve if no `prerequisites`, `user_target`, or `rules` apply. The structure of this block is described below.
+- `flag_fallthrough` - (Optional) Nested block describing the default variation to serve if no `prerequisites`, `user_target`, or `rules` apply. To learn more, read [Nested Prerequisite Blocks](#prereq-blocks).
+
+### <a id='prereq-blocks'></a>Nested Prerequisite Blocks
 
 Nested `prerequisites` blocks have the following structure:
 
@@ -83,17 +85,23 @@ Nested `prerequisites` blocks have the following structure:
 
 - `variation` - (Required) The index of the prerequisite feature flag's variation to target.
 
+### <a id='user-target-blocks'></a>Nested User Target Blocks
+
 Nested `user_targets` blocks have the following structure:
 
 - `values` - (Optional) List of `users` to target.
 
+### <a id='rules-blocks'></a>Nested Rules Blocks
+
 Nested `rules` blocks have the following structure:
 
-- `clauses` - (Required) List of nested blocks specifying the logical clauses to evaluate.
+- `clauses` - (Required) List of nested blocks specifying the logical clauses to evaluate. To learn more, read [Nested Clauses Blocks](#clauses-blocks).
 
-- `variation` - (Optional) The integer variation index to serve if the rule clauses evaluate to `true`. Either `variation` or `rollout_weights` must be specified.
+- `variation` - (Optional) The integer variation index to serve if the rule clauses evaluate to `true`. You must specify either `variation` or `rollout_weights`.
 
-- `rollout_weights` - (Optional) List of integer percentage rollout weights to apply to each variation if the rule clauses evaluates to `true`. The sum of the `rollout_weights` must equal 1000000. Either `variation` or `rollout_weights` must be specified.
+- `rollout_weights` - (Optional) List of integer percentage rollout weights to apply to each variation if the rule clauses evaluates to `true`. The sum of the `rollout_weights` must equal 1000000. You must specify either `variation` or `rollout_weights`.
+
+### <a id='clauses-blocks'></a>Nested Clauses Blocks
 
 Nested `clauses` blocks have the following structure:
 
@@ -107,13 +115,13 @@ Nested `clauses` blocks have the following structure:
 
 Nested `flag_fallthrough` blocks have the following structure:
 
-- `variation` - (Optional) The integer variation index to serve if the rule clauses evaluate to `true`. Either `variation` or `rollout_weights` must be specified.
+- `variation` - (Optional) The integer variation index to serve if the rule clauses evaluate to `true`. You must specify either `variation` or `rollout_weights`.
 
-- `rollout_weights` - (Optional) List of integer percentage rollout weights to apply to each variation if the rule clauses evaluates to `true`. The sum of the `rollout_weights` must equal 1000000. Either `variation` or `rollout_weights` must be specified.
+- `rollout_weights` - (Optional) List of integer percentage rollout weights to apply to each variation if the rule clauses evaluates to `true`. The sum of the `rollout_weights` must equal 1000000. You must specify either `variation` or `rollout_weights`.
 
 ## Attributes Reference
 
-In addition to the arguments above, the following attribute is exported:
+In addition to the arguments above, the provider exports the following attribute:
 
 - `id` - The unique feature flag environment ID in the format `project_key/env_key/flag_key`.
 
