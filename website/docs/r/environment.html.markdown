@@ -34,17 +34,17 @@ resource "launchdarkly_environment" "staging" {
 
 - `key` - (Required) The project-unique key for the environment.
 
-- `color` - (Required) The color swatch as an RGB hex value with no leading `#`, e.g. `000000`.
+- `color` - (Required) The color swatch as an RGB hex value with no leading `#`. For example: `000000`.
 
-- `secure_mode` - (Optional) Ensure a user of the client-side SDK cannot impersonate another user.
+- `secure_mode` - (Optional) Set to `true` to ensure a user of the client-side SDK cannot impersonate another user.
 
-- `default_track_events` - (Optional) Enable data export for every flag created in this environment after `default_track_events` has been set to `true`. To learn more, read [Data Export](https://docs.launchdarkly.com/docs/data-export).
+- `default_track_events` - (Optional) Set to `true` to enable data export for every flag created in this environment after you configure this argument. To learn more, read [Data Export](https://docs.launchdarkly.com/docs/data-export).
 
-- `default_ttl` - (Optional) The TTL for the environment between 0 and 60 minutes. The TTL setting only applies to environments using the PHP SDK. To learn more, read [TTL settings](https://docs.launchdarkly.com/docs/environments#section-ttl-settings).
+- `default_ttl` - (Optional) The TTL for the environment. This must be between 0 and 60 minutes. The TTL setting only applies to environments using the PHP SDK. To learn more, read [TTL settings](https://docs.launchdarkly.com/docs/environments#section-ttl-settings).
 
 ## Attribute Reference
 
-In addition to the arguments above, the following attributes are exported:
+In addition to the arguments above, the provider exports the following attributes:
 
 - `id` - The unique environment ID in the format `project_key/environment_key`.
 
@@ -54,7 +54,9 @@ In addition to the arguments above, the following attributes are exported:
 
 ## Import
 
-LaunchDarkly environments can be imported using an environment ID in the format `project_key/environment_key`, e.g.
+You can import a LaunchDarkly environment using this format: `project_key/environment_key`.
+
+For example:
 
 ```
 $ terraform import launchdarkly_environment.staging example-project/staging
