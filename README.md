@@ -1,49 +1,66 @@
-# Terraform Provider for LaunchDarkly
+# Terraform Provider
 
-- http://www.launchdarkly.com
-- https://www.terraform.io/
+- Website: https://www.terraform.io
+- [![Gitter chat](https://badges.gitter.im/hashicorp-terraform/Lobby.png)](https://gitter.im/hashicorp-terraform/Lobby)
+- Mailing list: [Google Groups](http://groups.google.com/group/terraform-tool)
 
-This terraform provider covers the resources found in the [LaunchDarkly API docs](https://apidocs.launchdarkly.com/reference).
-The API client used is the generated [api-client-go](https://github.com/launchdarkly/api-client-go) which is based on the OpenAPI spec found [here](https://github.com/launchdarkly/ld-openapi).
+<img src="https://cdn.rawgit.com/hashicorp/terraform-website/master/content/source/assets/images/logo-hashicorp.svg" width="600px">
 
-## Requirements:
+## Requirements
 
-- golang 1.11+
-- GNUmake
-- terraform 0.12.0+
+- [Terraform](https://www.terraform.io/downloads.html) 0.12.x
+- [Go](https://golang.org/doc/install) 1.11+ (to build the provider plugin)
 
 ## Building The Provider
 
-This project uses [go modules](https://github.com/golang/go/wiki/Modules)
+---
 
-1. Clone the project: `git clone https://github.com/launchdarkly/terraform-provider-launchdarkly`
-1. `make build`
+Clone repository to: `$GOPATH/src/github.com/terraform-providers/terraform-provider-launchdarkly`
 
-Run unit tests:
-`make test`
-
-Run acceptance tests (Be sure to use a test account as this will create/destroy real resources!):
-
-```
-LAUNCHDARKLY_ACCESS_TOKEN=YOUR_ACCESS_TOKEN make testacc
+```sh
+$ git clone git@github.com:terraform-providers/terraform-provider-launchdarkly $GOPATH/src/github.com/terraform-providers/terraform-provider-launchdarkly
 ```
 
-Note: you may need to clean your account before running the acceptance tests.
-Do this by commenting out the `t.SkipNow()` line in [launchdarkly/account_cleaner_test.go](launchdarkly/account_cleaner_test.go)
+Enter the provider directory and build the provider
 
-Run [example.tf](example.tf):
-
-```
-LAUNCHDARKLY_ACCESS_TOKEN=YOUR_ACCESS_TOKEN make apply
+```sh
+$ cd $GOPATH/src/github.com/terraform-providers/terraform-provider-launchdarkly
+$ make build
 ```
 
-## More examples:
+## Using the provider
 
-See the resource markdown files in `website/docs/r` for resource-specific examples and documentation.
+---
 
-See acceptance tests in `launchdarkly/resource_launchdarkly_*_test.go` for many examples.
+If you're building the provider, follow the instructions to [install it as a plugin.](https://www.terraform.io/docs/plugins/basics.html#installing-a-plugin) After placing it into your plugins directory, run `terraform init` to initialize it.
 
-## Known issues/Next steps:
+Further [usage documentation is available on the Terraform website](https://www.terraform.io/docs/providers/launchdarkly/index.html).
 
-1. Tags for environments is not yet supported. Stay tuned.
-1. ~~Update terraform to [0.12](https://www.terraform.io/upgrade-guides/0-12.html)~~ This may help address tags for environments!
+## Developing the Provider
+
+---
+
+If you wish to work on the provider, you'll first need [Go](http://www.golang.org) installed on your machine (version 1.11+ is _required_). You'll also need to correctly setup a [GOPATH](http://golang.org/doc/code.html#GOPATH), as well as adding `$GOPATH/bin` to your `$PATH`.
+
+To compile the provider, run `make build`. This will build the provider and put the provider binary in the `$GOPATH/bin` directory.
+
+```sh
+$ make bin
+...
+$ $GOPATH/bin/terraform-provider-null
+...
+```
+
+In order to test the provider, you can simply run `make test`.
+
+```sh
+$ make test
+```
+
+In order to run the full suite of Acceptance tests, run `make testacc`.
+
+_Note:_ Acceptance tests create real resources, and often cost money to run.
+
+```sh
+$ make testacc
+```
