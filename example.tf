@@ -188,10 +188,10 @@ resource "launchdarkly_segment" "example" {
 }
 
 resource "launchdarkly_webhook" "example" {
-  name = "Example Webhook"
-  url  = "http://webhooks.com/webhook"
-  tags = ["terraform"]
-  on   = false
+  name    = "Example Webhook"
+  url     = "http://webhooks.com/webhook"
+  tags    = ["terraform"]
+  enabled = false
 }
 
 output "api_key" {

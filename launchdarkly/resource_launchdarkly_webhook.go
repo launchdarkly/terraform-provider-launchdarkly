@@ -31,7 +31,7 @@ func resourceWebhook() *schema.Resource {
 				Optional:  true,
 				Sensitive: true,
 			},
-			on: {
+			enabled: {
 				Type:     schema.TypeBool,
 				Required: true,
 			},
@@ -48,7 +48,7 @@ func resourceWebhookCreate(d *schema.ResourceData, metaRaw interface{}) error {
 	client := metaRaw.(*Client)
 	webhookURL := d.Get(url).(string)
 	webhookSecret := d.Get(secret).(string)
-	webhookOn := d.Get(on).(bool)
+	webhookOn := d.Get(enabled).(bool)
 	webhookName := d.Get(name).(string)
 
 	webhookBody := ldapi.WebhookBody{
@@ -95,7 +95,7 @@ func resourceWebhookRead(d *schema.ResourceData, metaRaw interface{}) error {
 
 	_ = d.Set(url, webhook.Url)
 	_ = d.Set(secret, webhook.Secret)
-	_ = d.Set(on, webhook.On)
+	_ = d.Set(enabled, webhook.On)
 	_ = d.Set(name, webhook.Name)
 	err = d.Set(tags, webhook.Tags)
 	if err != nil {
@@ -109,7 +109,7 @@ func resourceWebhookUpdate(d *schema.ResourceData, metaRaw interface{}) error {
 	webhookID := d.Id()
 	webhookURL := d.Get(url).(string)
 	webhookSecret := d.Get(secret).(string)
-	webhookOn := d.Get(on).(bool)
+	webhookOn := d.Get(enabled).(bool)
 	webhookName := d.Get(name).(string)
 	webhookTags := stringsFromResourceData(d, tags)
 

@@ -18,7 +18,7 @@ resource "launchdarkly_webhook" "example" {
   url  = "http://webhooks.com/webhook"
   name = "Example Webhook"
   tags = ["terraform"]
-  on   = false
+  enabled   = false
 }
 ```
 
@@ -26,7 +26,7 @@ resource "launchdarkly_webhook" "example" {
 
 - `url` - (Required) - The URL of the remote webhook.
 
-- `on` - (Required) - Specifies whether the webhook is enabled.
+- `enabled` - (Required) - Specifies whether the webhook is enabled.
 
 - `name` - (Optional) - The webhook's human-readable name.
 

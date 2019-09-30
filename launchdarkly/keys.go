@@ -26,7 +26,7 @@ const (
 	value                = "value"
 	url                  = "url"
 	secret               = "secret"
-	on                   = "on"
+	enabled              = "enabled"
 	resources            = "resources"
 	actions              = "actions"
 	effect               = "effect"

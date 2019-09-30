@@ -14,7 +14,7 @@ resource "launchdarkly_webhook" "test" {
 	name = "example-webhook"
 	url = "http://webhooks.com"
 	tags = [ "terraform" ]
-	on = true
+	enabled = true
 }	
 `
 
@@ -23,7 +23,7 @@ resource "launchdarkly_webhook" "test" {
 	name = "Example Webhook"
 	url = "http://webhooks.com/updatedUrl"
 	tags = [ "terraform", "updated" ]
-	on = false
+	enabled = false
 	secret = "SuperSecret"
 }`
 )
@@ -42,7 +42,7 @@ func TestAccWebhook_Create(t *testing.T) {
 					testAccCheckWebhookExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, "name", "example-webhook"),
 					resource.TestCheckResourceAttr(resourceName, "url", "http://webhooks.com"),
-					resource.TestCheckResourceAttr(resourceName, "on", "true"),
+					resource.TestCheckResourceAttr(resourceName, "enabled", "true"),
 					resource.TestCheckResourceAttr(resourceName, "tags.#", "1"),
 					resource.TestCheckResourceAttr(resourceName, testAccTagKey("terraform"), "terraform"),
 				),
@@ -65,7 +65,7 @@ func TestAccWebhook_Update(t *testing.T) {
 					testAccCheckWebhookExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, "name", "example-webhook"),
 					resource.TestCheckResourceAttr(resourceName, "url", "http://webhooks.com"),
-					resource.TestCheckResourceAttr(resourceName, "on", "true"),
+					resource.TestCheckResourceAttr(resourceName, "enabled", "true"),
 					resource.TestCheckResourceAttr(resourceName, "tags.#", "1"),
 					resource.TestCheckResourceAttr(resourceName, testAccTagKey("terraform"), "terraform"),
 				),
@@ -76,7 +76,7 @@ func TestAccWebhook_Update(t *testing.T) {
 					testAccCheckWebhookExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, "name", "Example Webhook"),
 					resource.TestCheckResourceAttr(resourceName, "url", "http://webhooks.com/updatedUrl"),
-					resource.TestCheckResourceAttr(resourceName, "on", "false"),
+					resource.TestCheckResourceAttr(resourceName, "enabled", "false"),
 					resource.TestCheckResourceAttr(resourceName, "tags.#", "2"),
 					resource.TestCheckResourceAttr(resourceName, testAccTagKey("terraform"), "terraform"),
 					resource.TestCheckResourceAttr(resourceName, testAccTagKey("updated"), "updated"),
