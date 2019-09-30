@@ -23,9 +23,10 @@ func resourceFeatureFlagEnvironment() *schema.Resource {
 		},
 		Schema: map[string]*schema.Schema{
 			flag_id: {
-				Type:     schema.TypeString,
-				Required: true,
-				ForceNew: true,
+				Type:         schema.TypeString,
+				Required:     true,
+				ForceNew:     true,
+				ValidateFunc: validateFlagID,
 			},
 			env_key: {
 				Type:         schema.TypeString,
@@ -52,6 +53,20 @@ func resourceFeatureFlagEnvironment() *schema.Resource {
 			},
 		},
 	}
+}
+
+func validateFlagID(val interface{}, key string) (warns []string, errs []error) {
+	v := val.(string)
+	if strings.Count(v, "/") != 1 {
+		return warns, append(errs, fmt.Errorf("%q must be in the format 'project_key/flag_key'. Got: %s", key, v))
+	}
+	for _, part := range strings.SplitN(v, "/", 2) {
+		w, e := validateKey()(part, key)
+		if len(e) > 0 {
+			return w, e
+		}
+	}
+	return warns, errs
 }
 
 func resourceFeatureFlagEnvironmentCreate(d *schema.ResourceData, metaRaw interface{}) error {

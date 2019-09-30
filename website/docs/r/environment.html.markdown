@@ -18,9 +18,6 @@ resource "launchdarkly_environment" "staging" {
   name                 = "Staging"
   key                  = "staging"
   color                = "ff00ff"
-  secure_mode          = true
-  default_track_events = false
-  default_ttl          = 10
 
   project_key = launchdarkly_project.example.key
 }

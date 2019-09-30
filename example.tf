@@ -185,6 +185,15 @@ resource "launchdarkly_segment" "example" {
   tags        = ["segmentTag1", "segmentTag2"]
   included    = ["user1", "user2"]
   excluded    = ["user3", "user4"]
+
+  rules {
+    clauses {
+      attribute = "country"
+      op        = "startsWith"
+      values    = ["en", "de", "un"]
+      negate    = false
+    }
+  }
 }
 
 resource "launchdarkly_webhook" "example" {
