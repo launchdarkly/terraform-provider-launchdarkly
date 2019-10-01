@@ -56,7 +56,7 @@ resource "launchdarkly_feature_flag" "building_materials" {
 
 - `variation_type` - (Required) The feature flag's variation type: `boolean`, `string`, `number` or `json`.
 
-- `variations` - (Required) List of nested blocks describing the variations associated with the feature flag. You must specify at least two variations. To learn more, read [Nested Variations Blocks](#nested-variations).
+- `variations` - (Required) List of nested blocks describing the variations associated with the feature flag. You must specify at least two variations. To learn more, read [Nested Variations Blocks](#nested-variations-blocks).
 
 - `description` - (Optional) The feature flag's description.
 
@@ -68,9 +68,9 @@ resource "launchdarkly_feature_flag" "building_materials" {
 
 - `include_in_snippet` - (Optional) Specifies whether this flag should be made available to the client-side JavaScript SDK.
 
-- `custom_properties` - (Optional) List of nested blocks describing the feature flag's [custom properties](https://docs.launchdarkly.com/docs/custom-properties). To learn more, read [Nested Custom Properties](#custom-properties).
+- `custom_properties` - (Optional) List of nested blocks describing the feature flag's [custom properties](https://docs.launchdarkly.com/docs/custom-properties). To learn more, read [Nested Custom Properties](#nested-custom-properties).
 
-### <a id="nested-variations"></a>Nested Variations Blocks
+### Nested Variations Blocks
 
 Nested `variations` blocks have the following structure:
 
@@ -80,7 +80,7 @@ Nested `variations` blocks have the following structure:
 
 - `description` - (Optional) The variation's description.
 
-### <a id="custom-properties"></a>Nested Custom Properties
+### Nested Custom Properties
 
 Nested `custom_properties` have the following structure:
 
