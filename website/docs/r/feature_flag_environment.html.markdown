@@ -69,15 +69,15 @@ resource "launchdarkly_feature_flag_environment" "number_env" {
 
 - `off_variation` - (Optional) The index of the variation to serve if targeting is disabled.
 
-- `prerequisites` - (Optional) List of nested blocks describing prerequisite feature flags rules. The structure of this block is described below.
+- `prerequisites` - (Optional) List of nested blocks describing prerequisite feature flags rules. To learn more, read [Nested Prequisites Blocks](#nested-prerequisites-blocks).
 
-- `user_targets` - (Optional) List of nested blocks describing the individual user targets for each variation. The order of the `user_targets` blocks determines the index of the variation to serve if a `user_target` is matched. To learn more, read [Nested User Target Blocks](#user-target-blocks).
+- `user_targets` - (Optional) List of nested blocks describing the individual user targets for each variation. The order of the `user_targets` blocks determines the index of the variation to serve if a `user_target` is matched. To learn more, read [Nested User Target Blocks](#nested-user-targets-blocks).
 
-- `rules` - (Optional) List of logical targeting rules. To learn more, read [Nested Rules Blocks](#rules-blocks).
+- `rules` - (Optional) List of logical targeting rules. To learn more, read [Nested Rules Blocks](#nested-rules-blocks).
 
-- `flag_fallthrough` - (Optional) Nested block describing the default variation to serve if no `prerequisites`, `user_target`, or `rules` apply. To learn more, read [Nested Prerequisite Blocks](#prereq-blocks).
+- `flag_fallthrough` - (Optional) Nested block describing the default variation to serve if no `prerequisites`, `user_target`, or `rules` apply. To learn more, read [Nested Flag Fallthrough Block](#nested-flag-fallthrough-block).
 
-### <a id='prereq-blocks'></a>Nested Prerequisite Blocks
+### Nested Prerequisites Blocks
 
 Nested `prerequisites` blocks have the following structure:
 
@@ -85,23 +85,31 @@ Nested `prerequisites` blocks have the following structure:
 
 - `variation` - (Required) The index of the prerequisite feature flag's variation to target.
 
-### <a id='user-target-blocks'></a>Nested User Target Blocks
+### Nested User Targets Blocks
 
 Nested `user_targets` blocks have the following structure:
 
-- `values` - (Optional) List of `users` to target.
+- `values` - (Optional) List of `user` strings to target.
 
-### <a id='rules-blocks'></a>Nested Rules Blocks
+### Nested Flag Fallthrough Block
+
+The nested `flag_fallthrough` block has the following structure:
+
+- `variation` - (Optional) The default integer variation index to serve if no `prerequisites`, `user_target`, or `rules` apply. You must specify either `variation` or `rollout_weights`.
+
+- `rollout_weights` - (Optional) List of integer percentage rollout weights to apply to each variation if no `prerequisites`, `user_target`, or `rules` apply. The sum of the `rollout_weights` must equal 1000000. You must specify either `variation` or `rollout_weights`.
+
+### Nested Rules Blocks
 
 Nested `rules` blocks have the following structure:
 
-- `clauses` - (Required) List of nested blocks specifying the logical clauses to evaluate. To learn more, read [Nested Clauses Blocks](#clauses-blocks).
+- `clauses` - (Required) List of nested blocks specifying the logical clauses to evaluate. To learn more, read [Nested Clauses Blocks](#nested-clauses-blocks).
 
 - `variation` - (Optional) The integer variation index to serve if the rule clauses evaluate to `true`. You must specify either `variation` or `rollout_weights`.
 
 - `rollout_weights` - (Optional) List of integer percentage rollout weights to apply to each variation if the rule clauses evaluates to `true`. The sum of the `rollout_weights` must equal 1000000. You must specify either `variation` or `rollout_weights`.
 
-### <a id='clauses-blocks'></a>Nested Clauses Blocks
+### Nested Clauses Blocks
 
 Nested `clauses` blocks have the following structure:
 
