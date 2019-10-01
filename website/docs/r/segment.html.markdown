@@ -53,9 +53,9 @@ resource "launchdarkly_segment" "example" {
 
 - `excluded` - (Optional) List of user excluded from the segment.
 
-- `rules` - (Optional) List of nested custom rule blocks to apply to the segment. To learn more, read [Nested Rules Blocks](#rules-blocks).
+- `rules` - (Optional) List of nested custom rule blocks to apply to the segment. To learn more, read [Nested Rules Blocks](#nested-rules-blocks).
 
-### <a id='rules-blocks'>Nested Rules Blocks</a>
+### Nested Rules Blocks
 
 Nested `rules` blocks have the following structure:
 
@@ -63,9 +63,9 @@ Nested `rules` blocks have the following structure:
 
 - `bucket_by` - (Optional) The operator used to group users together. Available options are `in`, `endsWith`, `startsWith`, `matches`, `contains`, `lessThan`, `lessThanOrEqual`, `greaterThanOrEqual`, `before`, `after`, `segmentMatch`, `semVerEqual`, `semVerLessThan`, and `semVerGreaterThan`.
 
-- `clauses` - (Optional) List of nested custom rule clause blocks. To learn more, read [Nested Clauses Blocks](#clauses-blocks).
+- `clauses` - (Optional) List of nested custom rule clause blocks. To learn more, read [Nested Clauses Blocks](#nested-clauses-blocks).
 
-### <a id='rules-blocks'>Nested Rules Blocks</a>
+### Nested Clauses Blocks
 
 Nested `clauses` blocks have the following structure:
 
