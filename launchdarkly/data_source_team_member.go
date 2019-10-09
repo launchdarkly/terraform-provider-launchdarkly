@@ -3,7 +3,7 @@ package launchdarkly
 import (
 	"fmt"
 
-	"github.com/hashicorp/terraform/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 	ldapi "github.com/launchdarkly/api-client-go"
 )
 
