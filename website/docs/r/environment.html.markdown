@@ -49,6 +49,8 @@ In addition to the arguments above, the resource exports the following attribute
 
 - `mobile_key` - The environment's mobile key.
 
+- `client_side_id` - The environment's client-side ID.
+
 ## Import
 
 You can import a LaunchDarkly environment using this format: `project_key/environment_key`.
