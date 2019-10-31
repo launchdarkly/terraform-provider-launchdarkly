@@ -62,7 +62,7 @@ resource "launchdarkly_feature_flag" "building_materials" {
 
 - `tags` - (Optional) Set of feature flag tags.
 
-- `maintainer_id` - (Optional) The feature flag maintainer's team member ID.
+- `maintainer_id` - (Optional) The feature flag maintainer's 24 character alphanumeric team member ID.
 
 - `temporary` - (Optional) Specifies whether the flag is a temporary flag.
 

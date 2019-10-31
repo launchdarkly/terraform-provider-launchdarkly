@@ -42,7 +42,7 @@ resource "launchdarkly_team_member" "example" {
 
 In addition to the arguments above, the resource exports the following attribute:
 
-- `id` - The ID of the team member.
+- `id` - The 24 character alphanumeric ID of the team member.
 
 ## Import
 

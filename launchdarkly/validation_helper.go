@@ -15,6 +15,12 @@ func validateKey() schema.SchemaValidateFunc {
 	)
 }
 
+func validateID() schema.SchemaValidateFunc {
+	return validation.All(
+		validation.StringMatch(regexp.MustCompile(`^[a-zA-Z0-9]{24}$`), "Must be a 24 character alphanumeric string"),
+	)
+}
+
 func validateOp() schema.SchemaValidateFunc {
 	return func(i interface{}, k string) (s []string, es []error) {
 		v, ok := i.(string)
