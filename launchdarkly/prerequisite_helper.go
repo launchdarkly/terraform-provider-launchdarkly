@@ -51,15 +51,3 @@ func prerequisiteFromResourceData(val interface{}) ldapi.Prerequisite {
 	log.Printf("[DEBUG] %+v\n", p)
 	return p
 }
-
-func prerequisitesToResourceData(prerequisites []ldapi.Prerequisite) interface{} {
-	transformed := make([]interface{}, len(prerequisites))
-
-	for i, p := range prerequisites {
-		transformed[i] = map[string]interface{}{
-			flag_key:  p.Key,
-			variation: p.Variation,
-		}
-	}
-	return transformed
-}

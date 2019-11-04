@@ -33,25 +33,6 @@ type rule struct {
 	Clauses   []ldapi.Clause `json:"clauses,omitempty"`
 }
 
-// []ldapi.Rule does not work well for patching the "0" variation so is converted
-func convertRules(ldRules []ldapi.Rule) []rule {
-	var rules []rule
-	for _, ldRule := range ldRules {
-		isRollout := false
-		if ldRule.Rollout != nil {
-			if len(ldRule.Rollout.Variations) > 0 {
-				isRollout = true
-			}
-		}
-		if isRollout {
-			rules = append(rules, rule{Rollout: ldRule.Rollout, Clauses: ldRule.Clauses})
-		} else {
-			rules = append(rules, rule{Variation: intPtr(int(ldRule.Variation)), Clauses: ldRule.Clauses})
-		}
-	}
-	return rules
-}
-
 func rulesFromResourceData(d *schema.ResourceData) []rule {
 	schemaRules := d.Get(rules).([]interface{})
 	rules := make([]rule, 0, len(schemaRules))

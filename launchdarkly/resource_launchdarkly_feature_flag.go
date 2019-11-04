@@ -111,6 +111,11 @@ func resourceFeatureFlagCreate(d *schema.ResourceData, metaRaw interface{}) erro
 	// https://apidocs.launchdarkly.com/docs/create-feature-flag
 	err = resourceFeatureFlagUpdate(d, metaRaw)
 	if err != nil {
+		// if there was a problem in the update state, we need to clean up completely by deleting the flag
+		_, deleteErr := client.ld.FeatureFlagsApi.DeleteFeatureFlag(client.ctx, projectKey, key)
+		if deleteErr != nil {
+			return fmt.Errorf("failed to delete flag %q from project %q: %s", key, projectKey, handleLdapiErr(err))
+		}
 		return fmt.Errorf("failed to update flag with name %q key %q for projectKey %q: %s",
 			flagName, key, projectKey, handleLdapiErr(err))
 	}

@@ -2,6 +2,7 @@ package launchdarkly
 
 import (
 	"fmt"
+	"regexp"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/helper/acctest"
@@ -113,6 +114,23 @@ resource "launchdarkly_feature_flag" "maintained" {
 	name = "Maintained feature flag"
 	variation_type = "boolean"
 	maintainer_id = launchdarkly_team_member.test.id
+}
+`
+
+	testAccFeatureFlagWithInvalidMaintainer = `
+resource "launchdarkly_project" "test" {
+	name = "testProject"
+	key = "test-project"
+}
+
+resource "launchdarkly_feature_flag" "maintained" {
+	project_key = launchdarkly_project.test.key
+	key = "maintained-flag"
+	name = "Maintained feature flag"
+	variation_type = "boolean"
+
+	# the maintainer id set to a random object ID, so it should be invalid
+	maintainer_id = "507f191e810c19729de860ea"
 }
 `
 
@@ -332,6 +350,37 @@ func TestAccFeatureFlag_WithMaintainer(t *testing.T) {
 		},
 		Providers: testAccProviders,
 		Steps: []resource.TestStep{
+			{
+				Config: fmt.Sprintf(testAccFeatureFlagWithMaintainer, randomName),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckProjectExists("launchdarkly_project.test"),
+					testAccCheckMemberExists("launchdarkly_team_member.test"),
+					testAccCheckFeatureFlagExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, "name", "Maintained feature flag"),
+					resource.TestCheckResourceAttr(resourceName, "key", "maintained-flag"),
+					resource.TestCheckResourceAttr(resourceName, "project_key", "test-project"),
+					resource.TestCheckResourceAttrPair(resourceName, "maintainer_id", "launchdarkly_team_member.test", "id"),
+				),
+			},
+		},
+	})
+}
+
+// TestAccFeatureFlag_WithInvalidMaintainer tests that flags that fail during the update portion of the create clean up
+// after themselves and do not leave dangling flags.
+func TestAccFeatureFlag_InvalidMaintainer(t *testing.T) {
+	randomName := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	resourceName := "launchdarkly_feature_flag.maintained"
+	resource.Test(t, resource.TestCase{
+		PreCheck: func() {
+			testAccPreCheck(t)
+		},
+		Providers: testAccProviders,
+		Steps: []resource.TestStep{
+			{
+				Config:      testAccFeatureFlagWithInvalidMaintainer,
+				ExpectError: regexp.MustCompile(`failed to update flag "maintained-flag" in project "test-project": 400 Bad Request`),
+			},
 			{
 				Config: fmt.Sprintf(testAccFeatureFlagWithMaintainer, randomName),
 				Check: resource.ComposeTestCheckFunc(

@@ -2,6 +2,7 @@ package launchdarkly
 
 import (
 	"fmt"
+	"regexp"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/helper/resource"
@@ -37,6 +38,23 @@ resource "launchdarkly_environment" "staging" {
   	color = "000000"
   	secure_mode = false
   	default_track_events = true
+  	default_ttl = 3
+  	project_key = launchdarkly_project.test.key
+}
+`
+
+	testAccEnvironmentInvalid = `
+resource "launchdarkly_project" "test" {
+	name = "testProject"
+	key = "test-project"
+}
+
+resource "launchdarkly_environment" "staging" {
+	name = "The real staging1"
+  	key = "staging1"
+  	color = "000000"
+  	secure_mode = false
+  	default_track_events = "maybe"
   	default_ttl = 3
   	project_key = launchdarkly_project.test.key
 }
@@ -90,6 +108,36 @@ func TestAccEnvironment_Update(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "default_ttl", "50"),
 					resource.TestCheckResourceAttr(resourceName, "project_key", "test-project"),
 				),
+			},
+			{
+				Config: testAccEnvironmentUpdate,
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckProjectExists("launchdarkly_project.test"),
+					testAccCheckEnvironmentExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, "name", "The real staging1"),
+					resource.TestCheckResourceAttr(resourceName, "key", "staging1"),
+					resource.TestCheckResourceAttr(resourceName, "color", "000000"),
+					resource.TestCheckResourceAttr(resourceName, "secure_mode", "false"),
+					resource.TestCheckResourceAttr(resourceName, "default_track_events", "true"),
+					resource.TestCheckResourceAttr(resourceName, "default_ttl", "3"),
+					resource.TestCheckResourceAttr(resourceName, "project_key", "test-project"),
+				),
+			},
+		},
+	})
+}
+
+func TestAccEnvironment_Invalid(t *testing.T) {
+	resourceName := "launchdarkly_environment.staging"
+	resource.Test(t, resource.TestCase{
+		PreCheck: func() {
+			testAccPreCheck(t)
+		},
+		Providers: testAccProviders,
+		Steps: []resource.TestStep{
+			{
+				Config:      testAccEnvironmentInvalid,
+				ExpectError: regexp.MustCompile("config is invalid"),
 			},
 			{
 				Config: testAccEnvironmentUpdate,
