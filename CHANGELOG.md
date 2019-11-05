@@ -1,8 +1,17 @@
-## 0.0.2 (Unreleased)
+## 1.0.0 (Unreleased)
 
-IMPROVEMENTS:
+FEATURES:
+
+- Add tags to environments. [#5](https://github.com/terraform-providers/terraform-provider-launchdarkly/issues/5)
+
+ENHANCEMENTS:
 
 - Add `maintainer_id` input validation.
+
+BUG FIXES:
+
+- Allow flag `maintainer_id` to be unset. [#6](https://github.com/terraform-providers/terraform-provider-launchdarkly/issues/6)
+- Fix typo in initialization error message. Thanks @jen20
 
 ## 0.0.1 (October 21, 2019)
 
