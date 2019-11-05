@@ -8,7 +8,7 @@ import (
 	ldapi "github.com/launchdarkly/api-client-go"
 )
 
-const Version = "0.0.1"
+const Version = "1.0.0"
 
 // Client is used by the provider to access the ld API.
 type Client struct {

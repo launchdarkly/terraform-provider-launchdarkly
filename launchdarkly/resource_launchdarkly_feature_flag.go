@@ -42,9 +42,10 @@ func resourceFeatureFlag() *schema.Resource {
 				Description: "The feature flag's description",
 			},
 			maintainer_id: {
-				Type:     schema.TypeString,
-				Computed: true,
-				Optional: true,
+				Type:         schema.TypeString,
+				Computed:     true,
+				Optional:     true,
+				ValidateFunc: validateID(),
 			},
 			description: {
 				Type:     schema.TypeString,

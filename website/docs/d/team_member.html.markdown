@@ -27,7 +27,7 @@ data "launchdarkly_team_member" "example" {
 
 In addition to the arguments above, the resource exports the following attributes:
 
-- `id` - The ID of the team member.
+- `id` - The 24 character alphanumeric ID of the team member.
 
 - `first_name` - The team member's given name.
 
