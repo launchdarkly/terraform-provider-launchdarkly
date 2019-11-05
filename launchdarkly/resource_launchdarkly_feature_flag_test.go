@@ -117,6 +117,21 @@ resource "launchdarkly_feature_flag" "maintained" {
 }
 `
 
+	//testAccFeatureFlagWasMaintained is used to test that feature flag maintainers can be unset
+	testAccFeatureFlagWasMaintained = `
+resource "launchdarkly_project" "test" {
+	name = "testProject"
+	key = "test-project"
+}
+
+resource "launchdarkly_feature_flag" "maintained" {
+	project_key = launchdarkly_project.test.key
+	key = "maintained-flag"
+	name = "Maintained feature flag"
+	variation_type = "boolean"
+}
+`
+
 	testAccFeatureFlagWithInvalidMaintainer = `
 resource "launchdarkly_project" "test" {
 	name = "testProject"
@@ -245,6 +260,7 @@ func TestAccFeatureFlag_Basic(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "variations.#", "2"),
 					resource.TestCheckResourceAttr(resourceName, "variations.0.value", "true"),
 					resource.TestCheckResourceAttr(resourceName, "variations.1.value", "false"),
+					resource.TestCheckNoResourceAttr(resourceName, "maintainer_id"),
 				),
 			},
 		},
@@ -360,6 +376,17 @@ func TestAccFeatureFlag_WithMaintainer(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "key", "maintained-flag"),
 					resource.TestCheckResourceAttr(resourceName, "project_key", "test-project"),
 					resource.TestCheckResourceAttrPair(resourceName, "maintainer_id", "launchdarkly_team_member.test", "id"),
+				),
+			},
+			{
+				Config: testAccFeatureFlagWasMaintained,
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckProjectExists("launchdarkly_project.test"),
+					testAccCheckFeatureFlagExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, "name", "Maintained feature flag"),
+					resource.TestCheckResourceAttr(resourceName, "key", "maintained-flag"),
+					resource.TestCheckResourceAttr(resourceName, "project_key", "test-project"),
+					resource.TestCheckResourceAttr(resourceName, "maintainer_id", ""),
 				),
 			},
 		},

@@ -43,7 +43,6 @@ func resourceFeatureFlag() *schema.Resource {
 			},
 			maintainer_id: {
 				Type:         schema.TypeString,
-				Computed:     true,
 				Optional:     true,
 				ValidateFunc: validateID(),
 			},
@@ -142,10 +141,15 @@ func resourceFeatureFlagRead(d *schema.ResourceData, metaRaw interface{}) error 
 	transformedCustomProperties := customPropertiesToResourceData(flag.CustomProperties)
 	_ = d.Set(key, flag.Key)
 	_ = d.Set(name, flag.Name)
-	_ = d.Set(maintainer_id, flag.MaintainerId)
 	_ = d.Set(description, flag.Description)
 	_ = d.Set(include_in_snippet, flag.IncludeInSnippet)
 	_ = d.Set(temporary, flag.Temporary)
+
+	// Only set the maintainer ID if is specified in the schema
+	_, ok := d.GetOk(maintainer_id)
+	if ok {
+		_ = d.Set(maintainer_id, flag.MaintainerId)
+	}
 
 	variationType, err := variationsToVariationType(flag.Variations)
 	if err != nil {
