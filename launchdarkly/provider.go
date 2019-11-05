@@ -67,7 +67,7 @@ func providerConfigure(d *schema.ResourceData) (interface{}, error) {
 	oauthToken := d.Get(oauth_token).(string)
 
 	if oauthToken == "" && accessToken == "" {
-		return nil, fmt.Errorf("either an %q or %q must be specified.", api_key, oauth_token)
+		return nil, fmt.Errorf("either an %q or %q must be specified.", access_token, oauth_token)
 	}
 
 	if oauthToken != "" {
