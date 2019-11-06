@@ -2,7 +2,6 @@ package launchdarkly
 
 import (
 	"fmt"
-	"log"
 	"net/http"
 
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
@@ -146,18 +145,4 @@ func resourceCustomRoleImport(d *schema.ResourceData, meta interface{}) ([]*sche
 	}
 
 	return []*schema.ResourceData{d}, nil
-}
-
-// If multiple patches are issued at the same time by terraform we can get a conflict. If this happens, wait a random interval
-func customRoleUpdateWithConflicts(client *Client, customRoleKey string, patch []ldapi.PatchOperation) error {
-	_, res, err := client.ld.CustomRolesApi.PatchCustomRole(client.ctx, customRoleKey, patch)
-	for retryCount := 0; res.StatusCode == http.StatusConflict && retryCount < MAX_409_RETRIES; retryCount++ {
-		log.Printf("[DEBUG] received a 409 updating custom role: %q. retrying", customRoleKey)
-		randomRetrySleep()
-		_, res, err = client.ld.CustomRolesApi.PatchCustomRole(client.ctx, customRoleKey, patch)
-	}
-	if err != nil {
-		return err
-	}
-	return nil
 }

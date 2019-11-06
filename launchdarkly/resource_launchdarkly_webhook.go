@@ -6,7 +6,6 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 	ldapi "github.com/launchdarkly/api-client-go"
-	"github.com/pkg/errors"
 )
 
 func resourceWebhook() *schema.Resource {
@@ -74,7 +73,7 @@ func resourceWebhookCreate(d *schema.ResourceData, metaRaw interface{}) error {
 	// ld's api does not allow tags to be passed in during webhook creation so we do an update
 	err = resourceWebhookUpdate(d, metaRaw)
 	if err != nil {
-		return errors.Wrapf(err, "During webhook creation. Webhook name: %q", webhookName)
+		return fmt.Errorf("error updating after webhook creation. Webhook name: %q", webhookName)
 	}
 
 	return resourceWebhookRead(d, metaRaw)

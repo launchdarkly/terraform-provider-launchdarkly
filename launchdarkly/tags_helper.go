@@ -6,9 +6,12 @@ import (
 
 func tagsSchema() *schema.Schema {
 	return &schema.Schema{
-		Type:     schema.TypeSet,
-		Set:      schema.HashString,
-		Elem:     &schema.Schema{Type: schema.TypeString},
+		Type: schema.TypeSet,
+		Set:  schema.HashString,
+		Elem: &schema.Schema{
+			Type:         schema.TypeString,
+			ValidateFunc: validateTags(),
+		},
 		Optional: true,
 	}
 }

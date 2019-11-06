@@ -37,7 +37,7 @@ resource "launchdarkly_segment" "test" {
 	env_key = "test"
   	name = "segment name"
 	description = "segment description"
-	tags = ["segmentTag1", "segmentTag2"]
+	tags = ["segmentTag1", ".segmentTag2"]
 	included = ["user1", "user2", "user3", "user4"]
 	excluded = []
 	rules {
@@ -133,7 +133,7 @@ func TestAccSegment_Update(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "description", "segment description"),
 					resource.TestCheckResourceAttr(resourceName, "tags.#", "2"),
 					resource.TestCheckResourceAttr(resourceName, testAccTagKey("segmentTag1"), "segmentTag1"),
-					resource.TestCheckResourceAttr(resourceName, testAccTagKey("segmentTag2"), "segmentTag2"),
+					resource.TestCheckResourceAttr(resourceName, testAccTagKey(".segmentTag2"), ".segmentTag2"),
 					resource.TestCheckResourceAttr(resourceName, "included.#", "4"),
 					resource.TestCheckResourceAttr(resourceName, "included.0", "user1"),
 					resource.TestCheckResourceAttr(resourceName, "included.1", "user2"),

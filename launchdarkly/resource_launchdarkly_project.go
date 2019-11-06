@@ -2,6 +2,7 @@ package launchdarkly
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
@@ -33,8 +34,7 @@ func resourceProject() *schema.Resource {
 			},
 			tags: tagsSchema(),
 			environments: &schema.Schema{
-				Type:     schema.TypeSet,
-				Set:      environmentHash,
+				Type:     schema.TypeList,
 				Optional: true,
 				Computed: true,
 				Elem: &schema.Resource{
@@ -51,6 +51,7 @@ func resourceProjectCreate(d *schema.ResourceData, metaRaw interface{}) error {
 	name := d.Get(name).(string)
 	envs := environmentPostsFromResourceData(d)
 
+	d.SetId(projectKey)
 	projectBody := ldapi.ProjectBody{
 		Name: name,
 		Key:  projectKey,
@@ -70,38 +71,7 @@ func resourceProjectCreate(d *schema.ResourceData, metaRaw interface{}) error {
 	if err != nil {
 		return fmt.Errorf("failed to update project with name %s and projectKey %s: %v", name, projectKey, err)
 	}
-
-	// update envs if needed
-	schemaEnvs := d.Get(environments).(*schema.Set)
-	for _, env := range schemaEnvs.List() {
-		envMap := env.(map[string]interface{})
-		envKey := envMap[key].(string)
-
-		// we already posted the projectKey, name, color, and default_ttl, so we skip patching those fields.
-		var patch []ldapi.PatchOperation
-
-		// optional fields:
-		if defaultTTL, ok := envMap[default_ttl]; ok {
-			patch = append(patch, patchReplace("/defaultTtl", defaultTTL.(int)))
-		}
-
-		if secureMode, ok := envMap[secure_mode]; ok {
-			patch = append(patch, patchReplace("/secureMode", &secureMode))
-		}
-
-		if defaultTrackEvents, ok := envMap[default_track_events]; ok {
-			patch = append(patch, patchReplace("/defaultTrackEvents", &defaultTrackEvents))
-		}
-
-		if len(patch) > 0 {
-			_, _, err := client.ld.EnvironmentsApi.PatchEnvironment(client.ctx, projectKey, envKey, patch)
-			if err != nil {
-				return fmt.Errorf("failed to update environment with key %q for project: %q: %+v", envKey, projectKey, err)
-			}
-		}
-	}
-	d.SetId(projectKey)
-	return resourceProjectRead(d, metaRaw)
+	return nil
 }
 
 func resourceProjectRead(d *schema.ResourceData, metaRaw interface{}) error {
@@ -135,12 +105,12 @@ func resourceProjectRead(d *schema.ResourceData, metaRaw interface{}) error {
 func resourceProjectUpdate(d *schema.ResourceData, metaRaw interface{}) error {
 	client := metaRaw.(*Client)
 	projectKey := d.Get(key).(string)
-	name := d.Get(name)
-	tags := stringsFromResourceData(d, tags)
+	projName := d.Get(name)
+	projTags := stringsFromResourceData(d, tags)
 
 	patch := []ldapi.PatchOperation{
-		patchReplace("/name", &name),
-		patchReplace("/tags", &tags),
+		patchReplace("/name", &projName),
+		patchReplace("/tags", &projTags),
 	}
 
 	_, _, err := repeatUntilNoConflict(func() (interface{}, *http.Response, error) {
@@ -148,6 +118,47 @@ func resourceProjectUpdate(d *schema.ResourceData, metaRaw interface{}) error {
 	})
 	if err != nil {
 		return fmt.Errorf("failed to update project with key %q: %s", projectKey, handleLdapiErr(err))
+	}
+	// Update environments if necessary
+	schemaEnvs := d.Get(environments).([]interface{})
+	for _, env := range schemaEnvs {
+		envMap := env.(map[string]interface{})
+		envKey := envMap[key].(string)
+
+		// we already posted the projectKey, name, color, and default_ttl, so we skip patching those fields.
+		envName := envMap[name].(string)
+		envColor := envMap[color].(string)
+		patch := []ldapi.PatchOperation{
+			patchReplace("/name", envName),
+			patchReplace("/color", envColor),
+		}
+
+		// optional fields:
+		if defaultTTL, ok := envMap[default_ttl]; ok {
+			patch = append(patch, patchReplace("/defaultTtl", defaultTTL.(int)))
+		}
+
+		if secureMode, ok := envMap[secure_mode]; ok {
+			patch = append(patch, patchReplace("/secureMode", &secureMode))
+		}
+
+		if defaultTrackEvents, ok := envMap[default_track_events]; ok {
+			patch = append(patch, patchReplace("/defaultTrackEvents", &defaultTrackEvents))
+		}
+
+		if envTagsSet, ok := envMap[tags].(*schema.Set); ok {
+			envTags := stringsFromSchemaSet(envTagsSet)
+			patch = append(patch, patchReplace("/tags", &envTags))
+		}
+
+		if len(patch) > 0 {
+			_, _, err := repeatUntilNoConflict(func() (interface{}, *http.Response, error) {
+				return client.ld.EnvironmentsApi.PatchEnvironment(client.ctx, projectKey, envKey, patch)
+			})
+			if err != nil {
+				return fmt.Errorf("failed to update environment with key %q for project: %q: %+v", envKey, projectKey, err)
+			}
+		}
 	}
 
 	return resourceProjectRead(d, metaRaw)
@@ -172,7 +183,7 @@ func resourceProjectExists(d *schema.ResourceData, metaRaw interface{}) (bool, e
 func projectExists(projectKey string, meta *Client) (bool, error) {
 	_, res, err := meta.ld.ProjectsApi.GetProject(meta.ctx, projectKey)
 	if isStatusNotFound(res) {
-		fmt.Println("got 404 when getting project. returning false.")
+		log.Println("got 404 when getting project. returning false.")
 		return false, nil
 	}
 	if err != nil {

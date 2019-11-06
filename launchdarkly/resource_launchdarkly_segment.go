@@ -2,7 +2,6 @@ package launchdarkly
 
 import (
 	"fmt"
-	"log"
 	"net/http"
 	"strings"
 
@@ -237,18 +236,4 @@ func resourceSegmentImport(d *schema.ResourceData, meta interface{}) ([]*schema.
 	}
 
 	return []*schema.ResourceData{d}, nil
-}
-
-// If multiple patches are issued at the same time by terraform we can get a conflict. If this happens, wait a random interval
-func segmentUpdateWithConflicts(client *Client, projectKey string, envKey string, key string, patch []ldapi.PatchOperation) error {
-	_, res, err := client.ld.UserSegmentsApi.PatchUserSegment(client.ctx, projectKey, envKey, key, patch)
-	for retryCount := 0; res.StatusCode == http.StatusConflict && retryCount < MAX_409_RETRIES; retryCount++ {
-		log.Printf("[DEBUG] received a 409 updating segment: %s/%s/%s. retrying", projectKey, envKey, key)
-		randomRetrySleep()
-		_, res, err = client.ld.UserSegmentsApi.PatchUserSegment(client.ctx, projectKey, envKey, key, patch)
-	}
-	if err != nil {
-		return err
-	}
-	return nil
 }

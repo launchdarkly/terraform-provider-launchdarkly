@@ -6,7 +6,6 @@ require (
 	github.com/hashicorp/terraform-plugin-sdk v1.0.0
 	github.com/launchdarkly/api-client-go v0.0.0-20190323002856-89f2f9e19e46
 	github.com/mattn/go-isatty v0.0.7 // indirect
-	github.com/pkg/errors v0.8.1
 	github.com/stretchr/testify v1.3.0
 	golang.org/x/crypto v0.0.0-20190829043050-9756ffdc2472 // indirect
 	golang.org/x/net v0.0.0-20190827160401-ba9fcec4b297 // indirect

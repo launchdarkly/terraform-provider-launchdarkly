@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
+
 	ldapi "github.com/launchdarkly/api-client-go"
 )
 
@@ -43,7 +44,6 @@ func resourceFeatureFlag() *schema.Resource {
 			},
 			maintainer_id: {
 				Type:         schema.TypeString,
-				Computed:     true,
 				Optional:     true,
 				ValidateFunc: validateID(),
 			},
@@ -111,6 +111,11 @@ func resourceFeatureFlagCreate(d *schema.ResourceData, metaRaw interface{}) erro
 	// https://apidocs.launchdarkly.com/docs/create-feature-flag
 	err = resourceFeatureFlagUpdate(d, metaRaw)
 	if err != nil {
+		// if there was a problem in the update state, we need to clean up completely by deleting the flag
+		_, deleteErr := client.ld.FeatureFlagsApi.DeleteFeatureFlag(client.ctx, projectKey, key)
+		if deleteErr != nil {
+			return fmt.Errorf("failed to delete flag %q from project %q: %s", key, projectKey, handleLdapiErr(err))
+		}
 		return fmt.Errorf("failed to update flag with name %q key %q for projectKey %q: %s",
 			flagName, key, projectKey, handleLdapiErr(err))
 	}
@@ -137,10 +142,15 @@ func resourceFeatureFlagRead(d *schema.ResourceData, metaRaw interface{}) error 
 	transformedCustomProperties := customPropertiesToResourceData(flag.CustomProperties)
 	_ = d.Set(key, flag.Key)
 	_ = d.Set(name, flag.Name)
-	_ = d.Set(maintainer_id, flag.MaintainerId)
 	_ = d.Set(description, flag.Description)
 	_ = d.Set(include_in_snippet, flag.IncludeInSnippet)
 	_ = d.Set(temporary, flag.Temporary)
+
+	// Only set the maintainer ID if is specified in the schema
+	_, ok := d.GetOk(maintainer_id)
+	if ok {
+		_ = d.Set(maintainer_id, flag.MaintainerId)
+	}
 
 	variationType, err := variationsToVariationType(flag.Variations)
 	if err != nil {
