@@ -15,9 +15,10 @@ This resource allows you to create and manage environments in your LaunchDarkly 
 
 ```hcl
 resource "launchdarkly_environment" "staging" {
-  name                 = "Staging"
-  key                  = "staging"
-  color                = "ff00ff"
+  name  = "Staging"
+  key   = "staging"
+  color = "ff00ff"
+  tags  = ["terraform", "staging"]
 
   project_key = launchdarkly_project.example.key
 }
@@ -32,6 +33,8 @@ resource "launchdarkly_environment" "staging" {
 - `key` - (Required) The project-unique key for the environment.
 
 - `color` - (Required) The color swatch as an RGB hex value with no leading `#`. For example: `000000`.
+
+- `tags` - (Optional) Set of tags associated with the environment.
 
 - `secure_mode` - (Optional) Set to `true` to ensure a user of the client-side SDK cannot impersonate another user.
 

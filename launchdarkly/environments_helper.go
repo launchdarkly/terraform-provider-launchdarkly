@@ -51,18 +51,15 @@ func environmentSchema() map[string]*schema.Schema {
 			Type:     schema.TypeBool,
 			Optional: true,
 		},
-		// TODO: enable tags for environments.
-		// When enabled we get errors like this when specifying tags in an environment when creating a project:
-		//         	* launchdarkly_project.exampleproject2: failed to update project with name example-project and projectKey example-project2: could not set environments on project with key "example-project2": Invalid address to set: []string{"environments", "1676662523", "tags"}
-		//tags: tagsSchema(),
+		tags: tagsSchema(),
 	}
 }
 
 func environmentPostsFromResourceData(d *schema.ResourceData) []ldapi.EnvironmentPost {
-	schemaEnvs := d.Get(environments).(*schema.Set)
+	schemaEnvs := d.Get(environments).([]interface{})
 
-	envs := make([]ldapi.EnvironmentPost, schemaEnvs.Len())
-	for i, env := range schemaEnvs.List() {
+	envs := make([]ldapi.EnvironmentPost, len(schemaEnvs))
+	for i, env := range schemaEnvs {
 		envs[i] = environmentPostFromResourceData(env)
 	}
 	return envs
@@ -82,7 +79,7 @@ func environmentPostFromResourceData(env interface{}) ldapi.EnvironmentPost {
 	return envPost
 }
 
-func environmentsToResourceData(envs []ldapi.Environment) *schema.Set {
+func environmentsToResourceData(envs []ldapi.Environment) []interface{} {
 	transformed := make([]interface{}, len(envs))
 
 	for i, env := range envs {
@@ -96,13 +93,8 @@ func environmentsToResourceData(envs []ldapi.Environment) *schema.Set {
 			default_ttl:          int(env.DefaultTtl),
 			secure_mode:          env.SecureMode,
 			default_track_events: env.DefaultTrackEvents,
-			//tags:                 env.Tags,
+			tags:                 env.Tags,
 		}
 	}
-	return schema.NewSet(environmentHash, transformed)
-}
-
-// https://godoc.org/github.com/hashicorp/terraform/helper/schema#SchemaSetFunc
-func environmentHash(value interface{}) int {
-	return schema.HashString(environmentPostFromResourceData(value).Key)
+	return transformed
 }
