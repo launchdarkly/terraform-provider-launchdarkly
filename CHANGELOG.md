@@ -2,13 +2,12 @@
 
 FEATURES:
 
-- Add tags to environments. [#5](https://github.com/terraform-providers/terraform-provider-launchdarkly/issues/5)
+- Add tags attribute to `resource_launchdarkly_environment`. [#5](https://github.com/terraform-providers/terraform-provider-launchdarkly/issues/5)
+- Add `maintainer_id` input validation.
 
 ENHANCEMENTS:
 
-- Add `maintainer_id` input validation.
-- Improved `tags` input validaiton.
--
+- Improve `tags` input validation.
 
 BUG FIXES:
 
