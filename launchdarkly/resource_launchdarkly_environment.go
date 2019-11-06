@@ -87,6 +87,7 @@ func resourceEnvironmentRead(d *schema.ResourceData, metaRaw interface{}) error 
 	_ = d.Set(default_ttl, int(env.DefaultTtl))
 	_ = d.Set(secure_mode, env.SecureMode)
 	_ = d.Set(default_track_events, env.DefaultTrackEvents)
+	_ = d.Set(tags, env.Tags)
 	return nil
 }
 
@@ -98,6 +99,7 @@ func resourceEnvironmentUpdate(d *schema.ResourceData, metaRaw interface{}) erro
 	key := d.Get(key).(string)
 	name := d.Get(name)
 	color := d.Get(color)
+	tags := stringsFromResourceData(d, tags)
 
 	patch := []ldapi.PatchOperation{
 		patchReplace("/name", &name),
@@ -105,6 +107,7 @@ func resourceEnvironmentUpdate(d *schema.ResourceData, metaRaw interface{}) erro
 		patchReplace("/defaultTtl", d.Get(default_ttl)),
 		patchReplace("/secureMode", d.Get(secure_mode)),
 		patchReplace("/defaultTrackEvents", d.Get(default_track_events)),
+		patchReplace("/tags", &tags),
 	}
 
 	_, _, err := repeatUntilNoConflict(func() (interface{}, *http.Response, error) {

@@ -23,7 +23,8 @@ resource "launchdarkly_environment" "staging" {
   	secure_mode = true
   	default_track_events = false
   	default_ttl = 50
-  	project_key = launchdarkly_project.test.key
+	project_key = launchdarkly_project.test.key
+	tags = ["tagged", "terraform"]
 }
 `
 	testAccEnvironmentUpdate = `
@@ -81,6 +82,9 @@ func TestAccEnvironment_Create(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "default_track_events", "false"),
 					resource.TestCheckResourceAttr(resourceName, "default_ttl", "50"),
 					resource.TestCheckResourceAttr(resourceName, "project_key", "test-project"),
+					resource.TestCheckResourceAttr(resourceName, "tags.#", "2"),
+					resource.TestCheckResourceAttr(resourceName, testAccTagKey("terraform"), "terraform"),
+					resource.TestCheckResourceAttr(resourceName, testAccTagKey("tagged"), "tagged"),
 				),
 			},
 		},

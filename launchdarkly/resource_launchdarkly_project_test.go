@@ -23,6 +23,32 @@ resource "launchdarkly_project" "test" {
 	tags = []
 }
 `
+
+	testAccProjectWithEnvironment = `
+resource "launchdarkly_project" "env_test" {
+	key = "test-project"
+	name = "test project"
+	environments {
+		key = "test-env"
+		name = "test environment"
+		color = "000000"
+		tags = ["terraform", "test"]
+	}
+}	
+`
+
+	testAccProjectWithEnvironmentUpdate = `
+resource "launchdarkly_project" "env_test" {
+	key = "test-project"
+	name = "test project"
+	environments {
+		key = "test-env"
+		name = "test environment updated"
+		color = "FFFFFF"
+		tags = ["updated"]
+	}
+}	
+`
 )
 
 func TestAccProject_Create(t *testing.T) {
@@ -80,6 +106,40 @@ func TestAccProject_Update(t *testing.T) {
 	})
 }
 
+func TestAccProject_WithEnvironment(t *testing.T) {
+	resourceName := "launchdarkly_project.env_test"
+	resource.Test(t, resource.TestCase{
+		PreCheck: func() {
+			testAccPreCheck(t)
+		},
+		Providers: testAccProviders,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccProjectWithEnvironment,
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckProjectExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, "key", "test-project"),
+					resource.TestCheckResourceAttr(resourceName, "name", "test project"),
+					resource.TestCheckResourceAttr(resourceName, "environments.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "environments.0.name", "test environment"),
+					resource.TestCheckResourceAttr(resourceName, "environments.0.tags.#", "2"),
+				),
+			},
+			{
+				Config: testAccProjectWithEnvironmentUpdate,
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckProjectExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, "key", "test-project"),
+					resource.TestCheckResourceAttr(resourceName, "name", "test project"),
+					resource.TestCheckResourceAttr(resourceName, "environments.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "environments.0.name", "test environment updated"),
+					resource.TestCheckResourceAttr(resourceName, "environments.0.tags.#", "1"),
+				),
+			},
+		},
+	})
+}
+
 func testAccCheckProjectExists(resourceName string) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
 		rs, ok := s.RootModule().Resources[resourceName]
@@ -89,6 +149,7 @@ func testAccCheckProjectExists(resourceName string) resource.TestCheckFunc {
 		if rs.Primary.ID == "" {
 			return fmt.Errorf("project ID is not set")
 		}
+
 		client := testAccProvider.Meta().(*Client)
 		_, _, err := client.ld.ProjectsApi.GetProject(client.ctx, rs.Primary.ID)
 		if err != nil {
