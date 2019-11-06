@@ -2,16 +2,18 @@
 
 FEATURES:
 
-- Add tags to environments. [#5](https://github.com/terraform-providers/terraform-provider-launchdarkly/issues/5)
+- Add tags attribute to `resource_launchdarkly_environment`. [#5](https://github.com/terraform-providers/terraform-provider-launchdarkly/issues/5)
+- Add `maintainer_id` input validation.
 
 ENHANCEMENTS:
 
-- Add `maintainer_id` input validation.
+- Improve `tags` input validation.
 
 BUG FIXES:
 
 - Allow flag `maintainer_id` to be unset. [#6](https://github.com/terraform-providers/terraform-provider-launchdarkly/issues/6)
 - Fix typo in initialization error message. Thanks @jen20
+- Flags created with invalid schema are deleted instead of left dangling.
 
 ## 0.0.1 (October 21, 2019)
 
