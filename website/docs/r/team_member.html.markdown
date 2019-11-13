@@ -34,9 +34,9 @@ resource "launchdarkly_team_member" "example" {
 
 - `role` - (Optional) The role associated with team member. Supported roles are `reader`, `writer`, or `admin`. If you don't specify a role, `reader` is assigned by default.
 
-- `custom_role` - (Optional) The list of custom roles keys associated with the team member. Custom roles are only available to customers on enterprise plans. To learn more about enterprise plans, contact sales@launchdarkly.com.
+- `custom_roles` - (Optional) The list of custom roles keys associated with the team member. Custom roles are only available to customers on enterprise plans. To learn more about enterprise plans, contact sales@launchdarkly.com.
 
--> **Note:** each `launchdarkly_team_member` must have either a `role` or `custom_role` argument.
+-> **Note:** each `launchdarkly_team_member` must have either a `role` or `custom_roles` argument.
 
 ## Attributes Reference
 
