@@ -4,21 +4,24 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/hashicorp/terraform-plugin-sdk/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-sdk/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/terraform"
 )
 
+// Project resources should be formatted with a random project key because acceptance tests
+// are run in parallel on a single account.
 const (
 	testAccProjectCreate = `
 resource "launchdarkly_project" "test" {
-	key = "test-project"
+	key = "%s"
 	name = "test project"
 	tags = [ "terraform", "test" ]
 }
 `
 	testAccProjectUpdate = `
 resource "launchdarkly_project" "test" {
-	key = "test-project"
+	key = "%s"
 	name = "awesome test project"
 	tags = []
 }
@@ -26,7 +29,7 @@ resource "launchdarkly_project" "test" {
 
 	testAccProjectWithEnvironment = `
 resource "launchdarkly_project" "env_test" {
-	key = "test-project"
+	key = "%s"
 	name = "test project"
 	environments {
 		key = "test-env"
@@ -39,7 +42,7 @@ resource "launchdarkly_project" "env_test" {
 
 	testAccProjectWithEnvironmentUpdate = `
 resource "launchdarkly_project" "env_test" {
-	key = "test-project"
+	key = "%s"
 	name = "test project"
 	environments {
 		key = "test-env"
@@ -52,6 +55,7 @@ resource "launchdarkly_project" "env_test" {
 )
 
 func TestAccProject_Create(t *testing.T) {
+	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	resourceName := "launchdarkly_project.test"
 	resource.Test(t, resource.TestCase{
 		PreCheck: func() {
@@ -60,10 +64,10 @@ func TestAccProject_Create(t *testing.T) {
 		Providers: testAccProviders,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccProjectCreate,
+				Config: fmt.Sprintf(testAccProjectCreate, projectKey),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckProjectExists(resourceName),
-					resource.TestCheckResourceAttr(resourceName, "key", "test-project"),
+					resource.TestCheckResourceAttr(resourceName, "key", projectKey),
 					resource.TestCheckResourceAttr(resourceName, "name", "test project"),
 					resource.TestCheckResourceAttr(resourceName, "tags.#", "2"),
 					resource.TestCheckResourceAttr(resourceName, testAccTagKey("terraform"), "terraform"),
@@ -75,6 +79,7 @@ func TestAccProject_Create(t *testing.T) {
 }
 
 func TestAccProject_Update(t *testing.T) {
+	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	resourceName := "launchdarkly_project.test"
 	resource.Test(t, resource.TestCase{
 		PreCheck: func() {
@@ -83,10 +88,10 @@ func TestAccProject_Update(t *testing.T) {
 		Providers: testAccProviders,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccProjectCreate,
+				Config: fmt.Sprintf(testAccProjectCreate, projectKey),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckProjectExists(resourceName),
-					resource.TestCheckResourceAttr(resourceName, "key", "test-project"),
+					resource.TestCheckResourceAttr(resourceName, "key", projectKey),
 					resource.TestCheckResourceAttr(resourceName, "name", "test project"),
 					resource.TestCheckResourceAttr(resourceName, "tags.#", "2"),
 					resource.TestCheckResourceAttr(resourceName, testAccTagKey("terraform"), "terraform"),
@@ -94,10 +99,10 @@ func TestAccProject_Update(t *testing.T) {
 				),
 			},
 			{
-				Config: testAccProjectUpdate,
+				Config: fmt.Sprintf(testAccProjectUpdate, projectKey),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckProjectExists(resourceName),
-					resource.TestCheckResourceAttr(resourceName, "key", "test-project"),
+					resource.TestCheckResourceAttr(resourceName, "key", projectKey),
 					resource.TestCheckResourceAttr(resourceName, "name", "awesome test project"),
 					resource.TestCheckResourceAttr(resourceName, "tags.#", "0"),
 				),
@@ -107,6 +112,7 @@ func TestAccProject_Update(t *testing.T) {
 }
 
 func TestAccProject_WithEnvironment(t *testing.T) {
+	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	resourceName := "launchdarkly_project.env_test"
 	resource.Test(t, resource.TestCase{
 		PreCheck: func() {
@@ -115,10 +121,10 @@ func TestAccProject_WithEnvironment(t *testing.T) {
 		Providers: testAccProviders,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccProjectWithEnvironment,
+				Config: fmt.Sprintf(testAccProjectWithEnvironment, projectKey),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckProjectExists(resourceName),
-					resource.TestCheckResourceAttr(resourceName, "key", "test-project"),
+					resource.TestCheckResourceAttr(resourceName, "key", projectKey),
 					resource.TestCheckResourceAttr(resourceName, "name", "test project"),
 					resource.TestCheckResourceAttr(resourceName, "environments.#", "1"),
 					resource.TestCheckResourceAttr(resourceName, "environments.0.name", "test environment"),
@@ -126,10 +132,10 @@ func TestAccProject_WithEnvironment(t *testing.T) {
 				),
 			},
 			{
-				Config: testAccProjectWithEnvironmentUpdate,
+				Config: fmt.Sprintf(testAccProjectWithEnvironmentUpdate, projectKey),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckProjectExists(resourceName),
-					resource.TestCheckResourceAttr(resourceName, "key", "test-project"),
+					resource.TestCheckResourceAttr(resourceName, "key", projectKey),
 					resource.TestCheckResourceAttr(resourceName, "name", "test project"),
 					resource.TestCheckResourceAttr(resourceName, "environments.#", "1"),
 					resource.TestCheckResourceAttr(resourceName, "environments.0.name", "test environment updated"),

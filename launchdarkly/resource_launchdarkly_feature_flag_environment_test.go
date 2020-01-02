@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/antihax/optional"
+	"github.com/hashicorp/terraform-plugin-sdk/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-sdk/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/terraform"
 	ldapi "github.com/launchdarkly/api-client-go"
@@ -12,11 +13,6 @@ import (
 
 const (
 	testAccFeatureFlagEnvironmentBasic = `
-resource "launchdarkly_project" "test" {
-	name = "testProject"
-	key = "test-project"
-}
-	
 resource "launchdarkly_feature_flag" "basic" {
 	project_key = launchdarkly_project.test.key
 	key = "basic-flag"
@@ -43,12 +39,7 @@ resource "launchdarkly_feature_flag_environment" "basic" {
 }
 `
 
-	testAccFeatureFlagEnvironmentUpdate = `
-resource "launchdarkly_project" "test" {
-	name = "testProject"
-	key = "test-project"
-}
-	
+	testAccFeatureFlagEnvironmentUpdate = `	
 resource "launchdarkly_feature_flag" "basic" {
 	project_key = launchdarkly_project.test.key
 	key = "basic-flag"
@@ -105,11 +96,6 @@ resource "launchdarkly_feature_flag_environment" "basic" {
 `
 
 	testAccFeatureFlagEnvironmentPrereq = `
-resource "launchdarkly_project" "test" {
-	name = "testProject"
-	key = "test-project"
-}
-	
 resource "launchdarkly_feature_flag" "bool" {
 	project_key = launchdarkly_project.test.key
 	key = "bool-flag"
@@ -147,6 +133,7 @@ resource "launchdarkly_feature_flag_environment" "prereq" {
 )
 
 func TestAccFeatureFlagEnvironment_Basic(t *testing.T) {
+	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	resourceName := "launchdarkly_feature_flag_environment.basic"
 	resource.Test(t, resource.TestCase{
 		PreCheck: func() {
@@ -155,7 +142,7 @@ func TestAccFeatureFlagEnvironment_Basic(t *testing.T) {
 		Providers: testAccProviders,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccFeatureFlagEnvironmentBasic,
+				Config: withRandomProject(projectKey, testAccFeatureFlagEnvironmentBasic),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckFeatureFlagEnvironmentExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, "targeting_enabled", "false"),
@@ -168,6 +155,7 @@ func TestAccFeatureFlagEnvironment_Basic(t *testing.T) {
 }
 
 func TestAccFeatureFlagEnvironment_Update(t *testing.T) {
+	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	resourceName := "launchdarkly_feature_flag_environment.basic"
 	resource.Test(t, resource.TestCase{
 		PreCheck: func() {
@@ -176,7 +164,7 @@ func TestAccFeatureFlagEnvironment_Update(t *testing.T) {
 		Providers: testAccProviders,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccFeatureFlagEnvironmentBasic,
+				Config: withRandomProject(projectKey, testAccFeatureFlagEnvironmentBasic),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckFeatureFlagEnvironmentExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, "targeting_enabled", "false"),
@@ -188,7 +176,7 @@ func TestAccFeatureFlagEnvironment_Update(t *testing.T) {
 				),
 			},
 			{
-				Config: testAccFeatureFlagEnvironmentUpdate,
+				Config: withRandomProject(projectKey, testAccFeatureFlagEnvironmentUpdate),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckFeatureFlagEnvironmentExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, "targeting_enabled", "true"),
@@ -227,7 +215,7 @@ func TestAccFeatureFlagEnvironment_Update(t *testing.T) {
 				),
 			},
 			{
-				Config: testAccFeatureFlagEnvironmentBasic,
+				Config: withRandomProject(projectKey, testAccFeatureFlagEnvironmentBasic),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckFeatureFlagEnvironmentExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, "targeting_enabled", "false"),
@@ -243,6 +231,7 @@ func TestAccFeatureFlagEnvironment_Update(t *testing.T) {
 }
 
 func TestAccFeatureFlagEnvironment_Prereq(t *testing.T) {
+	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	resourceName := "launchdarkly_feature_flag_environment.prereq"
 	resource.Test(t, resource.TestCase{
 		PreCheck: func() {
@@ -251,7 +240,7 @@ func TestAccFeatureFlagEnvironment_Prereq(t *testing.T) {
 		Providers: testAccProviders,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccFeatureFlagEnvironmentPrereq,
+				Config: withRandomProject(projectKey, testAccFeatureFlagEnvironmentPrereq),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckFeatureFlagEnvironmentExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, "targeting_enabled", "true"),

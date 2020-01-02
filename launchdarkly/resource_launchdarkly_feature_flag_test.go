@@ -13,11 +13,6 @@ import (
 
 const (
 	testAccFeatureFlagBasic = `
-resource "launchdarkly_project" "test" {
-	name = "testProject"
-	key = "test-project"
-}
-
 resource "launchdarkly_feature_flag" "basic" {
 	project_key = launchdarkly_project.test.key
 	key = "basic-flag"
@@ -26,11 +21,6 @@ resource "launchdarkly_feature_flag" "basic" {
 }
 `
 	testAccFeatureFlagUpdate = `
-resource "launchdarkly_project" "test" {
-	name = "testProject"
-	key = "test-project"
-}
-
 resource "launchdarkly_feature_flag" "basic" {
 	project_key = launchdarkly_project.test.key
 	key = "basic-flag"
@@ -44,11 +34,6 @@ resource "launchdarkly_feature_flag" "basic" {
 `
 
 	testAccFeatureFlagNumber = `
-resource "launchdarkly_project" "test" {
-	name = "testProject"
-	key = "test-project"
-}
-
 resource "launchdarkly_feature_flag" "number" {
 	project_key = launchdarkly_project.test.key
 	key         = "numeric-flag"
@@ -65,11 +50,6 @@ resource "launchdarkly_feature_flag" "number" {
 `
 
 	testAccFeatureFlagJson = `
-resource "launchdarkly_project" "test" {
-	name = "testProject"
-	key = "test-project"
-}
-
 resource "launchdarkly_feature_flag" "json" {
 	project_key = launchdarkly_project.test.key
 	key         = "json-flag"
@@ -103,11 +83,6 @@ resource "launchdarkly_team_member" "test" {
 	custom_roles = []
 }
 
-resource "launchdarkly_project" "test" {
-	name = "testProject"
-	key = "test-project"
-}
-
 resource "launchdarkly_feature_flag" "maintained" {
 	project_key = launchdarkly_project.test.key
 	key = "maintained-flag"
@@ -119,11 +94,6 @@ resource "launchdarkly_feature_flag" "maintained" {
 
 	//testAccFeatureFlagWasMaintained is used to test that feature flag maintainers can be unset
 	testAccFeatureFlagWasMaintained = `
-resource "launchdarkly_project" "test" {
-	name = "testProject"
-	key = "test-project"
-}
-
 resource "launchdarkly_feature_flag" "maintained" {
 	project_key = launchdarkly_project.test.key
 	key = "maintained-flag"
@@ -133,11 +103,6 @@ resource "launchdarkly_feature_flag" "maintained" {
 `
 
 	testAccFeatureFlagWithInvalidMaintainer = `
-resource "launchdarkly_project" "test" {
-	name = "testProject"
-	key = "test-project"
-}
-
 resource "launchdarkly_feature_flag" "maintained" {
 	project_key = launchdarkly_project.test.key
 	key = "maintained-flag"
@@ -150,11 +115,6 @@ resource "launchdarkly_feature_flag" "maintained" {
 `
 
 	testAccFeatureFlagCreateMultivariate = `
-resource "launchdarkly_project" "test" {
-	name = "testProject"
-	key = "test-project"
-}
-
 resource "launchdarkly_feature_flag" "multivariate" {
 	project_key = launchdarkly_project.test.key
 	key = "multivariate-flag-1"
@@ -195,11 +155,6 @@ resource "launchdarkly_feature_flag" "multivariate" {
 `
 
 	testAccFeatureFlagUpdateMultivariate = `
-resource "launchdarkly_project" "test" {
-	name = "testProject"
-	key = "test-project"
-}
-
 resource "launchdarkly_feature_flag" "multivariate" {
 	project_key = launchdarkly_project.test.key
 	key = "multivariate-flag-1"
@@ -240,7 +195,18 @@ resource "launchdarkly_feature_flag" "multivariate" {
 `
 )
 
+func withRandomProject(randomProject, resource string) string {
+	return fmt.Sprintf(`
+	resource "launchdarkly_project" "test" {
+		name = "testProject"
+		key = "%s"
+	}
+	
+	%s`, randomProject, resource)
+}
+
 func TestAccFeatureFlag_Basic(t *testing.T) {
+	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	resourceName := "launchdarkly_feature_flag.basic"
 	resource.Test(t, resource.TestCase{
 		PreCheck: func() {
@@ -249,13 +215,13 @@ func TestAccFeatureFlag_Basic(t *testing.T) {
 		Providers: testAccProviders,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccFeatureFlagBasic,
+				Config: withRandomProject(projectKey, testAccFeatureFlagBasic),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckProjectExists("launchdarkly_project.test"),
 					testAccCheckFeatureFlagExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, name, "Basic feature flag"),
 					resource.TestCheckResourceAttr(resourceName, key, "basic-flag"),
-					resource.TestCheckResourceAttr(resourceName, project_key, "test-project"),
+					resource.TestCheckResourceAttr(resourceName, project_key, projectKey),
 					resource.TestCheckResourceAttr(resourceName, variation_type, "boolean"),
 					resource.TestCheckResourceAttr(resourceName, "variations.#", "2"),
 					resource.TestCheckResourceAttr(resourceName, "variations.0.value", "true"),
@@ -268,6 +234,7 @@ func TestAccFeatureFlag_Basic(t *testing.T) {
 }
 
 func TestAccFeatureFlag_Update(t *testing.T) {
+	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	resourceName := "launchdarkly_feature_flag.basic"
 	resource.Test(t, resource.TestCase{
 		PreCheck: func() {
@@ -276,23 +243,23 @@ func TestAccFeatureFlag_Update(t *testing.T) {
 		Providers: testAccProviders,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccFeatureFlagBasic,
+				Config: withRandomProject(projectKey, testAccFeatureFlagBasic),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckProjectExists("launchdarkly_project.test"),
 					testAccCheckFeatureFlagExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, "name", "Basic feature flag"),
 					resource.TestCheckResourceAttr(resourceName, "key", "basic-flag"),
-					resource.TestCheckResourceAttr(resourceName, "project_key", "test-project"),
+					resource.TestCheckResourceAttr(resourceName, "project_key", projectKey),
 				),
 			},
 			{
-				Config: testAccFeatureFlagUpdate,
+				Config: withRandomProject(projectKey, testAccFeatureFlagUpdate),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckProjectExists("launchdarkly_project.test"),
 					testAccCheckFeatureFlagExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, "name", "Less basic feature flag"),
 					resource.TestCheckResourceAttr(resourceName, "key", "basic-flag"),
-					resource.TestCheckResourceAttr(resourceName, "project_key", "test-project"),
+					resource.TestCheckResourceAttr(resourceName, "project_key", projectKey),
 					resource.TestCheckResourceAttr(resourceName, "description", "this is a boolean flag by default becausethe variations field is omitted"),
 					resource.TestCheckResourceAttr(resourceName, "tags.#", "2"),
 					resource.TestCheckResourceAttr(resourceName, testAccTagKey("update"), "update"),
@@ -306,6 +273,7 @@ func TestAccFeatureFlag_Update(t *testing.T) {
 }
 
 func TestAccFeatureFlag_Number(t *testing.T) {
+	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	resourceName := "launchdarkly_feature_flag.number"
 	resource.Test(t, resource.TestCase{
 		PreCheck: func() {
@@ -314,13 +282,13 @@ func TestAccFeatureFlag_Number(t *testing.T) {
 		Providers: testAccProviders,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccFeatureFlagNumber,
+				Config: withRandomProject(projectKey, testAccFeatureFlagNumber),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckProjectExists("launchdarkly_project.test"),
 					testAccCheckFeatureFlagExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, name, "Number feature flag"),
 					resource.TestCheckResourceAttr(resourceName, key, "numeric-flag"),
-					resource.TestCheckResourceAttr(resourceName, project_key, "test-project"),
+					resource.TestCheckResourceAttr(resourceName, project_key, projectKey),
 					resource.TestCheckResourceAttr(resourceName, variation_type, "number"),
 					resource.TestCheckResourceAttr(resourceName, "variations.#", "2"),
 					resource.TestCheckResourceAttr(resourceName, "variations.0.value", "12.5"),
@@ -332,6 +300,7 @@ func TestAccFeatureFlag_Number(t *testing.T) {
 }
 
 func TestAccFeatureFlag_JSON(t *testing.T) {
+	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	resourceName := "launchdarkly_feature_flag.json"
 	resource.Test(t, resource.TestCase{
 		PreCheck: func() {
@@ -340,13 +309,13 @@ func TestAccFeatureFlag_JSON(t *testing.T) {
 		Providers: testAccProviders,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccFeatureFlagJson,
+				Config: withRandomProject(projectKey, testAccFeatureFlagJson),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckProjectExists("launchdarkly_project.test"),
 					testAccCheckFeatureFlagExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, name, "JSON feature flag"),
 					resource.TestCheckResourceAttr(resourceName, key, "json-flag"),
-					resource.TestCheckResourceAttr(resourceName, project_key, "test-project"),
+					resource.TestCheckResourceAttr(resourceName, project_key, projectKey),
 					resource.TestCheckResourceAttr(resourceName, variation_type, "json"),
 					resource.TestCheckResourceAttr(resourceName, "variations.#", "2"),
 					resource.TestCheckResourceAttr(resourceName, "variations.0.value", `{"foo":"bar"}`),
@@ -358,6 +327,7 @@ func TestAccFeatureFlag_JSON(t *testing.T) {
 }
 
 func TestAccFeatureFlag_WithMaintainer(t *testing.T) {
+	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	randomName := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	resourceName := "launchdarkly_feature_flag.maintained"
 	resource.Test(t, resource.TestCase{
@@ -367,25 +337,25 @@ func TestAccFeatureFlag_WithMaintainer(t *testing.T) {
 		Providers: testAccProviders,
 		Steps: []resource.TestStep{
 			{
-				Config: fmt.Sprintf(testAccFeatureFlagWithMaintainer, randomName),
+				Config: withRandomProject(projectKey, fmt.Sprintf(testAccFeatureFlagWithMaintainer, randomName)),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckProjectExists("launchdarkly_project.test"),
 					testAccCheckMemberExists("launchdarkly_team_member.test"),
 					testAccCheckFeatureFlagExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, "name", "Maintained feature flag"),
 					resource.TestCheckResourceAttr(resourceName, "key", "maintained-flag"),
-					resource.TestCheckResourceAttr(resourceName, "project_key", "test-project"),
+					resource.TestCheckResourceAttr(resourceName, "project_key", projectKey),
 					resource.TestCheckResourceAttrPair(resourceName, "maintainer_id", "launchdarkly_team_member.test", "id"),
 				),
 			},
 			{
-				Config: testAccFeatureFlagWasMaintained,
+				Config: withRandomProject(projectKey, testAccFeatureFlagWasMaintained),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckProjectExists("launchdarkly_project.test"),
 					testAccCheckFeatureFlagExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, "name", "Maintained feature flag"),
 					resource.TestCheckResourceAttr(resourceName, "key", "maintained-flag"),
-					resource.TestCheckResourceAttr(resourceName, "project_key", "test-project"),
+					resource.TestCheckResourceAttr(resourceName, "project_key", projectKey),
 					resource.TestCheckResourceAttr(resourceName, "maintainer_id", ""),
 				),
 			},
@@ -396,6 +366,7 @@ func TestAccFeatureFlag_WithMaintainer(t *testing.T) {
 // TestAccFeatureFlag_WithInvalidMaintainer tests that flags that fail during the update portion of the create clean up
 // after themselves and do not leave dangling flags.
 func TestAccFeatureFlag_InvalidMaintainer(t *testing.T) {
+	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	randomName := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	resourceName := "launchdarkly_feature_flag.maintained"
 	resource.Test(t, resource.TestCase{
@@ -405,18 +376,18 @@ func TestAccFeatureFlag_InvalidMaintainer(t *testing.T) {
 		Providers: testAccProviders,
 		Steps: []resource.TestStep{
 			{
-				Config:      testAccFeatureFlagWithInvalidMaintainer,
-				ExpectError: regexp.MustCompile(`failed to update flag "maintained-flag" in project "test-project": 400 Bad Request`),
+				Config:      withRandomProject(projectKey, testAccFeatureFlagWithInvalidMaintainer),
+				ExpectError: regexp.MustCompile(fmt.Sprintf(`failed to update flag "maintained-flag" in project "%s": 400 Bad Request`, projectKey)),
 			},
 			{
-				Config: fmt.Sprintf(testAccFeatureFlagWithMaintainer, randomName),
+				Config: withRandomProject(projectKey, fmt.Sprintf(testAccFeatureFlagWithMaintainer, randomName)),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckProjectExists("launchdarkly_project.test"),
 					testAccCheckMemberExists("launchdarkly_team_member.test"),
 					testAccCheckFeatureFlagExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, "name", "Maintained feature flag"),
 					resource.TestCheckResourceAttr(resourceName, "key", "maintained-flag"),
-					resource.TestCheckResourceAttr(resourceName, "project_key", "test-project"),
+					resource.TestCheckResourceAttr(resourceName, "project_key", projectKey),
 					resource.TestCheckResourceAttrPair(resourceName, "maintainer_id", "launchdarkly_team_member.test", "id"),
 				),
 			},
@@ -425,6 +396,7 @@ func TestAccFeatureFlag_InvalidMaintainer(t *testing.T) {
 }
 
 func TestAccFeatureFlag_CreateMultivariate(t *testing.T) {
+	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	resourceName := "launchdarkly_feature_flag.multivariate"
 	resource.Test(t, resource.TestCase{
 		PreCheck: func() {
@@ -433,13 +405,13 @@ func TestAccFeatureFlag_CreateMultivariate(t *testing.T) {
 		Providers: testAccProviders,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccFeatureFlagCreateMultivariate,
+				Config: withRandomProject(projectKey, testAccFeatureFlagCreateMultivariate),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckProjectExists("launchdarkly_project.test"),
 					testAccCheckFeatureFlagExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, "name", "multivariate flag 1 name"),
 					resource.TestCheckResourceAttr(resourceName, "key", "multivariate-flag-1"),
-					resource.TestCheckResourceAttr(resourceName, "project_key", "test-project"),
+					resource.TestCheckResourceAttr(resourceName, "project_key", projectKey),
 					resource.TestCheckResourceAttr(resourceName, "description", "this is a multivariate flag because we explicitly define the variations"),
 					resource.TestCheckResourceAttr(resourceName, "variations.#", "3"),
 					resource.TestCheckResourceAttr(resourceName, "variations.0.description", "a description"),
@@ -469,6 +441,7 @@ func TestAccFeatureFlag_CreateMultivariate(t *testing.T) {
 }
 
 func TestAccFeatureFlag_UpdateMultivariate(t *testing.T) {
+	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	resourceName := "launchdarkly_feature_flag.multivariate"
 	resource.Test(t, resource.TestCase{
 		PreCheck: func() {
@@ -477,7 +450,7 @@ func TestAccFeatureFlag_UpdateMultivariate(t *testing.T) {
 		Providers: testAccProviders,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccFeatureFlagCreateMultivariate,
+				Config: withRandomProject(projectKey, testAccFeatureFlagCreateMultivariate),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckProjectExists("launchdarkly_project.test"),
 					testAccCheckFeatureFlagExists(resourceName),
@@ -501,13 +474,13 @@ func TestAccFeatureFlag_UpdateMultivariate(t *testing.T) {
 				),
 			},
 			{
-				Config: testAccFeatureFlagUpdateMultivariate,
+				Config: withRandomProject(projectKey, testAccFeatureFlagUpdateMultivariate),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckProjectExists("launchdarkly_project.test"),
 					testAccCheckFeatureFlagExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, "name", "multivariate flag 1 name"),
 					resource.TestCheckResourceAttr(resourceName, "key", "multivariate-flag-1"),
-					resource.TestCheckResourceAttr(resourceName, "project_key", "test-project"),
+					resource.TestCheckResourceAttr(resourceName, "project_key", projectKey),
 					resource.TestCheckResourceAttr(resourceName, "description", "this is a multivariate flag because we explicitly define the variations"),
 					resource.TestCheckResourceAttr(resourceName, "variations.#", "4"),
 					resource.TestCheckResourceAttr(resourceName, "variations.0.description", "a description"),
@@ -533,7 +506,7 @@ func TestAccFeatureFlag_UpdateMultivariate(t *testing.T) {
 			},
 			{
 				// Ensure variation Delete operations are working
-				Config: testAccFeatureFlagCreateMultivariate,
+				Config: withRandomProject(projectKey, testAccFeatureFlagCreateMultivariate),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckProjectExists("launchdarkly_project.test"),
 					testAccCheckFeatureFlagExists(resourceName),
