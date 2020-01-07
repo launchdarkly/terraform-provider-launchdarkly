@@ -391,6 +391,17 @@ func TestAccFeatureFlag_InvalidMaintainer(t *testing.T) {
 					resource.TestCheckResourceAttrPair(resourceName, "maintainer_id", "launchdarkly_team_member.test", "id"),
 				),
 			},
+			{
+				Config: withRandomProject(projectKey, testAccFeatureFlagWasMaintained),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckProjectExists("launchdarkly_project.test"),
+					testAccCheckFeatureFlagExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, "name", "Maintained feature flag"),
+					resource.TestCheckResourceAttr(resourceName, "key", "maintained-flag"),
+					resource.TestCheckResourceAttr(resourceName, "project_key", projectKey),
+					resource.TestCheckResourceAttr(resourceName, "maintainer_id", ""),
+				),
+			},
 		},
 	})
 }
