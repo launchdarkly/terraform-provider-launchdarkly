@@ -1,5 +1,13 @@
 ## 1.0.1 (Unreleased)
 
+ENHANCEMENTS:
+
+- Use randomized project keys in acceptance tests so they can be run in parallel.
+
+BUG FIXES:
+
+- Set the LaunchDarkly API version header to version `20191212`
+
 ## 1.0.0 (November 06, 2019)
 
 FEATURES:
