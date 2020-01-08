@@ -4,17 +4,13 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/hashicorp/terraform-plugin-sdk/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-sdk/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/terraform"
 )
 
 const (
 	testAccSegmentCreate = `
-resource "launchdarkly_project" "test" {
-	name = "testProject"
-	key = "test-project"
-}
-
 resource "launchdarkly_segment" "test" {
     key = "segmentKey1"
 	project_key = launchdarkly_project.test.key
@@ -27,10 +23,6 @@ resource "launchdarkly_segment" "test" {
 }`
 
 	testAccSegmentUpdate = `
-resource "launchdarkly_project" "test" {
-	name = "testProject"
-	key = "test-project"
-}
 resource "launchdarkly_segment" "test" {
     key = "segmentKey1"
 	project_key = launchdarkly_project.test.key
@@ -60,6 +52,7 @@ resource "launchdarkly_segment" "test" {
 )
 
 func TestAccSegment_Create(t *testing.T) {
+	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	resourceName := "launchdarkly_segment.test"
 	resource.Test(t, resource.TestCase{
 		PreCheck: func() {
@@ -68,12 +61,12 @@ func TestAccSegment_Create(t *testing.T) {
 		Providers: testAccProviders,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccSegmentCreate,
+				Config: withRandomProject(projectKey, testAccSegmentCreate),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckProjectExists("launchdarkly_project.test"),
 					testAccCheckSegmentExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, "key", "segmentKey1"),
-					resource.TestCheckResourceAttr(resourceName, "project_key", "test-project"),
+					resource.TestCheckResourceAttr(resourceName, "project_key", projectKey),
 					resource.TestCheckResourceAttr(resourceName, "env_key", "test"),
 					resource.TestCheckResourceAttr(resourceName, "name", "segment name"),
 					resource.TestCheckResourceAttr(resourceName, "description", "segment description"),
@@ -93,6 +86,7 @@ func TestAccSegment_Create(t *testing.T) {
 }
 
 func TestAccSegment_Update(t *testing.T) {
+	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	resourceName := "launchdarkly_segment.test"
 	resource.Test(t, resource.TestCase{
 		PreCheck: func() {
@@ -101,12 +95,12 @@ func TestAccSegment_Update(t *testing.T) {
 		Providers: testAccProviders,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccSegmentCreate,
+				Config: withRandomProject(projectKey, testAccSegmentCreate),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckProjectExists("launchdarkly_project.test"),
 					testAccCheckSegmentExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, "key", "segmentKey1"),
-					resource.TestCheckResourceAttr(resourceName, "project_key", "test-project"),
+					resource.TestCheckResourceAttr(resourceName, "project_key", projectKey),
 					resource.TestCheckResourceAttr(resourceName, "env_key", "test"),
 					resource.TestCheckResourceAttr(resourceName, "name", "segment name"),
 					resource.TestCheckResourceAttr(resourceName, "description", "segment description"),
@@ -122,12 +116,12 @@ func TestAccSegment_Update(t *testing.T) {
 				),
 			},
 			{
-				Config: testAccSegmentUpdate,
+				Config: withRandomProject(projectKey, testAccSegmentUpdate),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckProjectExists("launchdarkly_project.test"),
 					testAccCheckSegmentExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, "key", "segmentKey1"),
-					resource.TestCheckResourceAttr(resourceName, "project_key", "test-project"),
+					resource.TestCheckResourceAttr(resourceName, "project_key", projectKey),
 					resource.TestCheckResourceAttr(resourceName, "env_key", "test"),
 					resource.TestCheckResourceAttr(resourceName, "name", "segment name"),
 					resource.TestCheckResourceAttr(resourceName, "description", "segment description"),

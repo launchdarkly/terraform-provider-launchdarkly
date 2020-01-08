@@ -5,17 +5,13 @@ import (
 	"regexp"
 	"testing"
 
+	"github.com/hashicorp/terraform-plugin-sdk/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-sdk/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/terraform"
 )
 
 const (
 	testAccEnvironmentCreate = `
-resource "launchdarkly_project" "test" {
-	name = "testProject"
-	key = "test-project"
-}
-
 resource "launchdarkly_environment" "staging" {
 	name = "Staging1"
   	key = "staging1"
@@ -27,12 +23,8 @@ resource "launchdarkly_environment" "staging" {
 	tags = ["tagged", "terraform"]
 }
 `
-	testAccEnvironmentUpdate = `
-resource "launchdarkly_project" "test" {
-	name = "testProject"
-	key = "test-project"
-}
 
+	testAccEnvironmentUpdate = `
 resource "launchdarkly_environment" "staging" {
 	name = "The real staging1"
   	key = "staging1"
@@ -45,11 +37,6 @@ resource "launchdarkly_environment" "staging" {
 `
 
 	testAccEnvironmentInvalid = `
-resource "launchdarkly_project" "test" {
-	name = "testProject"
-	key = "test-project"
-}
-
 resource "launchdarkly_environment" "staging" {
 	name = "The real staging1"
   	key = "staging1"
@@ -63,6 +50,7 @@ resource "launchdarkly_environment" "staging" {
 )
 
 func TestAccEnvironment_Create(t *testing.T) {
+	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	resourceName := "launchdarkly_environment.staging"
 	resource.Test(t, resource.TestCase{
 		PreCheck: func() {
@@ -71,7 +59,7 @@ func TestAccEnvironment_Create(t *testing.T) {
 		Providers: testAccProviders,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccEnvironmentCreate,
+				Config: withRandomProject(projectKey, testAccEnvironmentCreate),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckProjectExists("launchdarkly_project.test"),
 					testAccCheckEnvironmentExists(resourceName),
@@ -81,7 +69,7 @@ func TestAccEnvironment_Create(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "secure_mode", "true"),
 					resource.TestCheckResourceAttr(resourceName, "default_track_events", "false"),
 					resource.TestCheckResourceAttr(resourceName, "default_ttl", "50"),
-					resource.TestCheckResourceAttr(resourceName, "project_key", "test-project"),
+					resource.TestCheckResourceAttr(resourceName, "project_key", projectKey),
 					resource.TestCheckResourceAttr(resourceName, "tags.#", "2"),
 					resource.TestCheckResourceAttr(resourceName, testAccTagKey("terraform"), "terraform"),
 					resource.TestCheckResourceAttr(resourceName, testAccTagKey("tagged"), "tagged"),
@@ -92,6 +80,7 @@ func TestAccEnvironment_Create(t *testing.T) {
 }
 
 func TestAccEnvironment_Update(t *testing.T) {
+	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	resourceName := "launchdarkly_environment.staging"
 	resource.Test(t, resource.TestCase{
 		PreCheck: func() {
@@ -100,7 +89,7 @@ func TestAccEnvironment_Update(t *testing.T) {
 		Providers: testAccProviders,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccEnvironmentCreate,
+				Config: withRandomProject(projectKey, testAccEnvironmentCreate),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckProjectExists("launchdarkly_project.test"),
 					testAccCheckEnvironmentExists(resourceName),
@@ -110,11 +99,11 @@ func TestAccEnvironment_Update(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "secure_mode", "true"),
 					resource.TestCheckResourceAttr(resourceName, "default_track_events", "false"),
 					resource.TestCheckResourceAttr(resourceName, "default_ttl", "50"),
-					resource.TestCheckResourceAttr(resourceName, "project_key", "test-project"),
+					resource.TestCheckResourceAttr(resourceName, "project_key", projectKey),
 				),
 			},
 			{
-				Config: testAccEnvironmentUpdate,
+				Config: withRandomProject(projectKey, testAccEnvironmentUpdate),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckProjectExists("launchdarkly_project.test"),
 					testAccCheckEnvironmentExists(resourceName),
@@ -124,7 +113,7 @@ func TestAccEnvironment_Update(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "secure_mode", "false"),
 					resource.TestCheckResourceAttr(resourceName, "default_track_events", "true"),
 					resource.TestCheckResourceAttr(resourceName, "default_ttl", "3"),
-					resource.TestCheckResourceAttr(resourceName, "project_key", "test-project"),
+					resource.TestCheckResourceAttr(resourceName, "project_key", projectKey),
 				),
 			},
 		},
@@ -132,6 +121,7 @@ func TestAccEnvironment_Update(t *testing.T) {
 }
 
 func TestAccEnvironment_Invalid(t *testing.T) {
+	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	resourceName := "launchdarkly_environment.staging"
 	resource.Test(t, resource.TestCase{
 		PreCheck: func() {
@@ -140,11 +130,11 @@ func TestAccEnvironment_Invalid(t *testing.T) {
 		Providers: testAccProviders,
 		Steps: []resource.TestStep{
 			{
-				Config:      testAccEnvironmentInvalid,
+				Config:      withRandomProject(projectKey, testAccEnvironmentInvalid),
 				ExpectError: regexp.MustCompile("config is invalid"),
 			},
 			{
-				Config: testAccEnvironmentUpdate,
+				Config: withRandomProject(projectKey, testAccEnvironmentUpdate),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckProjectExists("launchdarkly_project.test"),
 					testAccCheckEnvironmentExists(resourceName),
@@ -154,7 +144,7 @@ func TestAccEnvironment_Invalid(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "secure_mode", "false"),
 					resource.TestCheckResourceAttr(resourceName, "default_track_events", "true"),
 					resource.TestCheckResourceAttr(resourceName, "default_ttl", "3"),
-					resource.TestCheckResourceAttr(resourceName, "project_key", "test-project"),
+					resource.TestCheckResourceAttr(resourceName, "project_key", projectKey),
 				),
 			},
 		},

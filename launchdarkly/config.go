@@ -8,7 +8,10 @@ import (
 	ldapi "github.com/launchdarkly/api-client-go"
 )
 
-const Version = "1.0.0"
+const (
+	AgentVersion = "1.0.1"
+	APIVersion   = "20191212"
+)
 
 // Client is used by the provider to access the ld API.
 type Client struct {
@@ -30,8 +33,10 @@ func newClient(token string, apiHost string, oauth bool) (*Client, error) {
 	cfg := &ldapi.Configuration{
 		BasePath:      basePath,
 		DefaultHeader: make(map[string]string),
-		UserAgent:     fmt.Sprintf("launchdarkly-terraform-provider/%s", Version),
+		UserAgent:     fmt.Sprintf("launchdarkly-terraform-provider/%s", AgentVersion),
 	}
+
+	cfg.AddDefaultHeader("LD-API-Version", APIVersion)
 
 	ctx := context.WithValue(context.Background(), ldapi.ContextAPIKey, ldapi.APIKey{
 		Key: token,
