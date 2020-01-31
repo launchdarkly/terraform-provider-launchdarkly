@@ -51,6 +51,14 @@ func environmentSchema() map[string]*schema.Schema {
 			Type:     schema.TypeBool,
 			Optional: true,
 		},
+		require_comments: &schema.Schema{
+			Type:     schema.TypeBool,
+			Optional: true,
+		},
+		confirm_changes: &schema.Schema{
+			Type:     schema.TypeBool,
+			Optional: true,
+		},
 		tags: tagsSchema(),
 	}
 }

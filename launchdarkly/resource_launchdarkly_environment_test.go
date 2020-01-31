@@ -21,6 +21,8 @@ resource "launchdarkly_environment" "staging" {
   	default_ttl = 50
 	project_key = launchdarkly_project.test.key
 	tags = ["tagged", "terraform"]
+	require_comments = true
+	confirm_changes = true
 }
 `
 
@@ -32,7 +34,9 @@ resource "launchdarkly_environment" "staging" {
   	secure_mode = false
   	default_track_events = true
   	default_ttl = 3
-  	project_key = launchdarkly_project.test.key
+	project_key = launchdarkly_project.test.key
+	require_comments = false
+	confirm_changes = false
 }
 `
 
@@ -44,7 +48,9 @@ resource "launchdarkly_environment" "staging" {
   	secure_mode = false
   	default_track_events = "maybe"
   	default_ttl = 3
-  	project_key = launchdarkly_project.test.key
+	project_key = launchdarkly_project.test.key
+	require_comments = false
+	confirm_changes = true
 }
 `
 )
@@ -71,6 +77,8 @@ func TestAccEnvironment_Create(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "default_ttl", "50"),
 					resource.TestCheckResourceAttr(resourceName, "project_key", projectKey),
 					resource.TestCheckResourceAttr(resourceName, "tags.#", "2"),
+					resource.TestCheckResourceAttr(resourceName, "require_comments", "true"),
+					resource.TestCheckResourceAttr(resourceName, "confirm_changes", "true"),
 					resource.TestCheckResourceAttr(resourceName, testAccTagKey("terraform"), "terraform"),
 					resource.TestCheckResourceAttr(resourceName, testAccTagKey("tagged"), "tagged"),
 				),
@@ -114,6 +122,8 @@ func TestAccEnvironment_Update(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "default_track_events", "true"),
 					resource.TestCheckResourceAttr(resourceName, "default_ttl", "3"),
 					resource.TestCheckResourceAttr(resourceName, "project_key", projectKey),
+					resource.TestCheckResourceAttr(resourceName, "require_comments", "false"),
+					resource.TestCheckResourceAttr(resourceName, "confirm_changes", "false"),
 				),
 			},
 		},
@@ -145,6 +155,8 @@ func TestAccEnvironment_Invalid(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "default_track_events", "true"),
 					resource.TestCheckResourceAttr(resourceName, "default_ttl", "3"),
 					resource.TestCheckResourceAttr(resourceName, "project_key", projectKey),
+					resource.TestCheckResourceAttr(resourceName, "require_comments", "false"),
+					resource.TestCheckResourceAttr(resourceName, "confirm_changes", "false"),
 				),
 			},
 		},

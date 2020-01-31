@@ -17,6 +17,8 @@ const (
 	default_ttl          = "default_ttl"
 	secure_mode          = "secure_mode"
 	default_track_events = "default_track_events"
+	require_comments     = "require_comments"
+	confirm_changes      = "confirm_changes"
 	description          = "description"
 	maintainer_id        = "maintainer_id"
 	variation_type       = "variation_type"

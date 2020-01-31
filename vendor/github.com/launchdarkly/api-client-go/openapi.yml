@@ -10,7 +10,7 @@ info:
   license:
     name: Apache 2.0
     url: 'http://www.apache.org/licenses/LICENSE-2.0.html'
-  version: 2.0.15
+  version: 2.0.24
 host: app.launchdarkly.com
 basePath: /api/v2
 schemes:
@@ -186,6 +186,8 @@ paths:
       parameters:
         - $ref: '#/parameters/ProjectKey'
         - $ref: '#/parameters/EnvironmentKeyQuery'
+        - $ref: '#/parameters/SummaryQuery'
+        - $ref: '#/parameters/ArchivedQuery'
         - $ref: '#/parameters/Tag'
       responses:
         '200':
@@ -274,7 +276,7 @@ paths:
           $ref: '#/responses/Standard404'
       tags:
         - Feature flags
-  '/flags/{projectKey}/{environmentKey}/{featureFlagKey}/copy':
+  '/flags/{projectKey}/{featureFlagKey}/copy':
     post:
       summary: >-
         Copies the feature flag configuration from one environment to the same
@@ -282,11 +284,11 @@ paths:
       operationId: copyFeatureFlag
       parameters:
         - $ref: '#/parameters/ProjectKey'
-        - $ref: '#/parameters/EnvironmentKey'
         - $ref: '#/parameters/FeatureFlagKey'
+        - $ref: '#/parameters/FeatureFlagCopyBody'
       responses:
         '201':
-          description: Flag confguration copy response.
+          description: Flag configuration copy response.
           schema:
             $ref: '#/definitions/FeatureFlag'
         '400':
@@ -331,6 +333,24 @@ paths:
             $ref: '#/definitions/FeatureFlagStatus'
         '401':
           $ref: '#/responses/Standard401'
+      tags:
+        - Feature flags
+  '/flag-status/{projectKey}/{featureFlagKey}':
+    get:
+      summary: Get the status for a particular feature flag across environments
+      operationId: getFeatureFlagStatusAcrossEnvironments
+      parameters:
+        - $ref: '#/parameters/ProjectKey'
+        - $ref: '#/parameters/FeatureFlagKey'
+      responses:
+        '200':
+          description: Status of the requested feature flag across environments
+          schema:
+            $ref: '#/definitions/FeatureFlagStatusAcrossEnvironments'
+        '401':
+          $ref: '#/responses/Standard401'
+        '403':
+          $ref: '#/responses/BetaApi403'
       tags:
         - Feature flags
   '/segments/{projectKey}/{environmentKey}':
@@ -837,6 +857,245 @@ paths:
           $ref: '#/responses/Standard404'
       tags:
         - Team members
+  /destinations:
+    get:
+      summary: Returns a list of all data export destinations.
+      operationId: getDestinations
+      responses:
+        '200':
+          description: Destinations response.
+          schema:
+            $ref: '#/definitions/Destinations'
+        '401':
+          $ref: '#/responses/Standard401'
+      tags:
+        - Data export destinations
+  '/destinations/{projectKey}/{environmentKey}':
+    post:
+      summary: Create a new data export destination
+      operationId: postDestination
+      parameters:
+        - $ref: '#/parameters/ProjectKey'
+        - $ref: '#/parameters/EnvironmentKey'
+        - $ref: '#/parameters/DestinationPostRequest'
+      responses:
+        '201':
+          $ref: '#/responses/Destination2xx'
+        '400':
+          $ref: '#/responses/Standard400'
+        '401':
+          $ref: '#/responses/Standard401'
+        '409':
+          $ref: '#/responses/Standard409'
+      tags:
+        - Data export destinations
+  '/destinations/{projectKey}/{environmentKey}/{destinationId}':
+    get:
+      summary: Get a single data export destination by ID
+      operationId: getDestination
+      parameters:
+        - $ref: '#/parameters/ProjectKey'
+        - $ref: '#/parameters/EnvironmentKey'
+        - $ref: '#/parameters/DestinationId'
+      responses:
+        '200':
+          $ref: '#/responses/Destination2xx'
+        '401':
+          $ref: '#/responses/Standard401'
+        '404':
+          $ref: '#/responses/Standard404'
+      tags:
+        - Data export destinations
+    patch:
+      summary: Perform a partial update to a data export destination.
+      operationId: patchDestination
+      parameters:
+        - $ref: '#/parameters/ProjectKey'
+        - $ref: '#/parameters/EnvironmentKey'
+        - $ref: '#/parameters/DestinationId'
+        - $ref: '#/parameters/PatchOnly'
+      responses:
+        '200':
+          $ref: '#/responses/Destination2xx'
+        '400':
+          $ref: '#/responses/Standard400'
+        '401':
+          $ref: '#/responses/Standard401'
+        '404':
+          $ref: '#/responses/Standard404'
+        '409':
+          $ref: '#/responses/Standard409'
+      tags:
+        - Data export destinations
+    delete:
+      summary: Get a single data export destination by ID
+      operationId: deleteDestination
+      parameters:
+        - $ref: '#/parameters/ProjectKey'
+        - $ref: '#/parameters/EnvironmentKey'
+        - $ref: '#/parameters/DestinationId'
+      responses:
+        '204':
+          $ref: '#/responses/Standard204'
+        '401':
+          $ref: '#/responses/Standard401'
+        '404':
+          $ref: '#/responses/Standard404'
+      tags:
+        - Data export destinations
+  /usage:
+    get:
+      summary: Returns of the usage endpoints available.
+      operationId: getUsage
+      responses:
+        '200':
+          description: Usage endpoints
+          schema:
+            $ref: '#/definitions/Usage'
+        '403':
+          $ref: '#/responses/BetaApi403'
+      tags:
+        - Customer Metrics
+  /usage/streams:
+    get:
+      summary: Returns a list of all streams.
+      operationId: getStreams
+      responses:
+        '200':
+          description: Stream usage endpoints
+          schema:
+            $ref: '#/definitions/Streams'
+        '403':
+          $ref: '#/responses/BetaApi403'
+      tags:
+        - Customer Metrics
+  '/usage/streams/{source}':
+    get:
+      summary: Get a stream endpoint and return timeseries data.
+      operationId: getStream
+      parameters:
+        - $ref: '#/parameters/StreamSource'
+      responses:
+        '200':
+          description: Responds with time series data on stream usage.
+          schema:
+            $ref: '#/definitions/Stream'
+        '403':
+          $ref: '#/responses/BetaApi403'
+        '404':
+          $ref: '#/responses/StreamUsage404'
+      tags:
+        - Customer Metrics
+  '/usage/streams/{source}/bysdkversion':
+    get:
+      summary: Get a stream timeseries data by source show sdk version metadata.
+      operationId: getStreamBySDK
+      parameters:
+        - $ref: '#/parameters/StreamSource'
+      responses:
+        '200':
+          description: Returns timeseries data and metadata on sdk version.
+          schema:
+            $ref: '#/definitions/StreamBySDK'
+        '403':
+          $ref: '#/responses/BetaApi403'
+        '404':
+          $ref: '#/responses/StreamUsage404'
+      tags:
+        - Customer Metrics
+  '/usage/streams/{source}/sdkversions':
+    get:
+      summary: >-
+        Get a stream timeseries data by source and show all sdk version
+        associated.
+      operationId: getStreamSDKVersion
+      parameters:
+        - $ref: '#/parameters/StreamSource'
+      responses:
+        '200':
+          description: Returns timeseries data and all sdk versions.
+          schema:
+            $ref: '#/definitions/StreamSDKVersion'
+        '403':
+          $ref: '#/responses/BetaApi403'
+        '404':
+          $ref: '#/responses/StreamUsage404'
+      tags:
+        - Customer Metrics
+  /usage/mau:
+    get:
+      summary: Get monthly active user data.
+      operationId: getMAU
+      responses:
+        '200':
+          description: Returns timeseries data and all sdk versions.
+          schema:
+            $ref: '#/definitions/MAU'
+        '403':
+          $ref: '#/responses/BetaApi403'
+      tags:
+        - Customer Metrics
+  /usage/mau/bycategory:
+    get:
+      summary: Get monthly active user data by category.
+      operationId: getMAUByCategory
+      responses:
+        '200':
+          description: Returns timeseries data and all sdk versions.
+          schema:
+            $ref: '#/definitions/MAUbyCategory'
+        '403':
+          $ref: '#/responses/BetaApi403'
+      tags:
+        - Customer Metrics
+  /usage/events:
+    get:
+      summary: Get events usage endpoints.
+      operationId: getEvents
+      responses:
+        '200':
+          description: Returns timeseries data and all sdk versions.
+          schema:
+            $ref: '#/definitions/Events'
+        '403':
+          $ref: '#/responses/BetaApi403'
+      tags:
+        - Customer Metrics
+  '/usage/events/{type}':
+    get:
+      summary: Get events usage by event type.
+      operationId: getEvent
+      parameters:
+        - $ref: '#/parameters/EventType'
+      responses:
+        '200':
+          description: Returns timeseries data and all sdk versions.
+          schema:
+            $ref: '#/definitions/StreamSDKVersion'
+        '403':
+          $ref: '#/responses/BetaApi403'
+        '404':
+          $ref: '#/responses/StreamUsage404'
+      tags:
+        - Customer Metrics
+  '/usage/evaluations/{envId}/{flagKey}':
+    get:
+      summary: Get events usage by event id and the feature flag key.
+      operationId: getEvaluations
+      parameters:
+        - $ref: '#/parameters/EvaluationEnvId'
+        - $ref: '#/parameters/EvaluationFlagKey'
+      responses:
+        '200':
+          description: Returns timeseries data and all sdk versions.
+          schema:
+            $ref: '#/definitions/StreamSDKVersion'
+        '403':
+          $ref: '#/responses/BetaApi403'
+        '404':
+          $ref: '#/responses/EvaluationUsage404'
+      tags:
+        - Customer Metrics
   /:
     get:
       description: >-
@@ -895,6 +1154,8 @@ definitions:
         type: string
         description: The name of the webhook.
         example: Example hook
+      statements:
+        $ref: '#/definitions/Statements'
       tags:
         type: array
         description: Tags assigned to this webhook.
@@ -993,6 +1254,17 @@ definitions:
         type: object
         additionalProperties:
           $ref: '#/definitions/FeatureFlagConfig'
+      archivedDate:
+        type: number
+        format: int64
+        description: >-
+          A unix epoch time in milliseconds specifying the archived time of this
+          flag.
+        example: 1443652232590
+      archived:
+        type: boolean
+        description: Whether or not this flag is archived.
+        example: false
   FeatureFlags:
     type: object
     properties:
@@ -1114,6 +1386,8 @@ definitions:
   Rollout:
     type: object
     properties:
+      bucketBy:
+        type: string
       variations:
         type: array
         items:
@@ -1164,8 +1438,6 @@ definitions:
   FeatureFlagStatus:
     type: object
     properties:
-      _links:
-        $ref: '#/definitions/Links'
       name:
         type: string
         description: >
@@ -1195,6 +1467,8 @@ definitions:
         example: '2016-08-16T21:10:11.886Z'
       default:
         type: object
+      _links:
+        $ref: '#/definitions/Links'
   FeatureFlagStatuses:
     type: object
     properties:
@@ -1204,6 +1478,49 @@ definitions:
         type: array
         items:
           $ref: '#/definitions/FeatureFlagStatus'
+  FeatureFlagStatusForQueriedEnvironment:
+    type: object
+    properties:
+      name:
+        type: string
+        description: >
+          | Name     | Description |
+
+          | --------:| ----------- |
+
+          | new      | the feature flag was created within the last 7 days, and
+          has not been requested yet |
+
+          | active   | the feature flag was requested by your servers or clients
+          within the last 7 days |
+
+          | inactive | the feature flag was created more than 7 days ago, and
+          hasn't been requested by your servers or clients within the past 7
+          days |
+
+          | launched | one variation of the feature flag has been rolled out to
+          all your users for at least 7 days |
+        enum:
+          - new
+          - active
+          - inactive
+          - launched
+      lastRequested:
+        type: string
+        example: '2016-08-16T21:10:11.886Z'
+      default:
+        type: object
+  FeatureFlagStatusAcrossEnvironments:
+    type: object
+    properties:
+      _links:
+        $ref: '#/definitions/Links'
+      key:
+        type: string
+      environments:
+        type: object
+        additionalProperties:
+          $ref: '#/definitions/FeatureFlagStatusForQueriedEnvironment'
   UserSegment:
     type: object
     required:
@@ -1314,6 +1631,94 @@ definitions:
         type: array
         items:
           $ref: '#/definitions/Project'
+  Destination:
+    type: object
+    properties:
+      _links:
+        $ref: '#/definitions/Links'
+      _id:
+        type: string
+        example: 37ed9aad-de0a-4665-932e-41c35587aeea
+        description: Unique destination ID.
+      name:
+        type: string
+        example: Example Google Pub/Sub Destination
+        description: The destination name
+      kind:
+        type: string
+        example: google-pubsub
+        description: >-
+          Destination type ("google-pubsub", "kinesis", "mparticle", or
+          "segment")
+        enum:
+          - google-pubsub
+          - kinesis
+          - mparticle
+          - segment
+      config:
+        type: object
+        description: destination-specific configuration.
+        example:
+          project: cool-project
+          topic: test
+      'on':
+        type: boolean
+        example: true
+        description: Whether the data export destination is on or not.
+      version:
+        type: integer
+        example: 2
+  Destinations:
+    type: object
+    properties:
+      _links:
+        $ref: '#/definitions/Links'
+      items:
+        type: array
+        items:
+          $ref: '#/definitions/Destination'
+  DestinationGooglePubSub:
+    type: object
+    properties:
+      project:
+        type: string
+        example: cool-project
+      topic:
+        type: string
+        example: test
+  DestinationAmazonKinesis:
+    type: object
+    properties:
+      region:
+        type: string
+        example: us-east-1
+      roleArn:
+        type: string
+        example: 'arn:aws:iam::123456789012:role/marketingadmin'
+      streamName:
+        type: string
+        example: cat-stream
+  DestinationMParticle:
+    type: object
+    properties:
+      apiKey:
+        type: string
+        example: apiKeyfromMParticle
+      secret:
+        type: string
+        example: mParticleSecret
+      userIdentity:
+        type: string
+        example: customer_id
+      environment:
+        type: string
+        example: production
+  DestinationSegment:
+    type: object
+    properties:
+      writeKey:
+        type: string
+        example: segmentWriteKey
   Environment:
     type: object
     properties:
@@ -1360,6 +1765,18 @@ definitions:
         items:
           type: string
         description: An array of tags for this environment.
+      requireComments:
+        type: boolean
+        example: false
+        description: >-
+          Determines if this environment requires comments for flag and segment
+          changes.
+      confirmChanges:
+        type: boolean
+        example: false
+        description: >-
+          Determines if this environment requires confirmation for flag and
+          segment changes.
   EnvironmentPost:
     type: object
     properties:
@@ -1688,6 +2105,242 @@ definitions:
             - Value 2
     required:
       - name
+  CustomPropertyValues:
+    type: array
+    description: Values for this property.
+    items:
+      type: string
+    example:
+      - Value 1
+      - Value 2
+  UsageLinks:
+    type: object
+    properties:
+      parent:
+        $ref: '#/definitions/Link'
+      self:
+        $ref: '#/definitions/Link'
+      subseries:
+        type: array
+        description: The following links that are in the response.
+        items:
+          $ref: '#/definitions/Link'
+  StreamLinks:
+    type: object
+    properties:
+      parent:
+        $ref: '#/definitions/Link'
+      self:
+        $ref: '#/definitions/Link'
+      subseries:
+        type: array
+        description: Links to endpoints that are in the request path.
+        items:
+          $ref: '#/definitions/Link'
+  Usage:
+    type: object
+    properties:
+      _links:
+        $ref: '#/definitions/UsageLinks'
+      series:
+        type: array
+        items:
+          $ref: '#/definitions/StreamUsageSeries'
+  UsageError:
+    type: object
+    properties:
+      message:
+        type: string
+        example: >-
+          This is a beta API, you must pass beta in the LD-API-Version header to
+          use it.
+  Streams:
+    type: object
+    properties:
+      _links:
+        $ref: '#/definitions/StreamUsageLinks'
+  Stream:
+    type: object
+    properties:
+      _links:
+        $ref: '#/definitions/StreamUsageLinks'
+      metadata:
+        type: array
+        items:
+          $ref: '#/definitions/StreamUsageMetadata'
+      series:
+        type: array
+        items:
+          $ref: '#/definitions/StreamUsageSeries'
+  StreamUsageLinks:
+    type: object
+    properties:
+      parent:
+        $ref: '#/definitions/Link'
+      self:
+        $ref: '#/definitions/Link'
+      subseries:
+        type: array
+        description: The following links that are in the response.
+        items:
+          $ref: '#/definitions/Link'
+  StreamUsageSeries:
+    type: object
+    properties:
+      '0':
+        type: number
+        format: int64
+        description: A key corresponding to a time series data point.
+        example: 0
+      time:
+        type: number
+        format: int64
+        description: >-
+          A unix epoch time in milliseconds specifying the creation time of this
+          flag.
+        example: 1551740400000
+  StreamUsageMetadata:
+    type: object
+    properties:
+      sdk:
+        type: string
+        description: The language of the sdk
+        example: ruby
+      version:
+        type: string
+        description: The version of the SDK
+        example: 5.4.3
+      source:
+        type: string
+        example: server
+  StreamUsageError:
+    type: object
+    properties:
+      code:
+        type: string
+        example: not_found
+      message:
+        type: string
+        example: Stream source not found
+  StreamBySDK:
+    type: object
+    properties:
+      _links:
+        $ref: '#/definitions/StreamBySDKLinks'
+      metadata:
+        type: array
+        items:
+          $ref: '#/definitions/StreamBySDKLinksMetadata'
+      series:
+        type: array
+        items:
+          $ref: '#/definitions/StreamUsageSeries'
+  StreamBySDKLinks:
+    type: object
+    properties:
+      parent:
+        $ref: '#/definitions/Link'
+      self:
+        $ref: '#/definitions/Link'
+  StreamBySDKLinksMetadata:
+    type: object
+    properties:
+      sdk:
+        type: string
+        example: ruby
+      version:
+        type: string
+        example: 5.4.3
+      source:
+        type: string
+        example: server
+  StreamSDKVersion:
+    type: object
+    properties:
+      _links:
+        $ref: '#/definitions/StreamBySDKLinks'
+      sdkVersions:
+        type: array
+        items:
+          $ref: '#/definitions/StreamSDKVersionData'
+  StreamSDKVersionData:
+    type: object
+    properties:
+      sdk:
+        type: string
+        description: The language of the sdk
+        example: ruby
+      version:
+        type: string
+        description: The version of the sdk
+        example: 5.4.3
+  MAU:
+    type: object
+    properties:
+      _links:
+        $ref: '#/definitions/UsageLinks'
+      metadata:
+        type: array
+        items:
+          $ref: '#/definitions/StreamBySDKLinksMetadata'
+      series:
+        type: array
+        items:
+          $ref: '#/definitions/StreamUsageSeries'
+  MAUbyCategory:
+    type: object
+    properties:
+      _links:
+        $ref: '#/definitions/StreamBySDKLinks'
+      metadata:
+        type: array
+        items:
+          $ref: '#/definitions/MAUMetadata'
+      series:
+        type: array
+        items:
+          $ref: '#/definitions/StreamUsageSeries'
+  MAUMetadata:
+    type: object
+  Events:
+    type: object
+    properties:
+      links:
+        $ref: '#/definitions/UsageLinks'
+  EvaluationUsageError:
+    type: object
+    properties:
+      code:
+        type: string
+        example: not_found
+      message:
+        type: string
+        example: unknown environment
+  FeatureFlagCopyObject:
+    type: object
+    properties:
+      key:
+        type: string
+        description: The environment key to be used.
+        example: staging
+      currentVersion:
+        type: integer
+        description: >-
+          If the latest version of the flag matches provided version it will
+          copy, otherwise it will return a conflict.
+        example: 65
+    required:
+      - key
+  CopyActions:
+    type: string
+    example: []
+    enum:
+      - updateOn
+      - updatePrerequisites
+      - updateTargets
+      - updateRules
+      - updateFallthrough
+      - updateOffVariation
 responses:
   Standard201:
     description: Resource created.
@@ -1725,10 +2378,28 @@ responses:
     description: Custom role response.
     schema:
       $ref: '#/definitions/CustomRole'
+  BetaApi403:
+    description: >-
+      This is a beta API, you must pass beta in the LD-API-Version header to use
+      it.
+    schema:
+      $ref: '#/definitions/UsageError'
+  StreamUsage404:
+    description: The stream source you requested could not be found
+    schema:
+      $ref: '#/definitions/StreamUsageError'
+  EvaluationUsage404:
+    description: The environment or flag you requested could not be found
+    schema:
+      $ref: '#/definitions/EvaluationUsageError'
   Environment2xx:
     description: Environment response.
     schema:
       $ref: '#/definitions/Environment'
+  Destination2xx:
+    description: Destination response.
+    schema:
+      $ref: '#/definitions/Destination'
 parameters:
   ResourceId:
     name: resourceId
@@ -1767,10 +2438,44 @@ parameters:
           type: string
           example: Example hook
           description: The name of the webhook.
+        statements:
+          $ref: '#/definitions/Statements'
+        tags:
+          type: array
+          items:
+            type: string
+          example: []
+          description: Tags for the webhook.
       required:
         - url
         - sign
         - 'on'
+  FeatureFlagCopyBody:
+    name: featureFlagCopyBody
+    in: body
+    required: true
+    description: Copy feature flag configurations between environments.
+    schema:
+      type: object
+      properties:
+        source:
+          $ref: '#/definitions/FeatureFlagCopyObject'
+        target:
+          $ref: '#/definitions/FeatureFlagCopyObject'
+        comment:
+          type: string
+          description: comment will be included in audit log item for change.
+          example: This is a comment string
+        includedActions:
+          type: array
+          items:
+            $ref: '#/definitions/CopyActions'
+          description: Define the parts of the flag configuration that will be copied.
+        excludedActions:
+          type: array
+          items:
+            $ref: '#/definitions/CopyActions'
+          description: Define the parts of the flag configuration that will not be copied.
   FeatureFlagPostRequest:
     name: featureFlagBody
     in: body
@@ -1816,6 +2521,43 @@ parameters:
         - name
         - key
         - variations
+  DestinationPostRequest:
+    name: destinationBody
+    in: body
+    required: true
+    description: Create a new data export destination.
+    schema:
+      type: object
+      properties:
+        name:
+          type: string
+          description: A human-readable name for your data export destination.
+          example: Example Google Pub/Sub Destination
+        kind:
+          type: string
+          description: >-
+            The data export destination type. Available choices are kinesis,
+            google-pubsub, mparticle, or segment.
+          example: google-pubsub
+          enum:
+            - google-pubsub
+            - kinesis
+            - mparticle
+            - segment
+        config:
+          type: object
+          description: destination-specific configuration.
+          example:
+            project: cool-project
+            topic: test
+        'on':
+          type: boolean
+          example: true
+          description: Whether the data export destination is on or not.
+      required:
+        - name
+        - kind
+        - config
   UserSegmentPostRequest:
     name: userSegmentBody
     in: body
@@ -1861,6 +2603,16 @@ parameters:
         key:
           type: string
           example: new-project
+        includeInSnippetByDefault:
+          type: boolean
+          example: false
+        tags:
+          type: array
+          items:
+            type: string
+          example:
+            - ops
+            - dev
         environments:
           type: array
           items:
@@ -1902,6 +2654,24 @@ parameters:
       setting env=production will restrict the returned configurations to just
       your production environment.
     type: string
+  SummaryQuery:
+    name: summary
+    in: query
+    required: false
+    description: >-
+      By default in api version >= 1, flags will _not_ include their list of
+      prerequisites, targets or rules.  Set summary=0 to include these fields
+      for each flag returned.
+    type: boolean
+  ArchivedQuery:
+    name: archived
+    in: query
+    required: false
+    description: >-
+      When set to 1, archived flags will be included in the list of flags
+      returned.  By default, archived flags are not included in the list of
+      flags.
+    type: boolean
   FeatureFlagKey:
     name: featureFlagKey
     in: path
@@ -1923,6 +2693,12 @@ parameters:
     in: path
     required: true
     description: The user segment's key. The key identifies the user segment in your code.
+    type: string
+  DestinationId:
+    name: destinationId
+    in: path
+    required: true
+    description: The data export destination ID.
     type: string
   UserKey:
     name: userKey
@@ -1974,7 +2750,7 @@ parameters:
       A timestamp filter, expressed as a Unix epoch time in milliseconds. All
       entries returned will have occured after this timestamp.
     format: int64
-    type: number
+    type: integer
   PatchRequest:
     name: patchDelta
     in: body
@@ -2005,7 +2781,8 @@ parameters:
     description: >-
       A timestamp filter, expressed as a Unix epoch time in milliseconds. All
       entries returned will have before this timestamp.
-    type: number
+    format: int64
+    type: integer
   Q:
     name: q
     in: query
@@ -2135,4 +2912,28 @@ parameters:
       type: array
       items:
         $ref: '#/definitions/PatchOperation'
+  StreamSource:
+    name: source
+    in: path
+    required: true
+    description: The source of where the stream comes from.
+    type: string
+  EventType:
+    name: type
+    in: path
+    required: true
+    description: The type of event we would like to track.
+    type: string
+  EvaluationEnvId:
+    name: envId
+    in: path
+    required: true
+    description: The environment id for the flag evaluations in question.
+    type: string
+  EvaluationFlagKey:
+    name: flagKey
+    in: path
+    required: true
+    description: The key of the flag we want metrics for.
+    type: string
 

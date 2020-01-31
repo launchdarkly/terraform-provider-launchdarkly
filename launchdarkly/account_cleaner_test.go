@@ -87,7 +87,7 @@ func (c *Client) cleanTeamMembers() error {
 		return handleLdapiErr(err)
 	}
 	for _, m := range members.Items {
-		if *m.Role != ldapi.OWNER {
+		if *m.Role != ldapi.OWNER_Role {
 			_, err := c.ld.TeamMembersApi.DeleteMember(c.ctx, m.Id)
 			if err != nil {
 				return handleLdapiErr(err)

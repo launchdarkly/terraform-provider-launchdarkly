@@ -120,6 +120,7 @@ github.com/hashicorp/terraform-config-inspect v0.0.0-20190821133035-82a99dc22ef4
 github.com/hashicorp/terraform-config-inspect v0.0.0-20190821133035-82a99dc22ef4/go.mod h1:JDmizlhaP5P0rYTTZB0reDMefAiJyfWPEtugV4in1oI=
 github.com/hashicorp/terraform-plugin-sdk v1.0.0 h1:3AjuuV1LJKs1NlG+heUgqWN6/QCSx2kDhyS6K7F0fTw=
 github.com/hashicorp/terraform-plugin-sdk v1.0.0/go.mod h1:NuwtLpEpPsFaKJPJNGtMcn9vlhe6Ofe+Y6NqXhJgV2M=
+github.com/hashicorp/terraform-plugin-sdk v1.5.0 h1:hzac/oigJkGup0kI+PwBGI4/fvG7Na8kM8j9xCBrmWo=
 github.com/hashicorp/yamux v0.0.0-20180604194846-3520598351bb h1:b5rjCoWHc7eqmAS4/qyk21ZsHyb6Mxv/jykxvNTkU4M=
 github.com/hashicorp/yamux v0.0.0-20180604194846-3520598351bb/go.mod h1:+NfK9FKeTrX5uv1uIXGdwYDTeHna2qgaIlx54MXqjAM=
 github.com/hashicorp/yamux v0.0.0-20181012175058-2f1d1f20f75d h1:kJCB4vdITiW1eC1vq2e6IsrXKrZit1bv/TDYFGMp4BQ=
@@ -142,8 +143,8 @@ github.com/kylelemons/godebug v0.0.0-20170820004349-d65d576e9348 h1:MtvEpTB6LX3v
 github.com/kylelemons/godebug v0.0.0-20170820004349-d65d576e9348/go.mod h1:B69LEHPfb2qLo0BaaOLcbitczOKLWTsrBG9LczfCD4k=
 github.com/kylelemons/godebug v1.1.0 h1:RPNrshWIDI6G2gRW9EHilWtl7Z6Sb1BR0xunSBf0SNc=
 github.com/kylelemons/godebug v1.1.0/go.mod h1:9/0rRGxNHcop5bhtWyNeEfOS8JIWk580+fNqagV/RAw=
-github.com/launchdarkly/api-client-go v0.0.0-20190323002856-89f2f9e19e46 h1:Jy3XFtlDZlDjwARN/psO5x0lKHd9DcC2UgrVw4f928Y=
-github.com/launchdarkly/api-client-go v0.0.0-20190323002856-89f2f9e19e46/go.mod h1:INGa7NUZYSwVozwPV7l6ikgD7pzSOpZvg9I5sqCZIWs=
+github.com/launchdarkly/api-client-go v0.0.0-20191120010103-f0f081aafb71 h1:gduBGykkXTQ9uOJFawtJDNUKTmuxOe1Y/atpO9SYWt8=
+github.com/launchdarkly/api-client-go v0.0.0-20191120010103-f0f081aafb71/go.mod h1:INGa7NUZYSwVozwPV7l6ikgD7pzSOpZvg9I5sqCZIWs=
 github.com/mattn/go-colorable v0.0.9 h1:UVL0vNpWh04HeJXV0KLcaT7r06gOH2l4OW6ddYRUIY4=
 github.com/mattn/go-colorable v0.0.9/go.mod h1:9vuHe8Xs5qXnSaW/c/ABM9alt+Vo+STaOChaDxuIBZU=
 github.com/mattn/go-isatty v0.0.3/go.mod h1:M+lRXTBqGeGNdLjl/ufCoiOlB5xdOkqRJdNxMWT7Zi4=
