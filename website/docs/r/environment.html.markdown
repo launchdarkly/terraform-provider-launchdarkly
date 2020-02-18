@@ -42,6 +42,11 @@ resource "launchdarkly_environment" "staging" {
 
 - `default_ttl` - (Optional) The TTL for the environment. This must be between 0 and 60 minutes. The TTL setting only applies to environments using the PHP SDK. To learn more, read [TTL settings](https://docs.launchdarkly.com/docs/environments#section-ttl-settings).
 
+- `require_comments` - (Optional) Set to `true` if this environment requires comments for flag and segment changes. 
+
+- `confirm_changes` - (Optional) Set to `true` if this environment requires confirmation for flag and segment changes.
+
+
 ## Attribute Reference
 
 In addition to the arguments above, the resource exports the following attributes:
