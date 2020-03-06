@@ -64,11 +64,21 @@ func TestAccDataSourceTeamMember_exists(t *testing.T) {
 	if accTest == "" {
 		t.SkipNow()
 	}
-	randomEmail := fmt.Sprintf("%s@example.com", acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum))
+
+	// Populate account with dummy team members to ensure pagination is working
+	teamMemberCount := 15
 	client, err := newClient(os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN), os.Getenv(LAUNCHDARKLY_API_HOST), false)
 	require.NoError(t, err)
-	member, err := testAccDataSourceTeamMemberCreate(client, randomEmail)
-	require.NoError(t, err)
+
+	teamMembers := make([]ldapi.Member, 0, teamMemberCount)
+	for i := 0; i < teamMemberCount; i++ {
+		randomEmail := fmt.Sprintf("%s@example.com", acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum))
+		member, err := testAccDataSourceTeamMemberCreate(client, randomEmail)
+		require.NoError(t, err)
+		teamMembers = append(teamMembers, *member)
+	}
+
+	testMember := teamMembers[teamMemberCount-1]
 	resource.Test(t, resource.TestCase{
 		PreCheck: func() {
 			testAccPreCheck(t)
@@ -76,17 +86,19 @@ func TestAccDataSourceTeamMember_exists(t *testing.T) {
 		Providers: testAccProviders,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccDataSourceTeamMemberConfig(randomEmail),
+				Config: testAccDataSourceTeamMemberConfig(testMember.Email),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttrSet("data.launchdarkly_team_member.test", "email"),
-					resource.TestCheckResourceAttr("data.launchdarkly_team_member.test", "email", randomEmail),
-					resource.TestCheckResourceAttr("data.launchdarkly_team_member.test", "first_name", member.FirstName),
-					resource.TestCheckResourceAttr("data.launchdarkly_team_member.test", "last_name", member.LastName),
-					resource.TestCheckResourceAttr("data.launchdarkly_team_member.test", "id", member.Id),
+					resource.TestCheckResourceAttr("data.launchdarkly_team_member.test", "email", testMember.Email),
+					resource.TestCheckResourceAttr("data.launchdarkly_team_member.test", "first_name", testMember.FirstName),
+					resource.TestCheckResourceAttr("data.launchdarkly_team_member.test", "last_name", testMember.LastName),
+					resource.TestCheckResourceAttr("data.launchdarkly_team_member.test", "id", testMember.Id),
 				),
 			},
 		},
 	})
-	err = testAccDataSourceTeamMemberDelete(client, member.Id)
-	require.NoError(t, err)
+	for _, member := range teamMembers {
+		err := testAccDataSourceTeamMemberDelete(client, member.Id)
+		require.NoError(t, err)
+	}
 }
