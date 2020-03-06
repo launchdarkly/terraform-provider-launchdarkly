@@ -1,6 +1,7 @@
 package launchdarkly
 
 import (
+	"fmt"
 	"log"
 
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
@@ -22,6 +23,10 @@ func rulesSchema() *schema.Schema {
 					ValidateFunc: validation.IntAtLeast(0),
 				},
 				rollout_weights: rolloutSchema(),
+				"bucket_by": {
+					Type:     schema.TypeString,
+					Optional: true,
+				},
 			},
 		},
 	}
@@ -33,14 +38,20 @@ type rule struct {
 	Clauses   []ldapi.Clause `json:"clauses,omitempty"`
 }
 
-func rulesFromResourceData(d *schema.ResourceData) []rule {
+func rulesFromResourceData(d *schema.ResourceData) ([]rule, error) {
 	schemaRules := d.Get(rules).([]interface{})
 	rules := make([]rule, 0, len(schemaRules))
 	for _, r := range schemaRules {
-		rules = append(rules, ruleFromResourceData(r))
+		rule := ruleFromResourceData(r)
+		if rule.Rollout != nil && rule.Variation != nil {
+			if rule.Rollout.BucketBy != "" {
+				return nil, fmt.Errorf("cannot use bucket_by property with variations, only with rollout weights")
+			}
+		}
+		rules = append(rules, rule)
 	}
 
-	return rules
+	return rules, nil
 }
 
 func ruleFromResourceData(val interface{}) rule {
@@ -51,6 +62,10 @@ func ruleFromResourceData(val interface{}) rule {
 	}
 	if len(rolloutFromResourceData(ruleMap[rollout_weights]).Variations) > 0 {
 		r.Rollout = rolloutFromResourceData(ruleMap[rollout_weights])
+		bucketBy, ok := ruleMap["bucket_by"].(string)
+		if ok {
+			r.Rollout.BucketBy = bucketBy
+		}
 	} else {
 		r.Variation = intPtr(ruleMap[variation].(int))
 	}
@@ -68,6 +83,7 @@ func rulesToResourceData(rules []ldapi.Rule) interface{} {
 		}
 		if r.Rollout != nil {
 			ruleMap[rollout_weights] = rolloutsToResourceData(r.Rollout)
+			ruleMap[bucket_by] = r.Rollout.BucketBy
 		} else {
 			ruleMap[variation] = r.Variation
 		}

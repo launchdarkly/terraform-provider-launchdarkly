@@ -94,7 +94,10 @@ func resourceFeatureFlagEnvironmentCreate(d *schema.ResourceData, metaRaw interf
 	}
 
 	enabled := d.Get(targeting_enabled).(bool)
-	rules := rulesFromResourceData(d)
+	rules, err := rulesFromResourceData(d)
+	if err != nil {
+		return err
+	}
 	trackEvents := d.Get(track_events).(bool)
 	prerequisites := prerequisitesFromResourceData(d, prerequisites)
 	offVariation := d.Get(off_variation).(int)
@@ -194,7 +197,10 @@ func resourceFeatureFlagEnvironmentUpdate(d *schema.ResourceData, metaRaw interf
 	}
 
 	enabled := d.Get(targeting_enabled).(bool)
-	rules := rulesFromResourceData(d)
+	rules, err := rulesFromResourceData(d)
+	if err != nil {
+		return err
+	}
 	trackEvents := d.Get(track_events).(bool)
 	prerequisites := prerequisitesFromResourceData(d, prerequisites)
 	targets := targetsFromResourceData(d, user_targets)
