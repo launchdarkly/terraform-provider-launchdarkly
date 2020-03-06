@@ -9,7 +9,7 @@ import (
 )
 
 const (
-	AgentVersion = "1.0.1"
+	AgentVersion = "1.1.0"
 	APIVersion   = "20160426"
 )
 
