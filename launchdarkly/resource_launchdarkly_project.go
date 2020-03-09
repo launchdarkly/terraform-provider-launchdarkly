@@ -22,18 +22,18 @@ func resourceProject() *schema.Resource {
 		},
 
 		Schema: map[string]*schema.Schema{
-			key: &schema.Schema{
+			KEY: &schema.Schema{
 				Type:         schema.TypeString,
 				Required:     true,
 				ForceNew:     true,
 				ValidateFunc: validateKey(),
 			},
-			name: &schema.Schema{
+			NAME: &schema.Schema{
 				Type:     schema.TypeString,
 				Required: true,
 			},
-			tags: tagsSchema(),
-			environments: &schema.Schema{
+			TAGS: tagsSchema(),
+			ENVIRONMENTS: &schema.Schema{
 				Type:     schema.TypeList,
 				Optional: true,
 				Computed: true,
@@ -47,8 +47,8 @@ func resourceProject() *schema.Resource {
 
 func resourceProjectCreate(d *schema.ResourceData, metaRaw interface{}) error {
 	client := metaRaw.(*Client)
-	projectKey := d.Get(key).(string)
-	name := d.Get(name).(string)
+	projectKey := d.Get(KEY).(string)
+	name := d.Get(NAME).(string)
 	envs := environmentPostsFromResourceData(d)
 
 	d.SetId(projectKey)
@@ -76,7 +76,7 @@ func resourceProjectCreate(d *schema.ResourceData, metaRaw interface{}) error {
 
 func resourceProjectRead(d *schema.ResourceData, metaRaw interface{}) error {
 	client := metaRaw.(*Client)
-	projectKey := d.Get(key).(string)
+	projectKey := d.Get(KEY).(string)
 
 	project, res, err := client.ld.ProjectsApi.GetProject(client.ctx, projectKey)
 	if isStatusNotFound(res) {
@@ -87,15 +87,15 @@ func resourceProjectRead(d *schema.ResourceData, metaRaw interface{}) error {
 		return fmt.Errorf("failed to get project with key %q: %v", projectKey, err)
 	}
 
-	_ = d.Set(key, project.Key)
-	_ = d.Set(name, project.Name)
+	_ = d.Set(KEY, project.Key)
+	_ = d.Set(NAME, project.Name)
 
 	envsRaw := environmentsToResourceData(project.Environments)
-	err = d.Set(environments, envsRaw)
+	err = d.Set(ENVIRONMENTS, envsRaw)
 	if err != nil {
 		return fmt.Errorf("could not set environments on project with key %q: %v", project.Key, err)
 	}
-	err = d.Set(tags, project.Tags)
+	err = d.Set(TAGS, project.Tags)
 	if err != nil {
 		return fmt.Errorf("could not set tags on project with key %q: %v", project.Key, err)
 	}
@@ -104,9 +104,9 @@ func resourceProjectRead(d *schema.ResourceData, metaRaw interface{}) error {
 
 func resourceProjectUpdate(d *schema.ResourceData, metaRaw interface{}) error {
 	client := metaRaw.(*Client)
-	projectKey := d.Get(key).(string)
-	projName := d.Get(name)
-	projTags := stringsFromResourceData(d, tags)
+	projectKey := d.Get(KEY).(string)
+	projName := d.Get(NAME)
+	projTags := stringsFromResourceData(d, TAGS)
 
 	patch := []ldapi.PatchOperation{
 		patchReplace("/name", &projName),
@@ -120,33 +120,33 @@ func resourceProjectUpdate(d *schema.ResourceData, metaRaw interface{}) error {
 		return fmt.Errorf("failed to update project with key %q: %s", projectKey, handleLdapiErr(err))
 	}
 	// Update environments if necessary
-	schemaEnvs := d.Get(environments).([]interface{})
+	schemaEnvs := d.Get(ENVIRONMENTS).([]interface{})
 	for _, env := range schemaEnvs {
 		envMap := env.(map[string]interface{})
-		envKey := envMap[key].(string)
+		envKey := envMap[KEY].(string)
 
 		// we already posted the projectKey, name, color, and default_ttl, so we skip patching those fields.
-		envName := envMap[name].(string)
-		envColor := envMap[color].(string)
+		envName := envMap[NAME].(string)
+		envColor := envMap[COLOR].(string)
 		patch := []ldapi.PatchOperation{
 			patchReplace("/name", envName),
 			patchReplace("/color", envColor),
 		}
 
 		// optional fields:
-		if defaultTTL, ok := envMap[default_ttl]; ok {
+		if defaultTTL, ok := envMap[DEFAULT_TTL]; ok {
 			patch = append(patch, patchReplace("/defaultTtl", defaultTTL.(int)))
 		}
 
-		if secureMode, ok := envMap[secure_mode]; ok {
+		if secureMode, ok := envMap[SECURE_MODE]; ok {
 			patch = append(patch, patchReplace("/secureMode", &secureMode))
 		}
 
-		if defaultTrackEvents, ok := envMap[default_track_events]; ok {
+		if defaultTrackEvents, ok := envMap[DEFAULT_TRACK_EVENTS]; ok {
 			patch = append(patch, patchReplace("/defaultTrackEvents", &defaultTrackEvents))
 		}
 
-		if envTagsSet, ok := envMap[tags].(*schema.Set); ok {
+		if envTagsSet, ok := envMap[TAGS].(*schema.Set); ok {
 			envTags := stringsFromSchemaSet(envTagsSet)
 			patch = append(patch, patchReplace("/tags", &envTags))
 		}
@@ -166,7 +166,7 @@ func resourceProjectUpdate(d *schema.ResourceData, metaRaw interface{}) error {
 
 func resourceProjectDelete(d *schema.ResourceData, metaRaw interface{}) error {
 	client := metaRaw.(*Client)
-	projectKey := d.Get(key).(string)
+	projectKey := d.Get(KEY).(string)
 
 	_, err := client.ld.ProjectsApi.DeleteProject(client.ctx, projectKey)
 	if err != nil {
@@ -177,7 +177,7 @@ func resourceProjectDelete(d *schema.ResourceData, metaRaw interface{}) error {
 }
 
 func resourceProjectExists(d *schema.ResourceData, metaRaw interface{}) (bool, error) {
-	return projectExists(d.Get(key).(string), metaRaw.(*Client))
+	return projectExists(d.Get(KEY).(string), metaRaw.(*Client))
 }
 
 func projectExists(projectKey string, meta *Client) (bool, error) {
@@ -194,7 +194,7 @@ func projectExists(projectKey string, meta *Client) (bool, error) {
 }
 
 func resourceProjectImport(d *schema.ResourceData, meta interface{}) ([]*schema.ResourceData, error) {
-	_ = d.Set(key, d.Id())
+	_ = d.Set(KEY, d.Id())
 
 	if err := resourceProjectRead(d, meta); err != nil {
 		return nil, err

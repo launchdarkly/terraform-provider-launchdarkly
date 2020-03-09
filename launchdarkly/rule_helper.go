@@ -15,15 +15,15 @@ func rulesSchema() *schema.Schema {
 		Optional: true,
 		Elem: &schema.Resource{
 			Schema: map[string]*schema.Schema{
-				clauses: clauseSchema(),
-				variation: &schema.Schema{
+				CLAUSES: clauseSchema(),
+				VARIATION: &schema.Schema{
 					Type:         schema.TypeInt,
 					Elem:         &schema.Schema{Type: schema.TypeInt},
 					Optional:     true,
 					ValidateFunc: validation.IntAtLeast(0),
 				},
-				rollout_weights: rolloutSchema(),
-				bucket_by: {
+				ROLLOUT_WEIGHTS: rolloutSchema(),
+				BUCKET_BY: {
 					Type:     schema.TypeString,
 					Optional: true,
 				},
@@ -39,7 +39,7 @@ type rule struct {
 }
 
 func rulesFromResourceData(d *schema.ResourceData) ([]rule, error) {
-	schemaRules := d.Get(rules).([]interface{})
+	schemaRules := d.Get(RULES).([]interface{})
 	rules := make([]rule, 0, len(schemaRules))
 	for _, r := range schemaRules {
 		rule, err := ruleFromResourceData(r)
@@ -55,12 +55,12 @@ func rulesFromResourceData(d *schema.ResourceData) ([]rule, error) {
 func ruleFromResourceData(val interface{}) (rule, error) {
 	ruleMap := val.(map[string]interface{})
 	var r rule
-	for _, c := range ruleMap[clauses].([]interface{}) {
+	for _, c := range ruleMap[CLAUSES].([]interface{}) {
 		r.Clauses = append(r.Clauses, clauseFromResourceData(c))
 	}
 	bucketBy, bucketByFound := ruleMap["bucket_by"].(string)
-	if len(rolloutFromResourceData(ruleMap[rollout_weights]).Variations) > 0 {
-		r.Rollout = rolloutFromResourceData(ruleMap[rollout_weights])
+	if len(rolloutFromResourceData(ruleMap[ROLLOUT_WEIGHTS]).Variations) > 0 {
+		r.Rollout = rolloutFromResourceData(ruleMap[ROLLOUT_WEIGHTS])
 		if bucketByFound {
 			r.Rollout.BucketBy = bucketBy
 		}
@@ -68,7 +68,7 @@ func ruleFromResourceData(val interface{}) (rule, error) {
 		if bucketByFound && bucketBy != "" {
 			return r, errors.New("rules: cannot use bucket_by argument with variation, only with rollout_weights")
 		}
-		r.Variation = intPtr(ruleMap[variation].(int))
+		r.Variation = intPtr(ruleMap[VARIATION].(int))
 	}
 	log.Printf("[DEBUG] %+v\n", r)
 	return r, nil
@@ -80,13 +80,13 @@ func rulesToResourceData(rules []ldapi.Rule) interface{} {
 	for _, r := range rules {
 		ruleMap := make(map[string]interface{})
 		if len(r.Clauses) > 0 {
-			ruleMap[clauses] = clausesToResourceData(r.Clauses)
+			ruleMap[CLAUSES] = clausesToResourceData(r.Clauses)
 		}
 		if r.Rollout != nil {
-			ruleMap[rollout_weights] = rolloutsToResourceData(r.Rollout)
-			ruleMap[bucket_by] = r.Rollout.BucketBy
+			ruleMap[ROLLOUT_WEIGHTS] = rolloutsToResourceData(r.Rollout)
+			ruleMap[BUCKET_BY] = r.Rollout.BucketBy
 		} else {
-			ruleMap[variation] = r.Variation
+			ruleMap[VARIATION] = r.Variation
 		}
 		transformed = append(transformed, ruleMap)
 	}

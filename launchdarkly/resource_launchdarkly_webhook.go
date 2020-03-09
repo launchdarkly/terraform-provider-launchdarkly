@@ -21,34 +21,34 @@ func resourceWebhook() *schema.Resource {
 		},
 
 		Schema: map[string]*schema.Schema{
-			url: {
+			URL: {
 				Type:     schema.TypeString,
 				Required: true,
 			},
-			secret: {
+			SECRET: {
 				Type:      schema.TypeString,
 				Optional:  true,
 				Sensitive: true,
 			},
-			enabled: {
+			ENABLED: {
 				Type:     schema.TypeBool,
 				Required: true,
 			},
-			name: {
+			NAME: {
 				Type:     schema.TypeString,
 				Optional: true,
 			},
-			tags: tagsSchema(),
+			TAGS: tagsSchema(),
 		},
 	}
 }
 
 func resourceWebhookCreate(d *schema.ResourceData, metaRaw interface{}) error {
 	client := metaRaw.(*Client)
-	webhookURL := d.Get(url).(string)
-	webhookSecret := d.Get(secret).(string)
-	webhookOn := d.Get(enabled).(bool)
-	webhookName := d.Get(name).(string)
+	webhookURL := d.Get(URL).(string)
+	webhookSecret := d.Get(SECRET).(string)
+	webhookOn := d.Get(ENABLED).(bool)
+	webhookName := d.Get(NAME).(string)
 
 	webhookBody := ldapi.WebhookBody{
 		Url:    webhookURL,
@@ -92,11 +92,11 @@ func resourceWebhookRead(d *schema.ResourceData, metaRaw interface{}) error {
 		return fmt.Errorf("failed to get webhook with id %q: %s", webhookID, handleLdapiErr(err))
 	}
 
-	_ = d.Set(url, webhook.Url)
-	_ = d.Set(secret, webhook.Secret)
-	_ = d.Set(enabled, webhook.On)
-	_ = d.Set(name, webhook.Name)
-	err = d.Set(tags, webhook.Tags)
+	_ = d.Set(URL, webhook.Url)
+	_ = d.Set(SECRET, webhook.Secret)
+	_ = d.Set(ENABLED, webhook.On)
+	_ = d.Set(NAME, webhook.Name)
+	err = d.Set(TAGS, webhook.Tags)
 	if err != nil {
 		return fmt.Errorf("failed to set tags on webhook with id %q: %v", webhookID, err)
 	}
@@ -106,11 +106,11 @@ func resourceWebhookRead(d *schema.ResourceData, metaRaw interface{}) error {
 func resourceWebhookUpdate(d *schema.ResourceData, metaRaw interface{}) error {
 	client := metaRaw.(*Client)
 	webhookID := d.Id()
-	webhookURL := d.Get(url).(string)
-	webhookSecret := d.Get(secret).(string)
-	webhookOn := d.Get(enabled).(bool)
-	webhookName := d.Get(name).(string)
-	webhookTags := stringsFromResourceData(d, tags)
+	webhookURL := d.Get(URL).(string)
+	webhookSecret := d.Get(SECRET).(string)
+	webhookOn := d.Get(ENABLED).(bool)
+	webhookName := d.Get(NAME).(string)
+	webhookTags := stringsFromResourceData(d, TAGS)
 
 	patch := []ldapi.PatchOperation{
 		patchReplace("/url", &webhookURL),

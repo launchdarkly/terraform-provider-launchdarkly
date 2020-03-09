@@ -21,24 +21,24 @@ func resourceTeamMember() *schema.Resource {
 		},
 
 		Schema: map[string]*schema.Schema{
-			email: {
+			EMAIL: {
 				Type:     schema.TypeString,
 				Required: true,
 			},
-			first_name: {
+			FIRST_NAME: {
 				Type:     schema.TypeString,
 				Optional: true,
 			},
-			last_name: {
+			LAST_NAME: {
 				Type:     schema.TypeString,
 				Optional: true,
 			},
-			role: {
+			ROLE: {
 				Type:         schema.TypeString,
 				Optional:     true,
 				ValidateFunc: validateTeamMemberRole,
 			},
-			custom_roles: {
+			CUSTOM_ROLES: {
 				Type:     schema.TypeSet,
 				Set:      schema.HashString,
 				Elem:     &schema.Schema{Type: schema.TypeString},
@@ -61,11 +61,11 @@ func validateTeamMemberRole(val interface{}, key string) (warns []string, errs [
 
 func resourceTeamMemberCreate(d *schema.ResourceData, metaRaw interface{}) error {
 	client := metaRaw.(*Client)
-	memberEmail := d.Get(email).(string)
-	firstName := d.Get(first_name).(string)
-	lastName := d.Get(last_name).(string)
-	memberRole := ldapi.Role(d.Get(role).(string))
-	customRolesRaw := d.Get(custom_roles).(*schema.Set).List()
+	memberEmail := d.Get(EMAIL).(string)
+	firstName := d.Get(FIRST_NAME).(string)
+	lastName := d.Get(LAST_NAME).(string)
+	memberRole := ldapi.Role(d.Get(ROLE).(string))
+	customRolesRaw := d.Get(CUSTOM_ROLES).(*schema.Set).List()
 
 	customRoles := make([]string, len(customRolesRaw))
 	for i, cr := range customRolesRaw {
@@ -103,11 +103,11 @@ func resourceTeamMemberRead(d *schema.ResourceData, metaRaw interface{}) error {
 	}
 
 	d.SetId(member.Id)
-	_ = d.Set(email, member.Email)
-	_ = d.Set(first_name, member.FirstName)
-	_ = d.Set(last_name, member.LastName)
-	_ = d.Set(role, member.Role)
-	err = d.Set(custom_roles, member.CustomRoles)
+	_ = d.Set(EMAIL, member.Email)
+	_ = d.Set(FIRST_NAME, member.FirstName)
+	_ = d.Set(LAST_NAME, member.LastName)
+	_ = d.Set(ROLE, member.Role)
+	err = d.Set(CUSTOM_ROLES, member.CustomRoles)
 	if err != nil {
 		return fmt.Errorf("failed to set custom roles on team member with id %q: %v", member.Id, err)
 	}
@@ -117,8 +117,8 @@ func resourceTeamMemberRead(d *schema.ResourceData, metaRaw interface{}) error {
 func resourceTeamMemberUpdate(d *schema.ResourceData, metaRaw interface{}) error {
 	client := metaRaw.(*Client)
 	memberID := d.Id()
-	memberRole := d.Get(role).(string)
-	customRolesRaw := d.Get(custom_roles).(*schema.Set).List()
+	memberRole := d.Get(ROLE).(string)
+	customRolesRaw := d.Get(CUSTOM_ROLES).(*schema.Set).List()
 
 	patch := []ldapi.PatchOperation{
 		// these are the only fields we are allowed to update:

@@ -160,15 +160,15 @@ func testAccCheckSegmentExists(resourceName string) resource.TestCheckFunc {
 		if !ok {
 			return fmt.Errorf("not found: %s", resourceName)
 		}
-		segmentKey, ok := rs.Primary.Attributes[key]
+		segmentKey, ok := rs.Primary.Attributes[KEY]
 		if !ok {
 			return fmt.Errorf("environment key not found: %s", resourceName)
 		}
-		envKey, ok := rs.Primary.Attributes[env_key]
+		envKey, ok := rs.Primary.Attributes[ENV_KEY]
 		if !ok {
 			return fmt.Errorf("project key not found: %s", resourceName)
 		}
-		projKey, ok := rs.Primary.Attributes[project_key]
+		projKey, ok := rs.Primary.Attributes[PROJECT_KEY]
 		if !ok {
 			return fmt.Errorf("project key not found: %s", resourceName)
 		}

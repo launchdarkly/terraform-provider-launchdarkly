@@ -38,15 +38,15 @@ func variationsSchema() *schema.Schema {
 		MinItems: 2,
 		Elem: &schema.Resource{
 			Schema: map[string]*schema.Schema{
-				name: {
+				NAME: {
 					Type:     schema.TypeString,
 					Optional: true,
 				},
-				description: {
+				DESCRIPTION: {
 					Type:     schema.TypeString,
 					Optional: true,
 				},
-				value: {
+				VALUE: {
 					Type:         schema.TypeString,
 					Required:     true,
 					ValidateFunc: validateVariationValue,
@@ -87,8 +87,8 @@ func validateVariationValue(val interface{}, key string) (warns []string, errs [
 
 func variationPatchesFromResourceData(d *schema.ResourceData) ([]ldapi.PatchOperation, error) {
 	var patches []ldapi.PatchOperation
-	variationType := d.Get(variation_type).(string)
-	old, new := d.GetChange(variations)
+	variationType := d.Get(VARIATION_TYPE).(string)
+	old, new := d.GetChange(VARIATIONS)
 
 	oldVariations, err := variationsFromSchemaData(old, variationType)
 	if err != nil {
@@ -149,8 +149,8 @@ func variationsFromSchemaData(schemaVariations interface{}, variationType string
 }
 
 func variationsFromResourceData(d *schema.ResourceData) ([]ldapi.Variation, error) {
-	schemaVariations := d.Get(variations)
-	variationType := d.Get(variation_type).(string)
+	schemaVariations := d.Get(VARIATIONS)
+	variationType := d.Get(VARIATION_TYPE).(string)
 	variations, err := variationsFromSchemaData(schemaVariations, variationType)
 	if err != nil {
 		return variations, err
@@ -160,49 +160,49 @@ func variationsFromResourceData(d *schema.ResourceData) ([]ldapi.Variation, erro
 
 func boolVariationFromResourceData(variation interface{}) ldapi.Variation {
 	variationMap := variation.(map[string]interface{})
-	v := variationMap[value].(string) == "true"
+	v := variationMap[VALUE].(string) == "true"
 	return ldapi.Variation{
-		Name:        variationMap[name].(string),
-		Description: variationMap[description].(string),
+		Name:        variationMap[NAME].(string),
+		Description: variationMap[DESCRIPTION].(string),
 		Value:       ptr(v),
 	}
 }
 
 func stringVariationFromResourceData(variation interface{}) ldapi.Variation {
 	variationMap := variation.(map[string]interface{})
-	v := variationMap[value]
+	v := variationMap[VALUE]
 	return ldapi.Variation{
-		Name:        variationMap[name].(string),
-		Description: variationMap[description].(string),
+		Name:        variationMap[NAME].(string),
+		Description: variationMap[DESCRIPTION].(string),
 		Value:       &v,
 	}
 }
 
 func numberVariationFromResourceData(variation interface{}) (ldapi.Variation, error) {
 	variationMap := variation.(map[string]interface{})
-	stringValue := variationMap[value].(string)
+	stringValue := variationMap[VALUE].(string)
 	v, err := strconv.ParseFloat(stringValue, 64)
 	if err != nil {
 		return ldapi.Variation{}, fmt.Errorf("%q is an invalid number variation value. %v", stringValue, err)
 	}
 	return ldapi.Variation{
-		Name:        variationMap[name].(string),
-		Description: variationMap[description].(string),
+		Name:        variationMap[NAME].(string),
+		Description: variationMap[DESCRIPTION].(string),
 		Value:       ptr(v),
 	}, nil
 }
 
 func jsonVariationFromResourceData(variation interface{}) (ldapi.Variation, error) {
 	variationMap := variation.(map[string]interface{})
-	stringValue := variationMap[value].(string)
+	stringValue := variationMap[VALUE].(string)
 	var v map[string]interface{}
 	err := json.Unmarshal([]byte(stringValue), &v)
 	if err != nil {
 		return ldapi.Variation{}, fmt.Errorf("%q is an invalid json variation value. %v", stringValue, err)
 	}
 	return ldapi.Variation{
-		Name:        variationMap[name].(string),
-		Description: variationMap[description].(string),
+		Name:        variationMap[NAME].(string),
+		Description: variationMap[DESCRIPTION].(string),
 		Value:       ptr(v),
 	}, nil
 }
@@ -226,9 +226,9 @@ func variationsToResourceData(variations []ldapi.Variation, variationType string
 		}
 
 		transformed = append(transformed, map[string]interface{}{
-			name:        variation.Name,
-			description: variation.Description,
-			value:       v,
+			NAME:        variation.Name,
+			DESCRIPTION: variation.Description,
+			VALUE:       v,
 		})
 	}
 	return transformed, nil

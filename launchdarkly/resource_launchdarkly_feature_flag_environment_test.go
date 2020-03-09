@@ -347,7 +347,7 @@ func testAccCheckFeatureFlagEnvironmentExists(resourceName string) resource.Test
 		if !ok {
 			return fmt.Errorf("not found: %s", resourceName)
 		}
-		flagId, ok := rs.Primary.Attributes[flag_id]
+		flagId, ok := rs.Primary.Attributes[FLAG_ID]
 		if !ok {
 			return fmt.Errorf("feature flag id not found: %s", resourceName)
 		}
@@ -355,7 +355,7 @@ func testAccCheckFeatureFlagEnvironmentExists(resourceName string) resource.Test
 		if err != nil {
 			return err
 		}
-		envKey, ok := rs.Primary.Attributes[env_key]
+		envKey, ok := rs.Primary.Attributes[ENV_KEY]
 		if !ok {
 			return fmt.Errorf("environent key not found: %s", resourceName)
 		}
