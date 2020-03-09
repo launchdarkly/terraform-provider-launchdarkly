@@ -1,6 +1,8 @@
 package launchdarkly
 
 import (
+	"errors"
+
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/helper/validation"
 
@@ -15,6 +17,10 @@ func fallthroughSchema() *schema.Schema {
 		Elem: &schema.Resource{
 			Schema: map[string]*schema.Schema{
 				rollout_weights: rolloutSchema(),
+				bucket_by: {
+					Type:     schema.TypeString,
+					Optional: true,
+				},
 				variation: &schema.Schema{
 					Type:         schema.TypeInt,
 					Optional:     true,
@@ -31,6 +37,22 @@ type fallthroughModel struct {
 	Rollout   *ldapi.Rollout `json:"rollout,omitempty"`
 }
 
+func validateFallThroughResourceData(f []interface{}) error {
+	if len(f) == 0 {
+		return nil
+	}
+
+	if !isPercentRollout(f) {
+		fall := f[0].(map[string]interface{})
+		if bucketBy, ok := fall[bucket_by]; ok {
+			if bucketBy.(string) != "" {
+				return errors.New("flag_fallthrough: cannot use bucket_by argument with variation, only with rollout_weights")
+			}
+		}
+	}
+	return nil
+}
+
 func isPercentRollout(fall []interface{}) bool {
 	for _, f := range fall {
 		fallThrough := f.(map[string]interface{})
@@ -41,26 +63,41 @@ func isPercentRollout(fall []interface{}) bool {
 	return false
 }
 
-func fallthroughFromResourceData(d *schema.ResourceData) fallthroughModel {
+func fallthroughFromResourceData(d *schema.ResourceData) (fallthroughModel, error) {
 	f := d.Get(flag_fallthrough).([]interface{})
+	err := validateFallThroughResourceData(f)
+	if err != nil {
+		return fallthroughModel{}, err
+	}
+
 	if len(f) == 0 {
-		return fallthroughModel{Variation: intPtr(0)}
+		return fallthroughModel{Variation: intPtr(0)}, nil
 	}
 
 	fall := f[0].(map[string]interface{})
 	if isPercentRollout(f) {
-		return fallthroughModel{Rollout: rolloutFromResourceData(fall[rollout_weights])}
+		rollout := fallthroughModel{Rollout: rolloutFromResourceData(fall[rollout_weights])}
+		bucketBy, ok := fall[bucket_by]
+		if ok {
+			rollout.Rollout.BucketBy = bucketBy.(string)
+		}
+		return rollout, nil
+
 	}
 	val := fall[variation].(int)
-	return fallthroughModel{Variation: &val}
+	return fallthroughModel{Variation: &val}, nil
 }
 
 func fallthroughToResourceData(fallThrough *ldapi.ModelFallthrough) interface{} {
 	transformed := make([]interface{}, 1)
 	if fallThrough.Rollout != nil {
-		transformed[0] = map[string]interface{}{
+		rollout := map[string]interface{}{
 			rollout_weights: rolloutsToResourceData(fallThrough.Rollout),
 		}
+		if fallThrough.Rollout.BucketBy != "" {
+			rollout[bucket_by] = fallThrough.Rollout.BucketBy
+		}
+		transformed[0] = rollout
 	} else {
 		transformed[0] = map[string]interface{}{
 			variation: fallThrough.Variation,

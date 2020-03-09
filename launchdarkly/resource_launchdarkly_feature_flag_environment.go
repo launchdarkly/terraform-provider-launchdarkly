@@ -103,6 +103,11 @@ func resourceFeatureFlagEnvironmentCreate(d *schema.ResourceData, metaRaw interf
 	offVariation := d.Get(off_variation).(int)
 	targets := targetsFromResourceData(d, user_targets)
 
+	fall, err := fallthroughFromResourceData(d)
+	if err != nil {
+		return err
+	}
+
 	patch := ldapi.PatchComment{
 		Comment: "Terraform",
 		Patch: []ldapi.PatchOperation{
@@ -112,7 +117,7 @@ func resourceFeatureFlagEnvironmentCreate(d *schema.ResourceData, metaRaw interf
 			patchReplace(patchFlagEnvPath(d, "prerequisites"), prerequisites),
 			patchReplace(patchFlagEnvPath(d, "offVariation"), offVariation),
 			patchReplace(patchFlagEnvPath(d, "targets"), targets),
-			patchReplace(patchFlagEnvPath(d, "fallthrough"), fallthroughFromResourceData(d)),
+			patchReplace(patchFlagEnvPath(d, "fallthrough"), fall),
 		}}
 
 	log.Printf("[DEBUG] %+v\n", patch)
@@ -206,6 +211,11 @@ func resourceFeatureFlagEnvironmentUpdate(d *schema.ResourceData, metaRaw interf
 	targets := targetsFromResourceData(d, user_targets)
 	offVariation := d.Get(off_variation).(int)
 
+	fall, err := fallthroughFromResourceData(d)
+	if err != nil {
+		return err
+	}
+
 	patch := ldapi.PatchComment{
 		Comment: "Terraform",
 		Patch: []ldapi.PatchOperation{
@@ -215,7 +225,7 @@ func resourceFeatureFlagEnvironmentUpdate(d *schema.ResourceData, metaRaw interf
 			patchReplace(patchFlagEnvPath(d, "prerequisites"), prerequisites),
 			patchReplace(patchFlagEnvPath(d, "offVariation"), offVariation),
 			patchReplace(patchFlagEnvPath(d, "targets"), targets),
-			patchReplace(patchFlagEnvPath(d, "fallthrough"), fallthroughFromResourceData(d)),
+			patchReplace(patchFlagEnvPath(d, "fallthrough"), fall),
 		}}
 
 	log.Printf("[DEBUG] %+v\n", patch)
