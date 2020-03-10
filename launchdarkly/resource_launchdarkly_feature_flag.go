@@ -23,55 +23,55 @@ func resourceFeatureFlag() *schema.Resource {
 		},
 
 		Schema: map[string]*schema.Schema{
-			project_key: {
+			PROJECT_KEY: {
 				Type:         schema.TypeString,
 				Required:     true,
 				ForceNew:     true,
 				Description:  "The feature flag's project key",
 				ValidateFunc: validateKey(),
 			},
-			key: {
+			KEY: {
 				Type:         schema.TypeString,
 				Required:     true,
 				ForceNew:     true,
 				ValidateFunc: validateKey(),
 				Description:  "The human-readable name of the feature flag",
 			},
-			name: {
+			NAME: {
 				Type:        schema.TypeString,
 				Required:    true,
 				Description: "The feature flag's description",
 			},
-			maintainer_id: {
+			MAINTAINER_ID: {
 				Type:         schema.TypeString,
 				Optional:     true,
 				ValidateFunc: validateID(),
 			},
-			description: {
+			DESCRIPTION: {
 				Type:     schema.TypeString,
 				Optional: true,
 			},
-			variation_type: variationTypeSchema(),
-			variations:     variationsSchema(),
-			temporary: {
+			VARIATION_TYPE: variationTypeSchema(),
+			VARIATIONS:     variationsSchema(),
+			TEMPORARY: {
 				Type:     schema.TypeBool,
 				Optional: true,
 				Default:  false,
 			},
-			include_in_snippet: {
+			INCLUDE_IN_SNIPPET: {
 				Type:     schema.TypeBool,
 				Optional: true,
 				Default:  false,
 			},
-			tags:              tagsSchema(),
-			custom_properties: customPropertiesSchema(),
+			TAGS:              tagsSchema(),
+			CUSTOM_PROPERTIES: customPropertiesSchema(),
 		},
 	}
 }
 
 func resourceFeatureFlagCreate(d *schema.ResourceData, metaRaw interface{}) error {
 	client := metaRaw.(*Client)
-	projectKey := d.Get(project_key).(string)
+	projectKey := d.Get(PROJECT_KEY).(string)
 
 	if exists, err := projectExists(projectKey, client); !exists {
 		if err != nil {
@@ -80,12 +80,12 @@ func resourceFeatureFlagCreate(d *schema.ResourceData, metaRaw interface{}) erro
 		return fmt.Errorf("Cannot find project with key %q", projectKey)
 	}
 
-	key := d.Get(key).(string)
-	description := d.Get(description).(string)
-	flagName := d.Get(name).(string)
-	tags := stringsFromResourceData(d, tags)
-	includeInSnippet := d.Get(include_in_snippet).(bool)
-	temporary := d.Get(temporary).(bool)
+	key := d.Get(KEY).(string)
+	description := d.Get(DESCRIPTION).(string)
+	flagName := d.Get(NAME).(string)
+	tags := stringsFromResourceData(d, TAGS)
+	includeInSnippet := d.Get(INCLUDE_IN_SNIPPET).(bool)
+	temporary := d.Get(TEMPORARY).(bool)
 
 	variations, err := variationsFromResourceData(d)
 	if err != nil {
@@ -126,8 +126,8 @@ func resourceFeatureFlagCreate(d *schema.ResourceData, metaRaw interface{}) erro
 
 func resourceFeatureFlagRead(d *schema.ResourceData, metaRaw interface{}) error {
 	client := metaRaw.(*Client)
-	projectKey := d.Get(project_key).(string)
-	key := d.Get(key).(string)
+	projectKey := d.Get(PROJECT_KEY).(string)
+	key := d.Get(KEY).(string)
 
 	flag, res, err := client.ld.FeatureFlagsApi.GetFeatureFlag(client.ctx, projectKey, key, nil)
 	if isStatusNotFound(res) {
@@ -141,22 +141,22 @@ func resourceFeatureFlagRead(d *schema.ResourceData, metaRaw interface{}) error 
 
 	transformedCustomProperties := customPropertiesToResourceData(flag.CustomProperties)
 	_ = d.Set(key, flag.Key)
-	_ = d.Set(name, flag.Name)
-	_ = d.Set(description, flag.Description)
-	_ = d.Set(include_in_snippet, flag.IncludeInSnippet)
-	_ = d.Set(temporary, flag.Temporary)
+	_ = d.Set(NAME, flag.Name)
+	_ = d.Set(DESCRIPTION, flag.Description)
+	_ = d.Set(INCLUDE_IN_SNIPPET, flag.IncludeInSnippet)
+	_ = d.Set(TEMPORARY, flag.Temporary)
 
 	// Only set the maintainer ID if is specified in the schema
-	_, ok := d.GetOk(maintainer_id)
+	_, ok := d.GetOk(MAINTAINER_ID)
 	if ok {
-		_ = d.Set(maintainer_id, flag.MaintainerId)
+		_ = d.Set(MAINTAINER_ID, flag.MaintainerId)
 	}
 
 	variationType, err := variationsToVariationType(flag.Variations)
 	if err != nil {
 		return fmt.Errorf("failed to determine variation type on flag with key %q: %v", flag.Key, err)
 	}
-	err = d.Set(variation_type, variationType)
+	err = d.Set(VARIATION_TYPE, variationType)
 	if err != nil {
 		return fmt.Errorf("failed to set variation type on flag with key %q: %v", flag.Key, err)
 	}
@@ -165,17 +165,17 @@ func resourceFeatureFlagRead(d *schema.ResourceData, metaRaw interface{}) error 
 	if err != nil {
 		return fmt.Errorf("failed to parse variations on flag with key %q: %v", flag.Key, err)
 	}
-	err = d.Set(variations, parsedVariations)
+	err = d.Set(VARIATIONS, parsedVariations)
 	if err != nil {
 		return fmt.Errorf("failed to set variations on flag with key %q: %v", flag.Key, err)
 	}
 
-	err = d.Set(tags, flag.Tags)
+	err = d.Set(TAGS, flag.Tags)
 	if err != nil {
 		return fmt.Errorf("failed to set tags on flag with key %q: %v", flag.Key, err)
 	}
 
-	err = d.Set(custom_properties, transformedCustomProperties)
+	err = d.Set(CUSTOM_PROPERTIES, transformedCustomProperties)
 	if err != nil {
 		return fmt.Errorf("failed to set custom properties on flag with key %q: %v", flag.Key, err)
 	}
@@ -185,13 +185,13 @@ func resourceFeatureFlagRead(d *schema.ResourceData, metaRaw interface{}) error 
 
 func resourceFeatureFlagUpdate(d *schema.ResourceData, metaRaw interface{}) error {
 	client := metaRaw.(*Client)
-	key := d.Get(key).(string)
-	projectKey := d.Get(project_key).(string)
-	description := d.Get(description).(string)
-	name := d.Get(name).(string)
-	tags := stringsFromResourceData(d, tags)
-	includeInSnippet := d.Get(include_in_snippet).(bool)
-	temporary := d.Get(temporary).(bool)
+	key := d.Get(KEY).(string)
+	projectKey := d.Get(PROJECT_KEY).(string)
+	description := d.Get(DESCRIPTION).(string)
+	name := d.Get(NAME).(string)
+	tags := stringsFromResourceData(d, TAGS)
+	includeInSnippet := d.Get(INCLUDE_IN_SNIPPET).(bool)
+	temporary := d.Get(TEMPORARY).(bool)
 	customProperties := customPropertiesFromResourceData(d)
 
 	patch := ldapi.PatchComment{
@@ -212,7 +212,7 @@ func resourceFeatureFlagUpdate(d *schema.ResourceData, metaRaw interface{}) erro
 	patch.Patch = append(patch.Patch, variationPatches...)
 
 	// Only update the maintainer ID if is specified in the schema
-	maintainerID, ok := d.GetOk(maintainer_id)
+	maintainerID, ok := d.GetOk(MAINTAINER_ID)
 	if ok {
 		patch.Patch = append(patch.Patch, patchReplace("/maintainerId", maintainerID.(string)))
 	}
@@ -229,8 +229,8 @@ func resourceFeatureFlagUpdate(d *schema.ResourceData, metaRaw interface{}) erro
 
 func resourceFeatureFlagDelete(d *schema.ResourceData, metaRaw interface{}) error {
 	client := metaRaw.(*Client)
-	projectKey := d.Get(project_key).(string)
-	key := d.Get(key).(string)
+	projectKey := d.Get(PROJECT_KEY).(string)
+	key := d.Get(KEY).(string)
 
 	_, err := client.ld.FeatureFlagsApi.DeleteFeatureFlag(client.ctx, projectKey, key)
 	if err != nil {
@@ -242,8 +242,8 @@ func resourceFeatureFlagDelete(d *schema.ResourceData, metaRaw interface{}) erro
 
 func resourceFeatureFlagExists(d *schema.ResourceData, metaRaw interface{}) (bool, error) {
 	client := metaRaw.(*Client)
-	projectKey := d.Get(project_key).(string)
-	key := d.Get(key).(string)
+	projectKey := d.Get(PROJECT_KEY).(string)
+	key := d.Get(KEY).(string)
 
 	_, res, err := client.ld.FeatureFlagsApi.GetFeatureFlag(client.ctx, projectKey, key, nil)
 	if isStatusNotFound(res) {
@@ -262,8 +262,8 @@ func resourceFeatureFlagImport(d *schema.ResourceData, meta interface{}) ([]*sch
 	if err != nil {
 		return nil, err
 	}
-	_ = d.Set(project_key, projectKey)
-	_ = d.Set(key, flagKey)
+	_ = d.Set(PROJECT_KEY, projectKey)
+	_ = d.Set(KEY, flagKey)
 
 	if err := resourceFeatureFlagRead(d, meta); err != nil {
 		return nil, err

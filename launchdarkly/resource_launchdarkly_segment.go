@@ -22,52 +22,52 @@ func resourceSegment() *schema.Resource {
 		},
 
 		Schema: map[string]*schema.Schema{
-			project_key: {
+			PROJECT_KEY: {
 				Type:         schema.TypeString,
 				Optional:     true,
 				ForceNew:     true,
 				ValidateFunc: validateKey(),
 			},
-			env_key: {
+			ENV_KEY: {
 				Type:         schema.TypeString,
 				Required:     true,
 				ForceNew:     true,
 				ValidateFunc: validateKey(),
 			},
-			key: {
+			KEY: {
 				Type:         schema.TypeString,
 				Required:     true,
 				ForceNew:     true,
 				ValidateFunc: validateKey(),
 			},
-			name: {
+			NAME: {
 				Type:     schema.TypeString,
 				Required: true,
 			},
-			description: {
+			DESCRIPTION: {
 				Type:     schema.TypeString,
 				Optional: true,
 			},
-			tags: tagsSchema(),
-			included: {
+			TAGS: tagsSchema(),
+			INCLUDED: {
 				Type:     schema.TypeList,
 				Elem:     &schema.Schema{Type: schema.TypeString},
 				Optional: true,
 			},
-			excluded: {
+			EXCLUDED: {
 				Type:     schema.TypeList,
 				Elem:     &schema.Schema{Type: schema.TypeString},
 				Optional: true,
 			},
-			rules: segmentRulesSchema(),
+			RULES: segmentRulesSchema(),
 		},
 	}
 }
 
 func resourceSegmentCreate(d *schema.ResourceData, metaRaw interface{}) error {
 	client := metaRaw.(*Client)
-	projectKey := d.Get(project_key).(string)
-	envKey := d.Get(env_key).(string)
+	projectKey := d.Get(PROJECT_KEY).(string)
+	envKey := d.Get(ENV_KEY).(string)
 
 	if exists, err := projectExists(projectKey, client); !exists {
 		if err != nil {
@@ -83,10 +83,10 @@ func resourceSegmentCreate(d *schema.ResourceData, metaRaw interface{}) error {
 		return fmt.Errorf("failed to find environment with key %q", envKey)
 	}
 
-	key := d.Get(key).(string)
-	description := d.Get(description).(string)
-	segmentName := d.Get(name).(string)
-	tags := stringsFromResourceData(d, tags)
+	key := d.Get(KEY).(string)
+	description := d.Get(DESCRIPTION).(string)
+	segmentName := d.Get(NAME).(string)
+	tags := stringsFromResourceData(d, TAGS)
 
 	segment := ldapi.UserSegmentBody{
 		Name:        segmentName,
@@ -115,9 +115,9 @@ func resourceSegmentCreate(d *schema.ResourceData, metaRaw interface{}) error {
 
 func resourceSegmentRead(d *schema.ResourceData, metaRaw interface{}) error {
 	client := metaRaw.(*Client)
-	projectKey := d.Get(project_key).(string)
-	envKey := d.Get(env_key).(string)
-	segmentKey := d.Get(key).(string)
+	projectKey := d.Get(PROJECT_KEY).(string)
+	envKey := d.Get(ENV_KEY).(string)
+	segmentKey := d.Get(KEY).(string)
 
 	segment, res, err := client.ld.UserSegmentsApi.GetUserSegment(client.ctx, projectKey, envKey, segmentKey)
 	if isStatusNotFound(res) {
@@ -129,25 +129,25 @@ func resourceSegmentRead(d *schema.ResourceData, metaRaw interface{}) error {
 		return fmt.Errorf("failed to get segment %q of project %q: %s", segmentKey, projectKey, handleLdapiErr(err))
 	}
 
-	_ = d.Set(name, segment.Name)
-	_ = d.Set(description, segment.Description)
+	_ = d.Set(NAME, segment.Name)
+	_ = d.Set(DESCRIPTION, segment.Description)
 
-	err = d.Set(tags, segment.Tags)
+	err = d.Set(TAGS, segment.Tags)
 	if err != nil {
 		return fmt.Errorf("failed to set tags on segment with key %q: %v", segmentKey, err)
 	}
 
-	err = d.Set(included, segment.Included)
+	err = d.Set(INCLUDED, segment.Included)
 	if err != nil {
 		return fmt.Errorf("failed to set included on segment with key %q: %v", segmentKey, err)
 	}
 
-	err = d.Set(excluded, segment.Excluded)
+	err = d.Set(EXCLUDED, segment.Excluded)
 	if err != nil {
 		return fmt.Errorf("failed to set excluded on segment with key %q: %v", segmentKey, err)
 	}
 
-	err = d.Set(rules, segmentRulesToResourceData(segment.Rules))
+	err = d.Set(RULES, segmentRulesToResourceData(segment.Rules))
 	if err != nil {
 		return fmt.Errorf("failed to set excluded on segment with key %q: %v", segmentKey, err)
 	}
@@ -156,20 +156,20 @@ func resourceSegmentRead(d *schema.ResourceData, metaRaw interface{}) error {
 
 func resourceSegmentUpdate(d *schema.ResourceData, metaRaw interface{}) error {
 	client := metaRaw.(*Client)
-	key := d.Get(key).(string)
-	projectKey := d.Get(project_key).(string)
-	envKey := d.Get(env_key).(string)
-	description := d.Get(description).(string)
-	name := d.Get(name).(string)
-	tags := stringsFromResourceData(d, tags)
-	included := d.Get(included).([]interface{})
-	excluded := d.Get(excluded).([]interface{})
-	rules := segmentRulesFromResourceData(d, rules)
+	key := d.Get(KEY).(string)
+	projectKey := d.Get(PROJECT_KEY).(string)
+	envKey := d.Get(ENV_KEY).(string)
+	description := d.Get(DESCRIPTION).(string)
+	name := d.Get(NAME).(string)
+	tags := stringsFromResourceData(d, TAGS)
+	included := d.Get(INCLUDED).([]interface{})
+	excluded := d.Get(EXCLUDED).([]interface{})
+	rules := segmentRulesFromResourceData(d, RULES)
 	patch := []ldapi.PatchOperation{
 		patchReplace("/name", name),
 		patchReplace("/description", description),
 		patchReplace("/tags", tags),
-		patchReplace("/temporary", temporary),
+		patchReplace("/temporary", TEMPORARY),
 		patchReplace("/included", included),
 		patchReplace("/excluded", excluded),
 		patchReplace("/rules", rules),
@@ -187,9 +187,9 @@ func resourceSegmentUpdate(d *schema.ResourceData, metaRaw interface{}) error {
 
 func resourceSegmentDelete(d *schema.ResourceData, metaRaw interface{}) error {
 	client := metaRaw.(*Client)
-	projectKey := d.Get(project_key).(string)
-	envKey := d.Get(env_key).(string)
-	key := d.Get(key).(string)
+	projectKey := d.Get(PROJECT_KEY).(string)
+	envKey := d.Get(ENV_KEY).(string)
+	key := d.Get(KEY).(string)
 
 	_, err := client.ld.UserSegmentsApi.DeleteUserSegment(client.ctx, projectKey, envKey, key)
 	if err != nil {
@@ -201,9 +201,9 @@ func resourceSegmentDelete(d *schema.ResourceData, metaRaw interface{}) error {
 
 func resourceSegmentExists(d *schema.ResourceData, metaRaw interface{}) (bool, error) {
 	client := metaRaw.(*Client)
-	projectKey := d.Get(project_key).(string)
-	envKey := d.Get(env_key).(string)
-	key := d.Get(key).(string)
+	projectKey := d.Get(PROJECT_KEY).(string)
+	envKey := d.Get(ENV_KEY).(string)
+	key := d.Get(KEY).(string)
 
 	_, res, err := client.ld.UserSegmentsApi.GetUserSegment(client.ctx, projectKey, envKey, key)
 	if isStatusNotFound(res) {
@@ -227,9 +227,9 @@ func resourceSegmentImport(d *schema.ResourceData, meta interface{}) ([]*schema.
 
 	projectKey, envKey, segmentKey := parts[0], parts[1], parts[2]
 
-	_ = d.Set(project_key, projectKey)
-	_ = d.Set(env_key, envKey)
-	_ = d.Set(key, segmentKey)
+	_ = d.Set(PROJECT_KEY, projectKey)
+	_ = d.Set(ENV_KEY, envKey)
+	_ = d.Set(KEY, segmentKey)
 
 	if err := resourceSegmentRead(d, meta); err != nil {
 		return nil, err

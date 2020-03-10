@@ -25,7 +25,7 @@ func targetsSchema() *schema.Schema {
 }
 
 func targetsFromResourceData(d *schema.ResourceData, metaRaw interface{}) []ldapi.Target {
-	tgts, ok := d.GetOk(user_targets)
+	tgts, ok := d.GetOk(USER_TARGETS)
 	if !ok {
 		return []ldapi.Target{}
 	}
@@ -46,7 +46,7 @@ func targetFromResourceData(variation int, val interface{}) ldapi.Target {
 	p := ldapi.Target{
 		Variation: int32(variation),
 	}
-	for _, v := range targetMap[values].([]interface{}) {
+	for _, v := range targetMap[VALUES].([]interface{}) {
 		p.Values = append(p.Values, v.(string))
 	}
 
@@ -60,7 +60,7 @@ func targetsToResourceData(targets []ldapi.Target) interface{} {
 
 	for _, p := range targets {
 		transformed[p.Variation] = map[string]interface{}{
-			values: p.Values,
+			VALUES: p.Values,
 		}
 	}
 

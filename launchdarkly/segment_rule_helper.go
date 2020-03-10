@@ -31,7 +31,7 @@ func segmentRulesSchema() *schema.Schema {
 }
 
 func segmentRulesFromResourceData(d *schema.ResourceData, metaRaw interface{}) []ldapi.UserSegmentRule {
-	schemaRules := d.Get(rules).([]interface{})
+	schemaRules := d.Get(RULES).([]interface{})
 	rules := make([]ldapi.UserSegmentRule, len(schemaRules))
 	for i, rule := range schemaRules {
 		v := segmentRuleFromResourceData(rule)
@@ -44,10 +44,10 @@ func segmentRulesFromResourceData(d *schema.ResourceData, metaRaw interface{}) [
 func segmentRuleFromResourceData(val interface{}) ldapi.UserSegmentRule {
 	ruleMap := val.(map[string]interface{})
 	r := ldapi.UserSegmentRule{
-		Weight:   int32(ruleMap[weight].(int)),
-		BucketBy: ruleMap[bucket_by].(string),
+		Weight:   int32(ruleMap[WEIGHT].(int)),
+		BucketBy: ruleMap[BUCKET_BY].(string),
 	}
-	for _, c := range ruleMap[clauses].([]interface{}) {
+	for _, c := range ruleMap[CLAUSES].([]interface{}) {
 		r.Clauses = append(r.Clauses, clauseFromResourceData(c))
 	}
 
@@ -59,9 +59,9 @@ func segmentRulesToResourceData(rules []ldapi.UserSegmentRule) interface{} {
 
 	for i, r := range rules {
 		transformed[i] = map[string]interface{}{
-			clauses:   clausesToResourceData(r.Clauses),
-			weight:    r.Weight,
-			bucket_by: r.BucketBy,
+			CLAUSES:   clausesToResourceData(r.Clauses),
+			WEIGHT:    r.Weight,
+			BUCKET_BY: r.BucketBy,
 		}
 	}
 
