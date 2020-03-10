@@ -99,6 +99,8 @@ The nested `flag_fallthrough` block has the following structure:
 
 - `rollout_weights` - (Optional) List of integer percentage rollout weights to apply to each variation if no `prerequisites`, `user_target`, or `rules` apply. The sum of the `rollout_weights` must equal 1000000. You must specify either `variation` or `rollout_weights`.
 
+- `bucket_by` - (Optional) Group percentage rollout by a custom attribute. This argument is only valid if `rollout_weights` is also specified.
+
 ### Nested Rules Blocks
 
 Nested `rules` blocks have the following structure:
@@ -108,6 +110,8 @@ Nested `rules` blocks have the following structure:
 - `variation` - (Optional) The integer variation index to serve if the rule clauses evaluate to `true`. You must specify either `variation` or `rollout_weights`.
 
 - `rollout_weights` - (Optional) List of integer percentage rollout weights to apply to each variation if the rule clauses evaluates to `true`. The sum of the `rollout_weights` must equal 1000000. You must specify either `variation` or `rollout_weights`.
+
+- `bucket_by` - (Optional) Group percentage rollout by a custom attribute. This argument is only valid if `rollout_weights` is also specified.
 
 ### Nested Clauses Blocks
 

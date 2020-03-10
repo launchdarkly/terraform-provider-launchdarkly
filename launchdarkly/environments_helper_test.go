@@ -16,10 +16,10 @@ func TestEnvironmentPostFromResourceData(t *testing.T) {
 		{
 			"all fields",
 			map[string]interface{}{
-				name:        "envName",
-				key:         "envKey",
-				color:       "000000",
-				default_ttl: 50,
+				NAME:        "envName",
+				KEY:         "envKey",
+				COLOR:       "000000",
+				DEFAULT_TTL: 50,
 			},
 			ldapi.EnvironmentPost{
 				Name:       "envName",
@@ -31,9 +31,9 @@ func TestEnvironmentPostFromResourceData(t *testing.T) {
 		{
 			"all required fields",
 			map[string]interface{}{
-				name:  "envName",
-				key:   "envKey",
-				color: "000000",
+				NAME:  "envName",
+				KEY:   "envKey",
+				COLOR: "000000",
 			},
 			ldapi.EnvironmentPost{
 				Name:  "envName",

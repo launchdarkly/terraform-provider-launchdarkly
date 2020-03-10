@@ -16,21 +16,21 @@ func policyArraySchema() *schema.Schema {
 		Optional: true,
 		Elem: &schema.Resource{
 			Schema: map[string]*schema.Schema{
-				resources: {
+				RESOURCES: {
 					Type: schema.TypeList,
 					Elem: &schema.Schema{
 						Type: schema.TypeString,
 					},
 					Required: true,
 				},
-				actions: {
+				ACTIONS: {
 					Type: schema.TypeList,
 					Elem: &schema.Schema{
 						Type: schema.TypeString,
 					},
 					Required: true,
 				},
-				effect: {
+				EFFECT: {
 					Type:     schema.TypeString,
 					Required: true,
 				},
@@ -40,7 +40,7 @@ func policyArraySchema() *schema.Schema {
 }
 
 func policiesFromResourceData(d *schema.ResourceData) []ldapi.Policy {
-	schemaPolicies := d.Get(policy).(*schema.Set)
+	schemaPolicies := d.Get(POLICY).(*schema.Set)
 
 	policies := make([]ldapi.Policy, schemaPolicies.Len())
 	list := schemaPolicies.List()
@@ -56,12 +56,12 @@ func policyFromResourceData(val interface{}) ldapi.Policy {
 	p := ldapi.Policy{
 		Resources: []string{},
 		Actions:   []string{},
-		Effect:    policyMap[effect].(string),
+		Effect:    policyMap[EFFECT].(string),
 	}
-	for _, r := range policyMap[resources].([]interface{}) {
+	for _, r := range policyMap[RESOURCES].([]interface{}) {
 		p.Resources = append(p.Resources, r.(string))
 	}
-	for _, a := range policyMap[actions].([]interface{}) {
+	for _, a := range policyMap[ACTIONS].([]interface{}) {
 		p.Actions = append(p.Actions, a.(string))
 	}
 
@@ -75,9 +75,9 @@ func policiesToResourceData(policies []ldapi.Policy) interface{} {
 
 	for i, p := range policies {
 		transformed[i] = map[string]interface{}{
-			resources: p.Resources,
-			actions:   p.Actions,
-			effect:    p.Effect,
+			RESOURCES: p.Resources,
+			ACTIONS:   p.Actions,
+			EFFECT:    p.Effect,
 		}
 	}
 	return transformed

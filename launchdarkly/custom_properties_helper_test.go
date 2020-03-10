@@ -17,11 +17,11 @@ func TestCustomPropertiesRoundTripConversion(t *testing.T) {
 		{
 			name: "basic custom property",
 			customProperties: map[string]interface{}{
-				custom_properties: []interface{}{
+				CUSTOM_PROPERTIES: []interface{}{
 					map[string]interface{}{
-						key:   "cp1",
-						name:  "nameValue",
-						value: []interface{}{"a cp value"},
+						KEY:   "cp1",
+						NAME:  "nameValue",
+						VALUE: []interface{}{"a cp value"},
 					},
 				},
 			},
@@ -33,11 +33,11 @@ func TestCustomPropertiesRoundTripConversion(t *testing.T) {
 		{
 			name: "Multiple custom properties",
 			customProperties: map[string]interface{}{
-				custom_properties: []interface{}{
+				CUSTOM_PROPERTIES: []interface{}{
 					map[string]interface{}{
-						key:   "cp2",
-						name:  "nameValue2",
-						value: []interface{}{"a cp value1", "a cp value2", "a cp value3"},
+						KEY:   "cp2",
+						NAME:  "nameValue2",
+						VALUE: []interface{}{"a cp value1", "a cp value2", "a cp value3"},
 					},
 				},
 			},
@@ -51,7 +51,7 @@ func TestCustomPropertiesRoundTripConversion(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			resourceData := schema.TestResourceDataRaw(t,
-				map[string]*schema.Schema{custom_properties: customPropertiesSchema()},
+				map[string]*schema.Schema{CUSTOM_PROPERTIES: customPropertiesSchema()},
 				tc.customProperties,
 			)
 
@@ -59,7 +59,7 @@ func TestCustomPropertiesRoundTripConversion(t *testing.T) {
 			require.Equal(t, tc.expected, actual)
 
 			actualRaw := customPropertiesToResourceData(actual)
-			require.Equal(t, tc.customProperties[custom_properties], actualRaw)
+			require.Equal(t, tc.customProperties[CUSTOM_PROPERTIES], actualRaw)
 		})
 	}
 }

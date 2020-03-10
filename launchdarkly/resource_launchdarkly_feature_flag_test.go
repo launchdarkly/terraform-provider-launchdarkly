@@ -219,10 +219,10 @@ func TestAccFeatureFlag_Basic(t *testing.T) {
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckProjectExists("launchdarkly_project.test"),
 					testAccCheckFeatureFlagExists(resourceName),
-					resource.TestCheckResourceAttr(resourceName, name, "Basic feature flag"),
-					resource.TestCheckResourceAttr(resourceName, key, "basic-flag"),
-					resource.TestCheckResourceAttr(resourceName, project_key, projectKey),
-					resource.TestCheckResourceAttr(resourceName, variation_type, "boolean"),
+					resource.TestCheckResourceAttr(resourceName, NAME, "Basic feature flag"),
+					resource.TestCheckResourceAttr(resourceName, KEY, "basic-flag"),
+					resource.TestCheckResourceAttr(resourceName, PROJECT_KEY, projectKey),
+					resource.TestCheckResourceAttr(resourceName, VARIATION_TYPE, "boolean"),
 					resource.TestCheckResourceAttr(resourceName, "variations.#", "2"),
 					resource.TestCheckResourceAttr(resourceName, "variations.0.value", "true"),
 					resource.TestCheckResourceAttr(resourceName, "variations.1.value", "false"),
@@ -286,10 +286,10 @@ func TestAccFeatureFlag_Number(t *testing.T) {
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckProjectExists("launchdarkly_project.test"),
 					testAccCheckFeatureFlagExists(resourceName),
-					resource.TestCheckResourceAttr(resourceName, name, "Number feature flag"),
-					resource.TestCheckResourceAttr(resourceName, key, "numeric-flag"),
-					resource.TestCheckResourceAttr(resourceName, project_key, projectKey),
-					resource.TestCheckResourceAttr(resourceName, variation_type, "number"),
+					resource.TestCheckResourceAttr(resourceName, NAME, "Number feature flag"),
+					resource.TestCheckResourceAttr(resourceName, KEY, "numeric-flag"),
+					resource.TestCheckResourceAttr(resourceName, PROJECT_KEY, projectKey),
+					resource.TestCheckResourceAttr(resourceName, VARIATION_TYPE, "number"),
 					resource.TestCheckResourceAttr(resourceName, "variations.#", "2"),
 					resource.TestCheckResourceAttr(resourceName, "variations.0.value", "12.5"),
 					resource.TestCheckResourceAttr(resourceName, "variations.1.value", "0"),
@@ -313,10 +313,10 @@ func TestAccFeatureFlag_JSON(t *testing.T) {
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckProjectExists("launchdarkly_project.test"),
 					testAccCheckFeatureFlagExists(resourceName),
-					resource.TestCheckResourceAttr(resourceName, name, "JSON feature flag"),
-					resource.TestCheckResourceAttr(resourceName, key, "json-flag"),
-					resource.TestCheckResourceAttr(resourceName, project_key, projectKey),
-					resource.TestCheckResourceAttr(resourceName, variation_type, "json"),
+					resource.TestCheckResourceAttr(resourceName, NAME, "JSON feature flag"),
+					resource.TestCheckResourceAttr(resourceName, KEY, "json-flag"),
+					resource.TestCheckResourceAttr(resourceName, PROJECT_KEY, projectKey),
+					resource.TestCheckResourceAttr(resourceName, VARIATION_TYPE, "json"),
 					resource.TestCheckResourceAttr(resourceName, "variations.#", "2"),
 					resource.TestCheckResourceAttr(resourceName, "variations.0.value", `{"foo":"bar"}`),
 					resource.TestCheckResourceAttr(resourceName, "variations.1.value", `{"extra":{"nested":"json"},"foo":"baz"}`),
@@ -543,11 +543,11 @@ func testAccCheckFeatureFlagExists(resourceName string) resource.TestCheckFunc {
 		if !ok {
 			return fmt.Errorf("not found: %s", resourceName)
 		}
-		flagKey, ok := rs.Primary.Attributes[key]
+		flagKey, ok := rs.Primary.Attributes[KEY]
 		if !ok {
 			return fmt.Errorf("feature flag key not found: %s", resourceName)
 		}
-		projKey, ok := rs.Primary.Attributes[project_key]
+		projKey, ok := rs.Primary.Attributes[PROJECT_KEY]
 		if !ok {
 			return fmt.Errorf("project key not found: %s", resourceName)
 		}
