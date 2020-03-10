@@ -11,7 +11,7 @@ import (
 
 func resourceEnvironment() *schema.Resource {
 	envSchema := environmentSchema()
-	envSchema[project_key] = &schema.Schema{
+	envSchema[PROJECT_KEY] = &schema.Schema{
 		Type:         schema.TypeString,
 		Optional:     true,
 		ForceNew:     true,
@@ -34,11 +34,11 @@ func resourceEnvironment() *schema.Resource {
 
 func resourceEnvironmentCreate(d *schema.ResourceData, metaRaw interface{}) error {
 	client := metaRaw.(*Client)
-	projectKey := d.Get(project_key).(string)
-	key := d.Get(key).(string)
-	name := d.Get(name).(string)
-	color := d.Get(color).(string)
-	defaultTTL := float32(d.Get(default_ttl).(int))
+	projectKey := d.Get(PROJECT_KEY).(string)
+	key := d.Get(KEY).(string)
+	name := d.Get(NAME).(string)
+	color := d.Get(COLOR).(string)
+	defaultTTL := float32(d.Get(DEFAULT_TTL).(int))
 
 	envPost := ldapi.EnvironmentPost{
 		Name:       name,
@@ -65,8 +65,8 @@ func resourceEnvironmentCreate(d *schema.ResourceData, metaRaw interface{}) erro
 
 func resourceEnvironmentRead(d *schema.ResourceData, metaRaw interface{}) error {
 	client := metaRaw.(*Client)
-	projectKey := d.Get(project_key).(string)
-	key := d.Get(key).(string)
+	projectKey := d.Get(PROJECT_KEY).(string)
+	key := d.Get(KEY).(string)
 
 	env, res, err := client.ld.EnvironmentsApi.GetEnvironment(client.ctx, projectKey, key)
 	if isStatusNotFound(res) {
@@ -79,15 +79,17 @@ func resourceEnvironmentRead(d *schema.ResourceData, metaRaw interface{}) error 
 
 	d.SetId(projectKey + "/" + key)
 	_ = d.Set(key, env.Key)
-	_ = d.Set(name, env.Name)
-	_ = d.Set(api_key, env.ApiKey)
-	_ = d.Set(mobile_key, env.MobileKey)
-	_ = d.Set(client_side_id, env.Id)
-	_ = d.Set(color, env.Color)
-	_ = d.Set(default_ttl, int(env.DefaultTtl))
-	_ = d.Set(secure_mode, env.SecureMode)
-	_ = d.Set(default_track_events, env.DefaultTrackEvents)
-	_ = d.Set(tags, env.Tags)
+	_ = d.Set(NAME, env.Name)
+	_ = d.Set(API_KEY, env.ApiKey)
+	_ = d.Set(MOBILE_KEY, env.MobileKey)
+	_ = d.Set(CLIENT_SIDE_ID, env.Id)
+	_ = d.Set(COLOR, env.Color)
+	_ = d.Set(DEFAULT_TTL, int(env.DefaultTtl))
+	_ = d.Set(SECURE_MODE, env.SecureMode)
+	_ = d.Set(DEFAULT_TRACK_EVENTS, env.DefaultTrackEvents)
+	_ = d.Set(TAGS, env.Tags)
+	_ = d.Set(REQUIRE_COMMENTS, env.RequireComments)
+	_ = d.Set(CONFIRM_CHANGES, env.ConfirmChanges)
 	return nil
 }
 
@@ -95,19 +97,23 @@ func resourceEnvironmentUpdate(d *schema.ResourceData, metaRaw interface{}) erro
 	client := metaRaw.(*Client)
 
 	//required fields
-	projectKey := d.Get(project_key).(string)
-	key := d.Get(key).(string)
-	name := d.Get(name)
-	color := d.Get(color)
-	tags := stringsFromResourceData(d, tags)
+	projectKey := d.Get(PROJECT_KEY).(string)
+	key := d.Get(KEY).(string)
+	name := d.Get(NAME)
+	color := d.Get(COLOR)
+	tags := stringsFromResourceData(d, TAGS)
+	requireComments := d.Get(REQUIRE_COMMENTS)
+	confirmChanges := d.Get(CONFIRM_CHANGES)
 
 	patch := []ldapi.PatchOperation{
 		patchReplace("/name", &name),
 		patchReplace("/color", &color),
-		patchReplace("/defaultTtl", d.Get(default_ttl)),
-		patchReplace("/secureMode", d.Get(secure_mode)),
-		patchReplace("/defaultTrackEvents", d.Get(default_track_events)),
+		patchReplace("/defaultTtl", d.Get(DEFAULT_TTL)),
+		patchReplace("/secureMode", d.Get(SECURE_MODE)),
+		patchReplace("/defaultTrackEvents", d.Get(DEFAULT_TRACK_EVENTS)),
 		patchReplace("/tags", &tags),
+		patchReplace("/requireComments", &requireComments),
+		patchReplace("/confirmChanges", &confirmChanges),
 	}
 
 	_, _, err := repeatUntilNoConflict(func() (interface{}, *http.Response, error) {
@@ -122,8 +128,8 @@ func resourceEnvironmentUpdate(d *schema.ResourceData, metaRaw interface{}) erro
 
 func resourceEnvironmentDelete(d *schema.ResourceData, metaRaw interface{}) error {
 	client := metaRaw.(*Client)
-	projectKey := d.Get(project_key).(string)
-	key := d.Get(key).(string)
+	projectKey := d.Get(PROJECT_KEY).(string)
+	key := d.Get(KEY).(string)
 
 	_, err := client.ld.EnvironmentsApi.DeleteEnvironment(client.ctx, projectKey, key)
 	if err != nil {
@@ -134,7 +140,7 @@ func resourceEnvironmentDelete(d *schema.ResourceData, metaRaw interface{}) erro
 }
 
 func resourceEnvironmentExists(d *schema.ResourceData, metaRaw interface{}) (bool, error) {
-	return environmentExists(d.Get(project_key).(string), d.Get(key).(string), metaRaw.(*Client))
+	return environmentExists(d.Get(PROJECT_KEY).(string), d.Get(KEY).(string), metaRaw.(*Client))
 }
 
 func environmentExists(projectKey string, key string, meta *Client) (bool, error) {
@@ -160,8 +166,8 @@ func resourceEnvironmentImport(d *schema.ResourceData, meta interface{}) ([]*sch
 
 	projectKey, envKey := parts[0], parts[1]
 
-	_ = d.Set(project_key, projectKey)
-	_ = d.Set(key, envKey)
+	_ = d.Set(PROJECT_KEY, projectKey)
+	_ = d.Set(KEY, envKey)
 
 	if err := resourceEnvironmentRead(d, meta); err != nil {
 		return nil, err

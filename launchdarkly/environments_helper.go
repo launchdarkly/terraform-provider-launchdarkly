@@ -8,55 +8,63 @@ import (
 
 func environmentSchema() map[string]*schema.Schema {
 	return map[string]*schema.Schema{
-		key: &schema.Schema{
+		KEY: &schema.Schema{
 			Type:         schema.TypeString,
 			Required:     true,
 			ForceNew:     true,
 			ValidateFunc: validateKey(),
 		},
-		name: &schema.Schema{
+		NAME: &schema.Schema{
 			Type:     schema.TypeString,
 			Required: true,
 		},
-		api_key: &schema.Schema{
+		API_KEY: &schema.Schema{
 			Type:      schema.TypeString,
 			Computed:  true,
 			Sensitive: true,
 		},
-		mobile_key: &schema.Schema{
+		MOBILE_KEY: &schema.Schema{
 			Type:      schema.TypeString,
 			Computed:  true,
 			Sensitive: true,
 		},
-		client_side_id: {
+		CLIENT_SIDE_ID: {
 			Type:      schema.TypeString,
 			Computed:  true,
 			Sensitive: true,
 		},
-		color: &schema.Schema{
+		COLOR: &schema.Schema{
 			Type:     schema.TypeString,
 			Required: true,
 		},
-		default_ttl: &schema.Schema{
+		DEFAULT_TTL: &schema.Schema{
 			Type:     schema.TypeInt,
 			Optional: true,
 			// Default TTL should be between 0 and 60 minutes: https://docs.launchdarkly.com/docs/environments
 			ValidateFunc: validation.IntBetween(0, 60),
 		},
-		secure_mode: &schema.Schema{
+		SECURE_MODE: &schema.Schema{
 			Type:     schema.TypeBool,
 			Optional: true,
 		},
-		default_track_events: &schema.Schema{
+		DEFAULT_TRACK_EVENTS: &schema.Schema{
 			Type:     schema.TypeBool,
 			Optional: true,
 		},
-		tags: tagsSchema(),
+		REQUIRE_COMMENTS: &schema.Schema{
+			Type:     schema.TypeBool,
+			Optional: true,
+		},
+		CONFIRM_CHANGES: &schema.Schema{
+			Type:     schema.TypeBool,
+			Optional: true,
+		},
+		TAGS: tagsSchema(),
 	}
 }
 
 func environmentPostsFromResourceData(d *schema.ResourceData) []ldapi.EnvironmentPost {
-	schemaEnvs := d.Get(environments).([]interface{})
+	schemaEnvs := d.Get(ENVIRONMENTS).([]interface{})
 
 	envs := make([]ldapi.EnvironmentPost, len(schemaEnvs))
 	for i, env := range schemaEnvs {
@@ -68,12 +76,12 @@ func environmentPostsFromResourceData(d *schema.ResourceData) []ldapi.Environmen
 func environmentPostFromResourceData(env interface{}) ldapi.EnvironmentPost {
 	envMap := env.(map[string]interface{})
 	envPost := ldapi.EnvironmentPost{
-		Name:  envMap[name].(string),
-		Key:   envMap[key].(string),
-		Color: envMap[color].(string),
+		Name:  envMap[NAME].(string),
+		Key:   envMap[KEY].(string),
+		Color: envMap[COLOR].(string),
 	}
 
-	if defaultTTL, ok := envMap[default_ttl]; ok {
+	if defaultTTL, ok := envMap[DEFAULT_TTL]; ok {
 		envPost.DefaultTtl = float32(defaultTTL.(int))
 	}
 	return envPost
@@ -84,16 +92,16 @@ func environmentsToResourceData(envs []ldapi.Environment) []interface{} {
 
 	for i, env := range envs {
 		transformed[i] = map[string]interface{}{
-			key:                  env.Key,
-			name:                 env.Name,
-			api_key:              env.ApiKey,
-			mobile_key:           env.MobileKey,
-			client_side_id:       env.Id,
-			color:                env.Color,
-			default_ttl:          int(env.DefaultTtl),
-			secure_mode:          env.SecureMode,
-			default_track_events: env.DefaultTrackEvents,
-			tags:                 env.Tags,
+			KEY:                  env.Key,
+			NAME:                 env.Name,
+			API_KEY:              env.ApiKey,
+			MOBILE_KEY:           env.MobileKey,
+			CLIENT_SIDE_ID:       env.Id,
+			COLOR:                env.Color,
+			DEFAULT_TTL:          int(env.DefaultTtl),
+			SECURE_MODE:          env.SecureMode,
+			DEFAULT_TRACK_EVENTS: env.DefaultTrackEvents,
+			TAGS:                 env.Tags,
 		}
 	}
 	return transformed

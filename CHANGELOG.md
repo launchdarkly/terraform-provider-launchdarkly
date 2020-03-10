@@ -1,4 +1,19 @@
 ## 1.1.0 (Unreleased)
+
+FEATURES:
+
+- Add `bucket_by` argument to `launchdarkly_feature_flag_environment` to enable custom attributes for percentage rollouts.
+- Add `require_comments` and `confirm_changes` arguments to `launchdarkly_environment`.
+
+ENHANCEMENTS:
+
+- update keys.go to make keys uppercase
+
+BUG FIXES:
+
+- Fix pagination bug with `launchdarkly_team_member` data source.
+- Fix custom roles acceptance test race condition.
+
 ## 1.0.1 (January 13, 2020)
 
 ENHANCEMENTS:

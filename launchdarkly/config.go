@@ -9,8 +9,8 @@ import (
 )
 
 const (
-	AgentVersion = "1.0.1"
-	APIVersion   = "20191212"
+	AgentVersion = "1.1.0"
+	APIVersion   = "20160426"
 )
 
 // Client is used by the provider to access the ld API.

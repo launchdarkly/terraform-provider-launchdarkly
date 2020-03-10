@@ -11,11 +11,11 @@ import (
 	ldapi "github.com/launchdarkly/api-client-go"
 )
 
-func testAccCustomRoleCreate(randomKey string) string {
+func testAccCustomRoleCreate(randomKey, randomName string) string {
 	return fmt.Sprintf(`
 	resource "launchdarkly_custom_role" "test" {
 		key = "%s"
-		name = "custom-role-name-1"
+		name = "Custom role - %s"
 		description= "Deny all actions on production environments"
 		policy {
 			actions = ["*"]	
@@ -23,13 +23,13 @@ func testAccCustomRoleCreate(randomKey string) string {
 			resources = ["proj/*:env/production"]
 		}
 	}
-	`, randomKey)
+	`, randomKey, randomName)
 }
 
-func testAccCustomRoleUpdate(randomKey string) string {
+func testAccCustomRoleUpdate(randomKey, randomName string) string {
 	return fmt.Sprintf(`resource "launchdarkly_custom_role" "test" {
 	key = "%s"
-	name = "Custom role - allow staging"
+	name = "Updated - %s"
 	description= "Allow all actions on staging environments"
 	policy {
 		actions = ["*"]	
@@ -37,11 +37,12 @@ func testAccCustomRoleUpdate(randomKey string) string {
 		resources = ["proj/*:env/staging"]
 	}
 }
-`, randomKey)
+`, randomKey, randomName)
 }
 
 func TestAccCustomRole_Create(t *testing.T) {
-	key := acctest.RandStringFromCharSet(5, acctest.CharSetAlphaNum)
+	key := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	name := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	resourceName := "launchdarkly_custom_role.test"
 	policy := ldapi.Policy{
 		Resources: []string{"proj/*:env/production"},
@@ -55,18 +56,18 @@ func TestAccCustomRole_Create(t *testing.T) {
 		Providers: testAccProviders,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccCustomRoleCreate(key),
+				Config: testAccCustomRoleCreate(key, name),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckCustomRoleExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, "key", key),
-					resource.TestCheckResourceAttr(resourceName, "name", "custom-role-name-1"),
+					resource.TestCheckResourceAttr(resourceName, "name", "Custom role - "+name),
 					resource.TestCheckResourceAttr(resourceName, "description", "Deny all actions on production environments"),
 					resource.TestCheckResourceAttr(resourceName, "policy.#", "1"),
 					resource.TestCheckResourceAttr(resourceName, testAccPolicyKey(policy, "actions.#"), "1"),
 					resource.TestCheckResourceAttr(resourceName, testAccPolicyKey(policy, "actions.0"), "*"),
 					resource.TestCheckResourceAttr(resourceName, testAccPolicyKey(policy, "resources.#"), "1"),
 					resource.TestCheckResourceAttr(resourceName, testAccPolicyKey(policy, "resources.0"), "proj/*:env/production"),
-					resource.TestCheckResourceAttr(resourceName, testAccPolicyKey(policy, effect), "deny"),
+					resource.TestCheckResourceAttr(resourceName, testAccPolicyKey(policy, EFFECT), "deny"),
 				),
 			},
 		},
@@ -74,7 +75,8 @@ func TestAccCustomRole_Create(t *testing.T) {
 }
 
 func TestAccCustomRole_Update(t *testing.T) {
-	key := acctest.RandStringFromCharSet(5, acctest.CharSetAlphaNum)
+	key := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	name := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	resourceName := "launchdarkly_custom_role.test"
 	policy := ldapi.Policy{
 		Resources: []string{"proj/*:env/staging"},
@@ -88,24 +90,24 @@ func TestAccCustomRole_Update(t *testing.T) {
 		Providers: testAccProviders,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccCustomRoleCreate(key),
+				Config: testAccCustomRoleCreate(key, name),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckCustomRoleExists(resourceName),
 				),
 			},
 			{
-				Config: testAccCustomRoleUpdate(key),
+				Config: testAccCustomRoleUpdate(key, name),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckCustomRoleExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, "key", key),
-					resource.TestCheckResourceAttr(resourceName, "name", "Custom role - allow staging"),
+					resource.TestCheckResourceAttr(resourceName, "name", "Updated - "+name),
 					resource.TestCheckResourceAttr(resourceName, "description", "Allow all actions on staging environments"),
 					resource.TestCheckResourceAttr(resourceName, "policy.#", "1"),
 					resource.TestCheckResourceAttr(resourceName, testAccPolicyKey(policy, "actions.#"), "1"),
 					resource.TestCheckResourceAttr(resourceName, testAccPolicyKey(policy, "actions.0"), "*"),
 					resource.TestCheckResourceAttr(resourceName, testAccPolicyKey(policy, "resources.#"), "1"),
 					resource.TestCheckResourceAttr(resourceName, testAccPolicyKey(policy, "resources.0"), "proj/*:env/staging"),
-					resource.TestCheckResourceAttr(resourceName, testAccPolicyKey(policy, effect), "allow"),
+					resource.TestCheckResourceAttr(resourceName, testAccPolicyKey(policy, EFFECT), "allow"),
 				),
 			},
 		},

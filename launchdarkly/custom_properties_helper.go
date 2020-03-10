@@ -22,17 +22,17 @@ func customPropertiesSchema() *schema.Schema {
 		MaxItems: CUSTOM_PROPERTY_ITEM_LIMIT,
 		Elem: &schema.Resource{
 			Schema: map[string]*schema.Schema{
-				key: {
+				KEY: {
 					Type:         schema.TypeString,
 					Required:     true,
 					ValidateFunc: validation.StringLenBetween(1, CUSTOM_PROPERTY_CHAR_LIMIT),
 				},
-				name: {
+				NAME: {
 					Type:         schema.TypeString,
 					Required:     true,
 					ValidateFunc: validation.StringLenBetween(1, CUSTOM_PROPERTY_CHAR_LIMIT),
 				},
-				value: {
+				VALUE: {
 					Type:     schema.TypeList,
 					Required: true,
 					MaxItems: CUSTOM_PROPERTY_ITEM_LIMIT,
@@ -47,7 +47,7 @@ func customPropertiesSchema() *schema.Schema {
 }
 
 func customPropertiesFromResourceData(d *schema.ResourceData) map[string]ldapi.CustomProperty {
-	customPropertiesRaw := d.Get(custom_properties)
+	customPropertiesRaw := d.Get(CUSTOM_PROPERTIES)
 	schemaCustomProperties := customPropertiesRaw.(*schema.Set)
 	customProperties := make(map[string]ldapi.CustomProperty)
 	for _, cpRaw := range schemaCustomProperties.List() {
@@ -61,17 +61,17 @@ func customPropertyFromResourceData(val interface{}) (string, ldapi.CustomProper
 	customPropertyMap := val.(map[string]interface{})
 
 	var values []string
-	for _, v := range customPropertyMap[value].([]interface{}) {
+	for _, v := range customPropertyMap[VALUE].([]interface{}) {
 		values = append(values, v.(string))
 	}
 	sort.Strings(values)
 
 	cp := ldapi.CustomProperty{
-		Name:  customPropertyMap[name].(string),
+		Name:  customPropertyMap[NAME].(string),
 		Value: values,
 	}
 
-	return customPropertyMap[key].(string), cp
+	return customPropertyMap[KEY].(string), cp
 }
 
 func customPropertiesToResourceData(customProperties map[string]ldapi.CustomProperty) []interface{} {
@@ -83,9 +83,9 @@ func customPropertiesToResourceData(customProperties map[string]ldapi.CustomProp
 			values = append(values, v)
 		}
 		cpRaw := map[string]interface{}{
-			key:   k,
-			name:  cp.Name,
-			value: values,
+			KEY:   k,
+			NAME:  cp.Name,
+			VALUE: values,
 		}
 		transformed = append(transformed, cpRaw)
 	}
@@ -95,5 +95,5 @@ func customPropertiesToResourceData(customProperties map[string]ldapi.CustomProp
 // https://godoc.org/github.com/hashicorp/terraform/helper/schema#SchemaSetFunc
 func customPropertyHash(val interface{}) int {
 	customPropertyMap := val.(map[string]interface{})
-	return hashcode.String(fmt.Sprintf("%v", customPropertyMap[key]))
+	return hashcode.String(fmt.Sprintf("%v", customPropertyMap[KEY]))
 }

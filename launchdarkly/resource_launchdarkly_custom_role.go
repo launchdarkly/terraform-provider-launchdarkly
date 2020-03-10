@@ -21,30 +21,30 @@ func resourceCustomRole() *schema.Resource {
 		},
 
 		Schema: map[string]*schema.Schema{
-			key: {
+			KEY: {
 				Type:         schema.TypeString,
 				Required:     true,
 				ForceNew:     true,
 				ValidateFunc: validateKey(),
 			},
-			name: {
+			NAME: {
 				Type:     schema.TypeString,
 				Required: true,
 			},
-			description: {
+			DESCRIPTION: {
 				Type:     schema.TypeString,
 				Optional: true,
 			},
-			policy: policyArraySchema(),
+			POLICY: policyArraySchema(),
 		},
 	}
 }
 
 func resourceCustomRoleCreate(d *schema.ResourceData, metaRaw interface{}) error {
 	client := metaRaw.(*Client)
-	customRoleKey := d.Get(key).(string)
-	customRoleName := d.Get(name).(string)
-	customRoleDescription := d.Get(description).(string)
+	customRoleKey := d.Get(KEY).(string)
+	customRoleName := d.Get(NAME).(string)
+	customRoleDescription := d.Get(DESCRIPTION).(string)
 	customRolePolicies := policiesFromResourceData(d)
 
 	customRoleBody := ldapi.CustomRoleBody{
@@ -76,10 +76,10 @@ func resourceCustomRoleRead(d *schema.ResourceData, metaRaw interface{}) error {
 		return fmt.Errorf("failed to get custom role with id %q: %s", customRoleID, handleLdapiErr(err))
 	}
 
-	_ = d.Set(key, customRole.Key)
-	_ = d.Set(name, customRole.Name)
-	_ = d.Set(description, customRole.Description)
-	err = d.Set(policy, policiesToResourceData(customRole.Policy))
+	_ = d.Set(KEY, customRole.Key)
+	_ = d.Set(NAME, customRole.Name)
+	_ = d.Set(DESCRIPTION, customRole.Description)
+	err = d.Set(POLICY, policiesToResourceData(customRole.Policy))
 	if err != nil {
 		return fmt.Errorf("could not set policy on custom role with id %q: %v", customRoleID, err)
 	}
@@ -88,9 +88,9 @@ func resourceCustomRoleRead(d *schema.ResourceData, metaRaw interface{}) error {
 
 func resourceCustomRoleUpdate(d *schema.ResourceData, metaRaw interface{}) error {
 	client := metaRaw.(*Client)
-	customRoleKey := d.Get(key).(string)
-	customRoleName := d.Get(name).(string)
-	customRoleDescription := d.Get(description).(string)
+	customRoleKey := d.Get(KEY).(string)
+	customRoleName := d.Get(NAME).(string)
+	customRoleDescription := d.Get(DESCRIPTION).(string)
 	customRolePolicies := policiesFromResourceData(d)
 
 	patch := []ldapi.PatchOperation{

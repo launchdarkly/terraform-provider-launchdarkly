@@ -18,17 +18,17 @@ func TestVariationsFromResourceData(t *testing.T) {
 		{
 			name: "string variations",
 			vars: map[string]interface{}{
-				variation_type: "string",
-				variations: []interface{}{
+				VARIATION_TYPE: "string",
+				VARIATIONS: []interface{}{
 					map[string]interface{}{
-						name:        "nameValue",
-						description: "descValue",
-						value:       "a string value",
+						NAME:        "nameValue",
+						DESCRIPTION: "descValue",
+						VALUE:       "a string value",
 					},
 					map[string]interface{}{
-						name:        "nameValue2",
-						description: "descValue2",
-						value:       "another string value",
+						NAME:        "nameValue2",
+						DESCRIPTION: "descValue2",
+						VALUE:       "another string value",
 					},
 				}},
 			expected: []ldapi.Variation{
@@ -39,13 +39,13 @@ func TestVariationsFromResourceData(t *testing.T) {
 		{
 			name: "boolean variations",
 			vars: map[string]interface{}{
-				variation_type: "boolean",
-				variations: []interface{}{
+				VARIATION_TYPE: "boolean",
+				VARIATIONS: []interface{}{
 					map[string]interface{}{
-						value: "true",
+						VALUE: "true",
 					},
 					map[string]interface{}{
-						value: "false",
+						VALUE: "false",
 					},
 				}},
 			expected: []ldapi.Variation{
@@ -56,16 +56,16 @@ func TestVariationsFromResourceData(t *testing.T) {
 		{
 			name: "number variations",
 			vars: map[string]interface{}{
-				variation_type: "number",
-				variations: []interface{}{
+				VARIATION_TYPE: "number",
+				VARIATIONS: []interface{}{
 					map[string]interface{}{
-						value: 32.5,
+						VALUE: 32.5,
 					},
 					map[string]interface{}{
-						value: 12,
+						VALUE: 12,
 					},
 					map[string]interface{}{
-						value: 0,
+						VALUE: 0,
 					},
 				}},
 			expected: []ldapi.Variation{
@@ -77,13 +77,13 @@ func TestVariationsFromResourceData(t *testing.T) {
 		{
 			name: "json variations",
 			vars: map[string]interface{}{
-				variation_type: "json",
-				variations: []interface{}{
+				VARIATION_TYPE: "json",
+				VARIATIONS: []interface{}{
 					map[string]interface{}{
-						value: `{ "foo": "bar" }`,
+						VALUE: `{ "foo": "bar" }`,
 					},
 					map[string]interface{}{
-						value: `{ "foo": "baz", "extra": {"nested": "json"} }`,
+						VALUE: `{ "foo": "baz", "extra": {"nested": "json"} }`,
 					},
 				}},
 			expected: []ldapi.Variation{
@@ -101,7 +101,7 @@ func TestVariationsFromResourceData(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			resourceData := schema.TestResourceDataRaw(t,
-				map[string]*schema.Schema{variation_type: variationTypeSchema(), variations: variationsSchema()},
+				map[string]*schema.Schema{VARIATION_TYPE: variationTypeSchema(), VARIATIONS: variationsSchema()},
 				tc.vars,
 			)
 

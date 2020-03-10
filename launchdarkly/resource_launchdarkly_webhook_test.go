@@ -80,7 +80,7 @@ func TestAccWebhook_Update(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "tags.#", "2"),
 					resource.TestCheckResourceAttr(resourceName, testAccTagKey("terraform"), "terraform"),
 					resource.TestCheckResourceAttr(resourceName, testAccTagKey("updated"), "updated"),
-					resource.TestCheckResourceAttr(resourceName, secret, "SuperSecret"),
+					resource.TestCheckResourceAttr(resourceName, SECRET, "SuperSecret"),
 				),
 			},
 		},

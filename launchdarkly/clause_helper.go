@@ -39,11 +39,11 @@ func clauseSchema() *schema.Schema {
 func clauseFromResourceData(val interface{}) ldapi.Clause {
 	clauseMap := val.(map[string]interface{})
 	c := ldapi.Clause{
-		Attribute: clauseMap[attribute].(string),
-		Op:        clauseMap[op].(string),
-		Negate:    clauseMap[negate].(bool),
+		Attribute: clauseMap[ATTRIBUTE].(string),
+		Op:        clauseMap[OP].(string),
+		Negate:    clauseMap[NEGATE].(bool),
 	}
-	c.Values = append(c.Values, clauseMap[values].([]interface{})...)
+	c.Values = append(c.Values, clauseMap[VALUES].([]interface{})...)
 	return c
 }
 
@@ -52,10 +52,10 @@ func clausesToResourceData(clauses []ldapi.Clause) interface{} {
 
 	for i, c := range clauses {
 		transformed[i] = map[string]interface{}{
-			attribute: c.Attribute,
-			op:        c.Op,
-			values:    c.Values,
-			negate:    c.Negate,
+			ATTRIBUTE: c.Attribute,
+			OP:        c.Op,
+			VALUES:    c.Values,
+			NEGATE:    c.Negate,
 		}
 	}
 	return transformed

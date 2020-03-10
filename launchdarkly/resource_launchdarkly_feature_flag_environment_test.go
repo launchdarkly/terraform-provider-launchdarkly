@@ -2,6 +2,7 @@ package launchdarkly
 
 import (
 	"fmt"
+	"regexp"
 	"testing"
 
 	"github.com/antihax/optional"
@@ -87,10 +88,12 @@ resource "launchdarkly_feature_flag_environment" "basic" {
 			negate    = false
 		}
 		rollout_weights = [90000, 10000, 0]
+		bucket_by = "email"
 	}
 
 	flag_fallthrough {
 		rollout_weights = [60000, 40000, 0]
+		bucket_by = "email"
 	}
 }
 `
@@ -127,6 +130,69 @@ resource "launchdarkly_feature_flag_environment" "prereq" {
 	prerequisites {
 		flag_key = launchdarkly_feature_flag.bool.key
 		variation = 0
+	}
+}
+`
+
+	testAccInvalidFallthroughBucketBy = `
+resource "launchdarkly_feature_flag" "basic" {
+	project_key = launchdarkly_project.test.key
+	key = "basic-flag"
+	name = "Basic feature flag"
+	variation_type = "number"
+	variations {
+		value = 10
+	}
+	variations {
+		value = 20
+	}
+	variations {
+		value = 30
+	}
+}
+
+resource "launchdarkly_feature_flag_environment" "invalid_bucket_by" {
+	flag_id 		  = launchdarkly_feature_flag.basic.id
+	env_key 		  = "test"
+	targeting_enabled = true
+	  
+	flag_fallthrough {
+		bucket_by = "email"
+	}
+}
+`
+
+	testAccInvalidRuleBucketBy = `
+resource "launchdarkly_feature_flag" "basic" {
+	project_key = launchdarkly_project.test.key
+	key = "basic-flag"
+	name = "Basic feature flag"
+	variation_type = "number"
+	variations {
+		value = 10
+	}
+	variations {
+		value = 20
+	}
+	variations {
+		value = 30
+	}
+}
+
+resource "launchdarkly_feature_flag_environment" "invalid_bucket_by" {
+	flag_id 		  = launchdarkly_feature_flag.basic.id
+	env_key 		  = "test"
+	targeting_enabled = true
+	  
+	rules {
+		clauses {
+			attribute = "name"
+			op        = "startsWith"
+			values    = ["h"]
+			negate    = false
+		}
+		variation = 0
+		bucket_by = "name"
 	}
 }
 `
@@ -187,6 +253,7 @@ func TestAccFeatureFlagEnvironment_Update(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "flag_fallthrough.0.rollout_weights.0", "60000"),
 					resource.TestCheckResourceAttr(resourceName, "flag_fallthrough.0.rollout_weights.1", "40000"),
 					resource.TestCheckResourceAttr(resourceName, "flag_fallthrough.0.rollout_weights.2", "0"),
+					resource.TestCheckResourceAttr(resourceName, "flag_fallthrough.0.bucket_by", "email"),
 					resource.TestCheckResourceAttr(resourceName, "user_targets.#", "3"),
 					resource.TestCheckResourceAttr(resourceName, "user_targets.0.values.#", "1"),
 					resource.TestCheckResourceAttr(resourceName, "user_targets.0.values.0", "user0"),
@@ -207,6 +274,7 @@ func TestAccFeatureFlagEnvironment_Update(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "rules.1.rollout_weights.0", "90000"),
 					resource.TestCheckResourceAttr(resourceName, "rules.1.rollout_weights.1", "10000"),
 					resource.TestCheckResourceAttr(resourceName, "rules.1.rollout_weights.2", "0"),
+					resource.TestCheckResourceAttr(resourceName, "rules.1.bucket_by", "email"),
 					resource.TestCheckResourceAttr(resourceName, "rules.1.clauses.0.attribute", "name"),
 					resource.TestCheckResourceAttr(resourceName, "rules.1.clauses.0.op", "startsWith"),
 					resource.TestCheckResourceAttr(resourceName, "rules.1.clauses.0.values.#", "1"),
@@ -225,6 +293,27 @@ func TestAccFeatureFlagEnvironment_Update(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "user_targets.#", "0"),
 					resource.TestCheckResourceAttr(resourceName, "rules.#", "0"),
 				),
+			},
+		},
+	})
+}
+
+func TestAccFeatureFlagEnvironment_InvalidBucketBy(t *testing.T) {
+	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	// resourceName := "launchdarkly_feature_flag_environment.invalid_bucket_by"
+	resource.Test(t, resource.TestCase{
+		PreCheck: func() {
+			testAccPreCheck(t)
+		},
+		Providers: testAccProviders,
+		Steps: []resource.TestStep{
+			{
+				Config:      withRandomProject(projectKey, testAccInvalidFallthroughBucketBy),
+				ExpectError: regexp.MustCompile("cannot use bucket_by argument with variation, only with rollout_weights"),
+			},
+			{
+				Config:      withRandomProject(projectKey, testAccInvalidRuleBucketBy),
+				ExpectError: regexp.MustCompile("cannot use bucket_by argument with variation, only with rollout_weights"),
 			},
 		},
 	})
@@ -258,7 +347,7 @@ func testAccCheckFeatureFlagEnvironmentExists(resourceName string) resource.Test
 		if !ok {
 			return fmt.Errorf("not found: %s", resourceName)
 		}
-		flagId, ok := rs.Primary.Attributes[flag_id]
+		flagId, ok := rs.Primary.Attributes[FLAG_ID]
 		if !ok {
 			return fmt.Errorf("feature flag id not found: %s", resourceName)
 		}
@@ -266,7 +355,7 @@ func testAccCheckFeatureFlagEnvironmentExists(resourceName string) resource.Test
 		if err != nil {
 			return err
 		}
-		envKey, ok := rs.Primary.Attributes[env_key]
+		envKey, ok := rs.Primary.Attributes[ENV_KEY]
 		if !ok {
 			return fmt.Errorf("environent key not found: %s", resourceName)
 		}

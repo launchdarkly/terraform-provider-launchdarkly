@@ -12,23 +12,23 @@ func dataSourceTeamMember() *schema.Resource {
 		Read: dataSourceTeamMemberRead,
 
 		Schema: map[string]*schema.Schema{
-			email: {
+			EMAIL: {
 				Type:     schema.TypeString,
 				Required: true,
 			},
-			first_name: {
+			FIRST_NAME: {
 				Type:     schema.TypeString,
 				Computed: true,
 			},
-			last_name: {
+			LAST_NAME: {
 				Type:     schema.TypeString,
 				Computed: true,
 			},
-			role: {
+			ROLE: {
 				Type:     schema.TypeString,
 				Computed: true,
 			},
-			custom_roles: {
+			CUSTOM_ROLES: {
 				Type:     schema.TypeSet,
 				Set:      schema.HashString,
 				Elem:     &schema.Schema{Type: schema.TypeString},
@@ -54,17 +54,17 @@ func getTeamMemberByEmail(client *Client, memberEmail string) (*ldapi.Member, er
 
 func dataSourceTeamMemberRead(d *schema.ResourceData, meta interface{}) error {
 	client := meta.(*Client)
-	memberEmail := d.Get(email).(string)
+	memberEmail := d.Get(EMAIL).(string)
 	member, err := getTeamMemberByEmail(client, memberEmail)
 	if err != nil {
 		return err
 	}
 	d.SetId(member.Id)
-	_ = d.Set(email, member.Email)
-	_ = d.Set(first_name, member.FirstName)
-	_ = d.Set(last_name, member.LastName)
-	_ = d.Set(role, member.Role)
-	err = d.Set(custom_roles, member.CustomRoles)
+	_ = d.Set(EMAIL, member.Email)
+	_ = d.Set(FIRST_NAME, member.FirstName)
+	_ = d.Set(LAST_NAME, member.LastName)
+	_ = d.Set(ROLE, member.Role)
+	err = d.Set(CUSTOM_ROLES, member.CustomRoles)
 	if err != nil {
 		return fmt.Errorf("failed to set custom roles on team member with email %q: %v", member.Email, err)
 	}
