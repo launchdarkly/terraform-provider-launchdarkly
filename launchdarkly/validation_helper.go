@@ -62,3 +62,10 @@ func validateOp() schema.SchemaValidateFunc {
 		}
 	}
 }
+
+func validateDestinationKind() schema.SchemaValidateFunc {
+	return validation.StringMatch(
+		regexp.MustCompile(`^(kinesis|google-pubsub|mparticle)$`),
+		"Kind must match 'kinesis', 'google-pubsub', or 'mparticle'",
+	)
+}

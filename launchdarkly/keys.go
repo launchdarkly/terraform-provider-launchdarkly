@@ -58,4 +58,6 @@ const (
 	TRACK_EVENTS         = "track_events"
 	OFF_VARIATION        = "off_variation"
 	FLAG_FALLTHROUGH     = "flag_fallthrough"
+	KIND                 = "kind"
+	CONFIG               = "config"
 )
