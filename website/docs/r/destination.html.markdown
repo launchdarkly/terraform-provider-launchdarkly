@@ -19,49 +19,49 @@ Currently the following three types of destinations are available: kinesis, goog
 
 ```hcl
 resource "launchdarkly_destination" "example" {
-	project_key = launchdarkly_project
-	env_key = "example-env"
-	name = "example-kinesis-dest"
-	kind = "kinesis"
-	config = {
-		"region": "us-east-1",
-		"role_arn": "arn:aws:iam::123456789012:role/marketingadmin",
-		"stream_name": "cat-stream"
-	  }
-	enabled = true
-	tags = [ "terraform" ]
+  project_key = "production"
+  env_key     = "example-env"
+  name        = "example-kinesis-dest"
+  kind        = "kinesis"
+  config = {
+    "region" : "us-east-1",
+    "role_arn" : "arn:aws:iam::123456789012:role/marketingadmin",
+    "stream_name" : "cat-stream"
+  }
+  enabled = true
+  tags    = ["terraform"]
 }
 ```
 
 ```hcl
 resource "launchdarkly_destination" "example" {
-	project_key = launchdarkly_project
-	env_key = "example-env"
-	name = "example-pubsub-dest"
-	kind = "google-pubsub"
-	config = {
-		"project": "example-project",
-		"topic": "example-topic"
-	}
-	enabled = true
-	tags = [ "terraform" ]
+  project_key = "production"
+  env_key     = "example-env"
+  name        = "example-pubsub-dest"
+  kind        = "google-pubsub"
+  config = {
+    "project" : "example-project",
+    "topic" : "example-topic"
+  }
+  enabled = true
+  tags    = ["terraform"]
 }
 ```
 
 ```hcl
 resource "launchdarkly_destination" "example" {
-	project_key = launchdarkly_project
-	env_key = "example-env"
-	name = "example-mparticle-dest"
-	kind = "mparticle"
-	config = {
-		"api_key": "apiKeyfromMParticle"
-		"secret": "mParticleSecret"
-		"user_identity": "customer_id"
-		"environment": "production"
-	}
-	enabled = true
-	tags = [ "terraform" ]
+  project_key = "production"
+  env_key     = "example-env"
+  name        = "example-mparticle-dest"
+  kind        = "mparticle"
+  config = {
+    "api_key" : "apiKeyfromMParticle"
+    "secret" : "mParticleSecret"
+    "user_identity" : "customer_id"
+    "environment" : "production"
+  }
+  enabled = true
+  tags    = ["terraform"]
 }
 ```
 

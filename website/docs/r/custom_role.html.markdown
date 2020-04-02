@@ -21,7 +21,12 @@ resource "launchdarkly_custom_role" "example" {
   name        = "example role"
   description = "This is an example role"
 
-  policy {
+  policy_statements {
+    effect    = "allow"
+    resources = ["proj/*:env/production:flag/*"]
+    actions   = ["*"]
+  }
+  policy_statements {
     effect    = "allow"
     resources = ["proj/*:env/production"]
     actions   = ["*"]
@@ -37,15 +42,19 @@ resource "launchdarkly_custom_role" "example" {
 
 - `description` - (Optional) The description of the custom role.
 
-- `policy` - (Required) The custom role policy block. To learn more, read [Policies in custom roles](https://docs.launchdarkly.com/docs/policies-in-custom-roles).
+- `policy_statements` - (Required) The custom role policy block. To learn more, read [Policies in custom roles](https://docs.launchdarkly.com/docs/policies-in-custom-roles).
 
-Custom role `policy` blocks are composed of the following arguments:
+Custom role `policy_statements` blocks are composed of the following arguments:
 
 - `effect` - (Required) - Either `allow` or `deny`. This argument defines whether the statement allows or denies access to the named resources and actions.
 
-- `resources` - (Required) - The list of resource specifiers defining the resources to which the statement applies or does not apply.
+- `resources` - (Optional) - The list of resource specifiers defining the resources to which the statement applies. Either `resources` or `not_resources` must be specified. For a list of available resources read [Understanding resource types and scopes](https://docs.launchdarkly.com/home/account-security/custom-roles/resources#understanding-resource-types-and-scopes).
 
-- `actions` - (Required) The list of action specifiers defining the actions to which the statement applies.
+- `not_resources` - (Optional) - The list of resource specifiers defining the resources to which the statement does not apply. Either `resources` or `not_resources` must be specified. For a list of available resources read [Understanding resource types and scopes](https://docs.launchdarkly.com/home/account-security/custom-roles/resources#understanding-resource-types-and-scopes).
+
+- `actions` - (Optional) The list of action specifiers defining the actions to which the statement applies. Either `actions` or `not_actions` must be specified. For a list of available actions read [Actions reference](https://docs.launchdarkly.com/home/account-security/custom-roles/actions#actions-reference).
+
+- `not_actions` - (Optional) The list of action specifiers defining the actions to which the statement does not apply. Either `actions` or `not_actions` must be specified. For a list of available actions read [Actions reference](https://docs.launchdarkly.com/home/account-security/custom-roles/actions#actions-reference).
 
 ## Import
 
