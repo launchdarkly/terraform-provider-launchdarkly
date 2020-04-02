@@ -11,9 +11,10 @@ import (
 
 func policyArraySchema() *schema.Schema {
 	return &schema.Schema{
-		Type:     schema.TypeSet,
-		Set:      policyHash,
-		Optional: true,
+		Type:       schema.TypeSet,
+		Set:        policyHash,
+		Optional:   true,
+		Deprecated: "'policy' is now deprecated. Please migrate to 'policy_statements' to maintain future compatability.",
 		Elem: &schema.Resource{
 			Schema: map[string]*schema.Schema{
 				RESOURCES: {
