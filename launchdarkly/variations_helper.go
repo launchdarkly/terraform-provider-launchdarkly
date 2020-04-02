@@ -207,13 +207,28 @@ func jsonVariationFromResourceData(variation interface{}) (ldapi.Variation, erro
 	}, nil
 }
 
+func stringifyValue(number ldapi.Variation) string {
+	var str string
+	switch v := (*number.Value).(type) {
+	case int:
+		str = strconv.Itoa(v)
+	case float64:
+		str = strconv.FormatFloat(v, 'f', -1, 64)
+	case bool:
+		str = strconv.FormatBool(v)
+	case string:
+		str = v
+	}
+	return str
+}
+
 func variationsToResourceData(variations []ldapi.Variation, variationType string) (interface{}, error) {
 	transformed := make([]interface{}, 0, len(variations))
 
 	for _, variation := range variations {
 		var v string
 		if variationType != JSON_VARIATION {
-			v = fmt.Sprintf("%v", *variation.Value)
+			v = stringifyValue(variation)
 		} else {
 			byteVal, err := json.Marshal(*variation.Value)
 			if err != nil {

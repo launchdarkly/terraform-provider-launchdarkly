@@ -154,6 +154,32 @@ resource "launchdarkly_feature_flag" "multivariate" {
 }
 `
 
+	testAccFeatureFlagCreateMultivariate2 = `
+resource "launchdarkly_feature_flag" "multivariate_numbers" {
+	project_key = launchdarkly_project.test.key
+	key = "multivariate-flag-2"
+	name = "multivariate flag 2 name"
+	description = "this is a multivariate flag to test big number values"
+	variation_type = "number"
+	variations {
+		name = "variation1"
+		description = "a description"
+		value = 86400000
+	}
+    variations {
+		value = 123
+	}
+    variations {
+		value = 123456789
+	}
+  	tags = [
+    	"this",
+    	"is",
+    	"unordered"
+  	]
+}
+`
+
 	testAccFeatureFlagUpdateMultivariate = `
 resource "launchdarkly_feature_flag" "multivariate" {
 	project_key = launchdarkly_project.test.key
@@ -445,6 +471,41 @@ func TestAccFeatureFlag_CreateMultivariate(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, testAccCustomPropertyKey("some.property2", "name"), "Some Property"),
 					resource.TestCheckResourceAttr(resourceName, testAccCustomPropertyKey("some.property2", "value.#"), "1"),
 					resource.TestCheckResourceAttr(resourceName, testAccCustomPropertyKey("some.property2", "value.0"), "very special custom property"),
+				),
+			},
+		},
+	})
+}
+
+func TestAccFeatureFlag_CreateMultivariate2(t *testing.T) {
+	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	resourceName := "launchdarkly_feature_flag.multivariate_numbers"
+	resource.Test(t, resource.TestCase{
+		PreCheck: func() {
+			testAccPreCheck(t)
+		},
+		Providers: testAccProviders,
+		Steps: []resource.TestStep{
+			{
+				Config: withRandomProject(projectKey, testAccFeatureFlagCreateMultivariate2),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckProjectExists("launchdarkly_project.test"),
+					testAccCheckFeatureFlagExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, "name", "multivariate flag 2 name"),
+					resource.TestCheckResourceAttr(resourceName, "key", "multivariate-flag-2"),
+					resource.TestCheckResourceAttr(resourceName, "project_key", projectKey),
+					resource.TestCheckResourceAttr(resourceName, "description", "this is a multivariate flag to test big number values"),
+					resource.TestCheckResourceAttr(resourceName, "variation_type", "number"),
+					resource.TestCheckResourceAttr(resourceName, "variations.#", "3"),
+					resource.TestCheckResourceAttr(resourceName, "variations.0.description", "a description"),
+					resource.TestCheckResourceAttr(resourceName, "variations.0.name", "variation1"),
+					resource.TestCheckResourceAttr(resourceName, "variations.0.value", "86400000"),
+					resource.TestCheckResourceAttr(resourceName, "variations.1.value", "123"),
+					resource.TestCheckResourceAttr(resourceName, "variations.2.value", "123456789"),
+					resource.TestCheckResourceAttr(resourceName, "tags.#", "3"),
+					resource.TestCheckResourceAttr(resourceName, testAccTagKey("this"), "this"),
+					resource.TestCheckResourceAttr(resourceName, testAccTagKey("is"), "is"),
+					resource.TestCheckResourceAttr(resourceName, testAccTagKey("unordered"), "unordered"),
 				),
 			},
 		},
