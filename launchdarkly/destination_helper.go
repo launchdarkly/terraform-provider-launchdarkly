@@ -25,6 +25,10 @@ func destinationConfigFromResourceData(d *schema.ResourceData) (interface{}, err
 			"userIdentity": resourceConfig["user_identity"],
 			"environment":  resourceConfig["environment"],
 		}, nil
+	case "segment":
+		return map[string]interface{}{
+			"writeKey": resourceConfig["write_key"],
+		}, nil
 	case "google-pubsub":
 		return resourceConfig, nil // keys are the same in snake and camel case
 	default:
@@ -49,6 +53,10 @@ func destinationConfigToResourceData(kind string, destinationConfig interface{})
 			"user_identity": coercedCfg["userIdentity"],
 			"environment":   coercedCfg["environment"],
 		}
+	case "segment":
+		return map[string]interface{}{
+			"write_key": coercedCfg["writeKey"],
+		}
 	case "google-pubsub":
 		return coercedCfg // keys are the same in snake and camel case
 	default:
@@ -60,7 +68,7 @@ func destinationConfigToResourceData(kind string, destinationConfig interface{})
 func preserveObfuscatedConfigAttributes(originalResourceConfig map[string]interface{}, rawResourceConfig map[string]interface{}) map[string]interface{} {
 	ret := rawResourceConfig
 
-	obfuscatedKeys := []string{"api_key", "secret"}
+	obfuscatedKeys := []string{"api_key", "secret", "write_key"}
 	for _, key := range obfuscatedKeys {
 		if _, ok := rawResourceConfig[key]; ok {
 			if original, ok := originalResourceConfig[key]; ok {

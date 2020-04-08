@@ -56,6 +56,20 @@ resource "launchdarkly_destination" "test" {
 }
 `
 
+	testAccDestinationCreateSegment = `
+resource "launchdarkly_destination" "test" {
+	project_key = launchdarkly_project.test.key
+	env_key = "test"
+	name = "segment-dest"
+	kind = "segment"
+	config = {
+		write_key = "super-secret-write-key"
+	}
+	enabled = true
+	tags = [ "terraform" ]
+}
+`
+
 	testAccDestinationUpdateKinesis = `
 resource "launchdarkly_destination" "test" {
 	project_key = launchdarkly_project.test.key
@@ -100,6 +114,20 @@ resource "launchdarkly_destination" "test" {
 	}
 	enabled = true
 	tags = [ "terraform", "updated" ]
+}
+`
+
+	testAccDestinationUpdateSegment = `
+resource "launchdarkly_destination" "test" {
+	project_key = launchdarkly_project.test.key
+	env_key = "test"
+	name = "segment-dest"
+	kind = "segment"
+	config = {
+		write_key = "updated-write-key"
+	}
+	enabled = true
+	tags = [ "terraform" ]
 }
 `
 )
@@ -175,6 +203,31 @@ func TestAccDestination_CreatePubsub(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "name", "pubsub-dest"),
 					resource.TestCheckResourceAttr(resourceName, "kind", "google-pubsub"),
 					resource.TestCheckResourceAttr(resourceName, "config.project", "test-project"),
+					resource.TestCheckResourceAttr(resourceName, testAccTagKey("terraform"), "terraform"),
+				),
+			},
+		},
+	})
+}
+
+func TestAccDestination_CreateSegment(t *testing.T) {
+	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	resourceName := "launchdarkly_destination.test"
+	resource.Test(t, resource.TestCase{
+		PreCheck: func() {
+			testAccPreCheck(t)
+		},
+		Providers: testAccProviders,
+		Steps: []resource.TestStep{
+			{
+				Config: withRandomProject(projectKey, testAccDestinationCreateSegment),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckProjectExists("launchdarkly_project.test"),
+					testAccCheckDestinationExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, "env_key", "test"),
+					resource.TestCheckResourceAttr(resourceName, "name", "segment-dest"),
+					resource.TestCheckResourceAttr(resourceName, "kind", "segment"),
+					resource.TestCheckResourceAttr(resourceName, "config.write_key", "super-secret-write-key"),
 					resource.TestCheckResourceAttr(resourceName, testAccTagKey("terraform"), "terraform"),
 				),
 			},
@@ -289,6 +342,43 @@ func TestAccDestination_UpdateMparticle(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "config.environment", "production"),
 					resource.TestCheckResourceAttr(resourceName, testAccTagKey("terraform"), "terraform"),
 					resource.TestCheckResourceAttr(resourceName, testAccTagKey("updated"), "updated"),
+				),
+			},
+		},
+	})
+}
+
+func TestAccDestination_UpdateSegment(t *testing.T) {
+	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	resourceName := "launchdarkly_destination.test"
+	resource.Test(t, resource.TestCase{
+		PreCheck: func() {
+			testAccPreCheck(t)
+		},
+		Providers: testAccProviders,
+		Steps: []resource.TestStep{
+			{
+				Config: withRandomProject(projectKey, testAccDestinationCreateSegment),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckProjectExists("launchdarkly_project.test"),
+					testAccCheckDestinationExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, "env_key", "test"),
+					resource.TestCheckResourceAttr(resourceName, "name", "segment-dest"),
+					resource.TestCheckResourceAttr(resourceName, "kind", "segment"),
+					resource.TestCheckResourceAttr(resourceName, "config.write_key", "super-secret-write-key"),
+					resource.TestCheckResourceAttr(resourceName, testAccTagKey("terraform"), "terraform"),
+				),
+			},
+			{
+				Config: withRandomProject(projectKey, testAccDestinationUpdateSegment),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckProjectExists("launchdarkly_project.test"),
+					testAccCheckDestinationExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, "env_key", "test"),
+					resource.TestCheckResourceAttr(resourceName, "name", "segment-dest"),
+					resource.TestCheckResourceAttr(resourceName, "kind", "segment"),
+					resource.TestCheckResourceAttr(resourceName, "config.write_key", "updated-write-key"),
+					resource.TestCheckResourceAttr(resourceName, testAccTagKey("terraform"), "terraform"),
 				),
 			},
 		},

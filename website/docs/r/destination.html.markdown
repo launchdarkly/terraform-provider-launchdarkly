@@ -65,6 +65,20 @@ resource "launchdarkly_destination" "example" {
 }
 ```
 
+```hcl
+resource "launchdarkly_destination" "example" {
+  project_key = "production"
+  env_key     = "example-env"
+  name        = "example-segment-dest"
+  kind        = "segment"
+  config = {
+    "write_key": "segment-write-key"
+  }
+  enabled = true
+  tags    = ["terraform"]
+}
+```
+
 ## Argument Reference
 
 - `project_key` - (Required) - The LaunchDarkly project key.
@@ -73,7 +87,7 @@ resource "launchdarkly_destination" "example" {
 
 - `name` - (Required) - A human-readable name for your data export destination.
 
-- `kind` - (Required) - The data export destination type. Available choices are `kinesis`, `google-pubsub`, and `mparticle`.
+- `kind` - (Required) - The data export destination type. Available choices are `kinesis`, `google-pubsub`, `mparticle`, and `segment`.
 
 - `config` - (Required) - The destination-specific configuration. To learn more, read [Destination-Specific Configs](#destination-specific-configs).
 
@@ -83,7 +97,7 @@ resource "launchdarkly_destination" "example" {
 
 Depending on the destination kind, the `config` argument should contain the following fields:
 
-#### kinesis
+#### Kinesis
 
 - `region` - (Required) - AWS region your Kinesis resource resides in.
 
@@ -91,11 +105,11 @@ Depending on the destination kind, the `config` argument should contain the foll
 
 - `stream_name` - (Required) - The name of your Kinesis stream.
 
-#### google-pubsub
+#### Google Pub/Sub
 
-- `project` - (Required) - The name of your Pubsub project.
+- `project` - (Required) - The name of your Pub/Sub project.
 
-- `topic` - (Required) - The name of your Pubsub topic.
+- `topic` - (Required) - The name of your Pub/Sub topic.
 
 #### mParticle
 
@@ -106,6 +120,10 @@ Depending on the destination kind, the `config` argument should contain the foll
 - `user_identity` - (Required) - Your mParticle user ID.
 
 - `environment` - (Required) - The mParticle environment. Must be 'production' or 'development'.
+
+### Segment
+
+- `write_key` - (Required) - Your Segment write key.
 
 ## Attributes Reference
 

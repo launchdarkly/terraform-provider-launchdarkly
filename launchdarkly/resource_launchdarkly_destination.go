@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/helper/validation"
 	ldapi "github.com/launchdarkly/api-client-go"
 )
 
@@ -42,8 +43,8 @@ func resourceDestination() *schema.Resource {
 			KIND: {
 				Type:         schema.TypeString,
 				Required:     true,
-				Description:  "The data export destination type - must be 'kinesis', 'google-pubsub', or 'mparticle'",
-				ValidateFunc: validateDestinationKind(),
+				Description:  "The data export destination type - must be 'kinesis', 'google-pubsub', 'mparticle', or 'segment'",
+				ValidateFunc: validation.StringInSlice([]string{"kinesis", "google-pubsub", "mparticle", "segment"}, false),
 				ForceNew:     true,
 			},
 			CONFIG: {
@@ -83,6 +84,20 @@ func resourceDestination() *schema.Resource {
 									"stream_name": {
 										Type:     schema.TypeString,
 										Required: true,
+									},
+								},
+							},
+						},
+						"segment": {
+							Type:     schema.TypeMap,
+							Optional: true,
+							Elem: &schema.Resource{
+								Schema: map[string]*schema.Schema{
+									"write_key": {
+										Type:      schema.TypeString,
+										Required:  true,
+										Sensitive: true,
+										ForceNew:  true,
 									},
 								},
 							},
