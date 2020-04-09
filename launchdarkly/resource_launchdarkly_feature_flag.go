@@ -2,11 +2,11 @@ package launchdarkly
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 	"strings"
 
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
-
 	ldapi "github.com/launchdarkly/api-client-go"
 )
 
@@ -131,6 +131,7 @@ func resourceFeatureFlagRead(d *schema.ResourceData, metaRaw interface{}) error 
 
 	flag, res, err := client.ld.FeatureFlagsApi.GetFeatureFlag(client.ctx, projectKey, key, nil)
 	if isStatusNotFound(res) {
+		log.Printf("[WARN] feature flag %q in project %q not found, removing from state", key, projectKey)
 		d.SetId("")
 		return nil
 	}
@@ -264,10 +265,6 @@ func resourceFeatureFlagImport(d *schema.ResourceData, meta interface{}) ([]*sch
 	}
 	_ = d.Set(PROJECT_KEY, projectKey)
 	_ = d.Set(KEY, flagKey)
-
-	if err := resourceFeatureFlagRead(d, meta); err != nil {
-		return nil, err
-	}
 
 	return []*schema.ResourceData{d}, nil
 }

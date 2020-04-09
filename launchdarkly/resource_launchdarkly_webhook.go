@@ -2,6 +2,7 @@ package launchdarkly
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
@@ -17,7 +18,7 @@ func resourceWebhook() *schema.Resource {
 		Exists: resourceWebhookExists,
 
 		Importer: &schema.ResourceImporter{
-			State: resourceWebhookImport,
+			State: schema.ImportStatePassthrough,
 		},
 
 		Schema: map[string]*schema.Schema{
@@ -91,6 +92,7 @@ func resourceWebhookRead(d *schema.ResourceData, metaRaw interface{}) error {
 
 	webhook, res, err := client.ld.WebhooksApi.GetWebhook(client.ctx, webhookID)
 	if isStatusNotFound(res) {
+		log.Printf("[WARN] failed to find webhook with id %q, removing from state", webhookID)
 		d.SetId("")
 		return nil
 	}
@@ -176,14 +178,4 @@ func webhookExists(webhookID string, meta *Client) (bool, error) {
 	}
 
 	return true, nil
-}
-
-func resourceWebhookImport(d *schema.ResourceData, meta interface{}) ([]*schema.ResourceData, error) {
-	d.SetId(d.Id())
-
-	if err := resourceWebhookRead(d, meta); err != nil {
-		return nil, err
-	}
-
-	return []*schema.ResourceData{d}, nil
 }

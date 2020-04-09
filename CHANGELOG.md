@@ -8,6 +8,7 @@ FEATURES:
 BUG_FIXES:
 
 - Fixed bug preventing large number variations from being saved in the state correctly. [#14](https://github.com/terraform-providers/terraform-provider-launchdarkly/issues/14)
+- Fixed bug in import validation. [#19](https://github.com/terraform-providers/terraform-provider-launchdarkly/issues/19)
 
 NOTES:
 

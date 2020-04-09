@@ -77,7 +77,7 @@ resource "launchdarkly_webhook" "with_statements" {
 
 func TestAccWebhook_Create(t *testing.T) {
 	resourceName := "launchdarkly_webhook.test"
-	resource.Test(t, resource.TestCase{
+	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
@@ -95,13 +95,18 @@ func TestAccWebhook_Create(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "policy_statements.#", "0"),
 				),
 			},
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
 		},
 	})
 }
 
 func TestAccWebhook_Update(t *testing.T) {
 	resourceName := "launchdarkly_webhook.test"
-	resource.Test(t, resource.TestCase{
+	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
@@ -139,7 +144,7 @@ func TestAccWebhook_Update(t *testing.T) {
 
 func TestAccWebhook_CreateWithStatements(t *testing.T) {
 	resourceName := "launchdarkly_webhook.with_statements"
-	resource.Test(t, resource.TestCase{
+	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
@@ -166,7 +171,7 @@ func TestAccWebhook_CreateWithStatements(t *testing.T) {
 
 func TestAccWebhook_UpdateWithStatements(t *testing.T) {
 	resourceName := "launchdarkly_webhook.with_statements"
-	resource.Test(t, resource.TestCase{
+	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
@@ -212,7 +217,7 @@ func TestAccWebhook_UpdateWithStatements(t *testing.T) {
 }
 
 func TestAccWebhook_InvalidStatements(t *testing.T) {
-	resource.Test(t, resource.TestCase{
+	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},

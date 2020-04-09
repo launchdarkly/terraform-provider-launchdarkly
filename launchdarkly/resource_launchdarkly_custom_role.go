@@ -2,6 +2,7 @@ package launchdarkly
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
@@ -17,7 +18,7 @@ func resourceCustomRole() *schema.Resource {
 		Exists: resourceCustomRoleExists,
 
 		Importer: &schema.ResourceImporter{
-			State: resourceCustomRoleImport,
+			State: schema.ImportStatePassthrough,
 		},
 
 		Schema: map[string]*schema.Schema{
@@ -77,6 +78,7 @@ func resourceCustomRoleRead(d *schema.ResourceData, metaRaw interface{}) error {
 
 	customRole, res, err := client.ld.CustomRolesApi.GetCustomRole(client.ctx, customRoleID)
 	if isStatusNotFound(res) {
+		log.Printf("[WARN] failed to find custom role with id %q, removing from state", customRoleID)
 		d.SetId("")
 		return nil
 	}
@@ -158,14 +160,4 @@ func customRoleExists(customRoleKey string, meta *Client) (bool, error) {
 	}
 
 	return true, nil
-}
-
-func resourceCustomRoleImport(d *schema.ResourceData, meta interface{}) ([]*schema.ResourceData, error) {
-	d.SetId(d.Id())
-
-	if err := resourceCustomRoleRead(d, meta); err != nil {
-		return nil, err
-	}
-
-	return []*schema.ResourceData{d}, nil
 }

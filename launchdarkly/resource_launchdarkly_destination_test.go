@@ -138,7 +138,7 @@ func TestAccDestination_CreateKinesis(t *testing.T) {
 	// kinesis, google-pubsub, or mparticle
 	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	resourceName := "launchdarkly_destination.test"
-	resource.Test(t, resource.TestCase{
+	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
@@ -156,6 +156,12 @@ func TestAccDestination_CreateKinesis(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, testAccTagKey("terraform"), "terraform"),
 				),
 			},
+			{
+				ResourceName:            resourceName,
+				ImportState:             true,
+				ImportStateVerify:       true,
+				ImportStateVerifyIgnore: []string{"tags"},
+			},
 		},
 	})
 }
@@ -163,7 +169,7 @@ func TestAccDestination_CreateKinesis(t *testing.T) {
 func TestAccDestination_CreateMparticle(t *testing.T) {
 	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	resourceName := "launchdarkly_destination.test"
-	resource.Test(t, resource.TestCase{
+	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
@@ -188,7 +194,7 @@ func TestAccDestination_CreateMparticle(t *testing.T) {
 func TestAccDestination_CreatePubsub(t *testing.T) {
 	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	resourceName := "launchdarkly_destination.test"
-	resource.Test(t, resource.TestCase{
+	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
@@ -213,7 +219,7 @@ func TestAccDestination_CreatePubsub(t *testing.T) {
 func TestAccDestination_CreateSegment(t *testing.T) {
 	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	resourceName := "launchdarkly_destination.test"
-	resource.Test(t, resource.TestCase{
+	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
@@ -238,7 +244,7 @@ func TestAccDestination_CreateSegment(t *testing.T) {
 func TestAccDestination_UpdateKinesis(t *testing.T) {
 	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	resourceName := "launchdarkly_destination.test"
-	resource.Test(t, resource.TestCase{
+	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
@@ -275,7 +281,7 @@ func TestAccDestination_UpdateKinesis(t *testing.T) {
 func TestAccDestination_UpdatePubsub(t *testing.T) {
 	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	resourceName := "launchdarkly_destination.test"
-	resource.Test(t, resource.TestCase{
+	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
@@ -312,7 +318,7 @@ func TestAccDestination_UpdatePubsub(t *testing.T) {
 func TestAccDestination_UpdateMparticle(t *testing.T) {
 	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	resourceName := "launchdarkly_destination.test"
-	resource.Test(t, resource.TestCase{
+	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
@@ -351,7 +357,7 @@ func TestAccDestination_UpdateMparticle(t *testing.T) {
 func TestAccDestination_UpdateSegment(t *testing.T) {
 	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	resourceName := "launchdarkly_destination.test"
-	resource.Test(t, resource.TestCase{
+	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
@@ -403,7 +409,11 @@ func testAccCheckDestinationExists(resourceName string) resource.TestCheckFunc {
 			return fmt.Errorf("destination environment key not found: %s", resourceName)
 		}
 		client := testAccProvider.Meta().(*Client)
-		_, _, err := client.ld.DataExportDestinationsApi.GetDestination(client.ctx, projKey, envKey, rs.Primary.ID)
+		_, _, destID, err := destinationImportIDtoKeys(rs.Primary.ID)
+		if err != nil {
+			return err
+		}
+		_, _, err = client.ld.DataExportDestinationsApi.GetDestination(client.ctx, projKey, envKey, destID)
 		if err != nil {
 			return fmt.Errorf("error getting destination: %s", err)
 		}

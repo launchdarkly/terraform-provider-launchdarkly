@@ -19,7 +19,7 @@ Currently the following three types of destinations are available: kinesis, goog
 
 ```hcl
 resource "launchdarkly_destination" "example" {
-  project_key = "production"
+  project_key = "example-project"
   env_key     = "example-env"
   name        = "example-kinesis-dest"
   kind        = "kinesis"
@@ -35,12 +35,12 @@ resource "launchdarkly_destination" "example" {
 
 ```hcl
 resource "launchdarkly_destination" "example" {
-  project_key = "production"
+  project_key = "example-project"
   env_key     = "example-env"
   name        = "example-pubsub-dest"
   kind        = "google-pubsub"
   config = {
-    "project" : "example-project",
+    "project" : "example-pub-sub-project",
     "topic" : "example-topic"
   }
   enabled = true
@@ -50,7 +50,7 @@ resource "launchdarkly_destination" "example" {
 
 ```hcl
 resource "launchdarkly_destination" "example" {
-  project_key = "production"
+  project_key = "example-project"
   env_key     = "example-env"
   name        = "example-mparticle-dest"
   kind        = "mparticle"
@@ -67,7 +67,7 @@ resource "launchdarkly_destination" "example" {
 
 ```hcl
 resource "launchdarkly_destination" "example" {
-  project_key = "production"
+  project_key = "example-project"
   env_key     = "example-env"
   name        = "example-segment-dest"
   kind        = "segment"
@@ -130,3 +130,13 @@ Depending on the destination kind, the `config` argument should contain the foll
 In addition to the arguments above, the resource exports the following attribute:
 
 - `id` - The data export destination ID.
+
+## Import
+
+You can import a data export destination using the destination's full ID in the format `project_key/environment_key/id`.
+
+For example:
+
+```
+$ terraform import launchdarkly_destination.example example-project/example-env/57c0af609969090743529967
+```

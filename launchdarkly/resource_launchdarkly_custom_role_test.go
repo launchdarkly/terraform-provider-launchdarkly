@@ -77,7 +77,7 @@ func TestAccCustomRole_Create(t *testing.T) {
 		Actions:   []string{"*"},
 		Effect:    "deny",
 	}
-	resource.Test(t, resource.TestCase{
+	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
@@ -106,7 +106,7 @@ func TestAccCustomRole_CreateWithStatements(t *testing.T) {
 	key := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	name := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	resourceName := "launchdarkly_custom_role.test"
-	resource.Test(t, resource.TestCase{
+	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
@@ -128,6 +128,11 @@ func TestAccCustomRole_CreateWithStatements(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "policy_statements.0.effect", "allow"),
 				),
 			},
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
 		},
 	})
 }
@@ -141,7 +146,7 @@ func TestAccCustomRole_Update(t *testing.T) {
 		Actions:   []string{"*"},
 		Effect:    "allow",
 	}
-	resource.Test(t, resource.TestCase{
+	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
@@ -176,7 +181,7 @@ func TestAccCustomRole_UpdateWithStatements(t *testing.T) {
 	key := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	name := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	resourceName := "launchdarkly_custom_role.test"
-	resource.Test(t, resource.TestCase{
+	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},

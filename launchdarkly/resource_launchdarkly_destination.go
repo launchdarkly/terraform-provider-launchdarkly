@@ -2,7 +2,9 @@ package launchdarkly
 
 import (
 	"fmt"
+	"log"
 	"net/http"
+	"strings"
 
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/helper/validation"
@@ -32,6 +34,7 @@ func resourceDestination() *schema.Resource {
 			ENV_KEY: {
 				Type:        schema.TypeString,
 				Required:    true,
+				ForceNew:    true,
 				Description: "The LaunchDarkly environment key",
 			},
 			NAME: {
@@ -163,23 +166,29 @@ func resourceDestinationCreate(d *schema.ResourceData, metaRaw interface{}) erro
 
 	destination, _, err := client.ld.DataExportDestinationsApi.PostDestination(client.ctx, destinationProjKey, destinationEnvKey, destinationBody)
 	if err != nil {
+		d.SetId("")
 		return fmt.Errorf("failed to create destination with project key %q and env key %q: %s", destinationProjKey, destinationEnvKey, handleLdapiErr(err))
 	}
 
 	// destination defined in api-client-go/model_destination.go
-	d.SetId(destination.Id)
+	d.SetId(strings.Join([]string{destinationProjKey, destinationEnvKey, destination.Id}, "/"))
 
 	return resourceDestinationRead(d, metaRaw)
 }
 
 func resourceDestinationRead(d *schema.ResourceData, metaRaw interface{}) error {
 	client := metaRaw.(*Client)
-	destinationID := d.Id()
+	_, _, destinationID, err := destinationImportIDtoKeys(d.Id())
+	if err != nil {
+		return err
+	}
+
 	destinationProjKey := d.Get(PROJECT_KEY).(string)
 	destinationEnvKey := d.Get(ENV_KEY).(string)
 
 	destination, res, err := client.ld.DataExportDestinationsApi.GetDestination(client.ctx, destinationProjKey, destinationEnvKey, destinationID)
 	if isStatusNotFound(res) {
+		log.Printf("[WARN] failed to find destination with id: %q in project %q, environment: %q, removing from state", destinationID, destinationProjKey, destinationEnvKey)
 		d.SetId("")
 		return nil
 	}
@@ -195,12 +204,16 @@ func resourceDestinationRead(d *schema.ResourceData, metaRaw interface{}) error 
 	_ = d.Set(CONFIG, preservedCfg)
 	_ = d.Set(ENABLED, destination.On)
 
+	d.SetId(strings.Join([]string{destinationProjKey, destinationEnvKey, destination.Id}, "/"))
 	return nil
 }
 
 func resourceDestinationUpdate(d *schema.ResourceData, metaRaw interface{}) error {
 	client := metaRaw.(*Client)
-	destinationID := d.Id()
+	_, _, destinationID, err := destinationImportIDtoKeys(d.Id())
+	if err != nil {
+		return err
+	}
 	destinationProjKey := d.Get(PROJECT_KEY).(string)
 	destinationEnvKey := d.Get(ENV_KEY).(string)
 	destinationName := d.Get(NAME).(string)
@@ -230,11 +243,14 @@ func resourceDestinationUpdate(d *schema.ResourceData, metaRaw interface{}) erro
 
 func resourceDestinationDelete(d *schema.ResourceData, metaRaw interface{}) error {
 	client := metaRaw.(*Client)
-	destinationID := d.Id()
+	_, _, destinationID, err := destinationImportIDtoKeys(d.Id())
+	if err != nil {
+		return err
+	}
 	destinationProjKey := d.Get(PROJECT_KEY).(string)
 	destinationEnvKey := d.Get(ENV_KEY).(string)
 
-	_, err := client.ld.DataExportDestinationsApi.DeleteDestination(client.ctx, destinationProjKey, destinationEnvKey, destinationID)
+	_, err = client.ld.DataExportDestinationsApi.DeleteDestination(client.ctx, destinationProjKey, destinationEnvKey, destinationID)
 	if err != nil {
 		return fmt.Errorf("failed to delete destination with id %q: %s", destinationID, handleLdapiErr(err))
 	}
@@ -244,7 +260,10 @@ func resourceDestinationDelete(d *schema.ResourceData, metaRaw interface{}) erro
 
 func resourceDestinationExists(d *schema.ResourceData, metaRaw interface{}) (bool, error) {
 	client := metaRaw.(*Client)
-	destinationID := d.Id()
+	_, _, destinationID, err := destinationImportIDtoKeys(d.Id())
+	if err != nil {
+		return false, err
+	}
 	destinationProjKey := d.Get(PROJECT_KEY).(string)
 	destinationEnvKey := d.Get(ENV_KEY).(string)
 
@@ -260,11 +279,22 @@ func resourceDestinationExists(d *schema.ResourceData, metaRaw interface{}) (boo
 }
 
 func resourceDestinationImport(d *schema.ResourceData, meta interface{}) ([]*schema.ResourceData, error) {
-	d.SetId(d.Id())
-	err := resourceDestinationRead(d, meta)
+	projKey, envKey, _, err := destinationImportIDtoKeys(d.Id())
 	if err != nil {
 		return nil, err
 	}
 
+	_ = d.Set(PROJECT_KEY, projKey)
+	_ = d.Set(ENV_KEY, envKey)
+
 	return []*schema.ResourceData{d}, nil
+}
+
+func destinationImportIDtoKeys(importID string) (projKey, envKey, destinationID string, err error) {
+	if strings.Count(importID, "/") != 2 {
+		return "", "", "", fmt.Errorf("found unexpected destination import id format: %q expected format: 'project_key/env_key/destination_id'", importID)
+	}
+	parts := strings.SplitN(importID, "/", 3)
+	projKey, envKey, destinationID = parts[0], parts[1], parts[2]
+	return projKey, envKey, destinationID, nil
 }

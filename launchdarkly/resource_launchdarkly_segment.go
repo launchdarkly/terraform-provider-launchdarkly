@@ -2,6 +2,7 @@ package launchdarkly
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 	"strings"
 
@@ -121,6 +122,7 @@ func resourceSegmentRead(d *schema.ResourceData, metaRaw interface{}) error {
 
 	segment, res, err := client.ld.UserSegmentsApi.GetUserSegment(client.ctx, projectKey, envKey, segmentKey)
 	if isStatusNotFound(res) {
+		log.Printf("[WARN] failed to find segment %q in project %q, environment %q, removing from state", segmentKey, projectKey, envKey)
 		d.SetId("")
 		return nil
 	}
@@ -230,10 +232,6 @@ func resourceSegmentImport(d *schema.ResourceData, meta interface{}) ([]*schema.
 	_ = d.Set(PROJECT_KEY, projectKey)
 	_ = d.Set(ENV_KEY, envKey)
 	_ = d.Set(KEY, segmentKey)
-
-	if err := resourceSegmentRead(d, meta); err != nil {
-		return nil, err
-	}
 
 	return []*schema.ResourceData{d}, nil
 }

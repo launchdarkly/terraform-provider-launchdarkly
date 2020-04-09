@@ -2,6 +2,7 @@ package launchdarkly
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
@@ -17,7 +18,7 @@ func resourceTeamMember() *schema.Resource {
 		Exists: resourceTeamMemberExists,
 
 		Importer: &schema.ResourceImporter{
-			State: resourceTeamMemberImport,
+			State: schema.ImportStatePassthrough,
 		},
 
 		Schema: map[string]*schema.Schema{
@@ -95,6 +96,7 @@ func resourceTeamMemberRead(d *schema.ResourceData, metaRaw interface{}) error {
 
 	member, res, err := client.ld.TeamMembersApi.GetMember(client.ctx, memberID)
 	if isStatusNotFound(res) {
+		log.Printf("[WARN] failed to find member with id %q, removing from state", memberID)
 		d.SetId("")
 		return nil
 	}
@@ -161,12 +163,4 @@ func teamMemberExists(memberID string, meta *Client) (bool, error) {
 	}
 
 	return true, nil
-}
-
-func resourceTeamMemberImport(d *schema.ResourceData, meta interface{}) ([]*schema.ResourceData, error) {
-	if err := resourceTeamMemberRead(d, meta); err != nil {
-		return nil, err
-	}
-
-	return []*schema.ResourceData{d}, nil
 }
