@@ -201,7 +201,7 @@ resource "launchdarkly_feature_flag_environment" "invalid_bucket_by" {
 func TestAccFeatureFlagEnvironment_Basic(t *testing.T) {
 	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	resourceName := "launchdarkly_feature_flag_environment.basic"
-	resource.Test(t, resource.TestCase{
+	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
@@ -216,6 +216,10 @@ func TestAccFeatureFlagEnvironment_Basic(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "flag_fallthrough.0.variation", "1"),
 				),
 			},
+			{
+				ResourceName: resourceName,
+				ImportState:  true,
+			},
 		},
 	})
 }
@@ -223,7 +227,7 @@ func TestAccFeatureFlagEnvironment_Basic(t *testing.T) {
 func TestAccFeatureFlagEnvironment_Update(t *testing.T) {
 	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	resourceName := "launchdarkly_feature_flag_environment.basic"
-	resource.Test(t, resource.TestCase{
+	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
@@ -301,7 +305,7 @@ func TestAccFeatureFlagEnvironment_Update(t *testing.T) {
 func TestAccFeatureFlagEnvironment_InvalidBucketBy(t *testing.T) {
 	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	// resourceName := "launchdarkly_feature_flag_environment.invalid_bucket_by"
-	resource.Test(t, resource.TestCase{
+	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
@@ -322,7 +326,7 @@ func TestAccFeatureFlagEnvironment_InvalidBucketBy(t *testing.T) {
 func TestAccFeatureFlagEnvironment_Prereq(t *testing.T) {
 	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	resourceName := "launchdarkly_feature_flag_environment.prereq"
-	resource.Test(t, resource.TestCase{
+	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},

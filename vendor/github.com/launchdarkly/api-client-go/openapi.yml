@@ -10,7 +10,7 @@ info:
   license:
     name: Apache 2.0
     url: 'http://www.apache.org/licenses/LICENSE-2.0.html'
-  version: 2.0.24
+  version: 2.0.33
 host: app.launchdarkly.com
 basePath: /api/v2
 schemes:
@@ -1126,6 +1126,15 @@ definitions:
         $ref: '#/definitions/Link'
       next:
         $ref: '#/definitions/Link'
+  Site:
+    type: object
+    properties:
+      href:
+        type: string
+        example: /features/sort.order
+      type:
+        type: string
+        example: text/html
   Webhook:
     type: object
     properties:
@@ -1155,7 +1164,9 @@ definitions:
         description: The name of the webhook.
         example: Example hook
       statements:
-        $ref: '#/definitions/Statements'
+        type: array
+        items:
+          $ref: '#/definitions/Statement'
       tags:
         type: array
         description: Tags assigned to this webhook.
@@ -1265,6 +1276,8 @@ definitions:
         type: boolean
         description: Whether or not this flag is archived.
         example: false
+      defaults:
+        $ref: '#/definitions/Defaults'
   FeatureFlags:
     type: object
     properties:
@@ -1353,6 +1366,12 @@ definitions:
         type: boolean
         example: false
         description: Set to true to send detailed event information for this flag.
+      trackEventsFallthrough:
+        type: boolean
+        example: true
+        description: >-
+          Set to true to send detailed event information when targeting is
+          enabled but no individual targeting rule is matched.
   Target:
     type: object
     properties:
@@ -1370,6 +1389,8 @@ definitions:
         type: string
       variation:
         type: integer
+      trackEvents:
+        type: boolean
       rollout:
         $ref: '#/definitions/Rollout'
       clauses:
@@ -1428,6 +1449,21 @@ definitions:
         example: The true variation
       value:
         type: object
+  Defaults:
+    type: object
+    description: Default values to be used when a new environment is created.
+    required:
+      - onVariation
+      - offVariation
+    properties:
+      onVariation:
+        type: integer
+        description: >-
+          The index of the variation to be served when a flag's targeting is on
+          (default variation).
+      offVariation:
+        type: integer
+        description: The index of the variation to be served when a flag is off.
   Prerequisite:
     type: object
     properties:
@@ -1578,6 +1614,11 @@ definitions:
         type: integer
       _links:
         $ref: '#/definitions/Links'
+      _flags:
+        type: array
+        readOnly: true
+        items:
+          $ref: '#/definitions/FlagListItem'
   UserSegmentRule:
     type: object
     properties:
@@ -1613,6 +1654,9 @@ definitions:
       name:
         type: string
         example: Zentasks
+      includeInSnippetByDefault:
+        type: boolean
+        example: true
       environments:
         type: array
         items:
@@ -1796,6 +1840,36 @@ definitions:
         type: number
         description: The default TTL for the new environment.
         example: 0
+      secureMode:
+        type: boolean
+        description: Determines whether the environment is in secure mode.
+        example: false
+      defaultTrackEvents:
+        type: boolean
+        description: >-
+          Set to true to send detailed event information for newly created
+          flags.
+        example: false
+      tags:
+        type: array
+        description: An array of tags for this environment.
+        items:
+          type: string
+        example:
+          - tag1
+          - tag2
+      requireComments:
+        type: boolean
+        description: >-
+          Determines if this environment requires comments for flag and segment
+          changes.
+        example: false
+      confirmChanges:
+        type: boolean
+        description: >-
+          Determines if this environment requires confirmation for flag and
+          segment changes.
+        example: false
     required:
       - name
       - key
@@ -1966,10 +2040,6 @@ definitions:
                 type: application/json
             _value: 'false,'
             setting: null
-  Statements:
-    type: array
-    items:
-      $ref: '#/definitions/Statement'
   Statement:
     type: object
     properties:
@@ -1979,7 +2049,7 @@ definitions:
           type: string
           description: A resource specifier string
           example: 'proj/*:env/*:flag/my-flag'
-      notresources:
+      notResources:
         type: array
         items:
           type: string
@@ -1994,7 +2064,7 @@ definitions:
           type: string
           description: An action to perform on a resource.
           example: updateOn
-      notactions:
+      notActions:
         type: array
         items:
           type: string
@@ -2058,12 +2128,30 @@ definitions:
           type: string
           description: A resource specifier string
           example: 'proj/*:env/*:flag/my-flag'
+      notResources:
+        type: array
+        items:
+          type: string
+          description: A resource specifier string
+          example: 'proj/*:env/*:flag/my-flag'
+        description: >-
+          Targeted resource will be those resources NOT in this list. The
+          "resources`" field must be empty to use this field.
       actions:
         type: array
         items:
           type: string
           description: An action to perform on a resource.
           example: updateOn
+      notActions:
+        type: array
+        items:
+          type: string
+          description: An action to perform on a resource.
+          example: updateOn
+        description: >-
+          Targeted actions will be those actions NOT in this list. The "actions"
+          field must be empty to use this field.
       effect:
         type: string
         description: Effect of the policy - allow or deny.
@@ -2341,6 +2429,17 @@ definitions:
       - updateRules
       - updateFallthrough
       - updateOffVariation
+  FlagListItem:
+    type: object
+    properties:
+      name:
+        type: string
+      key:
+        type: string
+      _links:
+        $ref: '#/definitions/Links'
+      _site:
+        $ref: '#/definitions/Site'
 responses:
   Standard201:
     description: Resource created.
@@ -2439,7 +2538,9 @@ parameters:
           example: Example hook
           description: The name of the webhook.
         statements:
-          $ref: '#/definitions/Statements'
+          type: array
+          items:
+            $ref: '#/definitions/Statement'
         tags:
           type: array
           items:
@@ -2517,6 +2618,8 @@ parameters:
           description: >-
             Whether or not this flag should be made available to the client-side
             JavaScript SDK.
+        defaults:
+          $ref: '#/definitions/Defaults'
       required:
         - name
         - key
@@ -2836,7 +2939,9 @@ parameters:
               description: The 20-hexdigit id or the key for a custom role.
               example: revenue-team
           inlineRole:
-            $ref: '#/definitions/Statements'
+            type: array
+            items:
+              $ref: '#/definitions/Statement'
         required:
           - email
   MemberId:

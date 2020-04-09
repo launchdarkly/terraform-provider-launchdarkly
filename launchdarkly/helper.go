@@ -80,3 +80,11 @@ func isStatusNotFound(response *http.Response) bool {
 	}
 	return false
 }
+
+func stringSliceToInterfaceSlice(input []string) []interface{} {
+	o := make([]interface{}, 0, len(input))
+	for _, v := range input {
+		o = append(o, v)
+	}
+	return o
+}

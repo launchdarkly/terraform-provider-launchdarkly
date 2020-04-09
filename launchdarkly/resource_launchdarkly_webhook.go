@@ -2,6 +2,7 @@ package launchdarkly
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
@@ -17,7 +18,7 @@ func resourceWebhook() *schema.Resource {
 		Exists: resourceWebhookExists,
 
 		Importer: &schema.ResourceImporter{
-			State: resourceWebhookImport,
+			State: schema.ImportStatePassthrough,
 		},
 
 		Schema: map[string]*schema.Schema{
@@ -38,7 +39,8 @@ func resourceWebhook() *schema.Resource {
 				Type:     schema.TypeString,
 				Optional: true,
 			},
-			TAGS: tagsSchema(),
+			POLICY_STATEMENTS: policyStatementsSchema(),
+			TAGS:              tagsSchema(),
 		},
 	}
 }
@@ -49,12 +51,17 @@ func resourceWebhookCreate(d *schema.ResourceData, metaRaw interface{}) error {
 	webhookSecret := d.Get(SECRET).(string)
 	webhookOn := d.Get(ENABLED).(bool)
 	webhookName := d.Get(NAME).(string)
+	statements, err := policyStatementsFromResourceData(d)
+	if err != nil {
+		return err
+	}
 
 	webhookBody := ldapi.WebhookBody{
-		Url:    webhookURL,
-		Secret: webhookSecret,
-		On:     webhookOn,
-		Name:   webhookName,
+		Url:        webhookURL,
+		Secret:     webhookSecret,
+		On:         webhookOn,
+		Name:       webhookName,
+		Statements: statements,
 	}
 
 	// The sign field isn't returned when GETting a webhook so terraform can't import it properly.
@@ -85,17 +92,24 @@ func resourceWebhookRead(d *schema.ResourceData, metaRaw interface{}) error {
 
 	webhook, res, err := client.ld.WebhooksApi.GetWebhook(client.ctx, webhookID)
 	if isStatusNotFound(res) {
+		log.Printf("[WARN] failed to find webhook with id %q, removing from state", webhookID)
 		d.SetId("")
 		return nil
 	}
 	if err != nil {
 		return fmt.Errorf("failed to get webhook with id %q: %s", webhookID, handleLdapiErr(err))
 	}
+	statements := policyStatementsToResourceData(webhook.Statements)
 
 	_ = d.Set(URL, webhook.Url)
 	_ = d.Set(SECRET, webhook.Secret)
 	_ = d.Set(ENABLED, webhook.On)
 	_ = d.Set(NAME, webhook.Name)
+	err = d.Set(POLICY_STATEMENTS, statements)
+	if err != nil {
+		return fmt.Errorf("failed to set policy_statements on webhook with id %q: %v", webhookID, err)
+	}
+
 	err = d.Set(TAGS, webhook.Tags)
 	if err != nil {
 		return fmt.Errorf("failed to set tags on webhook with id %q: %v", webhookID, err)
@@ -120,7 +134,15 @@ func resourceWebhookUpdate(d *schema.ResourceData, metaRaw interface{}) error {
 		patchReplace("/tags", &webhookTags),
 	}
 
-	_, _, err := repeatUntilNoConflict(func() (interface{}, *http.Response, error) {
+	statements, err := policyStatementsFromResourceData(d)
+	if err != nil {
+		return err
+	}
+	if len(statements) > 0 {
+		patch = append(patch, patchReplace("/statements", &statements))
+	}
+
+	_, _, err = repeatUntilNoConflict(func() (interface{}, *http.Response, error) {
 		return client.ld.WebhooksApi.PatchWebhook(client.ctx, webhookID, patch)
 	})
 	if err != nil {
@@ -156,14 +178,4 @@ func webhookExists(webhookID string, meta *Client) (bool, error) {
 	}
 
 	return true, nil
-}
-
-func resourceWebhookImport(d *schema.ResourceData, meta interface{}) ([]*schema.ResourceData, error) {
-	d.SetId(d.Id())
-
-	if err := resourceWebhookRead(d, meta); err != nil {
-		return nil, err
-	}
-
-	return []*schema.ResourceData{d}, nil
 }

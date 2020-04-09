@@ -18,7 +18,7 @@ func resourceProject() *schema.Resource {
 		Exists: resourceProjectExists,
 
 		Importer: &schema.ResourceImporter{
-			State: resourceProjectImport,
+			State: schema.ImportStatePassthrough,
 		},
 
 		Schema: map[string]*schema.Schema{
@@ -80,6 +80,7 @@ func resourceProjectRead(d *schema.ResourceData, metaRaw interface{}) error {
 
 	project, res, err := client.ld.ProjectsApi.GetProject(client.ctx, projectKey)
 	if isStatusNotFound(res) {
+		log.Printf("[WARN] failed to find project with key %q, removing from state", projectKey)
 		d.SetId("")
 		return nil
 	}
@@ -191,14 +192,4 @@ func projectExists(projectKey string, meta *Client) (bool, error) {
 	}
 
 	return true, nil
-}
-
-func resourceProjectImport(d *schema.ResourceData, meta interface{}) ([]*schema.ResourceData, error) {
-	_ = d.Set(KEY, d.Id())
-
-	if err := resourceProjectRead(d, meta); err != nil {
-		return nil, err
-	}
-
-	return []*schema.ResourceData{d}, nil
 }

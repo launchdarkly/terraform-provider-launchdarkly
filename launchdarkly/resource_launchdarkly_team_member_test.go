@@ -36,7 +36,7 @@ resource "launchdarkly_team_member" "test" {
 func TestAccTeamMember_Create(t *testing.T) {
 	randomName := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	resourceName := "launchdarkly_team_member.test"
-	resource.Test(t, resource.TestCase{
+	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
@@ -53,6 +53,11 @@ func TestAccTeamMember_Create(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "custom_roles.#", "0"),
 				),
 			},
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
 		},
 	})
 }
@@ -60,7 +65,7 @@ func TestAccTeamMember_Create(t *testing.T) {
 func TestAccTeamMember_Update(t *testing.T) {
 	randomName := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	resourceName := "launchdarkly_team_member.test"
-	resource.Test(t, resource.TestCase{
+	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},

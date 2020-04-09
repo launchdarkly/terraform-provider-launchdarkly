@@ -57,7 +57,7 @@ resource "launchdarkly_project" "env_test" {
 func TestAccProject_Create(t *testing.T) {
 	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	resourceName := "launchdarkly_project.test"
-	resource.Test(t, resource.TestCase{
+	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
@@ -74,6 +74,10 @@ func TestAccProject_Create(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, testAccTagKey("test"), "test"),
 				),
 			},
+			{
+				ResourceName: resourceName,
+				ImportState:  true,
+			},
 		},
 	})
 }
@@ -81,7 +85,7 @@ func TestAccProject_Create(t *testing.T) {
 func TestAccProject_Update(t *testing.T) {
 	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	resourceName := "launchdarkly_project.test"
-	resource.Test(t, resource.TestCase{
+	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
@@ -114,7 +118,7 @@ func TestAccProject_Update(t *testing.T) {
 func TestAccProject_WithEnvironment(t *testing.T) {
 	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	resourceName := "launchdarkly_project.env_test"
-	resource.Test(t, resource.TestCase{
+	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},

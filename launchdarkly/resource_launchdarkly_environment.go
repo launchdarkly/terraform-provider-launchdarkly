@@ -2,6 +2,7 @@ package launchdarkly
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 	"strings"
 
@@ -70,6 +71,7 @@ func resourceEnvironmentRead(d *schema.ResourceData, metaRaw interface{}) error 
 
 	env, res, err := client.ld.EnvironmentsApi.GetEnvironment(client.ctx, projectKey, key)
 	if isStatusNotFound(res) {
+		log.Printf("[WARN] failed to find environment with key %q in project %q, removing from state", key, projectKey)
 		d.SetId("")
 		return nil
 	}
@@ -168,10 +170,6 @@ func resourceEnvironmentImport(d *schema.ResourceData, meta interface{}) ([]*sch
 
 	_ = d.Set(PROJECT_KEY, projectKey)
 	_ = d.Set(KEY, envKey)
-
-	if err := resourceEnvironmentRead(d, meta); err != nil {
-		return nil, err
-	}
 
 	return []*schema.ResourceData{d}, nil
 }

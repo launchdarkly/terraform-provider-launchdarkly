@@ -154,6 +154,32 @@ resource "launchdarkly_feature_flag" "multivariate" {
 }
 `
 
+	testAccFeatureFlagCreateMultivariate2 = `
+resource "launchdarkly_feature_flag" "multivariate_numbers" {
+	project_key = launchdarkly_project.test.key
+	key = "multivariate-flag-2"
+	name = "multivariate flag 2 name"
+	description = "this is a multivariate flag to test big number values"
+	variation_type = "number"
+	variations {
+		name = "variation1"
+		description = "a description"
+		value = 86400000
+	}
+    variations {
+		value = 123
+	}
+    variations {
+		value = 123456789
+	}
+  	tags = [
+    	"this",
+    	"is",
+    	"unordered"
+  	]
+}
+`
+
 	testAccFeatureFlagUpdateMultivariate = `
 resource "launchdarkly_feature_flag" "multivariate" {
 	project_key = launchdarkly_project.test.key
@@ -208,7 +234,7 @@ func withRandomProject(randomProject, resource string) string {
 func TestAccFeatureFlag_Basic(t *testing.T) {
 	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	resourceName := "launchdarkly_feature_flag.basic"
-	resource.Test(t, resource.TestCase{
+	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
@@ -229,6 +255,11 @@ func TestAccFeatureFlag_Basic(t *testing.T) {
 					resource.TestCheckNoResourceAttr(resourceName, "maintainer_id"),
 				),
 			},
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
 		},
 	})
 }
@@ -236,7 +267,7 @@ func TestAccFeatureFlag_Basic(t *testing.T) {
 func TestAccFeatureFlag_Update(t *testing.T) {
 	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	resourceName := "launchdarkly_feature_flag.basic"
-	resource.Test(t, resource.TestCase{
+	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
@@ -275,7 +306,7 @@ func TestAccFeatureFlag_Update(t *testing.T) {
 func TestAccFeatureFlag_Number(t *testing.T) {
 	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	resourceName := "launchdarkly_feature_flag.number"
-	resource.Test(t, resource.TestCase{
+	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
@@ -295,6 +326,11 @@ func TestAccFeatureFlag_Number(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "variations.1.value", "0"),
 				),
 			},
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
 		},
 	})
 }
@@ -302,7 +338,7 @@ func TestAccFeatureFlag_Number(t *testing.T) {
 func TestAccFeatureFlag_JSON(t *testing.T) {
 	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	resourceName := "launchdarkly_feature_flag.json"
-	resource.Test(t, resource.TestCase{
+	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
@@ -330,7 +366,7 @@ func TestAccFeatureFlag_WithMaintainer(t *testing.T) {
 	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	randomName := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	resourceName := "launchdarkly_feature_flag.maintained"
-	resource.Test(t, resource.TestCase{
+	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
@@ -369,7 +405,7 @@ func TestAccFeatureFlag_InvalidMaintainer(t *testing.T) {
 	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	randomName := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	resourceName := "launchdarkly_feature_flag.maintained"
-	resource.Test(t, resource.TestCase{
+	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
@@ -409,7 +445,7 @@ func TestAccFeatureFlag_InvalidMaintainer(t *testing.T) {
 func TestAccFeatureFlag_CreateMultivariate(t *testing.T) {
 	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	resourceName := "launchdarkly_feature_flag.multivariate"
-	resource.Test(t, resource.TestCase{
+	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
@@ -451,10 +487,45 @@ func TestAccFeatureFlag_CreateMultivariate(t *testing.T) {
 	})
 }
 
+func TestAccFeatureFlag_CreateMultivariate2(t *testing.T) {
+	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	resourceName := "launchdarkly_feature_flag.multivariate_numbers"
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck: func() {
+			testAccPreCheck(t)
+		},
+		Providers: testAccProviders,
+		Steps: []resource.TestStep{
+			{
+				Config: withRandomProject(projectKey, testAccFeatureFlagCreateMultivariate2),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckProjectExists("launchdarkly_project.test"),
+					testAccCheckFeatureFlagExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, "name", "multivariate flag 2 name"),
+					resource.TestCheckResourceAttr(resourceName, "key", "multivariate-flag-2"),
+					resource.TestCheckResourceAttr(resourceName, "project_key", projectKey),
+					resource.TestCheckResourceAttr(resourceName, "description", "this is a multivariate flag to test big number values"),
+					resource.TestCheckResourceAttr(resourceName, "variation_type", "number"),
+					resource.TestCheckResourceAttr(resourceName, "variations.#", "3"),
+					resource.TestCheckResourceAttr(resourceName, "variations.0.description", "a description"),
+					resource.TestCheckResourceAttr(resourceName, "variations.0.name", "variation1"),
+					resource.TestCheckResourceAttr(resourceName, "variations.0.value", "86400000"),
+					resource.TestCheckResourceAttr(resourceName, "variations.1.value", "123"),
+					resource.TestCheckResourceAttr(resourceName, "variations.2.value", "123456789"),
+					resource.TestCheckResourceAttr(resourceName, "tags.#", "3"),
+					resource.TestCheckResourceAttr(resourceName, testAccTagKey("this"), "this"),
+					resource.TestCheckResourceAttr(resourceName, testAccTagKey("is"), "is"),
+					resource.TestCheckResourceAttr(resourceName, testAccTagKey("unordered"), "unordered"),
+				),
+			},
+		},
+	})
+}
+
 func TestAccFeatureFlag_UpdateMultivariate(t *testing.T) {
 	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	resourceName := "launchdarkly_feature_flag.multivariate"
-	resource.Test(t, resource.TestCase{
+	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},

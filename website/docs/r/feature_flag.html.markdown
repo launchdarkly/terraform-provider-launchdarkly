@@ -74,7 +74,7 @@ resource "launchdarkly_feature_flag" "building_materials" {
 
 Nested `variations` blocks have the following structure:
 
-- `value` - (Required) The variation value. The value's type must correspond to the `variation_type` argument. For example: `variation_type = "boolean"` accepts only `true` or `false`.
+- `value` - (Required) The variation value. The value's type must correspond to the `variation_type` argument. For example: `variation_type = "boolean"` accepts only `true` or `false`. The `"number"` variation type accepts both floats and ints, but please note that any trailing zeroes on floats will be trimmed (i.e. `1.1` and `1.100` will both be converted to `1.1`).
 
 - `name` - (Optional) The name of the variation.
 

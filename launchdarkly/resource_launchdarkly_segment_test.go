@@ -54,7 +54,7 @@ resource "launchdarkly_segment" "test" {
 func TestAccSegment_Create(t *testing.T) {
 	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	resourceName := "launchdarkly_segment.test"
-	resource.Test(t, resource.TestCase{
+	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
@@ -81,6 +81,11 @@ func TestAccSegment_Create(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "excluded.1", "user4"),
 				),
 			},
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
 		},
 	})
 }
@@ -88,7 +93,7 @@ func TestAccSegment_Create(t *testing.T) {
 func TestAccSegment_Update(t *testing.T) {
 	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	resourceName := "launchdarkly_segment.test"
-	resource.Test(t, resource.TestCase{
+	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},

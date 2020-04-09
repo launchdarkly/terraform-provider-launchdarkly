@@ -142,34 +142,46 @@ func resourceFeatureFlagEnvironmentRead(d *schema.ResourceData, metaRaw interfac
 	}
 	envKey := d.Get(ENV_KEY).(string)
 
-	flag, _, err := client.ld.FeatureFlagsApi.GetFeatureFlag(client.ctx, projectKey, flagKey, nil)
+	flag, res, err := client.ld.FeatureFlagsApi.GetFeatureFlag(client.ctx, projectKey, flagKey, nil)
+	if isStatusNotFound(res) {
+		log.Printf("[WARN] failed to find flag %q in project %q, removing from state", flagKey, projectKey)
+		d.SetId("")
+		return nil
+	}
 
 	if err != nil {
 		return fmt.Errorf("failed to get flag %q of project %q: %s", flagKey, projectKey, handleLdapiErr(err))
 	}
 
-	_ = d.Set(KEY, flag.Key)
-	_ = d.Set(TARGETING_ENABLED, flag.Environments[envKey].On)
+	environment, ok := flag.Environments[envKey]
+	if !ok {
+		log.Printf("[WARN] failed to find environment %q for flag %q, removing from state", envKey, flagKey)
+		d.SetId("")
+		return nil
+	}
 
-	err = d.Set(RULES, rulesToResourceData(flag.Environments[envKey].Rules))
+	_ = d.Set(KEY, flag.Key)
+	_ = d.Set(TARGETING_ENABLED, environment.On)
+
+	err = d.Set(RULES, rulesToResourceData(environment.Rules))
 	if err != nil {
 		return fmt.Errorf("failed to set rules on flag with key %q: %v", flagKey, err)
 	}
 
-	err = d.Set(USER_TARGETS, targetsToResourceData(flag.Environments[envKey].Targets))
+	err = d.Set(USER_TARGETS, targetsToResourceData(environment.Targets))
 	if err != nil {
 		return fmt.Errorf("failed to set targets on flag with key %q: %v", flagKey, err)
 	}
 
 	if _, ok := d.GetOk(FLAG_FALLTHROUGH); ok {
-		err = d.Set(FLAG_FALLTHROUGH, fallthroughToResourceData(flag.Environments[envKey].Fallthrough_))
+		err = d.Set(FLAG_FALLTHROUGH, fallthroughToResourceData(environment.Fallthrough_))
 		if err != nil {
 			return fmt.Errorf("failed to set flag fallthrough on flag with key %q: %v", flagKey, err)
 		}
 	}
 
 	if _, ok := d.GetOk(RULES); ok {
-		err = d.Set(RULES, rulesToResourceData(flag.Environments[envKey].Rules))
+		err = d.Set(RULES, rulesToResourceData(environment.Rules))
 		if err != nil {
 			return fmt.Errorf("failed to set targeting rules on flag with key %q: %v", flagKey, err)
 		}
@@ -302,11 +314,6 @@ func resourceFeatureFlagEnvironmentImport(d *schema.ResourceData, meta interface
 	projectKey, envKey, flagKey := parts[0], parts[1], parts[2]
 	_ = d.Set(FLAG_ID, projectKey+"/"+flagKey)
 	_ = d.Set(ENV_KEY, envKey)
-
-	err := resourceFeatureFlagEnvironmentRead(d, meta)
-	if err != nil {
-		return nil, err
-	}
 
 	return []*schema.ResourceData{d}, nil
 }
