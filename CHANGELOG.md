@@ -1,9 +1,11 @@
-## 1.2.0 (Unreleased)
+## 1.3.0 (Unreleased)
+
+## 1.2.0 (April 09, 2020)
 
 FEATURES:
 
 - Add new resource `launchdarkly_destination`. This resource is used to manage LaunchDarkly data export destinations.
-- Add `policy_statements` to `launchdarkly_webhook` and `launchdarkly_custom_role`.
+- Add `policy_statements` to `launchdarkly_webhook` and `launchdarkly_custom_role` [#16](https://github.com/terraform-providers/terraform-provider-launchdarkly/issues/16).
 
 BUG_FIXES:
 
