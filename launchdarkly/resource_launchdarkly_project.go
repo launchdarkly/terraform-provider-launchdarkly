@@ -18,7 +18,7 @@ func resourceProject() *schema.Resource {
 		Exists: resourceProjectExists,
 
 		Importer: &schema.ResourceImporter{
-			State: schema.ImportStatePassthrough,
+			State: resourceProjectImport,
 		},
 
 		Schema: map[string]*schema.Schema{
@@ -34,9 +34,10 @@ func resourceProject() *schema.Resource {
 			},
 			TAGS: tagsSchema(),
 			ENVIRONMENTS: &schema.Schema{
-				Type:     schema.TypeList,
-				Optional: true,
-				Computed: true,
+				Type:       schema.TypeList,
+				Optional:   true,
+				Computed:   true,
+				Deprecated: "The 'environments' attribute is now deprecated. Please use the launchdarkly_environment resource to maintain future compatability.",
 				Elem: &schema.Resource{
 					Schema: environmentSchema(),
 				},
@@ -192,4 +193,10 @@ func projectExists(projectKey string, meta *Client) (bool, error) {
 	}
 
 	return true, nil
+}
+
+func resourceProjectImport(d *schema.ResourceData, meta interface{}) ([]*schema.ResourceData, error) {
+	_ = d.Set(KEY, d.Id())
+
+	return []*schema.ResourceData{d}, nil
 }

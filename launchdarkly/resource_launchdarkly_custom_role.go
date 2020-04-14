@@ -18,7 +18,7 @@ func resourceCustomRole() *schema.Resource {
 		Exists: resourceCustomRoleExists,
 
 		Importer: &schema.ResourceImporter{
-			State: schema.ImportStatePassthrough,
+			State: resourceCustomRoleImport,
 		},
 
 		Schema: map[string]*schema.Schema{
@@ -160,4 +160,10 @@ func customRoleExists(customRoleKey string, meta *Client) (bool, error) {
 	}
 
 	return true, nil
+}
+
+func resourceCustomRoleImport(d *schema.ResourceData, meta interface{}) ([]*schema.ResourceData, error) {
+	_ = d.Set(KEY, d.Id())
+
+	return []*schema.ResourceData{d}, nil
 }
