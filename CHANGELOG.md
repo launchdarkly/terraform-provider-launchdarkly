@@ -1,4 +1,12 @@
-## 1.3.0 (Unreleased)
+## 1.2.1 (Unreleased)
+
+BUG_FIXES:
+
+- Fix import bug in `launchdarkly_project` introduced in 1.2.0 [#21](https://github.com/terraform-providers/terraform-provider-launchdarkly/issues/21)
+
+NOTES:
+
+- The `environments` block in `launchdarkly_project` has been deprecated in favor of the `launchdarkly_environment` resource. Please update your existing configurations to maintain future compatibility.
 
 ## 1.2.0 (April 09, 2020)
 
