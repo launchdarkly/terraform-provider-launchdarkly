@@ -3,6 +3,7 @@
 BUG_FIXES:
 
 - Fix non-empty plan after creating a `launchdarkly_team_member` with a custom role.
+- Handle missing user target variations in `launchdarkly_feature_flag_environment` [#23](https://github.com/terraform-providers/terraform-provider-launchdarkly/issues/23)
 
 ## 1.2.1 (April 14, 2020)
 
