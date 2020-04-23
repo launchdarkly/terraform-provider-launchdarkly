@@ -1,4 +1,10 @@
-## 1.2.2 (Unreleased)
+## 1.3.0 (Unreleased)
+
+## 1.2.2 (April 23, 2020)
+
+FEATURES:
+
+- Added `/examples`, a directory containing a variety of detailed usage examples.
 
 BUG_FIXES:
 
