@@ -2,7 +2,7 @@
 
 FEATURES:
 
-- Added the `examples` directory containing a variety of detailed usage examples.
+- Added `/examples`, a directory containing a variety of detailed usage examples.
 
 BUG_FIXES:
 
