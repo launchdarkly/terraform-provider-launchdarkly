@@ -37,6 +37,7 @@ func resourceTeamMember() *schema.Resource {
 			ROLE: {
 				Type:         schema.TypeString,
 				Optional:     true,
+				Computed:     true,
 				ValidateFunc: validateTeamMemberRole,
 			},
 			CUSTOM_ROLES: {
@@ -109,7 +110,20 @@ func resourceTeamMemberRead(d *schema.ResourceData, metaRaw interface{}) error {
 	_ = d.Set(FIRST_NAME, member.FirstName)
 	_ = d.Set(LAST_NAME, member.LastName)
 	_ = d.Set(ROLE, member.Role)
-	err = d.Set(CUSTOM_ROLES, member.CustomRoles)
+
+	// The LD api returns custom role IDs (not keys). Since we want to set custom_roles with keys, we need to look up their IDs
+	customRoleKeys := make([]string, 0, len(member.CustomRoles))
+	for _, customRoleID := range member.CustomRoles {
+		role, res, err := client.ld.CustomRolesApi.GetCustomRole(client.ctx, customRoleID)
+		if isStatusNotFound(res) {
+			return fmt.Errorf("failed to find custom role key for ID %q", customRoleID)
+		}
+		if err != nil {
+			return fmt.Errorf("failed to retrieve custom role key for role ID %q: %v", customRoleID, err)
+		}
+		customRoleKeys = append(customRoleKeys, role.Key)
+	}
+	err = d.Set(CUSTOM_ROLES, customRoleKeys)
 	if err != nil {
 		return fmt.Errorf("failed to set custom roles on team member with id %q: %v", member.Id, err)
 	}
@@ -120,12 +134,26 @@ func resourceTeamMemberUpdate(d *schema.ResourceData, metaRaw interface{}) error
 	client := metaRaw.(*Client)
 	memberID := d.Id()
 	memberRole := d.Get(ROLE).(string)
-	customRolesRaw := d.Get(CUSTOM_ROLES).(*schema.Set).List()
+	customRoleKeys := d.Get(CUSTOM_ROLES).(*schema.Set).List()
+
+	// Since the LD API expects custom role IDs, we need to look up each key to retrieve the ID
+	customRoleIds := make([]string, 0, len(customRoleKeys))
+	for _, rawKey := range customRoleKeys {
+		key := rawKey.(string)
+		role, res, err := client.ld.CustomRolesApi.GetCustomRole(client.ctx, key)
+		if isStatusNotFound(res) {
+			return fmt.Errorf("failed to find custom ID for key %q", key)
+		}
+		if err != nil {
+			return fmt.Errorf("failed to retrieve custom role ID for key %q: %v", key, err)
+		}
+		customRoleIds = append(customRoleIds, role.Id)
+	}
 
 	patch := []ldapi.PatchOperation{
 		// these are the only fields we are allowed to update:
 		patchReplace("/role", &memberRole),
-		patchReplace("/customRoles", &customRolesRaw),
+		patchReplace("/customRoles", &customRoleIds),
 	}
 
 	_, _, err := repeatUntilNoConflict(func() (interface{}, *http.Response, error) {

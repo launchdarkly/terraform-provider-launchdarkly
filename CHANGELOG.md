@@ -1,4 +1,8 @@
-## 1.3.0 (Unreleased)
+## 1.2.2 (Unreleased)
+
+BUG_FIXES:
+
+- Fix non-empty plan after creating a `launchdarkly_team_member` with a custom role.
 
 ## 1.2.1 (April 14, 2020)
 
