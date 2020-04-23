@@ -63,7 +63,7 @@ resource "launchdarkly_feature_flag_environment" "basic" {
 	targeting_enabled = true
 	track_events = true
 	user_targets {
-		values = ["user0"]
+		values = []
 	}
 	user_targets {
 		values = ["user1", "user2"]
@@ -259,8 +259,7 @@ func TestAccFeatureFlagEnvironment_Update(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "flag_fallthrough.0.rollout_weights.2", "0"),
 					resource.TestCheckResourceAttr(resourceName, "flag_fallthrough.0.bucket_by", "email"),
 					resource.TestCheckResourceAttr(resourceName, "user_targets.#", "3"),
-					resource.TestCheckResourceAttr(resourceName, "user_targets.0.values.#", "1"),
-					resource.TestCheckResourceAttr(resourceName, "user_targets.0.values.0", "user0"),
+					resource.TestCheckResourceAttr(resourceName, "user_targets.0.values.#", "0"),
 					resource.TestCheckResourceAttr(resourceName, "user_targets.1.values.#", "2"),
 					resource.TestCheckResourceAttr(resourceName, "user_targets.1.values.0", "user1"),
 					resource.TestCheckResourceAttr(resourceName, "user_targets.1.values.1", "user2"),

@@ -168,9 +168,11 @@ func resourceFeatureFlagEnvironmentRead(d *schema.ResourceData, metaRaw interfac
 		return fmt.Errorf("failed to set rules on flag with key %q: %v", flagKey, err)
 	}
 
-	err = d.Set(USER_TARGETS, targetsToResourceData(environment.Targets))
-	if err != nil {
-		return fmt.Errorf("failed to set targets on flag with key %q: %v", flagKey, err)
+	if _, ok := d.GetOk(USER_TARGETS); ok {
+		err = d.Set(USER_TARGETS, targetsToResourceData(environment.Targets))
+		if err != nil {
+			return fmt.Errorf("failed to set targets on flag with key %q: %v", flagKey, err)
+		}
 	}
 
 	if _, ok := d.GetOk(FLAG_FALLTHROUGH); ok {
