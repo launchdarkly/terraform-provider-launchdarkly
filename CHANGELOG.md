@@ -1,5 +1,9 @@
 ## 1.2.2 (Unreleased)
 
+FEATURES:
+
+- Added the `examples` directory containing a variety of detailed usage examples.
+
 BUG_FIXES:
 
 - Fix non-empty plan after creating a `launchdarkly_team_member` with a custom role.
