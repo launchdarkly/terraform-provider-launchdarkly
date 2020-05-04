@@ -118,7 +118,9 @@ func resourceFeatureFlagCreate(d *schema.ResourceData, metaRaw interface{}) erro
 		Defaults:         defaults,
 	}
 
-	_, _, err = client.ld.FeatureFlagsApi.PostFeatureFlag(client.ctx, projectKey, flag, nil)
+	_, _, err = handleRateLimit(func() (interface{}, *http.Response, error) {
+		return client.ld.FeatureFlagsApi.PostFeatureFlag(client.ctx, projectKey, flag, nil)
+	})
 
 	if err != nil {
 		return fmt.Errorf("failed to create flag %q in project %q: %s", key, projectKey, handleLdapiErr(err))
@@ -146,7 +148,10 @@ func resourceFeatureFlagRead(d *schema.ResourceData, metaRaw interface{}) error 
 	projectKey := d.Get(PROJECT_KEY).(string)
 	key := d.Get(KEY).(string)
 
-	flag, res, err := client.ld.FeatureFlagsApi.GetFeatureFlag(client.ctx, projectKey, key, nil)
+	flagRaw, res, err := handleRateLimit(func() (interface{}, *http.Response, error) {
+		return client.ld.FeatureFlagsApi.GetFeatureFlag(client.ctx, projectKey, key, nil)
+	})
+	flag := flagRaw.(ldapi.FeatureFlag)
 	if isStatusNotFound(res) {
 		log.Printf("[WARN] feature flag %q in project %q not found, removing from state", key, projectKey)
 		d.SetId("")
@@ -258,9 +263,12 @@ func resourceFeatureFlagUpdate(d *schema.ResourceData, metaRaw interface{}) erro
 		patch.Patch = append(patch.Patch, patchReplace("/maintainerId", maintainerID.(string)))
 	}
 
-	_, _, err = repeatUntilNoConflict(func() (interface{}, *http.Response, error) {
-		return client.ld.FeatureFlagsApi.PatchFeatureFlag(client.ctx, projectKey, key, patch)
+	_, _, err = handleRateLimit(func() (interface{}, *http.Response, error) {
+		return handleNoConflict(func() (interface{}, *http.Response, error) {
+			return client.ld.FeatureFlagsApi.PatchFeatureFlag(client.ctx, projectKey, key, patch)
+		})
 	})
+
 	if err != nil {
 		return fmt.Errorf("failed to update flag %q in project %q: %s", key, projectKey, handleLdapiErr(err))
 	}
@@ -273,7 +281,10 @@ func resourceFeatureFlagDelete(d *schema.ResourceData, metaRaw interface{}) erro
 	projectKey := d.Get(PROJECT_KEY).(string)
 	key := d.Get(KEY).(string)
 
-	_, err := client.ld.FeatureFlagsApi.DeleteFeatureFlag(client.ctx, projectKey, key)
+	_, _, err := handleRateLimit(func() (interface{}, *http.Response, error) {
+		res, err := client.ld.FeatureFlagsApi.DeleteFeatureFlag(client.ctx, projectKey, key)
+		return nil, res, err
+	})
 	if err != nil {
 		return fmt.Errorf("failed to delete flag %q from project %q: %s", key, projectKey, handleLdapiErr(err))
 	}

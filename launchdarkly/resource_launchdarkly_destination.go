@@ -164,7 +164,10 @@ func resourceDestinationCreate(d *schema.ResourceData, metaRaw interface{}) erro
 		On:     destinationOn,
 	}
 
-	destination, _, err := client.ld.DataExportDestinationsApi.PostDestination(client.ctx, destinationProjKey, destinationEnvKey, destinationBody)
+	destinationRaw, _, err := handleRateLimit(func() (interface{}, *http.Response, error) {
+		return client.ld.DataExportDestinationsApi.PostDestination(client.ctx, destinationProjKey, destinationEnvKey, destinationBody)
+	})
+	destination := destinationRaw.(ldapi.Destination)
 	if err != nil {
 		d.SetId("")
 		return fmt.Errorf("failed to create destination with project key %q and env key %q: %s", destinationProjKey, destinationEnvKey, handleLdapiErr(err))
@@ -186,7 +189,10 @@ func resourceDestinationRead(d *schema.ResourceData, metaRaw interface{}) error 
 	destinationProjKey := d.Get(PROJECT_KEY).(string)
 	destinationEnvKey := d.Get(ENV_KEY).(string)
 
-	destination, res, err := client.ld.DataExportDestinationsApi.GetDestination(client.ctx, destinationProjKey, destinationEnvKey, destinationID)
+	destinationRaw, res, err := handleRateLimit(func() (interface{}, *http.Response, error) {
+		return client.ld.DataExportDestinationsApi.GetDestination(client.ctx, destinationProjKey, destinationEnvKey, destinationID)
+	})
+	destination := destinationRaw.(ldapi.Destination)
 	if isStatusNotFound(res) {
 		log.Printf("[WARN] failed to find destination with id: %q in project %q, environment: %q, removing from state", destinationID, destinationProjKey, destinationEnvKey)
 		d.SetId("")
@@ -231,9 +237,11 @@ func resourceDestinationUpdate(d *schema.ResourceData, metaRaw interface{}) erro
 		patchReplace("/config", &destinationConfig),
 	}
 
-	_, _, err = repeatUntilNoConflict((func() (interface{}, *http.Response, error) {
-		return client.ld.DataExportDestinationsApi.PatchDestination(client.ctx, destinationProjKey, destinationEnvKey, destinationID, patch)
-	}))
+	_, _, err = handleRateLimit(func() (interface{}, *http.Response, error) {
+		return handleNoConflict((func() (interface{}, *http.Response, error) {
+			return client.ld.DataExportDestinationsApi.PatchDestination(client.ctx, destinationProjKey, destinationEnvKey, destinationID, patch)
+		}))
+	})
 	if err != nil {
 		return fmt.Errorf("failed to update destination with id %q: %s", destinationID, handleLdapiErr(err))
 	}
@@ -250,7 +258,11 @@ func resourceDestinationDelete(d *schema.ResourceData, metaRaw interface{}) erro
 	destinationProjKey := d.Get(PROJECT_KEY).(string)
 	destinationEnvKey := d.Get(ENV_KEY).(string)
 
-	_, err = client.ld.DataExportDestinationsApi.DeleteDestination(client.ctx, destinationProjKey, destinationEnvKey, destinationID)
+	_, _, err = handleRateLimit(func() (interface{}, *http.Response, error) {
+		res, err := client.ld.DataExportDestinationsApi.DeleteDestination(client.ctx, destinationProjKey, destinationEnvKey, destinationID)
+		return nil, res, err
+	})
+
 	if err != nil {
 		return fmt.Errorf("failed to delete destination with id %q: %s", destinationID, handleLdapiErr(err))
 	}
@@ -267,7 +279,9 @@ func resourceDestinationExists(d *schema.ResourceData, metaRaw interface{}) (boo
 	destinationProjKey := d.Get(PROJECT_KEY).(string)
 	destinationEnvKey := d.Get(ENV_KEY).(string)
 
-	_, res, err := client.ld.DataExportDestinationsApi.GetDestination(client.ctx, destinationProjKey, destinationEnvKey, destinationID)
+	_, res, err := handleRateLimit(func() (interface{}, *http.Response, error) {
+		return client.ld.DataExportDestinationsApi.GetDestination(client.ctx, destinationProjKey, destinationEnvKey, destinationID)
+	})
 	if isStatusNotFound(res) {
 		return false, nil
 	}

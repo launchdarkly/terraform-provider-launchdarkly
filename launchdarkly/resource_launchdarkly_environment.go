@@ -48,7 +48,9 @@ func resourceEnvironmentCreate(d *schema.ResourceData, metaRaw interface{}) erro
 		DefaultTtl: defaultTTL,
 	}
 
-	_, _, err := client.ld.EnvironmentsApi.PostEnvironment(client.ctx, projectKey, envPost)
+	_, _, err := handleRateLimit(func() (interface{}, *http.Response, error) {
+		return client.ld.EnvironmentsApi.PostEnvironment(client.ctx, projectKey, envPost)
+	})
 	if err != nil {
 		return fmt.Errorf("failed to create environment: [%+v] for project key: %s: %s", envPost, projectKey, handleLdapiErr(err))
 	}
@@ -69,7 +71,10 @@ func resourceEnvironmentRead(d *schema.ResourceData, metaRaw interface{}) error 
 	projectKey := d.Get(PROJECT_KEY).(string)
 	key := d.Get(KEY).(string)
 
-	env, res, err := client.ld.EnvironmentsApi.GetEnvironment(client.ctx, projectKey, key)
+	envRaw, res, err := handleRateLimit(func() (interface{}, *http.Response, error) {
+		return client.ld.EnvironmentsApi.GetEnvironment(client.ctx, projectKey, key)
+	})
+	env := envRaw.(ldapi.Environment)
 	if isStatusNotFound(res) {
 		log.Printf("[WARN] failed to find environment with key %q in project %q, removing from state", key, projectKey)
 		d.SetId("")
@@ -118,8 +123,10 @@ func resourceEnvironmentUpdate(d *schema.ResourceData, metaRaw interface{}) erro
 		patchReplace("/confirmChanges", &confirmChanges),
 	}
 
-	_, _, err := repeatUntilNoConflict(func() (interface{}, *http.Response, error) {
-		return client.ld.EnvironmentsApi.PatchEnvironment(client.ctx, projectKey, key, patch)
+	_, _, err := handleRateLimit(func() (interface{}, *http.Response, error) {
+		return handleNoConflict(func() (interface{}, *http.Response, error) {
+			return client.ld.EnvironmentsApi.PatchEnvironment(client.ctx, projectKey, key, patch)
+		})
 	})
 	if err != nil {
 		return fmt.Errorf("failed to update environment with key %q for project: %q: %s", key, projectKey, handleLdapiErr(err))
@@ -133,7 +140,11 @@ func resourceEnvironmentDelete(d *schema.ResourceData, metaRaw interface{}) erro
 	projectKey := d.Get(PROJECT_KEY).(string)
 	key := d.Get(KEY).(string)
 
-	_, err := client.ld.EnvironmentsApi.DeleteEnvironment(client.ctx, projectKey, key)
+	_, _, err := handleRateLimit(func() (interface{}, *http.Response, error) {
+		res, err := client.ld.EnvironmentsApi.DeleteEnvironment(client.ctx, projectKey, key)
+		return nil, res, err
+	})
+
 	if err != nil {
 		return fmt.Errorf("failed to delete project with key %q for project %q: %s", key, projectKey, handleLdapiErr(err))
 	}

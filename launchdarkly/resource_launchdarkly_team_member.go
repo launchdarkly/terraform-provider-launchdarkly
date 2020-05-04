@@ -82,7 +82,10 @@ func resourceTeamMemberCreate(d *schema.ResourceData, metaRaw interface{}) error
 		CustomRoles: customRoles,
 	}
 
-	members, _, err := client.ld.TeamMembersApi.PostMembers(client.ctx, []ldapi.MembersBody{membersBody})
+	membersRaw, _, err := handleRateLimit(func() (interface{}, *http.Response, error) {
+		return client.ld.TeamMembersApi.PostMembers(client.ctx, []ldapi.MembersBody{membersBody})
+	})
+	members := membersRaw.(ldapi.Members)
 	if err != nil {
 		return fmt.Errorf("failed to create team member with email: %s: %v", memberEmail, handleLdapiErr(err))
 	}
@@ -95,7 +98,10 @@ func resourceTeamMemberRead(d *schema.ResourceData, metaRaw interface{}) error {
 	client := metaRaw.(*Client)
 	memberID := d.Id()
 
-	member, res, err := client.ld.TeamMembersApi.GetMember(client.ctx, memberID)
+	memberRaw, res, err := handleRateLimit(func() (interface{}, *http.Response, error) {
+		return client.ld.TeamMembersApi.GetMember(client.ctx, memberID)
+	})
+	member := memberRaw.(ldapi.Member)
 	if isStatusNotFound(res) {
 		log.Printf("[WARN] failed to find member with id %q, removing from state", memberID)
 		d.SetId("")
@@ -114,7 +120,10 @@ func resourceTeamMemberRead(d *schema.ResourceData, metaRaw interface{}) error {
 	// The LD api returns custom role IDs (not keys). Since we want to set custom_roles with keys, we need to look up their IDs
 	customRoleKeys := make([]string, 0, len(member.CustomRoles))
 	for _, customRoleID := range member.CustomRoles {
-		role, res, err := client.ld.CustomRolesApi.GetCustomRole(client.ctx, customRoleID)
+		roleRaw, res, err := handleRateLimit(func() (interface{}, *http.Response, error) {
+			return client.ld.CustomRolesApi.GetCustomRole(client.ctx, customRoleID)
+		})
+		role := roleRaw.(ldapi.CustomRole)
 		if isStatusNotFound(res) {
 			return fmt.Errorf("failed to find custom role key for ID %q", customRoleID)
 		}
@@ -140,7 +149,10 @@ func resourceTeamMemberUpdate(d *schema.ResourceData, metaRaw interface{}) error
 	customRoleIds := make([]string, 0, len(customRoleKeys))
 	for _, rawKey := range customRoleKeys {
 		key := rawKey.(string)
-		role, res, err := client.ld.CustomRolesApi.GetCustomRole(client.ctx, key)
+		roleRaw, res, err := handleRateLimit(func() (interface{}, *http.Response, error) {
+			return client.ld.CustomRolesApi.GetCustomRole(client.ctx, key)
+		})
+		role := roleRaw.(ldapi.CustomRole)
 		if isStatusNotFound(res) {
 			return fmt.Errorf("failed to find custom ID for key %q", key)
 		}
@@ -156,8 +168,10 @@ func resourceTeamMemberUpdate(d *schema.ResourceData, metaRaw interface{}) error
 		patchReplace("/customRoles", &customRoleIds),
 	}
 
-	_, _, err := repeatUntilNoConflict(func() (interface{}, *http.Response, error) {
-		return client.ld.TeamMembersApi.PatchMember(client.ctx, memberID, patch)
+	_, _, err := handleRateLimit(func() (interface{}, *http.Response, error) {
+		return handleNoConflict(func() (interface{}, *http.Response, error) {
+			return client.ld.TeamMembersApi.PatchMember(client.ctx, memberID, patch)
+		})
 	})
 	if err != nil {
 		return fmt.Errorf("failed to update team member with id %q: %s", memberID, handleLdapiErr(err))
@@ -169,7 +183,10 @@ func resourceTeamMemberUpdate(d *schema.ResourceData, metaRaw interface{}) error
 func resourceTeamMemberDelete(d *schema.ResourceData, metaRaw interface{}) error {
 	client := metaRaw.(*Client)
 
-	_, err := client.ld.TeamMembersApi.DeleteMember(client.ctx, d.Id())
+	_, _, err := handleRateLimit(func() (interface{}, *http.Response, error) {
+		res, err := client.ld.TeamMembersApi.DeleteMember(client.ctx, d.Id())
+		return nil, res, err
+	})
 	if err != nil {
 		return fmt.Errorf("failed to delete team member with id %q: %s", d.Id(), handleLdapiErr(err))
 	}

@@ -70,7 +70,10 @@ func resourceWebhookCreate(d *schema.ResourceData, metaRaw interface{}) error {
 		webhookBody.Sign = true
 	}
 
-	webhook, _, err := client.ld.WebhooksApi.PostWebhook(client.ctx, webhookBody)
+	webhookRaw, _, err := handleRateLimit(func() (interface{}, *http.Response, error) {
+		return client.ld.WebhooksApi.PostWebhook(client.ctx, webhookBody)
+	})
+	webhook := webhookRaw.(ldapi.Webhook)
 	if err != nil {
 		return fmt.Errorf("failed to create webhook with name %q: %s", webhookName, handleLdapiErr(err))
 	}
@@ -90,7 +93,10 @@ func resourceWebhookRead(d *schema.ResourceData, metaRaw interface{}) error {
 	client := metaRaw.(*Client)
 	webhookID := d.Id()
 
-	webhook, res, err := client.ld.WebhooksApi.GetWebhook(client.ctx, webhookID)
+	webhookRaw, res, err := handleRateLimit(func() (interface{}, *http.Response, error) {
+		return client.ld.WebhooksApi.GetWebhook(client.ctx, webhookID)
+	})
+	webhook := webhookRaw.(ldapi.Webhook)
 	if isStatusNotFound(res) {
 		log.Printf("[WARN] failed to find webhook with id %q, removing from state", webhookID)
 		d.SetId("")
@@ -142,8 +148,10 @@ func resourceWebhookUpdate(d *schema.ResourceData, metaRaw interface{}) error {
 		patch = append(patch, patchReplace("/statements", &statements))
 	}
 
-	_, _, err = repeatUntilNoConflict(func() (interface{}, *http.Response, error) {
-		return client.ld.WebhooksApi.PatchWebhook(client.ctx, webhookID, patch)
+	_, _, err = handleRateLimit(func() (interface{}, *http.Response, error) {
+		return handleNoConflict(func() (interface{}, *http.Response, error) {
+			return client.ld.WebhooksApi.PatchWebhook(client.ctx, webhookID, patch)
+		})
 	})
 	if err != nil {
 		return fmt.Errorf("failed to update webhook with id %q: %s", webhookID, handleLdapiErr(err))
@@ -156,7 +164,11 @@ func resourceWebhookDelete(d *schema.ResourceData, metaRaw interface{}) error {
 	client := metaRaw.(*Client)
 	webhookID := d.Id()
 
-	_, err := client.ld.WebhooksApi.DeleteWebhook(client.ctx, webhookID)
+	_, _, err := handleRateLimit(func() (interface{}, *http.Response, error) {
+		res, err := client.ld.WebhooksApi.DeleteWebhook(client.ctx, webhookID)
+		return nil, res, err
+	})
+
 	if err != nil {
 		return fmt.Errorf("failed to delete webhook with id %q: %s", webhookID, handleLdapiErr(err))
 	}
@@ -169,7 +181,9 @@ func resourceWebhookExists(d *schema.ResourceData, metaRaw interface{}) (bool, e
 }
 
 func webhookExists(webhookID string, meta *Client) (bool, error) {
-	_, res, err := meta.ld.WebhooksApi.GetWebhook(meta.ctx, webhookID)
+	_, res, err := handleRateLimit(func() (interface{}, *http.Response, error) {
+		return meta.ld.WebhooksApi.GetWebhook(meta.ctx, webhookID)
+	})
 	if isStatusNotFound(res) {
 		return false, nil
 	}

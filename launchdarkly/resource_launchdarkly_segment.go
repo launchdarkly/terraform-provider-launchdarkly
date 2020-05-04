@@ -96,7 +96,9 @@ func resourceSegmentCreate(d *schema.ResourceData, metaRaw interface{}) error {
 		Tags:        tags,
 	}
 
-	_, _, err := client.ld.UserSegmentsApi.PostUserSegment(client.ctx, projectKey, envKey, segment)
+	_, _, err := handleRateLimit(func() (interface{}, *http.Response, error) {
+		return client.ld.UserSegmentsApi.PostUserSegment(client.ctx, projectKey, envKey, segment)
+	})
 
 	if err != nil {
 		return fmt.Errorf("failed to create segment %q in project %q: %s", key, projectKey, handleLdapiErr(err))
@@ -120,7 +122,10 @@ func resourceSegmentRead(d *schema.ResourceData, metaRaw interface{}) error {
 	envKey := d.Get(ENV_KEY).(string)
 	segmentKey := d.Get(KEY).(string)
 
-	segment, res, err := client.ld.UserSegmentsApi.GetUserSegment(client.ctx, projectKey, envKey, segmentKey)
+	segmentRaw, res, err := handleRateLimit(func() (interface{}, *http.Response, error) {
+		return client.ld.UserSegmentsApi.GetUserSegment(client.ctx, projectKey, envKey, segmentKey)
+	})
+	segment := segmentRaw.(ldapi.UserSegment)
 	if isStatusNotFound(res) {
 		log.Printf("[WARN] failed to find segment %q in project %q, environment %q, removing from state", segmentKey, projectKey, envKey)
 		d.SetId("")
@@ -177,8 +182,10 @@ func resourceSegmentUpdate(d *schema.ResourceData, metaRaw interface{}) error {
 		patchReplace("/rules", rules),
 	}
 
-	_, _, err := repeatUntilNoConflict(func() (interface{}, *http.Response, error) {
-		return client.ld.UserSegmentsApi.PatchUserSegment(client.ctx, projectKey, envKey, key, patch)
+	_, _, err := handleRateLimit(func() (interface{}, *http.Response, error) {
+		return handleNoConflict(func() (interface{}, *http.Response, error) {
+			return client.ld.UserSegmentsApi.PatchUserSegment(client.ctx, projectKey, envKey, key, patch)
+		})
 	})
 	if err != nil {
 		return fmt.Errorf("failed to update segment %q in project %q: %s", key, projectKey, handleLdapiErr(err))
@@ -193,7 +200,11 @@ func resourceSegmentDelete(d *schema.ResourceData, metaRaw interface{}) error {
 	envKey := d.Get(ENV_KEY).(string)
 	key := d.Get(KEY).(string)
 
-	_, err := client.ld.UserSegmentsApi.DeleteUserSegment(client.ctx, projectKey, envKey, key)
+	_, _, err := handleRateLimit(func() (interface{}, *http.Response, error) {
+		res, err := client.ld.UserSegmentsApi.DeleteUserSegment(client.ctx, projectKey, envKey, key)
+		return nil, res, err
+	})
+
 	if err != nil {
 		return fmt.Errorf("failed to delete segment %q from project %q: %s", key, projectKey, handleLdapiErr(err))
 	}
@@ -207,7 +218,9 @@ func resourceSegmentExists(d *schema.ResourceData, metaRaw interface{}) (bool, e
 	envKey := d.Get(ENV_KEY).(string)
 	key := d.Get(KEY).(string)
 
-	_, res, err := client.ld.UserSegmentsApi.GetUserSegment(client.ctx, projectKey, envKey, key)
+	_, res, err := handleRateLimit(func() (interface{}, *http.Response, error) {
+		return client.ld.UserSegmentsApi.GetUserSegment(client.ctx, projectKey, envKey, key)
+	})
 	if isStatusNotFound(res) {
 		return false, nil
 	}

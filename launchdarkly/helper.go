@@ -5,16 +5,40 @@ import (
 	"log"
 	"math/rand"
 	"net/http"
+	"strconv"
 	"time"
 
 	ldapi "github.com/launchdarkly/api-client-go"
 )
 
-const MAX_409_RETRIES = 5
+const (
+	MAX_409_RETRIES = 5
+	MAX_429_RETRIES = 5
+)
 
-func repeatUntilNoConflict(apiCall func() (interface{}, *http.Response, error)) (interface{}, *http.Response, error) {
+func handleRateLimit(apiCall func() (interface{}, *http.Response, error)) (interface{}, *http.Response, error) {
 	obj, res, err := apiCall()
-	for retryCount := 0; res.StatusCode == http.StatusConflict && retryCount < MAX_409_RETRIES; retryCount++ {
+	for retryCount := 0; res != nil && res.StatusCode == http.StatusTooManyRequests && retryCount < MAX_429_RETRIES; retryCount++ {
+		log.Println("[DEBUG] received a 429 Too Many Requests error. retrying")
+		resetStr := res.Header.Get("X-RateLimit-Reset")
+		resetInt, parseErr := strconv.ParseInt(resetStr, 10, 64)
+		if parseErr != nil {
+			randomRetrySleep()
+		} else {
+			resetTime := time.Unix(0, resetInt*int64(time.Millisecond))
+			sleepDuration := time.Until(resetTime)
+			log.Println("[DEBUG] sleeping", sleepDuration)
+			time.Sleep(sleepDuration)
+		}
+		obj, res, err = apiCall()
+	}
+	return obj, res, err
+
+}
+
+func handleNoConflict(apiCall func() (interface{}, *http.Response, error)) (interface{}, *http.Response, error) {
+	obj, res, err := apiCall()
+	for retryCount := 0; res != nil && res.StatusCode == http.StatusConflict && retryCount < MAX_409_RETRIES; retryCount++ {
 		log.Println("[DEBUG] received a 409 conflict. retrying")
 		randomRetrySleep()
 		obj, res, err = apiCall()

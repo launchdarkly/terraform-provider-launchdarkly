@@ -2,6 +2,7 @@ package launchdarkly
 
 import (
 	"fmt"
+	"net/http"
 
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 	ldapi "github.com/launchdarkly/api-client-go"
@@ -39,7 +40,10 @@ func dataSourceTeamMember() *schema.Resource {
 }
 
 func getTeamMemberByEmail(client *Client, memberEmail string) (*ldapi.Member, error) {
-	members, _, err := client.ld.TeamMembersApi.GetMembers(client.ctx)
+	membersRaw, _, err := handleRateLimit(func() (interface{}, *http.Response, error) {
+		return client.ld.TeamMembersApi.GetMembers(client.ctx)
+	})
+	members := membersRaw.(ldapi.Members)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read team member with email: %s: %v", memberEmail, handleLdapiErr(err))
 	}
