@@ -37,6 +37,9 @@ resource "launchdarkly_feature_flag" "building_materials" {
     description = "The strongest variation"
   }
 
+  default_on_variation  = "bricks"
+  default_off_variation = "straw"
+
   tags = [
     "example",
     "terraform",
@@ -57,6 +60,10 @@ resource "launchdarkly_feature_flag" "building_materials" {
 - `variation_type` - (Required) The feature flag's variation type: `boolean`, `string`, `number` or `json`.
 
 - `variations` - (Required) List of nested blocks describing the variations associated with the feature flag. You must specify at least two variations. To learn more, read [Nested Variations Blocks](#nested-variations-blocks).
+
+- `default_on_variation` - (Optional) The value of the variation served when the flag is on for new environments. Required if `default_off_variation` is set. Flag configurations in existing environments will not be changed.
+
+- `default_off_variation` - (Optional) The value of the variation served when the flag is off for new environments. Required if `default_on_variation` is set. Flag configurations in existing environments will not be changed.
 
 - `description` - (Optional) The feature flag's description.
 

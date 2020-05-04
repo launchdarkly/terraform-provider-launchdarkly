@@ -207,9 +207,9 @@ func jsonVariationFromResourceData(variation interface{}) (ldapi.Variation, erro
 	}, nil
 }
 
-func stringifyValue(number ldapi.Variation) string {
+func stringifyValue(value interface{}) string {
 	var str string
-	switch v := (*number.Value).(type) {
+	switch v := (value).(type) {
 	case int:
 		str = strconv.Itoa(v)
 	case float64:
@@ -222,22 +222,28 @@ func stringifyValue(number ldapi.Variation) string {
 	return str
 }
 
+func variationValueToString(value *interface{}, variationType string) (string, error) {
+	if variationType != JSON_VARIATION {
+		return stringifyValue(*value), nil
+	}
+	byteVal, err := json.Marshal(*value)
+	if err != nil {
+		return "", fmt.Errorf("unable to marshal json variation value: %v", err)
+	}
+	ret, err := structure.NormalizeJsonString(string(byteVal))
+	if err != nil {
+		return "", fmt.Errorf("unable to normalize json variation value: %v", err)
+	}
+	return ret, nil
+}
+
 func variationsToResourceData(variations []ldapi.Variation, variationType string) (interface{}, error) {
 	transformed := make([]interface{}, 0, len(variations))
 
 	for _, variation := range variations {
-		var v string
-		if variationType != JSON_VARIATION {
-			v = stringifyValue(variation)
-		} else {
-			byteVal, err := json.Marshal(*variation.Value)
-			if err != nil {
-				return transformed, fmt.Errorf("unable to marshal json variation: %v", err)
-			}
-			v, err = structure.NormalizeJsonString(string(byteVal))
-			if err != nil {
-				return transformed, fmt.Errorf("unable to normalize json variation: %v", err)
-			}
+		v, err := variationValueToString(variation.Value, variationType)
+		if err != nil {
+			return nil, err
 		}
 
 		transformed = append(transformed, map[string]interface{}{

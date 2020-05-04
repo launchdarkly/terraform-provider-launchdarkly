@@ -30,6 +30,8 @@ resource "launchdarkly_feature_flag" "basic" {
 	tags = ["update", "terraform"]
 	include_in_snippet = true
 	temporary = true
+	default_on_variation = "true"
+	default_off_variation = "false"
 }
 `
 
@@ -219,6 +221,101 @@ resource "launchdarkly_feature_flag" "multivariate" {
 	}
 }
 `
+
+	testAccFeatureFlagDefaults = `
+resource "launchdarkly_feature_flag" "defaults" {
+	project_key = launchdarkly_project.test.key
+	key = "defaults-flag"
+	name = "Feature flag with defaults"
+	variation_type = "boolean"
+	default_on_variation = "true"
+	default_off_variation = "false"
+}
+`
+	testAccFeatureFlagDefaultsUpdate = `
+resource "launchdarkly_feature_flag" "defaults" {
+	project_key = launchdarkly_project.test.key
+	key = "defaults-flag"
+	name = "Feature flag with defaults"
+	variation_type = "boolean"
+	default_on_variation = "true"
+	default_off_variation = "true"
+}
+`
+	testAccFeatureFlagDefaultsMissingOffInvalid = `
+resource "launchdarkly_feature_flag" "defaults" {
+	project_key = launchdarkly_project.test.key
+	key = "defaults-flag"
+	name = "Feature flag with defaults"
+	variation_type = "boolean"
+	default_on_variation = "a"
+	default_off_variation = "b"
+}
+`
+
+	testAccFeatureFlagDefaultsMultivariate = `
+resource "launchdarkly_feature_flag" "defaults-multivariate" {
+	project_key = launchdarkly_project.test.key
+	key = "defaults-multivariate-flag"
+	name = "Multivariate fature flag with defaults"
+	variation_type = "string"
+	default_on_variation = "b"
+	default_off_variation = "b"
+	variations {
+		value = "a"
+	}
+	variations {
+		value = "b"
+	}
+	variations {
+		value = "c"
+	}
+	variations {
+		value = "d"
+	}
+}
+`
+	testAccFeatureFlagDefaultsMultivariateUpdate = `
+resource "launchdarkly_feature_flag" "defaults-multivariate" {
+	project_key = launchdarkly_project.test.key
+	key = "defaults-multivariate-flag"
+	name = "Multivariate fature flag with defaults"
+	variation_type = "string"
+	default_on_variation = "c"
+	default_off_variation = "c"
+	variations {
+		value = "a"
+	}
+	variations {
+		value = "b"
+	}
+	variations {
+		value = "c"
+	}
+	variations {
+		value = "d"
+	}
+}
+`
+	testAccFeatureFlagDefaultsMultivariateUpdateRemoveVariation = `
+resource "launchdarkly_feature_flag" "defaults-multivariate" {
+	project_key = launchdarkly_project.test.key
+	key = "defaults-multivariate-flag"
+	name = "Multivariate fature flag with defaults"
+	variation_type = "string"
+	default_on_variation = "c"
+	default_off_variation = "c"
+	variations {
+		value = "b"
+	}
+	variations {
+		value = "c"
+	}
+	variations {
+		value = "d"
+	}
+}
+`
 )
 
 func withRandomProject(randomProject, resource string) string {
@@ -297,6 +394,8 @@ func TestAccFeatureFlag_Update(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, testAccTagKey("terraform"), "terraform"),
 					resource.TestCheckResourceAttr(resourceName, "include_in_snippet", "true"),
 					resource.TestCheckResourceAttr(resourceName, "temporary", "true"),
+					resource.TestCheckResourceAttr(resourceName, "default_on_variation", "true"),
+					resource.TestCheckResourceAttr(resourceName, "default_off_variation", "false"),
 				),
 			},
 		},
@@ -599,6 +698,103 @@ func TestAccFeatureFlag_UpdateMultivariate(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "variations.1.value", "string2"),
 					resource.TestCheckResourceAttr(resourceName, "variations.2.value", "another option"),
 				),
+			},
+		},
+	})
+}
+
+func TestAcccFeatureFlag_DefaultsInvalid(t *testing.T) {
+	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck: func() {
+			testAccPreCheck(t)
+		},
+		Providers: testAccProviders,
+		Steps: []resource.TestStep{
+			{
+				Config:      withRandomProject(projectKey, testAccFeatureFlagDefaultsMissingOffInvalid),
+				ExpectError: regexp.MustCompile(`invalid default variations: default_on_variation "a" is not defined as a variation`),
+			},
+		},
+	})
+}
+
+func TestAccFeatureFlag_UpdateDefaults(t *testing.T) {
+	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	resourceName := "launchdarkly_feature_flag.defaults"
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck: func() {
+			testAccPreCheck(t)
+		},
+		Providers: testAccProviders,
+		Steps: []resource.TestStep{
+			{
+				Config: withRandomProject(projectKey, testAccFeatureFlagDefaults),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckProjectExists("launchdarkly_project.test"),
+					testAccCheckFeatureFlagExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, "default_on_variation", "true"),
+					resource.TestCheckResourceAttr(resourceName, "default_off_variation", "false"),
+				),
+			},
+			{
+				Config: withRandomProject(projectKey, testAccFeatureFlagDefaultsUpdate),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckProjectExists("launchdarkly_project.test"),
+					testAccCheckFeatureFlagExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, "default_on_variation", "true"),
+					resource.TestCheckResourceAttr(resourceName, "default_off_variation", "true"),
+				),
+			},
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
+		},
+	})
+}
+
+func TestAccFeatureFlag_UpdateMultivariateDefaults(t *testing.T) {
+	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	resourceName := "launchdarkly_feature_flag.defaults-multivariate"
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck: func() {
+			testAccPreCheck(t)
+		},
+		Providers: testAccProviders,
+		Steps: []resource.TestStep{
+			{
+				Config: withRandomProject(projectKey, testAccFeatureFlagDefaultsMultivariate),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckProjectExists("launchdarkly_project.test"),
+					testAccCheckFeatureFlagExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, "default_on_variation", "b"),
+					resource.TestCheckResourceAttr(resourceName, "default_off_variation", "b"),
+				),
+			},
+			{
+				Config: withRandomProject(projectKey, testAccFeatureFlagDefaultsMultivariateUpdate),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckProjectExists("launchdarkly_project.test"),
+					testAccCheckFeatureFlagExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, "default_on_variation", "c"),
+					resource.TestCheckResourceAttr(resourceName, "default_off_variation", "c"),
+				),
+			},
+			{
+				Config: withRandomProject(projectKey, testAccFeatureFlagDefaultsMultivariateUpdateRemoveVariation),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckProjectExists("launchdarkly_project.test"),
+					testAccCheckFeatureFlagExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, "default_on_variation", "c"),
+					resource.TestCheckResourceAttr(resourceName, "default_off_variation", "c"),
+				),
+			},
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
 			},
 		},
 	})
