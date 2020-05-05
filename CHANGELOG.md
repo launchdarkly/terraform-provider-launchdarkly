@@ -4,7 +4,7 @@ FEATURES:
 
 - Added `default_on_variation` and `default_off_variation` to `launchdarkly_feature_flag`. These optional attributes can be used to set the default targeting behavior for flags in newly created environments. [#10](https://github.com/terraform-providers/terraform-provider-launchdarkly/issues/10) [#18](https://github.com/terraform-providers/terraform-provider-launchdarkly/issues/18)
 
-BUF_FIXES:
+BUG_FIXES:
 
 - Improve handling of API rate limits.
 
