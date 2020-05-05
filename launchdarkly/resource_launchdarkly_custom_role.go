@@ -63,7 +63,9 @@ func resourceCustomRoleCreate(d *schema.ResourceData, metaRaw interface{}) error
 		Policy:      customRolePolicies,
 	}
 
-	_, _, err = client.ld.CustomRolesApi.PostCustomRole(client.ctx, customRoleBody)
+	_, _, err = handleRateLimit(func() (interface{}, *http.Response, error) {
+		return client.ld.CustomRolesApi.PostCustomRole(client.ctx, customRoleBody)
+	})
 	if err != nil {
 		return fmt.Errorf("failed to create custom role with name %q: %s", customRoleName, handleLdapiErr(err))
 	}
@@ -76,7 +78,10 @@ func resourceCustomRoleRead(d *schema.ResourceData, metaRaw interface{}) error {
 	client := metaRaw.(*Client)
 	customRoleID := d.Id()
 
-	customRole, res, err := client.ld.CustomRolesApi.GetCustomRole(client.ctx, customRoleID)
+	customRoleRaw, res, err := handleRateLimit(func() (interface{}, *http.Response, error) {
+		return client.ld.CustomRolesApi.GetCustomRole(client.ctx, customRoleID)
+	})
+	customRole := customRoleRaw.(ldapi.CustomRole)
 	if isStatusNotFound(res) {
 		log.Printf("[WARN] failed to find custom role with id %q, removing from state", customRoleID)
 		d.SetId("")
@@ -124,8 +129,10 @@ func resourceCustomRoleUpdate(d *schema.ResourceData, metaRaw interface{}) error
 		patchReplace("/policy", &customRolePolicies),
 	}
 
-	_, _, err = repeatUntilNoConflict(func() (interface{}, *http.Response, error) {
-		return client.ld.CustomRolesApi.PatchCustomRole(client.ctx, customRoleKey, patch)
+	_, _, err = handleRateLimit(func() (interface{}, *http.Response, error) {
+		return handleNoConflict(func() (interface{}, *http.Response, error) {
+			return client.ld.CustomRolesApi.PatchCustomRole(client.ctx, customRoleKey, patch)
+		})
 	})
 	if err != nil {
 		return fmt.Errorf("failed to update custom role with key %q: %s", customRoleKey, handleLdapiErr(err))
@@ -138,7 +145,11 @@ func resourceCustomRoleDelete(d *schema.ResourceData, metaRaw interface{}) error
 	client := metaRaw.(*Client)
 	customRoleKey := d.Id()
 
-	_, err := client.ld.CustomRolesApi.DeleteCustomRole(client.ctx, customRoleKey)
+	_, _, err := handleRateLimit(func() (interface{}, *http.Response, error) {
+		res, err := client.ld.CustomRolesApi.DeleteCustomRole(client.ctx, customRoleKey)
+		return nil, res, err
+	})
+
 	if err != nil {
 		return fmt.Errorf("failed to delete custom role with key %q: %s", customRoleKey, handleLdapiErr(err))
 	}

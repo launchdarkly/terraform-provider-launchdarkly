@@ -22,18 +22,18 @@ func resourceProject() *schema.Resource {
 		},
 
 		Schema: map[string]*schema.Schema{
-			KEY: &schema.Schema{
+			KEY: {
 				Type:         schema.TypeString,
 				Required:     true,
 				ForceNew:     true,
 				ValidateFunc: validateKey(),
 			},
-			NAME: &schema.Schema{
+			NAME: {
 				Type:     schema.TypeString,
 				Required: true,
 			},
 			TAGS: tagsSchema(),
-			ENVIRONMENTS: &schema.Schema{
+			ENVIRONMENTS: {
 				Type:       schema.TypeList,
 				Optional:   true,
 				Computed:   true,
@@ -62,7 +62,9 @@ func resourceProjectCreate(d *schema.ResourceData, metaRaw interface{}) error {
 		projectBody.Environments = envs
 	}
 
-	_, _, err := client.ld.ProjectsApi.PostProject(client.ctx, projectBody)
+	_, _, err := handleRateLimit(func() (interface{}, *http.Response, error) {
+		return client.ld.ProjectsApi.PostProject(client.ctx, projectBody)
+	})
 	if err != nil {
 		return fmt.Errorf("failed to create project with name %s and projectKey %s: %v", name, projectKey, handleLdapiErr(err))
 	}
@@ -79,7 +81,10 @@ func resourceProjectRead(d *schema.ResourceData, metaRaw interface{}) error {
 	client := metaRaw.(*Client)
 	projectKey := d.Get(KEY).(string)
 
-	project, res, err := client.ld.ProjectsApi.GetProject(client.ctx, projectKey)
+	rawProject, res, err := handleRateLimit(func() (interface{}, *http.Response, error) {
+		return client.ld.ProjectsApi.GetProject(client.ctx, projectKey)
+	})
+	project := rawProject.(ldapi.Project)
 	if isStatusNotFound(res) {
 		log.Printf("[WARN] failed to find project with key %q, removing from state", projectKey)
 		d.SetId("")
@@ -115,8 +120,10 @@ func resourceProjectUpdate(d *schema.ResourceData, metaRaw interface{}) error {
 		patchReplace("/tags", &projTags),
 	}
 
-	_, _, err := repeatUntilNoConflict(func() (interface{}, *http.Response, error) {
-		return client.ld.ProjectsApi.PatchProject(client.ctx, projectKey, patch)
+	_, _, err := handleRateLimit(func() (interface{}, *http.Response, error) {
+		return handleNoConflict(func() (interface{}, *http.Response, error) {
+			return client.ld.ProjectsApi.PatchProject(client.ctx, projectKey, patch)
+		})
 	})
 	if err != nil {
 		return fmt.Errorf("failed to update project with key %q: %s", projectKey, handleLdapiErr(err))
@@ -154,8 +161,10 @@ func resourceProjectUpdate(d *schema.ResourceData, metaRaw interface{}) error {
 		}
 
 		if len(patch) > 0 {
-			_, _, err := repeatUntilNoConflict(func() (interface{}, *http.Response, error) {
-				return client.ld.EnvironmentsApi.PatchEnvironment(client.ctx, projectKey, envKey, patch)
+			_, _, err := handleRateLimit(func() (interface{}, *http.Response, error) {
+				return handleNoConflict(func() (interface{}, *http.Response, error) {
+					return client.ld.EnvironmentsApi.PatchEnvironment(client.ctx, projectKey, envKey, patch)
+				})
 			})
 			if err != nil {
 				return fmt.Errorf("failed to update environment with key %q for project: %q: %+v", envKey, projectKey, err)
@@ -170,7 +179,11 @@ func resourceProjectDelete(d *schema.ResourceData, metaRaw interface{}) error {
 	client := metaRaw.(*Client)
 	projectKey := d.Get(KEY).(string)
 
-	_, err := client.ld.ProjectsApi.DeleteProject(client.ctx, projectKey)
+	_, _, err := handleRateLimit(func() (interface{}, *http.Response, error) {
+		res, err := client.ld.ProjectsApi.DeleteProject(client.ctx, projectKey)
+		return nil, res, err
+	})
+
 	if err != nil {
 		return fmt.Errorf("failed to delete project with key %q: %s", projectKey, handleLdapiErr(err))
 	}
@@ -183,7 +196,9 @@ func resourceProjectExists(d *schema.ResourceData, metaRaw interface{}) (bool, e
 }
 
 func projectExists(projectKey string, meta *Client) (bool, error) {
-	_, res, err := meta.ld.ProjectsApi.GetProject(meta.ctx, projectKey)
+	_, res, err := handleRateLimit(func() (interface{}, *http.Response, error) {
+		return meta.ld.ProjectsApi.GetProject(meta.ctx, projectKey)
+	})
 	if isStatusNotFound(res) {
 		log.Println("got 404 when getting project. returning false.")
 		return false, nil

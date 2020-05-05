@@ -122,8 +122,10 @@ func resourceFeatureFlagEnvironmentCreate(d *schema.ResourceData, metaRaw interf
 
 	log.Printf("[DEBUG] %+v\n", patch)
 
-	_, _, err = repeatUntilNoConflict(func() (interface{}, *http.Response, error) {
-		return client.ld.FeatureFlagsApi.PatchFeatureFlag(client.ctx, projectKey, flagKey, patch)
+	_, _, err = handleRateLimit(func() (interface{}, *http.Response, error) {
+		return handleNoConflict(func() (interface{}, *http.Response, error) {
+			return client.ld.FeatureFlagsApi.PatchFeatureFlag(client.ctx, projectKey, flagKey, patch)
+		})
 	})
 	if err != nil {
 		return fmt.Errorf("failed to update flag %q in project %q: %s", flagKey, projectKey, handleLdapiErr(err))
@@ -142,7 +144,10 @@ func resourceFeatureFlagEnvironmentRead(d *schema.ResourceData, metaRaw interfac
 	}
 	envKey := d.Get(ENV_KEY).(string)
 
-	flag, res, err := client.ld.FeatureFlagsApi.GetFeatureFlag(client.ctx, projectKey, flagKey, nil)
+	flagRaw, res, err := handleRateLimit(func() (interface{}, *http.Response, error) {
+		return client.ld.FeatureFlagsApi.GetFeatureFlag(client.ctx, projectKey, flagKey, nil)
+	})
+	flag := flagRaw.(ldapi.FeatureFlag)
 	if isStatusNotFound(res) {
 		log.Printf("[WARN] failed to find flag %q in project %q, removing from state", flagKey, projectKey)
 		d.SetId("")
@@ -243,8 +248,10 @@ func resourceFeatureFlagEnvironmentUpdate(d *schema.ResourceData, metaRaw interf
 		}}
 
 	log.Printf("[DEBUG] %+v\n", patch)
-	_, _, err = repeatUntilNoConflict(func() (interface{}, *http.Response, error) {
-		return client.ld.FeatureFlagsApi.PatchFeatureFlag(client.ctx, projectKey, flagKey, patch)
+	_, _, err = handleRateLimit(func() (interface{}, *http.Response, error) {
+		return handleNoConflict(func() (interface{}, *http.Response, error) {
+			return client.ld.FeatureFlagsApi.PatchFeatureFlag(client.ctx, projectKey, flagKey, patch)
+		})
 	})
 	if err != nil {
 		return fmt.Errorf("failed to update flag %q in project %q, environment %q: %s", flagKey, projectKey, envKey, handleLdapiErr(err))
@@ -296,8 +303,10 @@ func resourceFeatureFlagEnvironmentDelete(d *schema.ResourceData, metaRaw interf
 		}}
 	log.Printf("[DEBUG] %+v\n", patch)
 
-	_, _, err = repeatUntilNoConflict(func() (interface{}, *http.Response, error) {
-		return client.ld.FeatureFlagsApi.PatchFeatureFlag(client.ctx, projectKey, flagKey, patch)
+	_, _, err = handleRateLimit(func() (interface{}, *http.Response, error) {
+		return handleNoConflict(func() (interface{}, *http.Response, error) {
+			return client.ld.FeatureFlagsApi.PatchFeatureFlag(client.ctx, projectKey, flagKey, patch)
+		})
 	})
 	if err != nil {
 		return fmt.Errorf("failed to update flag %q in project %q, environment %q: %s", flagKey, projectKey, envKey, handleLdapiErr(err))
