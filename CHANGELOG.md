@@ -1,4 +1,17 @@
+<<<<<<< HEAD
 ## 1.3.0 (Unreleased)
+=======
+## 1.4.0 (Unreleased)
+## 1.3.0 (May 05, 2020)
+
+FEATURES:
+
+- Added `default_on_variation` and `default_off_variation` to `launchdarkly_feature_flag`. These optional attributes can be used to set the default targeting behavior for flags in newly created environments. [#10](https://github.com/terraform-providers/terraform-provider-launchdarkly/issues/10) [#18](https://github.com/terraform-providers/terraform-provider-launchdarkly/issues/18)
+
+BUG_FIXES:
+
+- Improve handling of API rate limits.
+>>>>>>> 7ff9158ece906429828d2ad0d388856bf9ba0de3
 
 ## 1.2.2 (April 23, 2020)
 
