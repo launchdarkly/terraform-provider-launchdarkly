@@ -1,4 +1,9 @@
-## 1.4.0 (Unreleased)
+## 1.3.1 (Unreleased)
+
+BUG_FIXES:
+
+- Improve handling of API rate limits. [#26](https://github.com/terraform-providers/terraform-provider-launchdarkly/issues/26)
+
 ## 1.3.0 (May 05, 2020)
 
 FEATURES:
