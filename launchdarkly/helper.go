@@ -13,7 +13,7 @@ import (
 
 const (
 	MAX_409_RETRIES = 5
-	MAX_429_RETRIES = 5
+	MAX_429_RETRIES = 10
 )
 
 func handleRateLimit(apiCall func() (interface{}, *http.Response, error)) (interface{}, *http.Response, error) {
@@ -23,10 +23,18 @@ func handleRateLimit(apiCall func() (interface{}, *http.Response, error)) (inter
 		resetStr := res.Header.Get("X-RateLimit-Reset")
 		resetInt, parseErr := strconv.ParseInt(resetStr, 10, 64)
 		if parseErr != nil {
+			log.Println("[DEBUG] could not parse X-RateLimit-Reset header. Sleeping for a random interval.")
 			randomRetrySleep()
 		} else {
 			resetTime := time.Unix(0, resetInt*int64(time.Millisecond))
 			sleepDuration := time.Until(resetTime)
+
+			// We have observed situations where LD-s retry header results in a negative sleep duration. In this case,
+			// multiply the duration by -1 and add a random 200-500ms
+			if sleepDuration <= 0 {
+				log.Printf("[DEBUG] received a negative rate limit retry duration of %s. Sleeping for an additional 200-500ms", sleepDuration)
+				sleepDuration = -1*sleepDuration + getRandomSleepDuration()
+			}
 			log.Println("[DEBUG] sleeping", sleepDuration)
 			time.Sleep(sleepDuration)
 		}
@@ -49,12 +57,16 @@ func handleNoConflict(apiCall func() (interface{}, *http.Response, error)) (inte
 var randomRetrySleepSeeded = false
 
 // Sleep for a random interval between 200ms and 500ms
-func randomRetrySleep() {
+func getRandomSleepDuration() time.Duration {
 	if !randomRetrySleepSeeded {
 		rand.Seed(time.Now().UnixNano())
 	}
 	n := rand.Intn(300) + 200
-	time.Sleep(time.Duration(n) * time.Millisecond)
+	return time.Duration(n) * time.Millisecond
+}
+
+func randomRetrySleep() {
+	time.Sleep(getRandomSleepDuration())
 }
 
 func ptr(v interface{}) *interface{} { return &v }
