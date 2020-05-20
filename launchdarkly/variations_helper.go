@@ -195,7 +195,7 @@ func numberVariationFromResourceData(variation interface{}) (ldapi.Variation, er
 func jsonVariationFromResourceData(variation interface{}) (ldapi.Variation, error) {
 	variationMap := variation.(map[string]interface{})
 	stringValue := variationMap[VALUE].(string)
-	var v map[string]interface{}
+	var v interface{}
 	err := json.Unmarshal([]byte(stringValue), &v)
 	if err != nil {
 		return ldapi.Variation{}, fmt.Errorf("%q is an invalid json variation value. %v", stringValue, err)
@@ -270,7 +270,7 @@ func variationsToVariationType(variations []ldapi.Variation) (string, error) {
 		variationType = STRING_VARIATION
 	case float64:
 		variationType = NUMBER_VARIATION
-	case map[string]interface{}:
+	case map[string]interface{}, []interface{}:
 		variationType = JSON_VARIATION
 	default:
 		return "", fmt.Errorf("unknown variation type: %q", reflect.TypeOf(variationValue))

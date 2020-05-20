@@ -50,6 +50,28 @@ resource "launchdarkly_feature_flag" "number" {
 	}
   }
 `
+	testAccFeatureFlagJsonBasic = `
+resource "launchdarkly_feature_flag" "json_basic" {
+	project_key = launchdarkly_project.test.key
+	key         = "json-flag-basic"
+	name        = "Basic JSON feature flag"
+  
+	variation_type = "json"
+	variations {
+	  value = <<EOF
+	  {"foo": "bar"}
+	  EOF
+	}
+	variations {
+	  value = <<EOF
+	  {
+		"bar": "foo",
+		"bars": "foos"
+	  }
+	  EOF
+	}
+  }
+`
 
 	testAccFeatureFlagJson = `
 resource "launchdarkly_feature_flag" "json" {
@@ -58,6 +80,14 @@ resource "launchdarkly_feature_flag" "json" {
 	name        = "JSON feature flag"
   
 	variation_type = "json"
+	variations {
+	  value = <<EOF
+	  [
+		"foo",
+		"baz"
+	  ]
+	  EOF
+	}
 	variations {
 	  value = <<EOF
 	  {"foo": "bar"}
@@ -71,6 +101,13 @@ resource "launchdarkly_feature_flag" "json" {
 	  }
 	  EOF
 	}
+	variations {
+		value = <<EOF
+		{
+		  "foo": ["nested", "array"]
+		}
+		EOF
+	  }
   }
 `
 
@@ -434,6 +471,31 @@ func TestAccFeatureFlag_Number(t *testing.T) {
 	})
 }
 
+func TestAccFeatureFlag_JSONBasic(t *testing.T) {
+	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	resourceName := "launchdarkly_feature_flag.json_basic"
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck: func() {
+			testAccPreCheck(t)
+		},
+		Providers: testAccProviders,
+		Steps: []resource.TestStep{
+			{
+				Config: withRandomProject(projectKey, testAccFeatureFlagJsonBasic),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckProjectExists("launchdarkly_project.test"),
+					testAccCheckFeatureFlagExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, NAME, "Basic JSON feature flag"),
+					resource.TestCheckResourceAttr(resourceName, KEY, "json-flag-basic"),
+					resource.TestCheckResourceAttr(resourceName, PROJECT_KEY, projectKey),
+					resource.TestCheckResourceAttr(resourceName, VARIATION_TYPE, "json"),
+					resource.TestCheckResourceAttr(resourceName, "variations.#", "2"),
+					resource.TestCheckResourceAttr(resourceName, "variations.0.value", `{"foo":"bar"}`),
+				),
+			},
+		},
+	})
+}
 func TestAccFeatureFlag_JSON(t *testing.T) {
 	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	resourceName := "launchdarkly_feature_flag.json"
@@ -452,9 +514,11 @@ func TestAccFeatureFlag_JSON(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, KEY, "json-flag"),
 					resource.TestCheckResourceAttr(resourceName, PROJECT_KEY, projectKey),
 					resource.TestCheckResourceAttr(resourceName, VARIATION_TYPE, "json"),
-					resource.TestCheckResourceAttr(resourceName, "variations.#", "2"),
-					resource.TestCheckResourceAttr(resourceName, "variations.0.value", `{"foo":"bar"}`),
-					resource.TestCheckResourceAttr(resourceName, "variations.1.value", `{"extra":{"nested":"json"},"foo":"baz"}`),
+					resource.TestCheckResourceAttr(resourceName, "variations.#", "4"),
+					resource.TestCheckResourceAttr(resourceName, "variations.0.value", `["foo","baz"]`),
+					resource.TestCheckResourceAttr(resourceName, "variations.1.value", `{"foo":"bar"}`),
+					resource.TestCheckResourceAttr(resourceName, "variations.2.value", `{"extra":{"nested":"json"},"foo":"baz"}`),
+					resource.TestCheckResourceAttr(resourceName, "variations.3.value", `{"foo":["nested","array"]}`),
 				),
 			},
 		},
