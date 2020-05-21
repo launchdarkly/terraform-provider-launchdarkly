@@ -176,7 +176,7 @@ github.com/hashicorp/terraform-plugin-sdk/internal/earlyconfig
 github.com/hashicorp/yamux
 # github.com/jmespath/go-jmespath v0.0.0-20180206201540-c2b33e8439af
 github.com/jmespath/go-jmespath
-# github.com/launchdarkly/api-client-go v0.0.0-20200326234343-601b8bed6869
+# github.com/launchdarkly/api-client-go v3.2.0+incompatible
 github.com/launchdarkly/api-client-go
 # github.com/mattn/go-colorable v0.0.9
 github.com/mattn/go-colorable

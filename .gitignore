@@ -39,3 +39,5 @@ website/.vagrant
 website/.bundle
 website/build
 website/node_modules
+
+.vscode/

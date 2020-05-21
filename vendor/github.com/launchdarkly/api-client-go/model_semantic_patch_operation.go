@@ -10,7 +10,7 @@
 
 package ldapi
 
-type StreamUsageError struct {
-	Code string `json:"code,omitempty"`
-	Message string `json:"message,omitempty"`
+type SemanticPatchOperation struct {
+	Comment string `json:"comment,omitempty"`
+	Instructions []SemanticPatchOperationInstructions `json:"instructions"`
 }
