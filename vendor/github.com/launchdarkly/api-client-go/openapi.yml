@@ -10,7 +10,7 @@ info:
   license:
     name: Apache 2.0
     url: 'http://www.apache.org/licenses/LICENSE-2.0.html'
-  version: 2.0.33
+  version: 3.2.0
 host: app.launchdarkly.com
 basePath: /api/v2
 schemes:
@@ -188,6 +188,10 @@ paths:
         - $ref: '#/parameters/EnvironmentKeyQuery'
         - $ref: '#/parameters/SummaryQuery'
         - $ref: '#/parameters/ArchivedQuery'
+        - $ref: '#/parameters/LimitQuery'
+        - $ref: '#/parameters/OffsetQuery'
+        - $ref: '#/parameters/FilterQuery'
+        - $ref: '#/parameters/SortQuery'
         - $ref: '#/parameters/Tag'
       responses:
         '200':
@@ -353,6 +357,46 @@ paths:
           $ref: '#/responses/BetaApi403'
       tags:
         - Feature flags
+  '/flags/{projectKey}/{featureFlagKey}/expiring-user-targets/{environmentKey}':
+    get:
+      summary: Get expiring user targets for feature flag
+      operationId: getExpiringUserTargets
+      parameters:
+        - $ref: '#/parameters/ProjectKey'
+        - $ref: '#/parameters/EnvironmentKey'
+        - $ref: '#/parameters/FeatureFlagKey'
+      responses:
+        '200':
+          description: User targets of the requested feature flag.
+          schema:
+            $ref: '#/definitions/UserTargetingExpirationForFlags'
+        '401':
+          $ref: '#/responses/Standard401'
+      tags:
+        - Feature flags
+    patch:
+      summary: 'Update, add, or delete expiring user targets on feature flag'
+      operationId: patchExpiringUserTargets
+      parameters:
+        - $ref: '#/parameters/ProjectKey'
+        - $ref: '#/parameters/EnvironmentKey'
+        - $ref: '#/parameters/FeatureFlagKey'
+        - $ref: '#/parameters/SemanticPatchWithComment'
+      responses:
+        '200':
+          description: User targeting expirations on feature flag response.
+          schema:
+            $ref: '#/definitions/UserTargetingExpirationForFlags'
+        '400':
+          $ref: '#/responses/Standard400'
+        '401':
+          $ref: '#/responses/Standard401'
+        '404':
+          $ref: '#/responses/Standard404'
+        '409':
+          $ref: '#/responses/Standard409'
+      tags:
+        - Feature flags
   '/segments/{projectKey}/{environmentKey}':
     get:
       summary: Get a list of all user segments in the given project.
@@ -440,6 +484,48 @@ paths:
           $ref: '#/responses/Standard401'
         '404':
           $ref: '#/responses/Standard404'
+      tags:
+        - User segments
+  '/segments/{projectKey}/{userSegmentKey}/expiring-user-targets/{environmentKey}':
+    get:
+      summary: Get expiring user targets for user segment
+      operationId: getExpiringUserTargetsOnSegment
+      parameters:
+        - $ref: '#/parameters/ProjectKey'
+        - $ref: '#/parameters/EnvironmentKey'
+        - $ref: '#/parameters/UserSegmentKey'
+      responses:
+        '200':
+          description: User targeting expirations on user segment response.
+          schema:
+            $ref: '#/definitions/UserTargetingExpirationForSegment'
+        '401':
+          $ref: '#/responses/Standard401'
+        '404':
+          $ref: '#/responses/Standard404'
+      tags:
+        - User segments
+    patch:
+      summary: 'Update, add, or delete expiring user targets on user segment'
+      operationId: patchExpiringUserTargetsOnSegment
+      parameters:
+        - $ref: '#/parameters/ProjectKey'
+        - $ref: '#/parameters/EnvironmentKey'
+        - $ref: '#/parameters/UserSegmentKey'
+        - $ref: '#/parameters/SemanticPatchWithComment'
+      responses:
+        '200':
+          description: User targeting expirations on user segment response.
+          schema:
+            $ref: '#/definitions/UserTargetingExpirationForSegment'
+        '400':
+          $ref: '#/responses/Standard400'
+        '401':
+          $ref: '#/responses/Standard401'
+        '404':
+          $ref: '#/responses/Standard404'
+        '409':
+          $ref: '#/responses/Standard409'
       tags:
         - User segments
   '/users/{projectKey}/{environmentKey}':
@@ -583,6 +669,48 @@ paths:
           $ref: '#/responses/Standard401'
         '404':
           $ref: '#/responses/Standard404'
+      tags:
+        - User settings
+  '/users/{projectKey}/{userKey}/expiring-user-targets/{environmentKey}':
+    get:
+      summary: Get expiring dates on flags for user
+      operationId: getExpiringUserTargetsForUser
+      parameters:
+        - $ref: '#/parameters/ProjectKey'
+        - $ref: '#/parameters/EnvironmentKey'
+        - $ref: '#/parameters/UserKey'
+      responses:
+        '200':
+          description: User targets of the requested feature flag.
+          schema:
+            $ref: '#/definitions/UserTargetingExpirationOnFlagsForUser'
+        '401':
+          $ref: '#/responses/Standard401'
+      tags:
+        - User settings
+    patch:
+      summary: >-
+        Update, add, or delete expiring user targets for a single user on all
+        flags
+      operationId: patchExpiringUserTargetsForFlags
+      parameters:
+        - $ref: '#/parameters/ProjectKey'
+        - $ref: '#/parameters/EnvironmentKey'
+        - $ref: '#/parameters/UserKey'
+        - $ref: '#/parameters/SemanticPatchWithComment'
+      responses:
+        '200':
+          description: User Targeting expiration for single user on all flags response.
+          schema:
+            $ref: '#/definitions/UserTargetingExpirationOnFlagsForUser'
+        '400':
+          $ref: '#/responses/Standard400'
+        '401':
+          $ref: '#/responses/Standard401'
+        '404':
+          $ref: '#/responses/Standard404'
+        '409':
+          $ref: '#/responses/Standard409'
       tags:
         - User settings
   /auditlog:
@@ -782,6 +910,11 @@ paths:
     get:
       summary: Returns a list of all members in the account.
       operationId: getMembers
+      parameters:
+        - $ref: '#/parameters/LimitQuery'
+        - $ref: '#/parameters/OffsetQuery'
+        - $ref: '#/parameters/FilterQuery'
+        - $ref: '#/parameters/SortQuery'
       responses:
         '200':
           description: Members response.
@@ -807,6 +940,19 @@ paths:
           $ref: '#/responses/Standard401'
         '409':
           $ref: '#/responses/Standard409'
+      tags:
+        - Team members
+  /members/me:
+    get:
+      summary: Get the current team member associated with the token
+      operationId: getMe
+      responses:
+        '200':
+          $ref: '#/responses/Member2xx'
+        '400':
+          $ref: '#/responses/Standard400'
+        '401':
+          $ref: '#/responses/Standard401'
       tags:
         - Team members
   '/members/{memberId}':
@@ -1287,6 +1433,8 @@ definitions:
         type: array
         items:
           $ref: '#/definitions/FeatureFlag'
+      totalCount:
+        type: number
   Member:
     type: object
     properties:
@@ -1307,6 +1455,8 @@ definitions:
       lastName:
         type: string
         example: Turing
+      _verified:
+        type: boolean
       _pendingInvite:
         type: boolean
       isBeta:
@@ -1326,6 +1476,8 @@ definitions:
         type: array
         items:
           $ref: '#/definitions/Member'
+      totalCount:
+        type: number
   FeatureFlagConfig:
     type: object
     properties:
@@ -1423,6 +1575,8 @@ definitions:
   Clause:
     type: object
     properties:
+      _id:
+        type: string
       attribute:
         type: string
         example: groups
@@ -1557,6 +1711,79 @@ definitions:
         type: object
         additionalProperties:
           $ref: '#/definitions/FeatureFlagStatusForQueriedEnvironment'
+  UserTargetingExpirationForFlags:
+    type: object
+    properties:
+      _links:
+        $ref: '#/definitions/Links'
+      items:
+        type: array
+        items:
+          $ref: '#/definitions/UserTargetingExpirationForFlag'
+  UserTargetingExpirationOnFlagsForUser:
+    type: object
+    properties:
+      _links:
+        $ref: '#/definitions/Links'
+      items:
+        type: array
+        items:
+          $ref: '#/definitions/UserTargetingExpirationForFlag'
+  UserTargetingExpirationForFlag:
+    type: object
+    properties:
+      expirationDate:
+        type: integer
+        description: Date scheduled for expiration
+      variationId:
+        type: string
+        description: the ID of the variation that the user is targeted on a flag
+      userKey:
+        type: string
+        description: Unique identifier for the user
+      _id:
+        type: string
+      _resourceId:
+        $ref: '#/definitions/UserTargetingExpirationResourceIdForFlag'
+      _links:
+        $ref: '#/definitions/Links'
+      _version:
+        type: integer
+  UserTargetingExpirationForSegment:
+    type: object
+    properties:
+      expirationDate:
+        type: integer
+        description: Date scheduled for expiration
+      targetType:
+        type: string
+        description: >-
+          either the included or excluded variation that the user is targeted on
+          a segment
+      userKey:
+        type: string
+        description: Unique identifier for the user
+      _id:
+        type: string
+      _resourceId:
+        $ref: '#/definitions/UserTargetingExpirationResourceIdForFlag'
+      _links:
+        $ref: '#/definitions/Links'
+      _version:
+        type: integer
+  UserTargetingExpirationResourceIdForFlag:
+    type: object
+    properties:
+      kind:
+        type: string
+      projectKey:
+        type: string
+      environmentKey:
+        type: string
+      flagKey:
+        type: string
+      key:
+        type: string
   UserSegment:
     type: object
     required:
@@ -2175,6 +2402,24 @@ definitions:
       - op
       - path
       - value
+  SemanticPatchOperation:
+    type: object
+    properties:
+      comment:
+        type: string
+        example: This is a comment string
+      instructions:
+        type: array
+        items:
+          properties:
+            kind:
+              type: string
+              example: removeUserTargets
+              description: >-
+                The name of the modification you would like to perform on a
+                resource.
+    required:
+      - instructions
   CustomProperty:
     type: object
     description: A name and value describing a custom property.
@@ -2754,9 +2999,12 @@ parameters:
     description: >-
       By default, each feature will include configurations for each environment.
       You can filter environments with the env query parameter. For example,
-      setting env=production will restrict the returned configurations to just
-      your production environment.
-    type: string
+      setting env=["production"] will restrict the returned configurations to
+      just your production environment.
+    type: array
+    items:
+      type: string
+    collectionFormat: multi
   SummaryQuery:
     name: summary
     in: query
@@ -2775,6 +3023,35 @@ parameters:
       returned.  By default, archived flags are not included in the list of
       flags.
     type: boolean
+  LimitQuery:
+    name: limit
+    in: query
+    required: false
+    description: 'The number of objects to return. Defaults to -1, which returns everything.'
+    type: number
+  OffsetQuery:
+    name: offset
+    in: query
+    required: false
+    description: >-
+      Where to start in the list. This is for use with pagination. For example,
+      an offset of 10 would skip the first 10 items and then return the next
+      limit items.
+    type: number
+  FilterQuery:
+    name: filter
+    in: query
+    required: false
+    description: 'A comma-separated list of filters. Each filter is of the form field:value.'
+    type: string
+  SortQuery:
+    name: sort
+    in: query
+    required: false
+    description: >-
+      A comma-separated list of fields to sort by. A field prefixed by a - will
+      be sorted in descending order.
+    type: string
   FeatureFlagKey:
     name: featureFlagKey
     in: path
@@ -3017,6 +3294,19 @@ parameters:
       type: array
       items:
         $ref: '#/definitions/PatchOperation'
+  SemanticPatchWithComment:
+    name: SemanticPatchWithComment
+    in: body
+    required: true
+    description: >-
+      Requires a Semantic Patch representation of the desired changes to the
+      resource.
+      'https://apidocs.launchdarkly.com/reference#updates-via-semantic-patches'.
+      The addition of comments is also supported.
+    schema:
+      type: object
+      items:
+        $ref: '#/definitions/SemanticPatchOperation'
   StreamSource:
     name: source
     in: path

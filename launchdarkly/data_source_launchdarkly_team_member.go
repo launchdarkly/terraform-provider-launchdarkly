@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/antihax/optional"
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 	ldapi "github.com/launchdarkly/api-client-go"
 )
@@ -40,14 +41,36 @@ func dataSourceTeamMember() *schema.Resource {
 }
 
 func getTeamMemberByEmail(client *Client, memberEmail string) (*ldapi.Member, error) {
+	apiOpts := ldapi.GetMembersOpts{
+		Limit: optional.NewFloat32(1000), // this should be the max limit allowed when the member-list-max-limit flag is on
+	}
+
 	membersRaw, _, err := handleRateLimit(func() (interface{}, *http.Response, error) {
-		return client.ld.TeamMembersApi.GetMembers(client.ctx)
+		return client.ld.TeamMembersApi.GetMembers(client.ctx, &apiOpts)
 	})
-	members := membersRaw.(ldapi.Members)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read team member with email: %s: %v", memberEmail, handleLdapiErr(err))
 	}
-	for _, member := range members.Items {
+
+	members := membersRaw.(ldapi.Members)
+	totalMemberCount := int(members.TotalCount)
+
+	memberItems := members.Items
+	membersPulled := len(memberItems)
+	for membersPulled < totalMemberCount {
+		apiOpts.Offset = optional.NewFloat32(float32(membersPulled))
+		newRawMembers, _, err := handleRateLimit(func() (interface{}, *http.Response, error) {
+			return client.ld.TeamMembersApi.GetMembers(client.ctx, &apiOpts)
+		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to read team member with email: %s: %v", memberEmail, handleLdapiErr(err))
+		}
+		newMembers := newRawMembers.(ldapi.Members)
+		memberItems = append(memberItems, newMembers.Items...)
+		membersPulled = len(memberItems)
+	}
+
+	for _, member := range memberItems {
 		if member.Email == memberEmail {
 			return &member, nil
 		}

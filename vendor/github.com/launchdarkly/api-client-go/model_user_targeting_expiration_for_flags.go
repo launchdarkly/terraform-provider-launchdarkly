@@ -10,7 +10,7 @@
 
 package ldapi
 
-type StreamUsageError struct {
-	Code string `json:"code,omitempty"`
-	Message string `json:"message,omitempty"`
+type UserTargetingExpirationForFlags struct {
+	Links *Links `json:"_links,omitempty"`
+	Items []UserTargetingExpirationForFlag `json:"items,omitempty"`
 }

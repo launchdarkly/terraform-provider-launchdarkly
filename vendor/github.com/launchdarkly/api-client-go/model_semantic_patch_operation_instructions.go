@@ -10,7 +10,7 @@
 
 package ldapi
 
-type StreamUsageError struct {
-	Code string `json:"code,omitempty"`
-	Message string `json:"message,omitempty"`
+type SemanticPatchOperationInstructions struct {
+	// The name of the modification you would like to perform on a resource.
+	Kind string `json:"kind,omitempty"`
 }

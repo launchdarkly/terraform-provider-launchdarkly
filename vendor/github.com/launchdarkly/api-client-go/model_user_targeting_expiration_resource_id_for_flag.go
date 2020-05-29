@@ -10,8 +10,10 @@
 
 package ldapi
 
-type FeatureFlagStatusAcrossEnvironments struct {
-	Links *Links `json:"_links,omitempty"`
+type UserTargetingExpirationResourceIdForFlag struct {
+	Kind string `json:"kind,omitempty"`
+	ProjectKey string `json:"projectKey,omitempty"`
+	EnvironmentKey string `json:"environmentKey,omitempty"`
+	FlagKey string `json:"flagKey,omitempty"`
 	Key string `json:"key,omitempty"`
-	Environments map[string]FeatureFlagStatusForQueriedEnvironment `json:"environments,omitempty"`
 }
