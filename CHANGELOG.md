@@ -1,5 +1,16 @@
 ## 1.4.0 (Unreleased)
 
+ENHANCEMENTS:
+
+- Change data source names from data_source* to data_source_launchdarkly*
+- Add pagination for pulling team members in accordance with the latest version of the LaunchDarkly API
+
+BUG_FIXES: 
+
+- Fix bug with setting JSON arrays as variation values.
+- Fix two-step create that required making an additional API update call to set all parameters.
+
+
 ## 1.3.1 (May 13, 2020)
 
 BUG_FIXES:
@@ -62,7 +73,7 @@ FEATURES:
 
 ENHANCEMENTS:
 
-- update keys.go to make keys uppercase
+- Update keys.go to make keys uppercase.
 
 BUG FIXES:
 
