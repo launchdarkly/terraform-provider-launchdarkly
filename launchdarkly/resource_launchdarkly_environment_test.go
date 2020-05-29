@@ -17,7 +17,7 @@ resource "launchdarkly_environment" "staging" {
   	key = "staging1"
   	color = "ff00ff"
   	secure_mode = true
-  	default_track_events = false
+  	default_track_events = true
   	default_ttl = 50
 	project_key = launchdarkly_project.test.key
 	tags = ["tagged", "terraform"]
@@ -32,7 +32,7 @@ resource "launchdarkly_environment" "staging" {
   	key = "staging1"
   	color = "000000"
   	secure_mode = false
-  	default_track_events = true
+  	default_track_events = false
   	default_ttl = 3
 	project_key = launchdarkly_project.test.key
 	require_comments = false
@@ -73,7 +73,7 @@ func TestAccEnvironment_Create(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "key", "staging1"),
 					resource.TestCheckResourceAttr(resourceName, "color", "ff00ff"),
 					resource.TestCheckResourceAttr(resourceName, "secure_mode", "true"),
-					resource.TestCheckResourceAttr(resourceName, "default_track_events", "false"),
+					resource.TestCheckResourceAttr(resourceName, "default_track_events", "true"),
 					resource.TestCheckResourceAttr(resourceName, "default_ttl", "50"),
 					resource.TestCheckResourceAttr(resourceName, "project_key", projectKey),
 					resource.TestCheckResourceAttr(resourceName, "tags.#", "2"),
@@ -110,7 +110,7 @@ func TestAccEnvironment_Update(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "key", "staging1"),
 					resource.TestCheckResourceAttr(resourceName, "color", "ff00ff"),
 					resource.TestCheckResourceAttr(resourceName, "secure_mode", "true"),
-					resource.TestCheckResourceAttr(resourceName, "default_track_events", "false"),
+					resource.TestCheckResourceAttr(resourceName, "default_track_events", "true"),
 					resource.TestCheckResourceAttr(resourceName, "default_ttl", "50"),
 					resource.TestCheckResourceAttr(resourceName, "project_key", projectKey),
 				),
@@ -124,7 +124,7 @@ func TestAccEnvironment_Update(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "key", "staging1"),
 					resource.TestCheckResourceAttr(resourceName, "color", "000000"),
 					resource.TestCheckResourceAttr(resourceName, "secure_mode", "false"),
-					resource.TestCheckResourceAttr(resourceName, "default_track_events", "true"),
+					resource.TestCheckResourceAttr(resourceName, "default_track_events", "false"),
 					resource.TestCheckResourceAttr(resourceName, "default_ttl", "3"),
 					resource.TestCheckResourceAttr(resourceName, "project_key", projectKey),
 					resource.TestCheckResourceAttr(resourceName, "require_comments", "false"),
@@ -157,7 +157,7 @@ func TestAccEnvironment_Invalid(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "key", "staging1"),
 					resource.TestCheckResourceAttr(resourceName, "color", "000000"),
 					resource.TestCheckResourceAttr(resourceName, "secure_mode", "false"),
-					resource.TestCheckResourceAttr(resourceName, "default_track_events", "true"),
+					resource.TestCheckResourceAttr(resourceName, "default_track_events", "false"),
 					resource.TestCheckResourceAttr(resourceName, "default_ttl", "3"),
 					resource.TestCheckResourceAttr(resourceName, "project_key", projectKey),
 					resource.TestCheckResourceAttr(resourceName, "require_comments", "false"),

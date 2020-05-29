@@ -40,12 +40,22 @@ func resourceEnvironmentCreate(d *schema.ResourceData, metaRaw interface{}) erro
 	name := d.Get(NAME).(string)
 	color := d.Get(COLOR).(string)
 	defaultTTL := float32(d.Get(DEFAULT_TTL).(int))
+	secureMode := d.Get(SECURE_MODE).(bool)
+	defaultTrackEvents := d.Get(DEFAULT_TRACK_EVENTS).(bool)
+	tags := stringsFromSchemaSet(d.Get(TAGS).(*schema.Set))
+	requireComments := d.Get(REQUIRE_COMMENTS).(bool)
+	confirmChanges := d.Get(CONFIRM_CHANGES).(bool)
 
 	envPost := ldapi.EnvironmentPost{
-		Name:       name,
-		Key:        key,
-		Color:      color,
-		DefaultTtl: defaultTTL,
+		Name:               name,
+		Key:                key,
+		Color:              color,
+		DefaultTtl:         defaultTTL,
+		SecureMode:         secureMode,
+		DefaultTrackEvents: defaultTrackEvents,
+		Tags:               tags,
+		RequireComments:    requireComments,
+		ConfirmChanges:     confirmChanges,
 	}
 
 	_, _, err := handleRateLimit(func() (interface{}, *http.Response, error) {
@@ -53,13 +63,6 @@ func resourceEnvironmentCreate(d *schema.ResourceData, metaRaw interface{}) erro
 	})
 	if err != nil {
 		return fmt.Errorf("failed to create environment: [%+v] for project key: %s: %s", envPost, projectKey, handleLdapiErr(err))
-	}
-
-	// ld's api does not allow some fields to be passed in during env creation so we do an update:
-	// https://apidocs.launchdarkly.com/docs/create-environment
-	err = resourceEnvironmentUpdate(d, metaRaw)
-	if err != nil {
-		return fmt.Errorf("failed to update environment with name %q key %q for projectKey %q: %v", name, key, projectKey, err)
 	}
 
 	d.SetId(projectKey + "/" + key)
