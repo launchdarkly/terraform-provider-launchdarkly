@@ -1,4 +1,4 @@
-# ld-terraform-examples-private
+# terraform-provider-launchdarkly examples
 Example LD project configured using the LD Terraform provider
 
 ## Overview
