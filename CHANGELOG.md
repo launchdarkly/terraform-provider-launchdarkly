@@ -1,4 +1,9 @@
-## 1.4.0 (Unreleased)
+## 1.3.3 (Unreleased)
+
+NOTES:
+
+- Patch release to support Terraform 0.13
+
 ## 1.3.2 (May 29, 2020)
 
 ENHANCEMENTS:
@@ -6,11 +11,10 @@ ENHANCEMENTS:
 - Change data source names from data_source* to data_source_launchdarkly*
 - Add pagination for pulling team members in accordance with the latest version of the LaunchDarkly API
 
-BUG_FIXES: 
+BUG_FIXES:
 
 - Fix bug with setting JSON arrays as variation values.
 - Fix two-step create that required making an additional API update call to set all parameters.
-
 
 ## 1.3.1 (May 13, 2020)
 
