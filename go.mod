@@ -1,4 +1,4 @@
-module github.com/terraform-providers/terraform-provider-launchdarkly
+module github.com/launchdarkly/terraform-provider-launchdarkly
 
 go 1.14
 
