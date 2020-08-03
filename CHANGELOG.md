@@ -1,5 +1,12 @@
 ## [Unreleased]
 
+## [1.3.4] (August 3, 2020)
+
+NOTES:
+
+- Point `go.mod` to github.com/launchdarkly/terraform-provider-launchdarkly
+- Automatically set version header at build time
+
 ## [1.3.3] (July 31, 2020)
 
 NOTES:

@@ -3,11 +3,13 @@ TEST?=$$(go list ./... |grep -v 'vendor')
 GOFMT_FILES?=$$(find . -name '*.go' |grep -v vendor)
 WEBSITE_REPO=github.com/hashicorp/terraform-website
 PKG_NAME=launchdarkly
+REV:=$(shell git rev-parse HEAD | cut -c1-6)
+LDFLAGS:=-ldflags="-X github.com/launchdarkly/terraform-provider-launchdarkly/launchdarkly.version=$(REV)"
 
 default: build
 
 build: fmtcheck
-	go install
+	go install $(LDFLAGS)
 
 install: build
 	install -d -m 755 ~/.terraform.d/plugins
