@@ -33,6 +33,7 @@
 /crash.log
 /terraform-provider-launchdarkly
 /build/
+/dist
 
 website/vendor
 website/.vagrant
