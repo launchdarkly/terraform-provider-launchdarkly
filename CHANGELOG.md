@@ -1,12 +1,12 @@
-## 1.4.0 (Unreleased)
+## [Unreleased]
 
-## 1.3.3 (July 31, 2020)
+## [1.3.3] (July 31, 2020)
 
 NOTES:
 
 - Patch release to support Terraform 0.13
 
-## 1.3.2 (May 29, 2020)
+## [1.3.2] (May 29, 2020)
 
 ENHANCEMENTS:
 
@@ -18,13 +18,13 @@ BUG_FIXES:
 - Fix bug with setting JSON arrays as variation values.
 - Fix two-step create that required making an additional API update call to set all parameters.
 
-## 1.3.1 (May 13, 2020)
+## [1.3.1] (May 13, 2020)
 
 BUG_FIXES:
 
 - Improve handling of API rate limits. [#26](https://github.com/terraform-providers/terraform-provider-launchdarkly/issues/26)
 
-## 1.3.0 (May 05, 2020)
+## [1.3.0] (May 05, 2020)
 
 FEATURES:
 
@@ -34,7 +34,7 @@ BUG_FIXES:
 
 - Improve handling of API rate limits.
 
-## 1.2.2 (April 23, 2020)
+## [1.2.2] (April 23, 2020)
 
 FEATURES:
 
@@ -45,7 +45,7 @@ BUG_FIXES:
 - Fix non-empty plan after creating a `launchdarkly_team_member` with a custom role.
 - Handle missing user target variations in `launchdarkly_feature_flag_environment` [#23](https://github.com/terraform-providers/terraform-provider-launchdarkly/issues/23)
 
-## 1.2.1 (April 14, 2020)
+## [1.2.1] (April 14, 2020)
 
 BUG_FIXES:
 
@@ -55,7 +55,7 @@ NOTES:
 
 - The `environments` block in `launchdarkly_project` has been deprecated in favor of the `launchdarkly_environment` resource. Please update your existing configurations to maintain future compatibility.
 
-## 1.2.0 (April 09, 2020)
+## [1.2.0] (April 09, 2020)
 
 FEATURES:
 
@@ -71,7 +71,7 @@ NOTES:
 
 - The `policy` block in `launchdarkly_custom_role` has been deprecated in favor of `policy_statements`. Please migrate your existing configurations to maintain future compatibility.
 
-## 1.1.0 (March 10, 2020)
+## [1.1.0] (March 10, 2020)
 
 FEATURES:
 
@@ -87,7 +87,7 @@ BUG FIXES:
 - Fix pagination bug with `launchdarkly_team_member` data source.
 - Fix custom roles acceptance test race condition.
 
-## 1.0.1 (January 13, 2020)
+## [1.0.1] (January 13, 2020)
 
 ENHANCEMENTS:
 
@@ -97,7 +97,7 @@ BUG FIXES:
 
 - Set the LaunchDarkly API version header to version `20191212`
 
-## 1.0.0 (November 06, 2019)
+## [1.0.0] (November 06, 2019)
 
 FEATURES:
 
@@ -114,7 +114,7 @@ BUG FIXES:
 - Fix typo in initialization error message. Thanks @jen20
 - Flags created with invalid schema are deleted instead of left dangling.
 
-## 0.0.1 (October 21, 2019)
+## [0.0.1] (October 21, 2019)
 
 NOTES:
 
