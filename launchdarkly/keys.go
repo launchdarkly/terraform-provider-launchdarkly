@@ -65,4 +65,8 @@ const (
 	CONFIG                = "config"
 	DEFAULT_ON_VARIATION  = "default_on_variation"
 	DEFAULT_OFF_VARIATION = "default_off_variation"
+	SERVICE_TOKEN         = "service_token"
+	DEFAULT_API_VERSION   = "default_api_version"
+	TOKEN                 = "token"
+	EXPIRE                = "expire"
 )

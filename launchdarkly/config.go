@@ -24,7 +24,6 @@ type Client struct {
 }
 
 func newClient(token string, apiHost string, oauth bool) (*Client, error) {
-	fmt.Printf("version %s", version)
 	if token == "" {
 		return nil, errors.New("token cannot be empty")
 	}
