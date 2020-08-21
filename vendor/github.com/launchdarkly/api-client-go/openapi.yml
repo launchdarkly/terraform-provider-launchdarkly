@@ -10,7 +10,7 @@ info:
   license:
     name: Apache 2.0
     url: 'http://www.apache.org/licenses/LICENSE-2.0.html'
-  version: 3.2.0
+  version: 3.4.0
 host: app.launchdarkly.com
 basePath: /api/v2
 schemes:
@@ -1242,6 +1242,105 @@ paths:
           $ref: '#/responses/EvaluationUsage404'
       tags:
         - Customer Metrics
+  /tokens:
+    get:
+      summary: Returns a list of tokens in the account.
+      operationId: getTokens
+      parameters:
+        - $ref: '#/parameters/TokenShowAllQuery'
+      responses:
+        '200':
+          description: Tokens response.
+          schema:
+            $ref: '#/definitions/Tokens'
+        '401':
+          $ref: '#/responses/Standard401'
+      tags:
+        - Access tokens
+    post:
+      summary: Create a new token.
+      operationId: postToken
+      parameters:
+        - $ref: '#/parameters/TokensPostRequest'
+      responses:
+        '201':
+          description: Token response.
+          schema:
+            $ref: '#/definitions/Token'
+        '400':
+          $ref: '#/responses/Standard400'
+        '401':
+          $ref: '#/responses/Standard401'
+        '409':
+          $ref: '#/responses/Standard409'
+      tags:
+        - Access tokens
+  '/tokens/{tokenId}':
+    get:
+      summary: Get a single access token by ID.
+      operationId: getToken
+      parameters:
+        - $ref: '#/parameters/TokenId'
+      responses:
+        '200':
+          $ref: '#/responses/Token2xx'
+        '400':
+          $ref: '#/responses/Standard400'
+        '401':
+          $ref: '#/responses/Standard401'
+      tags:
+        - Access tokens
+    patch:
+      summary: Modify an access tokenby ID.
+      operationId: patchToken
+      parameters:
+        - $ref: '#/parameters/TokenId'
+        - $ref: '#/parameters/PatchRequest'
+      responses:
+        '200':
+          $ref: '#/responses/Token2xx'
+        '400':
+          $ref: '#/responses/Standard400'
+        '401':
+          $ref: '#/responses/Standard401'
+        '404':
+          $ref: '#/responses/Standard404'
+        '409':
+          $ref: '#/responses/Standard409'
+      tags:
+        - Access tokens
+    delete:
+      summary: Delete an access token by ID.
+      operationId: deleteToken
+      parameters:
+        - $ref: '#/parameters/TokenId'
+      responses:
+        '204':
+          $ref: '#/responses/Standard204'
+        '401':
+          $ref: '#/responses/Standard401'
+        '404':
+          $ref: '#/responses/Standard404'
+      tags:
+        - Access tokens
+  '/tokens/{tokenId}/reset':
+    post:
+      summary: >-
+        Reset an access token's secret key with an optional expiry time for the
+        old key.
+      operationId: resetToken
+      parameters:
+        - $ref: '#/parameters/TokenId'
+        - $ref: '#/parameters/TokenExpiry'
+      responses:
+        '200':
+          $ref: '#/responses/Token2xx'
+        '400':
+          $ref: '#/responses/Standard400'
+        '401':
+          $ref: '#/responses/Standard401'
+      tags:
+        - Access tokens
   /:
     get:
       description: >-
@@ -1347,7 +1446,7 @@ definitions:
         description: Whether the feature flag is a boolean flag or multivariate.
         example: boolean
       creationDate:
-        type: number
+        type: integer
         format: int64
         description: >-
           A unix epoch time in milliseconds specifying the creation time of this
@@ -1412,7 +1511,7 @@ definitions:
         additionalProperties:
           $ref: '#/definitions/FeatureFlagConfig'
       archivedDate:
-        type: number
+        type: integer
         format: int64
         description: >-
           A unix epoch time in milliseconds specifying the archived time of this
@@ -1595,6 +1694,9 @@ definitions:
     required:
       - value
     properties:
+      _id:
+        type: string
+        example: 24b32dd3-0ba6-46ee-86af-230eebf3c7cb
       name:
         type: string
         example: 'True'
@@ -1734,7 +1836,9 @@ definitions:
     properties:
       expirationDate:
         type: integer
-        description: Date scheduled for expiration
+        format: int64
+        description: Unix epoch time in milliseconds specifying the expiration date
+        example: 1735689600000
       variationId:
         type: string
         description: the ID of the variation that the user is targeted on a flag
@@ -1754,7 +1858,9 @@ definitions:
     properties:
       expirationDate:
         type: integer
-        description: Date scheduled for expiration
+        format: int64
+        description: Unix epoch time in milliseconds specifying the expiration date
+        example: 1735689600000
       targetType:
         type: string
         description: >-
@@ -1812,7 +1918,7 @@ definitions:
           - ops
         description: An array of tags for this user segment.
       creationDate:
-        type: number
+        type: integer
         format: int64
         description: >-
           A unix epoch time in milliseconds specifying the creation time of this
@@ -2135,7 +2241,6 @@ definitions:
     properties:
       lastPing:
         type: string
-        format: int64
         example: '2015-03-03T02:37:22.492Z'
       environmentId:
         type: string
@@ -2395,9 +2500,10 @@ definitions:
         example: replace
       path:
         type: string
-        example: /on
+        example: /name
       value:
         type: object
+        example: My resource name
     required:
       - op
       - path
@@ -2521,12 +2627,12 @@ definitions:
     type: object
     properties:
       '0':
-        type: number
+        type: integer
         format: int64
         description: A key corresponding to a time series data point.
         example: 0
       time:
-        type: number
+        type: integer
         format: int64
         description: >-
           A unix epoch time in milliseconds specifying the creation time of this
@@ -2685,6 +2791,86 @@ definitions:
         $ref: '#/definitions/Links'
       _site:
         $ref: '#/definitions/Site'
+  Tokens:
+    type: object
+    properties:
+      _links:
+        $ref: '#/definitions/Links'
+      items:
+        type: array
+        items:
+          $ref: '#/definitions/Token'
+  Token:
+    type: object
+    properties:
+      _links:
+        $ref: '#/definitions/Links'
+      _id:
+        type: string
+        description: The unique resource id.
+        example: "5a580a01b4ff89217bdf9dc1"
+      ownerId:
+        type: string
+        description: The unique resource id.
+        example: "5a580a01b4ff89217bdf9dc1"
+      memberId:
+        type: string
+        description: The unique resource id.
+        example: "5a580a01b4ff89217bdf9dc1"
+      _member:
+        $ref: '#/definitions/Member'
+      creationDate:
+        type: integer
+        format: int64
+        description: >-
+          A unix epoch time in milliseconds specifying the creation time of this
+          access token.
+        example: 1443652232590
+      lastModified:
+        type: integer
+        format: int64
+        example: 1469326565348
+        description: >-
+          A unix epoch time in milliseconds specifying the last time this access
+          token was modified.
+      lastUsed:
+        type: integer
+        format: int64
+        example: 1469326565348
+        description: >-
+          A unix epoch time in milliseconds specifying the last time this access
+          token was used to authorize access to the LaunchDarkly REST API.
+      token:
+        type: string
+        example: '3243'
+        description: >-
+          The last 4 digits of the unique secret key for this access token. If
+          creating or resetting the token, this will be the full token secret.
+      name:
+        type: string
+        description: A human-friendly name for the access token
+        example: My access token
+      role:
+        type: string
+        description: The name of a built-in role for the token
+        example: writer
+      customRoleIds:
+        type: array
+        items:
+          type: string
+        description: A list of custom role IDs to use as access limits for the access token
+      inlineRole:
+        type: array
+        items:
+          $ref: '#/definitions/Statement'
+      serviceToken:
+        type: boolean
+        description: >-
+          Whether the token will be a service token
+          https://docs.launchdarkly.com/home/account-security/api-access-tokens#service-tokens
+      defaultApiVersion:
+        type: integer
+        description: The default API version for this token
 responses:
   Standard201:
     description: Resource created.
@@ -2744,6 +2930,10 @@ responses:
     description: Destination response.
     schema:
       $ref: '#/definitions/Destination'
+  Token2xx:
+    description: Token response.
+    schema:
+      $ref: '#/definitions/Token'
 parameters:
   ResourceId:
     name: resourceId
@@ -3019,7 +3209,7 @@ parameters:
     in: query
     required: false
     description: >-
-      When set to 1, archived flags will be included in the list of flags
+      When set to 1, only archived flags will be included in the list of flags
       returned.  By default, archived flags are not included in the list of
       flags.
     type: boolean
@@ -3128,7 +3318,7 @@ parameters:
     required: false
     description: >-
       A timestamp filter, expressed as a Unix epoch time in milliseconds. All
-      entries returned will have occured after this timestamp.
+      entries returned will have occurred after this timestamp.
     format: int64
     type: integer
   PatchRequest:
@@ -3169,8 +3359,8 @@ parameters:
     required: false
     description: >-
       Text to search for. You can search for the full or partial name of the
-      resource involved or fullpartial email address of the member who made the
-      change.
+      resource involved or full or partial email address of the member who made
+      the change.
     type: string
   AuditLimit:
     name: limit
@@ -3331,4 +3521,63 @@ parameters:
     required: true
     description: The key of the flag we want metrics for.
     type: string
+  TokensPostRequest:
+    name: tokenBody
+    in: body
+    required: true
+    description: Create a new access token.
+    schema:
+      type: object
+      properties:
+        name:
+          type: string
+          description: A human-friendly name for the access token
+          example: My access token
+        role:
+          type: string
+          description: The name of a built-in role for the token
+          example: writer
+        customRoleIds:
+          type: array
+          items:
+            type: string
+            example: []
+          description: >-
+            A list of custom role IDs to use as access limits for the access
+            token
+        inlineRole:
+          type: array
+          items:
+            $ref: '#/definitions/Statement'
+        serviceToken:
+          type: boolean
+          description: >-
+            Whether the token will be a service token
+            https://docs.launchdarkly.com/home/account-security/api-access-tokens#service-tokens
+        defaultApiVersion:
+          type: integer
+          description: The default API version for this token
+  TokenId:
+    name: tokenId
+    in: path
+    required: true
+    description: The access token ID.
+    type: string
+  TokenShowAllQuery:
+    name: showAll
+    in: query
+    required: false
+    description: >-
+      If set to true, and the authentication access token has the "Admin" role,
+      personal access tokens for all members will be retrieved.
+    type: boolean
+  TokenExpiry:
+    name: expiry
+    in: query
+    required: false
+    type: integer
+    format: int64
+    description: >-
+      An expiration time for the old token key, expressed as a Unix epoch time
+      in milliseconds. By default, the token will expire immediately.
 

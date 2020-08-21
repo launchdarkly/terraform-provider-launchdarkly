@@ -1,5 +1,9 @@
 ## [Unreleased]
 
+FEATURES:
+
+- Added the `launchdarkly_access_token` resource.
+
 ## [1.3.4] (August 3, 2020)
 
 NOTES:
