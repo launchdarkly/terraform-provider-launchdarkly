@@ -13,6 +13,7 @@ func fallthroughSchema() *schema.Schema {
 	return &schema.Schema{
 		Type:     schema.TypeList,
 		Optional: true,
+		Computed: true,
 		MaxItems: 1,
 		Elem: &schema.Resource{
 			Schema: map[string]*schema.Schema{
@@ -21,7 +22,7 @@ func fallthroughSchema() *schema.Schema {
 					Type:     schema.TypeString,
 					Optional: true,
 				},
-				VARIATION: &schema.Schema{
+				VARIATION: {
 					Type:         schema.TypeInt,
 					Optional:     true,
 					ValidateFunc: validation.IntAtLeast(0),

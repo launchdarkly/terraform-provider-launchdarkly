@@ -1,4 +1,15 @@
-## [Unreleased]
+## [1.4.1] (September 8, 2020)
+
+FEATURES:
+
+- Fixed a bug where omitted optional `launchdarkly_feature_flag_environment` parameters where making unwanted changes
+  to the resource upon creation. [#38](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/38)
+
+## [1.4.0] (August 21, 2020)
+
+FEATURES:
+
+- Added the `launchdarkly_access_token` resource.
 
 FEATURES:
 

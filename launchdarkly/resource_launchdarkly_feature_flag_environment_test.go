@@ -41,6 +41,29 @@ resource "launchdarkly_feature_flag_environment" "basic" {
 }
 `
 
+	testAccFeatureFlagEnvironmentEmpty = `
+resource "launchdarkly_feature_flag" "basic" {
+	project_key = launchdarkly_project.test.key
+	key = "basic-flag"
+	name = "Basic feature flag"
+	variation_type = "number"
+	variations {
+		value = 10
+	}
+	variations {
+		value = 20
+	}
+	variations {
+		value = 30
+	}
+}
+
+resource "launchdarkly_feature_flag_environment" "basic" {
+	flag_id 		  = launchdarkly_feature_flag.basic.id
+	env_key 		  = "test"
+}
+`
+
 	testAccFeatureFlagEnvironmentUpdate = `	
 resource "launchdarkly_feature_flag" "basic" {
 	project_key = launchdarkly_project.test.key
@@ -225,6 +248,40 @@ func TestAccFeatureFlagEnvironment_Basic(t *testing.T) {
 	})
 }
 
+func TestAccFeatureFlagEnvironment_Empty(t *testing.T) {
+	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	resourceName := "launchdarkly_feature_flag_environment.basic"
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck: func() {
+			testAccPreCheck(t)
+		},
+		Providers: testAccProviders,
+		Steps: []resource.TestStep{
+			{
+				Config: withRandomProject(projectKey, testAccFeatureFlagEnvironmentEmpty),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckFeatureFlagEnvironmentExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, "targeting_enabled", "false"),
+					resource.TestCheckResourceAttr(resourceName, "off_variation", "2"),
+					resource.TestCheckResourceAttr(resourceName, "track_events", "false"),
+					resource.TestCheckNoResourceAttr(resourceName, "rules"),
+					resource.TestCheckNoResourceAttr(resourceName, "rules.#"),
+					resource.TestCheckNoResourceAttr(resourceName, "prerequisites"),
+					resource.TestCheckNoResourceAttr(resourceName, "prerequisites.#"),
+					resource.TestCheckResourceAttr(resourceName, "flag_fallthrough.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "flag_fallthrough.0.variation", "0"),
+					resource.TestCheckNoResourceAttr(resourceName, "user_targets"),
+					resource.TestCheckNoResourceAttr(resourceName, "user_targets.#"),
+				),
+			},
+			{
+				ResourceName: resourceName,
+				ImportState:  true,
+			},
+		},
+	})
+}
+
 func TestAccFeatureFlagEnvironment_Update(t *testing.T) {
 	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	resourceName := "launchdarkly_feature_flag_environment.basic"
@@ -286,16 +343,45 @@ func TestAccFeatureFlagEnvironment_Update(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "rules.1.clauses.0.negate", "false"),
 				),
 			},
+			// After changes have been made to the resource, removing optional values should not change them.
 			{
-				Config: withRandomProject(projectKey, testAccFeatureFlagEnvironmentBasic),
+				Config: withRandomProject(projectKey, testAccFeatureFlagEnvironmentEmpty),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckFeatureFlagEnvironmentExists(resourceName),
-					resource.TestCheckResourceAttr(resourceName, "targeting_enabled", "false"),
+					resource.TestCheckResourceAttr(resourceName, "targeting_enabled", "true"),
+					resource.TestCheckResourceAttr(resourceName, "track_events", "true"),
 					resource.TestCheckResourceAttr(resourceName, "flag_fallthrough.#", "1"),
-					resource.TestCheckResourceAttr(resourceName, "flag_fallthrough.0.variation", "1"),
-					resource.TestCheckResourceAttr(resourceName, "flag_fallthrough.0.rollout.#", "0"),
-					resource.TestCheckResourceAttr(resourceName, "user_targets.#", "0"),
-					resource.TestCheckResourceAttr(resourceName, "rules.#", "0"),
+					resource.TestCheckResourceAttr(resourceName, "flag_fallthrough.0.variation", "0"),
+					resource.TestCheckResourceAttr(resourceName, "flag_fallthrough.0.rollout_weights.#", "3"),
+					resource.TestCheckResourceAttr(resourceName, "flag_fallthrough.0.rollout_weights.0", "60000"),
+					resource.TestCheckResourceAttr(resourceName, "flag_fallthrough.0.rollout_weights.1", "40000"),
+					resource.TestCheckResourceAttr(resourceName, "flag_fallthrough.0.rollout_weights.2", "0"),
+					resource.TestCheckResourceAttr(resourceName, "flag_fallthrough.0.bucket_by", "email"),
+					resource.TestCheckResourceAttr(resourceName, "user_targets.#", "3"),
+					resource.TestCheckResourceAttr(resourceName, "user_targets.0.values.#", "0"),
+					resource.TestCheckResourceAttr(resourceName, "user_targets.1.values.#", "2"),
+					resource.TestCheckResourceAttr(resourceName, "user_targets.1.values.0", "user1"),
+					resource.TestCheckResourceAttr(resourceName, "user_targets.1.values.1", "user2"),
+					resource.TestCheckResourceAttr(resourceName, "user_targets.2.values.#", "0"),
+					resource.TestCheckResourceAttr(resourceName, "rules.#", "2"),
+					resource.TestCheckResourceAttr(resourceName, "rules.0.variation", "0"),
+					resource.TestCheckResourceAttr(resourceName, "rules.0.clauses.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "rules.0.clauses.0.attribute", "country"),
+					resource.TestCheckResourceAttr(resourceName, "rules.0.clauses.0.op", "startsWith"),
+					resource.TestCheckResourceAttr(resourceName, "rules.0.clauses.0.values.#", "2"),
+					resource.TestCheckResourceAttr(resourceName, "rules.0.clauses.0.values.0", "great"),
+					resource.TestCheckResourceAttr(resourceName, "rules.0.clauses.0.values.1", "amazing"),
+					resource.TestCheckResourceAttr(resourceName, "rules.0.clauses.0.negate", "false"),
+					resource.TestCheckResourceAttr(resourceName, "rules.1.rollout_weights.#", "3"),
+					resource.TestCheckResourceAttr(resourceName, "rules.1.rollout_weights.0", "90000"),
+					resource.TestCheckResourceAttr(resourceName, "rules.1.rollout_weights.1", "10000"),
+					resource.TestCheckResourceAttr(resourceName, "rules.1.rollout_weights.2", "0"),
+					resource.TestCheckResourceAttr(resourceName, "rules.1.bucket_by", "email"),
+					resource.TestCheckResourceAttr(resourceName, "rules.1.clauses.0.attribute", "name"),
+					resource.TestCheckResourceAttr(resourceName, "rules.1.clauses.0.op", "startsWith"),
+					resource.TestCheckResourceAttr(resourceName, "rules.1.clauses.0.values.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "rules.1.clauses.0.values.0", "h"),
+					resource.TestCheckResourceAttr(resourceName, "rules.1.clauses.0.negate", "false"),
 				),
 			},
 		},

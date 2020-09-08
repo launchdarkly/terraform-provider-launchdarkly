@@ -13,10 +13,11 @@ func rulesSchema() *schema.Schema {
 	return &schema.Schema{
 		Type:     schema.TypeList,
 		Optional: true,
+		Computed: true,
 		Elem: &schema.Resource{
 			Schema: map[string]*schema.Schema{
 				CLAUSES: clauseSchema(),
-				VARIATION: &schema.Schema{
+				VARIATION: {
 					Type:         schema.TypeInt,
 					Elem:         &schema.Schema{Type: schema.TypeInt},
 					Optional:     true,
