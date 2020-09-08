@@ -12,6 +12,7 @@ func prerequisitesSchema() *schema.Schema {
 	return &schema.Schema{
 		Type:     schema.TypeList,
 		Optional: true,
+		Computed: true,
 		Elem: &schema.Resource{
 			Schema: map[string]*schema.Schema{
 				FLAG_KEY: {
@@ -19,7 +20,7 @@ func prerequisitesSchema() *schema.Schema {
 					Required:     true,
 					ValidateFunc: validateKey(),
 				},
-				VARIATION: &schema.Schema{
+				VARIATION: {
 					Type:         schema.TypeInt,
 					Elem:         &schema.Schema{Type: schema.TypeInt},
 					Required:     true,
@@ -50,4 +51,15 @@ func prerequisiteFromResourceData(val interface{}) ldapi.Prerequisite {
 
 	log.Printf("[DEBUG] %+v\n", p)
 	return p
+}
+
+func prerequisitesToResourceData(prerequisites []ldapi.Prerequisite) interface{} {
+	transformed := make([]interface{}, 0, len(prerequisites))
+	for _, prereq := range prerequisites {
+		transformed = append(transformed, map[string]interface{}{
+			FLAG_KEY:  prereq.Key,
+			VARIATION: prereq.Variation,
+		})
+	}
+	return transformed
 }

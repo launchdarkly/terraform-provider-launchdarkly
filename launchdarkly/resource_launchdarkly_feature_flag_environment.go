@@ -37,6 +37,7 @@ func resourceFeatureFlagEnvironment() *schema.Resource {
 			TARGETING_ENABLED: {
 				Type:     schema.TypeBool,
 				Optional: true,
+				Computed: true,
 			},
 			USER_TARGETS:     targetsSchema(),
 			RULES:            rulesSchema(),
@@ -45,10 +46,12 @@ func resourceFeatureFlagEnvironment() *schema.Resource {
 			TRACK_EVENTS: {
 				Type:     schema.TypeBool,
 				Optional: true,
+				Computed: true,
 			},
 			OFF_VARIATION: {
 				Type:         schema.TypeInt,
 				Optional:     true,
+				Computed:     true,
 				ValidateFunc: validation.IntAtLeast(0),
 			},
 		},
@@ -93,42 +96,68 @@ func resourceFeatureFlagEnvironmentCreate(d *schema.ResourceData, metaRaw interf
 		return fmt.Errorf("failed to find environment with key %q", envKey)
 	}
 
-	enabled := d.Get(TARGETING_ENABLED).(bool)
-	rules, err := rulesFromResourceData(d)
-	if err != nil {
-		return err
-	}
-	trackEvents := d.Get(TRACK_EVENTS).(bool)
-	prerequisites := prerequisitesFromResourceData(d, PREREQUISITES)
-	offVariation := d.Get(OFF_VARIATION).(int)
-	targets := targetsFromResourceData(d, USER_TARGETS)
+	patches := make([]ldapi.PatchOperation, 0)
 
-	fall, err := fallthroughFromResourceData(d)
-	if err != nil {
-		return err
+	enabled, ok := d.GetOk(TARGETING_ENABLED)
+	if ok {
+		patches = append(patches, patchReplace(patchFlagEnvPath(d, "on"), enabled.(bool)))
 	}
 
-	patch := ldapi.PatchComment{
-		Comment: "Terraform",
-		Patch: []ldapi.PatchOperation{
-			patchReplace(patchFlagEnvPath(d, "on"), enabled),
-			patchReplace(patchFlagEnvPath(d, "rules"), rules),
-			patchReplace(patchFlagEnvPath(d, "trackEvents"), trackEvents),
-			patchReplace(patchFlagEnvPath(d, "prerequisites"), prerequisites),
-			patchReplace(patchFlagEnvPath(d, "offVariation"), offVariation),
-			patchReplace(patchFlagEnvPath(d, "targets"), targets),
-			patchReplace(patchFlagEnvPath(d, "fallthrough"), fall),
-		}}
+	offVariation, ok := d.GetOk(OFF_VARIATION)
+	if ok {
+		patches = append(patches, patchReplace(patchFlagEnvPath(d, "offVariation"), offVariation.(int)))
+	}
 
-	log.Printf("[DEBUG] %+v\n", patch)
+	trackEvents, ok := d.GetOk(TRACK_EVENTS)
+	if ok {
+		patches = append(patches, patchReplace(patchFlagEnvPath(d, "trackEvents"), trackEvents.(bool)))
+	}
 
-	_, _, err = handleRateLimit(func() (interface{}, *http.Response, error) {
-		return handleNoConflict(func() (interface{}, *http.Response, error) {
-			return client.ld.FeatureFlagsApi.PatchFeatureFlag(client.ctx, projectKey, flagKey, patch)
+	_, ok = d.GetOk(RULES)
+	if ok {
+		rules, err := rulesFromResourceData(d)
+		if err != nil {
+			return err
+		}
+		patches = append(patches, patchReplace(patchFlagEnvPath(d, "rules"), rules))
+	}
+
+	_, ok = d.GetOk(PREREQUISITES)
+	if ok {
+		prerequisites := prerequisitesFromResourceData(d, PREREQUISITES)
+		patches = append(patches, patchReplace(patchFlagEnvPath(d, "prerequisites"), prerequisites))
+	}
+
+	_, ok = d.GetOk(USER_TARGETS)
+	if ok {
+		targets := targetsFromResourceData(d, USER_TARGETS)
+		patches = append(patches, patchReplace(patchFlagEnvPath(d, "targets"), targets))
+	}
+
+	_, ok = d.GetOk(FLAG_FALLTHROUGH)
+	if ok {
+		fall, err := fallthroughFromResourceData(d)
+		if err != nil {
+			return err
+		}
+		patches = append(patches, patchReplace(patchFlagEnvPath(d, "fallthrough"), fall))
+	}
+
+	if len(patches) > 0 {
+		patch := ldapi.PatchComment{
+			Comment: "Terraform",
+			Patch:   patches,
+		}
+		log.Printf("[DEBUG] %+v\n", patch)
+
+		_, _, err = handleRateLimit(func() (interface{}, *http.Response, error) {
+			return handleNoConflict(func() (interface{}, *http.Response, error) {
+				return client.ld.FeatureFlagsApi.PatchFeatureFlag(client.ctx, projectKey, flagKey, patch)
+			})
 		})
-	})
-	if err != nil {
-		return fmt.Errorf("failed to update flag %q in project %q: %s", flagKey, projectKey, handleLdapiErr(err))
+		if err != nil {
+			return fmt.Errorf("failed to update flag %q in project %q: %s", flagKey, projectKey, handleLdapiErr(err))
+		}
 	}
 
 	d.SetId(projectKey + "/" + envKey + "/" + flagKey)
@@ -166,34 +195,27 @@ func resourceFeatureFlagEnvironmentRead(d *schema.ResourceData, metaRaw interfac
 	}
 
 	_ = d.Set(KEY, flag.Key)
+
+	// Computed values are set even if they do not exist on the config
 	_ = d.Set(TARGETING_ENABLED, environment.On)
+	_ = d.Set(OFF_VARIATION, environment.OffVariation)
+	_ = d.Set(TRACK_EVENTS, environment.TrackEvents)
+	_ = d.Set(PREREQUISITES, prerequisitesToResourceData(environment.Prerequisites))
 
 	err = d.Set(RULES, rulesToResourceData(environment.Rules))
 	if err != nil {
 		return fmt.Errorf("failed to set rules on flag with key %q: %v", flagKey, err)
 	}
 
-	if _, ok := d.GetOk(USER_TARGETS); ok {
-		err = d.Set(USER_TARGETS, targetsToResourceData(environment.Targets))
-		if err != nil {
-			return fmt.Errorf("failed to set targets on flag with key %q: %v", flagKey, err)
-		}
+	err = d.Set(USER_TARGETS, targetsToResourceData(environment.Targets))
+	if err != nil {
+		return fmt.Errorf("failed to set targets on flag with key %q: %v", flagKey, err)
 	}
 
-	if _, ok := d.GetOk(FLAG_FALLTHROUGH); ok {
-		err = d.Set(FLAG_FALLTHROUGH, fallthroughToResourceData(environment.Fallthrough_))
-		if err != nil {
-			return fmt.Errorf("failed to set flag fallthrough on flag with key %q: %v", flagKey, err)
-		}
+	err = d.Set(FLAG_FALLTHROUGH, fallthroughToResourceData(environment.Fallthrough_))
+	if err != nil {
+		return fmt.Errorf("failed to set flag fallthrough on flag with key %q: %v", flagKey, err)
 	}
-
-	if _, ok := d.GetOk(RULES); ok {
-		err = d.Set(RULES, rulesToResourceData(environment.Rules))
-		if err != nil {
-			return fmt.Errorf("failed to set targeting rules on flag with key %q: %v", flagKey, err)
-		}
-	}
-
 	return nil
 }
 
