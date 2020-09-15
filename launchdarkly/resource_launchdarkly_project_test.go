@@ -23,6 +23,7 @@ resource "launchdarkly_project" "test" {
 resource "launchdarkly_project" "test" {
 	key = "%s"
 	name = "awesome test project"
+	include_in_snippet = true
 	tags = []
 }
 `
@@ -110,6 +111,7 @@ func TestAccProject_Update(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "key", projectKey),
 					resource.TestCheckResourceAttr(resourceName, "name", "awesome test project"),
 					resource.TestCheckResourceAttr(resourceName, "tags.#", "0"),
+					resource.TestCheckResourceAttr(resourceName, "include_in_snippet", "true"),
 				),
 			},
 		},

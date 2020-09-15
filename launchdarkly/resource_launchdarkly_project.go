@@ -32,6 +32,10 @@ func resourceProject() *schema.Resource {
 				Type:     schema.TypeString,
 				Required: true,
 			},
+			INCLUDE_IN_SNIPPET: {
+				Type:     schema.TypeBool,
+				Optional: true,
+			},
 			TAGS: tagsSchema(),
 			ENVIRONMENTS: {
 				Type:       schema.TypeList,
@@ -78,35 +82,7 @@ func resourceProjectCreate(d *schema.ResourceData, metaRaw interface{}) error {
 }
 
 func resourceProjectRead(d *schema.ResourceData, metaRaw interface{}) error {
-	client := metaRaw.(*Client)
-	projectKey := d.Get(KEY).(string)
-
-	rawProject, res, err := handleRateLimit(func() (interface{}, *http.Response, error) {
-		return client.ld.ProjectsApi.GetProject(client.ctx, projectKey)
-	})
-	project := rawProject.(ldapi.Project)
-	if isStatusNotFound(res) {
-		log.Printf("[WARN] failed to find project with key %q, removing from state", projectKey)
-		d.SetId("")
-		return nil
-	}
-	if err != nil {
-		return fmt.Errorf("failed to get project with key %q: %v", projectKey, err)
-	}
-
-	_ = d.Set(KEY, project.Key)
-	_ = d.Set(NAME, project.Name)
-
-	envsRaw := environmentsToResourceData(project.Environments)
-	err = d.Set(ENVIRONMENTS, envsRaw)
-	if err != nil {
-		return fmt.Errorf("could not set environments on project with key %q: %v", project.Key, err)
-	}
-	err = d.Set(TAGS, project.Tags)
-	if err != nil {
-		return fmt.Errorf("could not set tags on project with key %q: %v", project.Key, err)
-	}
-	return nil
+	return projectRead(d, metaRaw, false)
 }
 
 func resourceProjectUpdate(d *schema.ResourceData, metaRaw interface{}) error {
@@ -114,10 +90,12 @@ func resourceProjectUpdate(d *schema.ResourceData, metaRaw interface{}) error {
 	projectKey := d.Get(KEY).(string)
 	projName := d.Get(NAME)
 	projTags := stringsFromResourceData(d, TAGS)
+	includeInSnippet := d.Get(INCLUDE_IN_SNIPPET)
 
 	patch := []ldapi.PatchOperation{
 		patchReplace("/name", &projName),
 		patchReplace("/tags", &projTags),
+		patchReplace("/includeInSnippetByDefault", includeInSnippet),
 	}
 
 	_, _, err := handleRateLimit(func() (interface{}, *http.Response, error) {
