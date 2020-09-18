@@ -1,0 +1,73 @@
+# Golang CircleCI 2.0 configuration file for terraform-provider-launchdarkly-private tests
+#
+# Check https://circleci.com/docs/2.0/language-go/ for more details
+version: 2
+jobs:
+  build:
+    docker:
+      - image: circleci/golang:1.14
+
+    working_directory: /go/src/github.com/launchdarkly/terraform-provider-launchdarkly-private
+    steps:
+      - checkout
+      - run:
+          name: go vet
+          command: make vet
+      - run: 
+          name: Test Custom Properties
+          command: TESTARGS="-run TestCustomProperties" make testacc
+      - run:
+          name: Test Data Sources
+          command: TESTARGS="-run TestAccDataSource" make testacc
+      - run:
+          name: Test Default Variations
+          command: TESTARGS="-run TestDefaultVariations" make testacc
+      - run:
+          name: Test Environment Helper
+          command: TESTARGS="-run TestEnvironmentPost" make testacc
+      - run:
+          name: Test Target Helper
+          command: TESTARGS="-run TestTargets" make testacc
+      - run:
+          name: Test Variations Helper
+          command: TESTARGS="-run TestVariations" make testacc
+      - run:
+          name: Test Handlers
+          command: TESTARGS="-run TestHandle" make testacc
+      - run:
+          name: Test Policy Statements
+          command: TESTARGS="-run TestPolicyStatement" make testacc
+      - run:
+          name: Test Access Token Resource
+          command: TESTARGS="-run TestAccAccessToken" make testacc
+      - run:
+          name: Test Custom Role Resource
+          command: TESTARGS="-run TestAccCustomRole" make testacc
+      - run:
+          name: Test Destination Resource
+          command: TESTARGS="-run TestAccDestination" make testacc
+      - run:
+          name: Test Environment Resource
+          command: TESTARGS="-run TestAccEnvironment" make testacc
+      - run:
+          name: Test Feature Flag Resource
+          command: TESTARGS="-run TestAccFeatureFlag" make testacc
+      - run:
+          name: Test Feature Flag Environment Resource
+          command: TESTARGS="-run TestAccFeatureFlagEnvironment" make testacc
+      - run:
+          name: Test Project Resource
+          command: TESTARGS="-run TestAccProject" make testacc
+      - run:
+          name: Test Segment Resource
+          command: TESTARGS="-run TestAccSegment" make testacc
+      - run: 
+          name: Test Team Members
+          command: |
+            TESTARGS="-run TestAccTeamMember_CreateGeneric" make testacc
+            TESTARGS="-run TestAccTeamMember_UpdateGeneric" make testacc
+            TESTARGS="-run TestAccTeamMember_CreateWithCustomRole" make testacc
+            TESTARGS="-run TestAccTeamMember_UpdateWithCustomRole" make testacc
+      - run:
+          name: Test Webhook Resource
+          command: TESTARGS="-run TestAccWebhook" make testacc
