@@ -2,7 +2,6 @@ package launchdarkly
 
 import (
 	"fmt"
-	"net/http"
 	"os"
 	"regexp"
 	"testing"
@@ -27,27 +26,6 @@ data "launchdarkly_project" "test" {
 	}
 	`
 )
-
-func testAccDataSourceProjectCreate(client *Client, projectBody ldapi.ProjectBody) (*ldapi.Project, error) {
-	project, _, err := handleRateLimit(func() (interface{}, *http.Response, error) {
-		return client.ld.ProjectsApi.PostProject(client.ctx, projectBody)
-	})
-	if err != nil {
-		return nil, err
-	}
-	if project, ok := project.(ldapi.Project); ok {
-		return &project, nil
-	}
-	return nil, fmt.Errorf("failed to create project")
-}
-
-func testAccDataSourceProjectDelete(client *Client, projectKey string) error {
-	_, err := client.ld.ProjectsApi.DeleteProject(client.ctx, projectKey)
-	if err != nil {
-		return err
-	}
-	return nil
-}
 
 func TestAccDataSourceProject_noMatchReturnsError(t *testing.T) {
 	projectKey := "nonexistent-project-key"

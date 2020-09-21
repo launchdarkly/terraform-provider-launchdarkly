@@ -20,31 +20,6 @@ data "launchdarkly_environment" "test" {
 `
 )
 
-func testAccDataSourceEnvironmentScaffold(client *Client, projectKey string, envBody ldapi.EnvironmentPost) (*ldapi.Environment, error) {
-	// create project
-	projectBody := ldapi.ProjectBody{
-		Name: "Env Test Project",
-		Key:  projectKey,
-		Environments: []ldapi.EnvironmentPost{
-			envBody,
-		},
-	}
-	project, err := testAccDataSourceProjectCreate(client, projectBody)
-	if err != nil {
-		return nil, err
-	}
-	for _, env := range project.Environments {
-		if env.Key == envBody.Key {
-			return &env, nil
-		}
-	}
-	return nil, fmt.Errorf("failed to create env")
-}
-
-func testAccDataSourceEnvironmentScaffoldTeardown(client *Client, projectKey string) error {
-	return testAccDataSourceProjectDelete(client, projectKey)
-}
-
 func TestAccDataSourceEnvironment_noMatchReturnsError(t *testing.T) {
 	accTest := os.Getenv("TF_ACC")
 	if accTest == "" {
@@ -127,6 +102,6 @@ func TestAccDataSourceEnv_exists(t *testing.T) {
 		},
 	})
 
-	err = testAccDataSourceEnvironmentScaffoldTeardown(client, projectKey)
+	err = testAccDataSourceScaffoldTeardown(client, projectKey)
 	require.NoError(t, err)
 }
