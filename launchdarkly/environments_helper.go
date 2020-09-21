@@ -1,22 +1,25 @@
 package launchdarkly
 
 import (
+	"fmt"
+	"log"
+	"net/http"
+
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/helper/validation"
 	ldapi "github.com/launchdarkly/api-client-go"
 )
 
-func environmentSchema() map[string]*schema.Schema {
+// baseEnvironmentSchema covers the overlap between the data source and resource schemas
+// certain attributes are required for the resource that are not for the data source and so those
+// will need to be differentiated
+func baseEnvironmentSchema() map[string]*schema.Schema {
 	return map[string]*schema.Schema{
 		KEY: &schema.Schema{
 			Type:         schema.TypeString,
 			Required:     true,
 			ForceNew:     true,
 			ValidateFunc: validateKey(),
-		},
-		NAME: &schema.Schema{
-			Type:     schema.TypeString,
-			Required: true,
 		},
 		API_KEY: &schema.Schema{
 			Type:      schema.TypeString,
@@ -32,10 +35,6 @@ func environmentSchema() map[string]*schema.Schema {
 			Type:      schema.TypeString,
 			Computed:  true,
 			Sensitive: true,
-		},
-		COLOR: &schema.Schema{
-			Type:     schema.TypeString,
-			Required: true,
 		},
 		DEFAULT_TTL: &schema.Schema{
 			Type:     schema.TypeInt,
@@ -61,6 +60,32 @@ func environmentSchema() map[string]*schema.Schema {
 		},
 		TAGS: tagsSchema(),
 	}
+}
+
+func environmentSchema() map[string]*schema.Schema {
+	schemaMap := baseEnvironmentSchema()
+	schemaMap[NAME] = &schema.Schema{
+		Type:     schema.TypeString,
+		Required: true,
+	}
+	schemaMap[COLOR] = &schema.Schema{
+		Type:     schema.TypeString,
+		Required: true,
+	}
+	return schemaMap
+}
+
+func dataSourceEnvironmentSchema() map[string]*schema.Schema {
+	schemaMap := baseEnvironmentSchema()
+	schemaMap[NAME] = &schema.Schema{
+		Type:     schema.TypeString,
+		Computed: true,
+	}
+	schemaMap[COLOR] = &schema.Schema{
+		Type:     schema.TypeString,
+		Computed: true,
+	}
+	return schemaMap
 }
 
 func environmentPostsFromResourceData(d *schema.ResourceData) []ldapi.EnvironmentPost {
@@ -105,4 +130,38 @@ func environmentsToResourceData(envs []ldapi.Environment) []interface{} {
 		}
 	}
 	return transformed
+}
+
+func environmentRead(d *schema.ResourceData, meta interface{}, isDataSource bool) error {
+	client := meta.(*Client)
+	projectKey := d.Get(PROJECT_KEY).(string)
+	key := d.Get(KEY).(string)
+
+	envRaw, res, err := handleRateLimit(func() (interface{}, *http.Response, error) {
+		return client.ld.EnvironmentsApi.GetEnvironment(client.ctx, projectKey, key)
+	})
+	if isStatusNotFound(res) && !isDataSource {
+		log.Printf("[WARN] failed to find environment with key %q in project %q, removing from state", key, projectKey)
+		d.SetId("")
+		return nil
+	}
+	if err != nil {
+		return fmt.Errorf("failed to get environment with key %q for project key: %q: %v", key, projectKey, handleLdapiErr(err))
+	}
+
+	env := envRaw.(ldapi.Environment)
+	d.SetId(projectKey + "/" + key)
+	_ = d.Set(key, env.Key)
+	_ = d.Set(NAME, env.Name)
+	_ = d.Set(API_KEY, env.ApiKey)
+	_ = d.Set(MOBILE_KEY, env.MobileKey)
+	_ = d.Set(CLIENT_SIDE_ID, env.Id)
+	_ = d.Set(COLOR, env.Color)
+	_ = d.Set(DEFAULT_TTL, int(env.DefaultTtl))
+	_ = d.Set(SECURE_MODE, env.SecureMode)
+	_ = d.Set(DEFAULT_TRACK_EVENTS, env.DefaultTrackEvents)
+	_ = d.Set(TAGS, env.Tags)
+	_ = d.Set(REQUIRE_COMMENTS, env.RequireComments)
+	_ = d.Set(CONFIRM_CHANGES, env.ConfirmChanges)
+	return nil
 }

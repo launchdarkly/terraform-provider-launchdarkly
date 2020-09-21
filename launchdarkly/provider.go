@@ -59,6 +59,7 @@ func Provider() terraform.ResourceProvider {
 		DataSourcesMap: map[string]*schema.Resource{
 			"launchdarkly_team_member": dataSourceTeamMember(),
 			"launchdarkly_project":     dataSourceProject(),
+			"launchdarkly_environment": dataSourceEnvironment(),
 		},
 		ConfigureFunc: providerConfigure,
 	}
