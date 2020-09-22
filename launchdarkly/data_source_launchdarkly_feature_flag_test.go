@@ -103,10 +103,6 @@ func TestAccDataSourceFeatureFlag_exists(t *testing.T) {
 		},
 	})
 
-	err = testAccDataSourceScaffoldTeardown(client, projectKey)
+	err = testAccDataSourceProjectDelete(client, projectKey)
 	require.NoError(t, err)
-}
-
-func intfPtr(i interface{}) *interface{} {
-	return &i
 }

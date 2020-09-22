@@ -29,29 +29,6 @@ func testAccDataSourceProjectDelete(client *Client, projectKey string) error {
 	return nil
 }
 
-// testAccDataSourceEnvironmentScaffold creates a project with the given projectKey with the given env params
-// for environment data source tests
-func testAccDataSourceEnvironmentScaffold(client *Client, projectKey string, envBody ldapi.EnvironmentPost) (*ldapi.Environment, error) {
-	// create project
-	projectBody := ldapi.ProjectBody{
-		Name: "Env Test Project",
-		Key:  projectKey,
-		Environments: []ldapi.EnvironmentPost{
-			envBody,
-		},
-	}
-	project, err := testAccDataSourceProjectCreate(client, projectBody)
-	if err != nil {
-		return nil, err
-	}
-	for _, env := range project.Environments {
-		if env.Key == envBody.Key {
-			return &env, nil
-		}
-	}
-	return nil, fmt.Errorf("failed to create env")
-}
-
 func testAccDataSourceFeatureFlagScaffold(client *Client, projectKey string, flagBody ldapi.FeatureFlagBody) (*ldapi.FeatureFlag, error) {
 	projectBody := ldapi.ProjectBody{
 		Name: "Flag Test Project",
@@ -71,6 +48,6 @@ func testAccDataSourceFeatureFlagScaffold(client *Client, projectKey string, fla
 	return nil, fmt.Errorf("failed to create flag")
 }
 
-func testAccDataSourceScaffoldTeardown(client *Client, projectKey string) error {
-	return testAccDataSourceProjectDelete(client, projectKey)
+func intfPtr(i interface{}) *interface{} {
+	return &i
 }

@@ -7,54 +7,20 @@ import (
 	"strings"
 
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
-	"github.com/hashicorp/terraform-plugin-sdk/helper/validation"
 	ldapi "github.com/launchdarkly/api-client-go"
 )
 
 func resourceFeatureFlagEnvironment() *schema.Resource {
 	return &schema.Resource{
 		Create: resourceFeatureFlagEnvironmentCreate,
-		Read:   resourceFeatureFlagEnvironmentRead,
+		Read:   featureFlagEnvironmentRead,
 		Update: resourceFeatureFlagEnvironmentUpdate,
 		Delete: resourceFeatureFlagEnvironmentDelete,
 
 		Importer: &schema.ResourceImporter{
 			State: resourceFeatureFlagEnvironmentImport,
 		},
-		Schema: map[string]*schema.Schema{
-			FLAG_ID: {
-				Type:         schema.TypeString,
-				Required:     true,
-				ForceNew:     true,
-				ValidateFunc: validateFlagID,
-			},
-			ENV_KEY: {
-				Type:         schema.TypeString,
-				Required:     true,
-				ForceNew:     true,
-				ValidateFunc: validateKey(),
-			},
-			TARGETING_ENABLED: {
-				Type:     schema.TypeBool,
-				Optional: true,
-				Computed: true,
-			},
-			USER_TARGETS:     targetsSchema(),
-			RULES:            rulesSchema(),
-			PREREQUISITES:    prerequisitesSchema(),
-			FLAG_FALLTHROUGH: fallthroughSchema(),
-			TRACK_EVENTS: {
-				Type:     schema.TypeBool,
-				Optional: true,
-				Computed: true,
-			},
-			OFF_VARIATION: {
-				Type:         schema.TypeInt,
-				Optional:     true,
-				Computed:     true,
-				ValidateFunc: validation.IntAtLeast(0),
-			},
-		},
+		Schema: baseFeatureFlagEnvironmentSchema(),
 	}
 }
 
@@ -161,62 +127,7 @@ func resourceFeatureFlagEnvironmentCreate(d *schema.ResourceData, metaRaw interf
 	}
 
 	d.SetId(projectKey + "/" + envKey + "/" + flagKey)
-	return resourceFeatureFlagEnvironmentRead(d, metaRaw)
-}
-
-func resourceFeatureFlagEnvironmentRead(d *schema.ResourceData, metaRaw interface{}) error {
-	client := metaRaw.(*Client)
-	flagId := d.Get(FLAG_ID).(string)
-	projectKey, flagKey, err := flagIdToKeys(flagId)
-	if err != nil {
-		return err
-	}
-	envKey := d.Get(ENV_KEY).(string)
-
-	flagRaw, res, err := handleRateLimit(func() (interface{}, *http.Response, error) {
-		return client.ld.FeatureFlagsApi.GetFeatureFlag(client.ctx, projectKey, flagKey, nil)
-	})
-	flag := flagRaw.(ldapi.FeatureFlag)
-	if isStatusNotFound(res) {
-		log.Printf("[WARN] failed to find flag %q in project %q, removing from state", flagKey, projectKey)
-		d.SetId("")
-		return nil
-	}
-
-	if err != nil {
-		return fmt.Errorf("failed to get flag %q of project %q: %s", flagKey, projectKey, handleLdapiErr(err))
-	}
-
-	environment, ok := flag.Environments[envKey]
-	if !ok {
-		log.Printf("[WARN] failed to find environment %q for flag %q, removing from state", envKey, flagKey)
-		d.SetId("")
-		return nil
-	}
-
-	_ = d.Set(KEY, flag.Key)
-
-	// Computed values are set even if they do not exist on the config
-	_ = d.Set(TARGETING_ENABLED, environment.On)
-	_ = d.Set(OFF_VARIATION, environment.OffVariation)
-	_ = d.Set(TRACK_EVENTS, environment.TrackEvents)
-	_ = d.Set(PREREQUISITES, prerequisitesToResourceData(environment.Prerequisites))
-
-	err = d.Set(RULES, rulesToResourceData(environment.Rules))
-	if err != nil {
-		return fmt.Errorf("failed to set rules on flag with key %q: %v", flagKey, err)
-	}
-
-	err = d.Set(USER_TARGETS, targetsToResourceData(environment.Targets))
-	if err != nil {
-		return fmt.Errorf("failed to set targets on flag with key %q: %v", flagKey, err)
-	}
-
-	err = d.Set(FLAG_FALLTHROUGH, fallthroughToResourceData(environment.Fallthrough_))
-	if err != nil {
-		return fmt.Errorf("failed to set flag fallthrough on flag with key %q: %v", flagKey, err)
-	}
-	return nil
+	return featureFlagEnvironmentRead(d, metaRaw)
 }
 
 func resourceFeatureFlagEnvironmentUpdate(d *schema.ResourceData, metaRaw interface{}) error {
@@ -278,7 +189,7 @@ func resourceFeatureFlagEnvironmentUpdate(d *schema.ResourceData, metaRaw interf
 	if err != nil {
 		return fmt.Errorf("failed to update flag %q in project %q, environment %q: %s", flagKey, projectKey, envKey, handleLdapiErr(err))
 	}
-	return resourceFeatureFlagEnvironmentRead(d, metaRaw)
+	return featureFlagEnvironmentRead(d, metaRaw)
 }
 
 func resourceFeatureFlagEnvironmentDelete(d *schema.ResourceData, metaRaw interface{}) error {
@@ -349,12 +260,4 @@ func resourceFeatureFlagEnvironmentImport(d *schema.ResourceData, meta interface
 	_ = d.Set(ENV_KEY, envKey)
 
 	return []*schema.ResourceData{d}, nil
-}
-
-func patchFlagEnvPath(d *schema.ResourceData, op string) string {
-	path := []string{"/environments"}
-	path = append(path, d.Get(ENV_KEY).(string))
-	path = append(path, op)
-
-	return strings.Join(path, "/")
 }
