@@ -134,7 +134,7 @@ func environmentExists(projectKey string, key string, meta *Client) (bool, error
 		return false, nil
 	}
 	if err != nil {
-		return false, fmt.Errorf("failed to get project with key %q for project %q: %v", key, projectKey, handleLdapiErr(err))
+		return false, fmt.Errorf("failed to get environment with key %q for project %q: %v", key, projectKey, handleLdapiErr(err))
 	}
 
 	return true, nil
