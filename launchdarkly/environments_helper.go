@@ -13,20 +13,21 @@ import (
 // baseEnvironmentSchema covers the overlap between the data source and resource schemas
 // certain attributes are required for the resource that are not for the data source and so those
 // will need to be differentiated
-func baseEnvironmentSchema() map[string]*schema.Schema {
+func baseEnvironmentSchema(forProject bool) map[string]*schema.Schema {
 	return map[string]*schema.Schema{
-		KEY: &schema.Schema{
-			Type:         schema.TypeString,
-			Required:     true,
-			ForceNew:     true,
+		KEY: {
+			Type:     schema.TypeString,
+			Required: true,
+			// Don't force new if the environment schema will be nested in a project
+			ForceNew:     !forProject,
 			ValidateFunc: validateKey(),
 		},
-		API_KEY: &schema.Schema{
+		API_KEY: {
 			Type:      schema.TypeString,
 			Computed:  true,
 			Sensitive: true,
 		},
-		MOBILE_KEY: &schema.Schema{
+		MOBILE_KEY: {
 			Type:      schema.TypeString,
 			Computed:  true,
 			Sensitive: true,
@@ -36,34 +37,87 @@ func baseEnvironmentSchema() map[string]*schema.Schema {
 			Computed:  true,
 			Sensitive: true,
 		},
-		DEFAULT_TTL: &schema.Schema{
+		DEFAULT_TTL: {
 			Type:     schema.TypeInt,
 			Optional: true,
+			Computed: true,
 			// Default TTL should be between 0 and 60 minutes: https://docs.launchdarkly.com/docs/environments
 			ValidateFunc: validation.IntBetween(0, 60),
+			Description:  "The TTL for the environment. This must be between 0 and 60 minutes. The TTL setting only applies to environments using the PHP SDK.",
 		},
-		SECURE_MODE: &schema.Schema{
-			Type:     schema.TypeBool,
-			Optional: true,
+		SECURE_MODE: {
+			Computed:    true,
+			Type:        schema.TypeBool,
+			Optional:    true,
+			Description: "Secure mode ensures a user of the client-side SDK cannot impersonate another user",
 		},
-		DEFAULT_TRACK_EVENTS: &schema.Schema{
-			Type:     schema.TypeBool,
-			Optional: true,
+		DEFAULT_TRACK_EVENTS: {
+			Computed:    true,
+			Type:        schema.TypeBool,
+			Optional:    true,
+			Description: "Whether or not to send data export events for every flag created in the environment",
 		},
-		REQUIRE_COMMENTS: &schema.Schema{
-			Type:     schema.TypeBool,
-			Optional: true,
+		REQUIRE_COMMENTS: {
+			Computed:    true,
+			Type:        schema.TypeBool,
+			Optional:    true,
+			Description: "Whether or not to require comments for a flag and segment changes in this environment",
 		},
-		CONFIRM_CHANGES: &schema.Schema{
-			Type:     schema.TypeBool,
-			Optional: true,
+		CONFIRM_CHANGES: {
+			Computed:    true,
+			Type:        schema.TypeBool,
+			Optional:    true,
+			Description: "Whether or not to require confirmation for a flag and segment changes in this environment",
 		},
 		TAGS: tagsSchema(),
 	}
 }
 
-func environmentSchema() map[string]*schema.Schema {
-	schemaMap := baseEnvironmentSchema()
+func getEnvironmentUpdatePatches(config map[string]interface{}) []ldapi.PatchOperation {
+	// Always include required fields
+	name := config[NAME]
+	color := config[COLOR]
+	patches := []ldapi.PatchOperation{
+		patchReplace("/name", name),
+		patchReplace("/color", color),
+	}
+
+	// Add optional fields if they exist
+	defaultTtl, ok := config[DEFAULT_TTL]
+	if ok {
+		patches = append(patches, patchReplace("/defaultTtl", defaultTtl))
+	}
+
+	secureMode, ok := config[SECURE_MODE]
+	if ok {
+		patches = append(patches, patchReplace("/secureMode", secureMode))
+	}
+
+	defaultTrackEvents, ok := config[DEFAULT_TRACK_EVENTS]
+	if ok {
+		patches = append(patches, patchReplace("/defaultTrackEvents", defaultTrackEvents))
+	}
+
+	requireComments, ok := config[REQUIRE_COMMENTS]
+	if ok {
+		patches = append(patches, patchReplace("/requireComments", requireComments))
+	}
+
+	confirmChanges, ok := config[CONFIRM_CHANGES]
+	if ok {
+		patches = append(patches, patchReplace("/confirmChanges", confirmChanges))
+	}
+
+	tags, ok := config[TAGS]
+	if ok {
+		envTags := stringsFromSchemaSet(tags.(*schema.Set))
+		patches = append(patches, patchReplace("/tags", &envTags))
+	}
+	return patches
+}
+
+func environmentSchema(forProject bool) map[string]*schema.Schema {
+	schemaMap := baseEnvironmentSchema(forProject)
 	schemaMap[NAME] = &schema.Schema{
 		Type:     schema.TypeString,
 		Required: true,
@@ -75,8 +129,8 @@ func environmentSchema() map[string]*schema.Schema {
 	return schemaMap
 }
 
-func dataSourceEnvironmentSchema() map[string]*schema.Schema {
-	schemaMap := baseEnvironmentSchema()
+func dataSourceEnvironmentSchema(forPoject bool) map[string]*schema.Schema {
+	schemaMap := baseEnvironmentSchema(forPoject)
 	schemaMap[NAME] = &schema.Schema{
 		Type:     schema.TypeString,
 		Computed: true,
@@ -89,10 +143,9 @@ func dataSourceEnvironmentSchema() map[string]*schema.Schema {
 }
 
 func environmentPostsFromResourceData(d *schema.ResourceData) []ldapi.EnvironmentPost {
-	schemaEnvs := d.Get(ENVIRONMENTS).([]interface{})
-
-	envs := make([]ldapi.EnvironmentPost, len(schemaEnvs))
-	for i, env := range schemaEnvs {
+	schemaEnvList := d.Get(ENVIRONMENTS).([]interface{})
+	envs := make([]ldapi.EnvironmentPost, len(schemaEnvList))
+	for i, env := range schemaEnvList {
 		envs[i] = environmentPostFromResourceData(env)
 	}
 	return envs
@@ -112,24 +165,42 @@ func environmentPostFromResourceData(env interface{}) ldapi.EnvironmentPost {
 	return envPost
 }
 
-func environmentsToResourceData(envs []ldapi.Environment) []interface{} {
-	transformed := make([]interface{}, len(envs))
+type envResourceData map[string]interface{}
 
-	for i, env := range envs {
-		transformed[i] = map[string]interface{}{
-			KEY:                  env.Key,
-			NAME:                 env.Name,
-			API_KEY:              env.ApiKey,
-			MOBILE_KEY:           env.MobileKey,
-			CLIENT_SIDE_ID:       env.Id,
-			COLOR:                env.Color,
-			DEFAULT_TTL:          int(env.DefaultTtl),
-			SECURE_MODE:          env.SecureMode,
-			DEFAULT_TRACK_EVENTS: env.DefaultTrackEvents,
-			TAGS:                 env.Tags,
-		}
+func environmentsToResourceDataMap(envs []ldapi.Environment) map[string]envResourceData {
+	envMap := make(map[string]envResourceData, len(envs))
+	for _, env := range envs {
+		envMap[env.Key] = environmentToResourceData(env)
 	}
-	return transformed
+
+	return envMap
+}
+
+func environmentToResourceData(env ldapi.Environment) envResourceData {
+	return envResourceData{
+		KEY:                  env.Key,
+		NAME:                 env.Name,
+		API_KEY:              env.ApiKey,
+		MOBILE_KEY:           env.MobileKey,
+		CLIENT_SIDE_ID:       env.Id,
+		COLOR:                env.Color,
+		DEFAULT_TTL:          int(env.DefaultTtl),
+		SECURE_MODE:          env.SecureMode,
+		DEFAULT_TRACK_EVENTS: env.DefaultTrackEvents,
+		REQUIRE_COMMENTS:     env.RequireComments,
+		CONFIRM_CHANGES:      env.ConfirmChanges,
+		TAGS:                 env.Tags,
+	}
+}
+
+func rawEnvironmentConfigsToKeyList(rawEnvs []interface{}) []string {
+	keys := make([]string, 0, len(rawEnvs))
+	for _, rawEnv := range rawEnvs {
+		env := rawEnv.(map[string]interface{})
+		envKey := env[KEY].(string)
+		keys = append(keys, envKey)
+	}
+	return keys
 }
 
 func environmentRead(d *schema.ResourceData, meta interface{}, isDataSource bool) error {

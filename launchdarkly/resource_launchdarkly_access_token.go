@@ -226,8 +226,8 @@ func resourceAccessTokenUpdate(d *schema.ResourceData, metaRaw interface{}) erro
 			if err != nil {
 				return fmt.Errorf("failed to reset access token with id %q: %s", accessTokenID, handleLdapiErr(err))
 			}
-			d.Set(EXPIRE, newExpire)
-			d.Set(TOKEN, token.Token)
+			_ = d.Set(EXPIRE, newExpire)
+			_ = d.Set(TOKEN, token.Token)
 		}
 	}
 

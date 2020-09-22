@@ -34,11 +34,28 @@ func projectRead(d *schema.ResourceData, meta interface{}, isDataSource bool) er
 	_ = d.Set(KEY, project.Key)
 	_ = d.Set(NAME, project.Name)
 
-	envsRaw := environmentsToResourceData(project.Environments)
-	err = d.Set(ENVIRONMENTS, envsRaw)
-	if err != nil {
-		return fmt.Errorf("could not set environments on project with key %q: %v", project.Key, err)
+	// Only allow nested environments for the launchdarkly_project resource. The dedicated environment data source
+	// should be used if a data source is required for a LaunchDarkly environment
+	if !isDataSource {
+		// Convert the returned environment list to a map so we can lookup each environment by key while preserving the
+		// order defined in the config
+		envMap := environmentsToResourceDataMap(project.Environments)
+
+		// iterate over the environment keys in the order defined by the config and look up the environment returned by
+		// LD's API
+		rawEnvs := d.Get(ENVIRONMENTS).([]interface{})
+		envConfigKeys := rawEnvironmentConfigsToKeyList(rawEnvs)
+		environments := make([]interface{}, 0, len(envConfigKeys))
+		for _, envKey := range envConfigKeys {
+			environments = append(environments, envMap[envKey])
+		}
+
+		err = d.Set(ENVIRONMENTS, environments)
+		if err != nil {
+			return fmt.Errorf("could not set environments on project with key %q: %v", project.Key, err)
+		}
 	}
+
 	err = d.Set(TAGS, project.Tags)
 	if err != nil {
 		return fmt.Errorf("could not set tags on project with key %q: %v", project.Key, err)

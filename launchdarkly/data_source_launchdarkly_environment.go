@@ -3,7 +3,7 @@ package launchdarkly
 import "github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 
 func dataSourceEnvironment() *schema.Resource {
-	envSchema := dataSourceEnvironmentSchema()
+	envSchema := dataSourceEnvironmentSchema(false)
 	envSchema[PROJECT_KEY] = &schema.Schema{
 		Type:         schema.TypeString,
 		Optional:     true,

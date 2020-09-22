@@ -10,7 +10,7 @@ import (
 )
 
 func resourceEnvironment() *schema.Resource {
-	envSchema := environmentSchema()
+	envSchema := environmentSchema(false)
 	envSchema[PROJECT_KEY] = &schema.Schema{
 		Type:         schema.TypeString,
 		Optional:     true,
@@ -129,7 +129,9 @@ func resourceEnvironmentExists(d *schema.ResourceData, metaRaw interface{}) (boo
 }
 
 func environmentExists(projectKey string, key string, meta *Client) (bool, error) {
-	_, res, err := meta.ld.EnvironmentsApi.GetEnvironment(meta.ctx, projectKey, key)
+	_, res, err := handleRateLimit(func() (interface{}, *http.Response, error) {
+		return meta.ld.EnvironmentsApi.GetEnvironment(meta.ctx, projectKey, key)
+	})
 	if isStatusNotFound(res) {
 		return false, nil
 	}
@@ -138,6 +140,15 @@ func environmentExists(projectKey string, key string, meta *Client) (bool, error
 	}
 
 	return true, nil
+}
+
+func environmentExistsInProject(project ldapi.Project, envKey string) bool {
+	for _, env := range project.Environments {
+		if env.Key == envKey {
+			return true
+		}
+	}
+	return false
 }
 
 func resourceEnvironmentImport(d *schema.ResourceData, meta interface{}) ([]*schema.ResourceData, error) {

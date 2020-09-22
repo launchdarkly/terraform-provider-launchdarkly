@@ -38,12 +38,11 @@ func resourceProject() *schema.Resource {
 			},
 			TAGS: tagsSchema(),
 			ENVIRONMENTS: {
-				Type:       schema.TypeList,
-				Optional:   true,
-				Computed:   true,
-				Deprecated: "The 'environments' attribute is now deprecated. Please use the launchdarkly_environment resource to maintain future compatability.",
+				Type:     schema.TypeList,
+				Optional: true,
+				Computed: false,
 				Elem: &schema.Resource{
-					Schema: environmentSchema(),
+					Schema: environmentSchema(true),
 				},
 			},
 		},
@@ -107,46 +106,43 @@ func resourceProjectUpdate(d *schema.ResourceData, metaRaw interface{}) error {
 		return fmt.Errorf("failed to update project with key %q: %s", projectKey, handleLdapiErr(err))
 	}
 	// Update environments if necessary
-	schemaEnvs := d.Get(ENVIRONMENTS).([]interface{})
-	for _, env := range schemaEnvs {
-		envMap := env.(map[string]interface{})
-		envKey := envMap[KEY].(string)
-
-		// we already posted the projectKey, name, color, and default_ttl, so we skip patching those fields.
-		envName := envMap[NAME].(string)
-		envColor := envMap[COLOR].(string)
-		patch := []ldapi.PatchOperation{
-			patchReplace("/name", envName),
-			patchReplace("/color", envColor),
+	schemaEnvList, environmentsFound := d.GetOk(ENVIRONMENTS)
+	if environmentsFound {
+		// Get the project so we can see if we need to create any environments or just update existing environments
+		rawProject, _, err := handleRateLimit(func() (interface{}, *http.Response, error) {
+			return client.ld.ProjectsApi.GetProject(client.ctx, projectKey)
+		})
+		if err != nil {
+			return fmt.Errorf("failed to load project %q before updating environments: %s", projectKey, handleLdapiErr(err))
 		}
+		project := rawProject.(ldapi.Project)
 
-		// optional fields:
-		if defaultTTL, ok := envMap[DEFAULT_TTL]; ok {
-			patch = append(patch, patchReplace("/defaultTtl", defaultTTL.(int)))
-		}
+		environmentConfigs := schemaEnvList.([]interface{})
+		for _, env := range environmentConfigs {
+			envConfig := env.(map[string]interface{})
+			envKey := envConfig[KEY].(string)
+			// Check if the environment already exists. If it does not exist, create it
+			exists := environmentExistsInProject(project, envKey)
+			if !exists {
+				envPost := environmentPostFromResourceData(env)
+				_, _, err := handleRateLimit(func() (interface{}, *http.Response, error) {
+					return client.ld.EnvironmentsApi.PostEnvironment(client.ctx, projectKey, envPost)
+				})
+				if err != nil {
+					return fmt.Errorf("failed to create environment %q in project %q: %s", envKey, projectKey, handleLdapiErr(err))
+				}
+			}
 
-		if secureMode, ok := envMap[SECURE_MODE]; ok {
-			patch = append(patch, patchReplace("/secureMode", &secureMode))
-		}
-
-		if defaultTrackEvents, ok := envMap[DEFAULT_TRACK_EVENTS]; ok {
-			patch = append(patch, patchReplace("/defaultTrackEvents", &defaultTrackEvents))
-		}
-
-		if envTagsSet, ok := envMap[TAGS].(*schema.Set); ok {
-			envTags := stringsFromSchemaSet(envTagsSet)
-			patch = append(patch, patchReplace("/tags", &envTags))
-		}
-
-		if len(patch) > 0 {
-			_, _, err := handleRateLimit(func() (interface{}, *http.Response, error) {
+			patches := getEnvironmentUpdatePatches(envConfig)
+			_, _, err = handleRateLimit(func() (interface{}, *http.Response, error) {
 				return handleNoConflict(func() (interface{}, *http.Response, error) {
-					return client.ld.EnvironmentsApi.PatchEnvironment(client.ctx, projectKey, envKey, patch)
+					return client.ld.EnvironmentsApi.PatchEnvironment(client.ctx, projectKey, envKey, patches)
 				})
 			})
 			if err != nil {
 				return fmt.Errorf("failed to update environment with key %q for project: %q: %+v", envKey, projectKey, err)
 			}
+
 		}
 	}
 

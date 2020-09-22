@@ -42,10 +42,14 @@ func testAccDataSourceFeatureFlagScaffold(client *Client, projectKey string, fla
 	flag, _, err := handleRateLimit(func() (interface{}, *http.Response, error) {
 		return client.ld.FeatureFlagsApi.PostFeatureFlag(client.ctx, project.Key, flagBody, nil)
 	})
+	if err != nil {
+		return nil, err
+	}
 	if flag, ok := flag.(ldapi.FeatureFlag); ok {
 		return &flag, nil
 	}
 	return nil, fmt.Errorf("failed to create flag")
+
 }
 
 func intfPtr(i interface{}) *interface{} {
