@@ -69,4 +69,5 @@ const (
 	DEFAULT_API_VERSION   = "default_api_version"
 	TOKEN                 = "token"
 	EXPIRE                = "expire"
+	ID                    = "id"
 )
