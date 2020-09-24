@@ -63,6 +63,7 @@ func Provider() terraform.ResourceProvider {
 			"launchdarkly_feature_flag":             dataSourceFeatureFlag(),
 			"launchdarkly_feature_flag_environment": dataSourceFeatureFlagEnvironment(),
 			"launchdarkly_webhook":                  dataSourceWebhook(),
+			"launchdarkly_segment":                  dataSourceSegment(),
 		},
 		ConfigureFunc: providerConfigure,
 	}

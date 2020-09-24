@@ -61,6 +61,11 @@ func testAccDataSourceWebhookDelete(client *Client, webhookId string) error {
 }
 
 func TestAccDataSourceWebhook_noMatchReturnsError(t *testing.T) {
+	accTest := os.Getenv("TF_ACC")
+	if accTest == "" {
+		t.SkipNow()
+	}
+
 	webhookId := acctest.RandStringFromCharSet(24, acctest.CharSetAlphaNum)
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
