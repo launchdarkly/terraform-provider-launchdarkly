@@ -49,6 +49,27 @@ resource "launchdarkly_feature_flag" "building_materials" {
 }
 ```
 
+```hcl
+resource "launchdarkly_feature_flag" "json_example" {
+  project_key = "example-project"
+  key         = "json-example"
+  name        = "JSON example flag"
+
+  variation_type = "json"
+  variations {
+    name  = "Single foo"
+    value = jsonencode({ "foo" : "bar" })
+  }
+  variations {
+    name  = "Multiple foos"
+    value = jsonencode({ "foos" : ["bar1", "bar2"] })
+  }
+
+  default_on_variation  = jsonencode({ "foos" : ["bar1", "bar2"] })
+  default_off_variation = jsonencode({ "foo" : "bar" })
+}
+```
+
 ## Argument Reference
 
 - `project_key` - (Required) The feature flag's project key.
@@ -61,9 +82,9 @@ resource "launchdarkly_feature_flag" "building_materials" {
 
 - `variations` - (Required) List of nested blocks describing the variations associated with the feature flag. You must specify at least two variations. To learn more, read [Nested Variations Blocks](#nested-variations-blocks).
 
-- `default_on_variation` - (Optional) The value of the variation served when the flag is on for new environments. Required if `default_off_variation` is set. Flag configurations in existing environments will not be changed.
+- `default_on_variation` - (Optional) The value of the variation served when the flag is on for new environments. Required if `default_off_variation` is set. Flag configurations in existing environments will not be changed. The value used here must be an exact match (including whitespace) to the `value` set in the `variations` list.
 
-- `default_off_variation` - (Optional) The value of the variation served when the flag is off for new environments. Required if `default_on_variation` is set. Flag configurations in existing environments will not be changed.
+- `default_off_variation` - (Optional) The value of the variation served when the flag is off for new environments. Required if `default_on_variation` is set. Flag configurations in existing environments will not be changed. The value used here must be an exact match (including whitespace) to the `value` set in the `variations` list.
 
 - `description` - (Optional) The feature flag's description.
 
