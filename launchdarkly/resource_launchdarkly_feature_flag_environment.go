@@ -69,7 +69,10 @@ func resourceFeatureFlagEnvironmentCreate(d *schema.ResourceData, metaRaw interf
 		patches = append(patches, patchReplace(patchFlagEnvPath(d, "on"), enabled.(bool)))
 	}
 
-	offVariation, ok := d.GetOk(OFF_VARIATION)
+	// GetOKExists is marked deprecated by Hashicorp, however it seems to be the only solution for setting the
+	// offVariation to 0 during creation. According to Hashicorp, it will not be removed until a replacement function is
+	// implemented. https://github.com/hashicorp/terraform-plugin-sdk/pull/350#issuecomment-597888969
+	offVariation, ok := d.GetOkExists(OFF_VARIATION)
 	if ok {
 		patches = append(patches, patchReplace(patchFlagEnvPath(d, "offVariation"), offVariation.(int)))
 	}

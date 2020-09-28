@@ -121,6 +121,31 @@ resource "launchdarkly_feature_flag_environment" "basic" {
 	}
 }
 `
+	testAccFeatureFlagEnvironmentJSONVariations = `
+resource "launchdarkly_feature_flag" "json" {
+	project_key    = launchdarkly_project.test.key
+	key            = "json-flag"
+	name           = "json flag"
+	variation_type = "json"
+	variations {
+		value = jsonencode({ "foo" : "bar" })
+	}
+	variations {
+		value = jsonencode({ "bar" : "foo", "bars" : "foos" })
+	}
+}
+
+resource "launchdarkly_feature_flag_environment" "json_variations" {
+	flag_id = launchdarkly_feature_flag.json.id
+	env_key = "test"
+
+	flag_fallthrough {
+		variation = 1
+	  }
+	
+	off_variation = 0
+}
+`
 
 	testAccFeatureFlagEnvironmentPrereq = `
 resource "launchdarkly_feature_flag" "bool" {
@@ -383,6 +408,34 @@ func TestAccFeatureFlagEnvironment_Update(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "rules.1.clauses.0.values.0", "h"),
 					resource.TestCheckResourceAttr(resourceName, "rules.1.clauses.0.negate", "false"),
 				),
+			},
+		},
+	})
+}
+
+func TestAccFeatureFlagEnvironment_JSON_variations(t *testing.T) {
+	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	resourceName := "launchdarkly_feature_flag_environment.json_variations"
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck: func() {
+			testAccPreCheck(t)
+		},
+		Providers: testAccProviders,
+		Steps: []resource.TestStep{
+			{
+				Config: withRandomProject(projectKey, testAccFeatureFlagEnvironmentJSONVariations),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckFeatureFlagEnvironmentExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, "targeting_enabled", "false"),
+					resource.TestCheckResourceAttr(resourceName, "flag_fallthrough.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "flag_fallthrough.0.variation", "1"),
+					resource.TestCheckResourceAttr(resourceName, "off_variation", "0"),
+				),
+			},
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
 			},
 		},
 	})

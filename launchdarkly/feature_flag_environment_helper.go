@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/antihax/optional"
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/helper/validation"
 	ldapi "github.com/launchdarkly/api-client-go"
@@ -48,6 +49,17 @@ func baseFeatureFlagEnvironmentSchema() map[string]*schema.Schema {
 	}
 }
 
+// get FeatureFlagEnvironment uses a query parameter to get the ldapi.FeatureFlag with only a single environment.
+func getFeatureFlagEnvironment(client *Client, projectKey, flagKey, environmentKey string) (ldapi.FeatureFlag, *http.Response, error) {
+	flagRaw, res, err := handleRateLimit(func() (interface{}, *http.Response, error) {
+		return client.ld.FeatureFlagsApi.GetFeatureFlag(client.ctx, projectKey, flagKey, &ldapi.GetFeatureFlagOpts{
+			Env: optional.NewInterface(environmentKey),
+		})
+	})
+	flag := flagRaw.(ldapi.FeatureFlag)
+	return flag, res, err
+}
+
 func featureFlagEnvironmentRead(d *schema.ResourceData, raw interface{}) error {
 	client := raw.(*Client)
 	flagId := d.Get(FLAG_ID).(string)
@@ -57,10 +69,7 @@ func featureFlagEnvironmentRead(d *schema.ResourceData, raw interface{}) error {
 	}
 	envKey := d.Get(ENV_KEY).(string)
 
-	flagRaw, res, err := handleRateLimit(func() (interface{}, *http.Response, error) {
-		return client.ld.FeatureFlagsApi.GetFeatureFlag(client.ctx, projectKey, flagKey, nil)
-	})
-	flag := flagRaw.(ldapi.FeatureFlag)
+	flag, res, err := getFeatureFlagEnvironment(client, projectKey, flagKey, envKey)
 	if isStatusNotFound(res) {
 		log.Printf("[WARN] failed to find flag %q in project %q, removing from state", flagKey, projectKey)
 		d.SetId("")

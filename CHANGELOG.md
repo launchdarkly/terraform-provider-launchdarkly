@@ -4,6 +4,8 @@ BUG FIXES:
 
 - Resolved issues with the `launchdarkly_project`'s `environments` attribute. This attribute is no longer marked as deprecated and should be used when you wish to override the behavior of creating `Test` and `Production` environments during project creation.
 
+- Fixed a bug where creating a `launchdarkly_feature_flag_environment` with an `off_variation` was not actually setting the off variation.
+
 NOTES:
 
 - The `launchdarkly_project`'s `environments` attribute is no longer marked as `computed`. This means that if you have `launchdarkly_project` resources without nested `environments` that were created before this version, you will see a diff denoting the removal of the computed environments from your state. It is safe to apply this change as no changes be made to your LaunchDarkly resources when applied.
