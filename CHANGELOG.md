@@ -1,4 +1,4 @@
-## [Unreleased]
+## [1.5.0] (September 29, 2020)
 
 FEATURES:
 
