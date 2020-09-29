@@ -1,5 +1,23 @@
 ## [Unreleased]
 
+FEATURES:
+
+- Added a `launchdarkly_project` data source.
+
+- Added a `launchdarkly_environment` data source.
+
+- Added a `launchdarkly_feature_flag` data source.
+
+- Added a `launchdarkly_feature_flag_environment` data source.
+
+- Added a `launchdarkly_segment` data source.
+
+- Added a `launchdarkly_webhook` data source.
+
+ENHANCEMENTS:
+
+- Upgraded the LaunchDarkly API version to 3.5.0.
+
 BUG FIXES:
 
 - Resolved issues with the `launchdarkly_project`'s `environments` attribute. This attribute is no longer marked as deprecated and should be used when you wish to override the behavior of creating `Test` and `Production` environments during project creation.

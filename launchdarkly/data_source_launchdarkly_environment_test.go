@@ -101,6 +101,7 @@ func TestAccDataSourceEnv_exists(t *testing.T) {
 	env, err := testAccDataSourceEnvironmentScaffold(client, projectKey, envBody)
 	require.NoError(t, err)
 
+	resourceName := "data.launchdarkly_environment.test"
 	resource.Test(t, resource.TestCase{
 		PreCheck: func() {
 			testAccPreCheck(t)
@@ -110,16 +111,16 @@ func TestAccDataSourceEnv_exists(t *testing.T) {
 			{
 				Config: fmt.Sprintf(testAccDataSourceEnvironment, envKey, projectKey),
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttrSet("data.launchdarkly_environment.test", "key"),
-					resource.TestCheckResourceAttrSet("data.launchdarkly_environment.test", "name"),
-					resource.TestCheckResourceAttrSet("data.launchdarkly_environment.test", "color"),
-					resource.TestCheckResourceAttr("data.launchdarkly_environment.test", "key", env.Key),
-					resource.TestCheckResourceAttr("data.launchdarkly_environment.test", "name", env.Name),
-					resource.TestCheckResourceAttr("data.launchdarkly_environment.test", "color", env.Color),
-					resource.TestCheckResourceAttr("data.launchdarkly_environment.test", "tags.#", "2"),
-					resource.TestCheckResourceAttr("data.launchdarkly_environment.test", "mobile_key", env.MobileKey),
-					resource.TestCheckResourceAttr("data.launchdarkly_environment.test", "default_ttl", "0"),
-					resource.TestCheckResourceAttr("data.launchdarkly_environment.test", "id", projectKey+"/"+env.Key),
+					resource.TestCheckResourceAttrSet(resourceName, "key"),
+					resource.TestCheckResourceAttrSet(resourceName, "name"),
+					resource.TestCheckResourceAttrSet(resourceName, "color"),
+					resource.TestCheckResourceAttr(resourceName, "key", env.Key),
+					resource.TestCheckResourceAttr(resourceName, "name", env.Name),
+					resource.TestCheckResourceAttr(resourceName, "color", env.Color),
+					resource.TestCheckResourceAttr(resourceName, "tags.#", "2"),
+					resource.TestCheckResourceAttr(resourceName, "mobile_key", env.MobileKey),
+					resource.TestCheckResourceAttr(resourceName, "default_ttl", "0"),
+					resource.TestCheckResourceAttr(resourceName, "id", projectKey+"/"+env.Key),
 				),
 			},
 		},

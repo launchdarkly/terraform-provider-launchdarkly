@@ -74,10 +74,15 @@ func TestAccDataSourceFeatureFlag_exists(t *testing.T) {
 		},
 		Description: "a flag to test the terraform flag data source",
 		Temporary:   true,
+		ClientSideAvailability: &ldapi.ClientSideAvailability{
+			UsingEnvironmentId: true,
+			UsingMobileKey:     false,
+		},
 	}
 	flag, err := testAccDataSourceFeatureFlagScaffold(client, projectKey, flagBody)
 	require.NoError(t, err)
 
+	resourceName := "data.launchdarkly_feature_flag.test"
 	resource.Test(t, resource.TestCase{
 		PreCheck: func() {
 			testAccPreCheck(t)
@@ -87,17 +92,19 @@ func TestAccDataSourceFeatureFlag_exists(t *testing.T) {
 			{
 				Config: fmt.Sprintf(testAccDataSourceFeatureFlag, flagKey, projectKey),
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttrSet("data.launchdarkly_feature_flag.test", "key"),
-					resource.TestCheckResourceAttrSet("data.launchdarkly_feature_flag.test", "name"),
-					resource.TestCheckResourceAttrSet("data.launchdarkly_feature_flag.test", "project_key"),
-					resource.TestCheckResourceAttr("data.launchdarkly_feature_flag.test", "key", flag.Key),
-					resource.TestCheckResourceAttr("data.launchdarkly_feature_flag.test", "name", flag.Name),
-					resource.TestCheckResourceAttr("data.launchdarkly_feature_flag.test", "description", flag.Description),
-					resource.TestCheckResourceAttr("data.launchdarkly_feature_flag.test", "temporary", "true"),
-					resource.TestCheckResourceAttr("data.launchdarkly_feature_flag.test", "variations.#", "2"),
-					resource.TestCheckResourceAttr("data.launchdarkly_feature_flag.test", "variations.0.value", "true"),
-					resource.TestCheckResourceAttr("data.launchdarkly_feature_flag.test", "variations.1.value", "false"),
-					resource.TestCheckResourceAttr("data.launchdarkly_feature_flag.test", "id", projectKey+"/"+flag.Key),
+					resource.TestCheckResourceAttrSet(resourceName, "key"),
+					resource.TestCheckResourceAttrSet(resourceName, "name"),
+					resource.TestCheckResourceAttrSet(resourceName, "project_key"),
+					resource.TestCheckResourceAttr(resourceName, "key", flag.Key),
+					resource.TestCheckResourceAttr(resourceName, "name", flag.Name),
+					resource.TestCheckResourceAttr(resourceName, "description", flag.Description),
+					resource.TestCheckResourceAttr(resourceName, "temporary", "true"),
+					resource.TestCheckResourceAttr(resourceName, "variations.#", "2"),
+					resource.TestCheckResourceAttr(resourceName, "variations.0.value", "true"),
+					resource.TestCheckResourceAttr(resourceName, "variations.1.value", "false"),
+					resource.TestCheckResourceAttr(resourceName, "id", projectKey+"/"+flag.Key),
+					resource.TestCheckResourceAttr(resourceName, "client_side_availability.using_environment_id", "true"),
+					resource.TestCheckResourceAttr(resourceName, "client_side_availability.using_mobile_key", "false"),
 				),
 			},
 		},

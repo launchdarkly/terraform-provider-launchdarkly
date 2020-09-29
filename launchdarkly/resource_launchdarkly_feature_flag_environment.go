@@ -13,7 +13,7 @@ import (
 func resourceFeatureFlagEnvironment() *schema.Resource {
 	return &schema.Resource{
 		Create: resourceFeatureFlagEnvironmentCreate,
-		Read:   featureFlagEnvironmentRead,
+		Read:   resourceFeatureFlagEnvironmentRead,
 		Update: resourceFeatureFlagEnvironmentUpdate,
 		Delete: resourceFeatureFlagEnvironmentDelete,
 
@@ -130,7 +130,11 @@ func resourceFeatureFlagEnvironmentCreate(d *schema.ResourceData, metaRaw interf
 	}
 
 	d.SetId(projectKey + "/" + envKey + "/" + flagKey)
-	return featureFlagEnvironmentRead(d, metaRaw)
+	return resourceFeatureFlagEnvironmentRead(d, metaRaw)
+}
+
+func resourceFeatureFlagEnvironmentRead(d *schema.ResourceData, metaRaw interface{}) error {
+	return featureFlagEnvironmentRead(d, metaRaw, false)
 }
 
 func resourceFeatureFlagEnvironmentUpdate(d *schema.ResourceData, metaRaw interface{}) error {
@@ -192,7 +196,7 @@ func resourceFeatureFlagEnvironmentUpdate(d *schema.ResourceData, metaRaw interf
 	if err != nil {
 		return fmt.Errorf("failed to update flag %q in project %q, environment %q: %s", flagKey, projectKey, envKey, handleLdapiErr(err))
 	}
-	return featureFlagEnvironmentRead(d, metaRaw)
+	return resourceFeatureFlagEnvironmentRead(d, metaRaw)
 }
 
 func resourceFeatureFlagEnvironmentDelete(d *schema.ResourceData, metaRaw interface{}) error {

@@ -6,6 +6,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/hashicorp/terraform-plugin-sdk/helper/resource"
 	ldapi "github.com/launchdarkly/api-client-go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -13,11 +14,11 @@ import (
 
 const (
 	testAccDataSourceFeatureFlagEnvironment = `
-data_source "launchdarkly_feature_flag" "test" {
-	project_key = %s
-	env_key = %s
-	flag_id = %s
-}`
+data "launchdarkly_feature_flag_environment" "test" {
+	env_key = "%s"
+	flag_id = "%s"
+}
+`
 )
 
 func testAccDataSourceFeatureFlagEnvironmentScaffold(client *Client, projectKey, envKey, flagKey string, envConfigPatches []ldapi.PatchOperation) (*ldapi.FeatureFlag, error) {
@@ -143,24 +144,48 @@ func TestAccDataSourceFeatureFlagEnvironment_exists(t *testing.T) {
 
 	thisConfig := flag.Environments[envKey]
 	otherConfig := flag.Environments["production"]
-	// ensure the config is different from the original default that should still apply to the other env
-	assert.Equal(t, thisConfig.On, true)
-	assert.Equal(t, thisConfig.TrackEvents, true)
-	assert.Equal(t, thisConfig.Rules[0].Variation, int32(1))
-	assert.Equal(t, thisConfig.Rules[0].Clauses[0].Attribute, "thing")
-	assert.Equal(t, thisConfig.Rules[0].Clauses[0].Op, "contains")
-	assert.Equal(t, thisConfig.Rules[0].Clauses[0].Values[0], "test")
-	assert.Equal(t, thisConfig.Prerequisites[0].Key, "some-other-flag")
-	assert.Equal(t, thisConfig.Prerequisites[0].Variation, int32(1))
-	assert.Equal(t, thisConfig.OffVariation, int32(0))
-	assert.Equal(t, thisConfig.Targets[0].Variation, int32(1))
-	assert.Len(t, thisConfig.Targets[0].Values, 2)
-	assert.Equal(t, thisConfig.Fallthrough_.Variation, int32(0))
-	assert.NotEqual(t, thisConfig.On, otherConfig.On)
-	assert.NotEqual(t, thisConfig.TrackEvents, otherConfig.TrackEvents)
-	assert.Len(t, otherConfig.Rules, 0)
-	assert.Len(t, otherConfig.Prerequisites, 0)
-	assert.Len(t, otherConfig.Targets, 0)
+
+	flagId := projectKey + "/" + flagKey
+	resourceName := "data.launchdarkly_feature_flag_environment.test"
+	resource.Test(t, resource.TestCase{
+		PreCheck: func() {
+			testAccPreCheck(t)
+		},
+		Providers: testAccProviders,
+		Steps: []resource.TestStep{
+			{
+				Config: fmt.Sprintf(testAccDataSourceFeatureFlagEnvironment, envKey, flagId),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttrSet(resourceName, "flag_id"),
+					resource.TestCheckResourceAttr(resourceName, "env_key", envKey),
+					resource.TestCheckResourceAttr(resourceName, "targeting_enabled", fmt.Sprint(thisConfig.On)),
+					resource.TestCheckResourceAttr(resourceName, "track_events", fmt.Sprint(thisConfig.TrackEvents)),
+					resource.TestCheckResourceAttr(resourceName, "rules.0.variation", fmt.Sprint(thisConfig.Rules[0].Variation)),
+					resource.TestCheckResourceAttr(resourceName, "rules.0.clauses.0.attribute", thisConfig.Rules[0].Clauses[0].Attribute),
+					resource.TestCheckResourceAttr(resourceName, "rules.0.clauses.0.op", thisConfig.Rules[0].Clauses[0].Op),
+					resource.TestCheckResourceAttr(resourceName, "rules.0.clauses.0.values.0", fmt.Sprint(thisConfig.Rules[0].Clauses[0].Values[0])),
+					resource.TestCheckResourceAttr(resourceName, "prerequisites.0.flag_key", thisConfig.Prerequisites[0].Key),
+					resource.TestCheckResourceAttr(resourceName, "prerequisites.0.variation", fmt.Sprint(thisConfig.Prerequisites[0].Variation)),
+					resource.TestCheckResourceAttr(resourceName, "off_variation", fmt.Sprint(thisConfig.OffVariation)),
+					// user targets will be two long because there is an empty one for the 0 value
+					resource.TestCheckResourceAttr(resourceName, "user_targets.1.values.#", fmt.Sprint(len(thisConfig.Targets[0].Values))),
+					resource.TestCheckResourceAttr(resourceName, "flag_fallthrough.0.variation", fmt.Sprint(thisConfig.Fallthrough_.Variation)),
+				),
+			},
+			{
+				Config: fmt.Sprintf(testAccDataSourceFeatureFlagEnvironment, "production", flagId),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttrSet(resourceName, "flag_id"),
+					resource.TestCheckResourceAttr(resourceName, "env_key", "production"),
+					resource.TestCheckResourceAttr(resourceName, "targeting_enabled", fmt.Sprint(otherConfig.On)),
+					resource.TestCheckResourceAttr(resourceName, "track_events", fmt.Sprint(otherConfig.TrackEvents)),
+					resource.TestCheckResourceAttr(resourceName, "rules.#", fmt.Sprint(len(otherConfig.Rules))),
+					resource.TestCheckResourceAttr(resourceName, "prerequisites.#", fmt.Sprint(len(otherConfig.Prerequisites))),
+					resource.TestCheckResourceAttr(resourceName, "user_targets.#", fmt.Sprint(len(otherConfig.Targets))),
+				),
+			},
+		},
+	})
 
 	err = testAccDataSourceProjectDelete(client, projectKey)
 	require.NoError(t, err)

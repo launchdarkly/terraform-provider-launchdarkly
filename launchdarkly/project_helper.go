@@ -60,9 +60,21 @@ func projectRead(d *schema.ResourceData, meta interface{}, isDataSource bool) er
 	if err != nil {
 		return fmt.Errorf("could not set tags on project with key %q: %v", project.Key, err)
 	}
-	err = d.Set(INCLUDE_IN_SNIPPET, project.IncludeInSnippetByDefault)
-	if err != nil {
-		return fmt.Errorf("could not set include_in_snippet on project with key %q: %v", project.Key, err)
+	if isDataSource {
+		defaultCSA := *project.DefaultClientSideAvailability
+		clientSideAvailability := map[string]string{
+			"using_environment_id": fmt.Sprintf("%v", defaultCSA.UsingEnvironmentId),
+			"using_mobile_key":     fmt.Sprintf("%v", defaultCSA.UsingMobileKey),
+		}
+		err = d.Set(CLIENT_SIDE_AVAILABILITY, clientSideAvailability)
+		if err != nil {
+			return fmt.Errorf("could not set client_side_availability on project with key %q: %v", project.Key, err)
+		}
+	} else {
+		err = d.Set(INCLUDE_IN_SNIPPET, project.IncludeInSnippetByDefault)
+		if err != nil {
+			return fmt.Errorf("could not set include_in_snippet on project with key %q: %v", project.Key, err)
+		}
 	}
 	return nil
 }

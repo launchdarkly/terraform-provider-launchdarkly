@@ -78,6 +78,7 @@ func TestAccDataSourceTeamMember_exists(t *testing.T) {
 		teamMembers = append(teamMembers, *member)
 	}
 
+	resourceName := "data.launchdarkly_team_member.test"
 	testMember := teamMembers[teamMemberCount-1]
 	resource.Test(t, resource.TestCase{
 		PreCheck: func() {
@@ -88,11 +89,11 @@ func TestAccDataSourceTeamMember_exists(t *testing.T) {
 			{
 				Config: testAccDataSourceTeamMemberConfig(testMember.Email),
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttrSet("data.launchdarkly_team_member.test", "email"),
-					resource.TestCheckResourceAttr("data.launchdarkly_team_member.test", "email", testMember.Email),
-					resource.TestCheckResourceAttr("data.launchdarkly_team_member.test", "first_name", testMember.FirstName),
-					resource.TestCheckResourceAttr("data.launchdarkly_team_member.test", "last_name", testMember.LastName),
-					resource.TestCheckResourceAttr("data.launchdarkly_team_member.test", "id", testMember.Id),
+					resource.TestCheckResourceAttrSet(resourceName, "email"),
+					resource.TestCheckResourceAttr(resourceName, "email", testMember.Email),
+					resource.TestCheckResourceAttr(resourceName, "first_name", testMember.FirstName),
+					resource.TestCheckResourceAttr(resourceName, "last_name", testMember.LastName),
+					resource.TestCheckResourceAttr(resourceName, "id", testMember.Id),
 				),
 			},
 		},

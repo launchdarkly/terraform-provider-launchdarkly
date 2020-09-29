@@ -60,7 +60,7 @@ func getFeatureFlagEnvironment(client *Client, projectKey, flagKey, environmentK
 	return flag, res, err
 }
 
-func featureFlagEnvironmentRead(d *schema.ResourceData, raw interface{}) error {
+func featureFlagEnvironmentRead(d *schema.ResourceData, raw interface{}, isDataSource bool) error {
 	client := raw.(*Client)
 	flagId := d.Get(FLAG_ID).(string)
 	projectKey, flagKey, err := flagIdToKeys(flagId)
@@ -70,7 +70,7 @@ func featureFlagEnvironmentRead(d *schema.ResourceData, raw interface{}) error {
 	envKey := d.Get(ENV_KEY).(string)
 
 	flag, res, err := getFeatureFlagEnvironment(client, projectKey, flagKey, envKey)
-	if isStatusNotFound(res) {
+	if isStatusNotFound(res) && !isDataSource {
 		log.Printf("[WARN] failed to find flag %q in project %q, removing from state", flagKey, projectKey)
 		d.SetId("")
 		return nil
@@ -87,6 +87,9 @@ func featureFlagEnvironmentRead(d *schema.ResourceData, raw interface{}) error {
 		return nil
 	}
 
+	if isDataSource {
+		d.SetId(projectKey + "/" + envKey + "/" + flagKey)
+	}
 	_ = d.Set(KEY, flag.Key)
 
 	// Computed values are set even if they do not exist on the config

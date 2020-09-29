@@ -6,8 +6,7 @@ func dataSourceEnvironment() *schema.Resource {
 	envSchema := dataSourceEnvironmentSchema(false)
 	envSchema[PROJECT_KEY] = &schema.Schema{
 		Type:         schema.TypeString,
-		Optional:     true,
-		ForceNew:     true,
+		Required:     true,
 		ValidateFunc: validateKey(),
 	}
 	return &schema.Resource{

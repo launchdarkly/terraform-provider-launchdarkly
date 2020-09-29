@@ -87,6 +87,17 @@ func featureFlagRead(d *schema.ResourceData, raw interface{}, isDataSource bool)
 	_ = d.Set(INCLUDE_IN_SNIPPET, flag.IncludeInSnippet)
 	_ = d.Set(TEMPORARY, flag.Temporary)
 
+	if isDataSource {
+		CSA := *flag.ClientSideAvailability
+		clientSideAvailability := map[string]string{
+			"using_environment_id": fmt.Sprintf("%v", CSA.UsingEnvironmentId),
+			"using_mobile_key":     fmt.Sprintf("%v", CSA.UsingMobileKey),
+		}
+		_ = d.Set(CLIENT_SIDE_AVAILABILITY, clientSideAvailability)
+	} else {
+		_ = d.Set(INCLUDE_IN_SNIPPET, flag.IncludeInSnippet)
+	}
+
 	// Only set the maintainer ID if is specified in the schema
 	_, ok := d.GetOk(MAINTAINER_ID)
 	if ok {

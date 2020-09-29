@@ -58,9 +58,12 @@ func TestAccDataSourceProject_exists(t *testing.T) {
 	require.NoError(t, err)
 
 	projectBody := ldapi.ProjectBody{
-		Name:                      projectName,
-		Key:                       projectKey,
-		IncludeInSnippetByDefault: true,
+		Name: projectName,
+		Key:  projectKey,
+		DefaultClientSideAvailability: &ldapi.ClientSideAvailability{
+			UsingEnvironmentId: false,
+			UsingMobileKey:     false,
+		},
 		Tags: []string{
 			tag,
 		},
@@ -98,6 +101,8 @@ func TestAccDataSourceProject_exists(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "name", project.Name),
 					resource.TestCheckResourceAttr(resourceName, "id", project.Id),
 					resource.TestCheckResourceAttr(resourceName, "tags.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "client_side_availability.using_environment_id", "false"),
+					resource.TestCheckResourceAttr(resourceName, "client_side_availability.using_mobile_key", "false"),
 				),
 			},
 		},
