@@ -89,7 +89,7 @@ func testAccTeamMemberCustomRoleUpdate(roleKey1, roleKey2, rName string) string 
 	`, roleKey1, roleKey1, roleKey2, roleKey2, rName)
 }
 
-func TestAccTeamMember_Create(t *testing.T) {
+func TestAccTeamMember_CreateGeneric(t *testing.T) {
 	randomName := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	resourceName := "launchdarkly_team_member.test"
 	resource.ParallelTest(t, resource.TestCase{
@@ -118,7 +118,7 @@ func TestAccTeamMember_Create(t *testing.T) {
 	})
 }
 
-func TestAccTeamMember_Update(t *testing.T) {
+func TestAccTeamMember_UpdateGeneric(t *testing.T) {
 	randomName := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	resourceName := "launchdarkly_team_member.test"
 	resource.ParallelTest(t, resource.TestCase{

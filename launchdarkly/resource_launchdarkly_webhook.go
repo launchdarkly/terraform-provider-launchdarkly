@@ -2,7 +2,6 @@ package launchdarkly
 
 import (
 	"fmt"
-	"log"
 	"net/http"
 
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
@@ -10,6 +9,15 @@ import (
 )
 
 func resourceWebhook() *schema.Resource {
+	schemaMap := baseWebhookSchema()
+	schemaMap[URL] = &schema.Schema{
+		Type:     schema.TypeString,
+		Required: true,
+	}
+	schemaMap[ENABLED] = &schema.Schema{
+		Type:     schema.TypeBool,
+		Required: true,
+	}
 	return &schema.Resource{
 		Create: resourceWebhookCreate,
 		Read:   resourceWebhookRead,
@@ -21,27 +29,7 @@ func resourceWebhook() *schema.Resource {
 			State: schema.ImportStatePassthrough,
 		},
 
-		Schema: map[string]*schema.Schema{
-			URL: {
-				Type:     schema.TypeString,
-				Required: true,
-			},
-			SECRET: {
-				Type:      schema.TypeString,
-				Optional:  true,
-				Sensitive: true,
-			},
-			ENABLED: {
-				Type:     schema.TypeBool,
-				Required: true,
-			},
-			NAME: {
-				Type:     schema.TypeString,
-				Optional: true,
-			},
-			POLICY_STATEMENTS: policyStatementsSchema(),
-			TAGS:              tagsSchema(),
-		},
+		Schema: schemaMap,
 	}
 }
 
@@ -90,37 +78,7 @@ func resourceWebhookCreate(d *schema.ResourceData, metaRaw interface{}) error {
 }
 
 func resourceWebhookRead(d *schema.ResourceData, metaRaw interface{}) error {
-	client := metaRaw.(*Client)
-	webhookID := d.Id()
-
-	webhookRaw, res, err := handleRateLimit(func() (interface{}, *http.Response, error) {
-		return client.ld.WebhooksApi.GetWebhook(client.ctx, webhookID)
-	})
-	webhook := webhookRaw.(ldapi.Webhook)
-	if isStatusNotFound(res) {
-		log.Printf("[WARN] failed to find webhook with id %q, removing from state", webhookID)
-		d.SetId("")
-		return nil
-	}
-	if err != nil {
-		return fmt.Errorf("failed to get webhook with id %q: %s", webhookID, handleLdapiErr(err))
-	}
-	statements := policyStatementsToResourceData(webhook.Statements)
-
-	_ = d.Set(URL, webhook.Url)
-	_ = d.Set(SECRET, webhook.Secret)
-	_ = d.Set(ENABLED, webhook.On)
-	_ = d.Set(NAME, webhook.Name)
-	err = d.Set(POLICY_STATEMENTS, statements)
-	if err != nil {
-		return fmt.Errorf("failed to set policy_statements on webhook with id %q: %v", webhookID, err)
-	}
-
-	err = d.Set(TAGS, webhook.Tags)
-	if err != nil {
-		return fmt.Errorf("failed to set tags on webhook with id %q: %v", webhookID, err)
-	}
-	return nil
+	return webhookRead(d, metaRaw, false)
 }
 
 func resourceWebhookUpdate(d *schema.ResourceData, metaRaw interface{}) error {

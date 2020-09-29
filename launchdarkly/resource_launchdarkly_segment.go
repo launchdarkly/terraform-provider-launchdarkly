@@ -2,7 +2,6 @@ package launchdarkly
 
 import (
 	"fmt"
-	"log"
 	"net/http"
 	"strings"
 
@@ -11,6 +10,29 @@ import (
 )
 
 func resourceSegment() *schema.Resource {
+	schemaMap := baseSegmentSchema()
+	schemaMap[PROJECT_KEY] = &schema.Schema{
+		Type:         schema.TypeString,
+		Required:     true,
+		ForceNew:     true,
+		ValidateFunc: validateKey(),
+	}
+	schemaMap[ENV_KEY] = &schema.Schema{
+		Type:         schema.TypeString,
+		Required:     true,
+		ForceNew:     true,
+		ValidateFunc: validateKey(),
+	}
+	schemaMap[KEY] = &schema.Schema{
+		Type:         schema.TypeString,
+		Required:     true,
+		ForceNew:     true,
+		ValidateFunc: validateKey(),
+	}
+	schemaMap[NAME] = &schema.Schema{
+		Type:     schema.TypeString,
+		Required: true,
+	}
 	return &schema.Resource{
 		Create: resourceSegmentCreate,
 		Read:   resourceSegmentRead,
@@ -22,46 +44,7 @@ func resourceSegment() *schema.Resource {
 			State: resourceSegmentImport,
 		},
 
-		Schema: map[string]*schema.Schema{
-			PROJECT_KEY: {
-				Type:         schema.TypeString,
-				Optional:     true,
-				ForceNew:     true,
-				ValidateFunc: validateKey(),
-			},
-			ENV_KEY: {
-				Type:         schema.TypeString,
-				Required:     true,
-				ForceNew:     true,
-				ValidateFunc: validateKey(),
-			},
-			KEY: {
-				Type:         schema.TypeString,
-				Required:     true,
-				ForceNew:     true,
-				ValidateFunc: validateKey(),
-			},
-			NAME: {
-				Type:     schema.TypeString,
-				Required: true,
-			},
-			DESCRIPTION: {
-				Type:     schema.TypeString,
-				Optional: true,
-			},
-			TAGS: tagsSchema(),
-			INCLUDED: {
-				Type:     schema.TypeList,
-				Elem:     &schema.Schema{Type: schema.TypeString},
-				Optional: true,
-			},
-			EXCLUDED: {
-				Type:     schema.TypeList,
-				Elem:     &schema.Schema{Type: schema.TypeString},
-				Optional: true,
-			},
-			RULES: segmentRulesSchema(),
-		},
+		Schema: schemaMap,
 	}
 }
 
@@ -117,48 +100,7 @@ func resourceSegmentCreate(d *schema.ResourceData, metaRaw interface{}) error {
 }
 
 func resourceSegmentRead(d *schema.ResourceData, metaRaw interface{}) error {
-	client := metaRaw.(*Client)
-	projectKey := d.Get(PROJECT_KEY).(string)
-	envKey := d.Get(ENV_KEY).(string)
-	segmentKey := d.Get(KEY).(string)
-
-	segmentRaw, res, err := handleRateLimit(func() (interface{}, *http.Response, error) {
-		return client.ld.UserSegmentsApi.GetUserSegment(client.ctx, projectKey, envKey, segmentKey)
-	})
-	segment := segmentRaw.(ldapi.UserSegment)
-	if isStatusNotFound(res) {
-		log.Printf("[WARN] failed to find segment %q in project %q, environment %q, removing from state", segmentKey, projectKey, envKey)
-		d.SetId("")
-		return nil
-	}
-
-	if err != nil {
-		return fmt.Errorf("failed to get segment %q of project %q: %s", segmentKey, projectKey, handleLdapiErr(err))
-	}
-
-	_ = d.Set(NAME, segment.Name)
-	_ = d.Set(DESCRIPTION, segment.Description)
-
-	err = d.Set(TAGS, segment.Tags)
-	if err != nil {
-		return fmt.Errorf("failed to set tags on segment with key %q: %v", segmentKey, err)
-	}
-
-	err = d.Set(INCLUDED, segment.Included)
-	if err != nil {
-		return fmt.Errorf("failed to set included on segment with key %q: %v", segmentKey, err)
-	}
-
-	err = d.Set(EXCLUDED, segment.Excluded)
-	if err != nil {
-		return fmt.Errorf("failed to set excluded on segment with key %q: %v", segmentKey, err)
-	}
-
-	err = d.Set(RULES, segmentRulesToResourceData(segment.Rules))
-	if err != nil {
-		return fmt.Errorf("failed to set excluded on segment with key %q: %v", segmentKey, err)
-	}
-	return nil
+	return segmentRead(d, metaRaw, false)
 }
 
 func resourceSegmentUpdate(d *schema.ResourceData, metaRaw interface{}) error {

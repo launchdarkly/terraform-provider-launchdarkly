@@ -57,7 +57,13 @@ func Provider() terraform.ResourceProvider {
 			"launchdarkly_access_token":             resourceAccessToken(),
 		},
 		DataSourcesMap: map[string]*schema.Resource{
-			"launchdarkly_team_member": dataSourceTeamMember(),
+			"launchdarkly_team_member":              dataSourceTeamMember(),
+			"launchdarkly_project":                  dataSourceProject(),
+			"launchdarkly_environment":              dataSourceEnvironment(),
+			"launchdarkly_feature_flag":             dataSourceFeatureFlag(),
+			"launchdarkly_feature_flag_environment": dataSourceFeatureFlagEnvironment(),
+			"launchdarkly_webhook":                  dataSourceWebhook(),
+			"launchdarkly_segment":                  dataSourceSegment(),
 		},
 		ConfigureFunc: providerConfigure,
 	}

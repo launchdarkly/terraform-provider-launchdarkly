@@ -11,6 +11,8 @@ Provides a LaunchDarkly environment resource.
 
 This resource allows you to create and manage environments in your LaunchDarkly organization.
 
+-> **Note:** Mixing the use of nested `environments` blocks in the [`launchdarkly_project`](/docs/providers/launchdarkly/r/project.html) resource and `launchdarkly_environment` resources is not recommended.
+
 ## Example Usage
 
 ```hcl
@@ -42,10 +44,9 @@ resource "launchdarkly_environment" "staging" {
 
 - `default_ttl` - (Optional) The TTL for the environment. This must be between 0 and 60 minutes. The TTL setting only applies to environments using the PHP SDK. To learn more, read [TTL settings](https://docs.launchdarkly.com/docs/environments#section-ttl-settings).
 
-- `require_comments` - (Optional) Set to `true` if this environment requires comments for flag and segment changes. 
+- `require_comments` - (Optional) Set to `true` if this environment requires comments for flag and segment changes.
 
 - `confirm_changes` - (Optional) Set to `true` if this environment requires confirmation for flag and segment changes.
-
 
 ## Attribute Reference
 

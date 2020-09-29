@@ -767,7 +767,7 @@ func TestAccFeatureFlag_UpdateMultivariate(t *testing.T) {
 	})
 }
 
-func TestAcccFeatureFlag_DefaultsInvalid(t *testing.T) {
+func TestAccFeatureFlag_DefaultsInvalid(t *testing.T) {
 	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {

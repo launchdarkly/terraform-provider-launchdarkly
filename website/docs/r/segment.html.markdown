@@ -61,7 +61,7 @@ Nested `rules` blocks have the following structure:
 
 - `weight` - (Optional) The integer weight of the rule (between 1 and 100000).
 
-- `bucket_by` - (Optional) The operator used to group users together. Available options are `in`, `endsWith`, `startsWith`, `matches`, `contains`, `lessThan`, `lessThanOrEqual`, `greaterThanOrEqual`, `before`, `after`, `segmentMatch`, `semVerEqual`, `semVerLessThan`, and `semVerGreaterThan`.
+- `bucket_by` - (Optional) The attribute by which to group users together.
 
 - `clauses` - (Optional) List of nested custom rule clause blocks. To learn more, read [Nested Clauses Blocks](#nested-clauses-blocks).
 

@@ -10,7 +10,7 @@ provider "launchdarkly" {
 # ----------------------------------------------------------------------------------- #
 # PROJECT 1
 
-# create the project
+# create the project with nested environments blocks
 resource "launchdarkly_project" "tf_project_1" {
   key  = "tf-project-1"
   name = "Terraform Example Project 1"
@@ -18,31 +18,27 @@ resource "launchdarkly_project" "tf_project_1" {
   tags = [
     "terraform-managed",
   ]
-}
 
-# create a terraform-specific test environment within project 1
-resource "launchdarkly_environment" "tf_test" {
-  name  = "Terraform Test Environment"
-  key   = "tf-test"
-  color = "999999"
-  tags = [
-    "terraform-managed",
-    "test"
-  ]
+  # create a terraform-specific test environment within the project
+  environments {
+    name  = "Terraform Test Environment"
+    key   = "tf-test"
+    color = "999999"
+    tags = [
+      "terraform-managed",
+      "test"
+    ]
+  }
 
-  project_key = launchdarkly_project.tf_project_1.key
-}
-
-# create a terraform-specific production environment within project 1
-resource "launchdarkly_environment" "tf_production" {
-  name  = "Terraform Production Environment"
-  key   = "tf-production"
-  color = "333333"
-  tags = [
-    "terraform-managed",
-  ]
-
-  project_key = launchdarkly_project.tf_project_1.key
+  # create a terraform-specific production environment within the project
+  environments {
+    name  = "Terraform Production Environment"
+    key   = "tf-production"
+    color = "333333"
+    tags = [
+      "terraform-managed",
+    ]
+  }
 }
 
 # create a basic feature flag within project 1
@@ -58,7 +54,10 @@ resource "launchdarkly_feature_flag" "basic" {
 # the flag will display variation 0 only to users whose country matches "de" or "fr".
 resource "launchdarkly_feature_flag_environment" "basic_variation" {
   flag_id = launchdarkly_feature_flag.basic.id
-  env_key = launchdarkly_environment.tf_test.key
+
+  # since the environment was specified as a nested block in the project resource, the environment
+  # key must be retrieved through the `launchdarkly_project` resource.
+  env_key = launchdarkly_project.tf_project_1.environments.0.key
 
   targeting_enabled = true
 
@@ -78,7 +77,8 @@ resource "launchdarkly_feature_flag_environment" "basic_variation" {
 }
 
 # ----------------------------------------------------------------------------------- #
-# PROJECT 2
+# PROJECT 2 - an example of how to use dedicated `launchdarkly_enviromnent` resources instead
+# of nested environments in the `launchdarkly_project` resource 
 
 resource "launchdarkly_project" "tf_project_2" {
   key  = "tf-project-2"

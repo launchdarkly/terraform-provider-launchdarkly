@@ -9,7 +9,7 @@ description: |-
 
 Provides a LaunchDarkly team member data source.
 
-This resource allows you to retrieve team member information from your LaunchDarkly organization.
+This data source allows you to retrieve team member information from your LaunchDarkly organization.
 
 ## Example Usage
 

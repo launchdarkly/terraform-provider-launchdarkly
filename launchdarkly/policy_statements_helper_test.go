@@ -27,7 +27,7 @@ func TestPolicyStatementsRoundTripConversion(t *testing.T) {
 				},
 			},
 			expected: []ldapi.Statement{
-				ldapi.Statement{
+				{
 					Resources: []string{"proj/*"},
 					Actions:   []string{"*"},
 					Effect:    "allow",
@@ -51,12 +51,12 @@ func TestPolicyStatementsRoundTripConversion(t *testing.T) {
 				},
 			},
 			expected: []ldapi.Statement{
-				ldapi.Statement{
+				{
 					Resources: []string{"proj/*:env/*;qa_*"},
 					Actions:   []string{"*"},
 					Effect:    "allow",
 				},
-				ldapi.Statement{
+				{
 					Resources: []string{"proj/*:env/*;qa_*:/flag/*"},
 					Actions:   []string{"*"},
 					Effect:    "allow",
@@ -75,7 +75,7 @@ func TestPolicyStatementsRoundTripConversion(t *testing.T) {
 				},
 			},
 			expected: []ldapi.Statement{
-				ldapi.Statement{
+				{
 					NotResources: []string{"proj/*:env/production:flag/*"},
 					Actions:      []string{"*"},
 					Effect:       "allow",

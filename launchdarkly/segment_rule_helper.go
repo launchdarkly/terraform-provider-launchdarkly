@@ -12,14 +12,14 @@ func segmentRulesSchema() *schema.Schema {
 		Optional: true,
 		Elem: &schema.Resource{
 			Schema: map[string]*schema.Schema{
-				"clauses": clauseSchema(),
-				"weight": &schema.Schema{
+				CLAUSES: clauseSchema(),
+				WEIGHT: {
 					Type:         schema.TypeInt,
 					Elem:         &schema.Schema{Type: schema.TypeInt},
 					Optional:     true,
 					ValidateFunc: validation.IntBetween(1, 100000),
 				},
-				"bucket_by": &schema.Schema{
+				BUCKET_BY: {
 					Type:         schema.TypeString,
 					Elem:         &schema.Schema{Type: schema.TypeString},
 					Optional:     true,

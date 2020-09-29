@@ -2,7 +2,6 @@ package launchdarkly
 
 import (
 	"fmt"
-	"log"
 	"net/http"
 	"strings"
 
@@ -11,7 +10,7 @@ import (
 )
 
 func resourceEnvironment() *schema.Resource {
-	envSchema := environmentSchema()
+	envSchema := environmentSchema(false)
 	envSchema[PROJECT_KEY] = &schema.Schema{
 		Type:         schema.TypeString,
 		Optional:     true,
@@ -70,37 +69,7 @@ func resourceEnvironmentCreate(d *schema.ResourceData, metaRaw interface{}) erro
 }
 
 func resourceEnvironmentRead(d *schema.ResourceData, metaRaw interface{}) error {
-	client := metaRaw.(*Client)
-	projectKey := d.Get(PROJECT_KEY).(string)
-	key := d.Get(KEY).(string)
-
-	envRaw, res, err := handleRateLimit(func() (interface{}, *http.Response, error) {
-		return client.ld.EnvironmentsApi.GetEnvironment(client.ctx, projectKey, key)
-	})
-	env := envRaw.(ldapi.Environment)
-	if isStatusNotFound(res) {
-		log.Printf("[WARN] failed to find environment with key %q in project %q, removing from state", key, projectKey)
-		d.SetId("")
-		return nil
-	}
-	if err != nil {
-		return fmt.Errorf("failed to get environment with key %q for project key: %q: %v", key, projectKey, handleLdapiErr(err))
-	}
-
-	d.SetId(projectKey + "/" + key)
-	_ = d.Set(key, env.Key)
-	_ = d.Set(NAME, env.Name)
-	_ = d.Set(API_KEY, env.ApiKey)
-	_ = d.Set(MOBILE_KEY, env.MobileKey)
-	_ = d.Set(CLIENT_SIDE_ID, env.Id)
-	_ = d.Set(COLOR, env.Color)
-	_ = d.Set(DEFAULT_TTL, int(env.DefaultTtl))
-	_ = d.Set(SECURE_MODE, env.SecureMode)
-	_ = d.Set(DEFAULT_TRACK_EVENTS, env.DefaultTrackEvents)
-	_ = d.Set(TAGS, env.Tags)
-	_ = d.Set(REQUIRE_COMMENTS, env.RequireComments)
-	_ = d.Set(CONFIRM_CHANGES, env.ConfirmChanges)
-	return nil
+	return environmentRead(d, metaRaw, false)
 }
 
 func resourceEnvironmentUpdate(d *schema.ResourceData, metaRaw interface{}) error {
@@ -160,15 +129,26 @@ func resourceEnvironmentExists(d *schema.ResourceData, metaRaw interface{}) (boo
 }
 
 func environmentExists(projectKey string, key string, meta *Client) (bool, error) {
-	_, res, err := meta.ld.EnvironmentsApi.GetEnvironment(meta.ctx, projectKey, key)
+	_, res, err := handleRateLimit(func() (interface{}, *http.Response, error) {
+		return meta.ld.EnvironmentsApi.GetEnvironment(meta.ctx, projectKey, key)
+	})
 	if isStatusNotFound(res) {
 		return false, nil
 	}
 	if err != nil {
-		return false, fmt.Errorf("failed to get project with key %q for project %q: %v", key, projectKey, handleLdapiErr(err))
+		return false, fmt.Errorf("failed to get environment with key %q for project %q: %v", key, projectKey, handleLdapiErr(err))
 	}
 
 	return true, nil
+}
+
+func environmentExistsInProject(project ldapi.Project, envKey string) bool {
+	for _, env := range project.Environments {
+		if env.Key == envKey {
+			return true
+		}
+	}
+	return false
 }
 
 func resourceEnvironmentImport(d *schema.ResourceData, meta interface{}) ([]*schema.ResourceData, error) {

@@ -23,6 +23,7 @@ resource "launchdarkly_project" "test" {
 resource "launchdarkly_project" "test" {
 	key = "%s"
 	name = "awesome test project"
+	include_in_snippet = true
 	tags = []
 }
 `
@@ -47,8 +48,20 @@ resource "launchdarkly_project" "env_test" {
 	environments {
 		key = "test-env"
 		name = "test environment updated"
-		color = "FFFFFF"
-		tags = ["updated"]
+		color = "AAAAAA"
+		tags = ["terraform", "test", "updated"]
+		default_ttl = 30
+		secure_mode = true
+		default_track_events = true
+		require_comments = true
+		confirm_changes = true
+	}
+
+	environments {
+		key = "new-env"
+		name = "New test environment"
+		color = "EEEEEE"
+		tags = ["new"]
 	}
 }	
 `
@@ -110,13 +123,14 @@ func TestAccProject_Update(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "key", projectKey),
 					resource.TestCheckResourceAttr(resourceName, "name", "awesome test project"),
 					resource.TestCheckResourceAttr(resourceName, "tags.#", "0"),
+					resource.TestCheckResourceAttr(resourceName, "include_in_snippet", "true"),
 				),
 			},
 		},
 	})
 }
 
-func TestAccProject_WithEnvironment(t *testing.T) {
+func TestAccProject_WithEnvironments(t *testing.T) {
 	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	resourceName := "launchdarkly_project.env_test"
 	resource.ParallelTest(t, resource.TestCase{
@@ -134,7 +148,19 @@ func TestAccProject_WithEnvironment(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "environments.#", "1"),
 					resource.TestCheckResourceAttr(resourceName, "environments.0.name", "test environment"),
 					resource.TestCheckResourceAttr(resourceName, "environments.0.tags.#", "2"),
+					resource.TestCheckResourceAttr(resourceName, "environments.0.color", "000000"),
+
+					// default environment values
+					resource.TestCheckResourceAttr(resourceName, "environments.0.default_ttl", "0"),
+					resource.TestCheckResourceAttr(resourceName, "environments.0.secure_mode", "false"),
+					resource.TestCheckResourceAttr(resourceName, "environments.0.default_track_events", "false"),
+					resource.TestCheckResourceAttr(resourceName, "environments.0.require_comments", "false"),
+					resource.TestCheckResourceAttr(resourceName, "environments.0.confirm_changes", "false"),
 				),
+			},
+			{
+				ResourceName: resourceName,
+				ImportState:  true,
 			},
 			{
 				Config: fmt.Sprintf(testAccProjectWithEnvironmentUpdate, projectKey),
@@ -142,10 +168,32 @@ func TestAccProject_WithEnvironment(t *testing.T) {
 					testAccCheckProjectExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, "key", projectKey),
 					resource.TestCheckResourceAttr(resourceName, "name", "test project"),
-					resource.TestCheckResourceAttr(resourceName, "environments.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "environments.#", "2"),
+
+					// Check environment 0 was updated
 					resource.TestCheckResourceAttr(resourceName, "environments.0.name", "test environment updated"),
-					resource.TestCheckResourceAttr(resourceName, "environments.0.tags.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "environments.0.tags.#", "3"),
+					resource.TestCheckResourceAttr(resourceName, "environments.0.color", "AAAAAA"),
+					resource.TestCheckResourceAttr(resourceName, "environments.0.default_ttl", "30"),
+					resource.TestCheckResourceAttr(resourceName, "environments.0.secure_mode", "true"),
+					resource.TestCheckResourceAttr(resourceName, "environments.0.default_track_events", "true"),
+					resource.TestCheckResourceAttr(resourceName, "environments.0.require_comments", "true"),
+					resource.TestCheckResourceAttr(resourceName, "environments.0.confirm_changes", "true"),
+
+					// Check environment 1 is created
+					resource.TestCheckResourceAttr(resourceName, "environments.1.name", "New test environment"),
+					resource.TestCheckResourceAttr(resourceName, "environments.1.tags.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "environments.1.color", "EEEEEE"),
+					resource.TestCheckResourceAttr(resourceName, "environments.1.default_ttl", "0"),
+					resource.TestCheckResourceAttr(resourceName, "environments.1.secure_mode", "false"),
+					resource.TestCheckResourceAttr(resourceName, "environments.1.default_track_events", "false"),
+					resource.TestCheckResourceAttr(resourceName, "environments.1.require_comments", "false"),
+					resource.TestCheckResourceAttr(resourceName, "environments.1.confirm_changes", "false"),
 				),
+			},
+			{
+				ResourceName: resourceName,
+				ImportState:  true,
 			},
 		},
 	})

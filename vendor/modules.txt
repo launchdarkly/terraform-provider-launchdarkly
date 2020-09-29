@@ -191,7 +191,7 @@ github.com/hashicorp/terraform-svchost/disco
 github.com/hashicorp/yamux
 # github.com/jmespath/go-jmespath v0.0.0-20180206201540-c2b33e8439af
 github.com/jmespath/go-jmespath
-# github.com/launchdarkly/api-client-go v3.2.1-0.20200812163818-441cfcaaa92c+incompatible
+# github.com/launchdarkly/api-client-go v3.5.0+incompatible
 ## explicit
 github.com/launchdarkly/api-client-go
 # github.com/mattn/go-colorable v0.1.1
