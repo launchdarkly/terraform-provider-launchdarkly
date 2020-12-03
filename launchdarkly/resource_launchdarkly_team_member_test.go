@@ -41,7 +41,7 @@ func testAccTeamMemberCustomRoleCreate(roleKey, rName string) string {
 		name = "Updated - %s"
 		description= "Allow all actions on staging environments"
 		policy_statements {
-			actions = ["*"]	
+			actions = ["*"]
 			effect = "allow"
 			resources = ["proj/*:env/staging"]
 		}
@@ -63,7 +63,7 @@ func testAccTeamMemberCustomRoleUpdate(roleKey1, roleKey2, rName string) string 
 		name = "Updated - %s"
 		description= "Allow all actions on staging environments"
 		policy_statements {
-			actions = ["*"]	
+			actions = ["*"]
 			effect = "allow"
 			resources = ["proj/*:env/staging"]
 		}
@@ -74,7 +74,7 @@ func testAccTeamMemberCustomRoleUpdate(roleKey1, roleKey2, rName string) string 
 		name = "Updated - %s"
 		description= "Allow all actions on production environments"
 		policy_statements {
-			actions = ["*"]	
+			actions = ["*"]
 			effect = "allow"
 			resources = ["proj/*:env/production"]
 		}
