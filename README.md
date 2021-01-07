@@ -15,16 +15,16 @@
 
 ---
 
-Clone repository to: `$GOPATH/src/github.com/terraform-providers/terraform-provider-launchdarkly`
+Clone repository to: `$GOPATH/src/github.com/launchdarkly/terraform-provider-launchdarkly`
 
 ```sh
-$ git clone git@github.com:terraform-providers/terraform-provider-launchdarkly $GOPATH/src/github.com/terraform-providers/terraform-provider-launchdarkly
+$ git clone git@github.com:launchdarkly/terraform-provider-launchdarkly $GOPATH/src/github.com/launchdarkly/terraform-provider-launchdarkly
 ```
 
 Enter the provider directory and build the provider
 
 ```sh
-$ cd $GOPATH/src/github.com/terraform-providers/terraform-provider-launchdarkly
+$ cd $GOPATH/src/github.com/launchdarkly/terraform-provider-launchdarkly
 $ make build
 ```
 
