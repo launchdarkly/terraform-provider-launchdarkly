@@ -29,6 +29,23 @@ resource "launchdarkly_feature_flag" "terraform" {
 }
 ```
 
+If you are using Terraform 0.13 and above, the provider declaration should go directly in your `terraform` block. Additionally, the syntax will be slightly different:
+
+```hcl
+# Configure the LaunchDarkly provider
+terraform {
+  required_providers {
+    launchdarkly = {
+      source = "launchdarkly/launchdarkly"
+      version = "~> 1.0"
+    }
+  }
+  required_version = "~> 0.13.0"
+}
+```
+
+Please refer to [Terraform's documentation on upgrading to v0.13](https://www.terraform.io/upgrade-guides/0-13.html) for more information.
+
 ## Argument Reference
 
 The provider supports the following arguments:

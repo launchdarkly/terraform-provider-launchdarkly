@@ -1,3 +1,9 @@
+## [1.5.1] (March 16, 2021)
+
+BUG FIXES:
+
+- Fixed a bug preventing number and boolean values in targeting rules clauses from working. The new `value_type` attribute must be set in order to utilize number and boolean values. All values for a given targeting rule clause must be of the same type. [#51](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/51)
+
 ## [1.5.0] (September 29, 2020)
 
 FEATURES:
@@ -74,13 +80,13 @@ BUG_FIXES:
 
 BUG_FIXES:
 
-- Improve handling of API rate limits. [#26](https://github.com/terraform-providers/terraform-provider-launchdarkly/issues/26)
+- Improve handling of API rate limits. [#26](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/26)
 
 ## [1.3.0] (May 05, 2020)
 
 FEATURES:
 
-- Added `default_on_variation` and `default_off_variation` to `launchdarkly_feature_flag`. These optional attributes can be used to set the default targeting behavior for flags in newly created environments. [#10](https://github.com/terraform-providers/terraform-provider-launchdarkly/issues/10) [#18](https://github.com/terraform-providers/terraform-provider-launchdarkly/issues/18)
+- Added `default_on_variation` and `default_off_variation` to `launchdarkly_feature_flag`. These optional attributes can be used to set the default targeting behavior for flags in newly created environments. [#10](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/10) [#18](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/18)
 
 BUG_FIXES:
 
@@ -95,13 +101,13 @@ FEATURES:
 BUG_FIXES:
 
 - Fix non-empty plan after creating a `launchdarkly_team_member` with a custom role.
-- Handle missing user target variations in `launchdarkly_feature_flag_environment` [#23](https://github.com/terraform-providers/terraform-provider-launchdarkly/issues/23)
+- Handle missing user target variations in `launchdarkly_feature_flag_environment` [#23](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/23)
 
 ## [1.2.1] (April 14, 2020)
 
 BUG_FIXES:
 
-- Fix import bug in `launchdarkly_project` introduced in 1.2.0 [#21](https://github.com/terraform-providers/terraform-provider-launchdarkly/issues/21)
+- Fix import bug in `launchdarkly_project` introduced in 1.2.0 [#21](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/21)
 
 NOTES:
 
@@ -112,12 +118,12 @@ NOTES:
 FEATURES:
 
 - Add new resource `launchdarkly_destination`. This resource is used to manage LaunchDarkly data export destinations.
-- Add `policy_statements` to `launchdarkly_webhook` and `launchdarkly_custom_role` [#16](https://github.com/terraform-providers/terraform-provider-launchdarkly/issues/16).
+- Add `policy_statements` to `launchdarkly_webhook` and `launchdarkly_custom_role` [#16](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/16).
 
 BUG_FIXES:
 
-- Fixed bug preventing large number variations from being saved in the state correctly. [#14](https://github.com/terraform-providers/terraform-provider-launchdarkly/issues/14)
-- Fixed bug in import validation. [#19](https://github.com/terraform-providers/terraform-provider-launchdarkly/issues/19)
+- Fixed bug preventing large number variations from being saved in the state correctly. [#14](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/14)
+- Fixed bug in import validation. [#19](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/19)
 
 NOTES:
 
@@ -153,7 +159,7 @@ BUG FIXES:
 
 FEATURES:
 
-- Add tags attribute to `resource_launchdarkly_environment`. [#5](https://github.com/terraform-providers/terraform-provider-launchdarkly/issues/5)
+- Add tags attribute to `resource_launchdarkly_environment`. [#5](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/5)
 - Add `maintainer_id` input validation.
 
 ENHANCEMENTS:
@@ -162,7 +168,7 @@ ENHANCEMENTS:
 
 BUG FIXES:
 
-- Allow flag `maintainer_id` to be unset. [#6](https://github.com/terraform-providers/terraform-provider-launchdarkly/issues/6)
+- Allow flag `maintainer_id` to be unset. [#6](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/6)
 - Fix typo in initialization error message. Thanks @jen20
 - Flags created with invalid schema are deleted instead of left dangling.
 

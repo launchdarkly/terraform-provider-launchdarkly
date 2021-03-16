@@ -70,7 +70,11 @@ func segmentRead(d *schema.ResourceData, raw interface{}, isDataSource bool) err
 		return fmt.Errorf("failed to set excluded on segment with key %q: %v", segmentKey, err)
 	}
 
-	err = d.Set(RULES, segmentRulesToResourceData(segment.Rules))
+	rules, err := segmentRulesToResourceData(segment.Rules)
+	if err != nil {
+		return fmt.Errorf("failed to read rules on segment with key %q: %v", segmentKey, err)
+	}
+	err = d.Set(RULES, rules)
 	if err != nil {
 		return fmt.Errorf("failed to set excluded on segment with key %q: %v", segmentKey, err)
 	}

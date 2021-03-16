@@ -82,6 +82,11 @@ func TestAccDataSourceFeatureFlag_exists(t *testing.T) {
 	flag, err := testAccDataSourceFeatureFlagScaffold(client, projectKey, flagBody)
 	require.NoError(t, err)
 
+	defer func() {
+		err := testAccDataSourceProjectDelete(client, projectKey)
+		require.NoError(t, err)
+	}()
+
 	resourceName := "data.launchdarkly_feature_flag.test"
 	resource.Test(t, resource.TestCase{
 		PreCheck: func() {
@@ -109,7 +114,4 @@ func TestAccDataSourceFeatureFlag_exists(t *testing.T) {
 			},
 		},
 	})
-
-	err = testAccDataSourceProjectDelete(client, projectKey)
-	require.NoError(t, err)
 }

@@ -75,6 +75,8 @@ func intPtr(i int) *int {
 	return &i
 }
 
+func strPtr(v string) *string { return &v }
+
 func patchReplace(path string, value interface{}) ldapi.PatchOperation {
 	return ldapi.PatchOperation{
 		Op:    "replace",
