@@ -98,7 +98,11 @@ func featureFlagEnvironmentRead(d *schema.ResourceData, raw interface{}, isDataS
 	_ = d.Set(TRACK_EVENTS, environment.TrackEvents)
 	_ = d.Set(PREREQUISITES, prerequisitesToResourceData(environment.Prerequisites))
 
-	err = d.Set(RULES, rulesToResourceData(environment.Rules))
+	rules, err := rulesToResourceData(environment.Rules)
+	if err != nil {
+		return fmt.Errorf("failed to read rules on flag with key %q: %v", flagKey, err)
+	}
+	err = d.Set(RULES, rules)
 	if err != nil {
 		return fmt.Errorf("failed to set rules on flag with key %q: %v", flagKey, err)
 	}

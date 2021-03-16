@@ -47,6 +47,7 @@ func validateOp() schema.SchemaValidateFunc {
 			"matches",
 			"contains",
 			"lessThan",
+			"greaterThan",
 			"lessThanOrEqual",
 			"greaterThanOrEqual",
 			"before",

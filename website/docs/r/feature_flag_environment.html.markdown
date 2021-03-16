@@ -123,6 +123,8 @@ Nested `clauses` blocks have the following structure:
 
 - `values` - (Required) The list of values associated with the rule clause.
 
+- `value_type` - (Optional) The type for each of the clause's values. Available types are `boolean`, `string`, and `number`. If omitted, `value_type` defaults to `string`.
+
 - `negate` - (Required) Whether to negate the rule clause.
 
 Nested `flag_fallthrough` blocks have the following structure:

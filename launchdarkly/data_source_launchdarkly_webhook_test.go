@@ -92,6 +92,10 @@ func TestAccDataSourceWebhook_exists(t *testing.T) {
 	require.NoError(t, err)
 	webhook, err := testAccDataSourceWebhookCreate(client, webhookName)
 	require.NoError(t, err)
+	defer func() {
+		err := testAccDataSourceWebhookDelete(client, webhook.Id)
+		require.NoError(t, err)
+	}()
 
 	resourceName := "data.launchdarkly_webhook.test"
 	resource.Test(t, resource.TestCase{

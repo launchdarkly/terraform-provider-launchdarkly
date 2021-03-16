@@ -48,6 +48,7 @@ const (
 	ATTRIBUTE                = "attribute"
 	OP                       = "op"
 	VALUES                   = "values"
+	VALUE_TYPE               = "value_type"
 	NEGATE                   = "negate"
 	CLAUSES                  = "clauses"
 	WEIGHT                   = "weight"

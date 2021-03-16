@@ -57,7 +57,11 @@ func ruleFromResourceData(val interface{}) (rule, error) {
 	ruleMap := val.(map[string]interface{})
 	var r rule
 	for _, c := range ruleMap[CLAUSES].([]interface{}) {
-		r.Clauses = append(r.Clauses, clauseFromResourceData(c))
+		clause, err := clauseFromResourceData(c)
+		if err != nil {
+			return r, err
+		}
+		r.Clauses = append(r.Clauses, clause)
 	}
 	bucketBy, bucketByFound := ruleMap["bucket_by"].(string)
 	if len(rolloutFromResourceData(ruleMap[ROLLOUT_WEIGHTS]).Variations) > 0 {
@@ -75,13 +79,17 @@ func ruleFromResourceData(val interface{}) (rule, error) {
 	return r, nil
 }
 
-func rulesToResourceData(rules []ldapi.Rule) interface{} {
+func rulesToResourceData(rules []ldapi.Rule) (interface{}, error) {
 	transformed := make([]interface{}, 0, len(rules))
 
 	for _, r := range rules {
 		ruleMap := make(map[string]interface{})
 		if len(r.Clauses) > 0 {
-			ruleMap[CLAUSES] = clausesToResourceData(r.Clauses)
+			clauses, err := clausesToResourceData(r.Clauses)
+			if err != nil {
+				return nil, err
+			}
+			ruleMap[CLAUSES] = clauses
 		}
 		if r.Rollout != nil {
 			ruleMap[ROLLOUT_WEIGHTS] = rolloutsToResourceData(r.Rollout)
@@ -91,5 +99,5 @@ func rulesToResourceData(rules []ldapi.Rule) interface{} {
 		}
 		transformed = append(transformed, ruleMap)
 	}
-	return transformed
+	return transformed, nil
 }

@@ -183,6 +183,58 @@ resource "launchdarkly_feature_flag_environment" "prereq" {
 }
 `
 
+	testAccFeatureFlagEnvironmentBoolClauseValue = `
+resource "launchdarkly_feature_flag" "bool_flag" {
+	project_key = launchdarkly_project.test.key
+	key = "bool-flag"
+	name = "boolean flag"
+	variation_type = "boolean"
+}
+
+resource "launchdarkly_feature_flag_environment" "bool_clause" {
+	flag_id 		  = launchdarkly_feature_flag.bool_flag.id
+	env_key 		  = "test"
+	targeting_enabled = true
+	  
+	rules {
+		clauses {
+			attribute  = "is_vip"
+			op         = "startsWith"
+			values     = [true]
+			value_type = "boolean"
+			negate     = false
+		}
+		variation = 0
+	}
+}
+`
+
+	testAccFeatureFlagEnvironmentNumberClauseValue = `
+resource "launchdarkly_feature_flag" "bool_flag" {
+	project_key = launchdarkly_project.test.key
+	key = "bool-flag"
+	name = "boolean flag"
+	variation_type = "boolean"
+}
+
+resource "launchdarkly_feature_flag_environment" "number_clause" {
+	flag_id 		  = launchdarkly_feature_flag.bool_flag.id
+	env_key 		  = "test"
+	targeting_enabled = true
+	  
+	rules {
+		clauses {
+			attribute  = "answer"
+			op         = "in"
+			values     = [42,84]
+			value_type = "number"
+			negate     = false
+		}
+		variation = 0
+	}
+}
+`
+
 	testAccInvalidFallthroughBucketBy = `
 resource "launchdarkly_feature_flag" "basic" {
 	project_key = launchdarkly_project.test.key
@@ -430,6 +482,67 @@ func TestAccFeatureFlagEnvironment_JSON_variations(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "flag_fallthrough.#", "1"),
 					resource.TestCheckResourceAttr(resourceName, "flag_fallthrough.0.variation", "1"),
 					resource.TestCheckResourceAttr(resourceName, "off_variation", "0"),
+				),
+			},
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
+		},
+	})
+}
+
+func TestAccFeatureFlagEnvironment_BoolClauseValue(t *testing.T) {
+	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	resourceName := "launchdarkly_feature_flag_environment.bool_clause"
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck: func() {
+			testAccPreCheck(t)
+		},
+		Providers: testAccProviders,
+		Steps: []resource.TestStep{
+			{
+				Config: withRandomProject(projectKey, testAccFeatureFlagEnvironmentBoolClauseValue),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckFeatureFlagEnvironmentExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, "targeting_enabled", "true"),
+					resource.TestCheckResourceAttr(resourceName, "rules.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "rules.0.clauses.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "rules.0.clauses.0.value_type", "boolean"),
+					resource.TestCheckResourceAttr(resourceName, "rules.0.clauses.0.values.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "rules.0.clauses.0.values.0", "true"),
+				),
+			},
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
+		},
+	})
+}
+
+func TestAccFeatureFlagEnvironment_NumberClauseValue(t *testing.T) {
+	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	resourceName := "launchdarkly_feature_flag_environment.number_clause"
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck: func() {
+			testAccPreCheck(t)
+		},
+		Providers: testAccProviders,
+		Steps: []resource.TestStep{
+			{
+				Config: withRandomProject(projectKey, testAccFeatureFlagEnvironmentNumberClauseValue),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckFeatureFlagEnvironmentExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, "targeting_enabled", "true"),
+					resource.TestCheckResourceAttr(resourceName, "rules.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "rules.0.clauses.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "rules.0.clauses.0.value_type", "number"),
+					resource.TestCheckResourceAttr(resourceName, "rules.0.clauses.0.values.#", "2"),
+					resource.TestCheckResourceAttr(resourceName, "rules.0.clauses.0.values.0", "42"),
+					resource.TestCheckResourceAttr(resourceName, "rules.0.clauses.0.values.1", "84"),
 				),
 			},
 			{

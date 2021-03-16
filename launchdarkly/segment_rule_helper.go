@@ -30,40 +30,51 @@ func segmentRulesSchema() *schema.Schema {
 	}
 }
 
-func segmentRulesFromResourceData(d *schema.ResourceData, metaRaw interface{}) []ldapi.UserSegmentRule {
+func segmentRulesFromResourceData(d *schema.ResourceData, metaRaw interface{}) ([]ldapi.UserSegmentRule, error) {
 	schemaRules := d.Get(RULES).([]interface{})
 	rules := make([]ldapi.UserSegmentRule, len(schemaRules))
 	for i, rule := range schemaRules {
-		v := segmentRuleFromResourceData(rule)
+		v, err := segmentRuleFromResourceData(rule)
+		if err != nil {
+			return rules, err
+		}
 		rules[i] = v
 	}
 
-	return rules
+	return rules, nil
 }
 
-func segmentRuleFromResourceData(val interface{}) ldapi.UserSegmentRule {
+func segmentRuleFromResourceData(val interface{}) (ldapi.UserSegmentRule, error) {
 	ruleMap := val.(map[string]interface{})
 	r := ldapi.UserSegmentRule{
 		Weight:   int32(ruleMap[WEIGHT].(int)),
 		BucketBy: ruleMap[BUCKET_BY].(string),
 	}
 	for _, c := range ruleMap[CLAUSES].([]interface{}) {
-		r.Clauses = append(r.Clauses, clauseFromResourceData(c))
+		clause, err := clauseFromResourceData(c)
+		if err != nil {
+			return r, err
+		}
+		r.Clauses = append(r.Clauses, clause)
 	}
 
-	return r
+	return r, nil
 }
 
-func segmentRulesToResourceData(rules []ldapi.UserSegmentRule) interface{} {
+func segmentRulesToResourceData(rules []ldapi.UserSegmentRule) (interface{}, error) {
 	transformed := make([]interface{}, len(rules))
 
 	for i, r := range rules {
+		clauses, err := clausesToResourceData(r.Clauses)
+		if err != nil {
+			return nil, err
+		}
 		transformed[i] = map[string]interface{}{
-			CLAUSES:   clausesToResourceData(r.Clauses),
+			CLAUSES:   clauses,
 			WEIGHT:    r.Weight,
 			BUCKET_BY: r.BucketBy,
 		}
 	}
 
-	return transformed
+	return transformed, nil
 }

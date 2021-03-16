@@ -113,7 +113,10 @@ func resourceSegmentUpdate(d *schema.ResourceData, metaRaw interface{}) error {
 	tags := stringsFromResourceData(d, TAGS)
 	included := d.Get(INCLUDED).([]interface{})
 	excluded := d.Get(EXCLUDED).([]interface{})
-	rules := segmentRulesFromResourceData(d, RULES)
+	rules, err := segmentRulesFromResourceData(d, RULES)
+	if err != nil {
+		return err
+	}
 	patch := []ldapi.PatchOperation{
 		patchReplace("/name", name),
 		patchReplace("/description", description),
@@ -124,7 +127,7 @@ func resourceSegmentUpdate(d *schema.ResourceData, metaRaw interface{}) error {
 		patchReplace("/rules", rules),
 	}
 
-	_, _, err := handleRateLimit(func() (interface{}, *http.Response, error) {
+	_, _, err = handleRateLimit(func() (interface{}, *http.Response, error) {
 		return handleNoConflict(func() (interface{}, *http.Response, error) {
 			return client.ld.UserSegmentsApi.PatchUserSegment(client.ctx, projectKey, envKey, key, patch)
 		})

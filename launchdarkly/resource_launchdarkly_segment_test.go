@@ -12,26 +12,26 @@ import (
 const (
 	testAccSegmentCreate = `
 resource "launchdarkly_segment" "test" {
-    key = "segmentKey1"
+    key         = "segmentKey1"
 	project_key = launchdarkly_project.test.key
-	env_key = "test"
-  	name = "segment name"
+	env_key     = "test"
+  	name        = "segment name"
 	description = "segment description"
-	tags = ["segmentTag1", "segmentTag2"]
-	included = ["user1", "user2"]
-	excluded = ["user3", "user4"]
+	tags        = ["segmentTag1", "segmentTag2"]
+	included    = ["user1", "user2"]
+	excluded    = ["user3", "user4"]
 }`
 
 	testAccSegmentUpdate = `
 resource "launchdarkly_segment" "test" {
-    key = "segmentKey1"
+    key         = "segmentKey1"
 	project_key = launchdarkly_project.test.key
-	env_key = "test"
-  	name = "segment name"
+	env_key     = "test"
+  	name        = "segment name"
 	description = "segment description"
-	tags = ["segmentTag1", ".segmentTag2"]
-	included = ["user1", "user2", "user3", "user4"]
-	excluded = []
+	tags        = ["segmentTag1", ".segmentTag2"]
+	included    = ["user1", "user2", "user3", "user4"]
+	excluded    = []
 	rules {
 		clauses {
 			attribute = "test_att"
@@ -47,6 +47,39 @@ resource "launchdarkly_segment" "test" {
 		}
 		weight = 50000
 		bucket_by = "bucket"
+	}
+}`
+
+	testAccSegmentCreateWithRules = `
+resource "launchdarkly_segment" "test" {
+    key         = "segmentKey1"
+	project_key = launchdarkly_project.test.key
+	env_key     = "test"
+  	name        = "segment name"
+	description = "segment description"
+	rules {
+		clauses {
+			attribute = "test_att"
+			op        = "endsWith"
+			values    = ["test"]
+			negate    = false
+		}
+	}
+	rules {
+		clauses {
+			attribute  = "is_vip"
+			op         = "in"
+			values     = [true]
+			value_type = "boolean"
+			negate     = false
+		}
+		clauses {
+			attribute  = "answer"
+			op         = "in"
+			values     = [42, 84.68]
+			value_type = "number"
+			negate     = true
+		}
 	}
 }`
 )
@@ -154,6 +187,58 @@ func TestAccSegment_Update(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "rules.0.clauses.1.values.0", "test2"),
 					resource.TestCheckResourceAttr(resourceName, "rules.0.clauses.1.negate", "true"),
 				),
+			},
+		},
+	})
+}
+
+func TestAccSegment_WithRules(t *testing.T) {
+	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	resourceName := "launchdarkly_segment.test"
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck: func() {
+			testAccPreCheck(t)
+		},
+		Providers: testAccProviders,
+		Steps: []resource.TestStep{
+			{
+				Config: withRandomProject(projectKey, testAccSegmentCreateWithRules),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckProjectExists("launchdarkly_project.test"),
+					testAccCheckSegmentExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, "key", "segmentKey1"),
+					resource.TestCheckResourceAttr(resourceName, "project_key", projectKey),
+					resource.TestCheckResourceAttr(resourceName, "env_key", "test"),
+					resource.TestCheckResourceAttr(resourceName, "name", "segment name"),
+					resource.TestCheckResourceAttr(resourceName, "description", "segment description"),
+					resource.TestCheckResourceAttr(resourceName, "rules.#", "2"),
+					resource.TestCheckResourceAttr(resourceName, "rules.0.clauses.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "rules.0.clauses.0.attribute", "test_att"),
+					resource.TestCheckResourceAttr(resourceName, "rules.0.clauses.0.op", "endsWith"),
+					resource.TestCheckResourceAttr(resourceName, "rules.0.clauses.0.values.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "rules.0.clauses.0.values.0", "test"),
+					resource.TestCheckResourceAttr(resourceName, "rules.0.clauses.0.value_type", "string"),
+					resource.TestCheckResourceAttr(resourceName, "rules.0.clauses.0.negate", "false"),
+					resource.TestCheckResourceAttr(resourceName, "rules.1.clauses.#", "2"),
+					resource.TestCheckResourceAttr(resourceName, "rules.1.clauses.0.attribute", "is_vip"),
+					resource.TestCheckResourceAttr(resourceName, "rules.1.clauses.0.op", "in"),
+					resource.TestCheckResourceAttr(resourceName, "rules.1.clauses.0.values.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "rules.1.clauses.0.values.0", "true"),
+					resource.TestCheckResourceAttr(resourceName, "rules.1.clauses.0.value_type", "boolean"),
+					resource.TestCheckResourceAttr(resourceName, "rules.1.clauses.0.negate", "false"),
+					resource.TestCheckResourceAttr(resourceName, "rules.1.clauses.1.attribute", "answer"),
+					resource.TestCheckResourceAttr(resourceName, "rules.1.clauses.1.op", "in"),
+					resource.TestCheckResourceAttr(resourceName, "rules.1.clauses.1.values.#", "2"),
+					resource.TestCheckResourceAttr(resourceName, "rules.1.clauses.1.values.0", "42"),
+					resource.TestCheckResourceAttr(resourceName, "rules.1.clauses.1.values.1", "84.68"),
+					resource.TestCheckResourceAttr(resourceName, "rules.1.clauses.1.value_type", "number"),
+					resource.TestCheckResourceAttr(resourceName, "rules.1.clauses.1.negate", "true"),
+				),
+			},
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
 			},
 		},
 	})
