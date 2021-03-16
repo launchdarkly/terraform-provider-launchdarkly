@@ -1,8 +1,9 @@
-## [Unreleased]
+## [1.5.1] (March 16, 2020)
 
 BUG FIXES:
 
 - Fixed a bug preventing number and boolean values in targeting rules clauses from working. The new `value_type` attribute must be set in order to utilize number and boolean values. All values for a given targeting rule clause must be of the same type. [#51](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/51)
+
 ## [1.5.0] (September 29, 2020)
 
 FEATURES:
