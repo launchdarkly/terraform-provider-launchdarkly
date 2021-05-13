@@ -6,9 +6,9 @@ import (
 	"testing"
 
 	"github.com/antihax/optional"
-	"github.com/hashicorp/terraform-plugin-sdk/helper/acctest"
-	"github.com/hashicorp/terraform-plugin-sdk/helper/resource"
-	"github.com/hashicorp/terraform-plugin-sdk/terraform"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/acctest"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 
 	ldapi "github.com/launchdarkly/api-client-go"
 )
@@ -64,7 +64,7 @@ resource "launchdarkly_feature_flag_environment" "basic" {
 }
 `
 
-	testAccFeatureFlagEnvironmentUpdate = `	
+	testAccFeatureFlagEnvironmentUpdate = `
 resource "launchdarkly_feature_flag" "basic" {
 	project_key = launchdarkly_project.test.key
 	key = "basic-flag"
@@ -142,7 +142,7 @@ resource "launchdarkly_feature_flag_environment" "json_variations" {
 	flag_fallthrough {
 		variation = 1
 	  }
-	
+
 	off_variation = 0
 }
 `
@@ -175,7 +175,7 @@ resource "launchdarkly_feature_flag_environment" "prereq" {
 	flag_id 		  = launchdarkly_feature_flag.basic.id
 	env_key 		  = "test"
 	targeting_enabled = true
-	  
+
 	prerequisites {
 		flag_key = launchdarkly_feature_flag.bool.key
 		variation = 0
@@ -195,7 +195,7 @@ resource "launchdarkly_feature_flag_environment" "bool_clause" {
 	flag_id 		  = launchdarkly_feature_flag.bool_flag.id
 	env_key 		  = "test"
 	targeting_enabled = true
-	  
+
 	rules {
 		clauses {
 			attribute  = "is_vip"
@@ -221,7 +221,7 @@ resource "launchdarkly_feature_flag_environment" "number_clause" {
 	flag_id 		  = launchdarkly_feature_flag.bool_flag.id
 	env_key 		  = "test"
 	targeting_enabled = true
-	  
+
 	rules {
 		clauses {
 			attribute  = "answer"
@@ -256,7 +256,7 @@ resource "launchdarkly_feature_flag_environment" "invalid_bucket_by" {
 	flag_id 		  = launchdarkly_feature_flag.basic.id
 	env_key 		  = "test"
 	targeting_enabled = true
-	  
+
 	flag_fallthrough {
 		bucket_by = "email"
 	}
@@ -284,7 +284,7 @@ resource "launchdarkly_feature_flag_environment" "invalid_bucket_by" {
 	flag_id 		  = launchdarkly_feature_flag.basic.id
 	env_key 		  = "test"
 	targeting_enabled = true
-	  
+
 	rules {
 		clauses {
 			attribute = "name"

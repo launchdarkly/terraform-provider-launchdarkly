@@ -5,10 +5,9 @@ import (
 	"regexp"
 	"testing"
 
-	"github.com/hashicorp/terraform-plugin-sdk/helper/acctest"
-	"github.com/hashicorp/terraform-plugin-sdk/helper/hashcode"
-	"github.com/hashicorp/terraform-plugin-sdk/helper/resource"
-	"github.com/hashicorp/terraform-plugin-sdk/terraform"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/acctest"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 )
 
 const (
@@ -40,7 +39,7 @@ resource "launchdarkly_feature_flag" "number" {
 	project_key = launchdarkly_project.test.key
 	key         = "numeric-flag"
 	name        = "Number feature flag"
-  
+
 	variation_type = "number"
 	variations {
 	  value = 12.5
@@ -55,7 +54,7 @@ resource "launchdarkly_feature_flag" "json_basic" {
 	project_key = launchdarkly_project.test.key
 	key         = "json-flag-basic"
 	name        = "Basic JSON feature flag"
-  
+
 	variation_type = "json"
 	variations {
 	  value = <<EOF
@@ -78,7 +77,7 @@ resource "launchdarkly_feature_flag" "json" {
 	project_key = launchdarkly_project.test.key
 	key         = "json-flag"
 	name        = "JSON feature flag"
-  
+
 	variation_type = "json"
 	variations {
 	  value = <<EOF
@@ -361,7 +360,7 @@ func withRandomProject(randomProject, resource string) string {
 		name = "testProject"
 		key = "%s"
 	}
-	
+
 	%s`, randomProject, resource)
 }
 
@@ -865,7 +864,7 @@ func TestAccFeatureFlag_UpdateMultivariateDefaults(t *testing.T) {
 }
 
 func testAccCustomPropertyKey(key string, subKey string) string {
-	return fmt.Sprintf("custom_properties.%d.%s", hashcode.String(key), subKey)
+	return fmt.Sprintf("custom_properties.%d.%s", schema.HashString(key), subKey)
 }
 
 func testAccCheckFeatureFlagExists(resourceName string) resource.TestCheckFunc {

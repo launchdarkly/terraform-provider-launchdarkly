@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/hashicorp/terraform-plugin-sdk/helper/acctest"
-	"github.com/hashicorp/terraform-plugin-sdk/helper/resource"
-	"github.com/hashicorp/terraform-plugin-sdk/terraform"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/acctest"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 )
 
 // Project resources should be formatted with a random project key because acceptance tests
@@ -38,7 +38,7 @@ resource "launchdarkly_project" "env_test" {
 		color = "000000"
 		tags = ["terraform", "test"]
 	}
-}	
+}
 `
 
 	testAccProjectWithEnvironmentUpdate = `
@@ -63,7 +63,7 @@ resource "launchdarkly_project" "env_test" {
 		color = "EEEEEE"
 		tags = ["new"]
 	}
-}	
+}
 `
 )
 

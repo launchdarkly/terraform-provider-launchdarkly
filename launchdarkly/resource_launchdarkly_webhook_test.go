@@ -5,8 +5,8 @@ import (
 	"regexp"
 	"testing"
 
-	"github.com/hashicorp/terraform-plugin-sdk/helper/resource"
-	"github.com/hashicorp/terraform-plugin-sdk/terraform"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 )
 
 const (
@@ -16,7 +16,7 @@ resource "launchdarkly_webhook" "test" {
 	url     = "http://webhooks.com"
 	tags    = [ "terraform" ]
 	enabled = true
-}	
+}
 `
 
 	testAccWebhookUpdate = `
@@ -35,7 +35,7 @@ resource "launchdarkly_webhook" "with_statements" {
 	url     = "http://webhooks.com"
 	enabled = true
 	policy_statements {
-		actions   = ["*"]	
+		actions   = ["*"]
 		effect    = "allow"
 		resources = ["proj/*:env/production:flag/*"]
 	}
@@ -57,7 +57,7 @@ resource "launchdarkly_webhook" "with_statements" {
 		effect    = "allow"
 		resources = ["proj/test:env/production:segment/*"]
 	}
-} 
+}
 `
 
 	testAccWebhookInvalidStatements = `

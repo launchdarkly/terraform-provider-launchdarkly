@@ -6,7 +6,7 @@ import (
 	"regexp"
 	"testing"
 
-	"github.com/hashicorp/terraform-plugin-sdk/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	ldapi "github.com/launchdarkly/api-client-go"
 	"github.com/stretchr/testify/require"
 )
@@ -16,7 +16,7 @@ const (
 data "launchdarkly_feature_flag" "test" {
 	key = "%s"
 	project_key = "%s"
-}	
+}
 `
 )
 

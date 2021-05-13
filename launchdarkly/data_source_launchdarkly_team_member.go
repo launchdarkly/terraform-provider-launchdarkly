@@ -5,7 +5,7 @@ import (
 	"net/http"
 
 	"github.com/antihax/optional"
-	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	ldapi "github.com/launchdarkly/api-client-go"
 )
 

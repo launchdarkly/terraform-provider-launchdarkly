@@ -5,9 +5,8 @@ import (
 	"os"
 	"testing"
 
-	"github.com/hashicorp/terraform-plugin-sdk/helper/hashcode"
-	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
-	"github.com/hashicorp/terraform-plugin-sdk/terraform"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 )
 
 // This map is most commonly constructed once in a common init() method of the Provider’s main test file,
@@ -31,5 +30,5 @@ func testAccPreCheck(t *testing.T) {
 // Tags are a TypeSet. TF represents this a as a map of hashes to actual values.
 // The hashes are always the same for a given value so this is repeatable.
 func testAccTagKey(val string) string {
-	return fmt.Sprintf("tags.%d", hashcode.String(val))
+	return fmt.Sprintf("tags.%d", schema.HashString(val))
 }

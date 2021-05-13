@@ -3,7 +3,7 @@ package launchdarkly
 import (
 	"fmt"
 
-	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
 // destinationConfigFromResourceData transforms the terraform resource destination config into a format that complies with the ld-api-go client.

@@ -4,10 +4,9 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/hashicorp/terraform-plugin-sdk/helper/acctest"
-	"github.com/hashicorp/terraform-plugin-sdk/helper/hashcode"
-	"github.com/hashicorp/terraform-plugin-sdk/helper/resource"
-	"github.com/hashicorp/terraform-plugin-sdk/terraform"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/acctest"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 	ldapi "github.com/launchdarkly/api-client-go"
 )
 
@@ -18,7 +17,7 @@ func testAccCustomRoleCreate(randomKey, randomName string) string {
 		name = "Custom role - %s"
 		description= "Deny all actions on production environments"
 		policy {
-			actions = ["*"]	
+			actions = ["*"]
 			effect = "deny"
 			resources = ["proj/*:env/production"]
 		}
@@ -32,7 +31,7 @@ func testAccCustomRoleUpdate(randomKey, randomName string) string {
 	name = "Updated - %s"
 	description= "Allow all actions on staging environments"
 	policy {
-		actions = ["*"]	
+		actions = ["*"]
 		effect = "allow"
 		resources = ["proj/*:env/staging"]
 	}
@@ -46,7 +45,7 @@ func testAccCustomRoleCreateWithStatements(randomKey, randomName string) string 
 	name = "Custom role - %s"
 	description= "Allow all actions on staging environments"
 	policy_statements {
-		actions = ["*"]	
+		actions = ["*"]
 		effect = "allow"
 		resources = ["proj/*:env/staging"]
 	}
@@ -60,7 +59,7 @@ func testAccCustomRoleUpdateWithStatements(randomKey, randomName string) string 
 	name = "Updated role - %s"
 	description= "Deny all actions on production environments"
 	policy_statements {
-		actions = ["*"]	
+		actions = ["*"]
 		effect = "deny"
 		resources = ["proj/*:env/production"]
 	}
@@ -213,7 +212,7 @@ func TestAccCustomRole_UpdateWithStatements(t *testing.T) {
 	})
 }
 func testAccPolicyKey(policy ldapi.Policy, subkey string) string {
-	return fmt.Sprintf("policy.%d.%s", hashcode.String(fmt.Sprintf("%v", policy)), subkey)
+	return fmt.Sprintf("policy.%d.%s", schema.HashString(fmt.Sprintf("%v", policy)), subkey)
 }
 
 func testAccCheckCustomRoleExists(resourceName string) resource.TestCheckFunc {

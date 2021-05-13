@@ -4,10 +4,9 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/hashicorp/terraform-plugin-sdk/helper/acctest"
-	"github.com/hashicorp/terraform-plugin-sdk/helper/hashcode"
-	"github.com/hashicorp/terraform-plugin-sdk/helper/resource"
-	"github.com/hashicorp/terraform-plugin-sdk/terraform"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/acctest"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 )
 
 func testAccTeamMemberCreate(rName string) string {
@@ -41,7 +40,7 @@ func testAccTeamMemberCustomRoleCreate(roleKey, rName string) string {
 		name = "Updated - %s"
 		description= "Allow all actions on staging environments"
 		policy_statements {
-			actions = ["*"]	
+			actions = ["*"]
 			effect = "allow"
 			resources = ["proj/*:env/staging"]
 		}
@@ -63,7 +62,7 @@ func testAccTeamMemberCustomRoleUpdate(roleKey1, roleKey2, rName string) string 
 		name = "Updated - %s"
 		description= "Allow all actions on staging environments"
 		policy_statements {
-			actions = ["*"]	
+			actions = ["*"]
 			effect = "allow"
 			resources = ["proj/*:env/staging"]
 		}
@@ -74,7 +73,7 @@ func testAccTeamMemberCustomRoleUpdate(roleKey1, roleKey2, rName string) string 
 		name = "Updated - %s"
 		description= "Allow all actions on production environments"
 		policy_statements {
-			actions = ["*"]	
+			actions = ["*"]
 			effect = "allow"
 			resources = ["proj/*:env/production"]
 		}
@@ -237,7 +236,7 @@ func TestAccTeamMember_UpdateWithCustomRole(t *testing.T) {
 }
 
 func testAccMemberCustomRolePropertyKey(roleKey string) string {
-	return fmt.Sprintf("%d", hashcode.String(roleKey))
+	return fmt.Sprintf("%d", schema.HashString(roleKey))
 }
 
 func testAccCheckMemberExists(resourceName string) resource.TestCheckFunc {
