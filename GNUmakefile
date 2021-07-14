@@ -1,6 +1,6 @@
 
-TEST?=$$(go list ./... |grep -v 'vendor')
-GOFMT_FILES?=$$(find . -name '*.go' |grep -v vendor)
+TEST?=$$(go list ./...)
+GOFMT_FILES?=$$(find . -name '*.go')
 WEBSITE_REPO=github.com/hashicorp/terraform-website
 PKG_NAME=launchdarkly
 REV:=$(shell git rev-parse HEAD | cut -c1-6)
@@ -29,7 +29,7 @@ testacc: fmtcheck
 
 vet:
 	@echo "go vet ."
-	@go vet $$(go list ./... | grep -v vendor/) ; if [ $$? -eq 1 ]; then \
+	@go vet $$(go list ./...) ; if [ $$? -eq 1 ]; then \
 		echo ""; \
 		echo "Vet found suspicious constructs. Please check the reported constructs"; \
 		echo "and fix them if necessary before submitting the code for review."; \
@@ -44,10 +44,6 @@ fmtcheck:
 
 errcheck:
 	@sh -c "'$(CURDIR)/scripts/errcheck.sh'"
-
-lint: tools.golangci-lint
-	@echo "==> Checking source code againse golangci-lint"
-	@golangci-lint run ./$(PKG_NAME)
 
 test-compile:
 	@if [ "$(TEST)" = "./..." ]; then \
@@ -72,11 +68,3 @@ endif
 	@$(MAKE) -C $(GOPATH)/src/$(WEBSITE_REPO) website-provider-test PROVIDER_PATH=$(shell pwd) PROVIDER_NAME=$(PKG_NAME)
 
 .PHONY: build install apply test testacc vet fmt fmtcheck errcheck lint test-compile website website-test
-
-#---------------
-#-- tools
-#---------------
-.PHONY: tools.golangci-lint
-
-tools.golangci-lint:
-	GO111MODULE=on go install github.com/golangci/golangci-lint/cmd/golangci-lint
