@@ -6,6 +6,7 @@ import (
 	"regexp"
 	"testing"
 
+	"github.com/hashicorp/terraform-plugin-sdk/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-sdk/helper/resource"
 	ldapi "github.com/launchdarkly/api-client-go"
 	"github.com/stretchr/testify/require"
@@ -50,13 +51,18 @@ func TestAccDataSourceEnvironment_noMatchReturnsError(t *testing.T) {
 	}
 	client, err := newClient(os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN), os.Getenv(LAUNCHDARKLY_API_HOST), false)
 	require.NoError(t, err)
-	projectKey := "tf-env-test-proj"
+	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	projectBody := ldapi.ProjectBody{
 		Name: "Terraform Env Test Project",
 		Key:  projectKey,
 	}
 	project, err := testAccDataSourceProjectCreate(client, projectBody)
 	require.NoError(t, err)
+
+	defer func() {
+		err := testAccDataSourceProjectDelete(client, projectKey)
+		require.NoError(t, err)
+	}()
 
 	envKey := "bad-env-key"
 	resource.ParallelTest(t, resource.TestCase{
@@ -67,12 +73,10 @@ func TestAccDataSourceEnvironment_noMatchReturnsError(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config:      fmt.Sprintf(testAccDataSourceEnvironment, envKey, project.Key),
-				ExpectError: regexp.MustCompile(`errors during refresh: failed to get environment with key "bad-env-key" for project key: "tf-env-test-proj": 404 Not Found: {"message":"Unknown environment key bad-env-key"}`),
+				ExpectError: regexp.MustCompile(fmt.Sprintf(`errors during refresh: failed to get environment with key "bad-env-key" for project key: "%s": 404 Not Found: {"message":"Unknown environment key bad-env-key"}`, projectKey)),
 			},
 		},
 	})
-	err = testAccDataSourceProjectDelete(client, projectKey)
-	require.NoError(t, err)
 }
 
 func TestAccDataSourceEnv_exists(t *testing.T) {
@@ -81,7 +85,7 @@ func TestAccDataSourceEnv_exists(t *testing.T) {
 		t.SkipNow()
 	}
 
-	projectKey := "env-test-project"
+	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	envName := "Terraform Test Env"
 	envKey := "tf-test-env"
 	envColor := "fff000"
@@ -100,6 +104,11 @@ func TestAccDataSourceEnv_exists(t *testing.T) {
 
 	env, err := testAccDataSourceEnvironmentScaffold(client, projectKey, envBody)
 	require.NoError(t, err)
+
+	defer func() {
+		err := testAccDataSourceProjectDelete(client, projectKey)
+		require.NoError(t, err)
+	}()
 
 	resourceName := "data.launchdarkly_environment.test"
 	resource.Test(t, resource.TestCase{
@@ -125,7 +134,4 @@ func TestAccDataSourceEnv_exists(t *testing.T) {
 			},
 		},
 	})
-
-	err = testAccDataSourceProjectDelete(client, projectKey)
-	require.NoError(t, err)
 }

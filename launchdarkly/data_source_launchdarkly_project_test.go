@@ -85,6 +85,11 @@ func TestAccDataSourceProject_exists(t *testing.T) {
 	project, err := testAccDataSourceProjectCreate(client, projectBody)
 	require.NoError(t, err)
 
+	defer func() {
+		err := testAccDataSourceProjectDelete(client, projectKey)
+		require.NoError(t, err)
+	}()
+
 	resourceName := "data.launchdarkly_project.test"
 	resource.Test(t, resource.TestCase{
 		PreCheck: func() {
@@ -107,6 +112,4 @@ func TestAccDataSourceProject_exists(t *testing.T) {
 			},
 		},
 	})
-	err = testAccDataSourceProjectDelete(client, projectKey)
-	require.NoError(t, err)
 }
