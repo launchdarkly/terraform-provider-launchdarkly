@@ -217,7 +217,7 @@ func resourceAccessTokenUpdate(d *schema.ResourceData, metaRaw interface{}) erro
 		oldExpireRaw, newExpireRaw := d.GetChange(EXPIRE)
 		oldExpire := oldExpireRaw.(int)
 		newExpire := newExpireRaw.(int)
-		opts := ldapi.ResetTokenOpts{}
+		opts := ldapi.AccessTokensApiResetTokenOpts{}
 		if oldExpire != newExpire && newExpire != 0 {
 			if newExpire > 0 {
 				opts.Expiry = optional.NewInt64(int64(newExpire))

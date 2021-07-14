@@ -41,7 +41,7 @@ func dataSourceTeamMember() *schema.Resource {
 }
 
 func getTeamMemberByEmail(client *Client, memberEmail string) (*ldapi.Member, error) {
-	apiOpts := ldapi.GetMembersOpts{
+	apiOpts := ldapi.TeamMembersApiGetMembersOpts{
 		Limit: optional.NewFloat32(1000), // this should be the max limit allowed when the member-list-max-limit flag is on
 	}
 
