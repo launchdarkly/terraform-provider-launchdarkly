@@ -1,3 +1,10 @@
+## [Unreleased]
+
+NOTES:
+
+- The `launchdarkly_webhook` resource's `enabled` argument has been deprecated in favor of `on`. Please update your config to use `on` in order to maintain compatibility with future versions.
+- The `launchdarkly_webhook` data source's `enabled` attribute has been deprecated in favor of `on`. Please update your all references of `enabled` to `on` in order to maintain compatibility with future versions.
+
 ## [1.5.1] (March 16, 2021)
 
 BUG FIXES:

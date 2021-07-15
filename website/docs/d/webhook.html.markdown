@@ -20,6 +20,7 @@ data "launchdarkly_webhook" "example" {
 ```
 
 ## Argument Reference
+
 - `id` - (Required) The unique webhook ID.
 
 ## Attributes Reference
@@ -28,7 +29,7 @@ In addition to the arguments above, the resource exports following attributes:
 
 - `url` - The URL of the remote webhook.
 
-- `enabled` - Whether the webhook is enabled.
+- `enabled` - Whether the webhook is enabled. Note: this attribute is **deprecated** in favor or `on`. Please update all references of `enabled` to `on` to maintain compatibility with future versions.
 
 - `name` - The webhook's human-readable name.
 

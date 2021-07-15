@@ -20,32 +20,36 @@ func policyStatementsSchema() *schema.Schema {
 					Elem: &schema.Schema{
 						Type: schema.TypeString,
 					},
-					Optional: true,
-					MinItems: 1,
+					Optional:    true,
+					Description: "A list of LaunchDarkly resource specifiers",
+					MinItems:    1,
 				},
 				NOT_RESOURCES: {
 					Type: schema.TypeList,
 					Elem: &schema.Schema{
 						Type: schema.TypeString,
 					},
-					Optional: true,
-					MinItems: 1,
+					Optional:    true,
+					Description: "Targeted resources will be those resources NOT in this list. The 'resources' field must be empty to use this field",
+					MinItems:    1,
 				},
 				ACTIONS: {
 					Type: schema.TypeList,
 					Elem: &schema.Schema{
 						Type: schema.TypeString,
 					},
-					Optional: true,
-					MinItems: 1,
+					Optional:    true,
+					Description: "An action to perform on a resource",
+					MinItems:    1,
 				},
 				NOT_ACTIONS: {
 					Type: schema.TypeList,
 					Elem: &schema.Schema{
 						Type: schema.TypeString,
 					},
-					Optional: true,
-					MinItems: 1,
+					Optional:    true,
+					Description: "Targeted actions will be those actions NOT in this list. The 'actions' field must be empty to use this field",
+					MinItems:    1,
 				},
 				EFFECT: {
 					Type:         schema.TypeString,

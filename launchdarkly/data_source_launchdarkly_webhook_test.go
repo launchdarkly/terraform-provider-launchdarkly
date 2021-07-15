@@ -112,6 +112,7 @@ func TestAccDataSourceWebhook_exists(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "name", webhookName),
 					resource.TestCheckResourceAttr(resourceName, "url", webhook.Url),
 					resource.TestCheckResourceAttr(resourceName, "enabled", "true"),
+					resource.TestCheckResourceAttr(resourceName, "on", "true"),
 					resource.TestCheckResourceAttr(resourceName, "secret", webhook.Secret),
 					resource.TestCheckResourceAttr(resourceName, "tags.#", "1"),
 					resource.TestCheckResourceAttr(resourceName, "policy_statements.#", "1"),

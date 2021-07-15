@@ -1,6 +1,7 @@
 package launchdarkly
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 
@@ -11,12 +12,22 @@ import (
 func resourceWebhook() *schema.Resource {
 	schemaMap := baseWebhookSchema()
 	schemaMap[URL] = &schema.Schema{
-		Type:     schema.TypeString,
-		Required: true,
+		Type:       schema.TypeString,
+		Required:   true,
+		Deprecated: "The URL of the remote webhook",
 	}
 	schemaMap[ENABLED] = &schema.Schema{
-		Type:     schema.TypeBool,
-		Required: true,
+		Type:          schema.TypeBool,
+		Description:   "Whether this webhook is enabled or not. This field has been deprecated in favor of 'on'",
+		Optional:      true,
+		Deprecated:    "'enabled' is deprecated in favor of 'on'",
+		ConflictsWith: []string{ON},
+	}
+	schemaMap[ON] = &schema.Schema{
+		Type:          schema.TypeBool,
+		Description:   "Whether this webhook is enabled or not",
+		Optional:      true,
+		ConflictsWith: []string{ENABLED},
 	}
 	return &schema.Resource{
 		Create: resourceWebhookCreate,
@@ -37,9 +48,13 @@ func resourceWebhookCreate(d *schema.ResourceData, metaRaw interface{}) error {
 	client := metaRaw.(*Client)
 	webhookURL := d.Get(URL).(string)
 	webhookSecret := d.Get(SECRET).(string)
-	webhookOn := d.Get(ENABLED).(bool)
 	webhookName := d.Get(NAME).(string)
 	statements, err := policyStatementsFromResourceData(d)
+	if err != nil {
+		return err
+	}
+
+	webhookOn, err := getWebhookOn(d)
 	if err != nil {
 		return err
 	}
@@ -86,9 +101,13 @@ func resourceWebhookUpdate(d *schema.ResourceData, metaRaw interface{}) error {
 	webhookID := d.Id()
 	webhookURL := d.Get(URL).(string)
 	webhookSecret := d.Get(SECRET).(string)
-	webhookOn := d.Get(ENABLED).(bool)
 	webhookName := d.Get(NAME).(string)
 	webhookTags := stringsFromResourceData(d, TAGS)
+
+	webhookOn, err := getWebhookOn(d)
+	if err != nil {
+		return err
+	}
 
 	patch := []ldapi.PatchOperation{
 		patchReplace("/url", &webhookURL),
@@ -150,4 +169,21 @@ func webhookExists(webhookID string, meta *Client) (bool, error) {
 	}
 
 	return true, nil
+}
+
+// getWebhookOn is a helper function used for deprecating ENABLED in favor of ON to match
+// LD's API response.
+func getWebhookOn(d *schema.ResourceData) (bool, error) {
+	var webhookOn bool
+	enabled, enabledSet := d.GetOkExists(ENABLED)
+	on, onSet := d.GetOkExists(ON)
+	if !onSet && !enabledSet {
+		return false, errors.New("one of 'on' or 'enabled' must be configured")
+	}
+	if enabledSet {
+		webhookOn = enabled.(bool)
+	} else {
+		webhookOn = on.(bool)
+	}
+	return webhookOn, nil
 }

@@ -18,7 +18,7 @@ resource "launchdarkly_webhook" "example" {
   url     = "http://webhooks.com/webhook"
   name    = "Example Webhook"
   tags    = ["terraform"]
-  enabled = true
+  on      = true
 
   policy_statements {
     actions     = ["*"]
@@ -37,7 +37,9 @@ resource "launchdarkly_webhook" "example" {
 
 - `url` - (Required) The URL of the remote webhook.
 
-- `enabled` - (Required) Specifies whether the webhook is enabled.
+- `on` - (Optional) Specifies whether the webhook is enabled. Either `on` or `enabled` must be specified.
+
+- `enabled` - (Optional) Specifies whether the webhook is enabled. This field argument is **deprecated** in favor of `on`. Please update your config to use to `on` to maintain compatibility with future versions. Either `on` or `enabled` must be specified.
 
 - `name` - (Optional) The webhook's human-readable name.
 

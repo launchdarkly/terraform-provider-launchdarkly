@@ -29,6 +29,7 @@ const (
 	URL                      = "url"
 	SECRET                   = "secret"
 	ENABLED                  = "enabled"
+	ON                       = "on"
 	RESOURCES                = "resources"
 	NOT_RESOURCES            = "not_resources"
 	ACTIONS                  = "actions"

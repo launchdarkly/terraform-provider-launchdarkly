@@ -12,13 +12,15 @@ import (
 func baseWebhookSchema() map[string]*schema.Schema {
 	return map[string]*schema.Schema{
 		SECRET: {
-			Type:      schema.TypeString,
-			Optional:  true,
-			Sensitive: true,
+			Type:        schema.TypeString,
+			Optional:    true,
+			Description: "If sign is true, and the secret attribute is omitted, LaunchDarkly will automatically generate a secret for you",
+			Sensitive:   true,
 		},
 		NAME: {
-			Type:     schema.TypeString,
-			Optional: true,
+			Type:        schema.TypeString,
+			Optional:    true,
+			Description: "A human-readable name for your webhook",
 		},
 		POLICY_STATEMENTS: policyStatementsSchema(),
 		TAGS:              tagsSchema(),
@@ -53,7 +55,19 @@ func webhookRead(d *schema.ResourceData, meta interface{}, isDataSource bool) er
 	}
 	_ = d.Set(URL, webhook.Url)
 	_ = d.Set(SECRET, webhook.Secret)
-	_ = d.Set(ENABLED, webhook.On)
+
+	// "enabled" is deprecated in favor of "on". For data sources, set both, for resources only set the one being used.
+	if isDataSource {
+		_ = d.Set(ENABLED, webhook.On)
+		_ = d.Set(ON, webhook.On)
+	} else {
+		if _, ok := d.GetOkExists(ENABLED); ok {
+			_ = d.Set(ENABLED, webhook.On)
+		} else {
+			_ = d.Set(ON, webhook.On)
+		}
+	}
+
 	_ = d.Set(NAME, webhook.Name)
 	err = d.Set(POLICY_STATEMENTS, statements)
 	if err != nil {
