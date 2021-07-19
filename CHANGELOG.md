@@ -6,6 +6,8 @@ FEATURES:
 
 ENHANCEMENTS:
 
+- Improved 429 retry handling.
+
 - Upgraded the Go version to 1.16.
 
 - Upgraded the LaunchDarkly SDK version to v5.1.0+.

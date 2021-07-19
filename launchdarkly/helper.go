@@ -13,7 +13,7 @@ import (
 
 const (
 	MAX_409_RETRIES = 5
-	MAX_429_RETRIES = 10
+	MAX_429_RETRIES = 20
 )
 
 func handleRateLimit(apiCall func() (interface{}, *http.Response, error)) (interface{}, *http.Response, error) {
@@ -30,13 +30,14 @@ func handleRateLimit(apiCall func() (interface{}, *http.Response, error)) (inter
 			sleepDuration := time.Until(resetTime)
 
 			// We have observed situations where LD-s retry header results in a negative sleep duration. In this case,
-			// multiply the duration by -1 and add a random 200-500ms
+			// multiply the duration by -1 and add jitter
 			if sleepDuration <= 0 {
-				log.Printf("[DEBUG] received a negative rate limit retry duration of %s. Sleeping for an additional 200-500ms", sleepDuration)
-				sleepDuration = -1*sleepDuration + getRandomSleepDuration()
+				log.Printf("[DEBUG] received a negative rate limit retry duration of %s.", sleepDuration)
+				sleepDuration = -1 * sleepDuration
 			}
-			log.Println("[DEBUG] sleeping", sleepDuration)
-			time.Sleep(sleepDuration)
+			sleepDurationWithJitter := sleepDuration + getRandomSleepDuration(sleepDuration)
+			log.Println("[DEBUG] sleeping", sleepDurationWithJitter)
+			time.Sleep(sleepDurationWithJitter)
 		}
 		obj, res, err = apiCall()
 	}
@@ -56,17 +57,19 @@ func handleNoConflict(apiCall func() (interface{}, *http.Response, error)) (inte
 
 var randomRetrySleepSeeded = false
 
-// Sleep for a random interval between 200ms and 500ms
-func getRandomSleepDuration() time.Duration {
+// getRandomSleepDuration returns a duration between [0, maxDuration)
+func getRandomSleepDuration(maxDuration time.Duration) time.Duration {
 	if !randomRetrySleepSeeded {
 		rand.Seed(time.Now().UnixNano())
 	}
-	n := rand.Intn(300) + 200
-	return time.Duration(n) * time.Millisecond
+	n := rand.Int63n(int64(maxDuration))
+	return time.Duration(n)
 }
 
+// Sleep for a random interval between 200ms and 500ms
 func randomRetrySleep() {
-	time.Sleep(getRandomSleepDuration())
+	duration := 200*time.Millisecond + getRandomSleepDuration(300*time.Millisecond)
+	time.Sleep(duration)
 }
 
 func ptr(v interface{}) *interface{} { return &v }
