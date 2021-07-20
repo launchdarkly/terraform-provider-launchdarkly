@@ -38,7 +38,7 @@ func resourceCustomRole() *schema.Resource {
 				Optional: true,
 			},
 			POLICY:            policyArraySchema(),
-			POLICY_STATEMENTS: policyStatementsSchema(),
+			POLICY_STATEMENTS: policyStatementsSchema(policyStatementSchemaOptions{}),
 		},
 	}
 }
@@ -49,7 +49,7 @@ func resourceCustomRoleCreate(d *schema.ResourceData, metaRaw interface{}) error
 	customRoleName := d.Get(NAME).(string)
 	customRoleDescription := d.Get(DESCRIPTION).(string)
 	customRolePolicies := policiesFromResourceData(d)
-	policyStatements, err := policyStatementsFromResourceData(d)
+	policyStatements, err := policyStatementsFromResourceData(d.Get(POLICY_STATEMENTS).([]interface{}))
 	if err != nil {
 		return err
 	}
@@ -116,7 +116,7 @@ func resourceCustomRoleUpdate(d *schema.ResourceData, metaRaw interface{}) error
 	customRoleName := d.Get(NAME).(string)
 	customRoleDescription := d.Get(DESCRIPTION).(string)
 	customRolePolicies := policiesFromResourceData(d)
-	policyStatements, err := policyStatementsFromResourceData(d)
+	policyStatements, err := policyStatementsFromResourceData(d.Get(POLICY_STATEMENTS).([]interface{}))
 	if err != nil {
 		return err
 	}

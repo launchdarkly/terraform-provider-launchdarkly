@@ -38,6 +38,19 @@ resource "launchdarkly_webhook" "test" {
 }
 `
 
+	testAccWebhookWithStatements = `
+resource "launchdarkly_webhook" "with_statements" {
+	name    = "Webhook with policy statements"
+	url     = "http://webhooks.com"
+	on      = true
+	statements {
+		actions   = ["*"]	
+		effect    = "allow"
+		resources = ["proj/*:env/production:flag/*"]
+	}
+}
+`
+	// policy_statements is deprecated but we will still support it in v1
 	testAccWebhookWithPolicyStatements = `
 resource "launchdarkly_webhook" "with_statements" {
 	name    = "Webhook with policy statements"
@@ -51,17 +64,17 @@ resource "launchdarkly_webhook" "with_statements" {
 }
 `
 
-	testAccWebhookWithPolicyStatementsUpdate = `
+	testAccWebhookWithPolicyUpdate = `
 resource "launchdarkly_webhook" "with_statements" {
 	name    = "Webhook with policy statements"
 	url     = "http://webhooks.com"
 	on      = true
-	policy_statements {
+	statements {
 		actions   = ["*"]
 		effect    = "allow"
 		resources = ["proj/test:env/production:flag/*"]
 	}
-	policy_statements {
+	statements {
 		actions   = ["*"]
 		effect    = "allow"
 		resources = ["proj/test:env/production:segment/*"]
@@ -74,7 +87,7 @@ resource "launchdarkly_webhook" "with_statements" {
 	name    = "Webhook with policy statements"
 	url     = "http://webhooks.com"
 	on      = true
-	policy_statements {
+	statements {
 		actions   = ["*"]
 		not_actions = ["*"]
 		effect    = "allow"
@@ -204,18 +217,18 @@ func TestAccWebhook_CreateWithStatements(t *testing.T) {
 		Providers: testAccProviders,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccWebhookWithPolicyStatements,
+				Config: testAccWebhookWithStatements,
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckWebhookExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, "name", "Webhook with policy statements"),
 					resource.TestCheckResourceAttr(resourceName, "url", "http://webhooks.com"),
 					resource.TestCheckResourceAttr(resourceName, "on", "true"),
-					resource.TestCheckResourceAttr(resourceName, "policy_statements.#", "1"),
-					resource.TestCheckResourceAttr(resourceName, "policy_statements.0.effect", "allow"),
-					resource.TestCheckResourceAttr(resourceName, "policy_statements.0.actions.#", "1"),
-					resource.TestCheckResourceAttr(resourceName, "policy_statements.0.actions.0", "*"),
-					resource.TestCheckResourceAttr(resourceName, "policy_statements.0.resources.#", "1"),
-					resource.TestCheckResourceAttr(resourceName, "policy_statements.0.resources.0", "proj/*:env/production:flag/*"),
+					resource.TestCheckResourceAttr(resourceName, "statements.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "statements.0.effect", "allow"),
+					resource.TestCheckResourceAttr(resourceName, "statements.0.actions.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "statements.0.actions.0", "*"),
+					resource.TestCheckResourceAttr(resourceName, "statements.0.resources.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "statements.0.resources.0", "proj/*:env/production:flag/*"),
 				),
 			},
 			{
@@ -227,7 +240,7 @@ func TestAccWebhook_CreateWithStatements(t *testing.T) {
 	})
 }
 
-func TestAccWebhook_UpdateWithStatements(t *testing.T) {
+func TestAccWebhook_CreateWithPolicyStatements(t *testing.T) {
 	resourceName := "launchdarkly_webhook.with_statements"
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
@@ -250,24 +263,51 @@ func TestAccWebhook_UpdateWithStatements(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "policy_statements.0.resources.0", "proj/*:env/production:flag/*"),
 				),
 			},
+		},
+	})
+}
+
+func TestAccWebhook_UpdateWithStatements(t *testing.T) {
+	resourceName := "launchdarkly_webhook.with_statements"
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck: func() {
+			testAccPreCheck(t)
+		},
+		Providers: testAccProviders,
+		Steps: []resource.TestStep{
 			{
-				Config: testAccWebhookWithPolicyStatementsUpdate,
+				Config: testAccWebhookWithStatements,
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckWebhookExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, "name", "Webhook with policy statements"),
 					resource.TestCheckResourceAttr(resourceName, "url", "http://webhooks.com"),
 					resource.TestCheckResourceAttr(resourceName, "on", "true"),
-					resource.TestCheckResourceAttr(resourceName, "policy_statements.#", "2"),
-					resource.TestCheckResourceAttr(resourceName, "policy_statements.0.effect", "allow"),
-					resource.TestCheckResourceAttr(resourceName, "policy_statements.0.actions.#", "1"),
-					resource.TestCheckResourceAttr(resourceName, "policy_statements.0.actions.0", "*"),
-					resource.TestCheckResourceAttr(resourceName, "policy_statements.0.resources.#", "1"),
-					resource.TestCheckResourceAttr(resourceName, "policy_statements.0.resources.0", "proj/test:env/production:flag/*"),
-					resource.TestCheckResourceAttr(resourceName, "policy_statements.1.effect", "allow"),
-					resource.TestCheckResourceAttr(resourceName, "policy_statements.1.actions.#", "1"),
-					resource.TestCheckResourceAttr(resourceName, "policy_statements.1.actions.0", "*"),
-					resource.TestCheckResourceAttr(resourceName, "policy_statements.1.resources.#", "1"),
-					resource.TestCheckResourceAttr(resourceName, "policy_statements.1.resources.0", "proj/test:env/production:segment/*"),
+					resource.TestCheckResourceAttr(resourceName, "statements.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "statements.0.effect", "allow"),
+					resource.TestCheckResourceAttr(resourceName, "statements.0.actions.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "statements.0.actions.0", "*"),
+					resource.TestCheckResourceAttr(resourceName, "statements.0.resources.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "statements.0.resources.0", "proj/*:env/production:flag/*"),
+				),
+			},
+			{
+				Config: testAccWebhookWithPolicyUpdate,
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckWebhookExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, "name", "Webhook with policy statements"),
+					resource.TestCheckResourceAttr(resourceName, "url", "http://webhooks.com"),
+					resource.TestCheckResourceAttr(resourceName, "on", "true"),
+					resource.TestCheckResourceAttr(resourceName, "statements.#", "2"),
+					resource.TestCheckResourceAttr(resourceName, "statements.0.effect", "allow"),
+					resource.TestCheckResourceAttr(resourceName, "statements.0.actions.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "statements.0.actions.0", "*"),
+					resource.TestCheckResourceAttr(resourceName, "statements.0.resources.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "statements.0.resources.0", "proj/test:env/production:flag/*"),
+					resource.TestCheckResourceAttr(resourceName, "statements.1.effect", "allow"),
+					resource.TestCheckResourceAttr(resourceName, "statements.1.actions.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "statements.1.actions.0", "*"),
+					resource.TestCheckResourceAttr(resourceName, "statements.1.resources.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "statements.1.resources.0", "proj/test:env/production:segment/*"),
 				),
 			},
 			{
@@ -288,7 +328,7 @@ func TestAccWebhook_InvalidStatements(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config:      testAccWebhookInvalidStatements,
-				ExpectError: regexp.MustCompile("policy_statements cannot contain both 'actions' and 'not_actions'"),
+				ExpectError: regexp.MustCompile("policy statements cannot contain both 'actions' and 'not_actions'"),
 			},
 		},
 	})

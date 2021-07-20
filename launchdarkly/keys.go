@@ -36,6 +36,7 @@ const (
 	NOT_ACTIONS              = "not_actions"
 	EFFECT                   = "effect"
 	POLICY                   = "policy"
+	STATEMENTS               = "statements"
 	POLICY_STATEMENTS        = "policy_statements"
 	EXCLUDED                 = "excluded"
 	INCLUDED                 = "included"

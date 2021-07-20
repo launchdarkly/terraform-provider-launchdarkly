@@ -87,11 +87,13 @@ func TestPolicyStatementsRoundTripConversion(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			statementsData := schema.TestResourceDataRaw(t,
-				map[string]*schema.Schema{POLICY_STATEMENTS: policyStatementsSchema()},
+				map[string]*schema.Schema{POLICY_STATEMENTS: policyStatementsSchema(policyStatementSchemaOptions{})},
 				tc.policyStatements,
 			)
 
-			actual, err := policyStatementsFromResourceData(statementsData)
+			schemaStatements, ok := statementsData.Get(POLICY_STATEMENTS).([]interface{})
+			require.True(t, ok)
+			actual, err := policyStatementsFromResourceData(schemaStatements)
 			require.NoError(t, err)
 			require.Equal(t, tc.expected, actual)
 
@@ -116,7 +118,7 @@ func TestPolicyStatementValidation(t *testing.T) {
 				NOT_RESOURCES: []interface{}{},
 				EFFECT:        "allow",
 			},
-			expectedErrString: "policy_statements cannot contain both 'actions' and 'not_actions'",
+			expectedErrString: "policy statements cannot contain both 'actions' and 'not_actions'",
 		},
 		{
 			name: "both resources and not_resources",
@@ -127,7 +129,7 @@ func TestPolicyStatementValidation(t *testing.T) {
 				RESOURCES:     []interface{}{"proj/*"},
 				EFFECT:        "allow",
 			},
-			expectedErrString: "policy_statements cannot contain both 'resources' and 'not_resources'",
+			expectedErrString: "policy statements cannot contain both 'resources' and 'not_resources'",
 		},
 		{
 			name: "no actions or not_actions",
@@ -138,7 +140,7 @@ func TestPolicyStatementValidation(t *testing.T) {
 				NOT_RESOURCES: []interface{}{},
 				EFFECT:        "allow",
 			},
-			expectedErrString: "policy_statements must contain either 'actions' or 'not_actions'",
+			expectedErrString: "policy statements must contain either 'actions' or 'not_actions'",
 		},
 		{
 			name: "no resources or not_resources",
@@ -149,7 +151,7 @@ func TestPolicyStatementValidation(t *testing.T) {
 				NOT_RESOURCES: []interface{}{},
 				EFFECT:        "allow",
 			},
-			expectedErrString: "policy_statements must contain either 'resources' or 'not_resources'",
+			expectedErrString: "policy statements must contain either 'resources' or 'not_resources'",
 		},
 	}
 

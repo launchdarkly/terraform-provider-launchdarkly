@@ -12,7 +12,7 @@ import (
 )
 
 func resourceAccessToken() *schema.Resource {
-	tokenPolicySchema := policyStatementsSchema()
+	tokenPolicySchema := policyStatementsSchema(policyStatementSchemaOptions{})
 	tokenPolicySchema.Description = "A list of policy statements defining the permissions for the token. May be used in place of a built-in or custom role."
 	return &schema.Resource{
 		Create: resourceAccessTokenCreate,
@@ -82,7 +82,7 @@ func resourceAccessTokenCreate(d *schema.ResourceData, metaRaw interface{}) erro
 	for i, cr := range customRolesRaw {
 		customRoles[i] = cr.(string)
 	}
-	policyStatements, err := policyStatementsFromResourceData(d)
+	policyStatements, err := policyStatementsFromResourceData(d.Get(POLICY_STATEMENTS).([]interface{}))
 	if err != nil {
 		return err
 	}
@@ -167,7 +167,7 @@ func resourceAccessTokenUpdate(d *schema.ResourceData, metaRaw interface{}) erro
 		return err
 	}
 
-	policyStatements, err := policyStatementsFromResourceData(d)
+	policyStatements, err := policyStatementsFromResourceData(d.Get(POLICY_STATEMENTS).([]interface{}))
 	if err != nil {
 		return err
 	}

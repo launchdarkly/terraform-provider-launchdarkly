@@ -12,9 +12,9 @@ import (
 func resourceWebhook() *schema.Resource {
 	schemaMap := baseWebhookSchema()
 	schemaMap[URL] = &schema.Schema{
-		Type:       schema.TypeString,
-		Required:   true,
-		Deprecated: "The URL of the remote webhook",
+		Type:        schema.TypeString,
+		Required:    true,
+		Description: "The URL of the remote webhook",
 	}
 	schemaMap[ENABLED] = &schema.Schema{
 		Type:          schema.TypeBool,
@@ -49,7 +49,7 @@ func resourceWebhookCreate(d *schema.ResourceData, metaRaw interface{}) error {
 	webhookURL := d.Get(URL).(string)
 	webhookSecret := d.Get(SECRET).(string)
 	webhookName := d.Get(NAME).(string)
-	statements, err := policyStatementsFromResourceData(d)
+	statements, err := policyStatementsFromResourceData(getWebhookStatements(d))
 	if err != nil {
 		return err
 	}
@@ -117,7 +117,7 @@ func resourceWebhookUpdate(d *schema.ResourceData, metaRaw interface{}) error {
 		patchReplace("/tags", &webhookTags),
 	}
 
-	statements, err := policyStatementsFromResourceData(d)
+	statements, err := policyStatementsFromResourceData(getWebhookStatements(d))
 	if err != nil {
 		return err
 	}
@@ -186,4 +186,15 @@ func getWebhookOn(d *schema.ResourceData) (bool, error) {
 		webhookOn = on.(bool)
 	}
 	return webhookOn, nil
+}
+
+// getWebhookStatements is a helper function used for deprecating POLICY_STATEMENTS in favor of STATEMENTS
+// to match LD's API response.
+func getWebhookStatements(d *schema.ResourceData) []interface{} {
+	if v, ok := d.GetOk(POLICY_STATEMENTS); ok {
+		return v.([]interface{})
+	} else if v, ok := d.GetOk(STATEMENTS); ok {
+		return v.([]interface{})
+	}
+	return make([]interface{}, 0)
 }
