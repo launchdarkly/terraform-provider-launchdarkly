@@ -616,7 +616,7 @@ func testAccCheckFeatureFlagEnvironmentExists(resourceName string) resource.Test
 			return fmt.Errorf("environent key not found: %s", resourceName)
 		}
 		client := testAccProvider.Meta().(*Client)
-		_, _, err = client.ld.FeatureFlagsApi.GetFeatureFlag(client.ctx, projKey, flagKey, &ldapi.GetFeatureFlagOpts{Env: optional.NewInterface(envKey)})
+		_, _, err = client.ld.FeatureFlagsApi.GetFeatureFlag(client.ctx, projKey, flagKey, &ldapi.FeatureFlagsApiGetFeatureFlagOpts{Env: optional.NewInterface(envKey)})
 		if err != nil {
 			return fmt.Errorf("received an error getting feature flag environment. %s", err)
 		}

@@ -7,6 +7,7 @@ import (
 	"regexp"
 	"testing"
 
+	"github.com/hashicorp/terraform-plugin-sdk/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-sdk/helper/resource"
 	ldapi "github.com/launchdarkly/api-client-go"
 	"github.com/stretchr/testify/require"
@@ -78,12 +79,17 @@ func TestAccDataSourceSegment_noMatchReturnsError(t *testing.T) {
 		t.SkipNow()
 	}
 
-	projectKey := "tf-segment-test"
+	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	segmentKey := "bad-segment-key"
 	client, err := newClient(os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN), os.Getenv(LAUNCHDARKLY_API_HOST), false)
 	require.NoError(t, err)
 	_, err = testAccDataSourceProjectCreate(client, ldapi.ProjectBody{Name: "Segment DS No Match Test", Key: projectKey})
 	require.NoError(t, err)
+
+	defer func() {
+		err := testAccDataSourceProjectDelete(client, projectKey)
+		require.NoError(t, err)
+	}()
 
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
@@ -93,13 +99,10 @@ func TestAccDataSourceSegment_noMatchReturnsError(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config:      fmt.Sprintf(testAccDataSourceSegment, segmentKey, projectKey),
-				ExpectError: regexp.MustCompile(`errors during refresh: failed to get segment "bad-segment-key" of project "tf-segment-test": 404 Not Found:`),
+				ExpectError: regexp.MustCompile(fmt.Sprintf(`errors during refresh: failed to get segment "bad-segment-key" of project "%s": 404 Not Found:`, projectKey)),
 			},
 		},
 	})
-
-	testAccDataSourceProjectDelete(client, projectKey)
-	require.NoError(t, err)
 }
 
 func TestAccDataSourceSegment_exists(t *testing.T) {
@@ -108,7 +111,7 @@ func TestAccDataSourceSegment_exists(t *testing.T) {
 		t.SkipNow()
 	}
 
-	projectKey := "tf-segment-test2"
+	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	segmentKey := "data-source-test"
 	client, err := newClient(os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN), os.Getenv(LAUNCHDARKLY_API_HOST), false)
 	require.NoError(t, err)
@@ -130,6 +133,11 @@ func TestAccDataSourceSegment_exists(t *testing.T) {
 	}
 	segment, err := testAccDataSourceSegmentCreate(client, projectKey, segmentKey, properties)
 	require.NoError(t, err)
+
+	defer func() {
+		err := testAccDataSourceProjectDelete(client, projectKey)
+		require.NoError(t, err)
+	}()
 
 	resourceName := "data.launchdarkly_segment.test"
 	resource.Test(t, resource.TestCase{
@@ -159,7 +167,4 @@ func TestAccDataSourceSegment_exists(t *testing.T) {
 			},
 		},
 	})
-
-	testAccDataSourceProjectDelete(client, projectKey)
-	require.NoError(t, err)
 }

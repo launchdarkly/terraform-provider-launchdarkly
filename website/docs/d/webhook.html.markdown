@@ -20,6 +20,7 @@ data "launchdarkly_webhook" "example" {
 ```
 
 ## Argument Reference
+
 - `id` - (Required) The unique webhook ID.
 
 ## Attributes Reference
@@ -28,7 +29,7 @@ In addition to the arguments above, the resource exports following attributes:
 
 - `url` - The URL of the remote webhook.
 
-- `enabled` - Whether the webhook is enabled.
+- `enabled` - Whether the webhook is enabled. This attribute is **deprecated** in favor or `on`. Please update all references of `enabled` to `on` to maintain compatibility with future versions.
 
 - `name` - The webhook's human-readable name.
 
@@ -36,11 +37,13 @@ In addition to the arguments above, the resource exports following attributes:
 
 - `tags` - Set of tags associated with the webhook.
 
-- `policy_statements` - List of policy statement blocks used to filter webhook events. For more information on webhook policy filters read [Adding a policy filter](https://docs.launchdarkly.com/integrations/webhooks#adding-a-policy-filter). To learn more, read [Policy Statement Blocks](#policy-statement-blocks).
+- `statements` - List of policy statement blocks used to filter webhook events. For more information on webhook policy filters read [Adding a policy filter](https://docs.launchdarkly.com/integrations/webhooks#adding-a-policy-filter). To learn more, read [Policy Statement Blocks](#policy-statement-blocks).
+
+- `policy_statements` - List of policy statement blocks used to filter webhook events. For more information on webhook policy filters read [Adding a policy filter](https://docs.launchdarkly.com/integrations/webhooks#adding-a-policy-filter). To learn more, read [Policy Statement Blocks](#policy-statement-blocks). This attribute is **deprecated** in favor or `statements`. Please update all references of `policy_statements` to `statements` to maintain compatibility with future versions.
 
 ### Policy Statement Blocks
 
-Webhook `policy_statements` blocks are composed of the following arguments:
+Webhook `statements` (previously `policy_statements`) blocks are composed of the following arguments:
 
 - `effect` - Either `allow` or `deny`. This argument defines whether the statement allows or denies access to the named resources and actions.
 

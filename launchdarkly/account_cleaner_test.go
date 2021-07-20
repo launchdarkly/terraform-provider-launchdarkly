@@ -82,7 +82,7 @@ func (c *Client) cleanProjects() error {
 
 // cleanTeamMembers ensures the only team member is the account owner
 func (c *Client) cleanTeamMembers() error {
-	members, _, err := c.ld.TeamMembersApi.GetMembers(c.ctx, &ldapi.GetMembersOpts{})
+	members, _, err := c.ld.TeamMembersApi.GetMembers(c.ctx, &ldapi.TeamMembersApiGetMembersOpts{})
 	if err != nil {
 		return handleLdapiErr(err)
 	}

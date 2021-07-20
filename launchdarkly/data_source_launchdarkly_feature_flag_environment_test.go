@@ -6,6 +6,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/hashicorp/terraform-plugin-sdk/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-sdk/helper/resource"
 	ldapi "github.com/launchdarkly/api-client-go"
 	"github.com/stretchr/testify/assert"
@@ -74,7 +75,7 @@ func TestAccDataSourceFeatureFlagEnvironment_noMatchReturnsError(t *testing.T) {
 		t.SkipNow()
 	}
 
-	projectKey := "ff-env-ds-test"
+	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	envKey := "bad-env"
 	flagKey := "flag-no-env"
 	client, err := newClient(os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN), os.Getenv(LAUNCHDARKLY_API_HOST), false)
@@ -95,7 +96,7 @@ func TestAccDataSourceFeatureFlagEnvironment_exists(t *testing.T) {
 		t.SkipNow()
 	}
 
-	projectKey := "ff-env-ds-test2"
+	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	envKey := "test"
 	flagKey := "test-env-config"
 	client, err := newClient(os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN), os.Getenv(LAUNCHDARKLY_API_HOST), false)
@@ -142,6 +143,11 @@ func TestAccDataSourceFeatureFlagEnvironment_exists(t *testing.T) {
 	flag, err := testAccDataSourceFeatureFlagEnvironmentScaffold(client, projectKey, envKey, flagKey, patches)
 	require.NoError(t, err)
 
+	defer func() {
+		err := testAccDataSourceProjectDelete(client, projectKey)
+		require.NoError(t, err)
+	}()
+
 	thisConfig := flag.Environments[envKey]
 	otherConfig := flag.Environments["production"]
 
@@ -186,7 +192,4 @@ func TestAccDataSourceFeatureFlagEnvironment_exists(t *testing.T) {
 			},
 		},
 	})
-
-	err = testAccDataSourceProjectDelete(client, projectKey)
-	require.NoError(t, err)
 }

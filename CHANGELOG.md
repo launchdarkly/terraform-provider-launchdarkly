@@ -1,3 +1,33 @@
+## [1.6.0] (July 20, 2021)
+
+FEATURES:
+
+- Added support for an `azure-event-hubs` data source `kind` on the `launchdarkly_destination` resource.
+
+ENHANCEMENTS:
+
+- Improved 429 retry handling.
+
+- Upgraded the Go version to 1.16.
+
+- Upgraded the LaunchDarkly SDK version to v5.1.0+.
+
+BUG FIXES:
+
+- Fixed a bug in the feature flag resource where multivariate (non-boolean) resource config with zero variations would create a boolean flag.
+
+- Fixed a bug in the feature flag resource where `default_on_variation` and `default_off_variation` would still show up in `terraform plan` following their removal.
+
+- Updated the destination `config` `Elem` type to `TypeString` and made the `config` field required. Added improved validation to check fields for different destination kinds.
+
+NOTES:
+
+- The `launchdarkly_destination` resource's `enabled` argument has been deprecated in favor of `on`. Please update your config to use `on` in order to maintain compatibility with future versions.
+- The `launchdarkly_webhook` resource's `policy_statements` argument has been deprecated in favor of `statements`. Please update your config to use `statements` in order to maintain compatibility with future versions.
+- The `launchdarkly_webhook` data source's `policy_statements` attribute has been deprecated in favor of `statements`. Please update all references of `policy_statements` to `statements` in order to maintain compatibility with future versions.
+- The `launchdarkly_webhook` resource's `enabled` argument has been deprecated in favor of `on`. Please update your config to use `on` in order to maintain compatibility with future versions.
+- The `launchdarkly_webhook` data source's `enabled` attribute has been deprecated in favor of `on`. Please update your all references of `enabled` to `on` in order to maintain compatibility with future versions.
+
 ## [1.5.1] (March 16, 2021)
 
 BUG FIXES:

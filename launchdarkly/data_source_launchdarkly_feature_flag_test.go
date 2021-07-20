@@ -6,6 +6,7 @@ import (
 	"regexp"
 	"testing"
 
+	"github.com/hashicorp/terraform-plugin-sdk/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-sdk/helper/resource"
 	ldapi "github.com/launchdarkly/api-client-go"
 	"github.com/stretchr/testify/require"
@@ -27,13 +28,18 @@ func TestAccDataSourceFeatureFlag_noMatchReturnsError(t *testing.T) {
 	}
 	client, err := newClient(os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN), os.Getenv(LAUNCHDARKLY_API_HOST), false)
 	require.NoError(t, err)
-	projectKey := "tf-flag-test-proj"
+	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	projectBody := ldapi.ProjectBody{
 		Name: "Terraform Flag Test Project",
 		Key:  projectKey,
 	}
 	project, err := testAccDataSourceProjectCreate(client, projectBody)
 	require.NoError(t, err)
+
+	defer func() {
+		err := testAccDataSourceProjectDelete(client, projectKey)
+		require.NoError(t, err)
+	}()
 
 	flagKey := "nonexistent-flag"
 	resource.ParallelTest(t, resource.TestCase{
@@ -44,13 +50,10 @@ func TestAccDataSourceFeatureFlag_noMatchReturnsError(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config:      fmt.Sprintf(testAccDataSourceFeatureFlag, flagKey, project.Key),
-				ExpectError: regexp.MustCompile(`errors during refresh: failed to get flag "nonexistent-flag" of project "tf-flag-test-proj": 404 Not Found:`),
+				ExpectError: regexp.MustCompile(fmt.Sprintf(`errors during refresh: failed to get flag "nonexistent-flag" of project "%s": 404 Not Found:`, projectKey)),
 			},
 		},
 	})
-
-	err = testAccDataSourceProjectDelete(client, projectKey)
-	require.NoError(t, err)
 }
 
 func TestAccDataSourceFeatureFlag_exists(t *testing.T) {
@@ -59,7 +62,7 @@ func TestAccDataSourceFeatureFlag_exists(t *testing.T) {
 		t.SkipNow()
 	}
 
-	projectKey := "flag-test-project"
+	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	client, err := newClient(os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN), os.Getenv(LAUNCHDARKLY_API_HOST), false)
 	require.NoError(t, err)
 

@@ -11,12 +11,18 @@ func dataSourceWebhook() *schema.Resource {
 		Computed: true,
 	}
 	schemaMap[ENABLED] = &schema.Schema{
+		Type:       schema.TypeBool,
+		Computed:   true,
+		Deprecated: "'enabled' is deprecated in favor of 'on'",
+	}
+	schemaMap[ON] = &schema.Schema{
 		Type:     schema.TypeBool,
 		Computed: true,
 	}
 	schemaMap[ID] = &schema.Schema{
-		Type:     schema.TypeString,
-		Required: true,
+		Type:        schema.TypeString,
+		Required:    true,
+		Description: "The ID of the webhook",
 	}
 	return &schema.Resource{
 		Read:   dataSourceWebhookRead,

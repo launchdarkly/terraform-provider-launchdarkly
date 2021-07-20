@@ -12,16 +12,26 @@ import (
 func baseWebhookSchema() map[string]*schema.Schema {
 	return map[string]*schema.Schema{
 		SECRET: {
-			Type:      schema.TypeString,
-			Optional:  true,
-			Sensitive: true,
+			Type:        schema.TypeString,
+			Optional:    true,
+			Description: "If sign is true, and the secret attribute is omitted, LaunchDarkly will automatically generate a secret for you",
+			Sensitive:   true,
 		},
 		NAME: {
-			Type:     schema.TypeString,
-			Optional: true,
+			Type:        schema.TypeString,
+			Optional:    true,
+			Description: "A human-readable name for your webhook",
 		},
-		POLICY_STATEMENTS: policyStatementsSchema(),
-		TAGS:              tagsSchema(),
+		POLICY_STATEMENTS: policyStatementsSchema(
+			policyStatementSchemaOptions{
+				deprecated:    "'policy_statements' is deprecated in favor of 'statements'",
+				conflictsWith: []string{STATEMENTS},
+			},
+		),
+		STATEMENTS: policyStatementsSchema(policyStatementSchemaOptions{
+			conflictsWith: []string{POLICY_STATEMENTS},
+		}),
+		TAGS: tagsSchema(),
 	}
 }
 
@@ -53,11 +63,43 @@ func webhookRead(d *schema.ResourceData, meta interface{}, isDataSource bool) er
 	}
 	_ = d.Set(URL, webhook.Url)
 	_ = d.Set(SECRET, webhook.Secret)
-	_ = d.Set(ENABLED, webhook.On)
+
+	// "enabled" is deprecated in favor of "on". For data sources, set both, for resources only set the one being used.
+	if isDataSource {
+		_ = d.Set(ENABLED, webhook.On)
+		_ = d.Set(ON, webhook.On)
+	} else {
+		if _, ok := d.GetOkExists(ENABLED); ok {
+			_ = d.Set(ENABLED, webhook.On)
+		} else {
+			_ = d.Set(ON, webhook.On)
+		}
+	}
+
 	_ = d.Set(NAME, webhook.Name)
-	err = d.Set(POLICY_STATEMENTS, statements)
-	if err != nil {
-		return fmt.Errorf("failed to set policy_statements on webhook with id %q: %v", webhookID, err)
+
+	// // "policy_statements" is deprecated in favor of "statements". For data sources, set both, for resources only set the one being used.
+	if isDataSource {
+		err = d.Set(POLICY_STATEMENTS, statements)
+		if err != nil {
+			return fmt.Errorf("failed to set policy_statements on webhook with id %q: %v", webhookID, err)
+		}
+		err = d.Set(STATEMENTS, statements)
+		if err != nil {
+			return fmt.Errorf("failed to set statements on webhook with id %q: %v", webhookID, err)
+		}
+	} else {
+		if _, ok := d.GetOk(POLICY_STATEMENTS); ok {
+			err = d.Set(POLICY_STATEMENTS, statements)
+			if err != nil {
+				return fmt.Errorf("failed to set policy_statements on webhook with id %q: %v", webhookID, err)
+			}
+		} else {
+			err = d.Set(STATEMENTS, statements)
+			if err != nil {
+				return fmt.Errorf("failed to set statements on webhook with id %q: %v", webhookID, err)
+			}
+		}
 	}
 
 	err = d.Set(TAGS, webhook.Tags)

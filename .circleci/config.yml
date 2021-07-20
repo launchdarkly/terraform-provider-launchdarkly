@@ -1,19 +1,22 @@
-# Golang CircleCI 2.0 configuration file for terraform-provider-launchdarkly-private tests
-#
-# Check https://circleci.com/docs/2.0/language-go/ for more details
-version: 2
+# Golang CircleCI 2.1 configuration file for terraform-provider-launchdarkly-private tests
+version: 2.1
+
+orbs:
+  go: circleci/go@1.7.0
+
 jobs:
   build:
-    docker:
-      - image: circleci/golang:1.14
+    executor:
+      name: go/default
+      tag: "1.16"
 
-    working_directory: /go/src/github.com/launchdarkly/terraform-provider-launchdarkly-private
     steps:
       - checkout
+      - go/mod-download-cached
       - run:
           name: go vet
           command: make vet
-      - run: 
+      - run:
           name: Test Custom Properties
           command: TESTARGS="-run TestCustomProperties" make testacc
       - run:
@@ -61,7 +64,7 @@ jobs:
       - run:
           name: Test Segment Resource
           command: TESTARGS="-run TestAccSegment" make testacc
-      - run: 
+      - run:
           name: Test Team Members
           command: |
             TESTARGS="-run TestAccTeamMember_CreateGeneric" make testacc
@@ -71,3 +74,8 @@ jobs:
       - run:
           name: Test Webhook Resource
           command: TESTARGS="-run TestAccWebhook" make testacc
+
+workflows:
+  main:
+    jobs:
+      - build

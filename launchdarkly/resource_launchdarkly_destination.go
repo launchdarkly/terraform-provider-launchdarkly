@@ -39,105 +39,35 @@ func resourceDestination() *schema.Resource {
 			},
 			NAME: {
 				Type:        schema.TypeString,
-				Description: "a human-readable name for your data export destination",
+				Description: "A human-readable name for your data export destination",
 				Required:    true,
 			},
-			// kind can only be one of three types (kinesis, google-pubsub, or mparticle)
+			// kind can only be one of five types (kinesis, google-pubsub, mparticle, azure-event-hubs, or segment)
 			KIND: {
 				Type:         schema.TypeString,
 				Required:     true,
-				Description:  "The data export destination type - must be 'kinesis', 'google-pubsub', 'mparticle', or 'segment'",
-				ValidateFunc: validation.StringInSlice([]string{"kinesis", "google-pubsub", "mparticle", "segment"}, false),
+				Description:  "The data export destination type. Available choices are 'kinesis', 'google-pubsub', 'segment', 'azure-event-hubs', and 'mparticle'",
+				ValidateFunc: validation.StringInSlice([]string{"kinesis", "google-pubsub", "mparticle", "azure-event-hubs", "segment"}, false),
 				ForceNew:     true,
 			},
 			CONFIG: {
-				Type:     schema.TypeMap,
-				Optional: true,
-				Elem: &schema.Resource{
-					Schema: map[string]*schema.Schema{
-						"google-pubsub": {
-							Type:     schema.TypeMap,
-							Optional: true,
-							Elem: &schema.Resource{
-								Schema: map[string]*schema.Schema{
-									"project": {
-										Type:     schema.TypeString,
-										Required: true,
-									},
-									"topic": {
-										Type:     schema.TypeString,
-										Required: true,
-									},
-								},
-							},
-						},
-						"kinesis": {
-							Type:     schema.TypeMap,
-							Optional: true,
-							Elem: &schema.Resource{
-								Schema: map[string]*schema.Schema{
-									"region": {
-										Type:     schema.TypeString,
-										Required: true,
-									},
-									"role_arn": {
-										Type:     schema.TypeString,
-										Required: true,
-									},
-									"stream_name": {
-										Type:     schema.TypeString,
-										Required: true,
-									},
-								},
-							},
-						},
-						"segment": {
-							Type:     schema.TypeMap,
-							Optional: true,
-							Elem: &schema.Resource{
-								Schema: map[string]*schema.Schema{
-									"write_key": {
-										Type:      schema.TypeString,
-										Required:  true,
-										Sensitive: true,
-										ForceNew:  true,
-									},
-								},
-							},
-						},
-						"mparticle": {
-							Type:     schema.TypeMap,
-							Optional: true,
-							Elem: &schema.Resource{
-								Schema: map[string]*schema.Schema{
-									"api_key": {
-										Type:      schema.TypeString,
-										Required:  true,
-										Sensitive: true,
-									},
-									"secret": {
-										Type:      schema.TypeString,
-										Required:  true,
-										Sensitive: true,
-									},
-									"user_identity": {
-										Type:     schema.TypeString,
-										Required: true,
-									},
-									"environment": {
-										Type:     schema.TypeString,
-										Required: true,
-									},
-								},
-							},
-						},
-					},
-				},
+				Type:        schema.TypeMap,
+				Required:    true,
+				Description: "The destination-specific configuration object corresponding to your data export kind - see documentation for required fields for each kind",
+				Elem:        &schema.Schema{Type: schema.TypeString},
 			},
-
 			ENABLED: {
-				Type:     schema.TypeBool,
-				Optional: true,
+				Type:          schema.TypeBool,
+				Description:   "Whether the data export destination is on or not. This field has been deprecated in favor of 'on'",
+				Deprecated:    "'enabled' is deprecated in favor of 'on'",
+				Optional:      true,
+				ConflictsWith: []string{ON},
+			},
+			ON: {
+				Type:          schema.TypeBool,
+				Description:   "Whether the data export destination is on or not",
+				Optional:      true,
+				ConflictsWith: []string{ENABLED},
 			},
 			TAGS: tagsSchema(),
 		},
@@ -150,7 +80,7 @@ func resourceDestinationCreate(d *schema.ResourceData, metaRaw interface{}) erro
 	destinationEnvKey := d.Get(ENV_KEY).(string)
 	destinationName := d.Get(NAME).(string)
 	destinationKind := d.Get(KIND).(string)
-	destinationOn := d.Get(ENABLED).(bool)
+	destinationOn := getDestinationOn(d)
 
 	destinationConfig, err := destinationConfigFromResourceData(d)
 	if err != nil {
@@ -208,7 +138,11 @@ func resourceDestinationRead(d *schema.ResourceData, metaRaw interface{}) error 
 	_ = d.Set(NAME, destination.Name)
 	_ = d.Set(KIND, destination.Kind)
 	_ = d.Set(CONFIG, preservedCfg)
-	_ = d.Set(ENABLED, destination.On)
+	if _, ok := d.GetOkExists(ENABLED); ok {
+		d.Set(ENABLED, destination.On)
+	} else {
+		d.Set(ON, destination.On)
+	}
 
 	d.SetId(strings.Join([]string{destinationProjKey, destinationEnvKey, destination.Id}, "/"))
 	return nil
@@ -228,7 +162,7 @@ func resourceDestinationUpdate(d *schema.ResourceData, metaRaw interface{}) erro
 	if err != nil {
 		return err
 	}
-	destinationOn := d.Get(ENABLED).(bool)
+	destinationOn := getDestinationOn(d)
 
 	patch := []ldapi.PatchOperation{
 		patchReplace("/name", &destinationName),
@@ -311,4 +245,19 @@ func destinationImportIDtoKeys(importID string) (projKey, envKey, destinationID 
 	parts := strings.SplitN(importID, "/", 3)
 	projKey, envKey, destinationID = parts[0], parts[1], parts[2]
 	return projKey, envKey, destinationID, nil
+}
+
+// getDestinationOn is a helper function used for deprecating ENABLED in favor of ON to match
+// LD's API response. It will default to false if neither is set and we will overwrite the existing
+// value with false if it is removed.
+func getDestinationOn(d *schema.ResourceData) bool {
+	var destinationOn bool
+	on, onSet := d.GetOkExists(ON)
+	enabled, enabledSet := d.GetOkExists(ENABLED)
+	if onSet {
+		destinationOn = on.(bool)
+	} else if enabledSet {
+		destinationOn = enabled.(bool)
+	}
+	return destinationOn
 }

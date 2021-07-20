@@ -18,7 +18,7 @@ resource "launchdarkly_webhook" "example" {
   url     = "http://webhooks.com/webhook"
   name    = "Example Webhook"
   tags    = ["terraform"]
-  enabled = true
+  on      = true
 
   policy_statements {
     actions     = ["*"]
@@ -37,7 +37,9 @@ resource "launchdarkly_webhook" "example" {
 
 - `url` - (Required) The URL of the remote webhook.
 
-- `enabled` - (Required) Specifies whether the webhook is enabled.
+- `on` - (Optional) Specifies whether the webhook is enabled. Either `on` or `enabled` must be specified.
+
+- `enabled` - (Optional, **Deprecated**) Specifies whether the webhook is enabled. This field argument is **deprecated** in favor of `on`. Please update your config to use to `on` to maintain compatibility with future versions. Either `on` or `enabled` must be specified.
 
 - `name` - (Optional) The webhook's human-readable name.
 
@@ -45,9 +47,11 @@ resource "launchdarkly_webhook" "example" {
 
 - `tags` - (Optional) Set of tags associated with the webhook.
 
-- `policy_statements` - (Optional) List of policy statement blocks used to filter webhook events. For more information on webhook policy filters read [Adding a policy filter](https://docs.launchdarkly.com/integrations/webhooks#adding-a-policy-filter)
+`statements` - (Optional) List of policy statement blocks used to filter webhook events. For more information on webhook policy filters read [Adding a policy filter](https://docs.launchdarkly.com/integrations/webhooks#adding-a-policy-filter).
 
-Webhook `policy_statements` blocks are composed of the following arguments:
+- `policy_statements` - (Optional, **Deprecated**) List of policy statement blocks used to filter webhook events. For more information on webhook policy filters read [Adding a policy filter](https://docs.launchdarkly.com/integrations/webhooks#adding-a-policy-filter). This argument is **deprecated** in favor of `statements`. Please update your config to use `statements` to maintain compatibility with future versions.
+
+Webhook `statements` and `policy_statements` blocks are composed of the following arguments:
 
 - `effect` - (Required) Either `allow` or `deny`. This argument defines whether the statement allows or denies access to the named resources and actions.
 

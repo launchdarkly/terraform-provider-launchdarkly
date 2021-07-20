@@ -8,11 +8,21 @@ import (
 	ldapi "github.com/launchdarkly/api-client-go"
 )
 
-func policyStatementsSchema() *schema.Schema {
+// policyStatementSchemaOptions is used to help with renaming 'policy_statements' to statements for the launchdarkly_webhook resource.
+// This struct can be removed after we have dropped support for 'policy_statements'
+type policyStatementSchemaOptions struct {
+	// when set, the attribute will be marked as 'deprected'
+	deprecated    string
+	conflictsWith []string
+}
+
+func policyStatementsSchema(options policyStatementSchemaOptions) *schema.Schema {
 	return &schema.Schema{
-		Type:     schema.TypeList,
-		Optional: true,
-		MinItems: 1,
+		Type:          schema.TypeList,
+		Optional:      true,
+		MinItems:      1,
+		Deprecated:    options.deprecated,
+		ConflictsWith: options.conflictsWith,
 		Elem: &schema.Resource{
 			Schema: map[string]*schema.Schema{
 				RESOURCES: {
@@ -20,32 +30,36 @@ func policyStatementsSchema() *schema.Schema {
 					Elem: &schema.Schema{
 						Type: schema.TypeString,
 					},
-					Optional: true,
-					MinItems: 1,
+					Optional:    true,
+					Description: "A list of LaunchDarkly resource specifiers",
+					MinItems:    1,
 				},
 				NOT_RESOURCES: {
 					Type: schema.TypeList,
 					Elem: &schema.Schema{
 						Type: schema.TypeString,
 					},
-					Optional: true,
-					MinItems: 1,
+					Optional:    true,
+					Description: "Targeted resources will be those resources NOT in this list. The 'resources' field must be empty to use this field",
+					MinItems:    1,
 				},
 				ACTIONS: {
 					Type: schema.TypeList,
 					Elem: &schema.Schema{
 						Type: schema.TypeString,
 					},
-					Optional: true,
-					MinItems: 1,
+					Optional:    true,
+					Description: "An action to perform on a resource",
+					MinItems:    1,
 				},
 				NOT_ACTIONS: {
 					Type: schema.TypeList,
 					Elem: &schema.Schema{
 						Type: schema.TypeString,
 					},
-					Optional: true,
-					MinItems: 1,
+					Optional:    true,
+					Description: "Targeted actions will be those actions NOT in this list. The 'actions' field must be empty to use this field",
+					MinItems:    1,
 				},
 				EFFECT: {
 					Type:         schema.TypeString,
@@ -63,23 +77,21 @@ func validatePolicyStatement(statement map[string]interface{}) error {
 	actions := statement[ACTIONS].([]interface{})
 	notActions := statement[NOT_ACTIONS].([]interface{})
 	if len(resources) > 0 && len(notResources) > 0 {
-		return errors.New("policy_statements cannot contain both 'resources' and 'not_resources'")
+		return errors.New("policy statements cannot contain both 'resources' and 'not_resources'")
 	}
 	if len(resources) == 0 && len(notResources) == 0 {
-		return errors.New("policy_statements must contain either 'resources' or 'not_resources'")
+		return errors.New("policy statements must contain either 'resources' or 'not_resources'")
 	}
 	if len(actions) > 0 && len(notActions) > 0 {
-		return errors.New("policy_statements cannot contain both 'actions' and 'not_actions'")
+		return errors.New("policy statements cannot contain both 'actions' and 'not_actions'")
 	}
 	if len(actions) == 0 && len(notActions) == 0 {
-		return errors.New("policy_statements must contain either 'actions' or 'not_actions'")
+		return errors.New("policy statements must contain either 'actions' or 'not_actions'")
 	}
 	return nil
 }
 
-func policyStatementsFromResourceData(d *schema.ResourceData) ([]ldapi.Statement, error) {
-	schemaStatements := d.Get(POLICY_STATEMENTS).([]interface{})
-
+func policyStatementsFromResourceData(schemaStatements []interface{}) ([]ldapi.Statement, error) {
 	statements := make([]ldapi.Statement, 0, len(schemaStatements))
 	for _, stmt := range schemaStatements {
 		statement := stmt.(map[string]interface{})

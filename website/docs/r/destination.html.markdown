@@ -15,7 +15,7 @@ To learn more about data export, read [Data Export Documentation](https://docs.l
 
 ## Example Usage
 
-Currently the following three types of destinations are available: kinesis, google-pubsub, and mparticle. Please note that config fields will vary depending on which destination you are trying to configure / access.
+Currently the following five types of destinations are available: kinesis, google-pubsub, mparticle, azure-event-hubs, and segment. Please note that config fields will vary depending on which destination you are trying to configure / access.
 
 ```hcl
 resource "launchdarkly_destination" "example" {
@@ -28,7 +28,7 @@ resource "launchdarkly_destination" "example" {
     "role_arn" : "arn:aws:iam::123456789012:role/marketingadmin",
     "stream_name" : "cat-stream"
   }
-  enabled = true
+  on = true
   tags    = ["terraform"]
 }
 ```
@@ -43,7 +43,7 @@ resource "launchdarkly_destination" "example" {
     "project" : "example-pub-sub-project",
     "topic" : "example-topic"
   }
-  enabled = true
+  on = true
   tags    = ["terraform"]
 }
 ```
@@ -60,8 +60,25 @@ resource "launchdarkly_destination" "example" {
     "user_identity" : "customer_id"
     "environment" : "production"
   }
-  enabled = true
+  on = true
   tags    = ["terraform"]
+}
+```
+
+```hcl
+resource "launchdarkly_destination" "example" {
+	project_key = "example-project"
+	env_key = "example-env"
+	name    = "example-azure-event-hubs-dest"
+	kind    = "azure-event-hubs"
+	config  = {
+		namespace = "example-azure-namespace"
+		name = "example-azure-name"
+		policy_name = "example-policy-name"
+		policy_key = "azure-event-hubs-policy-key"
+	}
+	on = true
+	tags = ["terraform"]
 }
 ```
 
@@ -74,7 +91,7 @@ resource "launchdarkly_destination" "example" {
   config = {
     "write_key": "segment-write-key"
   }
-  enabled = true
+  on = true
   tags    = ["terraform"]
 }
 ```
@@ -87,9 +104,11 @@ resource "launchdarkly_destination" "example" {
 
 - `name` - (Required) - A human-readable name for your data export destination.
 
-- `kind` - (Required) - The data export destination type. Available choices are `kinesis`, `google-pubsub`, `mparticle`, and `segment`.
+- `kind` - (Required) - The data export destination type. Available choices are `kinesis`, `google-pubsub`, `mparticle`, `azure-event-hubs`, and `segment`.
 
 - `config` - (Required) - The destination-specific configuration. To learn more, read [Destination-Specific Configs](#destination-specific-configs).
+
+- `enabled` - (Optional, **Deprecated**) - Whether the data export destination is on or not. This field argument is **deprecated** in favor of `on`. Please update your config to use to `on` to maintain compatibility with future versions.
 
 - `on` - (Optional) - Whether the data export destination is on or not.
 
@@ -120,6 +139,16 @@ Depending on the destination kind, the `config` argument should contain the foll
 - `user_identity` - (Required) - Your mParticle user ID.
 
 - `environment` - (Required) - The mParticle environment. Must be 'production' or 'development'.
+
+### Azure Event Hubs
+
+- `namespace` - (Required) - The Azure namespace where you want LaunchDarkly to export events.
+
+- `name` - (Required) -
+
+- `policy_name` - (Required) - The name of your Azure policy. Follow the directions in the [docs](https://docs.launchdarkly.com/home/data-export/event-hub#creating-a-policy-and-key-in-azure-event-hub) to set up a policy.
+
+- `policy_key` - (Required) - Your Azure policy key. The name of your Azure policy. Follow the directions in the [docs](https://docs.launchdarkly.com/home/data-export/event-hub#creating-a-policy-and-key-in-azure-event-hub) to set up a policy.
 
 ### Segment
 

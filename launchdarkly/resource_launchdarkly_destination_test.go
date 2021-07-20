@@ -13,13 +13,13 @@ const (
 	testAccDestinationCreateKinesis = `
 resource "launchdarkly_destination" "test" {
 	project_key = launchdarkly_project.test.key
-	env_key = "test"
-	name = "kinesis-dest"
-	kind = "kinesis"
+	env_key     = "test"
+	name        = "kinesis-dest"
+	kind        = "kinesis"
 	config = {
-		region: "us-east-1",
-		role_arn: "arn:aws:iam::123456789012:role/marketingadmin",
-		stream_name: "cat-stream"
+		region      = "us-east-1"
+		role_arn    = "arn:aws:iam::123456789012:role/marketingadmin"
+		stream_name = "cat-stream"
 	}
 	enabled = true
 	tags = [ "terraform" ]
@@ -28,12 +28,12 @@ resource "launchdarkly_destination" "test" {
 	testAccDestinationCreatePubsub = `
 resource "launchdarkly_destination" "test" {
 	project_key = launchdarkly_project.test.key
-	env_key = "test"
-	name = "pubsub-dest"
-	kind = "google-pubsub"
+	env_key     = "test"
+	name        = "pubsub-dest"
+	kind        = "google-pubsub"
 	config = {
-		"project": "test-project",
-		"topic": "test-topic"
+		project = "test-project"
+		topic   = "test-topic"
 	}
 	enabled = true
 	tags = [ "terraform" ]
@@ -46,10 +46,10 @@ resource "launchdarkly_destination" "test" {
 	name = "mparticle-dest"
 	kind = "mparticle"
 	config = {
-		api_key = "apiKeyfromMParticle"
-		secret = "mParticleSecret"
+		api_key       = "apiKeyfromMParticle"
+		secret        = "mParticleSecret"
 		user_identity = "customer_id"
-		environment = "production"
+		environment   = "production"
 	}
 	enabled = true
 	tags = [ "terraform" ]
@@ -60,12 +60,29 @@ resource "launchdarkly_destination" "test" {
 resource "launchdarkly_destination" "test" {
 	project_key = launchdarkly_project.test.key
 	env_key = "test"
-	name = "segment-dest"
-	kind = "segment"
-	config = {
+	name    = "segment-dest"
+	kind    = "segment"
+	config  = {
 		write_key = "super-secret-write-key"
 	}
 	enabled = true
+	tags = [ "terraform" ]
+}
+`
+
+	testAccDestinationCreateAzureEventHubs = `
+resource "launchdarkly_destination" "test" {
+	project_key = launchdarkly_project.test.key
+	env_key = "test"
+	name    = "azure-event-hubs-dest"
+	kind    = "azure-event-hubs"
+	config  = {
+		namespace = "namespace"
+		name = "name"
+		policy_name = "policy-name"
+		policy_key = "super-secret-policy-key"
+	}
+	on = true
 	tags = [ "terraform" ]
 }
 `
@@ -130,6 +147,23 @@ resource "launchdarkly_destination" "test" {
 	tags = [ "terraform" ]
 }
 `
+
+	testAccDestinationUpdateAzureEventHubs = `
+resource "launchdarkly_destination" "test" {
+	project_key = launchdarkly_project.test.key
+	env_key = "test"
+	name    = "updated-azure-event-hubs-dest"
+	kind    = "azure-event-hubs"
+	config  = {
+		namespace = "namespace"
+		name = "updated-name"
+		policy_name = "updated-policy-name"
+		policy_key = "updated-policy-key"
+	}
+	on = false
+	tags = [ "terraform" ]
+}
+`
 )
 
 func TestAccDestination_CreateKinesis(t *testing.T) {
@@ -159,7 +193,6 @@ func TestAccDestination_CreateKinesis(t *testing.T) {
 			{
 				ResourceName:            resourceName,
 				ImportState:             true,
-				ImportStateVerify:       true,
 				ImportStateVerifyIgnore: []string{"tags"},
 			},
 		},
@@ -234,6 +267,34 @@ func TestAccDestination_CreateSegment(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "name", "segment-dest"),
 					resource.TestCheckResourceAttr(resourceName, "kind", "segment"),
 					resource.TestCheckResourceAttr(resourceName, "config.write_key", "super-secret-write-key"),
+					resource.TestCheckResourceAttr(resourceName, testAccTagKey("terraform"), "terraform"),
+				),
+			},
+		},
+	})
+}
+
+func TestAccDestination_CreateAzureEventHubs(t *testing.T) {
+	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	resourceName := "launchdarkly_destination.test"
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck: func() {
+			testAccPreCheck(t)
+		},
+		Providers: testAccProviders,
+		Steps: []resource.TestStep{
+			{
+				Config: withRandomProject(projectKey, testAccDestinationCreateAzureEventHubs),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckProjectExists("launchdarkly_project.test"),
+					testAccCheckDestinationExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, "env_key", "test"),
+					resource.TestCheckResourceAttr(resourceName, "name", "azure-event-hubs-dest"),
+					resource.TestCheckResourceAttr(resourceName, "kind", "azure-event-hubs"),
+					resource.TestCheckResourceAttr(resourceName, "config.namespace", "namespace"),
+					resource.TestCheckResourceAttr(resourceName, "config.name", "name"),
+					resource.TestCheckResourceAttr(resourceName, "config.policy_name", "policy-name"),
+					resource.TestCheckResourceAttr(resourceName, "config.policy_key", "super-secret-policy-key"),
 					resource.TestCheckResourceAttr(resourceName, testAccTagKey("terraform"), "terraform"),
 				),
 			},
@@ -384,6 +445,51 @@ func TestAccDestination_UpdateSegment(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "name", "segment-dest"),
 					resource.TestCheckResourceAttr(resourceName, "kind", "segment"),
 					resource.TestCheckResourceAttr(resourceName, "config.write_key", "updated-write-key"),
+					resource.TestCheckResourceAttr(resourceName, testAccTagKey("terraform"), "terraform"),
+				),
+			},
+		},
+	})
+}
+
+func TestAccDestination_UpdateAzureEventHubs(t *testing.T) {
+	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	resourceName := "launchdarkly_destination.test"
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck: func() {
+			testAccPreCheck(t)
+		},
+		Providers: testAccProviders,
+		Steps: []resource.TestStep{
+			{
+				Config: withRandomProject(projectKey, testAccDestinationCreateAzureEventHubs),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckProjectExists("launchdarkly_project.test"),
+					testAccCheckDestinationExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, "env_key", "test"),
+					resource.TestCheckResourceAttr(resourceName, "name", "azure-event-hubs-dest"),
+					resource.TestCheckResourceAttr(resourceName, "kind", "azure-event-hubs"),
+					resource.TestCheckResourceAttr(resourceName, "config.namespace", "namespace"),
+					resource.TestCheckResourceAttr(resourceName, "config.name", "name"),
+					resource.TestCheckResourceAttr(resourceName, "config.policy_name", "policy-name"),
+					resource.TestCheckResourceAttr(resourceName, "config.policy_key", "super-secret-policy-key"),
+					resource.TestCheckResourceAttr(resourceName, "on", "true"),
+					resource.TestCheckResourceAttr(resourceName, testAccTagKey("terraform"), "terraform"),
+				),
+			},
+			{
+				Config: withRandomProject(projectKey, testAccDestinationUpdateAzureEventHubs),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckProjectExists("launchdarkly_project.test"),
+					testAccCheckDestinationExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, "env_key", "test"),
+					resource.TestCheckResourceAttr(resourceName, "name", "updated-azure-event-hubs-dest"),
+					resource.TestCheckResourceAttr(resourceName, "kind", "azure-event-hubs"),
+					resource.TestCheckResourceAttr(resourceName, "config.namespace", "namespace"),
+					resource.TestCheckResourceAttr(resourceName, "config.name", "updated-name"),
+					resource.TestCheckResourceAttr(resourceName, "config.policy_name", "updated-policy-name"),
+					resource.TestCheckResourceAttr(resourceName, "config.policy_key", "updated-policy-key"),
+					resource.TestCheckResourceAttr(resourceName, "on", "false"),
 					resource.TestCheckResourceAttr(resourceName, testAccTagKey("terraform"), "terraform"),
 				),
 			},
