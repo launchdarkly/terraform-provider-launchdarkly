@@ -16,7 +16,7 @@ func baseFeatureFlagSchema() map[string]*schema.Schema {
 			Type:         schema.TypeString,
 			Required:     true,
 			ForceNew:     true,
-			Description:  "The feature flag's project key",
+			Description:  "The LaunchDarkly project key",
 			ValidateFunc: validateKey(),
 		},
 		KEY: {
@@ -24,27 +24,31 @@ func baseFeatureFlagSchema() map[string]*schema.Schema {
 			Required:     true,
 			ForceNew:     true,
 			ValidateFunc: validateKey(),
-			Description:  "The human-readable name of the feature flag",
+			Description:  "A unique key that will be used to reference the flag in your code",
 		},
 		MAINTAINER_ID: {
 			Type:         schema.TypeString,
 			Optional:     true,
+			Description:  "The LaunchDarkly id of the user who will maintain the flag",
 			ValidateFunc: validateID(),
 		},
 		DESCRIPTION: {
-			Type:     schema.TypeString,
-			Optional: true,
+			Type:        schema.TypeString,
+			Optional:    true,
+			Description: "A short description of what the flag will be used for",
 		},
 		VARIATIONS: variationsSchema(),
 		TEMPORARY: {
-			Type:     schema.TypeBool,
-			Optional: true,
-			Default:  false,
+			Type:        schema.TypeBool,
+			Optional:    true,
+			Description: "Whether or not the flag is a temporary flag",
+			Default:     false,
 		},
 		INCLUDE_IN_SNIPPET: {
-			Type:     schema.TypeBool,
-			Optional: true,
-			Default:  false,
+			Type:        schema.TypeBool,
+			Optional:    true,
+			Description: "Whether or not this flag should be made available to the client-side JavaScript SDK",
+			Default:     false,
 		},
 		TAGS:              tagsSchema(),
 		CUSTOM_PROPERTIES: customPropertiesSchema(),
@@ -133,16 +137,21 @@ func featureFlagRead(d *schema.ResourceData, raw interface{}, isDataSource bool)
 	}
 
 	if flag.Defaults != nil {
-		onValue, err := variationValueToString(flag.Variations[flag.Defaults.OnVariation].Value, variationType)
-		if err != nil {
-			return err
+		// this is to prevent the dangling plan values on subsequent post-removal applies
+		_, ok := d.GetOk(DEFAULT_ON_VARIATION)
+		// you cannot define one without the other so this should suffice
+		if ok {
+			onValue, err := variationValueToString(flag.Variations[flag.Defaults.OnVariation].Value, variationType)
+			if err != nil {
+				return err
+			}
+			_ = d.Set(DEFAULT_ON_VARIATION, onValue)
+			offValue, err := variationValueToString(flag.Variations[flag.Defaults.OffVariation].Value, variationType)
+			if err != nil {
+				return err
+			}
+			_ = d.Set(DEFAULT_OFF_VARIATION, offValue)
 		}
-		_ = d.Set(DEFAULT_ON_VARIATION, onValue)
-		offValue, err := variationValueToString(flag.Variations[flag.Defaults.OffVariation].Value, variationType)
-		if err != nil {
-			return err
-		}
-		_ = d.Set(DEFAULT_OFF_VARIATION, offValue)
 	}
 
 	d.SetId(projectKey + "/" + key)

@@ -14,6 +14,10 @@ ENHANCEMENTS:
 
 BUG FIXES:
 
+- Fixed a bug in the feature flag resource where multivariate (non-boolean) resource config with zero variations would create a boolean flag.
+
+- Fixed a bug in the feature flag resource where `default_on_variation` and `default_off_variation` would still show up in `terraform plan` following their removal.
+
 - Updated the destination `config` `Elem` type to `TypeString` and made the `config` field required. Added improved validation to check fields for different destination kinds.
 
 NOTES:

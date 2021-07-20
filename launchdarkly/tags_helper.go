@@ -12,7 +12,8 @@ func tagsSchema() *schema.Schema {
 			Type:         schema.TypeString,
 			ValidateFunc: validateTags(),
 		},
-		Optional: true,
+		Optional:    true,
+		Description: "Tags associated with your resource",
 	}
 }
 

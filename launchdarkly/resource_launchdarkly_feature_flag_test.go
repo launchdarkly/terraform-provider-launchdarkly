@@ -294,7 +294,7 @@ resource "launchdarkly_feature_flag" "defaults" {
 resource "launchdarkly_feature_flag" "defaults-multivariate" {
 	project_key = launchdarkly_project.test.key
 	key = "defaults-multivariate-flag"
-	name = "Multivariate fature flag with defaults"
+	name = "Multivariate feature flag with defaults"
 	variation_type = "string"
 	default_on_variation = "b"
 	default_off_variation = "b"
@@ -316,7 +316,7 @@ resource "launchdarkly_feature_flag" "defaults-multivariate" {
 resource "launchdarkly_feature_flag" "defaults-multivariate" {
 	project_key = launchdarkly_project.test.key
 	key = "defaults-multivariate-flag"
-	name = "Multivariate fature flag with defaults"
+	name = "Multivariate feature flag with defaults"
 	variation_type = "string"
 	default_on_variation = "c"
 	default_off_variation = "c"
@@ -811,9 +811,10 @@ func TestAccFeatureFlag_UpdateDefaults(t *testing.T) {
 				),
 			},
 			{
-				ResourceName:      resourceName,
-				ImportState:       true,
-				ImportStateVerify: true,
+				ResourceName:            resourceName,
+				ImportState:             true,
+				ImportStateVerify:       true,
+				ImportStateVerifyIgnore: []string{"default"},
 			},
 		},
 	})
@@ -856,9 +857,10 @@ func TestAccFeatureFlag_UpdateMultivariateDefaults(t *testing.T) {
 				),
 			},
 			{
-				ResourceName:      resourceName,
-				ImportState:       true,
-				ImportStateVerify: true,
+				ResourceName:            resourceName,
+				ImportState:             true,
+				ImportStateVerify:       true,
+				ImportStateVerifyIgnore: []string{"default"},
 			},
 		},
 	})

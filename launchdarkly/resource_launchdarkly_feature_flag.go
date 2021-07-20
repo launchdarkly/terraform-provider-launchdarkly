@@ -13,7 +13,7 @@ func resourceFeatureFlag() *schema.Resource {
 	schemaMap[NAME] = &schema.Schema{
 		Type:        schema.TypeString,
 		Required:    true,
-		Description: "The feature flag's description",
+		Description: "A human-friendly name for the feature flag",
 	}
 	schemaMap[VARIATION_TYPE] = variationTypeSchema()
 	return &schema.Resource{

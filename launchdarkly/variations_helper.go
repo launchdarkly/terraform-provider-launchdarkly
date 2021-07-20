@@ -32,23 +32,27 @@ func variationTypeSchema() *schema.Schema {
 
 func variationsSchema() *schema.Schema {
 	return &schema.Schema{
-		Type:     schema.TypeList,
-		Optional: true,
-		Computed: true,
-		MinItems: 2,
+		Type:        schema.TypeList,
+		Optional:    true,
+		Computed:    true,
+		Description: "An array of possible variations for the flag",
+		MinItems:    2,
 		Elem: &schema.Resource{
 			Schema: map[string]*schema.Schema{
 				NAME: {
-					Type:     schema.TypeString,
-					Optional: true,
+					Type:        schema.TypeString,
+					Optional:    true,
+					Description: "A name for the variation",
 				},
 				DESCRIPTION: {
-					Type:     schema.TypeString,
-					Optional: true,
+					Type:        schema.TypeString,
+					Optional:    true,
+					Description: "A description for the variation",
 				},
 				VALUE: {
 					Type:         schema.TypeString,
 					Required:     true,
+					Description:  "The value of the flag for this variation",
 					ValidateFunc: validateVariationValue,
 					StateFunc: func(i interface{}) string {
 						// All values are stored as strings in TF state
@@ -90,6 +94,12 @@ func variationPatchesFromResourceData(d *schema.ResourceData) ([]ldapi.PatchOper
 	variationType := d.Get(VARIATION_TYPE).(string)
 	old, new := d.GetChange(VARIATIONS)
 
+	if len(old.([]interface{})) == 0 {
+		// This can only happen when the resource is first created. Since this is handled in the creation POST,
+		// variation patches are not necessary.
+		return patches, nil
+	}
+
 	oldVariations, err := variationsFromSchemaData(old, variationType)
 	if err != nil {
 		return patches, err
@@ -98,12 +108,6 @@ func variationPatchesFromResourceData(d *schema.ResourceData) ([]ldapi.PatchOper
 	newVariations, err := variationsFromSchemaData(new, variationType)
 	if err != nil {
 		return patches, err
-	}
-
-	if len(oldVariations) == 0 {
-		// This can only happen when the resource is first created. Since this is handled in the creation POST,
-		// variation patches are not necessary.
-		return patches, nil
 	}
 
 	// remove any unnecessary variations from the end of the variation slice
@@ -126,6 +130,9 @@ func variationPatchesFromResourceData(d *schema.ResourceData) ([]ldapi.PatchOper
 func variationsFromSchemaData(schemaVariations interface{}, variationType string) ([]ldapi.Variation, error) {
 	list := schemaVariations.([]interface{})
 	variations := make([]ldapi.Variation, len(list))
+	if variationType != BOOL_VARIATION && len(list) < 2 {
+		return variations, fmt.Errorf("multivariate flags must have at least two variations defined")
+	}
 
 	var err error
 	for i, variation := range list {
