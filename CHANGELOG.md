@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.0] (July 20, 2021)
+
 FEATURES:
 
 - Added support for an `azure-event-hubs` data source `kind` on the `launchdarkly_destination` resource.
