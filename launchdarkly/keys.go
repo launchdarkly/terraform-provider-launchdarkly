@@ -40,6 +40,7 @@ const (
 	POLICY_STATEMENTS        = "policy_statements"
 	EXCLUDED                 = "excluded"
 	INCLUDED                 = "included"
+	CREATION_DATE            = "creation_date"
 	CUSTOM_PROPERTIES        = "custom_properties"
 	EMAIL                    = "email"
 	FIRST_NAME               = "first_name"

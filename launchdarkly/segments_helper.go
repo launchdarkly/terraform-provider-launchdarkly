@@ -12,19 +12,27 @@ import (
 func baseSegmentSchema() map[string]*schema.Schema {
 	return map[string]*schema.Schema{
 		DESCRIPTION: {
-			Type:     schema.TypeString,
-			Optional: true,
+			Type:        schema.TypeString,
+			Optional:    true,
+			Description: "The description of the segment's purpose.",
 		},
 		TAGS: tagsSchema(),
 		INCLUDED: {
-			Type:     schema.TypeList,
-			Elem:     &schema.Schema{Type: schema.TypeString},
-			Optional: true,
+			Type:        schema.TypeList,
+			Elem:        &schema.Schema{Type: schema.TypeString},
+			Optional:    true,
+			Description: "List of user keys included in the segment.",
 		},
 		EXCLUDED: {
-			Type:     schema.TypeList,
-			Elem:     &schema.Schema{Type: schema.TypeString},
-			Optional: true,
+			Type:        schema.TypeList,
+			Elem:        &schema.Schema{Type: schema.TypeString},
+			Optional:    true,
+			Description: "List of user keys excluded from the segment",
+		},
+		CREATION_DATE: {
+			Type:        schema.TypeInt,
+			Computed:    true,
+			Description: "The segment's creation date represented as a UNIX epoch timestamp.",
 		},
 		RULES: segmentRulesSchema(),
 	}
@@ -54,6 +62,7 @@ func segmentRead(d *schema.ResourceData, raw interface{}, isDataSource bool) err
 	}
 	_ = d.Set(NAME, segment.Name)
 	_ = d.Set(DESCRIPTION, segment.Description)
+	_ = d.Set(CREATION_DATE, segment.CreationDate)
 
 	err = d.Set(TAGS, segment.Tags)
 	if err != nil {

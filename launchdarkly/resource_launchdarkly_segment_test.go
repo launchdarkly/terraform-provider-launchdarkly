@@ -112,6 +112,7 @@ func TestAccSegment_Create(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "excluded.#", "2"),
 					resource.TestCheckResourceAttr(resourceName, "excluded.0", "user3"),
 					resource.TestCheckResourceAttr(resourceName, "excluded.1", "user4"),
+					resource.TestCheckResourceAttrSet(resourceName, "creation_date"),
 				),
 			},
 			{
@@ -187,6 +188,34 @@ func TestAccSegment_Update(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "rules.0.clauses.1.values.0", "test2"),
 					resource.TestCheckResourceAttr(resourceName, "rules.0.clauses.1.negate", "true"),
 				),
+			},
+			// Remove the rules block and confirm the rules were actually deleted
+			{
+				Config: withRandomProject(projectKey, testAccSegmentCreate),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckProjectExists("launchdarkly_project.test"),
+					testAccCheckSegmentExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, "key", "segmentKey1"),
+					resource.TestCheckResourceAttr(resourceName, "project_key", projectKey),
+					resource.TestCheckResourceAttr(resourceName, "env_key", "test"),
+					resource.TestCheckResourceAttr(resourceName, "name", "segment name"),
+					resource.TestCheckResourceAttr(resourceName, "description", "segment description"),
+					resource.TestCheckResourceAttr(resourceName, "tags.#", "2"),
+					resource.TestCheckResourceAttr(resourceName, testAccTagKey("segmentTag1"), "segmentTag1"),
+					resource.TestCheckResourceAttr(resourceName, testAccTagKey("segmentTag2"), "segmentTag2"),
+					resource.TestCheckResourceAttr(resourceName, "included.#", "2"),
+					resource.TestCheckResourceAttr(resourceName, "included.0", "user1"),
+					resource.TestCheckResourceAttr(resourceName, "included.1", "user2"),
+					resource.TestCheckResourceAttr(resourceName, "excluded.#", "2"),
+					resource.TestCheckResourceAttr(resourceName, "excluded.0", "user3"),
+					resource.TestCheckResourceAttr(resourceName, "excluded.1", "user4"),
+					resource.TestCheckNoResourceAttr(resourceName, "rules"),
+				),
+			},
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
 			},
 		},
 	})

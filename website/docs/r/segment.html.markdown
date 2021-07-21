@@ -49,9 +49,9 @@ resource "launchdarkly_segment" "example" {
 
 - `tags` - (Optional) Set of tags for the segment.
 
-- `included` - (Optional) List of users included in the segment.
+- `included` - (Optional) List of user keys included in the segment.
 
-- `excluded` - (Optional) List of user excluded from the segment.
+- `excluded` - (Optional) List of user keys excluded from the segment.
 
 - `rules` - (Optional) List of nested custom rule blocks to apply to the segment. To learn more, read [Nested Rules Blocks](#nested-rules-blocks).
 
@@ -59,7 +59,7 @@ resource "launchdarkly_segment" "example" {
 
 Nested `rules` blocks have the following structure:
 
-- `weight` - (Optional) The integer weight of the rule (between 1 and 100000).
+- `weight` - (Optional) The integer weight of the rule (between 0 and 100000).
 
 - `bucket_by` - (Optional) The attribute by which to group users together.
 
@@ -84,6 +84,8 @@ Nested `clauses` blocks have the following structure:
 In addition to the arguments above, the resource exports the following attribute:
 
 - `id` - The unique environment ID in the format `project_key/env_key/segment_key`.
+
+- `creation_date` - The segment's creation date represented as a UNIX epoch timestamp.
 
 ## Import
 

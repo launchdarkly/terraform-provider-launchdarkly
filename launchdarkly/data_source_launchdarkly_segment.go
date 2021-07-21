@@ -8,20 +8,24 @@ func dataSourceSegment() *schema.Resource {
 		Type:         schema.TypeString,
 		Required:     true,
 		ValidateFunc: validateKey(),
+		Description:  "The segment's project key.",
 	}
 	schemaMap[ENV_KEY] = &schema.Schema{
 		Type:         schema.TypeString,
 		Required:     true,
 		ValidateFunc: validateKey(),
+		Description:  "The segment's environment key.",
 	}
 	schemaMap[KEY] = &schema.Schema{
 		Type:         schema.TypeString,
 		Required:     true,
 		ValidateFunc: validateKey(),
+		Description:  "The unique key that references the segment.",
 	}
 	schemaMap[NAME] = &schema.Schema{
-		Type:     schema.TypeString,
-		Computed: true,
+		Type:        schema.TypeString,
+		Computed:    true,
+		Description: "The human-friendly name for the segment.",
 	}
 	return &schema.Resource{
 		Read:   dataSourceSegmentRead,

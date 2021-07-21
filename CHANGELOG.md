@@ -1,10 +1,15 @@
 ## [Unreleased]
 
+FEATURES:
+
+- Added the `creation_date` attribute to the `launchdarkly_segment` data source and resource.
+
 ENHANCEMENTS:
 
 - Upgraded the Terraform plugin SDK to [v1.17.2](https://github.com/hashicorp/terraform-plugin-sdk/blob/v1-maint/CHANGELOG.md#1172-april-27-2021).
 
 - Upgraded the LaunchDarkly API client to v5.3.0.
+
 
 ## [1.6.0] (July 20, 2021)
 

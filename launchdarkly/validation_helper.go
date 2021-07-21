@@ -1,7 +1,6 @@
 package launchdarkly
 
 import (
-	"fmt"
 	"regexp"
 
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
@@ -33,33 +32,21 @@ func validateTags() schema.SchemaValidateFunc {
 }
 
 func validateOp() schema.SchemaValidateFunc {
-	return func(i interface{}, k string) (s []string, es []error) {
-		v, ok := i.(string)
-		if !ok {
-			es = append(es, fmt.Errorf("Expected op to be string"))
-			return
-		}
-		switch v {
-		case
-			"in",
-			"endsWith",
-			"startsWith",
-			"matches",
-			"contains",
-			"lessThan",
-			"greaterThan",
-			"lessThanOrEqual",
-			"greaterThanOrEqual",
-			"before",
-			"after",
-			"segmentMatch",
-			"semVerEqual",
-			"semVerLessThan",
-			"semVerGreaterThan":
-			return
-		default:
-			es = append(es, fmt.Errorf("%s is an invalid value for Clause argument Op", v))
-			return
-		}
-	}
+	return validation.StringInSlice([]string{
+		"in",
+		"endsWith",
+		"startsWith",
+		"matches",
+		"contains",
+		"lessThan",
+		"greaterThan",
+		"lessThanOrEqual",
+		"greaterThanOrEqual",
+		"before",
+		"after",
+		"segmentMatch",
+		"semVerEqual",
+		"semVerLessThan",
+		"semVerGreaterThan",
+	}, false)
 }

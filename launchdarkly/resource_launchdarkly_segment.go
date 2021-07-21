@@ -16,22 +16,26 @@ func resourceSegment() *schema.Resource {
 		Required:     true,
 		ForceNew:     true,
 		ValidateFunc: validateKey(),
+		Description:  "The segment's project key.",
 	}
 	schemaMap[ENV_KEY] = &schema.Schema{
 		Type:         schema.TypeString,
 		Required:     true,
 		ForceNew:     true,
 		ValidateFunc: validateKey(),
+		Description:  "The segment's environment key.",
 	}
 	schemaMap[KEY] = &schema.Schema{
 		Type:         schema.TypeString,
 		Required:     true,
 		ForceNew:     true,
 		ValidateFunc: validateKey(),
+		Description:  "The unique key that references the segment.",
 	}
 	schemaMap[NAME] = &schema.Schema{
-		Type:     schema.TypeString,
-		Required: true,
+		Type:        schema.TypeString,
+		Required:    true,
+		Description: "The human-friendly name for the segment.",
 	}
 	return &schema.Resource{
 		Create: resourceSegmentCreate,
@@ -52,20 +56,6 @@ func resourceSegmentCreate(d *schema.ResourceData, metaRaw interface{}) error {
 	client := metaRaw.(*Client)
 	projectKey := d.Get(PROJECT_KEY).(string)
 	envKey := d.Get(ENV_KEY).(string)
-
-	if exists, err := projectExists(projectKey, client); !exists {
-		if err != nil {
-			return err
-		}
-		return fmt.Errorf("failed to find project with key %q", projectKey)
-	}
-
-	if exists, err := environmentExists(projectKey, envKey, client); !exists {
-		if err != nil {
-			return err
-		}
-		return fmt.Errorf("failed to find environment with key %q", envKey)
-	}
 
 	key := d.Get(KEY).(string)
 	description := d.Get(DESCRIPTION).(string)
