@@ -1,5 +1,11 @@
 ## [Unreleased]
 
+ENHANCEMENTS:
+
+- Upgraded the Terraform plugin SDK to [v1.17.2](https://github.com/hashicorp/terraform-plugin-sdk/blob/v1-maint/CHANGELOG.md#1172-april-27-2021).
+
+- Upgraded the LaunchDarkly API client to v5.3.0.
+
 ## [1.6.0] (July 20, 2021)
 
 FEATURES:
@@ -12,7 +18,7 @@ ENHANCEMENTS:
 
 - Upgraded the Go version to 1.16.
 
-- Upgraded the LaunchDarkly SDK version to v5.1.0+.
+- Upgraded the LaunchDarkly API client to v5.1.0.
 
 BUG FIXES:
 
