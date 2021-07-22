@@ -25,22 +25,26 @@ func resourceProject() *schema.Resource {
 			KEY: {
 				Type:         schema.TypeString,
 				Required:     true,
+				Description:  "The project's unique key",
 				ForceNew:     true,
 				ValidateFunc: validateKey(),
 			},
 			NAME: {
-				Type:     schema.TypeString,
-				Required: true,
+				Type:        schema.TypeString,
+				Required:    true,
+				Description: "A human-readable name for your project",
 			},
 			INCLUDE_IN_SNIPPET: {
-				Type:     schema.TypeBool,
-				Optional: true,
+				Type:        schema.TypeBool,
+				Optional:    true,
+				Description: "Whether feature flags created under the project should be available to client-side SDKs by default",
 			},
 			TAGS: tagsSchema(),
 			ENVIRONMENTS: {
-				Type:     schema.TypeList,
-				Optional: true,
-				Computed: false,
+				Type:        schema.TypeList,
+				Optional:    true,
+				Description: "List of nested `environments` blocks describing LaunchDarkly environments that belong to the project",
+				Computed:    false,
 				Elem: &schema.Resource{
 					Schema: environmentSchema(true),
 				},
