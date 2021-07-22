@@ -10,6 +10,9 @@ ENHANCEMENTS:
 
 - Upgraded the LaunchDarkly API client to v5.3.0.
 
+BUG FIXES:
+
+- Updated the `project_key` attribute on the environment resource to be `Required` in keeping with the API.
 
 ## [1.6.0] (July 20, 2021)
 

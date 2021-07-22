@@ -16,8 +16,9 @@ import (
 func baseEnvironmentSchema(forProject bool) map[string]*schema.Schema {
 	return map[string]*schema.Schema{
 		KEY: {
-			Type:     schema.TypeString,
-			Required: true,
+			Type:        schema.TypeString,
+			Required:    true,
+			Description: "A project-unique key for the new environment",
 			// Don't force new if the environment schema will be nested in a project
 			ForceNew:     !forProject,
 			ValidateFunc: validateKey(),
@@ -42,32 +43,32 @@ func baseEnvironmentSchema(forProject bool) map[string]*schema.Schema {
 			Optional: true,
 			Computed: true,
 			// Default TTL should be between 0 and 60 minutes: https://docs.launchdarkly.com/docs/environments
+			Description:  "The TTL for the environment. This must be between 0 and 60 minutes. The TTL setting only applies to environments using the PHP SDK",
 			ValidateFunc: validation.IntBetween(0, 60),
-			Description:  "The TTL for the environment. This must be between 0 and 60 minutes. The TTL setting only applies to environments using the PHP SDK.",
 		},
 		SECURE_MODE: {
 			Computed:    true,
 			Type:        schema.TypeBool,
 			Optional:    true,
-			Description: "Secure mode ensures a user of the client-side SDK cannot impersonate another user",
+			Description: "Whether or not to use secure mode. Secure mode ensures a user of the client-side SDK cannot impersonate another user",
 		},
 		DEFAULT_TRACK_EVENTS: {
 			Computed:    true,
 			Type:        schema.TypeBool,
 			Optional:    true,
-			Description: "Whether or not to send data export events for every flag created in the environment",
+			Description: "Whether or not to default to sending data export events for flags created in the environment",
 		},
 		REQUIRE_COMMENTS: {
 			Computed:    true,
 			Type:        schema.TypeBool,
 			Optional:    true,
-			Description: "Whether or not to require comments for a flag and segment changes in this environment",
+			Description: "Whether or not to require comments for flag and segment changes in this environment",
 		},
 		CONFIRM_CHANGES: {
 			Computed:    true,
 			Type:        schema.TypeBool,
 			Optional:    true,
-			Description: "Whether or not to require confirmation for a flag and segment changes in this environment",
+			Description: "Whether or not to require confirmation for flag and segment changes in this environment",
 		},
 		TAGS: tagsSchema(),
 	}
@@ -119,12 +120,14 @@ func getEnvironmentUpdatePatches(config map[string]interface{}) []ldapi.PatchOpe
 func environmentSchema(forProject bool) map[string]*schema.Schema {
 	schemaMap := baseEnvironmentSchema(forProject)
 	schemaMap[NAME] = &schema.Schema{
-		Type:     schema.TypeString,
-		Required: true,
+		Type:        schema.TypeString,
+		Required:    true,
+		Description: "The name of the new environment",
 	}
 	schemaMap[COLOR] = &schema.Schema{
-		Type:     schema.TypeString,
-		Required: true,
+		Type:        schema.TypeString,
+		Required:    true,
+		Description: "A color swatch (as an RGB hex value with no leading '#', e.g. C8C8C8)",
 	}
 	return schemaMap
 }
