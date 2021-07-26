@@ -10,9 +10,13 @@ ENHANCEMENTS:
 
 - Upgraded the LaunchDarkly API client to v5.3.0.
 
+- Added example team member resource configs in `examples/team_member`.
+
 BUG FIXES:
 
 - Updated the `project_key` attribute on the environment resource to be `Required` in keeping with the API.
+
+- Fixed a bug in the team member resource where changing the email in the configuration would result in no real changes. Changing the email will now force a replacement.
 
 ## [1.6.0] (July 20, 2021)
 

@@ -7,6 +7,7 @@ import (
 
 	"github.com/antihax/optional"
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/helper/validation"
 
 	ldapi "github.com/launchdarkly/api-client-go"
 )
@@ -31,7 +32,7 @@ func resourceAccessToken() *schema.Resource {
 				Type:         schema.TypeString,
 				Description:  "The name of a built-in role for the token",
 				Optional:     true,
-				ValidateFunc: validateTeamMemberRole,
+				ValidateFunc: validation.StringInSlice([]string{"reader", "writer", "admin"}, false),
 			},
 			CUSTOM_ROLES: {
 				Type:        schema.TypeSet,
