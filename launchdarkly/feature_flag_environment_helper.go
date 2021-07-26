@@ -17,32 +17,46 @@ func baseFeatureFlagEnvironmentSchema() map[string]*schema.Schema {
 		FLAG_ID: {
 			Type:         schema.TypeString,
 			Required:     true,
+			Description:  "The feature flag's unique id in the format `<project_key>/<flag_key>`",
 			ForceNew:     true,
 			ValidateFunc: validateFlagID,
 		},
 		ENV_KEY: {
 			Type:         schema.TypeString,
 			Required:     true,
+			Description:  "The LaunchDarkly environment key",
 			ForceNew:     true,
 			ValidateFunc: validateKey(),
 		},
 		TARGETING_ENABLED: {
-			Type:     schema.TypeBool,
-			Optional: true,
-			Computed: true,
+			Type:          schema.TypeBool,
+			Optional:      true,
+			Deprecated:    "'targeting_enabled' is deprecated in favor of 'on'",
+			Description:   "Whether targeting is enabled",
+			Computed:      true,
+			ConflictsWith: []string{ON},
+		},
+		ON: {
+			Type:          schema.TypeBool,
+			Optional:      true,
+			Description:   "Whether targeting is enabled",
+			Computed:      true,
+			ConflictsWith: []string{TARGETING_ENABLED},
 		},
 		USER_TARGETS:     targetsSchema(),
 		RULES:            rulesSchema(),
 		PREREQUISITES:    prerequisitesSchema(),
 		FLAG_FALLTHROUGH: fallthroughSchema(),
 		TRACK_EVENTS: {
-			Type:     schema.TypeBool,
-			Optional: true,
-			Computed: true,
+			Type:        schema.TypeBool,
+			Optional:    true,
+			Description: "Whether to send event data back to LaunchDarkly",
+			Computed:    true,
 		},
 		OFF_VARIATION: {
 			Type:         schema.TypeInt,
 			Optional:     true,
+			Description:  "The index of the variation to serve if targeting is disabled",
 			Computed:     true,
 			ValidateFunc: validation.IntAtLeast(0),
 		},
@@ -94,6 +108,7 @@ func featureFlagEnvironmentRead(d *schema.ResourceData, raw interface{}, isDataS
 
 	// Computed values are set even if they do not exist on the config
 	_ = d.Set(TARGETING_ENABLED, environment.On)
+	_ = d.Set(ON, environment.On)
 	_ = d.Set(OFF_VARIATION, environment.OffVariation)
 	_ = d.Set(TRACK_EVENTS, environment.TrackEvents)
 	_ = d.Set(PREREQUISITES, prerequisitesToResourceData(environment.Prerequisites))

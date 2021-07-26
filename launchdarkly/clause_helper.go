@@ -18,17 +18,20 @@ const (
 
 func clauseSchema() *schema.Schema {
 	return &schema.Schema{
-		Type:     schema.TypeList,
-		Optional: true,
+		Type:        schema.TypeList,
+		Optional:    true,
+		Description: "List of nested blocks specifying the logical clauses to evaluate",
 		Elem: &schema.Resource{
 			Schema: map[string]*schema.Schema{
 				ATTRIBUTE: {
-					Type:     schema.TypeString,
-					Required: true,
+					Type:        schema.TypeString,
+					Required:    true,
+					Description: "The user attribute to operate on",
 				},
 				OP: {
 					Type:         schema.TypeString,
 					Required:     true,
+					Description:  "The operator associated with the rule clause. Available options are in, endsWith, startsWith, matches, contains, lessThan, lessThanOrEqual, greaterThanOrEqual, before, after, segmentMatch, semVerEqual, semVerLessThan, and semVerGreaterThan",
 					ValidateFunc: validateOp(),
 				},
 				VALUES: {
@@ -36,12 +39,14 @@ func clauseSchema() *schema.Schema {
 					Elem: &schema.Schema{
 						Type: schema.TypeString,
 					},
-					Required: true,
+					Required:    true,
+					Description: "The list of values associated with the rule clause",
 				},
 				VALUE_TYPE: {
-					Type:     schema.TypeString,
-					Default:  STRING_CLAUSE_VALUE,
-					Optional: true,
+					Type:        schema.TypeString,
+					Default:     STRING_CLAUSE_VALUE,
+					Optional:    true,
+					Description: "The type for each of the clause's values. Available types are boolean, string, and number. If omitted, value_type defaults to string",
 					ValidateFunc: validation.StringInSlice(
 						[]string{
 							BOOL_CLAUSE_VALUE,
@@ -52,8 +57,9 @@ func clauseSchema() *schema.Schema {
 					),
 				},
 				NEGATE: {
-					Type:     schema.TypeBool,
-					Required: true,
+					Type:        schema.TypeBool,
+					Required:    true,
+					Description: "Whether to negate the rule clause",
 				},
 			},
 		},

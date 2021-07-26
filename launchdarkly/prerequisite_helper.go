@@ -10,20 +10,23 @@ import (
 
 func prerequisitesSchema() *schema.Schema {
 	return &schema.Schema{
-		Type:     schema.TypeList,
-		Optional: true,
-		Computed: true,
+		Type:        schema.TypeList,
+		Optional:    true,
+		Description: "List of nested blocks describing prerequisite feature flags rules",
+		Computed:    true,
 		Elem: &schema.Resource{
 			Schema: map[string]*schema.Schema{
 				FLAG_KEY: {
 					Type:         schema.TypeString,
 					Required:     true,
+					Description:  "The prerequisite feature flag's key",
 					ValidateFunc: validateKey(),
 				},
 				VARIATION: {
 					Type:         schema.TypeInt,
 					Elem:         &schema.Schema{Type: schema.TypeInt},
 					Required:     true,
+					Description:  "The index of the prerequisite feature flag's variation to target",
 					ValidateFunc: validation.IntAtLeast(0),
 				},
 			},

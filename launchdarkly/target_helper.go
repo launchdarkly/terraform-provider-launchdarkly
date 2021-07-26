@@ -10,15 +10,17 @@ import (
 
 func targetsSchema() *schema.Schema {
 	return &schema.Schema{
-		Type:     schema.TypeList,
-		Optional: true,
-		Computed: true,
+		Type:        schema.TypeList,
+		Optional:    true,
+		Description: "List of nested blocks describing the individual user targets for each variation. The order of the user_targets blocks determines the index of the variation to serve if a user_target is matched",
+		Computed:    true,
 		Elem: &schema.Resource{
 			Schema: map[string]*schema.Schema{
 				"values": {
-					Type:     schema.TypeList,
-					Elem:     &schema.Schema{Type: schema.TypeString},
-					Optional: true,
+					Type:        schema.TypeList,
+					Elem:        &schema.Schema{Type: schema.TypeString},
+					Optional:    true,
+					Description: "List of user strings to target",
 				},
 			},
 		},
