@@ -11,8 +11,8 @@ import (
 	ldapi "github.com/launchdarkly/api-client-go"
 )
 
-func testAccCustomRoleCreate(randomKey, randomName string) string {
-	return fmt.Sprintf(`
+const (
+	testAccCustomRoleCreate = `
 	resource "launchdarkly_custom_role" "test" {
 		key = "%s"
 		name = "Custom role - %s"
@@ -23,25 +23,20 @@ func testAccCustomRoleCreate(randomKey, randomName string) string {
 			resources = ["proj/*:env/production"]
 		}
 	}
-	`, randomKey, randomName)
-}
-
-func testAccCustomRoleUpdate(randomKey, randomName string) string {
-	return fmt.Sprintf(`resource "launchdarkly_custom_role" "test" {
+`
+	testAccCustomRoleUpdate = `
+resource "launchdarkly_custom_role" "test" {
 	key = "%s"
 	name = "Updated - %s"
-	description= "Allow all actions on staging environments"
 	policy {
 		actions = ["*"]	
 		effect = "allow"
 		resources = ["proj/*:env/staging"]
 	}
 }
-`, randomKey, randomName)
-}
-
-func testAccCustomRoleCreateWithStatements(randomKey, randomName string) string {
-	return fmt.Sprintf(`resource "launchdarkly_custom_role" "test" {
+`
+	testAccCustomRoleCreateWithStatements = `
+resource "launchdarkly_custom_role" "test" {
 	key = "%s"
 	name = "Custom role - %s"
 	description= "Allow all actions on staging environments"
@@ -51,11 +46,9 @@ func testAccCustomRoleCreateWithStatements(randomKey, randomName string) string 
 		resources = ["proj/*:env/staging"]
 	}
 }
-`, randomKey, randomName)
-}
-
-func testAccCustomRoleUpdateWithStatements(randomKey, randomName string) string {
-	return fmt.Sprintf(`resource "launchdarkly_custom_role" "test" {
+`
+	testAccCustomRoleUpdateWithStatements = `
+resource "launchdarkly_custom_role" "test" {
 	key = "%s"
 	name = "Updated role - %s"
 	description= "Deny all actions on production environments"
@@ -65,8 +58,8 @@ func testAccCustomRoleUpdateWithStatements(randomKey, randomName string) string 
 		resources = ["proj/*:env/production"]
 	}
 }
-`, randomKey, randomName)
-}
+`
+)
 
 func TestAccCustomRole_Create(t *testing.T) {
 	key := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
@@ -84,7 +77,7 @@ func TestAccCustomRole_Create(t *testing.T) {
 		Providers: testAccProviders,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccCustomRoleCreate(key, name),
+				Config: fmt.Sprintf(testAccCustomRoleCreate, key, name),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckCustomRoleExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, "key", key),
@@ -113,7 +106,7 @@ func TestAccCustomRole_CreateWithStatements(t *testing.T) {
 		Providers: testAccProviders,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccCustomRoleCreateWithStatements(key, name),
+				Config: fmt.Sprintf(testAccCustomRoleCreateWithStatements, key, name),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckCustomRoleExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, "key", key),
@@ -153,18 +146,18 @@ func TestAccCustomRole_Update(t *testing.T) {
 		Providers: testAccProviders,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccCustomRoleCreate(key, name),
+				Config: fmt.Sprintf(testAccCustomRoleCreate, key, name),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckCustomRoleExists(resourceName),
 				),
 			},
 			{
-				Config: testAccCustomRoleUpdate(key, name),
+				Config: fmt.Sprintf(testAccCustomRoleUpdate, key, name),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckCustomRoleExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, "key", key),
 					resource.TestCheckResourceAttr(resourceName, "name", "Updated - "+name),
-					resource.TestCheckResourceAttr(resourceName, "description", "Allow all actions on staging environments"),
+					resource.TestCheckResourceAttr(resourceName, "description", ""), // should be empty after removal
 					resource.TestCheckResourceAttr(resourceName, "policy.#", "1"),
 					resource.TestCheckResourceAttr(resourceName, testAccPolicyKey(policy, "actions.#"), "1"),
 					resource.TestCheckResourceAttr(resourceName, testAccPolicyKey(policy, "actions.0"), "*"),
@@ -188,13 +181,13 @@ func TestAccCustomRole_UpdateWithStatements(t *testing.T) {
 		Providers: testAccProviders,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccCustomRoleCreate(key, name),
+				Config: fmt.Sprintf(testAccCustomRoleCreate, key, name),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckCustomRoleExists(resourceName),
 				),
 			},
 			{
-				Config: testAccCustomRoleUpdateWithStatements(key, name),
+				Config: fmt.Sprintf(testAccCustomRoleUpdateWithStatements, key, name),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckCustomRoleExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, "key", key),

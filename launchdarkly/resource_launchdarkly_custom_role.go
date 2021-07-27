@@ -26,16 +26,19 @@ func resourceCustomRole() *schema.Resource {
 			KEY: {
 				Type:         schema.TypeString,
 				Required:     true,
+				Description:  "A unique key that will be used to reference the custom role in your code",
 				ForceNew:     true,
 				ValidateFunc: validateKey(),
 			},
 			NAME: {
-				Type:     schema.TypeString,
-				Required: true,
+				Type:        schema.TypeString,
+				Required:    true,
+				Description: "A name for the custom role",
 			},
 			DESCRIPTION: {
-				Type:     schema.TypeString,
-				Optional: true,
+				Type:        schema.TypeString,
+				Optional:    true,
+				Description: "Description of the custom role",
 			},
 			POLICY:            policyArraySchema(),
 			POLICY_STATEMENTS: policyStatementsSchema(policyStatementSchemaOptions{}),
