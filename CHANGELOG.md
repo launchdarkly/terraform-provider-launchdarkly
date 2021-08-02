@@ -1,4 +1,4 @@
-## [Unreleased]
+## [Unreleased] (August 2, 2021)
 
 FEATURES:
 
@@ -24,7 +24,7 @@ NOTES:
 
 - The `launchdarkly_feature_flag_environment` resource's `targeting_enabled` argument has been deprecated in favor of `on`. Please update your config to use `on` in order to maintain compatibility with future versions.
 
-- The `resource_launchdarkly_webhook` resource's `policy_statements` argument has been deprecated in favor of `inline_roles`. Please update your config to use `inline_roles` in order to maintain compatibility with future versions.
+- The `resource_launchdarkly_access_token` resource's `policy_statements` argument has been deprecated in favor of `inline_roles`. Please update your config to use `inline_roles` in order to maintain compatibility with future versions.
 
 ## [1.6.0] (July 20, 2021)
 
