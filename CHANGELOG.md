@@ -16,11 +16,15 @@ BUG FIXES:
 
 - Updated the `project_key` attribute on the environment resource to be `Required` in keeping with the API.
 
+- Added validation for `launchdarkly_access_token` resource creation and updates.
+
 - Fixed a bug in the team member resource where changing the email in the configuration would result in no real changes. Changing the email will now force a replacement.
 
 NOTES:
 
 - The `launchdarkly_feature_flag_environment` resource's `targeting_enabled` argument has been deprecated in favor of `on`. Please update your config to use `on` in order to maintain compatibility with future versions.
+
+- The `resource_launchdarkly_webhook` resource's `policy_statements` argument has been deprecated in favor of `inline_roles`. Please update your config to use `inline_roles` in order to maintain compatibility with future versions.
 
 ## [1.6.0] (July 20, 2021)
 

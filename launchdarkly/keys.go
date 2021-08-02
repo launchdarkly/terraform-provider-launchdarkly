@@ -38,6 +38,7 @@ const (
 	POLICY                   = "policy"
 	STATEMENTS               = "statements"
 	POLICY_STATEMENTS        = "policy_statements"
+	INLINE_ROLES             = "inline_roles"
 	EXCLUDED                 = "excluded"
 	INCLUDED                 = "included"
 	CREATION_DATE            = "creation_date"

@@ -13,6 +13,7 @@ import (
 type policyStatementSchemaOptions struct {
 	// when set, the attribute will be marked as 'deprected'
 	deprecated    string
+	description   string
 	conflictsWith []string
 }
 
@@ -21,6 +22,7 @@ func policyStatementsSchema(options policyStatementSchemaOptions) *schema.Schema
 		Type:          schema.TypeList,
 		Optional:      true,
 		MinItems:      1,
+		Description:   options.description,
 		Deprecated:    options.deprecated,
 		ConflictsWith: options.conflictsWith,
 		Elem: &schema.Resource{
