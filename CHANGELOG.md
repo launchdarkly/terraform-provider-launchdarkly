@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.7.0] (August 2, 2021)
+
 FEATURES:
 
 - Added the `creation_date` attribute to the `launchdarkly_segment` data source and resource.
@@ -24,7 +26,11 @@ NOTES:
 
 - The `launchdarkly_feature_flag_environment` resource's `targeting_enabled` argument has been deprecated in favor of `on`. Please update your config to use `on` in order to maintain compatibility with future versions.
 
-- The `resource_launchdarkly_webhook` resource's `policy_statements` argument has been deprecated in favor of `inline_roles`. Please update your config to use `inline_roles` in order to maintain compatibility with future versions.
+<<<<<<< HEAD
+
+- # The `resource_launchdarkly_webhook` resource's `policy_statements` argument has been deprecated in favor of `inline_roles`. Please update your config to use `inline_roles` in order to maintain compatibility with future versions.
+- The `resource_launchdarkly_access_token` resource's `policy_statements` argument has been deprecated in favor of `inline_roles`. Please update your config to use `inline_roles` in order to maintain compatibility with future versions.
+  > > > > > > > 090c48d257abdc15f10ea4d4e9a8fab1321ad036
 
 ## [1.6.0] (July 20, 2021)
 
