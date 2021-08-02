@@ -1,3 +1,31 @@
+## [Unreleased] (August 2, 2021)
+
+FEATURES:
+
+- Added the `creation_date` attribute to the `launchdarkly_segment` data source and resource.
+
+ENHANCEMENTS:
+
+- Upgraded the Terraform plugin SDK to [v1.17.2](https://github.com/hashicorp/terraform-plugin-sdk/blob/v1-maint/CHANGELOG.md#1172-april-27-2021).
+
+- Upgraded the LaunchDarkly API client to v5.3.0.
+
+- Added example team member resource configs in `examples/team_member`.
+
+BUG FIXES:
+
+- Updated the `project_key` attribute on the environment resource to be `Required` in keeping with the API.
+
+- Added validation for `launchdarkly_access_token` resource creation and updates.
+
+- Fixed a bug in the team member resource where changing the email in the configuration would result in no real changes. Changing the email will now force a replacement.
+
+NOTES:
+
+- The `launchdarkly_feature_flag_environment` resource's `targeting_enabled` argument has been deprecated in favor of `on`. Please update your config to use `on` in order to maintain compatibility with future versions.
+
+- The `resource_launchdarkly_access_token` resource's `policy_statements` argument has been deprecated in favor of `inline_roles`. Please update your config to use `inline_roles` in order to maintain compatibility with future versions.
+
 ## [1.6.0] (July 20, 2021)
 
 FEATURES:
@@ -10,7 +38,7 @@ ENHANCEMENTS:
 
 - Upgraded the Go version to 1.16.
 
-- Upgraded the LaunchDarkly SDK version to v5.1.0+.
+- Upgraded the LaunchDarkly API client to v5.1.0.
 
 BUG FIXES:
 

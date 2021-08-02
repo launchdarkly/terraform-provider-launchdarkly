@@ -52,7 +52,7 @@ func resourceFeatureFlagEnvironmentCreate(d *schema.ResourceData, metaRaw interf
 		if err != nil {
 			return err
 		}
-		return fmt.Errorf("Cannot find project with key %q", projectKey)
+		return fmt.Errorf("cannot find project with key %q", projectKey)
 	}
 
 	if exists, err := environmentExists(projectKey, envKey, client); !exists {
@@ -64,9 +64,9 @@ func resourceFeatureFlagEnvironmentCreate(d *schema.ResourceData, metaRaw interf
 
 	patches := make([]ldapi.PatchOperation, 0)
 
-	enabled, ok := d.GetOk(TARGETING_ENABLED)
+	enabled, ok := getFeatureFlagEnvironmentOn(d)
 	if ok {
-		patches = append(patches, patchReplace(patchFlagEnvPath(d, "on"), enabled.(bool)))
+		patches = append(patches, patchReplace(patchFlagEnvPath(d, "on"), enabled))
 	}
 
 	// GetOKExists is marked deprecated by Hashicorp, however it seems to be the only solution for setting the
@@ -160,7 +160,7 @@ func resourceFeatureFlagEnvironmentUpdate(d *schema.ResourceData, metaRaw interf
 		return fmt.Errorf("failed to find environment with key %q", envKey)
 	}
 
-	enabled := d.Get(TARGETING_ENABLED).(bool)
+	on, _ := getFeatureFlagEnvironmentOn(d)
 	rules, err := rulesFromResourceData(d)
 	if err != nil {
 		return err
@@ -178,7 +178,7 @@ func resourceFeatureFlagEnvironmentUpdate(d *schema.ResourceData, metaRaw interf
 	patch := ldapi.PatchComment{
 		Comment: "Terraform",
 		Patch: []ldapi.PatchOperation{
-			patchReplace(patchFlagEnvPath(d, "on"), enabled),
+			patchReplace(patchFlagEnvPath(d, "on"), on),
 			patchReplace(patchFlagEnvPath(d, "rules"), rules),
 			patchReplace(patchFlagEnvPath(d, "trackEvents"), trackEvents),
 			patchReplace(patchFlagEnvPath(d, "prerequisites"), prerequisites),
@@ -267,4 +267,22 @@ func resourceFeatureFlagEnvironmentImport(d *schema.ResourceData, meta interface
 	_ = d.Set(ENV_KEY, envKey)
 
 	return []*schema.ResourceData{d}, nil
+}
+
+// getFeatureFlagEnvironmentOn is a helper function used for deprecating TARGETING_ENABLED in favor of ON to match
+// LD's API response. It returns nil if neither is set so we can maintain current behavior - TODO in V2 it will need
+// to be updated to default to false if neither is set.
+func getFeatureFlagEnvironmentOn(d *schema.ResourceData) (bool, bool) {
+	var onValue bool
+	on, onSet := d.GetOk(ON)
+	enabled, enabledSet := d.GetOk(TARGETING_ENABLED)
+	if !onSet && !enabledSet {
+		return onValue, false
+	}
+	if onSet {
+		onValue = on.(bool)
+	} else if enabledSet {
+		onValue = enabled.(bool)
+	}
+	return onValue, true
 }

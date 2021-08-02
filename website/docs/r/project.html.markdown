@@ -44,6 +44,8 @@ resource "launchdarkly_project" "example" {
 
 - `name` - (Required) The project's name.
 
+- `include_in_snippet - (Optional) Whether feature flags created under the project should be available to client-side SDKs by default.
+
 - `tags` - (Optional) The project's set of tags.
 
 - `environments` - (Optional) List of nested `environments` blocks describing LaunchDarkly environments that belong to the project. Use the nested `environments` blocks instead of the `launchdarkly_environment` resource when you wish to override the default behavior of creating `Test` and `Production` environments during project creation. To learn more, read [Nested Environments Blocks](#nested-environments-blocks).

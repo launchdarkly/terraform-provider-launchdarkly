@@ -11,14 +11,6 @@ default: build
 build: fmtcheck
 	go install $(LDFLAGS)
 
-install: build
-	install -d -m 755 ~/.terraform.d/plugins
-	install $(GOPATH)/bin/terraform-provider-launchdarkly ~/.terraform.d/plugins
-
-apply: install
-	terraform init
-	terraform $@
-
 test: fmtcheck
 	go test -i $(TEST) || exit 1
 	echo $(TEST) | \

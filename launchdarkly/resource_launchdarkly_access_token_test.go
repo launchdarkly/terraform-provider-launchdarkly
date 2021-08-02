@@ -11,114 +11,104 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/terraform"
 )
 
-func testAccAccessTokenCreate(randomName string) string {
-	return fmt.Sprintf(`
-	resource "launchdarkly_access_token" "test" {
-		name = "Access token - %s"
-		role = "reader"
-	}
-	`, randomName)
+const (
+	testAccAccessTokenCreate = `
+resource "launchdarkly_access_token" "test" {
+	name = "Access token - %s"
+	role = "reader"
 }
-
-func testAccAccessTokenCreateWithImmutableParams(randomName string) string {
-	return fmt.Sprintf(`
-	resource "launchdarkly_access_token" "test" {
-		name = "Access token - %s"
-		role = "reader"
-		service_token = true
-		default_api_version = 20160426
-	}
-	`, randomName)
+`
+	testAccAccessTokenCreateWithImmutableParams = `
+resource "launchdarkly_access_token" "test" {
+	name = "Access token - %s"
+	role = "reader"
+	service_token = true
+	default_api_version = 20160426
 }
-
-func testAccAccessTokenCreateWithCustomRole(randomName string) string {
-	return fmt.Sprintf(`
-	resource "launchdarkly_custom_role" "role" {
-			key = "%s"
-			name = "Custom role - %s"
-			description= "Deny all actions on production environments"
-			policy {
-				actions = ["*"]
-				effect = "deny"
-				resources = ["proj/*:env/production"]
-			}
-		}
-
-	resource "launchdarkly_access_token" "test" {
-		name = "Access token - %s"
-		custom_roles = [launchdarkly_custom_role.role.key]
-	}
-	`, randomName, randomName, randomName)
-}
-
-// update regular role to policy_statements roles
-func testAccAccessTokenUpdateCustomRole(randomName string) string {
-	return fmt.Sprintf(`
-
-	resource "launchdarkly_custom_role" "role" {
-			key = "%s"
-			name = "Custom role - %s"
-			description= "Deny all actions on production environments"
-			policy {
-				actions = ["*"]
-				effect = "deny"
-				resources = ["proj/*:env/production"]
-			}
-	}
-
-	resource "launchdarkly_custom_role" "role2" {
-			key = "%s2"
-			name = "Custom role - %s2"
-			description= "Deny all actions on production environments"
-			policy {
-				actions = ["*"]
-				effect = "deny"
-				resources = ["proj/*:env/production"]
-			}
-	}
-
-	resource "launchdarkly_access_token" "test" {
-		name = "Updated - %s"
-		custom_roles = [launchdarkly_custom_role.role.key, launchdarkly_custom_role.role2.key]
-	}
-`, randomName, randomName, randomName, randomName, randomName)
-}
-
-// update regular role to policy_statements roles
-func testAccAccessTokenUpdate(randomName string) string {
-	return fmt.Sprintf(`resource "launchdarkly_access_token" "test" {
-	name = "Updated - %s"
+`
+	testAccAccessTokenCreateWithCustomRole = `
+resource "launchdarkly_custom_role" "role" {
+	key = "%s"
+	name = "Custom role - %s"
+	description = "Deny all actions on production environments"
 	policy_statements {
 		actions = ["*"]
 		effect = "deny"
 		resources = ["proj/*:env/production"]
 	}
 }
-`, randomName)
+
+resource "launchdarkly_access_token" "test" {
+	name = "Access token - %s"
+	custom_roles = [launchdarkly_custom_role.role.key]
+}
+`
+	testAccAccessTokenUpdateCustomRole = `
+resource "launchdarkly_custom_role" "role" {
+	key = "%s"
+	name = "Custom role - %s"
+	description= "Deny all actions on production environments"
+	policy_statements {
+		actions = ["*"]
+		effect = "deny"
+		resources = ["proj/*:env/production"]
+	}
 }
 
-func testAccAccessTokenCreateWithStatements(randomName string) string {
-	return fmt.Sprintf(`
-	resource "launchdarkly_access_token" "test" {
-		name = "Access token - %s"
-		policy_statements {
-			actions = ["*"]
-			effect = "allow"
-			resources = ["proj/*:env/staging"]
-		}
+resource "launchdarkly_custom_role" "role2" {
+	key = "%s2"
+	name = "Custom role - %s2"
+	description= "Deny all actions on production environments"
+	policy_statements {
+		actions = ["*"]
+		effect = "deny"
+		resources = ["proj/*:env/production"]
 	}
-	`, randomName)
 }
 
-func testAccAccessTokenReset(randomName string, time int64) string {
-	return fmt.Sprintf(`
-	resource "launchdarkly_access_token" "test" {
-		name = "Access token - %s"
-		role = "reader"
-		expire = %d
-	}
-`, randomName, time)
+resource "launchdarkly_access_token" "test" {
+	name = "Updated - %s"
+	custom_roles = [launchdarkly_custom_role.role.key, launchdarkly_custom_role.role2.key]
 }
+`
+	testAccAccessTokenUpdate = `
+resource "launchdarkly_access_token" "test" {
+	name = "Updated - %s"
+	inline_roles {
+		actions = ["*"]
+		effect = "deny"
+		resources = ["proj/*:env/production"]
+	}
+}
+`
+	testAccAccessTokenCreateWithInlineRoles = `
+resource "launchdarkly_access_token" "test" {
+	name = "Access token - %s"
+	inline_roles {
+		actions = ["*"]
+		effect = "allow"
+		resources = ["proj/*:env/staging"]
+	}
+}
+`
+	testAccAccessTokenCreateWithPolicyStatements = `
+resource "launchdarkly_access_token" "test" {
+	name = "Access token - %s"
+	policy_statements {
+		actions = ["*"]
+		effect = "allow"
+		resources = ["proj/*:env/staging"]
+	}
+}
+`
+	testAccAccessTokenReset = `
+resource "launchdarkly_access_token" "test" {
+	name = "Access token - %s"
+	role = "reader"
+	expire = %d
+}
+`
+)
 
 func TestAccAccessToken_Create(t *testing.T) {
 	name := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
@@ -130,7 +120,7 @@ func TestAccAccessToken_Create(t *testing.T) {
 		Providers: testAccProviders,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccAccessTokenCreate(name),
+				Config: fmt.Sprintf(testAccAccessTokenCreate, name),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckAccessTokenExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, "name", "Access token - "+name),
@@ -156,7 +146,7 @@ func TestAccAccessToken_CreateWithCustomRole(t *testing.T) {
 		Providers: testAccProviders,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccAccessTokenCreateWithCustomRole(name),
+				Config: fmt.Sprintf(testAccAccessTokenCreateWithCustomRole, name, name, name),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckAccessTokenExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, "name", "Access token - "+name),
@@ -182,7 +172,7 @@ func TestAccAccessToken_CreateWithImmutableParams(t *testing.T) {
 		Providers: testAccProviders,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccAccessTokenCreateWithImmutableParams(name),
+				Config: fmt.Sprintf(testAccAccessTokenCreateWithImmutableParams, name),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckAccessTokenExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, "name", "Access token - "+name),
@@ -198,7 +188,7 @@ func TestAccAccessToken_CreateWithImmutableParams(t *testing.T) {
 	})
 }
 
-func TestAccAccessToken_CreateWithStatements(t *testing.T) {
+func TestAccAccessToken_CreateWithInlineRoles(t *testing.T) {
 	name := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	resourceName := "launchdarkly_access_token.test"
 	resource.ParallelTest(t, resource.TestCase{
@@ -208,11 +198,41 @@ func TestAccAccessToken_CreateWithStatements(t *testing.T) {
 		Providers: testAccProviders,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccAccessTokenCreateWithStatements(name),
+				Config: fmt.Sprintf(testAccAccessTokenCreateWithInlineRoles, name),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckAccessTokenExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, "name", "Access token - "+name),
-					resource.TestCheckResourceAttr(resourceName, "policy.#", "0"),
+					resource.TestCheckResourceAttr(resourceName, "inline_roles.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "inline_roles.0.actions.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "inline_roles.0.actions.0", "*"),
+					resource.TestCheckResourceAttr(resourceName, "inline_roles.0.resources.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "inline_roles.0.resources.0", "proj/*:env/staging"),
+					resource.TestCheckResourceAttr(resourceName, "inline_roles.0.effect", "allow"),
+					resource.TestCheckResourceAttr(resourceName, "service_token", "false"),
+					resource.TestCheckResourceAttrSet(resourceName, "default_api_version"),
+					resource.TestCheckResourceAttrSet(resourceName, "token"),
+					resource.TestCheckNoResourceAttr(resourceName, "role"),
+					resource.TestCheckNoResourceAttr(resourceName, "custom_roles"),
+				),
+			},
+		},
+	})
+}
+
+func TestAccAccessToken_CreateWithPolicyStatements(t *testing.T) {
+	name := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	resourceName := "launchdarkly_access_token.test"
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck: func() {
+			testAccPreCheck(t)
+		},
+		Providers: testAccProviders,
+		Steps: []resource.TestStep{
+			{
+				Config: fmt.Sprintf(testAccAccessTokenCreateWithPolicyStatements, name),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckAccessTokenExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, "name", "Access token - "+name),
 					resource.TestCheckResourceAttr(resourceName, "policy_statements.#", "1"),
 					resource.TestCheckResourceAttr(resourceName, "policy_statements.0.actions.#", "1"),
 					resource.TestCheckResourceAttr(resourceName, "policy_statements.0.actions.0", "*"),
@@ -240,23 +260,22 @@ func TestAccAccessToken_Update(t *testing.T) {
 		Providers: testAccProviders,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccAccessTokenCreate(name),
+				Config: fmt.Sprintf(testAccAccessTokenCreate, name),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckAccessTokenExists(resourceName),
 				),
 			},
 			{
-				Config: testAccAccessTokenUpdate(name),
+				Config: fmt.Sprintf(testAccAccessTokenUpdate, name), // update regular role to policy_statements roles
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckAccessTokenExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, "name", "Updated - "+name),
-					resource.TestCheckResourceAttr(resourceName, "policy.#", "0"),
-					resource.TestCheckResourceAttr(resourceName, "policy_statements.#", "1"),
-					resource.TestCheckResourceAttr(resourceName, "policy_statements.0.actions.#", "1"),
-					resource.TestCheckResourceAttr(resourceName, "policy_statements.0.actions.0", "*"),
-					resource.TestCheckResourceAttr(resourceName, "policy_statements.0.resources.#", "1"),
-					resource.TestCheckResourceAttr(resourceName, "policy_statements.0.resources.0", "proj/*:env/production"),
-					resource.TestCheckResourceAttr(resourceName, "policy_statements.0.effect", "deny"),
+					resource.TestCheckResourceAttr(resourceName, "inline_roles.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "inline_roles.0.actions.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "inline_roles.0.actions.0", "*"),
+					resource.TestCheckResourceAttr(resourceName, "inline_roles.0.resources.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "inline_roles.0.resources.0", "proj/*:env/production"),
+					resource.TestCheckResourceAttr(resourceName, "inline_roles.0.effect", "deny"),
 				),
 			},
 		},
@@ -273,7 +292,7 @@ func TestAccAccessToken_UpdateCustomRole(t *testing.T) {
 		Providers: testAccProviders,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccAccessTokenCreateWithCustomRole(name),
+				Config: fmt.Sprintf(testAccAccessTokenCreateWithCustomRole, name, name, name),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckAccessTokenExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, "custom_roles.#", "1"),
@@ -281,7 +300,7 @@ func TestAccAccessToken_UpdateCustomRole(t *testing.T) {
 				),
 			},
 			{
-				Config: testAccAccessTokenUpdateCustomRole(name),
+				Config: fmt.Sprintf(testAccAccessTokenUpdateCustomRole, name, name, name, name, name),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckAccessTokenExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, "name", "Updated - "+name),
@@ -309,14 +328,14 @@ func TestAccAccessToken_Reset(t *testing.T) {
 		Providers: testAccProviders,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccAccessTokenCreate(name),
+				Config: fmt.Sprintf(testAccAccessTokenCreate, name),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckAccessTokenExists(resourceName),
 					testAccStoreAccessTokenSecret(original, resourceName),
 				),
 			},
 			{
-				Config: testAccAccessTokenReset(name, -1),
+				Config: fmt.Sprintf(testAccAccessTokenReset, name, -1),
 				Check: resource.ComposeTestCheckFunc(
 					testAccStoreAccessTokenSecret(updated, resourceName),
 					testAccCheckAccessTokenChanged(original, updated),
@@ -326,7 +345,7 @@ func TestAccAccessToken_Reset(t *testing.T) {
 				),
 			},
 			{
-				Config: testAccAccessTokenReset(name, hourFromNow),
+				Config: fmt.Sprintf(testAccAccessTokenReset, name, hourFromNow),
 				Check: resource.ComposeTestCheckFunc(
 					testAccStoreAccessTokenSecret(updated, resourceName),
 					testAccCheckAccessTokenChanged(original, updated),

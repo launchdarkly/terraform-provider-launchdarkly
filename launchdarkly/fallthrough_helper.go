@@ -11,20 +11,23 @@ import (
 
 func fallthroughSchema() *schema.Schema {
 	return &schema.Schema{
-		Type:     schema.TypeList,
-		Optional: true,
-		Computed: true,
-		MaxItems: 1,
+		Type:        schema.TypeList,
+		Optional:    true,
+		Description: "Nested block describing the default variation to serve if no prerequisites, user_target, or rules apply. You must specify either variation or rollout_weights",
+		Computed:    true,
+		MaxItems:    1,
 		Elem: &schema.Resource{
 			Schema: map[string]*schema.Schema{
 				ROLLOUT_WEIGHTS: rolloutSchema(),
 				BUCKET_BY: {
-					Type:     schema.TypeString,
-					Optional: true,
+					Type:        schema.TypeString,
+					Optional:    true,
+					Description: "Group percentage rollout by a custom attribute. This argument is only valid if rollout_weights is also specified",
 				},
 				VARIATION: {
 					Type:         schema.TypeInt,
 					Optional:     true,
+					Description:  "The integer variation index to serve in case of fallthrough",
 					ValidateFunc: validation.IntAtLeast(0),
 				},
 			},

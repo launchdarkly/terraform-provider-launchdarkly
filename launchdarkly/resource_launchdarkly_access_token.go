@@ -7,13 +7,22 @@ import (
 
 	"github.com/antihax/optional"
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/helper/validation"
 
 	ldapi "github.com/launchdarkly/api-client-go"
 )
 
 func resourceAccessToken() *schema.Resource {
-	tokenPolicySchema := policyStatementsSchema(policyStatementSchemaOptions{})
-	tokenPolicySchema.Description = "A list of policy statements defining the permissions for the token. May be used in place of a built-in or custom role."
+	tokenPolicySchema := policyStatementsSchema(policyStatementSchemaOptions{
+		conflictsWith: []string{ROLE, CUSTOM_ROLES, POLICY_STATEMENTS},
+		description:   "An array of statements represented as config blocks with 3 attributes: effect, resources, actions. May be used in place of a built-in or custom role.",
+	})
+
+	deprecatedTokenPolicySchema := policyStatementsSchema(policyStatementSchemaOptions{
+		description:   "An array of statements represented as config blocks with 3 attributes: effect, resources, actions. May be used in place of a built-in or custom role.",
+		deprecated:    "'policy_statements' is deprecated in favor of 'inline_roles'. This field will be removed in the next major release of the LaunchDarkly provider",
+		conflictsWith: []string{ROLE, CUSTOM_ROLES, INLINE_ROLES},
+	})
 	return &schema.Resource{
 		Create: resourceAccessTokenCreate,
 		Read:   resourceAccessTokenRead,
@@ -24,44 +33,49 @@ func resourceAccessToken() *schema.Resource {
 		Schema: map[string]*schema.Schema{
 			NAME: {
 				Type:        schema.TypeString,
-				Description: "The human-readable name of the access token",
-				Required:    true,
-			},
-			ROLE: {
-				Type:         schema.TypeString,
-				Description:  "The name of a built-in role for the token",
-				Optional:     true,
-				ValidateFunc: validateTeamMemberRole,
-			},
-			CUSTOM_ROLES: {
-				Type:        schema.TypeSet,
-				Description: "A set of custom role keys to use as access limits for the access token",
-				Set:         schema.HashString,
-				Elem:        &schema.Schema{Type: schema.TypeString},
+				Description: "A human-friendly name for the access token",
 				Optional:    true,
 			},
-			POLICY_STATEMENTS: tokenPolicySchema,
+			ROLE: {
+				Type:          schema.TypeString,
+				Description:   `The default built-in role for the token. Available options are "reader", "writer", and "admin"`,
+				Optional:      true,
+				ValidateFunc:  validation.StringInSlice([]string{"reader", "writer", "admin"}, false),
+				ConflictsWith: []string{CUSTOM_ROLES, POLICY_STATEMENTS},
+			},
+			CUSTOM_ROLES: {
+				Type:          schema.TypeSet,
+				Description:   "A list of custom role IDs to use as access limits for the access token",
+				Set:           schema.HashString,
+				Elem:          &schema.Schema{Type: schema.TypeString},
+				Optional:      true,
+				ConflictsWith: []string{ROLE, POLICY_STATEMENTS},
+			},
+			POLICY_STATEMENTS: deprecatedTokenPolicySchema,
+			INLINE_ROLES:      tokenPolicySchema,
 			SERVICE_TOKEN: {
 				Type:        schema.TypeBool,
-				Description: "Whether the token will be a service token https://docs.launchdarkly.com/home/account-security/api-access-tokens#service-tokens",
+				Description: "Whether the token is a service token",
 				Optional:    true,
 				ForceNew:    true,
 				Default:     false,
 			},
 			DEFAULT_API_VERSION: {
-				Type:        schema.TypeInt,
-				Description: "The default API version for this token. Defaults to the latest API version.",
-				Optional:    true,
-				ForceNew:    true,
-				Computed:    true,
+				Type:         schema.TypeInt,
+				Description:  "The default API version for this token",
+				Optional:     true,
+				ForceNew:     true,
+				Computed:     true,
+				ValidateFunc: validateAPIVersion,
 			},
 			TOKEN: {
 				Type:        schema.TypeString,
-				Description: "The secret key used to authorize usage of the LaunchDarkly API",
+				Description: "The access token used to authorize usage of the LaunchDarkly API",
 				Computed:    true,
 				Sensitive:   true,
 			},
 			EXPIRE: {
+				Deprecated:  "'expire' is deprecated and will be removed in the next major release of the LaunchDarly provider",
 				Type:        schema.TypeInt,
 				Description: "Replace the computed token secret with a new value. The expired secret will no longer be able to authorize usage of the LaunchDarkly API. Should be an expiration time for the current token secret, expressed as a Unix epoch time in milliseconds. Setting this to a negative value will expire the existing token immediately. To reset the token value again, change 'expire' to a new value. Setting this field at resource creation time WILL NOT set an expiration time for the token.",
 				Optional:    true,
@@ -70,28 +84,64 @@ func resourceAccessToken() *schema.Resource {
 	}
 }
 
+func validateAPIVersion(val interface{}, key string) (warns []string, errs []error) {
+	v := val.(int)
+	switch v {
+	case 0, 20191212, 20160426:
+		// do nothing
+	default:
+		errs = append(errs, fmt.Errorf("%q must be either `20191212` or `20160426`. Got: %v", key, v))
+	}
+	return warns, errs
+}
+
+func validateAccessTokenResource(d *schema.ResourceData) error {
+	accessTokenRole := d.Get(ROLE).(string)
+	customRolesRaw := d.Get(CUSTOM_ROLES).(*schema.Set).List()
+	policyStatements, err := policyStatementsFromResourceData(d.Get(POLICY_STATEMENTS).([]interface{}))
+	if err != nil {
+		return err
+	}
+
+	inlineRoles, err := policyStatementsFromResourceData(d.Get(INLINE_ROLES).([]interface{}))
+	if err != nil {
+		return err
+	}
+
+	if accessTokenRole == "" && len(customRolesRaw) == 0 && len(policyStatements) == 0 && len(inlineRoles) == 0 {
+		return fmt.Errorf("access_token must contain either 'role', 'custom_roles', 'policy_statements', or 'inline_roles'")
+	}
+
+	return nil
+}
+
 func resourceAccessTokenCreate(d *schema.ResourceData, metaRaw interface{}) error {
+	err := validateAccessTokenResource(d)
+	if err != nil {
+		return err
+	}
+
 	client := metaRaw.(*Client)
 	accessTokenName := d.Get(NAME).(string)
 	accessTokenRole := d.Get(ROLE).(string)
 	serviceToken := d.Get(SERVICE_TOKEN).(bool)
 	defaultApiVersion := d.Get(DEFAULT_API_VERSION).(int)
 	customRolesRaw := d.Get(CUSTOM_ROLES).(*schema.Set).List()
+	inlineRoles, _ := policyStatementsFromResourceData(d.Get(POLICY_STATEMENTS).([]interface{}))
+	if len(inlineRoles) == 0 {
+		inlineRoles, _ = policyStatementsFromResourceData(d.Get(INLINE_ROLES).([]interface{}))
+	}
 
 	customRoles := make([]string, len(customRolesRaw))
 	for i, cr := range customRolesRaw {
 		customRoles[i] = cr.(string)
-	}
-	policyStatements, err := policyStatementsFromResourceData(d.Get(POLICY_STATEMENTS).([]interface{}))
-	if err != nil {
-		return err
 	}
 
 	accessTokenBody := ldapi.TokenBody{
 		Name:              accessTokenName,
 		Role:              accessTokenRole,
 		CustomRoleIds:     customRoles,
-		InlineRole:        policyStatements,
+		InlineRole:        inlineRoles,
 		ServiceToken:      serviceToken,
 		DefaultApiVersion: int32(defaultApiVersion),
 	}
@@ -142,7 +192,12 @@ func resourceAccessTokenRead(d *schema.ResourceData, metaRaw interface{}) error 
 
 	policies := accessToken.InlineRole
 	if len(policies) > 0 {
-		err = d.Set(POLICY_STATEMENTS, policyStatementsToResourceData(policies))
+		policyStatements, _ := policyStatementsFromResourceData(d.Get(POLICY_STATEMENTS).([]interface{}))
+		if len(policyStatements) > 0 {
+			err = d.Set(POLICY_STATEMENTS, policyStatementsToResourceData(policies))
+		} else {
+			err = d.Set(INLINE_ROLES, policyStatementsToResourceData(policies))
+		}
 		if err != nil {
 			return fmt.Errorf("could not set policy on access token with id %q: %v", accessTokenID, err)
 		}
@@ -152,6 +207,11 @@ func resourceAccessTokenRead(d *schema.ResourceData, metaRaw interface{}) error 
 }
 
 func resourceAccessTokenUpdate(d *schema.ResourceData, metaRaw interface{}) error {
+	err := validateAccessTokenResource(d)
+	if err != nil {
+		return err
+	}
+
 	client := metaRaw.(*Client)
 	accessTokenID := d.Id()
 	accessTokenName := d.Get(NAME).(string)
@@ -167,11 +227,11 @@ func resourceAccessTokenUpdate(d *schema.ResourceData, metaRaw interface{}) erro
 		return err
 	}
 
-	policyStatements, err := policyStatementsFromResourceData(d.Get(POLICY_STATEMENTS).([]interface{}))
-	if err != nil {
-		return err
+	inlineRoles, _ := policyStatementsFromResourceData(d.Get(POLICY_STATEMENTS).([]interface{}))
+	if len(inlineRoles) == 0 {
+		inlineRoles, _ = policyStatementsFromResourceData(d.Get(INLINE_ROLES).([]interface{}))
 	}
-	p := statementsToPolicies(policyStatements)
+	iRoles := statementsToPolicies(inlineRoles)
 
 	patch := []ldapi.PatchOperation{
 		patchReplace("/name", &accessTokenName),
@@ -195,12 +255,12 @@ func resourceAccessTokenUpdate(d *schema.ResourceData, metaRaw interface{}) erro
 		}
 		patch = append(patch, op)
 	}
-	if d.HasChange(POLICY_STATEMENTS) {
+	if d.HasChange(POLICY_STATEMENTS) || d.HasChange(INLINE_ROLES) {
 		var op ldapi.PatchOperation
-		if len(p) == 0 {
+		if len(iRoles) == 0 {
 			op = patchRemove("/inlineRole")
 		} else {
-			op = patchReplace("/inlineRole", &p)
+			op = patchReplace("/inlineRole", &iRoles)
 		}
 		patch = append(patch, op)
 	}

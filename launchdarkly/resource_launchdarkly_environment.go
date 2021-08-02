@@ -13,7 +13,8 @@ func resourceEnvironment() *schema.Resource {
 	envSchema := environmentSchema(false)
 	envSchema[PROJECT_KEY] = &schema.Schema{
 		Type:         schema.TypeString,
-		Optional:     true,
+		Required:     true,
+		Description:  "The LaunchDarkly project key",
 		ForceNew:     true,
 		ValidateFunc: validateKey(),
 	}

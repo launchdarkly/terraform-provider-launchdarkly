@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/helper/validation"
 
 	ldapi "github.com/launchdarkly/api-client-go"
 )
@@ -24,42 +25,39 @@ func resourceTeamMember() *schema.Resource {
 
 		Schema: map[string]*schema.Schema{
 			EMAIL: {
-				Type:     schema.TypeString,
-				Required: true,
+				Type:        schema.TypeString,
+				Required:    true,
+				ForceNew:    true,
+				Description: "The team member's email address",
 			},
 			FIRST_NAME: {
-				Type:     schema.TypeString,
-				Optional: true,
+				Type:        schema.TypeString,
+				Optional:    true,
+				Description: "The team member's first name",
 			},
 			LAST_NAME: {
-				Type:     schema.TypeString,
-				Optional: true,
+				Type:        schema.TypeString,
+				Optional:    true,
+				Description: "The team member's last name",
 			},
 			ROLE: {
 				Type:         schema.TypeString,
 				Optional:     true,
 				Computed:     true,
-				ValidateFunc: validateTeamMemberRole,
+				Description:  "The team member's role. This must be reader, writer, admin, or owner. Team members must have either a role or custom role",
+				ValidateFunc: validation.StringInSlice([]string{"reader", "writer", "admin"}, false),
+				AtLeastOneOf: []string{ROLE, CUSTOM_ROLES},
 			},
 			CUSTOM_ROLES: {
-				Type:     schema.TypeSet,
-				Set:      schema.HashString,
-				Elem:     &schema.Schema{Type: schema.TypeString},
-				Optional: true,
+				Type:         schema.TypeSet,
+				Set:          schema.HashString,
+				Elem:         &schema.Schema{Type: schema.TypeString},
+				Optional:     true,
+				Description:  "IDs or keys of custom roles. Team members must have either a role or custom role",
+				AtLeastOneOf: []string{ROLE, CUSTOM_ROLES},
 			},
 		},
 	}
-}
-
-func validateTeamMemberRole(val interface{}, key string) (warns []string, errs []error) {
-	v := val.(string)
-	switch v {
-	case "reader", "writer", "admin":
-		// Do nothing
-	default:
-		errs = append(errs, fmt.Errorf("%q must be either `reader`, `writer`, or `admin`. Got: %s", key, v))
-	}
-	return warns, errs
 }
 
 func resourceTeamMemberCreate(d *schema.ResourceData, metaRaw interface{}) error {
@@ -127,44 +125,6 @@ func resourceTeamMemberRead(d *schema.ResourceData, metaRaw interface{}) error {
 		return fmt.Errorf("failed to set custom roles on team member with id %q: %v", member.Id, err)
 	}
 	return nil
-}
-
-// The LD api returns custom role IDs (not keys). Since we want to set custom_roles with keys, we need to look up their IDs
-func customRoleIDsToKeys(client *Client, ids []string) ([]string, error) {
-	customRoleKeys := make([]string, 0, len(ids))
-	for _, customRoleID := range ids {
-		roleRaw, res, err := handleRateLimit(func() (interface{}, *http.Response, error) {
-			return client.ld.CustomRolesApi.GetCustomRole(client.ctx, customRoleID)
-		})
-		role := roleRaw.(ldapi.CustomRole)
-		if isStatusNotFound(res) {
-			return nil, fmt.Errorf("failed to find custom role key for ID %q", customRoleID)
-		}
-		if err != nil {
-			return nil, fmt.Errorf("failed to retrieve custom role key for role ID %q: %v", customRoleID, err)
-		}
-		customRoleKeys = append(customRoleKeys, role.Key)
-	}
-	return customRoleKeys, nil
-}
-
-// Since the LD API expects custom role IDs, we need to look up each key to retrieve the ID
-func customRoleKeysToIDs(client *Client, keys []string) ([]string, error) {
-	customRoleIds := make([]string, 0, len(keys))
-	for _, key := range keys {
-		roleRaw, res, err := handleRateLimit(func() (interface{}, *http.Response, error) {
-			return client.ld.CustomRolesApi.GetCustomRole(client.ctx, key)
-		})
-		role := roleRaw.(ldapi.CustomRole)
-		if isStatusNotFound(res) {
-			return nil, fmt.Errorf("failed to find custom ID for key %q", key)
-		}
-		if err != nil {
-			return nil, fmt.Errorf("failed to retrieve custom role ID for key %q: %v", key, err)
-		}
-		customRoleIds = append(customRoleIds, role.Id)
-	}
-	return customRoleIds, nil
 }
 
 func resourceTeamMemberUpdate(d *schema.ResourceData, metaRaw interface{}) error {

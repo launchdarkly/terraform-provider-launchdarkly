@@ -163,6 +163,7 @@ func TestAccDataSourceSegment_exists(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "excluded.#", "1"),
 					resource.TestCheckResourceAttr(resourceName, "excluded.0", "some_bad@email.com"),
 					resource.TestCheckResourceAttr(resourceName, "tags.#", "1"),
+					resource.TestCheckResourceAttrSet(resourceName, "creation_date"),
 				),
 			},
 		},

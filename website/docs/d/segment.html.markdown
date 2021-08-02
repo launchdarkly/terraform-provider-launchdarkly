@@ -41,17 +41,19 @@ In addition to the arguments above, the resource exports the following attribute
 
 - `tags` - Set of tags for the segment.
 
-- `included` - List of users included in the segment.
+- `included` - List of user keys included in the segment.
 
-- `excluded` - List of user excluded from the segment.
+- `excluded` - List of user keys excluded from the segment.
 
 - `rules` - List of nested custom rule blocks to apply to the segment. To learn more, read [Nested Rules Blocks](#nested-rules-blocks).
+
+- `creation_date` - The segment's creation date represented as a UNIX epoch timestamp.
 
 ### Nested Rules Blocks
 
 Nested `rules` blocks have the following structure:
 
-- `weight` - The integer weight of the rule (between 1 and 100000).
+- `weight` - The integer weight of the rule (between 0 and 100000).
 
 - `bucket_by` - The attribute by which to group users together.
 
@@ -70,5 +72,3 @@ Nested `clauses` blocks have the following structure:
 - `value_type` - The type for each of the clause's values. Available types are `boolean`, `string`, and `number`.
 
 - `negate` - Whether the rule clause is negated.
-
-

@@ -18,7 +18,7 @@ resource "launchdarkly_feature_flag_environment" "number_env" {
   flag_id = launchdarkly_feature_flag.number.id
   env_key = launchdarkly_environment.staging.key
 
-  targeting_enabled = true
+  on = true
 
   prerequisites {
     flag_key  = launchdarkly_feature_flag.basic.key
@@ -63,7 +63,9 @@ resource "launchdarkly_feature_flag_environment" "number_env" {
 
 - `env_key` - (Required) The environment key.
 
-- `targeting_enabled` - (Optional) Whether targeting is enabled.
+- `targeting_enabled` - (Optional, **Deprecated**) Whether targeting is enabled. This field argument is **deprecated** in favor of `on`. Please update your config to use to `on` to maintain compatibility with future versions. Either `on` or `targeting_enabled` must be specified.
+
+- `on` - (Optional) Whether targeting is enabled.
 
 - `track_events` - (Optional) Whether to send event data back to LaunchDarkly.
 
@@ -97,7 +99,7 @@ The nested `flag_fallthrough` block has the following structure:
 
 - `variation` - (Optional) The default integer variation index to serve if no `prerequisites`, `user_target`, or `rules` apply. You must specify either `variation` or `rollout_weights`.
 
-- `rollout_weights` - (Optional) List of integer percentage rollout weights to apply to each variation if no `prerequisites`, `user_target`, or `rules` apply. The sum of the `rollout_weights` must equal 100000. You must specify either `variation` or `rollout_weights`.
+- `rollout_weights` - (Optional) List of integer percentage rollout weights (in thousandths of a percent) to apply to each variation if no `prerequisites`, `user_target`, or `rules` apply. The sum of the `rollout_weights` must equal 100000. You must specify either `variation` or `rollout_weights`.
 
 - `bucket_by` - (Optional) Group percentage rollout by a custom attribute. This argument is only valid if `rollout_weights` is also specified.
 
@@ -109,7 +111,7 @@ Nested `rules` blocks have the following structure:
 
 - `variation` - (Optional) The integer variation index to serve if the rule clauses evaluate to `true`. You must specify either `variation` or `rollout_weights`.
 
-- `rollout_weights` - (Optional) List of integer percentage rollout weights to apply to each variation if the rule clauses evaluates to `true`. The sum of the `rollout_weights` must equal 100000. You must specify either `variation` or `rollout_weights`.
+- `rollout_weights` - (Optional) List of integer percentage rollout weights (in thousandths of a percent) to apply to each variation if the rule clauses evaluates to `true`. The sum of the `rollout_weights` must equal 100000. You must specify either `variation` or `rollout_weights`.
 
 - `bucket_by` - (Optional) Group percentage rollout by a custom attribute. This argument is only valid if `rollout_weights` is also specified.
 
@@ -131,7 +133,7 @@ Nested `flag_fallthrough` blocks have the following structure:
 
 - `variation` - (Optional) The integer variation index to serve if the rule clauses evaluate to `true`. You must specify either `variation` or `rollout_weights`.
 
-- `rollout_weights` - (Optional) List of integer percentage rollout weights to apply to each variation if the rule clauses evaluates to `true`. The sum of the `rollout_weights` must equal 100000. You must specify either `variation` or `rollout_weights`.
+- `rollout_weights` - (Optional) List of integer percentage rollout weights (in thousandths of a percent) to apply to each variation if the rule clauses evaluates to `true`. The sum of the `rollout_weights` must equal 100000. You must specify either `variation` or `rollout_weights`.
 
 ## Attributes Reference
 
@@ -141,8 +143,8 @@ In addition to the arguments above, the resource exports the following attribute
 
 ## Import
 
-LaunchDarkly feature flag environments can be imported using the segment's ID in the form `project_key/env_key/flag_key`, e.g.
+LaunchDarkly feature flag environments can be imported using the resource's ID in the form `project_key/env_key/flag_key`, e.g.
 
 ```
-$ terraform import launchdarkly_segment.example example-project/example-environment/example-segment-key
+$ terraform import launchdarkly_feature_flag_environment.example example-project/example-env/example-flag-key
 ```

@@ -11,9 +11,10 @@ import (
 
 func rulesSchema() *schema.Schema {
 	return &schema.Schema{
-		Type:     schema.TypeList,
-		Optional: true,
-		Computed: true,
+		Type:        schema.TypeList,
+		Optional:    true,
+		Description: "List of logical targeting rules. You must specify either clauses or rollout weights",
+		Computed:    true,
 		Elem: &schema.Resource{
 			Schema: map[string]*schema.Schema{
 				CLAUSES: clauseSchema(),
@@ -21,12 +22,14 @@ func rulesSchema() *schema.Schema {
 					Type:         schema.TypeInt,
 					Elem:         &schema.Schema{Type: schema.TypeInt},
 					Optional:     true,
+					Description:  "The integer variation index to serve if the rule clauses evaluate to true. This argument is only valid if clauses are also specified",
 					ValidateFunc: validation.IntAtLeast(0),
 				},
 				ROLLOUT_WEIGHTS: rolloutSchema(),
 				BUCKET_BY: {
-					Type:     schema.TypeString,
-					Optional: true,
+					Type:        schema.TypeString,
+					Optional:    true,
+					Description: "Group percentage rollout by a custom attribute. This argument is only valid if rollout_weights is also specified",
 				},
 			},
 		},
