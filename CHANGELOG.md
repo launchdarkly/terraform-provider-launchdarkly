@@ -1,5 +1,11 @@
 ## [Unreleased]
 
+NOTES:
+
+- The `launchdarkly_feature_flag_environment` resource and data source's `flag_fallthrough` argument has been deprecated in favor of `fallthrough`. Please update your config to use `fallthrough` in order to maintain compatibility with future versions.
+
+- The `launchdarkly_feature_flag_environment` resource and data source's `user_targets` argument has been deprecated in favor of `targets`. Please update your config to use `targets` in order to maintain compatibility with future versions.
+
 ## [1.7.0] (August 2, 2021)
 
 FEATURES:

@@ -13,6 +13,16 @@ import (
 )
 
 func baseFeatureFlagEnvironmentSchema() map[string]*schema.Schema {
+	deprecatedFallthrough := fallthroughSchema()
+	deprecatedFallthrough.Deprecated = "'flag_fallthrough' is deprecated in favor of 'fallthrough'. This field will be removed in the next major release of the LaunchDarkly provider"
+	deprecatedFallthrough.ConflictsWith = []string{FALLTHROUGH}
+	newFallthrough := fallthroughSchema()
+	newFallthrough.ConflictsWith = []string{FLAG_FALLTHROUGH}
+	deprecatedTargets := targetsSchema()
+	deprecatedTargets.Deprecated = "'user_targets' is deprecated in favor of 'targets'. This field will be removed in the next major release of the LaunchDarkly provider"
+	deprecatedTargets.ConflictsWith = []string{TARGETS}
+	newTargets := targetsSchema()
+	newTargets.ConflictsWith = []string{USER_TARGETS}
 	return map[string]*schema.Schema{
 		FLAG_ID: {
 			Type:         schema.TypeString,
@@ -43,10 +53,12 @@ func baseFeatureFlagEnvironmentSchema() map[string]*schema.Schema {
 			Computed:      true,
 			ConflictsWith: []string{TARGETING_ENABLED},
 		},
-		USER_TARGETS:     targetsSchema(),
+		USER_TARGETS:     deprecatedTargets,
+		TARGETS:          newTargets,
 		RULES:            rulesSchema(),
 		PREREQUISITES:    prerequisitesSchema(),
-		FLAG_FALLTHROUGH: fallthroughSchema(),
+		FLAG_FALLTHROUGH: deprecatedFallthrough,
+		FALLTHROUGH:      newFallthrough,
 		TRACK_EVENTS: {
 			Type:        schema.TypeBool,
 			Optional:    true,
@@ -122,15 +134,26 @@ func featureFlagEnvironmentRead(d *schema.ResourceData, raw interface{}, isDataS
 		return fmt.Errorf("failed to set rules on flag with key %q: %v", flagKey, err)
 	}
 
-	err = d.Set(USER_TARGETS, targetsToResourceData(environment.Targets))
+	// user_targets is deprecated in favor of targets
+	err = d.Set(TARGETS, targetsToResourceData(environment.Targets))
 	if err != nil {
 		return fmt.Errorf("failed to set targets on flag with key %q: %v", flagKey, err)
 	}
+	err = d.Set(USER_TARGETS, targetsToResourceData(environment.Targets))
+	if err != nil {
+		return fmt.Errorf("failed to set user_targets on flag with key %q: %v", flagKey, err)
+	}
 
+	// flag_fallthrough is deprecated in favor of fallthrough
+	err = d.Set(FALLTHROUGH, fallthroughToResourceData(environment.Fallthrough_))
+	if err != nil {
+		return fmt.Errorf("failed to set fallthrough on flag with key %q: %v", flagKey, err)
+	}
 	err = d.Set(FLAG_FALLTHROUGH, fallthroughToResourceData(environment.Fallthrough_))
 	if err != nil {
-		return fmt.Errorf("failed to set flag fallthrough on flag with key %q: %v", flagKey, err)
+		return fmt.Errorf("failed to set flag_fallthrough on flag with key %q: %v", flagKey, err)
 	}
+
 	return nil
 }
 

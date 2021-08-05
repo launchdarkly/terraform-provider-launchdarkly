@@ -174,6 +174,8 @@ func TestAccDataSourceFeatureFlagEnvironment_exists(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "prerequisites.0.variation", fmt.Sprint(thisConfig.Prerequisites[0].Variation)),
 					resource.TestCheckResourceAttr(resourceName, "off_variation", fmt.Sprint(thisConfig.OffVariation)),
 					// user targets will be two long because there is an empty one for the 0 value
+					resource.TestCheckResourceAttr(resourceName, "targets.1.values.#", fmt.Sprint(len(thisConfig.Targets[0].Values))),
+					resource.TestCheckResourceAttr(resourceName, "fallthrough.0.variation", fmt.Sprint(thisConfig.Fallthrough_.Variation)),
 					resource.TestCheckResourceAttr(resourceName, "user_targets.1.values.#", fmt.Sprint(len(thisConfig.Targets[0].Values))),
 					resource.TestCheckResourceAttr(resourceName, "flag_fallthrough.0.variation", fmt.Sprint(thisConfig.Fallthrough_.Variation)),
 				),

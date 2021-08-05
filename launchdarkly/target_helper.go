@@ -27,12 +27,15 @@ func targetsSchema() *schema.Schema {
 	}
 }
 
-func targetsFromResourceData(d *schema.ResourceData, metaRaw interface{}) []ldapi.Target {
-	tgts, ok := d.GetOk(USER_TARGETS)
-	if !ok {
-		return []ldapi.Target{}
+func targetsFromResourceData(d *schema.ResourceData) []ldapi.Target {
+	var schemaTargets []interface{}
+	targetsHasChange := d.HasChange(TARGETS)
+	userTargetsHasChange := d.HasChange(USER_TARGETS)
+	if targetsHasChange {
+		schemaTargets = d.Get(TARGETS).([]interface{})
+	} else if userTargetsHasChange {
+		schemaTargets = d.Get(USER_TARGETS).([]interface{})
 	}
-	schemaTargets := tgts.([]interface{})
 	targets := make([]ldapi.Target, len(schemaTargets))
 	for i, target := range schemaTargets {
 		v := targetFromResourceData(i, target)
@@ -58,9 +61,9 @@ func targetFromResourceData(variation int, val interface{}) ldapi.Target {
 	return p
 }
 
-// targetToResourceData converts the user_target information returned
+// targetToResourceData converts the `target` information returned
 // by the LaunchDarkly API into a format suitable for Terraform
-// If no user_targets are specified for a given variation, LaunchDarkly may
+// If no `targets` are specified for a given variation, LaunchDarkly may
 // omit this information in the response. For example:
 // "targets": [
 // 	{

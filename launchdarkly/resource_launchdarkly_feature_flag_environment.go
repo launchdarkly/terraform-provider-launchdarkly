@@ -97,14 +97,16 @@ func resourceFeatureFlagEnvironmentCreate(d *schema.ResourceData, metaRaw interf
 		patches = append(patches, patchReplace(patchFlagEnvPath(d, "prerequisites"), prerequisites))
 	}
 
-	_, ok = d.GetOk(USER_TARGETS)
-	if ok {
-		targets := targetsFromResourceData(d, USER_TARGETS)
+	_, oldOk := d.GetOk(USER_TARGETS)
+	_, newOk := d.GetOk(TARGETS)
+	if oldOk || newOk {
+		targets := targetsFromResourceData(d)
 		patches = append(patches, patchReplace(patchFlagEnvPath(d, "targets"), targets))
 	}
 
-	_, ok = d.GetOk(FLAG_FALLTHROUGH)
-	if ok {
+	_, newOk = d.GetOk(FALLTHROUGH)
+	_, oldOk = d.GetOk(FLAG_FALLTHROUGH)
+	if oldOk || newOk {
 		fall, err := fallthroughFromResourceData(d)
 		if err != nil {
 			return err
@@ -150,7 +152,7 @@ func resourceFeatureFlagEnvironmentUpdate(d *schema.ResourceData, metaRaw interf
 		if err != nil {
 			return err
 		}
-		return fmt.Errorf("Cannot find project with key %q", projectKey)
+		return fmt.Errorf("cannot find project with key %q", projectKey)
 	}
 
 	if exists, err := environmentExists(projectKey, envKey, client); !exists {
@@ -167,7 +169,7 @@ func resourceFeatureFlagEnvironmentUpdate(d *schema.ResourceData, metaRaw interf
 	}
 	trackEvents := d.Get(TRACK_EVENTS).(bool)
 	prerequisites := prerequisitesFromResourceData(d, PREREQUISITES)
-	targets := targetsFromResourceData(d, USER_TARGETS)
+	targets := targetsFromResourceData(d)
 	offVariation := d.Get(OFF_VARIATION).(int)
 
 	fall, err := fallthroughFromResourceData(d)
@@ -212,7 +214,7 @@ func resourceFeatureFlagEnvironmentDelete(d *schema.ResourceData, metaRaw interf
 		if err != nil {
 			return err
 		}
-		return fmt.Errorf("Cannot find project with key %q", projectKey)
+		return fmt.Errorf("cannot find project with key %q", projectKey)
 	}
 
 	if exists, err := environmentExists(projectKey, envKey, client); !exists {

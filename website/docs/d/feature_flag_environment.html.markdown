@@ -38,11 +38,11 @@ In addition to the arguments above, the resource exports the following attribute
 
 - `prerequisites` - List of nested blocks describing prerequisite feature flags rules. To learn more, read [Nested Prequisites Blocks](#nested-prerequisites-blocks).
 
-- `user_targets` - List of nested blocks describing the individual user targets for each variation. The order of the `user_targets` blocks determines the index of the variation to serve if a `user_target` is matched. To learn more, read [Nested User Target Blocks](#nested-user-targets-blocks).
+- `targets` (previously `user_targets`) - List of nested blocks describing the individual user targets for each variation. The order of the `targets` blocks determines the index of the variation to serve if a `target` is matched. To learn more, read [Nested Target Blocks](#nested-targets-blocks).
 
 - `rules` - List of logical targeting rules. To learn more, read [Nested Rules Blocks](#nested-rules-blocks).
 
-- `flag_fallthrough` - Nested block describing the default variation to serve if no `prerequisites`, `user_target`, or `rules` apply. To learn more, read [Nested Flag Fallthrough Block](#nested-flag-fallthrough-block).
+- `fallthrough` (previously `flag_fallthrough`) - Nested block describing the default variation to serve if no `prerequisites`, `target`, or `rules` apply. To learn more, read [Nested Fallthrough Block](#nested-fallthrough-block).
 
 ### Nested Prerequisites Blocks
 
@@ -52,21 +52,21 @@ Nested `prerequisites` blocks have the following structure:
 
 - `variation` - The index of the prerequisite feature flag's variation targeted.
 
-### Nested User Targets Blocks
+### Nested Targets Blocks
 
-Nested `user_targets` blocks have the following structure:
+Nested `targets` blocks have the following structure:
 
 - `values` - List of `user` strings to target.
 
-### Nested Flag Fallthrough Block
+### Nested Fallthrough Block
 
-The nested `flag_fallthrough` block has the following structure:
+The nested `fallthrough` block has the following structure:
 
-- `variation` - The default integer variation index served if no `prerequisites`, `user_target`, or `rules` apply. 
+- `variation` - The default integer variation index served if no `prerequisites`, `target`, or `rules` apply.
 
-- `rollout_weights` - List of integer percentage rollout weights applied to each variation when no `prerequisites`, `user_target`, or `rules` apply. 
+- `rollout_weights` - List of integer percentage rollout weights applied to each variation when no `prerequisites`, `target`, or `rules` apply.
 
-- `bucket_by` - Group percentage rollout by a custom attribute. 
+- `bucket_by` - Group percentage rollout by a custom attribute.
 
 ### Nested Rules Blocks
 
@@ -74,11 +74,11 @@ Nested `rules` blocks have the following structure:
 
 - `clauses` - List of nested blocks specifying the logical clauses evaluated. To learn more, read [Nested Clauses Blocks](#nested-clauses-blocks).
 
-- `variation` - The integer variation index served if the rule clauses evaluate to `true`. 
+- `variation` - The integer variation index served if the rule clauses evaluate to `true`.
 
-- `rollout_weights` - List of integer percentage rollout weights applied to each variation when the rule clauses evaluates to `true`. 
+- `rollout_weights` - List of integer percentage rollout weights applied to each variation when the rule clauses evaluates to `true`.
 
-- `bucket_by` - Group percentage rollout by a custom attribute. 
+- `bucket_by` - Group percentage rollout by a custom attribute.
 
 ### Nested Clauses Blocks
 
@@ -94,9 +94,8 @@ Nested `clauses` blocks have the following structure:
 
 - `negate` - Whether the rule clause is negated.
 
-Nested `flag_fallthrough` blocks have the following structure:
+Nested `fallthrough` blocks have the following structure:
 
-- `variation` - The integer variation index served when the rule clauses evaluate to `true`. 
+- `variation` - The integer variation index served when the rule clauses evaluate to `true`.
 
-- `rollout_weights` - List of integer percentage rollout weights applied to each variation when the rule clauses evaluates to `true`. 
-
+- `rollout_weights` - List of integer percentage rollout weights applied to each variation when the rule clauses evaluates to `true`.
