@@ -353,6 +353,20 @@ resource "launchdarkly_feature_flag" "defaults-multivariate" {
 	}
 }
 `
+	testAccFeatureFlagEmptyStringVariation = `
+resource "launchdarkly_feature_flag" "empty_string_variation" {
+	project_key = launchdarkly_project.test.key
+	key = "empty-variation"
+	name = "string flag with empty string variation"
+	variation_type = "string"
+	variations {
+		value = ""
+	}
+	variations {
+		value = "non-empty"
+	}
+}
+`
 )
 
 func withRandomProject(randomProject, resource string) string {
@@ -861,6 +875,37 @@ func TestAccFeatureFlag_UpdateMultivariateDefaults(t *testing.T) {
 				ImportState:             true,
 				ImportStateVerify:       true,
 				ImportStateVerifyIgnore: []string{"default"},
+			},
+		},
+	})
+}
+
+func TestAccFeatureFlag_EmptyStringVariation(t *testing.T) {
+	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	resourceName := "launchdarkly_feature_flag.empty_string_variation"
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck: func() {
+			testAccPreCheck(t)
+		},
+		Providers: testAccProviders,
+		Steps: []resource.TestStep{
+			{
+				Config: withRandomProject(projectKey, testAccFeatureFlagEmptyStringVariation),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckProjectExists("launchdarkly_project.test"),
+					testAccCheckFeatureFlagExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, "variations.0.value", ""),
+					resource.TestCheckResourceAttr(resourceName, "variations.0.name", ""),
+					resource.TestCheckResourceAttr(resourceName, "variations.0.description", ""),
+					resource.TestCheckResourceAttr(resourceName, "variations.1.value", "non-empty"),
+					resource.TestCheckResourceAttr(resourceName, "variations.1.name", ""),
+					resource.TestCheckResourceAttr(resourceName, "variations.1.description", ""),
+				),
+			},
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
 			},
 		},
 	})

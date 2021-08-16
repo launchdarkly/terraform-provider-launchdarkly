@@ -176,8 +176,17 @@ func boolVariationFromResourceData(variation interface{}) ldapi.Variation {
 }
 
 func stringVariationFromResourceData(variation interface{}) ldapi.Variation {
+	var v interface{}
+	if variation == nil { // handle empty string value
+		v = ""
+		return ldapi.Variation{
+			Name:        "",
+			Description: "",
+			Value:       &v,
+		}
+	}
 	variationMap := variation.(map[string]interface{})
-	v := variationMap[VALUE]
+	v = variationMap[VALUE]
 	return ldapi.Variation{
 		Name:        variationMap[NAME].(string),
 		Description: variationMap[DESCRIPTION].(string),
