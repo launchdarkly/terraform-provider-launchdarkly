@@ -38,7 +38,7 @@ func resourceFeatureFlagCreate(d *schema.ResourceData, metaRaw interface{}) erro
 		if err != nil {
 			return err
 		}
-		return fmt.Errorf("Cannot find project with key %q", projectKey)
+		return fmt.Errorf("cannot find project with key %q", projectKey)
 	}
 
 	key := d.Get(KEY).(string)

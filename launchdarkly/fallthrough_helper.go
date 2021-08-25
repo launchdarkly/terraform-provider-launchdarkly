@@ -68,7 +68,14 @@ func isPercentRollout(fall []interface{}) bool {
 }
 
 func fallthroughFromResourceData(d *schema.ResourceData) (fallthroughModel, error) {
-	f := d.Get(FLAG_FALLTHROUGH).([]interface{})
+	var f []interface{}
+	fallthroughHasChange := d.HasChange(FALLTHROUGH)
+	flagFallthroughHasChange := d.HasChange(FLAG_FALLTHROUGH)
+	if fallthroughHasChange {
+		f = d.Get(FALLTHROUGH).([]interface{})
+	} else if flagFallthroughHasChange {
+		f = d.Get(FLAG_FALLTHROUGH).([]interface{})
+	}
 	err := validateFallThroughResourceData(f)
 	if err != nil {
 		return fallthroughModel{}, err

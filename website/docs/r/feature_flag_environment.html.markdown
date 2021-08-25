@@ -51,7 +51,7 @@ resource "launchdarkly_feature_flag_environment" "number_env" {
     variation = 0
   }
 
-  flag_fallthrough {
+  fallthrough {
     rollout_weights = [60000, 40000, 0]
   }
 }
@@ -77,7 +77,9 @@ resource "launchdarkly_feature_flag_environment" "number_env" {
 
 - `rules` - (Optional) List of logical targeting rules. To learn more, read [Nested Rules Blocks](#nested-rules-blocks).
 
-- `flag_fallthrough` - (Optional) Nested block describing the default variation to serve if no `prerequisites`, `user_target`, or `rules` apply. To learn more, read [Nested Flag Fallthrough Block](#nested-flag-fallthrough-block).
+- `flag_fallthrough` - (Optional, **Deprecated**) Nested block describing the default variation to serve if no `prerequisites`, `user_target`, or `rules` apply. This attribute is **deprecated** in favor of `fallthrough`. Please update all references of `flag_fallthrough` to `fallthrough` to maintain compatibility with future versions.
+
+- `fallthrough` - (Optional) Nested block describing the default variation to serve if no `prerequisites`, `user_target`, or `rules` apply.To learn more, read [Nested Fallthrough Block](#nested-fallthrough-block).
 
 ### Nested Prerequisites Blocks
 
@@ -93,9 +95,9 @@ Nested `user_targets` blocks have the following structure:
 
 - `values` - (Optional) List of `user` strings to target.
 
-### Nested Flag Fallthrough Block
+### Nested Fallthrough Block
 
-The nested `flag_fallthrough` block has the following structure:
+The nested `fallthrough` (previously `flag_fallthrough`) block has the following structure:
 
 - `variation` - (Optional) The default integer variation index to serve if no `prerequisites`, `user_target`, or `rules` apply. You must specify either `variation` or `rollout_weights`.
 
@@ -128,12 +130,6 @@ Nested `clauses` blocks have the following structure:
 - `value_type` - (Optional) The type for each of the clause's values. Available types are `boolean`, `string`, and `number`. If omitted, `value_type` defaults to `string`.
 
 - `negate` - (Required) Whether to negate the rule clause.
-
-Nested `flag_fallthrough` blocks have the following structure:
-
-- `variation` - (Optional) The integer variation index to serve if the rule clauses evaluate to `true`. You must specify either `variation` or `rollout_weights`.
-
-- `rollout_weights` - (Optional) List of integer percentage rollout weights (in thousandths of a percent) to apply to each variation if the rule clauses evaluates to `true`. The sum of the `rollout_weights` must equal 100000. You must specify either `variation` or `rollout_weights`.
 
 ## Attributes Reference
 

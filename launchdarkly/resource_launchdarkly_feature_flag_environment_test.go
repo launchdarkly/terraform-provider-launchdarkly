@@ -38,6 +38,9 @@ resource "launchdarkly_feature_flag_environment" "basic" {
   	flag_fallthrough {
     	variation = 1
   	}
+	user_targets {
+		values = ["user1"]
+	}
 }
 `
 
@@ -86,13 +89,13 @@ resource "launchdarkly_feature_flag_environment" "basic" {
 	env_key 		  = "test"
 	targeting_enabled = true
 	track_events = true
-	user_targets {
+	targets {
 		values = []
 	}
-	user_targets {
+	targets {
 		values = ["user1", "user2"]
 	}
-	user_targets {
+	targets {
 		values = []
 	}
 	rules {
@@ -115,12 +118,49 @@ resource "launchdarkly_feature_flag_environment" "basic" {
 		bucket_by = "email"
 	}
 
-	flag_fallthrough {
+	fallthrough {
 		rollout_weights = [60000, 40000, 0]
 		bucket_by = "email"
 	}
 }
 `
+	testAccFeatureFlagEnvironmentUpdateDeprecated = `	
+resource "launchdarkly_feature_flag" "basic" {
+	project_key = launchdarkly_project.test.key
+	key = "basic-flag"
+	name = "Basic feature flag"
+	variation_type = "number"
+	variations {
+		value = 0
+	}
+	variations {
+		value = 10
+	}
+	variations {
+		value = 30
+	}
+}
+
+resource "launchdarkly_feature_flag_environment" "basic" {
+	flag_id 		  = launchdarkly_feature_flag.basic.id
+	env_key 		  = "test"
+	targeting_enabled = true
+	track_events = true
+	user_targets {
+		values = ["user1", "user2"]
+	}
+	user_targets {
+		values = []
+	}
+	user_targets {
+		values = []
+	}
+	flag_fallthrough {
+		variation = 2
+	}
+}
+`
+
 	testAccFeatureFlagEnvironmentJSONVariations = `
 resource "launchdarkly_feature_flag" "json" {
 	project_key    = launchdarkly_project.test.key
@@ -315,6 +355,8 @@ func TestAccFeatureFlagEnvironment_Basic(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "targeting_enabled", "false"),
 					resource.TestCheckResourceAttr(resourceName, "flag_fallthrough.#", "1"),
 					resource.TestCheckResourceAttr(resourceName, "flag_fallthrough.0.variation", "1"),
+					resource.TestCheckResourceAttr(resourceName, "user_targets.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "user_targets.0.values.0", "user1"),
 				),
 			},
 			{
@@ -359,6 +401,59 @@ func TestAccFeatureFlagEnvironment_Empty(t *testing.T) {
 	})
 }
 
+func TestAccFeatureFlagEnvironment_UpdateDeprecatedFields(t *testing.T) {
+	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	resourceName := "launchdarkly_feature_flag_environment.basic"
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck: func() {
+			testAccPreCheck(t)
+		},
+		Providers: testAccProviders,
+		Steps: []resource.TestStep{
+			{
+				Config: withRandomProject(projectKey, testAccFeatureFlagEnvironmentBasic),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckFeatureFlagEnvironmentExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, "targeting_enabled", "false"),
+					resource.TestCheckResourceAttr(resourceName, "on", "false"),
+					resource.TestCheckResourceAttr(resourceName, "flag_fallthrough.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "flag_fallthrough.0.variation", "1"),
+					resource.TestCheckResourceAttr(resourceName, "flag_fallthrough.0.rollout.#", "0"),
+					resource.TestCheckResourceAttr(resourceName, "user_targets.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "user_targets.0.values.0", "user1"),
+					resource.TestCheckResourceAttr(resourceName, "rules.#", "0"),
+				),
+			},
+			{
+				Config: withRandomProject(projectKey, testAccFeatureFlagEnvironmentUpdateDeprecated),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckFeatureFlagEnvironmentExists(resourceName),
+					// computed values should come through
+					resource.TestCheckResourceAttr(resourceName, "targeting_enabled", "true"),
+					resource.TestCheckResourceAttr(resourceName, "on", "true"),
+					resource.TestCheckResourceAttr(resourceName, "track_events", "true"),
+					resource.TestCheckResourceAttr(resourceName, "fallthrough.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "fallthrough.0.variation", "2"),
+					resource.TestCheckResourceAttr(resourceName, "flag_fallthrough.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "flag_fallthrough.0.variation", "2"),
+					resource.TestCheckResourceAttr(resourceName, "targets.#", "3"),
+					resource.TestCheckResourceAttr(resourceName, "targets.0.values.#", "2"),
+					resource.TestCheckResourceAttr(resourceName, "targets.0.values.0", "user1"),
+					resource.TestCheckResourceAttr(resourceName, "targets.0.values.1", "user2"),
+					resource.TestCheckResourceAttr(resourceName, "targets.1.values.#", "0"),
+					resource.TestCheckResourceAttr(resourceName, "targets.2.values.#", "0"),
+					resource.TestCheckResourceAttr(resourceName, "user_targets.#", "3"),
+					resource.TestCheckResourceAttr(resourceName, "user_targets.0.values.#", "2"),
+					resource.TestCheckResourceAttr(resourceName, "user_targets.0.values.0", "user1"),
+					resource.TestCheckResourceAttr(resourceName, "user_targets.0.values.1", "user2"),
+					resource.TestCheckResourceAttr(resourceName, "user_targets.1.values.#", "0"),
+					resource.TestCheckResourceAttr(resourceName, "user_targets.2.values.#", "0"),
+				),
+			},
+		},
+	})
+}
+
 func TestAccFeatureFlagEnvironment_Update(t *testing.T) {
 	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	resourceName := "launchdarkly_feature_flag_environment.basic"
@@ -376,7 +471,8 @@ func TestAccFeatureFlagEnvironment_Update(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "flag_fallthrough.#", "1"),
 					resource.TestCheckResourceAttr(resourceName, "flag_fallthrough.0.variation", "1"),
 					resource.TestCheckResourceAttr(resourceName, "flag_fallthrough.0.rollout.#", "0"),
-					resource.TestCheckResourceAttr(resourceName, "user_targets.#", "0"),
+					resource.TestCheckResourceAttr(resourceName, "user_targets.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "user_targets.0.values.0", "user1"),
 					resource.TestCheckResourceAttr(resourceName, "rules.#", "0"),
 				),
 			},
@@ -386,19 +482,19 @@ func TestAccFeatureFlagEnvironment_Update(t *testing.T) {
 					testAccCheckFeatureFlagEnvironmentExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, "targeting_enabled", "true"),
 					resource.TestCheckResourceAttr(resourceName, "track_events", "true"),
-					resource.TestCheckResourceAttr(resourceName, "flag_fallthrough.#", "1"),
-					resource.TestCheckResourceAttr(resourceName, "flag_fallthrough.0.variation", "0"),
-					resource.TestCheckResourceAttr(resourceName, "flag_fallthrough.0.rollout_weights.#", "3"),
-					resource.TestCheckResourceAttr(resourceName, "flag_fallthrough.0.rollout_weights.0", "60000"),
-					resource.TestCheckResourceAttr(resourceName, "flag_fallthrough.0.rollout_weights.1", "40000"),
-					resource.TestCheckResourceAttr(resourceName, "flag_fallthrough.0.rollout_weights.2", "0"),
-					resource.TestCheckResourceAttr(resourceName, "flag_fallthrough.0.bucket_by", "email"),
-					resource.TestCheckResourceAttr(resourceName, "user_targets.#", "3"),
-					resource.TestCheckResourceAttr(resourceName, "user_targets.0.values.#", "0"),
-					resource.TestCheckResourceAttr(resourceName, "user_targets.1.values.#", "2"),
-					resource.TestCheckResourceAttr(resourceName, "user_targets.1.values.0", "user1"),
-					resource.TestCheckResourceAttr(resourceName, "user_targets.1.values.1", "user2"),
-					resource.TestCheckResourceAttr(resourceName, "user_targets.2.values.#", "0"),
+					resource.TestCheckResourceAttr(resourceName, "fallthrough.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "fallthrough.0.variation", "0"),
+					resource.TestCheckResourceAttr(resourceName, "fallthrough.0.rollout_weights.#", "3"),
+					resource.TestCheckResourceAttr(resourceName, "fallthrough.0.rollout_weights.0", "60000"),
+					resource.TestCheckResourceAttr(resourceName, "fallthrough.0.rollout_weights.1", "40000"),
+					resource.TestCheckResourceAttr(resourceName, "fallthrough.0.rollout_weights.2", "0"),
+					resource.TestCheckResourceAttr(resourceName, "fallthrough.0.bucket_by", "email"),
+					resource.TestCheckResourceAttr(resourceName, "targets.#", "3"),
+					resource.TestCheckResourceAttr(resourceName, "targets.0.values.#", "0"),
+					resource.TestCheckResourceAttr(resourceName, "targets.1.values.#", "2"),
+					resource.TestCheckResourceAttr(resourceName, "targets.1.values.0", "user1"),
+					resource.TestCheckResourceAttr(resourceName, "targets.1.values.1", "user2"),
+					resource.TestCheckResourceAttr(resourceName, "targets.2.values.#", "0"),
 					resource.TestCheckResourceAttr(resourceName, "rules.#", "2"),
 					resource.TestCheckResourceAttr(resourceName, "rules.0.variation", "0"),
 					resource.TestCheckResourceAttr(resourceName, "rules.0.clauses.#", "1"),
@@ -427,19 +523,19 @@ func TestAccFeatureFlagEnvironment_Update(t *testing.T) {
 					testAccCheckFeatureFlagEnvironmentExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, "targeting_enabled", "true"),
 					resource.TestCheckResourceAttr(resourceName, "track_events", "true"),
-					resource.TestCheckResourceAttr(resourceName, "flag_fallthrough.#", "1"),
-					resource.TestCheckResourceAttr(resourceName, "flag_fallthrough.0.variation", "0"),
-					resource.TestCheckResourceAttr(resourceName, "flag_fallthrough.0.rollout_weights.#", "3"),
-					resource.TestCheckResourceAttr(resourceName, "flag_fallthrough.0.rollout_weights.0", "60000"),
-					resource.TestCheckResourceAttr(resourceName, "flag_fallthrough.0.rollout_weights.1", "40000"),
-					resource.TestCheckResourceAttr(resourceName, "flag_fallthrough.0.rollout_weights.2", "0"),
-					resource.TestCheckResourceAttr(resourceName, "flag_fallthrough.0.bucket_by", "email"),
-					resource.TestCheckResourceAttr(resourceName, "user_targets.#", "3"),
-					resource.TestCheckResourceAttr(resourceName, "user_targets.0.values.#", "0"),
-					resource.TestCheckResourceAttr(resourceName, "user_targets.1.values.#", "2"),
-					resource.TestCheckResourceAttr(resourceName, "user_targets.1.values.0", "user1"),
-					resource.TestCheckResourceAttr(resourceName, "user_targets.1.values.1", "user2"),
-					resource.TestCheckResourceAttr(resourceName, "user_targets.2.values.#", "0"),
+					resource.TestCheckResourceAttr(resourceName, "fallthrough.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "fallthrough.0.variation", "0"),
+					resource.TestCheckResourceAttr(resourceName, "fallthrough.0.rollout_weights.#", "3"),
+					resource.TestCheckResourceAttr(resourceName, "fallthrough.0.rollout_weights.0", "60000"),
+					resource.TestCheckResourceAttr(resourceName, "fallthrough.0.rollout_weights.1", "40000"),
+					resource.TestCheckResourceAttr(resourceName, "fallthrough.0.rollout_weights.2", "0"),
+					resource.TestCheckResourceAttr(resourceName, "fallthrough.0.bucket_by", "email"),
+					resource.TestCheckResourceAttr(resourceName, "targets.#", "3"),
+					resource.TestCheckResourceAttr(resourceName, "targets.0.values.#", "0"),
+					resource.TestCheckResourceAttr(resourceName, "targets.1.values.#", "2"),
+					resource.TestCheckResourceAttr(resourceName, "targets.1.values.0", "user1"),
+					resource.TestCheckResourceAttr(resourceName, "targets.1.values.1", "user2"),
+					resource.TestCheckResourceAttr(resourceName, "targets.2.values.#", "0"),
 					resource.TestCheckResourceAttr(resourceName, "rules.#", "2"),
 					resource.TestCheckResourceAttr(resourceName, "rules.0.variation", "0"),
 					resource.TestCheckResourceAttr(resourceName, "rules.0.clauses.#", "1"),

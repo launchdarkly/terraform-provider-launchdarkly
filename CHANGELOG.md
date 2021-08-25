@@ -1,4 +1,14 @@
-## [Unreleased]
+## [1.7.1] (August 24, 2021)
+
+BUG FIXES:
+
+- Fixes [a bug](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/60) where attempts to create `resource_launchdarkly_feature_flag` variations with an empty string value were throwing a panic.
+
+NOTES:
+
+- The `launchdarkly_feature_flag_environment` resource and data source's `flag_fallthrough` argument has been deprecated in favor of `fallthrough`. Please update your config to use `fallthrough` in order to maintain compatibility with future versions.
+
+- The `launchdarkly_feature_flag_environment` resource and data source's `user_targets` argument has been deprecated in favor of `targets`. Please update your config to use `targets` in order to maintain compatibility with future versions.
 
 ## [1.7.0] (August 2, 2021)
 
@@ -27,7 +37,6 @@ NOTES:
 - The `launchdarkly_feature_flag_environment` resource's `targeting_enabled` argument has been deprecated in favor of `on`. Please update your config to use `on` in order to maintain compatibility with future versions.
 
 - The `resource_launchdarkly_access_token` resource's `policy_statements` argument has been deprecated in favor of `inline_roles`. Please update your config to use `inline_roles` in order to maintain compatibility with future versions.
-
 
 ## [1.6.0] (July 20, 2021)
 

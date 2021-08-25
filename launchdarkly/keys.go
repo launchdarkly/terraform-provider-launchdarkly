@@ -59,13 +59,15 @@ const (
 	BUCKET_BY                = "bucket_by"
 	ROLLOUT_WEIGHTS          = "rollout_weights"
 	VARIATION                = "variation"
-	USER_TARGETS             = "user_targets"
+	USER_TARGETS             = "user_targets" // deprecated
+	TARGETS                  = "targets"
 	PREREQUISITES            = "prerequisites"
 	FLAG_KEY                 = "flag_key"
 	TARGETING_ENABLED        = "targeting_enabled"
 	TRACK_EVENTS             = "track_events"
 	OFF_VARIATION            = "off_variation"
-	FLAG_FALLTHROUGH         = "flag_fallthrough"
+	FLAG_FALLTHROUGH         = "flag_fallthrough" // deprecated
+	FALLTHROUGH              = "fallthrough"
 	KIND                     = "kind"
 	CONFIG                   = "config"
 	DEFAULT_ON_VARIATION     = "default_on_variation"
