@@ -1,4 +1,4 @@
-## [1.7.1] (August 24, 2021)
+## [2.0.0] (August 31, 2021)
 
 ENHANCEMENTS:
 
@@ -66,7 +66,7 @@ BUG FIXES:
 
 - The `client_side_availability` attribute on the `launchdarkly_feature_flag` and `launchdarkly_project` data sources has been corrected to an array with a single map item. This means that you will need to add an index 0 when accessing this property from the state (ex. `client_side_availability.using_environment_id` will now have to be accessed as `client_side_availability.0.using_environment_id`).
 
-## [Unreleased]
+## [1.7.1] (August 24, 2021)
 
 BUG FIXES:
 
