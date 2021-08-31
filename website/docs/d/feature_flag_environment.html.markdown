@@ -30,7 +30,7 @@ data "launchdarkly_feature_flag_environment" "example" {
 
 In addition to the arguments above, the resource exports the following attributes:
 
-- `targeting_enabled` - Whether targeting is enabled.
+- `on` - Whether targeting is enabled.
 
 - `track_events` - Whether event data will be sent back to LaunchDarkly.
 
@@ -38,7 +38,7 @@ In addition to the arguments above, the resource exports the following attribute
 
 - `prerequisites` - List of nested blocks describing prerequisite feature flags rules. To learn more, read [Nested Prequisites Blocks](#nested-prerequisites-blocks).
 
-- `targets` (previously `user_targets`) - List of nested blocks describing the individual user targets for each variation. The order of the `targets` blocks determines the index of the variation to serve if a `target` is matched. To learn more, read [Nested Target Blocks](#nested-targets-blocks).
+- `targets` (previously `user_targets`) - Set of nested blocks describing the individual user targets for each variation. To learn more, read [Nested Target Blocks](#nested-targets-blocks).
 
 - `rules` - List of logical targeting rules. To learn more, read [Nested Rules Blocks](#nested-rules-blocks).
 
@@ -57,6 +57,8 @@ Nested `prerequisites` blocks have the following structure:
 Nested `targets` blocks have the following structure:
 
 - `values` - List of `user` strings to target.
+
+- `variation` - The index of the variation to serve is a user target value is matched.
 
 ### Nested Fallthrough Block
 

@@ -1,7 +1,7 @@
 package launchdarkly
 
 import (
-	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
 func dataSourceProject() *schema.Resource {
@@ -18,7 +18,7 @@ func dataSourceProject() *schema.Resource {
 				Computed: true,
 			},
 			CLIENT_SIDE_AVAILABILITY: {
-				Type:     schema.TypeMap,
+				Type:     schema.TypeList,
 				Computed: true,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{

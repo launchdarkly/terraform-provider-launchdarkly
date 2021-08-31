@@ -6,9 +6,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hashicorp/terraform-plugin-sdk/helper/acctest"
-	"github.com/hashicorp/terraform-plugin-sdk/helper/resource"
-	"github.com/hashicorp/terraform-plugin-sdk/terraform"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/acctest"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 )
 
 const (
@@ -296,7 +296,7 @@ func TestAccAccessToken_UpdateCustomRole(t *testing.T) {
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckAccessTokenExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, "custom_roles.#", "1"),
-					resource.TestCheckResourceAttr(resourceName, "custom_roles."+testAccMemberCustomRolePropertyKey(name), name),
+					resource.TestCheckResourceAttr(resourceName, "custom_roles.0", name),
 				),
 			},
 			{
@@ -305,8 +305,8 @@ func TestAccAccessToken_UpdateCustomRole(t *testing.T) {
 					testAccCheckAccessTokenExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, "name", "Updated - "+name),
 					resource.TestCheckResourceAttr(resourceName, "custom_roles.#", "2"),
-					resource.TestCheckResourceAttr(resourceName, "custom_roles."+testAccMemberCustomRolePropertyKey(name), name),
-					resource.TestCheckResourceAttr(resourceName, "custom_roles."+testAccMemberCustomRolePropertyKey(name+"2"), name+"2"),
+					resource.TestCheckResourceAttr(resourceName, "custom_roles.0", name),
+					resource.TestCheckResourceAttr(resourceName, "custom_roles.1", name+"2"),
 				),
 			},
 		},

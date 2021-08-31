@@ -3,18 +3,18 @@ package launchdarkly
 import (
 	"errors"
 
-	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
-	"github.com/hashicorp/terraform-plugin-sdk/helper/validation"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 
 	ldapi "github.com/launchdarkly/api-client-go"
 )
 
-func fallthroughSchema() *schema.Schema {
+func fallthroughSchema(forDataSource bool) *schema.Schema {
 	return &schema.Schema{
 		Type:        schema.TypeList,
-		Optional:    true,
+		Required:    !forDataSource,
+		Optional:    forDataSource,
 		Description: "Nested block describing the default variation to serve if no prerequisites, user_target, or rules apply. You must specify either variation or rollout_weights",
-		Computed:    true,
 		MaxItems:    1,
 		Elem: &schema.Resource{
 			Schema: map[string]*schema.Schema{
@@ -42,10 +42,6 @@ type fallthroughModel struct {
 }
 
 func validateFallThroughResourceData(f []interface{}) error {
-	if len(f) == 0 {
-		return nil
-	}
-
 	if !isPercentRollout(f) {
 		fall := f[0].(map[string]interface{})
 		if bucketBy, ok := fall[BUCKET_BY]; ok {
@@ -68,21 +64,10 @@ func isPercentRollout(fall []interface{}) bool {
 }
 
 func fallthroughFromResourceData(d *schema.ResourceData) (fallthroughModel, error) {
-	var f []interface{}
-	fallthroughHasChange := d.HasChange(FALLTHROUGH)
-	flagFallthroughHasChange := d.HasChange(FLAG_FALLTHROUGH)
-	if fallthroughHasChange {
-		f = d.Get(FALLTHROUGH).([]interface{})
-	} else if flagFallthroughHasChange {
-		f = d.Get(FLAG_FALLTHROUGH).([]interface{})
-	}
+	f := d.Get(FALLTHROUGH).([]interface{})
 	err := validateFallThroughResourceData(f)
 	if err != nil {
 		return fallthroughModel{}, err
-	}
-
-	if len(f) == 0 {
-		return fallthroughModel{Variation: intPtr(0)}, nil
 	}
 
 	fall := f[0].(map[string]interface{})

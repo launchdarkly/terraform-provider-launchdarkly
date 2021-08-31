@@ -108,9 +108,7 @@ resource "launchdarkly_destination" "example" {
 
 - `config` - (Required) - The destination-specific configuration. To learn more, read [Destination-Specific Configs](#destination-specific-configs).
 
-- `enabled` - (Optional, **Deprecated**) - Whether the data export destination is on or not. This field argument is **deprecated** in favor of `on`. Please update your config to use to `on` to maintain compatibility with future versions.
-
-- `on` - (Optional) - Whether the data export destination is on or not.
+- `on` - (Optional, previously `enabled`) - Whether the data export destination is on or not.
 
 ### Destination-Specific Configs
 

@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	ldapi "github.com/launchdarkly/api-client-go"
 )
 
@@ -20,7 +20,7 @@ func resourceFeatureFlagEnvironment() *schema.Resource {
 		Importer: &schema.ResourceImporter{
 			State: resourceFeatureFlagEnvironmentImport,
 		},
-		Schema: baseFeatureFlagEnvironmentSchema(),
+		Schema: baseFeatureFlagEnvironmentSchema(false),
 	}
 }
 
@@ -64,18 +64,12 @@ func resourceFeatureFlagEnvironmentCreate(d *schema.ResourceData, metaRaw interf
 
 	patches := make([]ldapi.PatchOperation, 0)
 
-	enabled, ok := getFeatureFlagEnvironmentOn(d)
-	if ok {
-		patches = append(patches, patchReplace(patchFlagEnvPath(d, "on"), enabled))
-	}
+	on := d.Get(ON)
+	patches = append(patches, patchReplace(patchFlagEnvPath(d, "on"), on))
 
-	// GetOKExists is marked deprecated by Hashicorp, however it seems to be the only solution for setting the
-	// offVariation to 0 during creation. According to Hashicorp, it will not be removed until a replacement function is
-	// implemented. https://github.com/hashicorp/terraform-plugin-sdk/pull/350#issuecomment-597888969
-	offVariation, ok := d.GetOkExists(OFF_VARIATION)
-	if ok {
-		patches = append(patches, patchReplace(patchFlagEnvPath(d, "offVariation"), offVariation.(int)))
-	}
+	// off_variation is required
+	offVariation := d.Get(OFF_VARIATION)
+	patches = append(patches, patchReplace(patchFlagEnvPath(d, "offVariation"), offVariation.(int)))
 
 	trackEvents, ok := d.GetOk(TRACK_EVENTS)
 	if ok {
@@ -97,22 +91,18 @@ func resourceFeatureFlagEnvironmentCreate(d *schema.ResourceData, metaRaw interf
 		patches = append(patches, patchReplace(patchFlagEnvPath(d, "prerequisites"), prerequisites))
 	}
 
-	_, oldOk := d.GetOk(USER_TARGETS)
-	_, newOk := d.GetOk(TARGETS)
-	if oldOk || newOk {
+	_, ok = d.GetOk(TARGETS)
+	if ok {
 		targets := targetsFromResourceData(d)
 		patches = append(patches, patchReplace(patchFlagEnvPath(d, "targets"), targets))
 	}
 
-	_, newOk = d.GetOk(FALLTHROUGH)
-	_, oldOk = d.GetOk(FLAG_FALLTHROUGH)
-	if oldOk || newOk {
-		fall, err := fallthroughFromResourceData(d)
-		if err != nil {
-			return err
-		}
-		patches = append(patches, patchReplace(patchFlagEnvPath(d, "fallthrough"), fall))
+	// fallthrough is required
+	fall, err := fallthroughFromResourceData(d)
+	if err != nil {
+		return err
 	}
+	patches = append(patches, patchReplace(patchFlagEnvPath(d, "fallthrough"), fall))
 
 	if len(patches) > 0 {
 		patch := ldapi.PatchComment{
@@ -162,7 +152,7 @@ func resourceFeatureFlagEnvironmentUpdate(d *schema.ResourceData, metaRaw interf
 		return fmt.Errorf("failed to find environment with key %q", envKey)
 	}
 
-	on, _ := getFeatureFlagEnvironmentOn(d)
+	on := d.Get(ON)
 	rules, err := rulesFromResourceData(d)
 	if err != nil {
 		return err
@@ -170,12 +160,12 @@ func resourceFeatureFlagEnvironmentUpdate(d *schema.ResourceData, metaRaw interf
 	trackEvents := d.Get(TRACK_EVENTS).(bool)
 	prerequisites := prerequisitesFromResourceData(d, PREREQUISITES)
 	targets := targetsFromResourceData(d)
-	offVariation := d.Get(OFF_VARIATION).(int)
 
 	fall, err := fallthroughFromResourceData(d)
 	if err != nil {
 		return err
 	}
+	offVariation := d.Get(OFF_VARIATION)
 
 	patch := ldapi.PatchComment{
 		Comment: "Terraform",
@@ -184,9 +174,9 @@ func resourceFeatureFlagEnvironmentUpdate(d *schema.ResourceData, metaRaw interf
 			patchReplace(patchFlagEnvPath(d, "rules"), rules),
 			patchReplace(patchFlagEnvPath(d, "trackEvents"), trackEvents),
 			patchReplace(patchFlagEnvPath(d, "prerequisites"), prerequisites),
-			patchReplace(patchFlagEnvPath(d, "offVariation"), offVariation),
 			patchReplace(patchFlagEnvPath(d, "targets"), targets),
 			patchReplace(patchFlagEnvPath(d, "fallthrough"), fall),
+			patchReplace(patchFlagEnvPath(d, "offVariation"), offVariation),
 		}}
 
 	log.Printf("[DEBUG] %+v\n", patch)
@@ -269,22 +259,4 @@ func resourceFeatureFlagEnvironmentImport(d *schema.ResourceData, meta interface
 	_ = d.Set(ENV_KEY, envKey)
 
 	return []*schema.ResourceData{d}, nil
-}
-
-// getFeatureFlagEnvironmentOn is a helper function used for deprecating TARGETING_ENABLED in favor of ON to match
-// LD's API response. It returns nil if neither is set so we can maintain current behavior - TODO in V2 it will need
-// to be updated to default to false if neither is set.
-func getFeatureFlagEnvironmentOn(d *schema.ResourceData) (bool, bool) {
-	var onValue bool
-	on, onSet := d.GetOk(ON)
-	enabled, enabledSet := d.GetOk(TARGETING_ENABLED)
-	if !onSet && !enabledSet {
-		return onValue, false
-	}
-	if onSet {
-		onValue = on.(bool)
-	} else if enabledSet {
-		onValue = enabled.(bool)
-	}
-	return onValue, true
 }

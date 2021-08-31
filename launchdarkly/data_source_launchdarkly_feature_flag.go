@@ -3,7 +3,7 @@ package launchdarkly
 import (
 	"fmt"
 
-	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
 func dataSourceFeatureFlag() *schema.Resource {
@@ -20,7 +20,7 @@ func dataSourceFeatureFlag() *schema.Resource {
 			BOOL_VARIATION, STRING_VARIATION, NUMBER_VARIATION, JSON_VARIATION),
 	}
 	schemaMap[CLIENT_SIDE_AVAILABILITY] = &schema.Schema{
-		Type:     schema.TypeMap,
+		Type:     schema.TypeList,
 		Computed: true,
 		Elem: &schema.Resource{
 			Schema: map[string]*schema.Schema{

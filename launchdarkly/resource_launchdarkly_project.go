@@ -1,11 +1,12 @@
 package launchdarkly
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"net/http"
 
-	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	ldapi "github.com/launchdarkly/api-client-go"
 )
 
@@ -18,7 +19,7 @@ func resourceProject() *schema.Resource {
 		Exists: resourceProjectExists,
 
 		Importer: &schema.ResourceImporter{
-			State: resourceProjectImport,
+			StateContext: resourceProjectImport,
 		},
 
 		Schema: map[string]*schema.Schema{
@@ -38,11 +39,12 @@ func resourceProject() *schema.Resource {
 				Type:        schema.TypeBool,
 				Optional:    true,
 				Description: "Whether feature flags created under the project should be available to client-side SDKs by default",
+				Default:     false,
 			},
 			TAGS: tagsSchema(),
 			ENVIRONMENTS: {
 				Type:        schema.TypeList,
-				Optional:    true,
+				Required:    true,
 				Description: "List of nested `environments` blocks describing LaunchDarkly environments that belong to the project",
 				Computed:    false,
 				Elem: &schema.Resource{
@@ -110,43 +112,61 @@ func resourceProjectUpdate(d *schema.ResourceData, metaRaw interface{}) error {
 		return fmt.Errorf("failed to update project with key %q: %s", projectKey, handleLdapiErr(err))
 	}
 	// Update environments if necessary
-	schemaEnvList, environmentsFound := d.GetOk(ENVIRONMENTS)
-	if environmentsFound {
-		// Get the project so we can see if we need to create any environments or just update existing environments
-		rawProject, _, err := handleRateLimit(func() (interface{}, *http.Response, error) {
-			return client.ld.ProjectsApi.GetProject(client.ctx, projectKey)
-		})
-		if err != nil {
-			return fmt.Errorf("failed to load project %q before updating environments: %s", projectKey, handleLdapiErr(err))
-		}
-		project := rawProject.(ldapi.Project)
+	schemaEnvList := d.Get(ENVIRONMENTS)
+	// Get the project so we can see if we need to create any environments or just update existing environments
+	rawProject, _, err := handleRateLimit(func() (interface{}, *http.Response, error) {
+		return client.ld.ProjectsApi.GetProject(client.ctx, projectKey)
+	})
+	if err != nil {
+		return fmt.Errorf("failed to load project %q before updating environments: %s", projectKey, handleLdapiErr(err))
+	}
+	project := rawProject.(ldapi.Project)
 
-		environmentConfigs := schemaEnvList.([]interface{})
-		for _, env := range environmentConfigs {
-			envConfig := env.(map[string]interface{})
-			envKey := envConfig[KEY].(string)
-			// Check if the environment already exists. If it does not exist, create it
-			exists := environmentExistsInProject(project, envKey)
-			if !exists {
-				envPost := environmentPostFromResourceData(env)
-				_, _, err := handleRateLimit(func() (interface{}, *http.Response, error) {
-					return client.ld.EnvironmentsApi.PostEnvironment(client.ctx, projectKey, envPost)
-				})
-				if err != nil {
-					return fmt.Errorf("failed to create environment %q in project %q: %s", envKey, projectKey, handleLdapiErr(err))
-				}
-			}
+	environmentConfigs := schemaEnvList.([]interface{})
+	// save envs in a key:config map so we can more easily figure out which need to be patchRemoved after
+	var envConfigsForCompare = make(map[string]map[string]interface{}, len(environmentConfigs))
+	for _, env := range environmentConfigs {
 
-			patches := getEnvironmentUpdatePatches(envConfig)
-			_, _, err = handleRateLimit(func() (interface{}, *http.Response, error) {
-				return handleNoConflict(func() (interface{}, *http.Response, error) {
-					return client.ld.EnvironmentsApi.PatchEnvironment(client.ctx, projectKey, envKey, patches)
-				})
+		envConfig := env.(map[string]interface{})
+		envKey := envConfig[KEY].(string)
+		envConfigsForCompare[envKey] = envConfig
+		// Check if the environment already exists. If it does not exist, create it
+		exists := environmentExistsInProject(project, envKey)
+		if !exists {
+			envPost := environmentPostFromResourceData(env)
+			_, _, err := handleRateLimit(func() (interface{}, *http.Response, error) {
+				return client.ld.EnvironmentsApi.PostEnvironment(client.ctx, projectKey, envPost)
 			})
 			if err != nil {
-				return fmt.Errorf("failed to update environment with key %q for project: %q: %+v", envKey, projectKey, err)
+				return fmt.Errorf("failed to create environment %q in project %q: %s", envKey, projectKey, handleLdapiErr(err))
 			}
+		}
 
+		// by default patching an env that was not recently tracked in the state will import it into the tf state
+		patches := getEnvironmentUpdatePatches(envConfig)
+		_, _, err = handleRateLimit(func() (interface{}, *http.Response, error) {
+			return handleNoConflict(func() (interface{}, *http.Response, error) {
+				return client.ld.EnvironmentsApi.PatchEnvironment(client.ctx, projectKey, envKey, patches)
+			})
+		})
+		if err != nil {
+			return fmt.Errorf("failed to update environment with key %q for project: %q: %+v", envKey, projectKey, err)
+		}
+	}
+	// we also want to delete environments that were previously tracked in state and have been removed from the config
+	old, _ := d.GetChange(ENVIRONMENTS)
+	oldEnvs := old.([]interface{})
+	for _, env := range oldEnvs {
+		envConfig := env.(map[string]interface{})
+		envKey := envConfig[KEY].(string)
+		if _, persists := envConfigsForCompare[envKey]; !persists {
+			_, _, err = handleRateLimit(func() (interface{}, *http.Response, error) {
+				res, err := client.ld.EnvironmentsApi.DeleteEnvironment(client.ctx, projectKey, envKey)
+				return nil, res, err
+			})
+			if err != nil {
+				return fmt.Errorf("failed to delete environment %q in project %q: %s", envKey, projectKey, handleLdapiErr(err))
+			}
 		}
 	}
 
@@ -188,7 +208,7 @@ func projectExists(projectKey string, meta *Client) (bool, error) {
 	return true, nil
 }
 
-func resourceProjectImport(d *schema.ResourceData, meta interface{}) ([]*schema.ResourceData, error) {
+func resourceProjectImport(ctx context.Context, d *schema.ResourceData, meta interface{}) ([]*schema.ResourceData, error) {
 	_ = d.Set(KEY, d.Id())
 
 	return []*schema.ResourceData{d}, nil

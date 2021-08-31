@@ -38,9 +38,7 @@ In addition to the arguments above, the resource exports the following attribute
 
 - `variations` - List of nested blocks describing the variations associated with the feature flag. To learn more, read [Nested Variations Blocks](#nested-variations-blocks).
 
-- `default_on_variation` - The value of the variation served when the flag is on for new environments. 
-
-- `default_off_variation` - The value of the variation served when the flag is off for new environments. 
+- `defaults` - A map describing the index of the variation served when the flag is on for new environments. To learn more, read [Nested Defaults Blocks](#nested-defaults-blocks).
 
 - `description` - The feature flag's description.
 
@@ -58,11 +56,19 @@ In addition to the arguments above, the resource exports the following attribute
 
 Nested `variations` blocks have the following attributes:
 
-- `value` - The variation value. 
+- `value` - The variation value.
 
 - `name` - The name of the variation.
 
 - `description` - The variation's description.
+
+### Nested Defaults Blocks
+
+Nested `defaults` blocks have the following structure:
+
+- `on_variation` - (Required) The index of the variation the flag will default to in all new environments when on.
+
+- `off_variation` - (Required) The index of the variation the flag will default to in all new environments when off.
 
 ### Nested Client-Side Availibility Block
 
@@ -81,4 +87,3 @@ Nested `custom_properties` have the following attributes:
 - `name` - The name of the custom property.
 
 - `value` - The list of custom property value strings.
-

@@ -1,7 +1,3 @@
-provider "launchdarkly" {
-  version = ">= 1.6.0"
-}
-
 resource "launchdarkly_team_member" "joe" {
     email = "joe@example.com"
     first_name = "Joe"

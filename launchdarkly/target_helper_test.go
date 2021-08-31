@@ -27,10 +27,12 @@ func TestTargetsToResourceData(t *testing.T) {
 			},
 			expected: []interface{}{
 				map[string]interface{}{
-					"values": []string{"test1"},
+					"values":    []string{"test1"},
+					"variation": 0,
 				},
 				map[string]interface{}{
-					"values": []string{"test2"},
+					"values":    []string{"test2"},
+					"variation": 1,
 				},
 			},
 		},
@@ -48,10 +50,12 @@ func TestTargetsToResourceData(t *testing.T) {
 			},
 			expected: []interface{}{
 				map[string]interface{}{
-					"values": []string{"test2"},
+					"values":    []string{"test1"},
+					"variation": 1,
 				},
 				map[string]interface{}{
-					"values": []string{"test1"},
+					"values":    []string{"test2"},
+					"variation": 0,
 				},
 			},
 		},
@@ -65,10 +69,8 @@ func TestTargetsToResourceData(t *testing.T) {
 			},
 			expected: []interface{}{
 				map[string]interface{}{
-					"values": []string{},
-				},
-				map[string]interface{}{
-					"values": []string{"test2"},
+					"values":    []string{"test2"},
+					"variation": 1,
 				},
 			},
 		},

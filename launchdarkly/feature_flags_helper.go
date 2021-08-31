@@ -6,7 +6,8 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 	ldapi "github.com/launchdarkly/api-client-go"
 )
 
@@ -29,7 +30,8 @@ func baseFeatureFlagSchema() map[string]*schema.Schema {
 		MAINTAINER_ID: {
 			Type:         schema.TypeString,
 			Optional:     true,
-			Description:  "The LaunchDarkly id of the user who will maintain the flag",
+			Computed:     true,
+			Description:  "The LaunchDarkly id of the user who will maintain the flag. If not set, the API will automatically apply the member associated with your Terraform API key or the most recently set maintainer",
 			ValidateFunc: validateID(),
 		},
 		DESCRIPTION: {
@@ -52,15 +54,28 @@ func baseFeatureFlagSchema() map[string]*schema.Schema {
 		},
 		TAGS:              tagsSchema(),
 		CUSTOM_PROPERTIES: customPropertiesSchema(),
-		DEFAULT_ON_VARIATION: {
-			Type:        schema.TypeString,
+		DEFAULTS: {
+			Type:        schema.TypeList,
 			Optional:    true,
-			Description: "The value of the variation served when the flag is on for new environments",
-		},
-		DEFAULT_OFF_VARIATION: {
-			Type:        schema.TypeString,
-			Optional:    true,
-			Description: "The value of the variation served when the flag is off for new environments",
+			Computed:    true,
+			Description: "The default variations used for this flag in new environments. If omitted, the first and last variation will be used",
+			MaxItems:    1,
+			Elem: &schema.Resource{
+				Schema: map[string]*schema.Schema{
+					ON_VARIATION: {
+						Type:         schema.TypeInt,
+						Required:     true,
+						Description:  "The index of the variation served when the flag is on for new environments",
+						ValidateFunc: validation.IntAtLeast(0),
+					},
+					OFF_VARIATION: {
+						Type:         schema.TypeInt,
+						Required:     true,
+						Description:  "The index of the variation served when the flag is off for new environments",
+						ValidateFunc: validation.IntAtLeast(0),
+					},
+				},
+			},
 		},
 	}
 }
@@ -85,7 +100,7 @@ func featureFlagRead(d *schema.ResourceData, raw interface{}, isDataSource bool)
 	}
 
 	transformedCustomProperties := customPropertiesToResourceData(flag.CustomProperties)
-	_ = d.Set(key, flag.Key)
+	_ = d.Set(KEY, flag.Key)
 	_ = d.Set(NAME, flag.Name)
 	_ = d.Set(DESCRIPTION, flag.Description)
 	_ = d.Set(INCLUDE_IN_SNIPPET, flag.IncludeInSnippet)
@@ -93,10 +108,10 @@ func featureFlagRead(d *schema.ResourceData, raw interface{}, isDataSource bool)
 
 	if isDataSource {
 		CSA := *flag.ClientSideAvailability
-		clientSideAvailability := map[string]string{
-			"using_environment_id": fmt.Sprintf("%v", CSA.UsingEnvironmentId),
-			"using_mobile_key":     fmt.Sprintf("%v", CSA.UsingMobileKey),
-		}
+		clientSideAvailability := []map[string]interface{}{{
+			"using_environment_id": CSA.UsingEnvironmentId,
+			"using_mobile_key":     CSA.UsingMobileKey,
+		}}
 		_ = d.Set(CLIENT_SIDE_AVAILABILITY, clientSideAvailability)
 	} else {
 		_ = d.Set(INCLUDE_IN_SNIPPET, flag.IncludeInSnippet)
@@ -136,23 +151,19 @@ func featureFlagRead(d *schema.ResourceData, raw interface{}, isDataSource bool)
 		return fmt.Errorf("failed to set custom properties on flag with key %q: %v", flag.Key, err)
 	}
 
+	var defaults []map[string]interface{}
 	if flag.Defaults != nil {
-		// this is to prevent the dangling plan values on subsequent post-removal applies
-		_, ok := d.GetOk(DEFAULT_ON_VARIATION)
-		// you cannot define one without the other so this should suffice
-		if ok {
-			onValue, err := variationValueToString(flag.Variations[flag.Defaults.OnVariation].Value, variationType)
-			if err != nil {
-				return err
-			}
-			_ = d.Set(DEFAULT_ON_VARIATION, onValue)
-			offValue, err := variationValueToString(flag.Variations[flag.Defaults.OffVariation].Value, variationType)
-			if err != nil {
-				return err
-			}
-			_ = d.Set(DEFAULT_OFF_VARIATION, offValue)
-		}
+		defaults = []map[string]interface{}{{
+			ON_VARIATION:  flag.Defaults.OnVariation,
+			OFF_VARIATION: flag.Defaults.OffVariation,
+		}}
+	} else {
+		defaults = []map[string]interface{}{{
+			ON_VARIATION:  0,
+			OFF_VARIATION: len(flag.Variations) - 1,
+		}}
 	}
+	_ = d.Set(DEFAULTS, defaults)
 
 	d.SetId(projectKey + "/" + key)
 	return nil

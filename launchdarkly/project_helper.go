@@ -5,7 +5,7 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	ldapi "github.com/launchdarkly/api-client-go"
 )
 
@@ -62,10 +62,10 @@ func projectRead(d *schema.ResourceData, meta interface{}, isDataSource bool) er
 	}
 	if isDataSource {
 		defaultCSA := *project.DefaultClientSideAvailability
-		clientSideAvailability := map[string]string{
-			"using_environment_id": fmt.Sprintf("%v", defaultCSA.UsingEnvironmentId),
-			"using_mobile_key":     fmt.Sprintf("%v", defaultCSA.UsingMobileKey),
-		}
+		clientSideAvailability := []map[string]interface{}{{
+			"using_environment_id": defaultCSA.UsingEnvironmentId,
+			"using_mobile_key":     defaultCSA.UsingMobileKey,
+		}}
 		err = d.Set(CLIENT_SIDE_AVAILABILITY, clientSideAvailability)
 		if err != nil {
 			return fmt.Errorf("could not set client_side_availability on project with key %q: %v", project.Key, err)

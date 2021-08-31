@@ -5,10 +5,9 @@ import (
 	"regexp"
 	"testing"
 
-	"github.com/hashicorp/terraform-plugin-sdk/helper/acctest"
-	"github.com/hashicorp/terraform-plugin-sdk/helper/hashcode"
-	"github.com/hashicorp/terraform-plugin-sdk/helper/resource"
-	"github.com/hashicorp/terraform-plugin-sdk/terraform"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/acctest"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 )
 
 const (
@@ -30,8 +29,10 @@ resource "launchdarkly_feature_flag" "basic" {
 	tags = ["update", "terraform"]
 	include_in_snippet = true
 	temporary = true
-	default_on_variation = "true"
-	default_off_variation = "false"
+	defaults {
+		on_variation = 0
+		off_variation = 1
+	}
 }
 `
 
@@ -131,8 +132,27 @@ resource "launchdarkly_feature_flag" "maintained" {
 }
 `
 
-	//testAccFeatureFlagWasMaintained is used to test that feature flag maintainers can be unset
-	testAccFeatureFlagWasMaintained = `
+	// if the maintainer id is removed from the config it should still be set in the state to
+	// the previous maintainer if that maintainer still exists
+	testAccFeatureFlagMaintainerComputed = `
+resource "launchdarkly_team_member" "test" {
+	email = "%s@example.com"
+	first_name = "first"
+	last_name = "last"
+	role = "admin"
+	custom_roles = []
+}
+
+resource "launchdarkly_feature_flag" "maintained" {
+	project_key = launchdarkly_project.test.key
+	key = "maintained-flag"
+	name = "Maintained feature flag"
+	variation_type = "boolean"
+}
+`
+
+	//testAccFeatureFlagMaintainerDeleted is used to test that feature flag maintainers can be unset
+	testAccFeatureFlagMaintainerDeleted = `
 resource "launchdarkly_feature_flag" "maintained" {
 	project_key = launchdarkly_project.test.key
 	key = "maintained-flag"
@@ -256,6 +276,10 @@ resource "launchdarkly_feature_flag" "multivariate" {
 			"value3"
 		]
 	}
+	defaults {
+		on_variation = 2
+		off_variation = 1
+	}
 }
 `
 
@@ -265,8 +289,10 @@ resource "launchdarkly_feature_flag" "defaults" {
 	key = "defaults-flag"
 	name = "Feature flag with defaults"
 	variation_type = "boolean"
-	default_on_variation = "true"
-	default_off_variation = "false"
+	defaults {
+		on_variation = 0
+		off_variation = 1
+	}
 }
 `
 	testAccFeatureFlagDefaultsUpdate = `
@@ -275,8 +301,10 @@ resource "launchdarkly_feature_flag" "defaults" {
 	key = "defaults-flag"
 	name = "Feature flag with defaults"
 	variation_type = "boolean"
-	default_on_variation = "true"
-	default_off_variation = "true"
+	defaults {
+		on_variation = 0
+		off_variation = 0
+	}
 }
 `
 	testAccFeatureFlagDefaultsMissingOffInvalid = `
@@ -285,8 +313,10 @@ resource "launchdarkly_feature_flag" "defaults" {
 	key = "defaults-flag"
 	name = "Feature flag with defaults"
 	variation_type = "boolean"
-	default_on_variation = "a"
-	default_off_variation = "b"
+	defaults {
+		on_variation = 2
+		off_variation = 3
+	}
 }
 `
 
@@ -296,8 +326,10 @@ resource "launchdarkly_feature_flag" "defaults-multivariate" {
 	key = "defaults-multivariate-flag"
 	name = "Multivariate feature flag with defaults"
 	variation_type = "string"
-	default_on_variation = "b"
-	default_off_variation = "b"
+	defaults {
+		on_variation = 1
+		off_variation = 1
+	}
 	variations {
 		value = "a"
 	}
@@ -318,8 +350,10 @@ resource "launchdarkly_feature_flag" "defaults-multivariate" {
 	key = "defaults-multivariate-flag"
 	name = "Multivariate feature flag with defaults"
 	variation_type = "string"
-	default_on_variation = "c"
-	default_off_variation = "c"
+	defaults {
+		on_variation = 2
+		off_variation = 2
+	}
 	variations {
 		value = "a"
 	}
@@ -340,8 +374,10 @@ resource "launchdarkly_feature_flag" "defaults-multivariate" {
 	key = "defaults-multivariate-flag"
 	name = "Multivariate fature flag with defaults"
 	variation_type = "string"
-	default_on_variation = "c"
-	default_off_variation = "c"
+	defaults {
+		on_variation = 2
+		off_variation = 2
+	}
 	variations {
 		value = "b"
 	}
@@ -374,6 +410,11 @@ func withRandomProject(randomProject, resource string) string {
 	resource "launchdarkly_project" "test" {
 		name = "testProject"
 		key = "%s"
+		environments {
+			name  = "testEnvironment"
+			key   = "test"
+			color = "000000"
+		}
 	}
 	
 	%s`, randomProject, resource)
@@ -441,12 +482,12 @@ func TestAccFeatureFlag_Update(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "project_key", projectKey),
 					resource.TestCheckResourceAttr(resourceName, "description", "this is a boolean flag by default becausethe variations field is omitted"),
 					resource.TestCheckResourceAttr(resourceName, "tags.#", "2"),
-					resource.TestCheckResourceAttr(resourceName, testAccTagKey("update"), "update"),
-					resource.TestCheckResourceAttr(resourceName, testAccTagKey("terraform"), "terraform"),
+					resource.TestCheckResourceAttr(resourceName, "tags.0", "terraform"),
+					resource.TestCheckResourceAttr(resourceName, "tags.1", "update"),
 					resource.TestCheckResourceAttr(resourceName, "include_in_snippet", "true"),
 					resource.TestCheckResourceAttr(resourceName, "temporary", "true"),
-					resource.TestCheckResourceAttr(resourceName, "default_on_variation", "true"),
-					resource.TestCheckResourceAttr(resourceName, "default_off_variation", "false"),
+					resource.TestCheckResourceAttr(resourceName, "defaults.0.on_variation", "0"),
+					resource.TestCheckResourceAttr(resourceName, "defaults.0.off_variation", "1"),
 				),
 			},
 		},
@@ -562,14 +603,28 @@ func TestAccFeatureFlag_WithMaintainer(t *testing.T) {
 				),
 			},
 			{
-				Config: withRandomProject(projectKey, testAccFeatureFlagWasMaintained),
+				Config: withRandomProject(projectKey, fmt.Sprintf(testAccFeatureFlagMaintainerComputed, randomName)),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckProjectExists("launchdarkly_project.test"),
 					testAccCheckFeatureFlagExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, "name", "Maintained feature flag"),
 					resource.TestCheckResourceAttr(resourceName, "key", "maintained-flag"),
 					resource.TestCheckResourceAttr(resourceName, "project_key", projectKey),
-					resource.TestCheckResourceAttr(resourceName, "maintainer_id", ""),
+					// when removed it should reset back to the most recently-set maintainer
+					resource.TestCheckResourceAttrPair(resourceName, "maintainer_id", "launchdarkly_team_member.test", "id"),
+				),
+			},
+			{
+				Config: withRandomProject(projectKey, testAccFeatureFlagMaintainerDeleted),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckProjectExists("launchdarkly_project.test"),
+					testAccCheckFeatureFlagExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, "name", "Maintained feature flag"),
+					resource.TestCheckResourceAttr(resourceName, "key", "maintained-flag"),
+					resource.TestCheckResourceAttr(resourceName, "project_key", projectKey),
+					// it will still be set to the most recently set one even if that member has been deleted
+					// the UI will not show a maintainer because it will not be able to find the record post-member delete
+					resource.TestCheckResourceAttrSet(resourceName, "maintainer_id"),
 				),
 			},
 		},
@@ -605,14 +660,16 @@ func TestAccFeatureFlag_InvalidMaintainer(t *testing.T) {
 				),
 			},
 			{
-				Config: withRandomProject(projectKey, testAccFeatureFlagWasMaintained),
+				Config: withRandomProject(projectKey, testAccFeatureFlagMaintainerDeleted),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckProjectExists("launchdarkly_project.test"),
 					testAccCheckFeatureFlagExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, "name", "Maintained feature flag"),
 					resource.TestCheckResourceAttr(resourceName, "key", "maintained-flag"),
 					resource.TestCheckResourceAttr(resourceName, "project_key", projectKey),
-					resource.TestCheckResourceAttr(resourceName, "maintainer_id", ""),
+					// this is the best we can do. it should default back to the most recently-set maintainer but
+					// we have no easy way of a
+					resource.TestCheckResourceAttrSet(resourceName, "maintainer_id"),
 				),
 			},
 		},
@@ -644,20 +701,21 @@ func TestAccFeatureFlag_CreateMultivariate(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "variations.1.value", "string2"),
 					resource.TestCheckResourceAttr(resourceName, "variations.2.value", "another option"),
 					resource.TestCheckResourceAttr(resourceName, "tags.#", "3"),
-					resource.TestCheckResourceAttr(resourceName, testAccTagKey("this"), "this"),
-					resource.TestCheckResourceAttr(resourceName, testAccTagKey("is"), "is"),
-					resource.TestCheckResourceAttr(resourceName, testAccTagKey("unordered"), "unordered"),
+					// the v2 terraform sdk forces you to index TypeSet attributes like tags on an ordered index
+					resource.TestCheckResourceAttr(resourceName, "tags.0", "is"),
+					resource.TestCheckResourceAttr(resourceName, "tags.1", "this"),
+					resource.TestCheckResourceAttr(resourceName, "tags.2", "unordered"),
 					resource.TestCheckResourceAttr(resourceName, "custom_properties.#", "2"),
-					resource.TestCheckResourceAttr(resourceName, testAccCustomPropertyKey("some.property", "key"), "some.property"),
-					resource.TestCheckResourceAttr(resourceName, testAccCustomPropertyKey("some.property", "name"), "Some Property"),
-					resource.TestCheckResourceAttr(resourceName, testAccCustomPropertyKey("some.property", "value.#"), "3"),
-					resource.TestCheckResourceAttr(resourceName, testAccCustomPropertyKey("some.property", "value.0"), "value1"),
-					resource.TestCheckResourceAttr(resourceName, testAccCustomPropertyKey("some.property", "value.1"), "value2"),
-					resource.TestCheckResourceAttr(resourceName, testAccCustomPropertyKey("some.property", "value.2"), "value3"),
-					resource.TestCheckResourceAttr(resourceName, testAccCustomPropertyKey("some.property2", "key"), "some.property2"),
-					resource.TestCheckResourceAttr(resourceName, testAccCustomPropertyKey("some.property2", "name"), "Some Property"),
-					resource.TestCheckResourceAttr(resourceName, testAccCustomPropertyKey("some.property2", "value.#"), "1"),
-					resource.TestCheckResourceAttr(resourceName, testAccCustomPropertyKey("some.property2", "value.0"), "very special custom property"),
+					resource.TestCheckResourceAttr(resourceName, "custom_properties.0.key", "some.property"),
+					resource.TestCheckResourceAttr(resourceName, "custom_properties.0.name", "Some Property"),
+					resource.TestCheckResourceAttr(resourceName, "custom_properties.0.value.#", "3"),
+					resource.TestCheckResourceAttr(resourceName, "custom_properties.0.value.0", "value1"),
+					resource.TestCheckResourceAttr(resourceName, "custom_properties.0.value.1", "value2"),
+					resource.TestCheckResourceAttr(resourceName, "custom_properties.0.value.2", "value3"),
+					resource.TestCheckResourceAttr(resourceName, "custom_properties.1.key", "some.property2"),
+					resource.TestCheckResourceAttr(resourceName, "custom_properties.1.name", "Some Property"),
+					resource.TestCheckResourceAttr(resourceName, "custom_properties.1.value.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "custom_properties.1.value.0", "very special custom property"),
 				),
 			},
 		},
@@ -690,9 +748,9 @@ func TestAccFeatureFlag_CreateMultivariate2(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "variations.1.value", "123"),
 					resource.TestCheckResourceAttr(resourceName, "variations.2.value", "123456789"),
 					resource.TestCheckResourceAttr(resourceName, "tags.#", "3"),
-					resource.TestCheckResourceAttr(resourceName, testAccTagKey("this"), "this"),
-					resource.TestCheckResourceAttr(resourceName, testAccTagKey("is"), "is"),
-					resource.TestCheckResourceAttr(resourceName, testAccTagKey("unordered"), "unordered"),
+					resource.TestCheckResourceAttr(resourceName, "tags.0", "is"),
+					resource.TestCheckResourceAttr(resourceName, "tags.1", "this"),
+					resource.TestCheckResourceAttr(resourceName, "tags.2", "unordered"),
 				),
 			},
 		},
@@ -720,16 +778,16 @@ func TestAccFeatureFlag_UpdateMultivariate(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "variations.1.value", "string2"),
 					resource.TestCheckResourceAttr(resourceName, "variations.2.value", "another option"),
 					resource.TestCheckResourceAttr(resourceName, "custom_properties.#", "2"),
-					resource.TestCheckResourceAttr(resourceName, testAccCustomPropertyKey("some.property", "key"), "some.property"),
-					resource.TestCheckResourceAttr(resourceName, testAccCustomPropertyKey("some.property", "name"), "Some Property"),
-					resource.TestCheckResourceAttr(resourceName, testAccCustomPropertyKey("some.property", "value.#"), "3"),
-					resource.TestCheckResourceAttr(resourceName, testAccCustomPropertyKey("some.property", "value.0"), "value1"),
-					resource.TestCheckResourceAttr(resourceName, testAccCustomPropertyKey("some.property", "value.1"), "value2"),
-					resource.TestCheckResourceAttr(resourceName, testAccCustomPropertyKey("some.property", "value.2"), "value3"),
-					resource.TestCheckResourceAttr(resourceName, testAccCustomPropertyKey("some.property2", "key"), "some.property2"),
-					resource.TestCheckResourceAttr(resourceName, testAccCustomPropertyKey("some.property2", "name"), "Some Property"),
-					resource.TestCheckResourceAttr(resourceName, testAccCustomPropertyKey("some.property2", "value.#"), "1"),
-					resource.TestCheckResourceAttr(resourceName, testAccCustomPropertyKey("some.property2", "value.0"), "very special custom property"),
+					resource.TestCheckResourceAttr(resourceName, "custom_properties.0.key", "some.property"),
+					resource.TestCheckResourceAttr(resourceName, "custom_properties.0.name", "Some Property"),
+					resource.TestCheckResourceAttr(resourceName, "custom_properties.0.value.#", "3"),
+					resource.TestCheckResourceAttr(resourceName, "custom_properties.0.value.0", "value1"),
+					resource.TestCheckResourceAttr(resourceName, "custom_properties.0.value.1", "value2"),
+					resource.TestCheckResourceAttr(resourceName, "custom_properties.0.value.2", "value3"),
+					resource.TestCheckResourceAttr(resourceName, "custom_properties.1.key", "some.property2"),
+					resource.TestCheckResourceAttr(resourceName, "custom_properties.1.name", "Some Property"),
+					resource.TestCheckResourceAttr(resourceName, "custom_properties.1.value.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "custom_properties.1.value.0", "very special custom property"),
 				),
 			},
 			{
@@ -752,15 +810,17 @@ func TestAccFeatureFlag_UpdateMultivariate(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "variations.3.name", "the new variation"),
 					resource.TestCheckResourceAttr(resourceName, "variations.3.description", "This one was added upon update"),
 					resource.TestCheckResourceAttr(resourceName, "tags.#", "3"),
-					resource.TestCheckResourceAttr(resourceName, testAccTagKey("this"), "this"),
-					resource.TestCheckResourceAttr(resourceName, testAccTagKey("is"), "is"),
-					resource.TestCheckResourceAttr(resourceName, testAccTagKey("unordered"), "unordered"),
+					resource.TestCheckResourceAttr(resourceName, "tags.0", "is"),
+					resource.TestCheckResourceAttr(resourceName, "tags.1", "this"),
+					resource.TestCheckResourceAttr(resourceName, "tags.2", "unordered"),
 					resource.TestCheckResourceAttr(resourceName, "custom_properties.#", "1"),
-					resource.TestCheckResourceAttr(resourceName, testAccCustomPropertyKey("some.property", "key"), "some.property"),
-					resource.TestCheckResourceAttr(resourceName, testAccCustomPropertyKey("some.property", "name"), "Some Property Updated"),
-					resource.TestCheckResourceAttr(resourceName, testAccCustomPropertyKey("some.property", "value.#"), "2"),
-					resource.TestCheckResourceAttr(resourceName, testAccCustomPropertyKey("some.property", "value.0"), "value1"),
-					resource.TestCheckResourceAttr(resourceName, testAccCustomPropertyKey("some.property", "value.1"), "value3"),
+					resource.TestCheckResourceAttr(resourceName, "custom_properties.0.key", "some.property"),
+					resource.TestCheckResourceAttr(resourceName, "custom_properties.0.name", "Some Property Updated"),
+					resource.TestCheckResourceAttr(resourceName, "custom_properties.0.value.#", "2"),
+					resource.TestCheckResourceAttr(resourceName, "custom_properties.0.value.0", "value1"),
+					resource.TestCheckResourceAttr(resourceName, "custom_properties.0.value.1", "value3"),
+					resource.TestCheckResourceAttr(resourceName, "defaults.0.on_variation", "2"),
+					resource.TestCheckResourceAttr(resourceName, "defaults.0.off_variation", "1"),
 				),
 			},
 			{
@@ -775,23 +835,9 @@ func TestAccFeatureFlag_UpdateMultivariate(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "variations.0.value", "string1"),
 					resource.TestCheckResourceAttr(resourceName, "variations.1.value", "string2"),
 					resource.TestCheckResourceAttr(resourceName, "variations.2.value", "another option"),
+					resource.TestCheckResourceAttr(resourceName, "defaults.0.on_variation", "2"),
+					resource.TestCheckResourceAttr(resourceName, "defaults.0.off_variation", "1"),
 				),
-			},
-		},
-	})
-}
-
-func TestAccFeatureFlag_DefaultsInvalid(t *testing.T) {
-	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
-	resource.ParallelTest(t, resource.TestCase{
-		PreCheck: func() {
-			testAccPreCheck(t)
-		},
-		Providers: testAccProviders,
-		Steps: []resource.TestStep{
-			{
-				Config:      withRandomProject(projectKey, testAccFeatureFlagDefaultsMissingOffInvalid),
-				ExpectError: regexp.MustCompile(`invalid default variations: default_on_variation "a" is not defined as a variation`),
 			},
 		},
 	})
@@ -811,8 +857,8 @@ func TestAccFeatureFlag_UpdateDefaults(t *testing.T) {
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckProjectExists("launchdarkly_project.test"),
 					testAccCheckFeatureFlagExists(resourceName),
-					resource.TestCheckResourceAttr(resourceName, "default_on_variation", "true"),
-					resource.TestCheckResourceAttr(resourceName, "default_off_variation", "false"),
+					resource.TestCheckResourceAttr(resourceName, "defaults.0.on_variation", "0"),
+					resource.TestCheckResourceAttr(resourceName, "defaults.0.off_variation", "1"),
 				),
 			},
 			{
@@ -820,8 +866,8 @@ func TestAccFeatureFlag_UpdateDefaults(t *testing.T) {
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckProjectExists("launchdarkly_project.test"),
 					testAccCheckFeatureFlagExists(resourceName),
-					resource.TestCheckResourceAttr(resourceName, "default_on_variation", "true"),
-					resource.TestCheckResourceAttr(resourceName, "default_off_variation", "true"),
+					resource.TestCheckResourceAttr(resourceName, "defaults.0.on_variation", "0"),
+					resource.TestCheckResourceAttr(resourceName, "defaults.0.off_variation", "0"),
 				),
 			},
 			{
@@ -848,8 +894,8 @@ func TestAccFeatureFlag_UpdateMultivariateDefaults(t *testing.T) {
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckProjectExists("launchdarkly_project.test"),
 					testAccCheckFeatureFlagExists(resourceName),
-					resource.TestCheckResourceAttr(resourceName, "default_on_variation", "b"),
-					resource.TestCheckResourceAttr(resourceName, "default_off_variation", "b"),
+					resource.TestCheckResourceAttr(resourceName, "defaults.0.on_variation", "1"),
+					resource.TestCheckResourceAttr(resourceName, "defaults.0.off_variation", "1"),
 				),
 			},
 			{
@@ -857,8 +903,8 @@ func TestAccFeatureFlag_UpdateMultivariateDefaults(t *testing.T) {
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckProjectExists("launchdarkly_project.test"),
 					testAccCheckFeatureFlagExists(resourceName),
-					resource.TestCheckResourceAttr(resourceName, "default_on_variation", "c"),
-					resource.TestCheckResourceAttr(resourceName, "default_off_variation", "c"),
+					resource.TestCheckResourceAttr(resourceName, "defaults.0.on_variation", "2"),
+					resource.TestCheckResourceAttr(resourceName, "defaults.0.off_variation", "2"),
 				),
 			},
 			{
@@ -866,15 +912,14 @@ func TestAccFeatureFlag_UpdateMultivariateDefaults(t *testing.T) {
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckProjectExists("launchdarkly_project.test"),
 					testAccCheckFeatureFlagExists(resourceName),
-					resource.TestCheckResourceAttr(resourceName, "default_on_variation", "c"),
-					resource.TestCheckResourceAttr(resourceName, "default_off_variation", "c"),
+					resource.TestCheckResourceAttr(resourceName, "defaults.0.on_variation", "2"),
+					resource.TestCheckResourceAttr(resourceName, "defaults.0.off_variation", "2"),
 				),
 			},
 			{
-				ResourceName:            resourceName,
-				ImportState:             true,
-				ImportStateVerify:       true,
-				ImportStateVerifyIgnore: []string{"default"},
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
 			},
 		},
 	})
@@ -909,10 +954,6 @@ func TestAccFeatureFlag_EmptyStringVariation(t *testing.T) {
 			},
 		},
 	})
-}
-
-func testAccCustomPropertyKey(key string, subKey string) string {
-	return fmt.Sprintf("custom_properties.%d.%s", hashcode.String(key), subKey)
 }
 
 func testAccCheckFeatureFlagExists(resourceName string) resource.TestCheckFunc {

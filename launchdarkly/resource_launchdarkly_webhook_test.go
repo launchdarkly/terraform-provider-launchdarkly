@@ -5,8 +5,8 @@ import (
 	"regexp"
 	"testing"
 
-	"github.com/hashicorp/terraform-plugin-sdk/helper/resource"
-	"github.com/hashicorp/terraform-plugin-sdk/terraform"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 )
 
 const (
@@ -24,7 +24,7 @@ resource "launchdarkly_webhook" "test" {
 	name    = "example-webhook"
 	url     = "http://webhooks.com"
 	tags    = [ "terraform" ]
-	enabled = true
+	on = true
 }	
 `
 
@@ -50,13 +50,21 @@ resource "launchdarkly_webhook" "with_statements" {
 	}
 }
 `
-	// policy_statements is deprecated but we will still support it in v1
+
+	testAccWebhookWithStatementsRemoved = `
+resource "launchdarkly_webhook" "with_statements" {
+	name    = "Webhook without statements"
+	url     = "http://webhooks.com"
+	on      = true
+}
+`
+
 	testAccWebhookWithPolicyStatements = `
 resource "launchdarkly_webhook" "with_statements" {
 	name    = "Webhook with policy statements"
 	url     = "http://webhooks.com"
 	on      = true
-	policy_statements {
+	statements {
 		actions   = ["*"]	
 		effect    = "allow"
 		resources = ["proj/*:env/production:flag/*"]
@@ -113,8 +121,8 @@ func TestAccWebhook_Create(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "url", "http://webhooks.com"),
 					resource.TestCheckResourceAttr(resourceName, "on", "true"),
 					resource.TestCheckResourceAttr(resourceName, "tags.#", "1"),
-					resource.TestCheckResourceAttr(resourceName, testAccTagKey("terraform"), "terraform"),
-					resource.TestCheckResourceAttr(resourceName, "policy_statements.#", "0"),
+					resource.TestCheckResourceAttr(resourceName, "tags.0", "terraform"),
+					resource.TestCheckResourceAttr(resourceName, "statements.#", "0"),
 				),
 			},
 			{
@@ -140,10 +148,10 @@ func TestAccWebhook_CreateWithEnabled(t *testing.T) {
 					testAccCheckWebhookExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, "name", "example-webhook"),
 					resource.TestCheckResourceAttr(resourceName, "url", "http://webhooks.com"),
-					resource.TestCheckResourceAttr(resourceName, "enabled", "true"),
+					resource.TestCheckResourceAttr(resourceName, "on", "true"),
 					resource.TestCheckResourceAttr(resourceName, "tags.#", "1"),
-					resource.TestCheckResourceAttr(resourceName, testAccTagKey("terraform"), "terraform"),
-					resource.TestCheckResourceAttr(resourceName, "policy_statements.#", "0"),
+					resource.TestCheckResourceAttr(resourceName, "tags.0", "terraform"),
+					resource.TestCheckResourceAttr(resourceName, "statements.#", "0"),
 				),
 			},
 			{
@@ -168,10 +176,10 @@ func TestAccWebhook_Update(t *testing.T) {
 					testAccCheckWebhookExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, "name", "example-webhook"),
 					resource.TestCheckResourceAttr(resourceName, "url", "http://webhooks.com"),
-					resource.TestCheckResourceAttr(resourceName, "enabled", "true"),
+					resource.TestCheckResourceAttr(resourceName, "on", "true"),
 					resource.TestCheckResourceAttr(resourceName, "tags.#", "1"),
-					resource.TestCheckResourceAttr(resourceName, testAccTagKey("terraform"), "terraform"),
-					resource.TestCheckResourceAttr(resourceName, "policy_statements.#", "0"),
+					resource.TestCheckResourceAttr(resourceName, "tags.0", "terraform"),
+					resource.TestCheckResourceAttr(resourceName, "statements.#", "0"),
 				),
 			},
 			{
@@ -182,8 +190,8 @@ func TestAccWebhook_Update(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "url", "http://webhooks.com"),
 					resource.TestCheckResourceAttr(resourceName, "on", "true"),
 					resource.TestCheckResourceAttr(resourceName, "tags.#", "1"),
-					resource.TestCheckResourceAttr(resourceName, testAccTagKey("terraform"), "terraform"),
-					resource.TestCheckResourceAttr(resourceName, "policy_statements.#", "0"),
+					resource.TestCheckResourceAttr(resourceName, "tags.0", "terraform"),
+					resource.TestCheckResourceAttr(resourceName, "statements.#", "0"),
 				),
 			},
 			{
@@ -194,10 +202,10 @@ func TestAccWebhook_Update(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "url", "http://webhooks.com/updatedUrl"),
 					resource.TestCheckResourceAttr(resourceName, "on", "false"),
 					resource.TestCheckResourceAttr(resourceName, "tags.#", "2"),
-					resource.TestCheckResourceAttr(resourceName, testAccTagKey("terraform"), "terraform"),
-					resource.TestCheckResourceAttr(resourceName, testAccTagKey("updated"), "updated"),
+					resource.TestCheckResourceAttr(resourceName, "tags.0", "terraform"),
+					resource.TestCheckResourceAttr(resourceName, "tags.1", "updated"),
 					resource.TestCheckResourceAttr(resourceName, SECRET, "SuperSecret"),
-					resource.TestCheckResourceAttr(resourceName, "policy_statements.#", "0"),
+					resource.TestCheckResourceAttr(resourceName, "statements.#", "0"),
 				),
 			},
 			{
@@ -255,12 +263,12 @@ func TestAccWebhook_CreateWithPolicyStatements(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "name", "Webhook with policy statements"),
 					resource.TestCheckResourceAttr(resourceName, "url", "http://webhooks.com"),
 					resource.TestCheckResourceAttr(resourceName, "on", "true"),
-					resource.TestCheckResourceAttr(resourceName, "policy_statements.#", "1"),
-					resource.TestCheckResourceAttr(resourceName, "policy_statements.0.effect", "allow"),
-					resource.TestCheckResourceAttr(resourceName, "policy_statements.0.actions.#", "1"),
-					resource.TestCheckResourceAttr(resourceName, "policy_statements.0.actions.0", "*"),
-					resource.TestCheckResourceAttr(resourceName, "policy_statements.0.resources.#", "1"),
-					resource.TestCheckResourceAttr(resourceName, "policy_statements.0.resources.0", "proj/*:env/production:flag/*"),
+					resource.TestCheckResourceAttr(resourceName, "statements.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "statements.0.effect", "allow"),
+					resource.TestCheckResourceAttr(resourceName, "statements.0.actions.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "statements.0.actions.0", "*"),
+					resource.TestCheckResourceAttr(resourceName, "statements.0.resources.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "statements.0.resources.0", "proj/*:env/production:flag/*"),
 				),
 			},
 		},
@@ -308,6 +316,16 @@ func TestAccWebhook_UpdateWithStatements(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "statements.1.actions.0", "*"),
 					resource.TestCheckResourceAttr(resourceName, "statements.1.resources.#", "1"),
 					resource.TestCheckResourceAttr(resourceName, "statements.1.resources.0", "proj/test:env/production:segment/*"),
+				),
+			},
+			{
+				Config: testAccWebhookWithStatementsRemoved,
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckWebhookExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, "name", "Webhook without statements"),
+					resource.TestCheckResourceAttr(resourceName, "url", "http://webhooks.com"),
+					resource.TestCheckResourceAttr(resourceName, "on", "true"),
+					resource.TestCheckResourceAttr(resourceName, "statements.#", "0"),
 				),
 			},
 			{

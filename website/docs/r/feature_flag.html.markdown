@@ -37,8 +37,10 @@ resource "launchdarkly_feature_flag" "building_materials" {
     description = "The strongest variation"
   }
 
-  default_on_variation  = "bricks"
-  default_off_variation = "straw"
+  defaults {
+    on_variation = 2
+    off_variation = 0
+  }
 
   tags = [
     "example",
@@ -65,8 +67,10 @@ resource "launchdarkly_feature_flag" "json_example" {
     value = jsonencode({ "foos" : ["bar1", "bar2"] })
   }
 
-  default_on_variation  = jsonencode({ "foos" : ["bar1", "bar2"] })
-  default_off_variation = jsonencode({ "foo" : "bar" })
+  defaults {
+    on_variation = 1
+    off_variation = 0
+  }
 }
 ```
 
@@ -82,15 +86,13 @@ resource "launchdarkly_feature_flag" "json_example" {
 
 - `variations` - (Required) List of nested blocks describing the variations associated with the feature flag. You must specify at least two variations. To learn more, read [Nested Variations Blocks](#nested-variations-blocks).
 
-- `default_on_variation` - (Optional) The value of the variation served when the flag is on for new environments. Required if `default_off_variation` is set. Flag configurations in existing environments will not be changed. The value used here must be an exact match (including whitespace) to the `value` set in the `variations` list.
-
-- `default_off_variation` - (Optional) The value of the variation served when the flag is off for new environments. Required if `default_on_variation` is set. Flag configurations in existing environments will not be changed. The value used here must be an exact match (including whitespace) to the `value` set in the `variations` list.
+- `defaults` - (Optional) A block containing the indices of the variations to be used as the default on and off variations in all new environments. Flag configurations in existing environments will not be changed nor updated if the configuration block is removed. To learn more, read [Nested Defaults Blocks](#nested-defaults-blocks).
 
 - `description` - (Optional) The feature flag's description.
 
 - `tags` - (Optional) Set of feature flag tags.
 
-- `maintainer_id` - (Optional) The feature flag maintainer's 24 character alphanumeric team member ID.
+- `maintainer_id` - (Optional) The feature flag maintainer's 24 character alphanumeric team member ID. If not set, it will automatically be or stay set to the member ID associated with the API key used by your LaunchDarkly Terraform provider or the most recently-set maintainer.
 
 - `temporary` - (Optional) Specifies whether the flag is a temporary flag.
 
@@ -115,6 +117,14 @@ variations {
 - `name` - (Optional) The name of the variation.
 
 - `description` - (Optional) The variation's description.
+
+### Nested Defaults Blocks
+
+Nested `defaults` blocks have the following structure:
+
+- `on_variation` - (Required) The index of the variation the flag will default to in all new environments when on.
+
+- `off_variation` - (Required) The index of the variation the flag will default to in all new environments when off.
 
 ### Nested Custom Properties
 

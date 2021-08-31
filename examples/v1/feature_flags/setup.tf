@@ -2,7 +2,7 @@
 # since feature flags require association with a specific project
 
 provider "launchdarkly" {
-  version = ">= 1.2.0"
+  version = ">= 1.7"
 }
 
 # since all projects are automatically created with a "test" and "production" 

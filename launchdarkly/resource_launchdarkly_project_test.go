@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/hashicorp/terraform-plugin-sdk/helper/acctest"
-	"github.com/hashicorp/terraform-plugin-sdk/helper/resource"
-	"github.com/hashicorp/terraform-plugin-sdk/terraform"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/acctest"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 )
 
 // Project resources should be formatted with a random project key because acceptance tests
@@ -16,7 +16,13 @@ const (
 resource "launchdarkly_project" "test" {
 	key = "%s"
 	name = "test project"
+	include_in_snippet = false
 	tags = [ "terraform", "test" ]
+	environments {
+	  name  = "Test Environment"
+	  key   = "test-env"
+	  color = "010101"
+	}
 }
 `
 	testAccProjectUpdate = `
@@ -24,7 +30,24 @@ resource "launchdarkly_project" "test" {
 	key = "%s"
 	name = "awesome test project"
 	include_in_snippet = true
-	tags = []
+	tags = [ "terraform" ]
+	environments {
+	  name  = "Test Environment 2.0"
+	  key   = "test-env"
+	  color = "020202"
+	}
+}
+`
+
+	testAccProjectUpdateRemoveOptional = `
+resource "launchdarkly_project" "test" {
+	key = "%s"
+	name = "awesome test project"
+	environments {
+		name  = "Test Environment 2.0"
+		key   = "test-env"
+		color = "020202"
+	  }
 }
 `
 
@@ -65,6 +88,18 @@ resource "launchdarkly_project" "env_test" {
 	}
 }	
 `
+
+	testAccProjectWithEnvironmentUpdateRemove = `
+resource "launchdarkly_project" "env_test" {
+	key = "%s"
+	name = "test project"
+	environments {
+		key = "test-env"
+		name = "test environment updated"
+		color = "AAAAAA"
+	}
+}	
+`
 )
 
 func TestAccProject_Create(t *testing.T) {
@@ -83,14 +118,17 @@ func TestAccProject_Create(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "key", projectKey),
 					resource.TestCheckResourceAttr(resourceName, "name", "test project"),
 					resource.TestCheckResourceAttr(resourceName, "tags.#", "2"),
-					resource.TestCheckResourceAttr(resourceName, testAccTagKey("terraform"), "terraform"),
-					resource.TestCheckResourceAttr(resourceName, testAccTagKey("test"), "test"),
+					resource.TestCheckResourceAttr(resourceName, "tags.0", "terraform"),
+					resource.TestCheckResourceAttr(resourceName, "tags.1", "test"),
 				),
 			},
 			{
 				ResourceName:      resourceName,
 				ImportState:       true,
 				ImportStateVerify: true,
+				// we currently do not set the environments attr in the importer function because
+				// we are not forcing a complete list of nested environments on imported resource
+				ImportStateVerifyIgnore: []string{ENVIRONMENTS},
 			},
 		},
 	})
@@ -112,8 +150,13 @@ func TestAccProject_Update(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "key", projectKey),
 					resource.TestCheckResourceAttr(resourceName, "name", "test project"),
 					resource.TestCheckResourceAttr(resourceName, "tags.#", "2"),
-					resource.TestCheckResourceAttr(resourceName, testAccTagKey("terraform"), "terraform"),
-					resource.TestCheckResourceAttr(resourceName, testAccTagKey("test"), "test"),
+					resource.TestCheckResourceAttr(resourceName, "include_in_snippet", "false"),
+					resource.TestCheckResourceAttr(resourceName, "tags.0", "terraform"),
+					resource.TestCheckResourceAttr(resourceName, "tags.1", "test"),
+					resource.TestCheckResourceAttr(resourceName, "environments.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "environments.0.name", "Test Environment"),
+					resource.TestCheckResourceAttr(resourceName, "environments.0.key", "test-env"),
+					resource.TestCheckResourceAttr(resourceName, "environments.0.color", "010101"),
 				),
 			},
 			{
@@ -122,8 +165,24 @@ func TestAccProject_Update(t *testing.T) {
 					testAccCheckProjectExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, "key", projectKey),
 					resource.TestCheckResourceAttr(resourceName, "name", "awesome test project"),
-					resource.TestCheckResourceAttr(resourceName, "tags.#", "0"),
 					resource.TestCheckResourceAttr(resourceName, "include_in_snippet", "true"),
+					resource.TestCheckResourceAttr(resourceName, "tags.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "tags.0", "terraform"),
+					resource.TestCheckResourceAttr(resourceName, "environments.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "environments.0.name", "Test Environment 2.0"),
+					resource.TestCheckResourceAttr(resourceName, "environments.0.key", "test-env"),
+					resource.TestCheckResourceAttr(resourceName, "environments.0.color", "020202"),
+				),
+			},
+			{ // make sure that removal of optional attributes reverts them to their null value
+				Config: fmt.Sprintf(testAccProjectUpdateRemoveOptional, projectKey),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckProjectExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, "key", projectKey),
+					resource.TestCheckResourceAttr(resourceName, "name", "awesome test project"),
+					resource.TestCheckNoResourceAttr(resourceName, "tags"),
+					resource.TestCheckNoResourceAttr(resourceName, "tags.#"),
+					resource.TestCheckResourceAttr(resourceName, "include_in_snippet", "false"),
 				),
 			},
 		},
@@ -189,6 +248,29 @@ func TestAccProject_WithEnvironments(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "environments.1.default_track_events", "false"),
 					resource.TestCheckResourceAttr(resourceName, "environments.1.require_comments", "false"),
 					resource.TestCheckResourceAttr(resourceName, "environments.1.confirm_changes", "false"),
+				),
+			},
+			{
+				ResourceName: resourceName,
+				ImportState:  true,
+			},
+			{
+				Config: fmt.Sprintf(testAccProjectWithEnvironmentUpdateRemove, projectKey),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckProjectExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, "key", projectKey),
+					resource.TestCheckResourceAttr(resourceName, "name", "test project"),
+					resource.TestCheckResourceAttr(resourceName, "environments.#", "1"),
+
+					// Check that optional attributes defaulted back to false
+					resource.TestCheckResourceAttr(resourceName, "environments.0.name", "test environment updated"),
+					resource.TestCheckResourceAttr(resourceName, "environments.0.tags.#", "0"),
+					resource.TestCheckResourceAttr(resourceName, "environments.0.color", "AAAAAA"),
+					resource.TestCheckResourceAttr(resourceName, "environments.0.default_ttl", "0"),
+					resource.TestCheckResourceAttr(resourceName, "environments.0.secure_mode", "false"),
+					resource.TestCheckResourceAttr(resourceName, "environments.0.default_track_events", "false"),
+					resource.TestCheckResourceAttr(resourceName, "environments.0.require_comments", "false"),
+					resource.TestCheckResourceAttr(resourceName, "environments.0.confirm_changes", "false"),
 				),
 			},
 			{

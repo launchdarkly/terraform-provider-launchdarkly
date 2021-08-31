@@ -1,7 +1,7 @@
 package launchdarkly
 
 import (
-	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
 func dataSourceWebhook() *schema.Resource {
@@ -9,11 +9,6 @@ func dataSourceWebhook() *schema.Resource {
 	schemaMap[URL] = &schema.Schema{
 		Type:     schema.TypeString,
 		Computed: true,
-	}
-	schemaMap[ENABLED] = &schema.Schema{
-		Type:       schema.TypeBool,
-		Computed:   true,
-		Deprecated: "'enabled' is deprecated in favor of 'on'",
 	}
 	schemaMap[ON] = &schema.Schema{
 		Type:     schema.TypeBool,
