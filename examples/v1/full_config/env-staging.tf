@@ -15,7 +15,7 @@ resource "launchdarkly_environment" "staging" {
 resource "launchdarkly_feature_flag_environment" "ld_internal_tester_staging" {
   flag_id           = launchdarkly_feature_flag.ld_internal_tester.id
   env_key           = "staging"
-  targeting_enabled = true
+  on = true
 
   prerequisites {
     flag_key  = launchdarkly_feature_flag.binary_flag.key

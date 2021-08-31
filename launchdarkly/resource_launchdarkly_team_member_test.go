@@ -4,10 +4,9 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/hashicorp/terraform-plugin-sdk/helper/acctest"
-	"github.com/hashicorp/terraform-plugin-sdk/helper/hashcode"
-	"github.com/hashicorp/terraform-plugin-sdk/helper/resource"
-	"github.com/hashicorp/terraform-plugin-sdk/terraform"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/acctest"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 )
 
 const (
@@ -165,7 +164,7 @@ func TestAccTeamMember_CreateWithCustomRole(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "first_name", "first"),
 					resource.TestCheckResourceAttr(resourceName, "last_name", "last"),
 					resource.TestCheckResourceAttr(resourceName, "custom_roles.#", "1"),
-					resource.TestCheckResourceAttr(resourceName, "custom_roles."+testAccMemberCustomRolePropertyKey(roleKey), roleKey),
+					resource.TestCheckResourceAttr(resourceName, "custom_roles.0", roleKey),
 				),
 			},
 			{
@@ -199,7 +198,7 @@ func TestAccTeamMember_UpdateWithCustomRole(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "first_name", "first"),
 					resource.TestCheckResourceAttr(resourceName, "last_name", "last"),
 					resource.TestCheckResourceAttr(resourceName, "custom_roles.#", "1"),
-					resource.TestCheckResourceAttr(resourceName, "custom_roles."+testAccMemberCustomRolePropertyKey(roleKey1), roleKey1),
+					resource.TestCheckResourceAttr(resourceName, "custom_roles.0", roleKey1),
 				),
 			},
 			{
@@ -216,7 +215,7 @@ func TestAccTeamMember_UpdateWithCustomRole(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "first_name", "first"),
 					resource.TestCheckResourceAttr(resourceName, "last_name", "last"),
 					resource.TestCheckResourceAttr(resourceName, "custom_roles.#", "1"),
-					resource.TestCheckResourceAttr(resourceName, "custom_roles."+testAccMemberCustomRolePropertyKey(roleKey2), roleKey2),
+					resource.TestCheckResourceAttr(resourceName, "custom_roles.0", roleKey2),
 				),
 			},
 			{
@@ -226,10 +225,6 @@ func TestAccTeamMember_UpdateWithCustomRole(t *testing.T) {
 			},
 		},
 	})
-}
-
-func testAccMemberCustomRolePropertyKey(roleKey string) string {
-	return fmt.Sprintf("%d", hashcode.String(roleKey))
 }
 
 func testAccCheckMemberExists(resourceName string) resource.TestCheckFunc {

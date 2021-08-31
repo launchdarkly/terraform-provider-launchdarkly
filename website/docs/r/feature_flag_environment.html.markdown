@@ -25,14 +25,13 @@ resource "launchdarkly_feature_flag_environment" "number_env" {
     variation = 0
   }
 
-  user_targets {
-    values = ["user0"]
+  targets {
+    values    = ["user0"]
+    variation = 0
   }
-  user_targets {
-    values = ["user1", "user2"]
-  }
-  user_targets {
-    values = []
+  targets {
+    values    = ["user1", "user2"]
+    variation = 1
   }
 
   rules {
@@ -54,6 +53,7 @@ resource "launchdarkly_feature_flag_environment" "number_env" {
   fallthrough {
     rollout_weights = [60000, 40000, 0]
   }
+  off_variation = 2
 }
 ```
 
@@ -63,23 +63,19 @@ resource "launchdarkly_feature_flag_environment" "number_env" {
 
 - `env_key` - (Required) The environment key.
 
-- `targeting_enabled` - (Optional, **Deprecated**) Whether targeting is enabled. This field argument is **deprecated** in favor of `on`. Please update your config to use to `on` to maintain compatibility with future versions. Either `on` or `targeting_enabled` must be specified.
+- `on` (previously `targeting_enabled`) - (Optional) Whether targeting is enabled. Defaults to `false` if not set.
 
-- `on` - (Optional) Whether targeting is enabled.
+- `track_events` - (Optional) Whether to send event data back to LaunchDarkly. Defaults to `false` if not set.
 
-- `track_events` - (Optional) Whether to send event data back to LaunchDarkly.
-
-- `off_variation` - (Optional) The index of the variation to serve if targeting is disabled.
+- `off_variation` - (Required) The index of the variation to serve if targeting is disabled.
 
 - `prerequisites` - (Optional) List of nested blocks describing prerequisite feature flags rules. To learn more, read [Nested Prequisites Blocks](#nested-prerequisites-blocks).
 
-- `user_targets` - (Optional) List of nested blocks describing the individual user targets for each variation. The order of the `user_targets` blocks determines the index of the variation to serve if a `user_target` is matched. To learn more, read [Nested User Target Blocks](#nested-user-targets-blocks).
+- `targets` (previously `user_targets`) - (Optional) Set of nested blocks describing the individual user targets for each variation. To learn more, read [Nested Target Blocks](#nested-targets-blocks).
 
 - `rules` - (Optional) List of logical targeting rules. To learn more, read [Nested Rules Blocks](#nested-rules-blocks).
 
-- `flag_fallthrough` - (Optional, **Deprecated**) Nested block describing the default variation to serve if no `prerequisites`, `user_target`, or `rules` apply. This attribute is **deprecated** in favor of `fallthrough`. Please update all references of `flag_fallthrough` to `fallthrough` to maintain compatibility with future versions.
-
-- `fallthrough` - (Optional) Nested block describing the default variation to serve if no `prerequisites`, `user_target`, or `rules` apply.To learn more, read [Nested Fallthrough Block](#nested-fallthrough-block).
+- `fallthrough` (previously `flag_fallthrough`) - (Required) Nested block describing the default variation to serve if no `prerequisites`, `target`, or `rules` apply.To learn more, read [Nested Fallthrough Block](#nested-fallthrough-block).
 
 ### Nested Prerequisites Blocks
 
@@ -89,19 +85,21 @@ Nested `prerequisites` blocks have the following structure:
 
 - `variation` - (Required) The index of the prerequisite feature flag's variation to target.
 
-### Nested User Targets Blocks
+### Nested Targets Blocks
 
-Nested `user_targets` blocks have the following structure:
+Nested `targets` blocks have the following structure:
 
-- `values` - (Optional) List of `user` strings to target.
+- `values` - (Required) List of `user` strings to target.
+
+- `variation` - (Required) The index of the variation to serve is a user target value is matched.
 
 ### Nested Fallthrough Block
 
 The nested `fallthrough` (previously `flag_fallthrough`) block has the following structure:
 
-- `variation` - (Optional) The default integer variation index to serve if no `prerequisites`, `user_target`, or `rules` apply. You must specify either `variation` or `rollout_weights`.
+- `variation` - (Optional) The default integer variation index to serve if no `prerequisites`, `target`, or `rules` apply. You must specify either `variation` or `rollout_weights`.
 
-- `rollout_weights` - (Optional) List of integer percentage rollout weights (in thousandths of a percent) to apply to each variation if no `prerequisites`, `user_target`, or `rules` apply. The sum of the `rollout_weights` must equal 100000. You must specify either `variation` or `rollout_weights`.
+- `rollout_weights` - (Optional) List of integer percentage rollout weights (in thousandths of a percent) to apply to each variation if no `prerequisites`, `target`, or `rules` apply. The sum of the `rollout_weights` must equal 100000. You must specify either `variation` or `rollout_weights`.
 
 - `bucket_by` - (Optional) Group percentage rollout by a custom attribute. This argument is only valid if `rollout_weights` is also specified.
 
@@ -130,6 +128,12 @@ Nested `clauses` blocks have the following structure:
 - `value_type` - (Optional) The type for each of the clause's values. Available types are `boolean`, `string`, and `number`. If omitted, `value_type` defaults to `string`.
 
 - `negate` - (Required) Whether to negate the rule clause.
+
+Nested `fallthrough` blocks have the following structure:
+
+- `variation` - (Optional) The integer variation index to serve if the rule clauses evaluate to `true`. You must specify either `variation` or `rollout_weights`.
+
+- `rollout_weights` - (Optional) List of integer percentage rollout weights (in thousandths of a percent) to apply to each variation if the rule clauses evaluates to `true`. The sum of the `rollout_weights` must equal 100000. You must specify either `variation` or `rollout_weights`.
 
 ## Attributes Reference
 

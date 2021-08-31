@@ -9,7 +9,7 @@ description: |-
 
 Provides a LaunchDarkly environment resource.
 
-This resource allows you to create and manage environments in your LaunchDarkly organization.
+This resource allows you to create and manage environments in your LaunchDarkly organization. This resource should _not_ be used if the encapsulated project is also managed via Terraform. In this case, you should _always_ use the nested environments config blocks on your[`launchdarkly_project`](/docs/providers/launchdarkly/r/project.html) resource to manage your environments.
 
 -> **Note:** Mixing the use of nested `environments` blocks in the [`launchdarkly_project`](/docs/providers/launchdarkly/r/project.html) resource and `launchdarkly_environment` resources is not recommended.
 
@@ -38,15 +38,15 @@ resource "launchdarkly_environment" "staging" {
 
 - `tags` - (Optional) Set of tags associated with the environment.
 
-- `secure_mode` - (Optional) Set to `true` to ensure a user of the client-side SDK cannot impersonate another user.
+- `secure_mode` - (Optional) Set to `true` to ensure a user of the client-side SDK cannot impersonate another user. This field will default to `false` when not set.
 
-- `default_track_events` - (Optional) Set to `true` to enable data export for every flag created in this environment after you configure this argument. To learn more, read [Data Export](https://docs.launchdarkly.com/docs/data-export).
+- `default_track_events` - (Optional) Set to `true` to enable data export for every flag created in this environment after you configure this argument. This field will default to `false` when not set. To learn more, read [Data Export](https://docs.launchdarkly.com/docs/data-export).
 
-- `default_ttl` - (Optional) The TTL for the environment. This must be between 0 and 60 minutes. The TTL setting only applies to environments using the PHP SDK. To learn more, read [TTL settings](https://docs.launchdarkly.com/docs/environments#section-ttl-settings).
+- `default_ttl` - (Optional) The TTL for the environment. This must be between 0 and 60 minutes. The TTL setting only applies to environments using the PHP SDK. This field will default to `0` when not set. To learn more, read [TTL settings](https://docs.launchdarkly.com/docs/environments#section-ttl-settings).
 
-- `require_comments` - (Optional) Set to `true` if this environment requires comments for flag and segment changes.
+- `require_comments` - (Optional) Set to `true` if this environment requires comments for flag and segment changes. This field will default to `false` when not set.
 
-- `confirm_changes` - (Optional) Set to `true` if this environment requires confirmation for flag and segment changes.
+- `confirm_changes` - (Optional) Set to `true` if this environment requires confirmation for flag and segment changes. This field will default to `false` when not set.
 
 ## Attribute Reference
 

@@ -7,27 +7,17 @@ import (
 	"strings"
 
 	"github.com/antihax/optional"
-	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
-	"github.com/hashicorp/terraform-plugin-sdk/helper/validation"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 	ldapi "github.com/launchdarkly/api-client-go"
 )
 
-func baseFeatureFlagEnvironmentSchema() map[string]*schema.Schema {
-	deprecatedFallthrough := fallthroughSchema()
-	deprecatedFallthrough.Deprecated = "'flag_fallthrough' is deprecated in favor of 'fallthrough'. This field will be removed in the next major release of the LaunchDarkly provider"
-	deprecatedFallthrough.ConflictsWith = []string{FALLTHROUGH}
-	newFallthrough := fallthroughSchema()
-	newFallthrough.ConflictsWith = []string{FLAG_FALLTHROUGH}
-	deprecatedTargets := targetsSchema()
-	deprecatedTargets.Deprecated = "'user_targets' is deprecated in favor of 'targets'. This field will be removed in the next major release of the LaunchDarkly provider"
-	deprecatedTargets.ConflictsWith = []string{TARGETS}
-	newTargets := targetsSchema()
-	newTargets.ConflictsWith = []string{USER_TARGETS}
+func baseFeatureFlagEnvironmentSchema(forDataSource bool) map[string]*schema.Schema {
 	return map[string]*schema.Schema{
 		FLAG_ID: {
 			Type:         schema.TypeString,
 			Required:     true,
-			Description:  "The feature flag's unique id in the format `<project_key>/<flag_key>`",
+			Description:  "The global feature flag's unique id in the format `<project_key>/<flag_key>`",
 			ForceNew:     true,
 			ValidateFunc: validateFlagID,
 		},
@@ -38,38 +28,27 @@ func baseFeatureFlagEnvironmentSchema() map[string]*schema.Schema {
 			ForceNew:     true,
 			ValidateFunc: validateKey(),
 		},
-		TARGETING_ENABLED: {
-			Type:          schema.TypeBool,
-			Optional:      true,
-			Deprecated:    "'targeting_enabled' is deprecated in favor of 'on'",
-			Description:   "Whether targeting is enabled",
-			Computed:      true,
-			ConflictsWith: []string{ON},
-		},
 		ON: {
-			Type:          schema.TypeBool,
-			Optional:      true,
-			Description:   "Whether targeting is enabled",
-			Computed:      true,
-			ConflictsWith: []string{TARGETING_ENABLED},
+			Type:        schema.TypeBool,
+			Optional:    true,
+			Description: "Whether targeting is enabled",
+			Default:     false,
 		},
-		USER_TARGETS:     deprecatedTargets,
-		TARGETS:          newTargets,
-		RULES:            rulesSchema(),
-		PREREQUISITES:    prerequisitesSchema(),
-		FLAG_FALLTHROUGH: deprecatedFallthrough,
-		FALLTHROUGH:      newFallthrough,
+		TARGETS:       targetsSchema(),
+		RULES:         rulesSchema(),
+		PREREQUISITES: prerequisitesSchema(),
+		FALLTHROUGH:   fallthroughSchema(forDataSource),
 		TRACK_EVENTS: {
 			Type:        schema.TypeBool,
 			Optional:    true,
 			Description: "Whether to send event data back to LaunchDarkly",
-			Computed:    true,
+			Default:     false,
 		},
 		OFF_VARIATION: {
 			Type:         schema.TypeInt,
-			Optional:     true,
+			Required:     !forDataSource,
+			Optional:     forDataSource,
 			Description:  "The index of the variation to serve if targeting is disabled",
-			Computed:     true,
 			ValidateFunc: validation.IntAtLeast(0),
 		},
 	}
@@ -116,12 +95,10 @@ func featureFlagEnvironmentRead(d *schema.ResourceData, raw interface{}, isDataS
 	if isDataSource {
 		d.SetId(projectKey + "/" + envKey + "/" + flagKey)
 	}
-	_ = d.Set(KEY, flag.Key)
+	_ = d.Set(FLAG_ID, projectKey+"/"+flag.Key)
 
 	// Computed values are set even if they do not exist on the config
-	_ = d.Set(TARGETING_ENABLED, environment.On)
 	_ = d.Set(ON, environment.On)
-	_ = d.Set(OFF_VARIATION, environment.OffVariation)
 	_ = d.Set(TRACK_EVENTS, environment.TrackEvents)
 	_ = d.Set(PREREQUISITES, prerequisitesToResourceData(environment.Prerequisites))
 
@@ -134,24 +111,19 @@ func featureFlagEnvironmentRead(d *schema.ResourceData, raw interface{}, isDataS
 		return fmt.Errorf("failed to set rules on flag with key %q: %v", flagKey, err)
 	}
 
-	// user_targets is deprecated in favor of targets
 	err = d.Set(TARGETS, targetsToResourceData(environment.Targets))
 	if err != nil {
 		return fmt.Errorf("failed to set targets on flag with key %q: %v", flagKey, err)
 	}
-	err = d.Set(USER_TARGETS, targetsToResourceData(environment.Targets))
-	if err != nil {
-		return fmt.Errorf("failed to set user_targets on flag with key %q: %v", flagKey, err)
-	}
 
-	// flag_fallthrough is deprecated in favor of fallthrough
 	err = d.Set(FALLTHROUGH, fallthroughToResourceData(environment.Fallthrough_))
 	if err != nil {
-		return fmt.Errorf("failed to set fallthrough on flag with key %q: %v", flagKey, err)
+		return fmt.Errorf("failed to set flag fallthrough on flag with key %q: %v", flagKey, err)
 	}
-	err = d.Set(FLAG_FALLTHROUGH, fallthroughToResourceData(environment.Fallthrough_))
+
+	err = d.Set(OFF_VARIATION, environment.OffVariation)
 	if err != nil {
-		return fmt.Errorf("failed to set flag_fallthrough on flag with key %q: %v", flagKey, err)
+		return fmt.Errorf("failed to set off_variation on flag with key %q: %v", flagKey, err)
 	}
 
 	return nil

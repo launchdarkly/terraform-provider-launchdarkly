@@ -20,12 +20,12 @@ resource "launchdarkly_webhook" "example" {
   tags    = ["terraform"]
   on      = true
 
-  policy_statements {
+  statements {
     actions     = ["*"]
     effect      = "allow"
     resources   = ["proj/*:env/production:flag/*"]
   }
-  policy_statements {
+  statements {
     actions     = ["*"]
     effect      = "allow"
     resources   = resources = ["proj/test:env/production:segment/*"]
@@ -37,9 +37,7 @@ resource "launchdarkly_webhook" "example" {
 
 - `url` - (Required) The URL of the remote webhook.
 
-- `on` - (Optional) Specifies whether the webhook is enabled. Either `on` or `enabled` must be specified.
-
-- `enabled` - (Optional, **Deprecated**) Specifies whether the webhook is enabled. This field argument is **deprecated** in favor of `on`. Please update your config to use to `on` to maintain compatibility with future versions. Either `on` or `enabled` must be specified.
+- `on` - (Required, previously `enabled`) Specifies whether the webhook is enabled.
 
 - `name` - (Optional) The webhook's human-readable name.
 
@@ -47,11 +45,9 @@ resource "launchdarkly_webhook" "example" {
 
 - `tags` - (Optional) Set of tags associated with the webhook.
 
-`statements` - (Optional) List of policy statement blocks used to filter webhook events. For more information on webhook policy filters read [Adding a policy filter](https://docs.launchdarkly.com/integrations/webhooks#adding-a-policy-filter).
+`statements` - (Optional, previously `policy_statements`) List of policy statement blocks used to filter webhook events. For more information on webhook policy filters read [Adding a policy filter](https://docs.launchdarkly.com/integrations/webhooks#adding-a-policy-filter).
 
-- `policy_statements` - (Optional, **Deprecated**) List of policy statement blocks used to filter webhook events. For more information on webhook policy filters read [Adding a policy filter](https://docs.launchdarkly.com/integrations/webhooks#adding-a-policy-filter). This argument is **deprecated** in favor of `statements`. Please update your config to use `statements` to maintain compatibility with future versions.
-
-Webhook `statements` and `policy_statements` blocks are composed of the following arguments:
+Webhook `statements` blocks are composed of the following arguments:
 
 - `effect` - (Required) Either `allow` or `deny`. This argument defines whether the statement allows or denies access to the named resources and actions.
 

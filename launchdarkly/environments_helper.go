@@ -5,8 +5,8 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
-	"github.com/hashicorp/terraform-plugin-sdk/helper/validation"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 	ldapi "github.com/launchdarkly/api-client-go"
 )
 
@@ -41,31 +41,31 @@ func baseEnvironmentSchema(forProject bool) map[string]*schema.Schema {
 		DEFAULT_TTL: {
 			Type:     schema.TypeInt,
 			Optional: true,
-			Computed: true,
+			Default:  0,
 			// Default TTL should be between 0 and 60 minutes: https://docs.launchdarkly.com/docs/environments
 			Description:  "The TTL for the environment. This must be between 0 and 60 minutes. The TTL setting only applies to environments using the PHP SDK",
 			ValidateFunc: validation.IntBetween(0, 60),
 		},
 		SECURE_MODE: {
-			Computed:    true,
+			Default:     false,
 			Type:        schema.TypeBool,
 			Optional:    true,
 			Description: "Whether or not to use secure mode. Secure mode ensures a user of the client-side SDK cannot impersonate another user",
 		},
 		DEFAULT_TRACK_EVENTS: {
-			Computed:    true,
+			Default:     false,
 			Type:        schema.TypeBool,
 			Optional:    true,
 			Description: "Whether or not to default to sending data export events for flags created in the environment",
 		},
 		REQUIRE_COMMENTS: {
-			Computed:    true,
+			Default:     false,
 			Type:        schema.TypeBool,
 			Optional:    true,
 			Description: "Whether or not to require comments for flag and segment changes in this environment",
 		},
 		CONFIRM_CHANGES: {
-			Computed:    true,
+			Default:     false,
 			Type:        schema.TypeBool,
 			Optional:    true,
 			Description: "Whether or not to require confirmation for flag and segment changes in this environment",
@@ -132,8 +132,8 @@ func environmentSchema(forProject bool) map[string]*schema.Schema {
 	return schemaMap
 }
 
-func dataSourceEnvironmentSchema(forPoject bool) map[string]*schema.Schema {
-	schemaMap := baseEnvironmentSchema(forPoject)
+func dataSourceEnvironmentSchema(forProject bool) map[string]*schema.Schema {
+	schemaMap := baseEnvironmentSchema(forProject)
 	schemaMap[NAME] = &schema.Schema{
 		Type:     schema.TypeString,
 		Computed: true,
@@ -225,7 +225,7 @@ func environmentRead(d *schema.ResourceData, meta interface{}, isDataSource bool
 
 	env := envRaw.(ldapi.Environment)
 	d.SetId(projectKey + "/" + key)
-	_ = d.Set(key, env.Key)
+	_ = d.Set(KEY, env.Key)
 	_ = d.Set(NAME, env.Name)
 	_ = d.Set(API_KEY, env.ApiKey)
 	_ = d.Set(MOBILE_KEY, env.MobileKey)

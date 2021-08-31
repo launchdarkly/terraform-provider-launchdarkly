@@ -3,8 +3,8 @@ package launchdarkly
 import (
 	"log"
 
-	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
-	"github.com/hashicorp/terraform-plugin-sdk/helper/validation"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 	ldapi "github.com/launchdarkly/api-client-go"
 )
 
@@ -13,7 +13,6 @@ func prerequisitesSchema() *schema.Schema {
 		Type:        schema.TypeList,
 		Optional:    true,
 		Description: "List of nested blocks describing prerequisite feature flags rules",
-		Computed:    true,
 		Elem: &schema.Resource{
 			Schema: map[string]*schema.Schema{
 				FLAG_KEY: {

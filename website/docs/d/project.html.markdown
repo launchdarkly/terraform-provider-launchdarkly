@@ -11,6 +11,8 @@ Provides a LaunchDarkly project data source.
 
 This data source allows you to retrieve project information from your LaunchDarkly organization.
 
+-> **Note:** LaunchDarkly data sources do not provide access to the project's environments. If you wish to import environment configurations as data sources you must use the [`launchdarkly_environment` data source](/docs/providers/launchdarkly/d/environment.html).
+
 ## Example Usage
 
 ```hcl

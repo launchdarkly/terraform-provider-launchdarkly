@@ -4,8 +4,8 @@ import (
 	"errors"
 	"log"
 
-	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
-	"github.com/hashicorp/terraform-plugin-sdk/helper/validation"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 	ldapi "github.com/launchdarkly/api-client-go"
 )
 
@@ -14,7 +14,6 @@ func rulesSchema() *schema.Schema {
 		Type:        schema.TypeList,
 		Optional:    true,
 		Description: "List of logical targeting rules. You must specify either clauses or rollout weights",
-		Computed:    true,
 		Elem: &schema.Resource{
 			Schema: map[string]*schema.Schema{
 				CLAUSES: clauseSchema(),

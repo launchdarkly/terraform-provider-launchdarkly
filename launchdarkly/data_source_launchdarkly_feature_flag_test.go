@@ -6,8 +6,8 @@ import (
 	"regexp"
 	"testing"
 
-	"github.com/hashicorp/terraform-plugin-sdk/helper/acctest"
-	"github.com/hashicorp/terraform-plugin-sdk/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/acctest"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	ldapi "github.com/launchdarkly/api-client-go"
 	"github.com/stretchr/testify/require"
 )
@@ -50,7 +50,7 @@ func TestAccDataSourceFeatureFlag_noMatchReturnsError(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config:      fmt.Sprintf(testAccDataSourceFeatureFlag, flagKey, project.Key),
-				ExpectError: regexp.MustCompile(fmt.Sprintf(`errors during refresh: failed to get flag "nonexistent-flag" of project "%s": 404 Not Found:`, projectKey)),
+				ExpectError: regexp.MustCompile(fmt.Sprintf(`Error: failed to get flag "nonexistent-flag" of project "%s": 404 Not Found:`, projectKey)),
 			},
 		},
 	})
@@ -111,8 +111,8 @@ func TestAccDataSourceFeatureFlag_exists(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "variations.0.value", "true"),
 					resource.TestCheckResourceAttr(resourceName, "variations.1.value", "false"),
 					resource.TestCheckResourceAttr(resourceName, "id", projectKey+"/"+flag.Key),
-					resource.TestCheckResourceAttr(resourceName, "client_side_availability.using_environment_id", "true"),
-					resource.TestCheckResourceAttr(resourceName, "client_side_availability.using_mobile_key", "false"),
+					resource.TestCheckResourceAttr(resourceName, "client_side_availability.0.using_environment_id", "true"),
+					resource.TestCheckResourceAttr(resourceName, "client_side_availability.0.using_mobile_key", "false"),
 				),
 			},
 		},

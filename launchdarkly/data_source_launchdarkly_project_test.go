@@ -6,8 +6,8 @@ import (
 	"regexp"
 	"testing"
 
-	"github.com/hashicorp/terraform-plugin-sdk/helper/acctest"
-	"github.com/hashicorp/terraform-plugin-sdk/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/acctest"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	ldapi "github.com/launchdarkly/api-client-go"
 	"github.com/stretchr/testify/require"
 )
@@ -36,7 +36,7 @@ func TestAccDataSourceProject_noMatchReturnsError(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config:      fmt.Sprintf(testAccProjectBasic, projectKey),
-				ExpectError: regexp.MustCompile(`errors during refresh: failed to get project with key "nonexistent-project-key": 404 Not Found`),
+				ExpectError: regexp.MustCompile(`Error: failed to get project with key "nonexistent-project-key": 404 Not Found`),
 			},
 		},
 	})
@@ -106,8 +106,8 @@ func TestAccDataSourceProject_exists(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "name", project.Name),
 					resource.TestCheckResourceAttr(resourceName, "id", project.Id),
 					resource.TestCheckResourceAttr(resourceName, "tags.#", "1"),
-					resource.TestCheckResourceAttr(resourceName, "client_side_availability.using_environment_id", "false"),
-					resource.TestCheckResourceAttr(resourceName, "client_side_availability.using_mobile_key", "false"),
+					resource.TestCheckResourceAttr(resourceName, "client_side_availability.0.using_environment_id", "false"),
+					resource.TestCheckResourceAttr(resourceName, "client_side_availability.0.using_mobile_key", "false"),
 				),
 			},
 		},

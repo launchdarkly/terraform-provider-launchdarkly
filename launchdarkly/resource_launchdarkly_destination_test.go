@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/hashicorp/terraform-plugin-sdk/helper/acctest"
-	"github.com/hashicorp/terraform-plugin-sdk/helper/resource"
-	"github.com/hashicorp/terraform-plugin-sdk/terraform"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/acctest"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 )
 
 const (
@@ -21,7 +21,7 @@ resource "launchdarkly_destination" "test" {
 		role_arn    = "arn:aws:iam::123456789012:role/marketingadmin"
 		stream_name = "cat-stream"
 	}
-	enabled = true
+	on = true
 	tags = [ "terraform" ]
 }
 `
@@ -35,7 +35,6 @@ resource "launchdarkly_destination" "test" {
 		project = "test-project"
 		topic   = "test-topic"
 	}
-	enabled = true
 	tags = [ "terraform" ]
 }
 `
@@ -51,7 +50,7 @@ resource "launchdarkly_destination" "test" {
 		user_identity = "customer_id"
 		environment   = "production"
 	}
-	enabled = true
+	on = true
 	tags = [ "terraform" ]
 }
 `
@@ -65,7 +64,7 @@ resource "launchdarkly_destination" "test" {
 	config  = {
 		write_key = "super-secret-write-key"
 	}
-	enabled = true
+	on = true
 	tags = [ "terraform" ]
 }
 `
@@ -98,7 +97,7 @@ resource "launchdarkly_destination" "test" {
 		role_arn = "arn:aws:iam::123456789012:role/marketingadmin",
 		stream_name = "cat-stream"
 	}
-	enabled = true
+	on = true
 	tags = [ "terraform", "updated" ]
 }
 `
@@ -112,7 +111,7 @@ resource "launchdarkly_destination" "test" {
 		"project": "renamed-project",
 		"topic": "test-topic"
 	}
-	enabled = true
+	on = true
 	tags = [ "terraform", "updated" ]
 }
 `
@@ -129,7 +128,7 @@ resource "launchdarkly_destination" "test" {
 		user_identity = "customer_id"
 		environment = "production"
 	}
-	enabled = true
+	on = true
 	tags = [ "terraform", "updated" ]
 }
 `
@@ -143,7 +142,6 @@ resource "launchdarkly_destination" "test" {
 	config = {
 		write_key = "updated-write-key"
 	}
-	enabled = true
 	tags = [ "terraform" ]
 }
 `
@@ -187,7 +185,8 @@ func TestAccDestination_CreateKinesis(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "name", "kinesis-dest"),
 					resource.TestCheckResourceAttr(resourceName, "kind", "kinesis"),
 					resource.TestCheckResourceAttr(resourceName, "config.region", "us-east-1"),
-					resource.TestCheckResourceAttr(resourceName, testAccTagKey("terraform"), "terraform"),
+					resource.TestCheckResourceAttr(resourceName, "tags.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "tags.0", "terraform"),
 				),
 			},
 			{
@@ -217,7 +216,7 @@ func TestAccDestination_CreateMparticle(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "name", "mparticle-dest"),
 					resource.TestCheckResourceAttr(resourceName, "kind", "mparticle"),
 					resource.TestCheckResourceAttr(resourceName, "config.api_key", "apiKeyfromMParticle"),
-					resource.TestCheckResourceAttr(resourceName, testAccTagKey("terraform"), "terraform"),
+					resource.TestCheckResourceAttr(resourceName, "tags.0", "terraform"),
 				),
 			},
 		},
@@ -241,8 +240,9 @@ func TestAccDestination_CreatePubsub(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "env_key", "test"),
 					resource.TestCheckResourceAttr(resourceName, "name", "pubsub-dest"),
 					resource.TestCheckResourceAttr(resourceName, "kind", "google-pubsub"),
+					resource.TestCheckResourceAttr(resourceName, "on", "false"),
 					resource.TestCheckResourceAttr(resourceName, "config.project", "test-project"),
-					resource.TestCheckResourceAttr(resourceName, testAccTagKey("terraform"), "terraform"),
+					resource.TestCheckResourceAttr(resourceName, "tags.0", "terraform"),
 				),
 			},
 		},
@@ -267,7 +267,7 @@ func TestAccDestination_CreateSegment(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "name", "segment-dest"),
 					resource.TestCheckResourceAttr(resourceName, "kind", "segment"),
 					resource.TestCheckResourceAttr(resourceName, "config.write_key", "super-secret-write-key"),
-					resource.TestCheckResourceAttr(resourceName, testAccTagKey("terraform"), "terraform"),
+					resource.TestCheckResourceAttr(resourceName, "tags.0", "terraform"),
 				),
 			},
 		},
@@ -295,7 +295,7 @@ func TestAccDestination_CreateAzureEventHubs(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "config.name", "name"),
 					resource.TestCheckResourceAttr(resourceName, "config.policy_name", "policy-name"),
 					resource.TestCheckResourceAttr(resourceName, "config.policy_key", "super-secret-policy-key"),
-					resource.TestCheckResourceAttr(resourceName, testAccTagKey("terraform"), "terraform"),
+					resource.TestCheckResourceAttr(resourceName, "tags.0", "terraform"),
 				),
 			},
 		},
@@ -320,7 +320,7 @@ func TestAccDestination_UpdateKinesis(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "name", "kinesis-dest"),
 					resource.TestCheckResourceAttr(resourceName, "kind", "kinesis"),
 					resource.TestCheckResourceAttr(resourceName, "config.role_arn", "arn:aws:iam::123456789012:role/marketingadmin"),
-					resource.TestCheckResourceAttr(resourceName, testAccTagKey("terraform"), "terraform"),
+					resource.TestCheckResourceAttr(resourceName, "tags.0", "terraform"),
 				),
 			},
 			{
@@ -331,8 +331,8 @@ func TestAccDestination_UpdateKinesis(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "name", "updated-kinesis-dest"),
 					resource.TestCheckResourceAttr(resourceName, "kind", "kinesis"),
 					resource.TestCheckResourceAttr(resourceName, "config.role_arn", "arn:aws:iam::123456789012:role/marketingadmin"),
-					resource.TestCheckResourceAttr(resourceName, testAccTagKey("updated"), "updated"),
-					resource.TestCheckResourceAttr(resourceName, testAccTagKey("terraform"), "terraform"),
+					resource.TestCheckResourceAttr(resourceName, "tags.1", "updated"),
+					resource.TestCheckResourceAttr(resourceName, "tags.0", "terraform"),
 				),
 			},
 		},
@@ -357,7 +357,7 @@ func TestAccDestination_UpdatePubsub(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "name", "pubsub-dest"),
 					resource.TestCheckResourceAttr(resourceName, "kind", "google-pubsub"),
 					resource.TestCheckResourceAttr(resourceName, "config.project", "test-project"),
-					resource.TestCheckResourceAttr(resourceName, testAccTagKey("terraform"), "terraform"),
+					resource.TestCheckResourceAttr(resourceName, "tags.0", "terraform"),
 				),
 			},
 			{
@@ -368,8 +368,8 @@ func TestAccDestination_UpdatePubsub(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "name", "updated-pubsub-dest"),
 					resource.TestCheckResourceAttr(resourceName, "kind", "google-pubsub"),
 					resource.TestCheckResourceAttr(resourceName, "config.project", "renamed-project"),
-					resource.TestCheckResourceAttr(resourceName, testAccTagKey("updated"), "updated"),
-					resource.TestCheckResourceAttr(resourceName, testAccTagKey("terraform"), "terraform"),
+					resource.TestCheckResourceAttr(resourceName, "tags.1", "updated"),
+					resource.TestCheckResourceAttr(resourceName, "tags.0", "terraform"),
 				),
 			},
 		},
@@ -395,7 +395,7 @@ func TestAccDestination_UpdateMparticle(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "kind", "mparticle"),
 					resource.TestCheckResourceAttr(resourceName, "config.secret", "mParticleSecret"),
 					resource.TestCheckResourceAttr(resourceName, "config.environment", "production"),
-					resource.TestCheckResourceAttr(resourceName, testAccTagKey("terraform"), "terraform"),
+					resource.TestCheckResourceAttr(resourceName, "tags.0", "terraform"),
 				),
 			},
 			{
@@ -407,8 +407,8 @@ func TestAccDestination_UpdateMparticle(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "kind", "mparticle"),
 					resource.TestCheckResourceAttr(resourceName, "config.secret", "updatedSecret"),
 					resource.TestCheckResourceAttr(resourceName, "config.environment", "production"),
-					resource.TestCheckResourceAttr(resourceName, testAccTagKey("terraform"), "terraform"),
-					resource.TestCheckResourceAttr(resourceName, testAccTagKey("updated"), "updated"),
+					resource.TestCheckResourceAttr(resourceName, "tags.0", "terraform"),
+					resource.TestCheckResourceAttr(resourceName, "tags.1", "updated"),
 				),
 			},
 		},
@@ -432,8 +432,9 @@ func TestAccDestination_UpdateSegment(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "env_key", "test"),
 					resource.TestCheckResourceAttr(resourceName, "name", "segment-dest"),
 					resource.TestCheckResourceAttr(resourceName, "kind", "segment"),
+					resource.TestCheckResourceAttr(resourceName, "on", "true"),
 					resource.TestCheckResourceAttr(resourceName, "config.write_key", "super-secret-write-key"),
-					resource.TestCheckResourceAttr(resourceName, testAccTagKey("terraform"), "terraform"),
+					resource.TestCheckResourceAttr(resourceName, "tags.0", "terraform"),
 				),
 			},
 			{
@@ -444,8 +445,9 @@ func TestAccDestination_UpdateSegment(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "env_key", "test"),
 					resource.TestCheckResourceAttr(resourceName, "name", "segment-dest"),
 					resource.TestCheckResourceAttr(resourceName, "kind", "segment"),
+					resource.TestCheckResourceAttr(resourceName, "on", "false"), // should default to false when removed
 					resource.TestCheckResourceAttr(resourceName, "config.write_key", "updated-write-key"),
-					resource.TestCheckResourceAttr(resourceName, testAccTagKey("terraform"), "terraform"),
+					resource.TestCheckResourceAttr(resourceName, "tags.0", "terraform"),
 				),
 			},
 		},
@@ -474,7 +476,7 @@ func TestAccDestination_UpdateAzureEventHubs(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "config.policy_name", "policy-name"),
 					resource.TestCheckResourceAttr(resourceName, "config.policy_key", "super-secret-policy-key"),
 					resource.TestCheckResourceAttr(resourceName, "on", "true"),
-					resource.TestCheckResourceAttr(resourceName, testAccTagKey("terraform"), "terraform"),
+					resource.TestCheckResourceAttr(resourceName, "tags.0", "terraform"),
 				),
 			},
 			{
@@ -490,7 +492,7 @@ func TestAccDestination_UpdateAzureEventHubs(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "config.policy_name", "updated-policy-name"),
 					resource.TestCheckResourceAttr(resourceName, "config.policy_key", "updated-policy-key"),
 					resource.TestCheckResourceAttr(resourceName, "on", "false"),
-					resource.TestCheckResourceAttr(resourceName, testAccTagKey("terraform"), "terraform"),
+					resource.TestCheckResourceAttr(resourceName, "tags.0", "terraform"),
 				),
 			},
 		},

@@ -28,9 +28,9 @@ resource "launchdarkly_team_member" "example" {
 
 - `email` - (Required) The unique email address associated with the team member.
 
-- `first_name` - (Optional) The team member's given name.
+- `first_name` - (Optional) The team member's given name. Please note that, once created, this cannot be updated except by the team member themself.
 
-- `last_name` - (Optional) The team member's family name.
+- `last_name` - (Optional) The team member's family name. Please note that, once created, this cannot be updated except by the team member themself.
 
 - `role` - (Optional) The role associated with team member. Supported roles are `reader`, `writer`, or `admin`. If you don't specify a role, `reader` is assigned by default.
 

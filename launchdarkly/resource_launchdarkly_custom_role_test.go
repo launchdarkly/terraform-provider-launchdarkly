@@ -4,11 +4,9 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/hashicorp/terraform-plugin-sdk/helper/acctest"
-	"github.com/hashicorp/terraform-plugin-sdk/helper/hashcode"
-	"github.com/hashicorp/terraform-plugin-sdk/helper/resource"
-	"github.com/hashicorp/terraform-plugin-sdk/terraform"
-	ldapi "github.com/launchdarkly/api-client-go"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/acctest"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 )
 
 const (
@@ -65,11 +63,6 @@ func TestAccCustomRole_Create(t *testing.T) {
 	key := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	name := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	resourceName := "launchdarkly_custom_role.test"
-	policy := ldapi.Policy{
-		Resources: []string{"proj/*:env/production"},
-		Actions:   []string{"*"},
-		Effect:    "deny",
-	}
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
 			testAccPreCheck(t)
@@ -84,11 +77,11 @@ func TestAccCustomRole_Create(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "name", "Custom role - "+name),
 					resource.TestCheckResourceAttr(resourceName, "description", "Deny all actions on production environments"),
 					resource.TestCheckResourceAttr(resourceName, "policy.#", "1"),
-					resource.TestCheckResourceAttr(resourceName, testAccPolicyKey(policy, "actions.#"), "1"),
-					resource.TestCheckResourceAttr(resourceName, testAccPolicyKey(policy, "actions.0"), "*"),
-					resource.TestCheckResourceAttr(resourceName, testAccPolicyKey(policy, "resources.#"), "1"),
-					resource.TestCheckResourceAttr(resourceName, testAccPolicyKey(policy, "resources.0"), "proj/*:env/production"),
-					resource.TestCheckResourceAttr(resourceName, testAccPolicyKey(policy, EFFECT), "deny"),
+					resource.TestCheckResourceAttr(resourceName, "policy.0.actions.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "policy.0.actions.0", "*"),
+					resource.TestCheckResourceAttr(resourceName, "policy.0.resources.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "policy.0.resources.0", "proj/*:env/production"),
+					resource.TestCheckResourceAttr(resourceName, "policy.0.effect", "deny"),
 				),
 			},
 		},
@@ -134,11 +127,6 @@ func TestAccCustomRole_Update(t *testing.T) {
 	key := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	name := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	resourceName := "launchdarkly_custom_role.test"
-	policy := ldapi.Policy{
-		Resources: []string{"proj/*:env/staging"},
-		Actions:   []string{"*"},
-		Effect:    "allow",
-	}
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
 			testAccPreCheck(t)
@@ -159,11 +147,11 @@ func TestAccCustomRole_Update(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "name", "Updated - "+name),
 					resource.TestCheckResourceAttr(resourceName, "description", ""), // should be empty after removal
 					resource.TestCheckResourceAttr(resourceName, "policy.#", "1"),
-					resource.TestCheckResourceAttr(resourceName, testAccPolicyKey(policy, "actions.#"), "1"),
-					resource.TestCheckResourceAttr(resourceName, testAccPolicyKey(policy, "actions.0"), "*"),
-					resource.TestCheckResourceAttr(resourceName, testAccPolicyKey(policy, "resources.#"), "1"),
-					resource.TestCheckResourceAttr(resourceName, testAccPolicyKey(policy, "resources.0"), "proj/*:env/staging"),
-					resource.TestCheckResourceAttr(resourceName, testAccPolicyKey(policy, EFFECT), "allow"),
+					resource.TestCheckResourceAttr(resourceName, "policy.0.actions.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "policy.0.actions.0", "*"),
+					resource.TestCheckResourceAttr(resourceName, "policy.0.resources.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "policy.0.resources.0", "proj/*:env/staging"),
+					resource.TestCheckResourceAttr(resourceName, "policy.0.effect", "allow"),
 				),
 			},
 		},
@@ -204,9 +192,6 @@ func TestAccCustomRole_UpdateWithStatements(t *testing.T) {
 			},
 		},
 	})
-}
-func testAccPolicyKey(policy ldapi.Policy, subkey string) string {
-	return fmt.Sprintf("policy.%d.%s", hashcode.String(fmt.Sprintf("%v", policy)), subkey)
 }
 
 func testAccCheckCustomRoleExists(resourceName string) resource.TestCheckFunc {

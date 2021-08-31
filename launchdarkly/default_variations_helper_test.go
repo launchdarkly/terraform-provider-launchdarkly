@@ -4,7 +4,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	ldapi "github.com/launchdarkly/api-client-go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -18,9 +18,8 @@ func TestDefaultVariationsFromResourceData(t *testing.T) {
 		expectedErr error
 	}{
 		{
-			name: "no defaults",
+			name: "no defaults on boolean",
 			vars: map[string]interface{}{
-				VARIATION_TYPE: "boolean",
 				VARIATIONS: []interface{}{
 					map[string]interface{}{
 						VALUE: "true",
@@ -29,15 +28,6 @@ func TestDefaultVariationsFromResourceData(t *testing.T) {
 						VALUE: "false",
 					},
 				},
-			},
-			expected: nil,
-		},
-		{
-			name: "basic defaults, implicit variations",
-			vars: map[string]interface{}{
-				VARIATION_TYPE:        "boolean",
-				DEFAULT_ON_VARIATION:  "true",
-				DEFAULT_OFF_VARIATION: "false",
 			},
 			expected: &ldapi.Defaults{
 				OnVariation:  0,
@@ -45,18 +35,8 @@ func TestDefaultVariationsFromResourceData(t *testing.T) {
 			},
 		},
 		{
-			name: "invalid defaults, implicit variations",
-			vars: map[string]interface{}{
-				VARIATION_TYPE:        "boolean",
-				DEFAULT_ON_VARIATION:  "a",
-				DEFAULT_OFF_VARIATION: "c",
-			},
-			expectedErr: errors.New(`default_on_variation "a" is not defined as a variation`),
-		},
-		{
 			name: "basic defaults",
 			vars: map[string]interface{}{
-				VARIATION_TYPE: "boolean",
 				VARIATIONS: []interface{}{
 					map[string]interface{}{
 						VALUE: "true",
@@ -65,8 +45,11 @@ func TestDefaultVariationsFromResourceData(t *testing.T) {
 						VALUE: "false",
 					},
 				},
-				DEFAULT_ON_VARIATION:  "true",
-				DEFAULT_OFF_VARIATION: "false",
+				DEFAULTS: []interface{}{
+					map[string]interface{}{
+						ON_VARIATION:  0,
+						OFF_VARIATION: 1,
+					}},
 			},
 			expected: &ldapi.Defaults{
 				OnVariation:  0,
@@ -85,10 +68,13 @@ func TestDefaultVariationsFromResourceData(t *testing.T) {
 						VALUE: "false",
 					},
 				},
-				DEFAULT_ON_VARIATION:  "not a boolean",
-				DEFAULT_OFF_VARIATION: "false",
+				DEFAULTS: []interface{}{
+					map[string]interface{}{
+						ON_VARIATION:  2,
+						OFF_VARIATION: 1,
+					}},
 			},
-			expectedErr: errors.New(`default_on_variation "not a boolean" is not defined as a variation`),
+			expectedErr: errors.New(`default on_variation 2 is out of range, must be between 0 and 1 inclusive`),
 		},
 		{
 			name: "invalid default off value",
@@ -102,66 +88,13 @@ func TestDefaultVariationsFromResourceData(t *testing.T) {
 						VALUE: "false",
 					},
 				},
-				DEFAULT_ON_VARIATION:  "true",
-				DEFAULT_OFF_VARIATION: "not a boolean",
+				DEFAULTS: []interface{}{
+					map[string]interface{}{
+						ON_VARIATION:  0,
+						OFF_VARIATION: 5,
+					}},
 			},
-			expectedErr: errors.New(`default_off_variation "not a boolean" is not defined as a variation`),
-		},
-		{
-			name: "missing default off",
-			vars: map[string]interface{}{
-				VARIATION_TYPE: "boolean",
-				VARIATIONS: []interface{}{
-					map[string]interface{}{
-						VALUE: "true",
-					},
-					map[string]interface{}{
-						VALUE: "false",
-					},
-				},
-				DEFAULT_ON_VARIATION: "true",
-			},
-			expectedErr: errors.New(`default_off_variation is required when default_on_variation is defined`),
-		},
-		{
-			name: "missing default on",
-			vars: map[string]interface{}{
-				VARIATION_TYPE: "boolean",
-				VARIATIONS: []interface{}{
-					map[string]interface{}{
-						VALUE: "true",
-					},
-					map[string]interface{}{
-						VALUE: "false",
-					},
-				},
-				DEFAULT_OFF_VARIATION: "false",
-			},
-			expectedErr: errors.New(`default_on_variation is required when default_off_variation is defined`),
-		},
-		{
-			name: "string variations",
-			vars: map[string]interface{}{
-				VARIATION_TYPE: "string",
-				VARIATIONS: []interface{}{
-					map[string]interface{}{
-						NAME:        "nameValue",
-						DESCRIPTION: "descValue",
-						VALUE:       "a string value",
-					},
-					map[string]interface{}{
-						NAME:        "nameValue2",
-						DESCRIPTION: "descValue2",
-						VALUE:       "another string value",
-					},
-				},
-				DEFAULT_ON_VARIATION:  "a string value",
-				DEFAULT_OFF_VARIATION: "a string value",
-			},
-			expected: &ldapi.Defaults{
-				OnVariation:  0,
-				OffVariation: 0,
-			},
+			expectedErr: errors.New(`default off_variation 5 is out of range, must be between 0 and 1 inclusive`),
 		},
 	}
 
@@ -169,13 +102,21 @@ func TestDefaultVariationsFromResourceData(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			resourceData := schema.TestResourceDataRaw(t,
 				map[string]*schema.Schema{VARIATION_TYPE: variationTypeSchema(), VARIATIONS: variationsSchema(),
-					DEFAULT_ON_VARIATION: {
-						Type:     schema.TypeString,
+					DEFAULTS: {
+						Type:     schema.TypeList,
 						Optional: true,
-					},
-					DEFAULT_OFF_VARIATION: {
-						Type:     schema.TypeString,
-						Optional: true,
+						Elem: &schema.Resource{
+							Schema: map[string]*schema.Schema{
+								ON_VARIATION: {
+									Type:     schema.TypeInt,
+									Required: true,
+								},
+								OFF_VARIATION: {
+									Type:     schema.TypeInt,
+									Required: true,
+								},
+							},
+						},
 					}},
 				tc.vars,
 			)

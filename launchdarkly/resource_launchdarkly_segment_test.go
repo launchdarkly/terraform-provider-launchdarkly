@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/hashicorp/terraform-plugin-sdk/helper/acctest"
-	"github.com/hashicorp/terraform-plugin-sdk/helper/resource"
-	"github.com/hashicorp/terraform-plugin-sdk/terraform"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/acctest"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 )
 
 const (
@@ -37,7 +37,6 @@ resource "launchdarkly_segment" "test" {
 			attribute = "test_att"
 			op = "in"
 			values = ["test"]
-			negate = false
 		}
 		clauses {
 			attribute = "test_att_1"
@@ -104,8 +103,8 @@ func TestAccSegment_Create(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "name", "segment name"),
 					resource.TestCheckResourceAttr(resourceName, "description", "segment description"),
 					resource.TestCheckResourceAttr(resourceName, "tags.#", "2"),
-					resource.TestCheckResourceAttr(resourceName, testAccTagKey("segmentTag1"), "segmentTag1"),
-					resource.TestCheckResourceAttr(resourceName, testAccTagKey("segmentTag2"), "segmentTag2"),
+					resource.TestCheckResourceAttr(resourceName, "tags.0", "segmentTag1"),
+					resource.TestCheckResourceAttr(resourceName, "tags.1", "segmentTag2"),
 					resource.TestCheckResourceAttr(resourceName, "included.#", "2"),
 					resource.TestCheckResourceAttr(resourceName, "included.0", "user1"),
 					resource.TestCheckResourceAttr(resourceName, "included.1", "user2"),
@@ -144,8 +143,8 @@ func TestAccSegment_Update(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "name", "segment name"),
 					resource.TestCheckResourceAttr(resourceName, "description", "segment description"),
 					resource.TestCheckResourceAttr(resourceName, "tags.#", "2"),
-					resource.TestCheckResourceAttr(resourceName, testAccTagKey("segmentTag1"), "segmentTag1"),
-					resource.TestCheckResourceAttr(resourceName, testAccTagKey("segmentTag2"), "segmentTag2"),
+					resource.TestCheckResourceAttr(resourceName, "tags.0", "segmentTag1"),
+					resource.TestCheckResourceAttr(resourceName, "tags.1", "segmentTag2"),
 					resource.TestCheckResourceAttr(resourceName, "included.#", "2"),
 					resource.TestCheckResourceAttr(resourceName, "included.0", "user1"),
 					resource.TestCheckResourceAttr(resourceName, "included.1", "user2"),
@@ -165,8 +164,8 @@ func TestAccSegment_Update(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "name", "segment name"),
 					resource.TestCheckResourceAttr(resourceName, "description", "segment description"),
 					resource.TestCheckResourceAttr(resourceName, "tags.#", "2"),
-					resource.TestCheckResourceAttr(resourceName, testAccTagKey("segmentTag1"), "segmentTag1"),
-					resource.TestCheckResourceAttr(resourceName, testAccTagKey(".segmentTag2"), ".segmentTag2"),
+					resource.TestCheckResourceAttr(resourceName, "tags.0", ".segmentTag2"),
+					resource.TestCheckResourceAttr(resourceName, "tags.1", "segmentTag1"),
 					resource.TestCheckResourceAttr(resourceName, "included.#", "4"),
 					resource.TestCheckResourceAttr(resourceName, "included.0", "user1"),
 					resource.TestCheckResourceAttr(resourceName, "included.1", "user2"),
@@ -201,8 +200,8 @@ func TestAccSegment_Update(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "name", "segment name"),
 					resource.TestCheckResourceAttr(resourceName, "description", "segment description"),
 					resource.TestCheckResourceAttr(resourceName, "tags.#", "2"),
-					resource.TestCheckResourceAttr(resourceName, testAccTagKey("segmentTag1"), "segmentTag1"),
-					resource.TestCheckResourceAttr(resourceName, testAccTagKey("segmentTag2"), "segmentTag2"),
+					resource.TestCheckResourceAttr(resourceName, "tags.0", "segmentTag1"),
+					resource.TestCheckResourceAttr(resourceName, "tags.1", "segmentTag2"),
 					resource.TestCheckResourceAttr(resourceName, "included.#", "2"),
 					resource.TestCheckResourceAttr(resourceName, "included.0", "user1"),
 					resource.TestCheckResourceAttr(resourceName, "included.1", "user2"),

@@ -6,8 +6,8 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
-	"github.com/hashicorp/terraform-plugin-sdk/helper/validation"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 	ldapi "github.com/launchdarkly/api-client-go"
 )
 
@@ -56,18 +56,10 @@ func resourceDestination() *schema.Resource {
 				Description: "The destination-specific configuration object corresponding to your data export kind - see documentation for required fields for each kind",
 				Elem:        &schema.Schema{Type: schema.TypeString},
 			},
-			ENABLED: {
-				Type:          schema.TypeBool,
-				Description:   "Whether the data export destination is on or not. This field has been deprecated in favor of 'on'",
-				Deprecated:    "'enabled' is deprecated in favor of 'on'",
-				Optional:      true,
-				ConflictsWith: []string{ON},
-			},
 			ON: {
-				Type:          schema.TypeBool,
-				Description:   "Whether the data export destination is on or not",
-				Optional:      true,
-				ConflictsWith: []string{ENABLED},
+				Type:        schema.TypeBool,
+				Description: "Whether the data export destination is on or not",
+				Optional:    true,
 			},
 			TAGS: tagsSchema(),
 		},
@@ -80,7 +72,7 @@ func resourceDestinationCreate(d *schema.ResourceData, metaRaw interface{}) erro
 	destinationEnvKey := d.Get(ENV_KEY).(string)
 	destinationName := d.Get(NAME).(string)
 	destinationKind := d.Get(KIND).(string)
-	destinationOn := getDestinationOn(d)
+	destinationOn := d.Get(ON).(bool)
 
 	destinationConfig, err := destinationConfigFromResourceData(d)
 	if err != nil {
@@ -138,11 +130,7 @@ func resourceDestinationRead(d *schema.ResourceData, metaRaw interface{}) error 
 	_ = d.Set(NAME, destination.Name)
 	_ = d.Set(KIND, destination.Kind)
 	_ = d.Set(CONFIG, preservedCfg)
-	if _, ok := d.GetOkExists(ENABLED); ok {
-		d.Set(ENABLED, destination.On)
-	} else {
-		d.Set(ON, destination.On)
-	}
+	_ = d.Set(ON, destination.On)
 
 	d.SetId(strings.Join([]string{destinationProjKey, destinationEnvKey, destination.Id}, "/"))
 	return nil
@@ -162,7 +150,7 @@ func resourceDestinationUpdate(d *schema.ResourceData, metaRaw interface{}) erro
 	if err != nil {
 		return err
 	}
-	destinationOn := getDestinationOn(d)
+	destinationOn := d.Get(ON).(bool)
 
 	patch := []ldapi.PatchOperation{
 		patchReplace("/name", &destinationName),
@@ -245,19 +233,4 @@ func destinationImportIDtoKeys(importID string) (projKey, envKey, destinationID 
 	parts := strings.SplitN(importID, "/", 3)
 	projKey, envKey, destinationID = parts[0], parts[1], parts[2]
 	return projKey, envKey, destinationID, nil
-}
-
-// getDestinationOn is a helper function used for deprecating ENABLED in favor of ON to match
-// LD's API response. It will default to false if neither is set and we will overwrite the existing
-// value with false if it is removed.
-func getDestinationOn(d *schema.ResourceData) bool {
-	var destinationOn bool
-	on, onSet := d.GetOkExists(ON)
-	enabled, enabledSet := d.GetOkExists(ENABLED)
-	if onSet {
-		destinationOn = on.(bool)
-	} else if enabledSet {
-		destinationOn = enabled.(bool)
-	}
-	return destinationOn
 }

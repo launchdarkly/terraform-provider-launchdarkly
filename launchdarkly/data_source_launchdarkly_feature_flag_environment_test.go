@@ -6,8 +6,8 @@ import (
 	"os"
 	"testing"
 
-	"github.com/hashicorp/terraform-plugin-sdk/helper/acctest"
-	"github.com/hashicorp/terraform-plugin-sdk/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/acctest"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	ldapi "github.com/launchdarkly/api-client-go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -136,7 +136,7 @@ func TestAccDataSourceFeatureFlagEnvironment_exists(t *testing.T) {
 		patchReplace(basePatchPath+"trackEvents", true),
 		patchReplace(basePatchPath+"rules", rules),
 		patchReplace(basePatchPath+"prerequisites", prerequisites),
-		patchReplace(basePatchPath+"offVariation", 0),
+		patchReplace(basePatchPath+"offVariation", 1),
 		patchReplace(basePatchPath+"targets", targets),
 		patchReplace(basePatchPath+"fallthrough", fall),
 	}
@@ -164,7 +164,7 @@ func TestAccDataSourceFeatureFlagEnvironment_exists(t *testing.T) {
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttrSet(resourceName, "flag_id"),
 					resource.TestCheckResourceAttr(resourceName, "env_key", envKey),
-					resource.TestCheckResourceAttr(resourceName, "targeting_enabled", fmt.Sprint(thisConfig.On)),
+					resource.TestCheckResourceAttr(resourceName, "on", fmt.Sprint(thisConfig.On)),
 					resource.TestCheckResourceAttr(resourceName, "track_events", fmt.Sprint(thisConfig.TrackEvents)),
 					resource.TestCheckResourceAttr(resourceName, "rules.0.variation", fmt.Sprint(thisConfig.Rules[0].Variation)),
 					resource.TestCheckResourceAttr(resourceName, "rules.0.clauses.0.attribute", thisConfig.Rules[0].Clauses[0].Attribute),
@@ -173,11 +173,8 @@ func TestAccDataSourceFeatureFlagEnvironment_exists(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "prerequisites.0.flag_key", thisConfig.Prerequisites[0].Key),
 					resource.TestCheckResourceAttr(resourceName, "prerequisites.0.variation", fmt.Sprint(thisConfig.Prerequisites[0].Variation)),
 					resource.TestCheckResourceAttr(resourceName, "off_variation", fmt.Sprint(thisConfig.OffVariation)),
-					// user targets will be two long because there is an empty one for the 0 value
-					resource.TestCheckResourceAttr(resourceName, "targets.1.values.#", fmt.Sprint(len(thisConfig.Targets[0].Values))),
-					resource.TestCheckResourceAttr(resourceName, "fallthrough.0.variation", fmt.Sprint(thisConfig.Fallthrough_.Variation)),
-					resource.TestCheckResourceAttr(resourceName, "user_targets.1.values.#", fmt.Sprint(len(thisConfig.Targets[0].Values))),
-					resource.TestCheckResourceAttr(resourceName, "flag_fallthrough.0.variation", fmt.Sprint(thisConfig.Fallthrough_.Variation)),
+					resource.TestCheckResourceAttr(resourceName, "targets.0.values.#", fmt.Sprint(len(thisConfig.Targets[0].Values))),
+					resource.TestCheckResourceAttr(resourceName, "targets.0.variation", "1"),
 				),
 			},
 			{
@@ -185,11 +182,11 @@ func TestAccDataSourceFeatureFlagEnvironment_exists(t *testing.T) {
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttrSet(resourceName, "flag_id"),
 					resource.TestCheckResourceAttr(resourceName, "env_key", "production"),
-					resource.TestCheckResourceAttr(resourceName, "targeting_enabled", fmt.Sprint(otherConfig.On)),
+					resource.TestCheckResourceAttr(resourceName, "on", fmt.Sprint(otherConfig.On)),
 					resource.TestCheckResourceAttr(resourceName, "track_events", fmt.Sprint(otherConfig.TrackEvents)),
 					resource.TestCheckResourceAttr(resourceName, "rules.#", fmt.Sprint(len(otherConfig.Rules))),
 					resource.TestCheckResourceAttr(resourceName, "prerequisites.#", fmt.Sprint(len(otherConfig.Prerequisites))),
-					resource.TestCheckResourceAttr(resourceName, "user_targets.#", fmt.Sprint(len(otherConfig.Targets))),
+					resource.TestCheckResourceAttr(resourceName, "targets.#", fmt.Sprint(len(otherConfig.Targets))),
 				),
 			},
 		},

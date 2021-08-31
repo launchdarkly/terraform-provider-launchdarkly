@@ -7,8 +7,8 @@ import (
 	"regexp"
 	"testing"
 
-	"github.com/hashicorp/terraform-plugin-sdk/helper/acctest"
-	"github.com/hashicorp/terraform-plugin-sdk/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/acctest"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	ldapi "github.com/launchdarkly/api-client-go"
 	"github.com/stretchr/testify/require"
 )
@@ -75,7 +75,7 @@ func TestAccDataSourceWebhook_noMatchReturnsError(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config:      fmt.Sprintf(testAccDataSourceWebhook, webhookId),
-				ExpectError: regexp.MustCompile(fmt.Sprintf(`errors during refresh: failed to get webhook with id "%s": 404 Not Found:`, webhookId)),
+				ExpectError: regexp.MustCompile(fmt.Sprintf(`Error: failed to get webhook with id "%s": 404 Not Found:`, webhookId)),
 			},
 		},
 	})
@@ -111,14 +111,9 @@ func TestAccDataSourceWebhook_exists(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "id", webhook.Id),
 					resource.TestCheckResourceAttr(resourceName, "name", webhookName),
 					resource.TestCheckResourceAttr(resourceName, "url", webhook.Url),
-					resource.TestCheckResourceAttr(resourceName, "enabled", "true"),
 					resource.TestCheckResourceAttr(resourceName, "on", "true"),
 					resource.TestCheckResourceAttr(resourceName, "secret", webhook.Secret),
 					resource.TestCheckResourceAttr(resourceName, "tags.#", "1"),
-					resource.TestCheckResourceAttr(resourceName, "policy_statements.#", "1"),
-					resource.TestCheckResourceAttr(resourceName, "policy_statements.0.resources.0", "proj/*"),
-					resource.TestCheckResourceAttr(resourceName, "policy_statements.0.actions.0", "turnFlagOn"),
-					resource.TestCheckResourceAttr(resourceName, "policy_statements.0.effect", "allow"),
 					resource.TestCheckResourceAttr(resourceName, "statements.#", "1"),
 					resource.TestCheckResourceAttr(resourceName, "statements.0.resources.0", "proj/*"),
 					resource.TestCheckResourceAttr(resourceName, "statements.0.actions.0", "turnFlagOn"),

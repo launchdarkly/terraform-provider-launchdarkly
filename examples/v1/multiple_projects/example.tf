@@ -4,7 +4,7 @@
 # ----------------------------------------------------------------------------------- #
 # AUTH CONFIG
 provider "launchdarkly" {
-  version = "~> 1.0"
+  version = "~> 1.7"
 }
 
 # ----------------------------------------------------------------------------------- #
@@ -59,7 +59,7 @@ resource "launchdarkly_feature_flag_environment" "basic_variation" {
   # key must be retrieved through the `launchdarkly_project` resource.
   env_key = launchdarkly_project.tf_project_1.environments.0.key
 
-  targeting_enabled = true
+  on = true
 
   rules {
     clauses {

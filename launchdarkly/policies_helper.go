@@ -4,8 +4,7 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/hashicorp/terraform-plugin-sdk/helper/hashcode"
-	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	ldapi "github.com/launchdarkly/api-client-go"
 )
 
@@ -87,5 +86,5 @@ func policiesToResourceData(policies []ldapi.Policy) interface{} {
 // https://godoc.org/github.com/hashicorp/terraform/helper/schema#SchemaSetFunc
 func policyHash(val interface{}) int {
 	policy := policyFromResourceData(val)
-	return hashcode.String(fmt.Sprintf("%v", policy))
+	return schema.HashString(fmt.Sprintf("%v", policy))
 }

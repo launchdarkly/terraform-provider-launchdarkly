@@ -1,11 +1,10 @@
 package launchdarkly
 
 import (
-	"errors"
 	"fmt"
 	"net/http"
 
-	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	ldapi "github.com/launchdarkly/api-client-go"
 )
 
@@ -16,18 +15,11 @@ func resourceWebhook() *schema.Resource {
 		Required:    true,
 		Description: "The URL of the remote webhook",
 	}
-	schemaMap[ENABLED] = &schema.Schema{
-		Type:          schema.TypeBool,
-		Description:   "Whether this webhook is enabled or not. This field has been deprecated in favor of 'on'",
-		Optional:      true,
-		Deprecated:    "'enabled' is deprecated in favor of 'on'",
-		ConflictsWith: []string{ON},
-	}
 	schemaMap[ON] = &schema.Schema{
-		Type:          schema.TypeBool,
-		Description:   "Whether this webhook is enabled or not",
-		Optional:      true,
-		ConflictsWith: []string{ENABLED},
+		Type:        schema.TypeBool,
+		Description: "Whether this webhook is enabled or not",
+		Optional:    true,
+		Default:     false,
 	}
 	return &schema.Resource{
 		Create: resourceWebhookCreate,
@@ -37,7 +29,7 @@ func resourceWebhook() *schema.Resource {
 		Exists: resourceWebhookExists,
 
 		Importer: &schema.ResourceImporter{
-			State: schema.ImportStatePassthrough,
+			StateContext: schema.ImportStatePassthroughContext,
 		},
 
 		Schema: schemaMap,
@@ -49,15 +41,12 @@ func resourceWebhookCreate(d *schema.ResourceData, metaRaw interface{}) error {
 	webhookURL := d.Get(URL).(string)
 	webhookSecret := d.Get(SECRET).(string)
 	webhookName := d.Get(NAME).(string)
-	statements, err := policyStatementsFromResourceData(getWebhookStatements(d))
+	statements, err := policyStatementsFromResourceData(d.Get(STATEMENTS).([]interface{}))
 	if err != nil {
 		return err
 	}
 
-	webhookOn, err := getWebhookOn(d)
-	if err != nil {
-		return err
-	}
+	webhookOn := d.Get(ON).(bool)
 
 	webhookBody := ldapi.WebhookBody{
 		Url:        webhookURL,
@@ -103,11 +92,7 @@ func resourceWebhookUpdate(d *schema.ResourceData, metaRaw interface{}) error {
 	webhookSecret := d.Get(SECRET).(string)
 	webhookName := d.Get(NAME).(string)
 	webhookTags := stringsFromResourceData(d, TAGS)
-
-	webhookOn, err := getWebhookOn(d)
-	if err != nil {
-		return err
-	}
+	webhookOn := d.Get(ON).(bool)
 
 	patch := []ldapi.PatchOperation{
 		patchReplace("/url", &webhookURL),
@@ -117,12 +102,17 @@ func resourceWebhookUpdate(d *schema.ResourceData, metaRaw interface{}) error {
 		patchReplace("/tags", &webhookTags),
 	}
 
-	statements, err := policyStatementsFromResourceData(getWebhookStatements(d))
+	statements, err := policyStatementsFromResourceData(d.Get(STATEMENTS).([]interface{}))
 	if err != nil {
 		return err
 	}
-	if len(statements) > 0 {
-		patch = append(patch, patchReplace("/statements", &statements))
+
+	if d.HasChange(STATEMENTS) {
+		if len(statements) > 0 {
+			patch = append(patch, patchReplace("/statements", &statements))
+		} else {
+			patch = append(patch, patchRemove("/statements"))
+		}
 	}
 
 	_, _, err = handleRateLimit(func() (interface{}, *http.Response, error) {
@@ -169,32 +159,4 @@ func webhookExists(webhookID string, meta *Client) (bool, error) {
 	}
 
 	return true, nil
-}
-
-// getWebhookOn is a helper function used for deprecating ENABLED in favor of ON to match
-// LD's API response.
-func getWebhookOn(d *schema.ResourceData) (bool, error) {
-	var webhookOn bool
-	enabled, enabledSet := d.GetOkExists(ENABLED)
-	on, onSet := d.GetOkExists(ON)
-	if !onSet && !enabledSet {
-		return false, errors.New("one of 'on' or 'enabled' must be configured")
-	}
-	if enabledSet {
-		webhookOn = enabled.(bool)
-	} else {
-		webhookOn = on.(bool)
-	}
-	return webhookOn, nil
-}
-
-// getWebhookStatements is a helper function used for deprecating POLICY_STATEMENTS in favor of STATEMENTS
-// to match LD's API response.
-func getWebhookStatements(d *schema.ResourceData) []interface{} {
-	if v, ok := d.GetOk(POLICY_STATEMENTS); ok {
-		return v.([]interface{})
-	} else if v, ok := d.GetOk(STATEMENTS); ok {
-		return v.([]interface{})
-	}
-	return make([]interface{}, 0)
 }

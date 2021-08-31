@@ -5,11 +5,13 @@
 The LaunchDarkly provider provides two resources for configuring feature flags: [`launchdarkly_feature_flag`](https://www.terraform.io/docs/providers/launchdarkly/r/feature_flag.html), which allows you to configure and manipulate project-wide feature flag settings and [`launchdarkly_feature_flag_environment`](https://www.terraform.io/docs/providers/launchdarkly/r/feature_flag_environment.html), which allows you to manage environment-specific feature flag settings, such as [targeting rules](https://docs.launchdarkly.com/home/managing-flags/targeting-users) and [prerequisites](https://docs.launchdarkly.com/home/managing-flags/flag-prerequisites).
 
 This example contains three config files:
+
 - [setup.tf](./setup.tf), which auths the provider and creates a project under which the flags will be created
 - [flag_types_example.tf](./flag_types_example.tf), which provides examples of the different ways you can define binary (boolean) and multivariate (string, numeric, and JSON) flag variations using the `launchdarkly_feature_flag` resource
 - [targeting_example.tf](./targeting_example.tf), which provides complex examples of user targeting using the `launchdarkly_feature_flag_environment` resource. For more detail on user targeting, see the [official LaunchDarkly documentation](https://docs.launchdarkly.com/home/managing-flags/targeting-users).
 
 ### Run
+
 Init your working directory from the CL with `terraform init` and then apply the changes with `terraform apply`. You should see output resembling the following:
 
 ```
@@ -42,10 +44,10 @@ Terraform will perform the following actions:
       + env_key           = "test"
       + flag_id           = (known after apply)
       + id                = (known after apply)
-      + targeting_enabled = true
+      + on = true
       + track_events      = true
 
-      + flag_fallthrough {
+      + fallthrough {
           + bucket_by       = "company"
           + rollout_weights = [
               + 60000,
@@ -71,18 +73,18 @@ Terraform will perform the following actions:
             }
         }
 
-      + user_targets {
+      + targets {
           + values = [
               + "test_user0",
             ]
         }
-      + user_targets {
+      + targets {
           + values = [
               + "test_user1",
               + "test_user2",
             ]
         }
-      + user_targets {
+      + targets {
           + values = [
               + "test_user3",
             ]
