@@ -1,3 +1,71 @@
+## [2.0.0] (August 31, 2021)
+
+ENHANCEMENTS:
+
+- Improved test coverage.
+
+NOTES:
+
+- As part of the ongoing deprecation of Terraform 0.11, the LaunchDarkly provider now only supports Terraform 0.12 and higher.
+
+- This release changes the way LaunchDarkly recommends you manage `launchdarkly_environment` and `launchdarkly_project` resources in tandem. It is recommended you do not manage environments as separate resources _unless_ you wish to manage the encapsulating project externally (not via Terraform). As such, at least one `environments` attribute will now be `Required` on the `launchdarkly_project` resource, but you will also be able to manage environments outside of Terraform on Terraform-managed projects if you do not import them into the Terraform state as a configuration block on the encapsulating project resource.
+
+- The deprecated `launchdarkly_destination` resource `enabled` field has been removed in favor of `on`. `on` now defaults to `false` when not explicitly set.
+
+- The `default_on_variation` and `default_off_variation` properties on the `launchdarkly_feature_flag` resource have now been replaced with a computed `defaults` block containing the properties `on_variation` and `off_variation` that refer to the variations in question by index rather than value.
+
+- The `launchdarkly_feature_flag_environment` resource and data source `target` attribute schema has been modified to include a new `variation` attribute. Here `variation` represents the index of the feature flag variation to serve if a user target is matched.
+
+- The deprecated `launchdarkly_feature_flag_environment` resource `targeting_enabled` field has been removed in favor of `on`. `on` now defaults to `false` when not explicitly set.
+
+- The deprecated `launchdarkly_feature_flag_environment` resource `user_targets` field has been removed in favor of `targets`. `targets` now defaults to null when not explicitly set.
+
+- The deprecated `launchdarkly_feature_flag_environment` resource `flag_fallthrough` field has been removed in favor of `fallthrough`.
+
+- The deprecated `launchdarkly_webhooks` resource `enabled` field has been removed in favor of `on`. `on` is now a required field.
+
+- The deprecated `launchdarkly_webhooks` resource `policy_statements` field has been removed in favor of `statements`.
+
+- `off_variation` and `fallthrough` (previously `flag_fallthrough`) on `launchdarkly_feature_flag_environment` are now `Required` fields.
+
+- Most optional fields will now be removed or revert to their null / false value when not explicitly set and / or when removed, including:
+
+  - `on` on the `launchdarkly_destination` resource
+
+  - `include_in_snippet` on the `launchdarkly_project` resource
+
+  - on the `launchdarkly_environment` resource and in `environment` blocks on the `launchdarkly_project` resource:
+
+    - `secure_mode`
+
+    - `default_track_events`
+
+    - `require_comments`
+
+    - `confirm_changes`
+
+    - `default_ttl` (reverts to `0`)
+
+  - on the `launchdarkly_feature_flag_environment` resource:
+
+    - `on` (previously `targeting_enabled`, reverts to `false`)
+
+    - `rules`
+
+    - `targets` (previously `user_targets`)
+
+    - `prerequisites`
+
+    - `track_events` (reverts to `false`)
+
+BUG FIXES:
+
+- Fixed a bug in the `launchdarkly_webhook` resource where `statements` removed from the configuration were not being deleted in LaunchDarkly.
+
+- The `launchdarkly_feature_flag` resource `maintainer_id` field is now computed and will update the state with the most recently-set value when not explicitly set.
+
+- The `client_side_availability` attribute on the `launchdarkly_feature_flag` and `launchdarkly_project` data sources has been corrected to an array with a single map item. This means that you will need to add an index 0 when accessing this property from the state (ex. `client_side_availability.using_environment_id` will now have to be accessed as `client_side_availability.0.using_environment_id`).
+
 ## [1.7.1] (August 24, 2021)
 
 ENHANCEMENTS:
