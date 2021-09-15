@@ -1,3 +1,9 @@
+## [Unreleased] ()
+
+BUG FIXES:
+
+- Fixed [a bug](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/67) resulting in nested environments not being imported on the `launchdarkly_project` resource. As a result, _all_ of a project's environments will be saved to the Terraform state during an import of the `launchdarkly_project` resource. Please keep in mind if you have not added all of the existing environments to your Terraform config before importing a `launchdarkly_project` resource, Terraform will delete these environments from LaunchDarkly during the next `terraform apply`. If you wish to manage project properties with Terraform but not nested environments consider using Terraform's [ignore changes](https://www.terraform.io/docs/language/meta-arguments/lifecycle.html#ignore_changes) lifecycle meta-argument.
+
 ## [2.0.0] (August 31, 2021)
 
 ENHANCEMENTS:
