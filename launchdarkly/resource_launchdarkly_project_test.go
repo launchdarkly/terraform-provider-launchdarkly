@@ -126,9 +126,6 @@ func TestAccProject_Create(t *testing.T) {
 				ResourceName:      resourceName,
 				ImportState:       true,
 				ImportStateVerify: true,
-				// we currently do not set the environments attr in the importer function because
-				// we are not forcing a complete list of nested environments on imported resource
-				ImportStateVerifyIgnore: []string{ENVIRONMENTS},
 			},
 		},
 	})
@@ -185,6 +182,11 @@ func TestAccProject_Update(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "include_in_snippet", "false"),
 				),
 			},
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
 		},
 	})
 }
@@ -218,8 +220,9 @@ func TestAccProject_WithEnvironments(t *testing.T) {
 				),
 			},
 			{
-				ResourceName: resourceName,
-				ImportState:  true,
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
 			},
 			{
 				Config: fmt.Sprintf(testAccProjectWithEnvironmentUpdate, projectKey),
@@ -274,8 +277,9 @@ func TestAccProject_WithEnvironments(t *testing.T) {
 				),
 			},
 			{
-				ResourceName: resourceName,
-				ImportState:  true,
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
 			},
 		},
 	})

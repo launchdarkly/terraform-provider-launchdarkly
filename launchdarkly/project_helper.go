@@ -44,10 +44,24 @@ func projectRead(d *schema.ResourceData, meta interface{}, isDataSource bool) er
 		// iterate over the environment keys in the order defined by the config and look up the environment returned by
 		// LD's API
 		rawEnvs := d.Get(ENVIRONMENTS).([]interface{})
+
 		envConfigKeys := rawEnvironmentConfigsToKeyList(rawEnvs)
+		envAddedMap := make(map[string]bool, len(project.Environments))
 		environments := make([]interface{}, 0, len(envConfigKeys))
 		for _, envKey := range envConfigKeys {
 			environments = append(environments, envMap[envKey])
+			envAddedMap[envKey] = true
+		}
+
+		// Now add all environments that are not specified in the config.
+		// This is required in order to successfully import nested environments because rawEnvs is always an empty slice
+		// durning import, even if nested environments are defined in the config.
+		for _, env := range project.Environments {
+			alreadyAdded := envAddedMap[env.Key]
+			if !alreadyAdded {
+				environments = append(environments, envMap[env.Key])
+				envAddedMap[env.Key] = true
+			}
 		}
 
 		err = d.Set(ENVIRONMENTS, environments)

@@ -408,6 +408,9 @@ resource "launchdarkly_feature_flag" "empty_string_variation" {
 func withRandomProject(randomProject, resource string) string {
 	return fmt.Sprintf(`
 	resource "launchdarkly_project" "test" {
+		lifecycle {
+			ignore_changes = [environments]
+		}
 		name = "testProject"
 		key = "%s"
 		environments {
