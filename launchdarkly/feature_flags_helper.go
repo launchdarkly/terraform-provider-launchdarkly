@@ -77,6 +77,12 @@ func baseFeatureFlagSchema() map[string]*schema.Schema {
 				},
 			},
 		},
+		ARCHIVED: {
+			Type:        schema.TypeBool,
+			Optional:    true,
+			Description: "Whether to archive the flag",
+			Default:     false,
+		},
 	}
 }
 
@@ -105,6 +111,7 @@ func featureFlagRead(d *schema.ResourceData, raw interface{}, isDataSource bool)
 	_ = d.Set(DESCRIPTION, flag.Description)
 	_ = d.Set(INCLUDE_IN_SNIPPET, flag.IncludeInSnippet)
 	_ = d.Set(TEMPORARY, flag.Temporary)
+	_ = d.Set(ARCHIVED, flag.Archived)
 
 	if isDataSource {
 		CSA := *flag.ClientSideAvailability

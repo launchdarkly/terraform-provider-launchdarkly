@@ -108,6 +108,7 @@ func resourceFeatureFlagUpdate(d *schema.ResourceData, metaRaw interface{}) erro
 	includeInSnippet := d.Get(INCLUDE_IN_SNIPPET).(bool)
 	temporary := d.Get(TEMPORARY).(bool)
 	customProperties := customPropertiesFromResourceData(d)
+	archived := d.Get(ARCHIVED).(bool)
 
 	patch := ldapi.PatchComment{
 		Comment: "Terraform",
@@ -118,6 +119,7 @@ func resourceFeatureFlagUpdate(d *schema.ResourceData, metaRaw interface{}) erro
 			patchReplace("/includeInSnippet", includeInSnippet),
 			patchReplace("/temporary", temporary),
 			patchReplace("/customProperties", customProperties),
+			patchReplace("/archived", archived),
 		}}
 
 	variationPatches, err := variationPatchesFromResourceData(d)

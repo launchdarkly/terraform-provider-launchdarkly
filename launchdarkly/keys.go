@@ -77,4 +77,5 @@ const (
 	EXPIRE                   = "expire"
 	ID                       = "id"
 	CLIENT_SIDE_AVAILABILITY = "client_side_availability"
+	ARCHIVED                 = "archived"
 )
