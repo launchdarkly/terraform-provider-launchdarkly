@@ -74,7 +74,7 @@ func validateVariationType(val interface{}, key string) (warns []string, errs []
 	case BOOL_VARIATION, STRING_VARIATION, NUMBER_VARIATION, JSON_VARIATION:
 		break
 	default:
-		errs = append(errs, fmt.Errorf("%q contains an invalid value %q. Valid values are `boolean` and `string`", key, value))
+		errs = append(errs, fmt.Errorf("%q contains an invalid value %q. Valid values are `boolean`, `string`, `number`, and `json`", key, value))
 	}
 	return warns, errs
 }
