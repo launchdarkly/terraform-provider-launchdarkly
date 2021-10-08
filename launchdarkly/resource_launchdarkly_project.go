@@ -112,7 +112,7 @@ func resourceProjectUpdate(d *schema.ResourceData, metaRaw interface{}) error {
 		return fmt.Errorf("failed to update project with key %q: %s", projectKey, handleLdapiErr(err))
 	}
 	// Update environments if necessary
-	schemaEnvList := d.Get(ENVIRONMENTS)
+	oldSchemaEnvList, newSchemaEnvList := d.GetChange(ENVIRONMENTS)
 	// Get the project so we can see if we need to create any environments or just update existing environments
 	rawProject, _, err := handleRateLimit(func() (interface{}, *http.Response, error) {
 		return client.ld.ProjectsApi.GetProject(client.ctx, projectKey)
@@ -122,7 +122,14 @@ func resourceProjectUpdate(d *schema.ResourceData, metaRaw interface{}) error {
 	}
 	project := rawProject.(ldapi.Project)
 
-	environmentConfigs := schemaEnvList.([]interface{})
+	environmentConfigs := newSchemaEnvList.([]interface{})
+	oldEnvironmentConfigs := oldSchemaEnvList.([]interface{})
+	var oldEnvConfigsForCompare = make(map[string]map[string]interface{}, len(oldEnvironmentConfigs))
+	for _, env := range oldEnvironmentConfigs {
+		envConfig := env.(map[string]interface{})
+		envKey := envConfig[KEY].(string)
+		oldEnvConfigsForCompare[envKey] = envConfig
+	}
 	// save envs in a key:config map so we can more easily figure out which need to be patchRemoved after
 	var envConfigsForCompare = make(map[string]map[string]interface{}, len(environmentConfigs))
 	for _, env := range environmentConfigs {
@@ -142,8 +149,15 @@ func resourceProjectUpdate(d *schema.ResourceData, metaRaw interface{}) error {
 			}
 		}
 
+		var oldEnvConfig map[string]interface{}
+		if rawOldConfig, ok := oldEnvConfigsForCompare[envKey]; ok {
+			oldEnvConfig = rawOldConfig
+		}
 		// by default patching an env that was not recently tracked in the state will import it into the tf state
-		patches := getEnvironmentUpdatePatches(envConfig)
+		patches, err := getEnvironmentUpdatePatches(oldEnvConfig, envConfig)
+		if err != nil {
+			return err
+		}
 		_, _, err = handleRateLimit(func() (interface{}, *http.Response, error) {
 			return handleNoConflict(func() (interface{}, *http.Response, error) {
 				return client.ld.EnvironmentsApi.PatchEnvironment(client.ctx, projectKey, envKey, patches)

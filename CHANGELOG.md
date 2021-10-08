@@ -1,3 +1,11 @@
+## [Unreleased]
+
+FEATURES:
+
+- Added `approval_settings` blocks to the `launchdarkly_environment` resource and nested `environments` blocks on the `launchdarkly_project` resource.
+
+- Added a boolean `archive` attribute on the `launchdarkly_feature_flag` resource to allow archiving and unarchiving flags instead of deleting them.
+
 ## [2.0.1] (September 20, 2021)
 
 BUG FIXES:

@@ -79,12 +79,46 @@ resource "launchdarkly_project" "env_test" {
 		require_comments = true
 		confirm_changes = true
 	}
-
 	environments {
-		key = "new-env"
-		name = "New test environment"
+		key = "new-approvals-env"
+		name = "New approvals environment"
 		color = "EEEEEE"
 		tags = ["new"]
+		approval_settings {
+			required                   = true
+			can_review_own_request     = true
+			min_num_approvals          = 2
+		  }
+	}
+}	
+`
+
+	testAccProjectWithEnvironmentUpdateApprovalSettings = `
+resource "launchdarkly_project" "env_test" {
+	key = "%s"
+	name = "test project"
+	environments {
+		key = "test-env"
+		name = "test environment updated"
+		color = "AAAAAA"
+		tags = ["terraform", "test", "updated"]
+		default_ttl = 30
+		secure_mode = true
+		default_track_events = true
+		require_comments = true
+		confirm_changes = true
+	}
+	environments {
+		key = "new-approvals-env"
+		name = "New approvals environment"
+		color = "EEEEEE"
+		tags = ["new"]
+		approval_settings {
+			required_approval_tags     = ["approvals_required"]
+			can_review_own_request     = false
+			min_num_approvals          = 1
+			can_apply_declined_changes = false
+		  }
 	}
 }	
 `
@@ -243,7 +277,8 @@ func TestAccProject_WithEnvironments(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "environments.0.confirm_changes", "true"),
 
 					// Check environment 1 is created
-					resource.TestCheckResourceAttr(resourceName, "environments.1.name", "New test environment"),
+					resource.TestCheckResourceAttr(resourceName, "environments.1.key", "new-approvals-env"),
+					resource.TestCheckResourceAttr(resourceName, "environments.1.name", "New approvals environment"),
 					resource.TestCheckResourceAttr(resourceName, "environments.1.tags.#", "1"),
 					resource.TestCheckResourceAttr(resourceName, "environments.1.color", "EEEEEE"),
 					resource.TestCheckResourceAttr(resourceName, "environments.1.default_ttl", "0"),
@@ -251,6 +286,39 @@ func TestAccProject_WithEnvironments(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "environments.1.default_track_events", "false"),
 					resource.TestCheckResourceAttr(resourceName, "environments.1.require_comments", "false"),
 					resource.TestCheckResourceAttr(resourceName, "environments.1.confirm_changes", "false"),
+					resource.TestCheckResourceAttr(resourceName, "environments.1.approval_settings.0.required", "true"),
+					resource.TestCheckResourceAttr(resourceName, "environments.1.approval_settings.0.can_review_own_request", "true"),
+					resource.TestCheckResourceAttr(resourceName, "environments.1.approval_settings.0.min_num_approvals", "2"),
+					resource.TestCheckResourceAttr(resourceName, "environments.1.approval_settings.0.can_apply_declined_changes", "false"),
+				),
+			},
+			{
+				ResourceName: resourceName,
+				ImportState:  true,
+			},
+			{
+				Config: fmt.Sprintf(testAccProjectWithEnvironmentUpdateApprovalSettings, projectKey),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckProjectExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, "key", projectKey),
+					resource.TestCheckResourceAttr(resourceName, "name", "test project"),
+					resource.TestCheckResourceAttr(resourceName, "environments.#", "2"),
+
+					// Check approval_settings have updated as expected
+					resource.TestCheckResourceAttr(resourceName, "environments.1.key", "new-approvals-env"),
+					resource.TestCheckResourceAttr(resourceName, "environments.1.name", "New approvals environment"),
+					resource.TestCheckResourceAttr(resourceName, "environments.1.tags.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "environments.1.color", "EEEEEE"),
+					resource.TestCheckResourceAttr(resourceName, "environments.1.default_ttl", "0"),
+					resource.TestCheckResourceAttr(resourceName, "environments.1.secure_mode", "false"),
+					resource.TestCheckResourceAttr(resourceName, "environments.1.default_track_events", "false"),
+					resource.TestCheckResourceAttr(resourceName, "environments.1.require_comments", "false"),
+					resource.TestCheckResourceAttr(resourceName, "environments.1.confirm_changes", "false"),
+					resource.TestCheckResourceAttr(resourceName, "environments.1.approval_settings.0.required", "false"),
+					resource.TestCheckResourceAttr(resourceName, "environments.1.approval_settings.0.required_approval_tags.0", "approvals_required"),
+					resource.TestCheckResourceAttr(resourceName, "environments.1.approval_settings.0.can_review_own_request", "false"),
+					resource.TestCheckResourceAttr(resourceName, "environments.1.approval_settings.0.min_num_approvals", "1"),
+					resource.TestCheckResourceAttr(resourceName, "environments.1.approval_settings.0.can_apply_declined_changes", "false"),
 				),
 			},
 			{
