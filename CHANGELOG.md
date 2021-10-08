@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [2.1.0] (October 8, 2021)
+
 FEATURES:
 
 - Added `approval_settings` blocks to the `launchdarkly_environment` resource and nested `environments` blocks on the `launchdarkly_project` resource.
