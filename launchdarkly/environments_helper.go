@@ -70,11 +70,12 @@ func baseEnvironmentSchema(forProject bool) map[string]*schema.Schema {
 			Optional:    true,
 			Description: "Whether or not to require confirmation for flag and segment changes in this environment",
 		},
-		TAGS: tagsSchema(),
+		TAGS:              tagsSchema(),
+		APPROVAL_SETTINGS: approvalSchema(),
 	}
 }
 
-func getEnvironmentUpdatePatches(config map[string]interface{}) []ldapi.PatchOperation {
+func getEnvironmentUpdatePatches(oldConfig, config map[string]interface{}) ([]ldapi.PatchOperation, error) {
 	// Always include required fields
 	name := config[NAME]
 	color := config[COLOR]
@@ -114,7 +115,18 @@ func getEnvironmentUpdatePatches(config map[string]interface{}) []ldapi.PatchOpe
 		envTags := stringsFromSchemaSet(tags.(*schema.Set))
 		patches = append(patches, patchReplace("/tags", &envTags))
 	}
-	return patches
+
+	var oldApprovalSettings []interface{}
+	if oldSettings, ok := oldConfig[APPROVAL_SETTINGS]; ok {
+		oldApprovalSettings = oldSettings.([]interface{})
+	}
+	newApprovalSettings := config[APPROVAL_SETTINGS]
+	approvalPatches, err := approvalPatchFromSettings(oldApprovalSettings, newApprovalSettings)
+	if err != nil {
+		return []ldapi.PatchOperation{}, err
+	}
+	patches = append(patches, approvalPatches...)
+	return patches, nil
 }
 
 func environmentSchema(forProject bool) map[string]*schema.Schema {
@@ -193,6 +205,7 @@ func environmentToResourceData(env ldapi.Environment) envResourceData {
 		REQUIRE_COMMENTS:     env.RequireComments,
 		CONFIRM_CHANGES:      env.ConfirmChanges,
 		TAGS:                 env.Tags,
+		APPROVAL_SETTINGS:    approvalSettingsToResourceData(*env.ApprovalSettings),
 	}
 }
 
@@ -237,5 +250,7 @@ func environmentRead(d *schema.ResourceData, meta interface{}, isDataSource bool
 	_ = d.Set(TAGS, env.Tags)
 	_ = d.Set(REQUIRE_COMMENTS, env.RequireComments)
 	_ = d.Set(CONFIRM_CHANGES, env.ConfirmChanges)
+	_ = d.Set(APPROVAL_SETTINGS, approvalSettingsToResourceData(*env.ApprovalSettings))
+
 	return nil
 }

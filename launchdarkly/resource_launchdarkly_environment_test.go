@@ -62,6 +62,43 @@ resource "launchdarkly_environment" "staging" {
 	confirm_changes = true
 }
 `
+
+	testAccEnvironmentWithApprovals = `
+resource "launchdarkly_environment" "approvals_test" {
+	name = "Approvals Test"
+	key = "approvals-test"
+	color = "ababab"
+	project_key = launchdarkly_project.test.key
+	approval_settings {
+		can_review_own_request = false
+		min_num_approvals = 2
+		required_approval_tags = ["approvals_required"]
+	}
+}
+`
+	testAccEnvironmentWithApprovalsUpdate = `
+resource "launchdarkly_environment" "approvals_test" {
+	name = "Approvals Test 2.0"
+	key = "approvals-test"
+	color = "bababa"
+	project_key = launchdarkly_project.test.key
+	approval_settings {
+		required = true
+		can_review_own_request = true
+		min_num_approvals = 1
+		can_apply_declined_changes = true
+	}
+}
+`
+
+	testAccEnvironmentWithApprovalsRemoved = `
+resource "launchdarkly_environment" "approvals_test" {
+	name = "Approvals Test 2.1"
+	key = "approvals-test"
+	color = "bababa"
+	project_key = launchdarkly_project.test.key
+}
+`
 )
 
 func TestAccEnvironment_Create(t *testing.T) {
@@ -214,6 +251,72 @@ func TestAccEnvironment_Invalid(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "project_key", projectKey),
 					resource.TestCheckResourceAttr(resourceName, "require_comments", "false"),
 					resource.TestCheckResourceAttr(resourceName, "confirm_changes", "false"),
+				),
+			},
+		},
+	})
+}
+
+func TestAccEnvironmentWithApprovals(t *testing.T) {
+	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	resourceName := "launchdarkly_environment.approvals_test"
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck: func() {
+			testAccPreCheck(t)
+		},
+		Providers: testAccProviders,
+		Steps: []resource.TestStep{
+			{
+				Config: withRandomProject(projectKey, testAccEnvironmentWithApprovals),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckProjectExists("launchdarkly_project.test"),
+					testAccCheckEnvironmentExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, "name", "Approvals Test"),
+					resource.TestCheckResourceAttr(resourceName, "key", "approvals-test"),
+					resource.TestCheckResourceAttr(resourceName, "color", "ababab"),
+					resource.TestCheckResourceAttr(resourceName, "project_key", projectKey),
+					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.can_review_own_request", "false"),
+					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.can_apply_declined_changes", "false"), // should default to false
+					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.min_num_approvals", "2"),
+					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.required_approval_tags.0", "approvals_required"),
+				),
+			},
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
+			{
+				Config: withRandomProject(projectKey, testAccEnvironmentWithApprovalsUpdate),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckProjectExists("launchdarkly_project.test"),
+					testAccCheckEnvironmentExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, "name", "Approvals Test 2.0"),
+					resource.TestCheckResourceAttr(resourceName, "key", "approvals-test"),
+					resource.TestCheckResourceAttr(resourceName, "color", "bababa"),
+					resource.TestCheckResourceAttr(resourceName, "project_key", projectKey),
+					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.required", "true"),
+					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.can_review_own_request", "true"),
+					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.can_apply_declined_changes", "true"),
+					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.min_num_approvals", "1"),
+					resource.TestCheckNoResourceAttr(resourceName, "approval_settings.0.required_approval_tags"),
+				),
+			},
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
+			{
+				Config: withRandomProject(projectKey, testAccEnvironmentWithApprovalsRemoved),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckProjectExists("launchdarkly_project.test"),
+					testAccCheckEnvironmentExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, "name", "Approvals Test 2.1"),
+					resource.TestCheckResourceAttr(resourceName, "key", "approvals-test"),
+					resource.TestCheckResourceAttr(resourceName, "color", "bababa"),
+					resource.TestCheckResourceAttr(resourceName, "project_key", projectKey),
+					resource.TestCheckNoResourceAttr(resourceName, "approval_settings"),
 				),
 			},
 		},

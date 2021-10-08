@@ -27,6 +27,12 @@ resource "launchdarkly_project" "example" {
 		name  = "Production"
 		color = "EEEEEE"
 		tags  = ["terraform"]
+		approval_settings {
+			can_review_own_request = false
+			can_apply_declined_changes = false
+			min_num_approvals      = 3
+			required_approval_tags = ["approvals_required"]
+		}
 	}
 
   environments {
@@ -73,6 +79,22 @@ Nested `environments` blocks have the following structure:
 - `require_comments` - (Optional) Set to `true` if this environment requires comments for flag and segment changes. This field will default to `false` when not set.
 
 - `confirm_changes` - (Optional) Set to `true` if this environment requires confirmation for flag and segment changes. This field will default to `false` when not set.
+
+- `approval_settings` - (Optional) A nested block describing the environment approval settings. To learn more about this feature, read [Approvals](https://docs.launchdarkly.com/home/feature-workflows/approvals). To learn more about configuring them in Terraform, read [Nested Environments Approval Settings Blocks](#nested-environments-approval-settings-blocks).
+
+### Nested Environments Approval Settings Blocks
+
+Nested environments `approval_settings` blocks have the following structure:
+
+- `required` - Set to `true` for changes to flags in this environment to require approval. You may only set `required` to true if `required_approval_tags` is not set and vice versa. Defaults to `false`.
+
+- `can_review_own_request` - Set to `true` if requesters can approve or decline their own request. They may always comment. Defaults to `false`.
+
+- `min_num_approvals` - The number of approvals required before an approval request can be applied. This number must be between 1 and 5. Defaults to 1.
+
+- `can_apply_declined_changes` - Set to `true` if changes can be applied as long as the `min_num_approvals` is met, regardless of whether any reviewers have declined a request. Defaults to `false`.
+
+- `required_approval_tags` - An array of tags used to specify which flags with those tags require approval. You may only set `required_approval_tags` if `required` is not set to `true` and vice versa.
 
 ## Import
 

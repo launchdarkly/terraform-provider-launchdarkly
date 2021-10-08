@@ -12,9 +12,17 @@ description: |-
 ## Example Usage
 
 ```hcl
+terraform {
+  required_providers {
+    launchdarkly = {
+      source  = "launchdarkly/launchdarkly"
+      version = "~> 2.0"
+    }
+  }
+}
+
 # Configure the LaunchDarkly provider
 provider "launchdarkly" {
-   version     = "~> 1.0"
   access_token = var.launchdarkly_access_token
 }
 
@@ -26,21 +34,6 @@ resource "launchdarkly_project" "terraform" {
 # Create a new feature flag
 resource "launchdarkly_feature_flag" "terraform" {
   # ...
-}
-```
-
-If you are using Terraform 0.13 and above, the provider declaration should go directly in your `terraform` block. Additionally, the syntax will be slightly different:
-
-```hcl
-# Configure the LaunchDarkly provider
-terraform {
-  required_providers {
-    launchdarkly = {
-      source = "launchdarkly/launchdarkly"
-      version = "~> 1.0"
-    }
-  }
-  required_version = "~> 0.13.0"
 }
 ```
 

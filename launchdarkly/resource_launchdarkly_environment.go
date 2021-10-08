@@ -65,6 +65,20 @@ func resourceEnvironmentCreate(d *schema.ResourceData, metaRaw interface{}) erro
 		return fmt.Errorf("failed to create environment: [%+v] for project key: %s: %s", envPost, projectKey, handleLdapiErr(err))
 	}
 
+	approvalSettings := d.Get(APPROVAL_SETTINGS)
+	if len(approvalSettings.([]interface{})) > 0 {
+		err = resourceEnvironmentUpdate(d, metaRaw)
+		if err != nil {
+			// if there was a problem in the update state, we need to clean up completely by deleting the env
+			_, deleteErr := client.ld.EnvironmentsApi.DeleteEnvironment(client.ctx, projectKey, key)
+			if deleteErr != nil {
+				return fmt.Errorf("failed to clean up environment %q from project %q: %s", key, projectKey, handleLdapiErr(err))
+			}
+			return fmt.Errorf("failed to update environment with name %q key %q for projectKey %q: %s",
+				name, key, projectKey, handleLdapiErr(err))
+		}
+	}
+
 	d.SetId(projectKey + "/" + key)
 	return resourceEnvironmentRead(d, metaRaw)
 }
@@ -96,7 +110,13 @@ func resourceEnvironmentUpdate(d *schema.ResourceData, metaRaw interface{}) erro
 		patchReplace("/confirmChanges", &confirmChanges),
 	}
 
-	_, _, err := handleRateLimit(func() (interface{}, *http.Response, error) {
+	oldApprovalSettings, newApprovalSettings := d.GetChange(APPROVAL_SETTINGS)
+	approvalPatch, err := approvalPatchFromSettings(oldApprovalSettings, newApprovalSettings)
+	if err != nil {
+		return err
+	}
+	patch = append(patch, approvalPatch...)
+	_, _, err = handleRateLimit(func() (interface{}, *http.Response, error) {
 		return handleNoConflict(func() (interface{}, *http.Response, error) {
 			return client.ld.EnvironmentsApi.PatchEnvironment(client.ctx, projectKey, key, patch)
 		})

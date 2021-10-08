@@ -26,6 +26,24 @@ resource "launchdarkly_environment" "staging" {
 }
 ```
 
+```hcl
+resource "launchdarkly_environment" "approvals_example" {
+  name  = "Approvals Example Environment"
+  key   = "approvals-example"
+  color = "ff00ff"
+  tags  = ["terraform", "staging"]
+
+  approval_settings {
+    required                   = true
+    can_review_own_request     = true
+    min_num_approvals          = 2
+    can_apply_declined_changes = true
+  }
+
+  project_key = launchdarkly_project.example.key
+}
+```
+
 ## Argument Reference
 
 - `project_key` - (Required) - The environment's project key.
@@ -48,6 +66,8 @@ resource "launchdarkly_environment" "staging" {
 
 - `confirm_changes` - (Optional) Set to `true` if this environment requires confirmation for flag and segment changes. This field will default to `false` when not set.
 
+- `approval_settings` - (Optional) A nested block describing the environment approval settings. To learn more about this feature, read [Approvals](https://docs.launchdarkly.com/home/feature-workflows/approvals). To learn more about configuring them in Terraform, read [Nested Approval Settings Blocks](#nested-approval-settings-blocks).
+
 ## Attribute Reference
 
 In addition to the arguments above, the resource exports the following attributes:
@@ -59,6 +79,20 @@ In addition to the arguments above, the resource exports the following attribute
 - `mobile_key` - The environment's mobile key.
 
 - `client_side_id` - The environment's client-side ID.
+
+### Nested Approval Settings Blocks
+
+Nested `approval_settings` blocks have the following structure:
+
+- `required` - Set to `true` for changes to flags in this environment to require approval. You may only set `required` to true if `required_approval_tags` is not set and vice versa. Defaults to `false`.
+
+- `can_review_own_request` - Set to `true` if requesters can approve or decline their own request. They may always comment. Defaults to `false`.
+
+- `min_num_approvals` - The number of approvals required before an approval request can be applied. This number must be between 1 and 5. Defaults to 1.
+
+- `can_apply_declined_changes` - Set to `true` if changes can be applied as long as the `min_num_approvals` is met, regardless of whether any reviewers have declined a request. Defaults to `false`.
+
+- `required_approval_tags` - An array of tags used to specify which flags with those tags require approval. You may only set `required_approval_tags` if `required` is not set to `true` and vice versa.
 
 ## Import
 
