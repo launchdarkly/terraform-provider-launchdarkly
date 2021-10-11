@@ -289,7 +289,7 @@ func TestAccProject_WithEnvironments(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "environments.1.approval_settings.0.required", "true"),
 					resource.TestCheckResourceAttr(resourceName, "environments.1.approval_settings.0.can_review_own_request", "true"),
 					resource.TestCheckResourceAttr(resourceName, "environments.1.approval_settings.0.min_num_approvals", "2"),
-					resource.TestCheckResourceAttr(resourceName, "environments.1.approval_settings.0.can_apply_declined_changes", "false"),
+					resource.TestCheckResourceAttr(resourceName, "environments.1.approval_settings.0.can_apply_declined_changes", "true"), // defaults to true
 				),
 			},
 			{

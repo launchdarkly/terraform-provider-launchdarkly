@@ -1,5 +1,11 @@
 ## [Unreleased]
 
+BUG FIXES:
+
+- Fixed an oversight in the approval settings where `can_apply_declined_changes` was defaulting to `false` where it should have been defaulting to `true` in alignment with the LaunchDarkly API.
+
+- Updated an error message.
+
 ## [2.1.0] (October 8, 2021)
 
 FEATURES:

@@ -86,7 +86,7 @@ resource "launchdarkly_environment" "approvals_test" {
 		required = true
 		can_review_own_request = true
 		min_num_approvals = 1
-		can_apply_declined_changes = true
+		can_apply_declined_changes = false
 	}
 }
 `
@@ -276,7 +276,7 @@ func TestAccEnvironmentWithApprovals(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "color", "ababab"),
 					resource.TestCheckResourceAttr(resourceName, "project_key", projectKey),
 					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.can_review_own_request", "false"),
-					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.can_apply_declined_changes", "false"), // should default to false
+					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.can_apply_declined_changes", "true"), // should default to true
 					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.min_num_approvals", "2"),
 					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.required_approval_tags.0", "approvals_required"),
 				),
@@ -297,7 +297,7 @@ func TestAccEnvironmentWithApprovals(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "project_key", projectKey),
 					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.required", "true"),
 					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.can_review_own_request", "true"),
-					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.can_apply_declined_changes", "true"),
+					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.can_apply_declined_changes", "false"),
 					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.min_num_approvals", "1"),
 					resource.TestCheckNoResourceAttr(resourceName, "approval_settings.0.required_approval_tags"),
 				),
