@@ -2,7 +2,7 @@
 
 BUG FIXES:
 
-- Fixed an oversight in the approval settings where `can_apply_declined_changes` was defaulting to `false` where it should have been defaulting to `true` in alignment with the LaunchDarkly API.
+- Fixed an oversight in the approval settings where the environment `approval_settings` property `can_apply_declined_changes` was defaulting to `false` where it should have been defaulting to `true` in alignment with the LaunchDarkly API.
 
 - Updated an error message.
 
