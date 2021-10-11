@@ -37,8 +37,8 @@ func approvalSchema() *schema.Schema {
 				CAN_APPLY_DECLINED_CHANGES: {
 					Type:        schema.TypeBool,
 					Optional:    true,
-					Description: "Whether changes can be applied as long as minNumApprovals is met, regardless of whether any reviewers have declined a request.",
-					Default:     false,
+					Description: "Whether changes can be applied as long as minNumApprovals is met, regardless of whether any reviewers have declined a request. Defaults to true",
+					Default:     true,
 				},
 				REQUIRED_APPROVAL_TAGS: {
 					Type:        schema.TypeList,

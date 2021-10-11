@@ -92,7 +92,7 @@ Nested environments `approval_settings` blocks have the following structure:
 
 - `min_num_approvals` - The number of approvals required before an approval request can be applied. This number must be between 1 and 5. Defaults to 1.
 
-- `can_apply_declined_changes` - Set to `true` if changes can be applied as long as the `min_num_approvals` is met, regardless of whether any reviewers have declined a request. Defaults to `false`.
+- `can_apply_declined_changes` - Set to `true` if changes can be applied as long as the `min_num_approvals` is met, regardless of whether any reviewers have declined a request. Defaults to `true`.
 
 - `required_approval_tags` - An array of tags used to specify which flags with those tags require approval. You may only set `required_approval_tags` if `required` is not set to `true` and vice versa.
 
