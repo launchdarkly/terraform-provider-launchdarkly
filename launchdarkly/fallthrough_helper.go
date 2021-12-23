@@ -6,7 +6,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 
-	ldapi "github.com/launchdarkly/api-client-go"
+	ldapi "github.com/launchdarkly/api-client-go/v7"
 )
 
 func fallthroughSchema(forDataSource bool) *schema.Schema {
@@ -75,7 +75,7 @@ func fallthroughFromResourceData(d *schema.ResourceData) (fallthroughModel, erro
 		rollout := fallthroughModel{Rollout: rolloutFromResourceData(fall[ROLLOUT_WEIGHTS])}
 		bucketBy, ok := fall[BUCKET_BY]
 		if ok {
-			rollout.Rollout.BucketBy = bucketBy.(string)
+			rollout.Rollout.BucketBy = ldapi.PtrString(bucketBy.(string))
 		}
 		return rollout, nil
 
@@ -84,13 +84,13 @@ func fallthroughFromResourceData(d *schema.ResourceData) (fallthroughModel, erro
 	return fallthroughModel{Variation: &val}, nil
 }
 
-func fallthroughToResourceData(fallThrough *ldapi.ModelFallthrough) interface{} {
+func fallthroughToResourceData(fallThrough ldapi.VariationOrRolloutRep) interface{} {
 	transformed := make([]interface{}, 1)
 	if fallThrough.Rollout != nil {
 		rollout := map[string]interface{}{
 			ROLLOUT_WEIGHTS: rolloutsToResourceData(fallThrough.Rollout),
 		}
-		if fallThrough.Rollout.BucketBy != "" {
+		if fallThrough.Rollout.BucketBy != nil {
 			rollout[BUCKET_BY] = fallThrough.Rollout.BucketBy
 		}
 		transformed[0] = rollout

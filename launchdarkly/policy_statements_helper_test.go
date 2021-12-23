@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	ldapi "github.com/launchdarkly/api-client-go"
+	ldapi "github.com/launchdarkly/api-client-go/v7"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -13,7 +13,7 @@ func TestPolicyStatementsRoundTripConversion(t *testing.T) {
 	testCases := []struct {
 		name             string
 		policyStatements map[string]interface{}
-		expected         []ldapi.Statement
+		expected         []ldapi.StatementPost
 	}{
 		{
 			name: "basic policy statement",
@@ -26,7 +26,7 @@ func TestPolicyStatementsRoundTripConversion(t *testing.T) {
 					},
 				},
 			},
-			expected: []ldapi.Statement{
+			expected: []ldapi.StatementPost{
 				{
 					Resources: []string{"proj/*"},
 					Actions:   []string{"*"},
@@ -50,7 +50,7 @@ func TestPolicyStatementsRoundTripConversion(t *testing.T) {
 					},
 				},
 			},
-			expected: []ldapi.Statement{
+			expected: []ldapi.StatementPost{
 				{
 					Resources: []string{"proj/*:env/*;qa_*"},
 					Actions:   []string{"*"},
@@ -74,9 +74,9 @@ func TestPolicyStatementsRoundTripConversion(t *testing.T) {
 					},
 				},
 			},
-			expected: []ldapi.Statement{
+			expected: []ldapi.StatementPost{
 				{
-					NotResources: []string{"proj/*:env/production:flag/*"},
+					NotResources: strArrayPtr([]string{"proj/*:env/production:flag/*"}),
 					Actions:      []string{"*"},
 					Effect:       "allow",
 				},
@@ -97,7 +97,9 @@ func TestPolicyStatementsRoundTripConversion(t *testing.T) {
 			require.NoError(t, err)
 			require.Equal(t, tc.expected, actual)
 
-			actualRaw := policyStatementsToResourceData(actual)
+			// with v7 of the go client there is an accidental duplicate type, so it returns a Statement type
+			// even though it takes a StatementPost type
+			actualRaw := policyStatementsToResourceData(statementsToStatementReps(statementPostsToStatements(actual)))
 			require.Equal(t, tc.policyStatements[POLICY_STATEMENTS], actualRaw)
 		})
 	}
@@ -160,4 +162,22 @@ func TestPolicyStatementValidation(t *testing.T) {
 			assert.EqualError(t, validatePolicyStatement(tc.statement), tc.expectedErrString)
 		})
 	}
+}
+
+// statementPostToStatement is a helper function just for these tests
+// since v7 of the go client passes and returns two differing types
+func statementPostsToStatements(posts []ldapi.StatementPost) []ldapi.Statement {
+	var statements []ldapi.Statement
+	for _, p := range posts {
+		p := p
+		statement := ldapi.Statement{
+			Resources:    &p.Resources,
+			NotResources: p.NotResources,
+			Actions:      &p.Actions,
+			NotActions:   p.NotActions,
+			Effect:       p.Effect,
+		}
+		statements = append(statements, statement)
+	}
+	return statements
 }

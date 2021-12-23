@@ -5,12 +5,9 @@ import (
 	"regexp"
 	"testing"
 
-	"github.com/antihax/optional"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
-
-	ldapi "github.com/launchdarkly/api-client-go"
 )
 
 const (
@@ -677,7 +674,7 @@ func testAccCheckFeatureFlagEnvironmentExists(resourceName string) resource.Test
 			return fmt.Errorf("environent key not found: %s", resourceName)
 		}
 		client := testAccProvider.Meta().(*Client)
-		_, _, err = client.ld.FeatureFlagsApi.GetFeatureFlag(client.ctx, projKey, flagKey, &ldapi.FeatureFlagsApiGetFeatureFlagOpts{Env: optional.NewInterface(envKey)})
+		_, _, err = client.ld.FeatureFlagsApi.GetFeatureFlag(client.ctx, projKey, flagKey).Env(envKey).Execute()
 		if err != nil {
 			return fmt.Errorf("received an error getting feature flag environment. %s", err)
 		}

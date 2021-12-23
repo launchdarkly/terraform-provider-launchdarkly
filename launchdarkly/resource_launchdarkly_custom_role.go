@@ -7,7 +7,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 
-	ldapi "github.com/launchdarkly/api-client-go"
+	ldapi "github.com/launchdarkly/api-client-go/v7"
 )
 
 func resourceCustomRole() *schema.Resource {
@@ -57,18 +57,18 @@ func resourceCustomRoleCreate(d *schema.ResourceData, metaRaw interface{}) error
 		return err
 	}
 	if len(policyStatements) > 0 {
-		customRolePolicies = statementsToPolicies(policyStatements)
+		customRolePolicies = policyStatements
 	}
 
-	customRoleBody := ldapi.CustomRoleBody{
+	customRoleBody := ldapi.CustomRolePost{
 		Key:         customRoleKey,
 		Name:        customRoleName,
-		Description: customRoleDescription,
+		Description: ldapi.PtrString(customRoleDescription),
 		Policy:      customRolePolicies,
 	}
 
 	_, _, err = handleRateLimit(func() (interface{}, *http.Response, error) {
-		return client.ld.CustomRolesApi.PostCustomRole(client.ctx, customRoleBody)
+		return client.ld.CustomRolesApi.PostCustomRole(client.ctx).CustomRolePost(customRoleBody).Execute()
 	})
 	if err != nil {
 		return fmt.Errorf("failed to create custom role with name %q: %s", customRoleName, handleLdapiErr(err))
@@ -83,7 +83,7 @@ func resourceCustomRoleRead(d *schema.ResourceData, metaRaw interface{}) error {
 	customRoleID := d.Id()
 
 	customRoleRaw, res, err := handleRateLimit(func() (interface{}, *http.Response, error) {
-		return client.ld.CustomRolesApi.GetCustomRole(client.ctx, customRoleID)
+		return client.ld.CustomRolesApi.GetCustomRole(client.ctx, customRoleID).Execute()
 	})
 	customRole := customRoleRaw.(ldapi.CustomRole)
 	if isStatusNotFound(res) {
@@ -104,7 +104,7 @@ func resourceCustomRoleRead(d *schema.ResourceData, metaRaw interface{}) error {
 	if _, ok := d.GetOk(POLICY); ok {
 		err = d.Set(POLICY, policiesToResourceData(customRole.Policy))
 	} else {
-		err = d.Set(POLICY_STATEMENTS, policyStatementsToResourceData(policiesToStatements(customRole.Policy)))
+		err = d.Set(POLICY_STATEMENTS, policyStatementsToResourceData(statementsToStatementReps(customRole.Policy)))
 	}
 
 	if err != nil {
@@ -124,18 +124,19 @@ func resourceCustomRoleUpdate(d *schema.ResourceData, metaRaw interface{}) error
 		return err
 	}
 	if len(policyStatements) > 0 {
-		customRolePolicies = statementsToPolicies(policyStatements)
+		customRolePolicies = policyStatements
 	}
 
-	patch := []ldapi.PatchOperation{
-		patchReplace("/name", &customRoleName),
-		patchReplace("/description", &customRoleDescription),
-		patchReplace("/policy", &customRolePolicies),
-	}
+	patch := ldapi.PatchWithComment{
+		Patch: []ldapi.PatchOperation{
+			patchReplace("/name", &customRoleName),
+			patchReplace("/description", &customRoleDescription),
+			patchReplace("/policy", &customRolePolicies),
+		}}
 
 	_, _, err = handleRateLimit(func() (interface{}, *http.Response, error) {
 		return handleNoConflict(func() (interface{}, *http.Response, error) {
-			return client.ld.CustomRolesApi.PatchCustomRole(client.ctx, customRoleKey, patch)
+			return client.ld.CustomRolesApi.PatchCustomRole(client.ctx, customRoleKey).PatchWithComment(patch).Execute()
 		})
 	})
 	if err != nil {
@@ -150,7 +151,7 @@ func resourceCustomRoleDelete(d *schema.ResourceData, metaRaw interface{}) error
 	customRoleKey := d.Id()
 
 	_, _, err := handleRateLimit(func() (interface{}, *http.Response, error) {
-		res, err := client.ld.CustomRolesApi.DeleteCustomRole(client.ctx, customRoleKey)
+		res, err := client.ld.CustomRolesApi.DeleteCustomRole(client.ctx, customRoleKey).Execute()
 		return nil, res, err
 	})
 
@@ -166,7 +167,7 @@ func resourceCustomRoleExists(d *schema.ResourceData, metaRaw interface{}) (bool
 }
 
 func customRoleExists(customRoleKey string, meta *Client) (bool, error) {
-	_, res, err := meta.ld.CustomRolesApi.GetCustomRole(meta.ctx, customRoleKey)
+	_, res, err := meta.ld.CustomRolesApi.GetCustomRole(meta.ctx, customRoleKey).Execute()
 	if isStatusNotFound(res) {
 		return false, nil
 	}

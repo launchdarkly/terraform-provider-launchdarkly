@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"net/http"
 
-	ldapi "github.com/launchdarkly/api-client-go"
+	ldapi "github.com/launchdarkly/api-client-go/v7"
 )
 
 // The LD api returns custom role IDs (not keys). Since we want to set custom_roles with keys, we need to look up their IDs
@@ -12,7 +12,7 @@ func customRoleIDsToKeys(client *Client, ids []string) ([]string, error) {
 	customRoleKeys := make([]string, 0, len(ids))
 	for _, customRoleID := range ids {
 		roleRaw, res, err := handleRateLimit(func() (interface{}, *http.Response, error) {
-			return client.ld.CustomRolesApi.GetCustomRole(client.ctx, customRoleID)
+			return client.ld.CustomRolesApi.GetCustomRole(client.ctx, customRoleID).Execute()
 		})
 		role := roleRaw.(ldapi.CustomRole)
 		if isStatusNotFound(res) {
@@ -31,7 +31,7 @@ func customRoleKeysToIDs(client *Client, keys []string) ([]string, error) {
 	customRoleIds := make([]string, 0, len(keys))
 	for _, key := range keys {
 		roleRaw, res, err := handleRateLimit(func() (interface{}, *http.Response, error) {
-			return client.ld.CustomRolesApi.GetCustomRole(client.ctx, key)
+			return client.ld.CustomRolesApi.GetCustomRole(client.ctx, key).Execute()
 		})
 		role := roleRaw.(ldapi.CustomRole)
 		if isStatusNotFound(res) {

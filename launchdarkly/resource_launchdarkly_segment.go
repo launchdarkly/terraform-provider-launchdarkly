@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	ldapi "github.com/launchdarkly/api-client-go"
+	ldapi "github.com/launchdarkly/api-client-go/v7"
 )
 
 func resourceSegment() *schema.Resource {
@@ -62,15 +62,15 @@ func resourceSegmentCreate(d *schema.ResourceData, metaRaw interface{}) error {
 	segmentName := d.Get(NAME).(string)
 	tags := stringsFromResourceData(d, TAGS)
 
-	segment := ldapi.UserSegmentBody{
+	segment := ldapi.SegmentBody{
 		Name:        segmentName,
 		Key:         key,
-		Description: description,
-		Tags:        tags,
+		Description: &description,
+		Tags:        &tags,
 	}
 
 	_, _, err := handleRateLimit(func() (interface{}, *http.Response, error) {
-		return client.ld.UserSegmentsApi.PostUserSegment(client.ctx, projectKey, envKey, segment)
+		return client.ld.SegmentsApi.PostSegment(client.ctx, projectKey, envKey).SegmentBody(segment).Execute()
 	})
 
 	if err != nil {
@@ -107,19 +107,22 @@ func resourceSegmentUpdate(d *schema.ResourceData, metaRaw interface{}) error {
 	if err != nil {
 		return err
 	}
-	patch := []ldapi.PatchOperation{
-		patchReplace("/name", name),
-		patchReplace("/description", description),
-		patchReplace("/tags", tags),
-		patchReplace("/temporary", TEMPORARY),
-		patchReplace("/included", included),
-		patchReplace("/excluded", excluded),
-		patchReplace("/rules", rules),
-	}
+	comment := "Terraform"
+	patch := ldapi.PatchWithComment{
+		Comment: &comment,
+		Patch: []ldapi.PatchOperation{
+			patchReplace("/name", name),
+			patchReplace("/description", description),
+			patchReplace("/tags", tags),
+			patchReplace("/temporary", TEMPORARY),
+			patchReplace("/included", included),
+			patchReplace("/excluded", excluded),
+			patchReplace("/rules", rules),
+		}}
 
 	_, _, err = handleRateLimit(func() (interface{}, *http.Response, error) {
 		return handleNoConflict(func() (interface{}, *http.Response, error) {
-			return client.ld.UserSegmentsApi.PatchUserSegment(client.ctx, projectKey, envKey, key, patch)
+			return client.ld.SegmentsApi.PatchSegment(client.ctx, projectKey, envKey, key).PatchWithComment(patch).Execute()
 		})
 	})
 	if err != nil {
@@ -136,7 +139,7 @@ func resourceSegmentDelete(d *schema.ResourceData, metaRaw interface{}) error {
 	key := d.Get(KEY).(string)
 
 	_, _, err := handleRateLimit(func() (interface{}, *http.Response, error) {
-		res, err := client.ld.UserSegmentsApi.DeleteUserSegment(client.ctx, projectKey, envKey, key)
+		res, err := client.ld.SegmentsApi.DeleteSegment(client.ctx, projectKey, envKey, key).Execute()
 		return nil, res, err
 	})
 
@@ -154,7 +157,7 @@ func resourceSegmentExists(d *schema.ResourceData, metaRaw interface{}) (bool, e
 	key := d.Get(KEY).(string)
 
 	_, res, err := handleRateLimit(func() (interface{}, *http.Response, error) {
-		return client.ld.UserSegmentsApi.GetUserSegment(client.ctx, projectKey, envKey, key)
+		return client.ld.SegmentsApi.GetSegment(client.ctx, projectKey, envKey, key).Execute()
 	})
 	if isStatusNotFound(res) {
 		return false, nil

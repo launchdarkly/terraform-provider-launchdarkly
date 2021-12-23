@@ -8,7 +8,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 
-	ldapi "github.com/launchdarkly/api-client-go"
+	ldapi "github.com/launchdarkly/api-client-go/v7"
 )
 
 func resourceTeamMember() *schema.Resource {
@@ -65,7 +65,7 @@ func resourceTeamMemberCreate(d *schema.ResourceData, metaRaw interface{}) error
 	memberEmail := d.Get(EMAIL).(string)
 	firstName := d.Get(FIRST_NAME).(string)
 	lastName := d.Get(LAST_NAME).(string)
-	memberRole := ldapi.Role(d.Get(ROLE).(string))
+	memberRole := d.Get(ROLE).(string)
 	customRolesRaw := d.Get(CUSTOM_ROLES).(*schema.Set).List()
 
 	customRoles := make([]string, len(customRolesRaw))
@@ -73,16 +73,16 @@ func resourceTeamMemberCreate(d *schema.ResourceData, metaRaw interface{}) error
 		customRoles[i] = cr.(string)
 	}
 
-	membersBody := ldapi.MembersBody{
+	membersBody := ldapi.NewMemberForm{
 		Email:       memberEmail,
-		FirstName:   firstName,
-		LastName:    lastName,
+		FirstName:   &firstName,
+		LastName:    &lastName,
 		Role:        &memberRole,
-		CustomRoles: customRoles,
+		CustomRoles: &customRoles,
 	}
 
 	membersRaw, _, err := handleRateLimit(func() (interface{}, *http.Response, error) {
-		return client.ld.TeamMembersApi.PostMembers(client.ctx, []ldapi.MembersBody{membersBody})
+		return client.ld.AccountMembersApi.PostMembers(client.ctx).NewMemberForm([]ldapi.NewMemberForm{membersBody}).Execute()
 	})
 	members := membersRaw.(ldapi.Members)
 	if err != nil {
@@ -98,7 +98,7 @@ func resourceTeamMemberRead(d *schema.ResourceData, metaRaw interface{}) error {
 	memberID := d.Id()
 
 	memberRaw, res, err := handleRateLimit(func() (interface{}, *http.Response, error) {
-		return client.ld.TeamMembersApi.GetMember(client.ctx, memberID)
+		return client.ld.AccountMembersApi.GetMember(client.ctx, memberID).Execute()
 	})
 	member := memberRaw.(ldapi.Member)
 	if isStatusNotFound(res) {
@@ -150,7 +150,7 @@ func resourceTeamMemberUpdate(d *schema.ResourceData, metaRaw interface{}) error
 
 	_, _, err = handleRateLimit(func() (interface{}, *http.Response, error) {
 		return handleNoConflict(func() (interface{}, *http.Response, error) {
-			return client.ld.TeamMembersApi.PatchMember(client.ctx, memberID, patch)
+			return client.ld.AccountMembersApi.PatchMember(client.ctx, memberID).PatchOperation(patch).Execute()
 		})
 	})
 	if err != nil {
@@ -164,7 +164,7 @@ func resourceTeamMemberDelete(d *schema.ResourceData, metaRaw interface{}) error
 	client := metaRaw.(*Client)
 
 	_, _, err := handleRateLimit(func() (interface{}, *http.Response, error) {
-		res, err := client.ld.TeamMembersApi.DeleteMember(client.ctx, d.Id())
+		res, err := client.ld.AccountMembersApi.DeleteMember(client.ctx, d.Id()).Execute()
 		return nil, res, err
 	})
 	if err != nil {
@@ -179,7 +179,7 @@ func resourceTeamMemberExists(d *schema.ResourceData, metaRaw interface{}) (bool
 }
 
 func teamMemberExists(memberID string, meta *Client) (bool, error) {
-	_, res, err := meta.ld.TeamMembersApi.GetMember(meta.ctx, memberID)
+	_, res, err := meta.ld.AccountMembersApi.GetMember(meta.ctx, memberID).Execute()
 	if isStatusNotFound(res) {
 		return false, nil
 	}

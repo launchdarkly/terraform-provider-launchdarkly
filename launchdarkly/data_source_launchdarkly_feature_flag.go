@@ -19,22 +19,6 @@ func dataSourceFeatureFlag() *schema.Resource {
 		Description: fmt.Sprintf("The uniform type for all variations. Can be either %q, %q, %q, or %q.",
 			BOOL_VARIATION, STRING_VARIATION, NUMBER_VARIATION, JSON_VARIATION),
 	}
-	schemaMap[CLIENT_SIDE_AVAILABILITY] = &schema.Schema{
-		Type:     schema.TypeList,
-		Computed: true,
-		Elem: &schema.Resource{
-			Schema: map[string]*schema.Schema{
-				"using_environment_id": {
-					Type:     schema.TypeBool,
-					Optional: true,
-				},
-				"using_mobile_key": {
-					Type:     schema.TypeBool,
-					Optional: true,
-				},
-			},
-		},
-	}
 	return &schema.Resource{
 		Read:   dataSourceFeatureFlagRead,
 		Schema: schemaMap,

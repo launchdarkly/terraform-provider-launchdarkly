@@ -4,13 +4,13 @@ import (
 	"fmt"
 	"net/http"
 
-	ldapi "github.com/launchdarkly/api-client-go"
+	ldapi "github.com/launchdarkly/api-client-go/v7"
 )
 
 // testAccDataSourceProjectCreate creates a project with the given project parameters
-func testAccDataSourceProjectCreate(client *Client, projectBody ldapi.ProjectBody) (*ldapi.Project, error) {
+func testAccDataSourceProjectCreate(client *Client, projectBody ldapi.ProjectPost) (*ldapi.Project, error) {
 	project, _, err := handleRateLimit(func() (interface{}, *http.Response, error) {
-		return client.ld.ProjectsApi.PostProject(client.ctx, projectBody)
+		return client.ld.ProjectsApi.PostProject(client.ctx).ProjectPost(projectBody).Execute()
 	})
 	if err != nil {
 		return nil, err
@@ -22,7 +22,7 @@ func testAccDataSourceProjectCreate(client *Client, projectBody ldapi.ProjectBod
 }
 
 func testAccDataSourceProjectDelete(client *Client, projectKey string) error {
-	_, err := client.ld.ProjectsApi.DeleteProject(client.ctx, projectKey)
+	_, err := client.ld.ProjectsApi.DeleteProject(client.ctx, projectKey).Execute()
 	if err != nil {
 		return err
 	}
@@ -30,7 +30,7 @@ func testAccDataSourceProjectDelete(client *Client, projectKey string) error {
 }
 
 func testAccDataSourceFeatureFlagScaffold(client *Client, projectKey string, flagBody ldapi.FeatureFlagBody) (*ldapi.FeatureFlag, error) {
-	projectBody := ldapi.ProjectBody{
+	projectBody := ldapi.ProjectPost{
 		Name: "Flag Test Project",
 		Key:  projectKey,
 	}
@@ -40,7 +40,7 @@ func testAccDataSourceFeatureFlagScaffold(client *Client, projectKey string, fla
 	}
 
 	flag, _, err := handleRateLimit(func() (interface{}, *http.Response, error) {
-		return client.ld.FeatureFlagsApi.PostFeatureFlag(client.ctx, project.Key, flagBody, nil)
+		return client.ld.FeatureFlagsApi.PostFeatureFlag(client.ctx, project.Key).FeatureFlagBody(flagBody).Execute()
 	})
 	if err != nil {
 		return nil, err

@@ -8,7 +8,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
-	ldapi "github.com/launchdarkly/api-client-go"
+	ldapi "github.com/launchdarkly/api-client-go/v7"
 )
 
 func baseFeatureFlagSchema() map[string]*schema.Schema {
@@ -47,10 +47,33 @@ func baseFeatureFlagSchema() map[string]*schema.Schema {
 			Default:     false,
 		},
 		INCLUDE_IN_SNIPPET: {
-			Type:        schema.TypeBool,
-			Optional:    true,
-			Description: "Whether or not this flag should be made available to the client-side JavaScript SDK",
-			Default:     false,
+			Type:          schema.TypeBool,
+			Optional:      true,
+			Computed:      true,
+			Description:   "Whether or not this flag should be made available to the client-side JavaScript SDK",
+			Deprecated:    "'include_in_snippet' is now deprecated. Please migrate to 'client_side_availability' to maintain future compatability.",
+			ConflictsWith: []string{CLIENT_SIDE_AVAILABILITY},
+		},
+		// Annoying that we can't define a typemap to have specific keys https://www.terraform.io/docs/extend/schemas/schema-types.html#typemap
+		CLIENT_SIDE_AVAILABILITY: {
+			Type:          schema.TypeList,
+			Optional:      true,
+			Computed:      true,
+			ConflictsWith: []string{INCLUDE_IN_SNIPPET},
+			Elem: &schema.Resource{
+				Schema: map[string]*schema.Schema{
+					USING_ENVIRONMENT_ID: {
+						Type:     schema.TypeBool,
+						Optional: true,
+						Computed: true,
+					},
+					USING_MOBILE_KEY: {
+						Type:     schema.TypeBool,
+						Optional: true,
+						Default:  false,
+					},
+				},
+			},
 		},
 		TAGS:              tagsSchema(),
 		CUSTOM_PROPERTIES: customPropertiesSchema(),
@@ -92,7 +115,7 @@ func featureFlagRead(d *schema.ResourceData, raw interface{}, isDataSource bool)
 	key := d.Get(KEY).(string)
 
 	flagRaw, res, err := handleRateLimit(func() (interface{}, *http.Response, error) {
-		return client.ld.FeatureFlagsApi.GetFeatureFlag(client.ctx, projectKey, key, nil)
+		return client.ld.FeatureFlagsApi.GetFeatureFlag(client.ctx, projectKey, key).Execute()
 	})
 	flag := flagRaw.(ldapi.FeatureFlag)
 	if isStatusNotFound(res) && !isDataSource {
@@ -109,20 +132,17 @@ func featureFlagRead(d *schema.ResourceData, raw interface{}, isDataSource bool)
 	_ = d.Set(KEY, flag.Key)
 	_ = d.Set(NAME, flag.Name)
 	_ = d.Set(DESCRIPTION, flag.Description)
-	_ = d.Set(INCLUDE_IN_SNIPPET, flag.IncludeInSnippet)
 	_ = d.Set(TEMPORARY, flag.Temporary)
 	_ = d.Set(ARCHIVED, flag.Archived)
 
-	if isDataSource {
-		CSA := *flag.ClientSideAvailability
-		clientSideAvailability := []map[string]interface{}{{
-			"using_environment_id": CSA.UsingEnvironmentId,
-			"using_mobile_key":     CSA.UsingMobileKey,
-		}}
-		_ = d.Set(CLIENT_SIDE_AVAILABILITY, clientSideAvailability)
-	} else {
-		_ = d.Set(INCLUDE_IN_SNIPPET, flag.IncludeInSnippet)
-	}
+	CSA := *flag.ClientSideAvailability
+	clientSideAvailability := []map[string]interface{}{{
+		USING_ENVIRONMENT_ID: CSA.UsingEnvironmentId,
+		USING_MOBILE_KEY:     CSA.UsingMobileKey,
+	}}
+	// Always set both CSA and IIS to state in order to correctly represent the flag resource as it exists in LD
+	_ = d.Set(CLIENT_SIDE_AVAILABILITY, clientSideAvailability)
+	_ = d.Set(INCLUDE_IN_SNIPPET, CSA.UsingEnvironmentId)
 
 	// Only set the maintainer ID if is specified in the schema
 	_, ok := d.GetOk(MAINTAINER_ID)
@@ -183,4 +203,15 @@ func flagIdToKeys(id string) (projectKey string, flagKey string, err error) {
 	parts := strings.SplitN(id, "/", 2)
 	projectKey, flagKey = parts[0], parts[1]
 	return projectKey, flagKey, nil
+}
+
+func getProjectDefaultCSAandIncludeInSnippet(client *Client, projectKey string) (ldapi.ClientSideAvailability, bool, error) {
+	rawProject, _, err := handleRateLimit(func() (interface{}, *http.Response, error) {
+		return client.ld.ProjectsApi.GetProject(client.ctx, projectKey).Execute()
+	})
+	if err != nil {
+		return ldapi.ClientSideAvailability{}, false, err
+	}
+	project := rawProject.(ldapi.Project)
+	return *project.DefaultClientSideAvailability, project.IncludeInSnippetByDefault, nil
 }

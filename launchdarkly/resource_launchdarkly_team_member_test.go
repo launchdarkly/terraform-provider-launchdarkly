@@ -237,7 +237,7 @@ func testAccCheckMemberExists(resourceName string) resource.TestCheckFunc {
 			return fmt.Errorf("team member ID is not set")
 		}
 		client := testAccProvider.Meta().(*Client)
-		_, _, err := client.ld.TeamMembersApi.GetMember(client.ctx, rs.Primary.ID)
+		_, _, err := client.ld.AccountMembersApi.GetMember(client.ctx, rs.Primary.ID).Execute()
 		if err != nil {
 			return fmt.Errorf("received an error getting team member. %s", err)
 		}

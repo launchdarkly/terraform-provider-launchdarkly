@@ -6,7 +6,7 @@ import (
 	"net/http"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	ldapi "github.com/launchdarkly/api-client-go"
+	ldapi "github.com/launchdarkly/api-client-go/v7"
 )
 
 func projectRead(d *schema.ResourceData, meta interface{}, isDataSource bool) error {
@@ -14,7 +14,7 @@ func projectRead(d *schema.ResourceData, meta interface{}, isDataSource bool) er
 	projectKey := d.Get(KEY).(string)
 
 	rawProject, res, err := handleRateLimit(func() (interface{}, *http.Response, error) {
-		return client.ld.ProjectsApi.GetProject(client.ctx, projectKey)
+		return client.ld.ProjectsApi.GetProject(client.ctx, projectKey).Execute()
 	})
 	// return nil error for resource reads but 404 for data source reads
 	if isStatusNotFound(res) && !isDataSource {

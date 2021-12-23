@@ -5,7 +5,7 @@ import (
 	"sort"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	ldapi "github.com/launchdarkly/api-client-go"
+	ldapi "github.com/launchdarkly/api-client-go/v7"
 )
 
 func policyArraySchema() *schema.Schema {
@@ -39,10 +39,10 @@ func policyArraySchema() *schema.Schema {
 	}
 }
 
-func policiesFromResourceData(d *schema.ResourceData) []ldapi.Policy {
+func policiesFromResourceData(d *schema.ResourceData) []ldapi.StatementPost {
 	schemaPolicies := d.Get(POLICY).(*schema.Set)
 
-	policies := make([]ldapi.Policy, schemaPolicies.Len())
+	policies := make([]ldapi.StatementPost, schemaPolicies.Len())
 	list := schemaPolicies.List()
 	for i, policy := range list {
 		v := policyFromResourceData(policy)
@@ -51,9 +51,9 @@ func policiesFromResourceData(d *schema.ResourceData) []ldapi.Policy {
 	return policies
 }
 
-func policyFromResourceData(val interface{}) ldapi.Policy {
+func policyFromResourceData(val interface{}) ldapi.StatementPost {
 	policyMap := val.(map[string]interface{})
-	p := ldapi.Policy{
+	p := ldapi.StatementPost{
 		Resources: []string{},
 		Actions:   []string{},
 		Effect:    policyMap[EFFECT].(string),
@@ -70,7 +70,7 @@ func policyFromResourceData(val interface{}) ldapi.Policy {
 	return p
 }
 
-func policiesToResourceData(policies []ldapi.Policy) interface{} {
+func policiesToResourceData(policies []ldapi.Statement) interface{} {
 	transformed := make([]interface{}, len(policies))
 
 	for i, p := range policies {

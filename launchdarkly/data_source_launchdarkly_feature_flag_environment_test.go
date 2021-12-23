@@ -8,7 +8,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
-	ldapi "github.com/launchdarkly/api-client-go"
+	ldapi "github.com/launchdarkly/api-client-go/v7"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -27,7 +27,7 @@ func testAccDataSourceFeatureFlagEnvironmentScaffold(client *Client, projectKey,
 	flagBody := ldapi.FeatureFlagBody{
 		Name: "Feature Flag Env Data Source Test",
 		Key:  flagKey,
-		Variations: []ldapi.Variation{
+		Variations: &[]ldapi.Variation{
 			{Value: intfPtr(true)},
 			{Value: intfPtr(false)},
 		},
@@ -38,13 +38,12 @@ func testAccDataSourceFeatureFlagEnvironmentScaffold(client *Client, projectKey,
 	}
 
 	// patch feature flag with env-specific config
-	patch := ldapi.PatchComment{
-		Comment: "Terraform feature flag env data source test",
-		Patch:   envConfigPatches,
-	}
+	patch := ldapi.NewPatchWithComment(envConfigPatches)
+	patch.SetComment("Terraform feature flag env data source test")
+
 	_, _, err = handleRateLimit(func() (interface{}, *http.Response, error) {
 		return handleNoConflict(func() (interface{}, *http.Response, error) {
-			return client.ld.FeatureFlagsApi.PatchFeatureFlag(client.ctx, projectKey, flagKey, patch)
+			return client.ld.FeatureFlagsApi.PatchFeatureFlag(client.ctx, projectKey, flagKey).PatchWithComment(*patch).Execute()
 		})
 	})
 	if err != nil {
@@ -54,7 +53,7 @@ func testAccDataSourceFeatureFlagEnvironmentScaffold(client *Client, projectKey,
 		return nil, fmt.Errorf("failed to create feature flag env config: %s", err.Error())
 	}
 	flagRaw, _, err := handleRateLimit(func() (interface{}, *http.Response, error) {
-		return client.ld.FeatureFlagsApi.GetFeatureFlag(client.ctx, projectKey, flagKey, nil)
+		return client.ld.FeatureFlagsApi.GetFeatureFlag(client.ctx, projectKey, flagKey).Execute()
 	})
 	if err != nil {
 		_ = testAccDataSourceProjectDelete(client, projectKey)
@@ -166,13 +165,13 @@ func TestAccDataSourceFeatureFlagEnvironment_exists(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "env_key", envKey),
 					resource.TestCheckResourceAttr(resourceName, "on", fmt.Sprint(thisConfig.On)),
 					resource.TestCheckResourceAttr(resourceName, "track_events", fmt.Sprint(thisConfig.TrackEvents)),
-					resource.TestCheckResourceAttr(resourceName, "rules.0.variation", fmt.Sprint(thisConfig.Rules[0].Variation)),
+					resource.TestCheckResourceAttr(resourceName, "rules.0.variation", fmt.Sprint(*thisConfig.Rules[0].Variation)),
 					resource.TestCheckResourceAttr(resourceName, "rules.0.clauses.0.attribute", thisConfig.Rules[0].Clauses[0].Attribute),
 					resource.TestCheckResourceAttr(resourceName, "rules.0.clauses.0.op", thisConfig.Rules[0].Clauses[0].Op),
 					resource.TestCheckResourceAttr(resourceName, "rules.0.clauses.0.values.0", fmt.Sprint(thisConfig.Rules[0].Clauses[0].Values[0])),
 					resource.TestCheckResourceAttr(resourceName, "prerequisites.0.flag_key", thisConfig.Prerequisites[0].Key),
 					resource.TestCheckResourceAttr(resourceName, "prerequisites.0.variation", fmt.Sprint(thisConfig.Prerequisites[0].Variation)),
-					resource.TestCheckResourceAttr(resourceName, "off_variation", fmt.Sprint(thisConfig.OffVariation)),
+					resource.TestCheckResourceAttr(resourceName, "off_variation", fmt.Sprint(*thisConfig.OffVariation)),
 					resource.TestCheckResourceAttr(resourceName, "targets.0.values.#", fmt.Sprint(len(thisConfig.Targets[0].Values))),
 					resource.TestCheckResourceAttr(resourceName, "targets.0.variation", "1"),
 				),

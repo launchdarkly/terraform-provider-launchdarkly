@@ -37,7 +37,7 @@ resource "launchdarkly_custom_role" "test" {
 resource "launchdarkly_custom_role" "test" {
 	key = "%s"
 	name = "Custom role - %s"
-	description= "Allow all actions on staging environments"
+	description = "Allow all actions on staging environments"
 	policy_statements {
 		actions = ["*"]	
 		effect = "allow"
@@ -204,7 +204,7 @@ func testAccCheckCustomRoleExists(resourceName string) resource.TestCheckFunc {
 			return fmt.Errorf("custom role ID is not set")
 		}
 		client := testAccProvider.Meta().(*Client)
-		_, _, err := client.ld.CustomRolesApi.GetCustomRole(client.ctx, rs.Primary.ID)
+		_, _, err := client.ld.CustomRolesApi.GetCustomRole(client.ctx, rs.Primary.ID).Execute()
 		if err != nil {
 			return fmt.Errorf("received an error getting custom role. %s", err)
 		}

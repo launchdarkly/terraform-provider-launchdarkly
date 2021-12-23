@@ -338,7 +338,7 @@ func testAccCheckEnvironmentExists(resourceName string) resource.TestCheckFunc {
 			return fmt.Errorf("project key not found: %s", resourceName)
 		}
 		client := testAccProvider.Meta().(*Client)
-		_, _, err := client.ld.EnvironmentsApi.GetEnvironment(client.ctx, projKey, envKey)
+		_, _, err := client.ld.EnvironmentsApi.GetEnvironment(client.ctx, projKey, envKey).Execute()
 		if err != nil {
 			return fmt.Errorf("received an error getting environment. %s", err)
 		}

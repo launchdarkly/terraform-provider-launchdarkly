@@ -386,7 +386,7 @@ func testAccCheckAccessTokenExists(resourceName string) resource.TestCheckFunc {
 			return fmt.Errorf("access token ID is not set")
 		}
 		client := testAccProvider.Meta().(*Client)
-		_, _, err := client.ld.AccessTokensApi.GetToken(client.ctx, rs.Primary.ID)
+		_, _, err := client.ld.AccessTokensApi.GetToken(client.ctx, rs.Primary.ID).Execute()
 		if err != nil {
 			return fmt.Errorf("received an error getting access token. %s", err)
 		}

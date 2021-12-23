@@ -6,7 +6,7 @@ import (
 	"net/http"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	ldapi "github.com/launchdarkly/api-client-go"
+	ldapi "github.com/launchdarkly/api-client-go/v7"
 )
 
 func baseSegmentSchema() map[string]*schema.Schema {
@@ -45,7 +45,7 @@ func segmentRead(d *schema.ResourceData, raw interface{}, isDataSource bool) err
 	segmentKey := d.Get(KEY).(string)
 
 	segmentRaw, res, err := handleRateLimit(func() (interface{}, *http.Response, error) {
-		return client.ld.UserSegmentsApi.GetUserSegment(client.ctx, projectKey, envKey, segmentKey)
+		return client.ld.SegmentsApi.GetSegment(client.ctx, projectKey, envKey, segmentKey).Execute()
 	})
 	segment := segmentRaw.(ldapi.UserSegment)
 	if isStatusNotFound(res) && !isDataSource {

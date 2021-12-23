@@ -25,13 +25,18 @@ Terraform will perform the following actions:
   + resource "launchdarkly_feature_flag" "boolean_flag" {
       + description        = "An example boolean feature flag that can be turned either on or off"
       + id                 = (known after apply)
-      + include_in_snippet = false
+      + include_in_snippet = (known after apply)
       + key                = "boolean-flag"
       + maintainer_id      = (known after apply)
       + name               = "Bool feature flag"
       + project_key        = "tf-flag-examples"
       + temporary          = false
       + variation_type     = "boolean"
+
+      + client_side_availability {
+          + using_environment_id = (known after apply)
+          + using_mobile_key     = (known after apply)
+        }
 
       + defaults {
           + off_variation = (known after apply)
@@ -49,7 +54,7 @@ Terraform will perform the following actions:
   + resource "launchdarkly_feature_flag" "json_flag" {
       + description        = "An example of a multivariate feature flag with JSON variations"
       + id                 = (known after apply)
-      + include_in_snippet = false
+      + include_in_snippet = (known after apply)
       + key                = "json-flag"
       + maintainer_id      = (known after apply)
       + name               = "JSON-based feature flag"
@@ -59,6 +64,11 @@ Terraform will perform the following actions:
         ]
       + temporary          = false
       + variation_type     = "json"
+
+      + client_side_availability {
+          + using_environment_id = (known after apply)
+          + using_mobile_key     = (known after apply)
+        }
 
       + defaults {
           + off_variation = (known after apply)
@@ -88,7 +98,7 @@ Terraform will perform the following actions:
   + resource "launchdarkly_feature_flag" "number_flag" {
       + description        = "An example of a multivariate feature flag with numeric variations"
       + id                 = (known after apply)
-      + include_in_snippet = false
+      + include_in_snippet = (known after apply)
       + key                = "number-flag"
       + maintainer_id      = (known after apply)
       + name               = "Number value-based feature flag"
@@ -98,6 +108,11 @@ Terraform will perform the following actions:
         ]
       + temporary          = false
       + variation_type     = "number"
+
+      + client_side_availability {
+          + using_environment_id = (known after apply)
+          + using_mobile_key     = (known after apply)
+        }
 
       + defaults {
           + off_variation = (known after apply)
@@ -122,7 +137,7 @@ Terraform will perform the following actions:
   + resource "launchdarkly_feature_flag" "string_flag" {
       + description        = "An example of a multivariate feature flag with string variations"
       + id                 = (known after apply)
-      + include_in_snippet = false
+      + include_in_snippet = (known after apply)
       + key                = "string-flag"
       + maintainer_id      = (known after apply)
       + name               = "String-based feature flag"
@@ -132,6 +147,11 @@ Terraform will perform the following actions:
         ]
       + temporary          = false
       + variation_type     = "string"
+
+      + client_side_availability {
+          + using_environment_id = (known after apply)
+          + using_mobile_key     = (known after apply)
+        }
 
       + defaults {
           + off_variation = (known after apply)
@@ -246,13 +266,18 @@ Terraform will perform the following actions:
   # launchdarkly_project.tf_flag_examples will be created
   + resource "launchdarkly_project" "tf_flag_examples" {
       + id                 = (known after apply)
-      + include_in_snippet = false
+      + include_in_snippet = (known after apply)
       + key                = "tf-flag-examples"
       + name               = "Terraform Project for Flag Examples"
       + tags               = [
           + "terraform-managed",
         ]
 
+      + client_side_availability {
+          + using_environment_id = (known after apply)
+          + using_mobile_key     = (known after apply)
+        }
+        
       + environments {
           + api_key              = (sensitive value)
           + client_side_id       = (sensitive value)

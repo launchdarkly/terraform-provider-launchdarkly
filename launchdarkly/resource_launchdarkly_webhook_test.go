@@ -362,7 +362,7 @@ func testAccCheckWebhookExists(resourceName string) resource.TestCheckFunc {
 			return fmt.Errorf("webhook ID is not set")
 		}
 		client := testAccProvider.Meta().(*Client)
-		_, _, err := client.ld.WebhooksApi.GetWebhook(client.ctx, rs.Primary.ID)
+		_, _, err := client.ld.WebhooksApi.GetWebhook(client.ctx, rs.Primary.ID).Execute()
 		if err != nil {
 			return fmt.Errorf("received an error getting webhook. %s", err)
 		}

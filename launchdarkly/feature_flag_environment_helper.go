@@ -6,10 +6,9 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/antihax/optional"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
-	ldapi "github.com/launchdarkly/api-client-go"
+	ldapi "github.com/launchdarkly/api-client-go/v7"
 )
 
 func baseFeatureFlagEnvironmentSchema(forDataSource bool) map[string]*schema.Schema {
@@ -57,9 +56,7 @@ func baseFeatureFlagEnvironmentSchema(forDataSource bool) map[string]*schema.Sch
 // get FeatureFlagEnvironment uses a query parameter to get the ldapi.FeatureFlag with only a single environment.
 func getFeatureFlagEnvironment(client *Client, projectKey, flagKey, environmentKey string) (ldapi.FeatureFlag, *http.Response, error) {
 	flagRaw, res, err := handleRateLimit(func() (interface{}, *http.Response, error) {
-		return client.ld.FeatureFlagsApi.GetFeatureFlag(client.ctx, projectKey, flagKey, &ldapi.FeatureFlagsApiGetFeatureFlagOpts{
-			Env: optional.NewInterface(environmentKey),
-		})
+		return client.ld.FeatureFlagsApi.GetFeatureFlag(client.ctx, projectKey, flagKey).Env(environmentKey).Execute()
 	})
 	flag := flagRaw.(ldapi.FeatureFlag)
 	return flag, res, err
@@ -116,7 +113,7 @@ func featureFlagEnvironmentRead(d *schema.ResourceData, raw interface{}, isDataS
 		return fmt.Errorf("failed to set targets on flag with key %q: %v", flagKey, err)
 	}
 
-	err = d.Set(FALLTHROUGH, fallthroughToResourceData(environment.Fallthrough_))
+	err = d.Set(FALLTHROUGH, fallthroughToResourceData(environment.Fallthrough))
 	if err != nil {
 		return fmt.Errorf("failed to set flag fallthrough on flag with key %q: %v", flagKey, err)
 	}

@@ -9,7 +9,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
-	ldapi "github.com/launchdarkly/api-client-go"
+	ldapi "github.com/launchdarkly/api-client-go/v7"
 	"github.com/stretchr/testify/require"
 )
 
@@ -22,13 +22,13 @@ data "launchdarkly_webhook" "test" {
 )
 
 func testAccDataSourceWebhookCreate(client *Client, webhookName string) (*ldapi.Webhook, error) {
-	webhookBody := ldapi.WebhookBody{
+	webhookBody := ldapi.WebhookPost{
 		Url:  "https://www.example.com",
 		Sign: false,
 		On:   true,
-		Name: webhookName,
-		Tags: []string{"terraform"},
-		Statements: []ldapi.Statement{
+		Name: ldapi.PtrString(webhookName),
+		Tags: &[]string{"terraform"},
+		Statements: &[]ldapi.StatementPost{
 			{
 				Resources: []string{"proj/*"},
 				Actions:   []string{"turnFlagOn"},
@@ -37,7 +37,7 @@ func testAccDataSourceWebhookCreate(client *Client, webhookName string) (*ldapi.
 		},
 	}
 	webhookRaw, _, err := handleRateLimit(func() (interface{}, *http.Response, error) {
-		return client.ld.WebhooksApi.PostWebhook(client.ctx, webhookBody)
+		return client.ld.WebhooksApi.PostWebhook(client.ctx).WebhookPost(webhookBody).Execute()
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to create webhook with name %q: %s", webhookName, handleLdapiErr(err))
@@ -51,7 +51,7 @@ func testAccDataSourceWebhookCreate(client *Client, webhookName string) (*ldapi.
 
 func testAccDataSourceWebhookDelete(client *Client, webhookId string) error {
 	_, _, err := handleRateLimit(func() (interface{}, *http.Response, error) {
-		res, err := client.ld.WebhooksApi.DeleteWebhook(client.ctx, webhookId)
+		res, err := client.ld.WebhooksApi.DeleteWebhook(client.ctx, webhookId).Execute()
 		return nil, res, err
 	})
 	if err != nil {
@@ -112,12 +112,13 @@ func TestAccDataSourceWebhook_exists(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "name", webhookName),
 					resource.TestCheckResourceAttr(resourceName, "url", webhook.Url),
 					resource.TestCheckResourceAttr(resourceName, "on", "true"),
-					resource.TestCheckResourceAttr(resourceName, "secret", webhook.Secret),
 					resource.TestCheckResourceAttr(resourceName, "tags.#", "1"),
 					resource.TestCheckResourceAttr(resourceName, "statements.#", "1"),
 					resource.TestCheckResourceAttr(resourceName, "statements.0.resources.0", "proj/*"),
 					resource.TestCheckResourceAttr(resourceName, "statements.0.actions.0", "turnFlagOn"),
 					resource.TestCheckResourceAttr(resourceName, "statements.0.effect", "allow"),
+					resource.TestCheckResourceAttr(resourceName, "secret", ""), // since we set Sign to false
+
 				),
 			},
 		},

@@ -1,15 +1,18 @@
 package launchdarkly
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
+	"strings"
 
-	"github.com/antihax/optional"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 
-	ldapi "github.com/launchdarkly/api-client-go"
+	ldapi "github.com/launchdarkly/api-client-go/v7"
 )
 
 func resourceAccessToken() *schema.Resource {
@@ -49,7 +52,7 @@ func resourceAccessToken() *schema.Resource {
 				Set:           schema.HashString,
 				Elem:          &schema.Schema{Type: schema.TypeString},
 				Optional:      true,
-				ConflictsWith: []string{ROLE, POLICY_STATEMENTS},
+				ConflictsWith: []string{ROLE, POLICY_STATEMENTS, INLINE_ROLES},
 			},
 			POLICY_STATEMENTS: deprecatedTokenPolicySchema,
 			INLINE_ROLES:      tokenPolicySchema,
@@ -75,10 +78,11 @@ func resourceAccessToken() *schema.Resource {
 				Sensitive:   true,
 			},
 			EXPIRE: {
-				Deprecated:  "'expire' is deprecated and will be removed in the next major release of the LaunchDarly provider",
-				Type:        schema.TypeInt,
-				Description: "Replace the computed token secret with a new value. The expired secret will no longer be able to authorize usage of the LaunchDarkly API. Should be an expiration time for the current token secret, expressed as a Unix epoch time in milliseconds. Setting this to a negative value will expire the existing token immediately. To reset the token value again, change 'expire' to a new value. Setting this field at resource creation time WILL NOT set an expiration time for the token.",
-				Optional:    true,
+				Deprecated:   "'expire' is deprecated and will be removed in the next major release of the LaunchDarkly provider",
+				Type:         schema.TypeInt,
+				Description:  "Replace the computed token secret with a new value. The expired secret will no longer be able to authorize usage of the LaunchDarkly API. Should be an expiration time for the current token secret, expressed as a Unix epoch time in milliseconds. Setting this to a negative value will expire the existing token immediately. To reset the token value again, change 'expire' to a new value. Setting this field at resource creation time WILL NOT set an expiration time for the token.",
+				Optional:     true,
+				ValidateFunc: validation.NoZeroValues,
 			},
 		},
 	}
@@ -123,31 +127,37 @@ func resourceAccessTokenCreate(d *schema.ResourceData, metaRaw interface{}) erro
 
 	client := metaRaw.(*Client)
 	accessTokenName := d.Get(NAME).(string)
-	accessTokenRole := d.Get(ROLE).(string)
 	serviceToken := d.Get(SERVICE_TOKEN).(bool)
-	defaultApiVersion := d.Get(DEFAULT_API_VERSION).(int)
-	customRolesRaw := d.Get(CUSTOM_ROLES).(*schema.Set).List()
+
+	accessTokenBody := ldapi.AccessTokenPost{
+		Name:         ldapi.PtrString(accessTokenName),
+		ServiceToken: ldapi.PtrBool(serviceToken),
+	}
+
+	if defaultApiVersion, ok := d.GetOk(DEFAULT_API_VERSION); ok {
+		accessTokenBody.DefaultApiVersion = ldapi.PtrInt32(int32(defaultApiVersion.(int)))
+	}
+
 	inlineRoles, _ := policyStatementsFromResourceData(d.Get(POLICY_STATEMENTS).([]interface{}))
 	if len(inlineRoles) == 0 {
 		inlineRoles, _ = policyStatementsFromResourceData(d.Get(INLINE_ROLES).([]interface{}))
 	}
 
-	customRoles := make([]string, len(customRolesRaw))
-	for i, cr := range customRolesRaw {
-		customRoles[i] = cr.(string)
-	}
-
-	accessTokenBody := ldapi.TokenBody{
-		Name:              accessTokenName,
-		Role:              accessTokenRole,
-		CustomRoleIds:     customRoles,
-		InlineRole:        inlineRoles,
-		ServiceToken:      serviceToken,
-		DefaultApiVersion: int32(defaultApiVersion),
+	customRolesRaw := d.Get(CUSTOM_ROLES).(*schema.Set).List()
+	if len(inlineRoles) == 0 && len(customRolesRaw) > 0 {
+		customRoles := make([]string, len(customRolesRaw))
+		for i, cr := range customRolesRaw {
+			customRoles[i] = cr.(string)
+		}
+		accessTokenBody.CustomRoleIds = &customRoles
+	} else if len(inlineRoles) > 0 {
+		accessTokenBody.InlineRole = &inlineRoles
+	} else if accessTokenRole, ok := d.GetOk(ROLE); ok {
+		accessTokenBody.Role = ldapi.PtrString(accessTokenRole.(string))
 	}
 
 	tokenRaw, _, err := handleRateLimit(func() (interface{}, *http.Response, error) {
-		return client.ld.AccessTokensApi.PostToken(client.ctx, accessTokenBody)
+		return client.ld.AccessTokensApi.PostToken(client.ctx).AccessTokenPost(accessTokenBody).Execute()
 	})
 	token := tokenRaw.(ldapi.Token)
 	if err != nil {
@@ -164,7 +174,7 @@ func resourceAccessTokenRead(d *schema.ResourceData, metaRaw interface{}) error 
 	accessTokenID := d.Id()
 
 	accessTokenRaw, res, err := handleRateLimit(func() (interface{}, *http.Response, error) {
-		return client.ld.AccessTokensApi.GetToken(client.ctx, accessTokenID)
+		return client.ld.AccessTokensApi.GetToken(client.ctx, accessTokenID).Execute()
 	})
 	accessToken := accessTokenRaw.(ldapi.Token)
 	if isStatusNotFound(res) {
@@ -177,11 +187,11 @@ func resourceAccessTokenRead(d *schema.ResourceData, metaRaw interface{}) error 
 	}
 
 	_ = d.Set(NAME, accessToken.Name)
-	if accessToken.Role != "" {
-		_ = d.Set(ROLE, accessToken.Role)
+	if accessToken.Role != nil {
+		_ = d.Set(ROLE, *accessToken.Role)
 	}
-	if len(accessToken.CustomRoleIds) > 0 {
-		customRoleKeys, err := customRoleIDsToKeys(client, accessToken.CustomRoleIds)
+	if accessToken.CustomRoleIds != nil && len(*accessToken.CustomRoleIds) > 0 {
+		customRoleKeys, err := customRoleIDsToKeys(client, *accessToken.CustomRoleIds)
 		if err != nil {
 			return err
 		}
@@ -191,12 +201,12 @@ func resourceAccessTokenRead(d *schema.ResourceData, metaRaw interface{}) error 
 	_ = d.Set(DEFAULT_API_VERSION, accessToken.DefaultApiVersion)
 
 	policies := accessToken.InlineRole
-	if len(policies) > 0 {
+	if policies != nil && len(*policies) > 0 {
 		policyStatements, _ := policyStatementsFromResourceData(d.Get(POLICY_STATEMENTS).([]interface{}))
 		if len(policyStatements) > 0 {
-			err = d.Set(POLICY_STATEMENTS, policyStatementsToResourceData(policies))
+			err = d.Set(POLICY_STATEMENTS, policyStatementsToResourceData(*policies))
 		} else {
-			err = d.Set(INLINE_ROLES, policyStatementsToResourceData(policies))
+			err = d.Set(INLINE_ROLES, policyStatementsToResourceData(*policies))
 		}
 		if err != nil {
 			return fmt.Errorf("could not set policy on access token with id %q: %v", accessTokenID, err)
@@ -231,7 +241,7 @@ func resourceAccessTokenUpdate(d *schema.ResourceData, metaRaw interface{}) erro
 	if len(inlineRoles) == 0 {
 		inlineRoles, _ = policyStatementsFromResourceData(d.Get(INLINE_ROLES).([]interface{}))
 	}
-	iRoles := statementsToPolicies(inlineRoles)
+	iRoles := inlineRoles
 
 	patch := []ldapi.PatchOperation{
 		patchReplace("/name", &accessTokenName),
@@ -266,7 +276,7 @@ func resourceAccessTokenUpdate(d *schema.ResourceData, metaRaw interface{}) erro
 	}
 
 	_, _, err = handleRateLimit(func() (interface{}, *http.Response, error) {
-		return client.ld.AccessTokensApi.PatchToken(client.ctx, accessTokenID, patch)
+		return client.ld.AccessTokensApi.PatchToken(client.ctx, accessTokenID).PatchOperation(patch).Execute()
 	})
 	if err != nil {
 		return fmt.Errorf("failed to update access token with id %q: %s", accessTokenID, handleLdapiErr(err))
@@ -277,12 +287,8 @@ func resourceAccessTokenUpdate(d *schema.ResourceData, metaRaw interface{}) erro
 		oldExpireRaw, newExpireRaw := d.GetChange(EXPIRE)
 		oldExpire := oldExpireRaw.(int)
 		newExpire := newExpireRaw.(int)
-		opts := ldapi.AccessTokensApiResetTokenOpts{}
 		if oldExpire != newExpire && newExpire != 0 {
-			if newExpire > 0 {
-				opts.Expiry = optional.NewInt64(int64(newExpire))
-			}
-			token, _, err := client.ld.AccessTokensApi.ResetToken(client.ctx, accessTokenID, &opts)
+			token, err := resetAccessToken(client, accessTokenID, newExpire)
 			if err != nil {
 				return fmt.Errorf("failed to reset access token with id %q: %s", accessTokenID, handleLdapiErr(err))
 			}
@@ -299,7 +305,7 @@ func resourceAccessTokenDelete(d *schema.ResourceData, metaRaw interface{}) erro
 	accessTokenID := d.Id()
 
 	_, _, err := handleRateLimit(func() (interface{}, *http.Response, error) {
-		res, err := client.ld.AccessTokensApi.DeleteToken(client.ctx, accessTokenID)
+		res, err := client.ld.AccessTokensApi.DeleteToken(client.ctx, accessTokenID).Execute()
 		return nil, res, err
 	})
 	if err != nil {
@@ -314,7 +320,7 @@ func resourceAccessTokenExists(d *schema.ResourceData, metaRaw interface{}) (boo
 }
 
 func accessTokenExists(accessTokenID string, meta *Client) (bool, error) {
-	_, res, err := meta.ld.AccessTokensApi.GetToken(meta.ctx, accessTokenID)
+	_, res, err := meta.ld.AccessTokensApi.GetToken(meta.ctx, accessTokenID).Execute()
 	if isStatusNotFound(res) {
 		return false, nil
 	}
@@ -323,4 +329,56 @@ func accessTokenExists(accessTokenID string, meta *Client) (bool, error) {
 	}
 
 	return true, nil
+}
+
+func resetAccessToken(client *Client, accessTokenID string, expiry int) (ldapi.Token, error) {
+	var token ldapi.Token
+	// var err error
+	// // Terraform validation will ensure we do not get a zero value
+	// if expiry > 0 {
+	// 	token, _, err = client.ld.AccessTokensApi.ResetToken(client.ctx, accessTokenID).Expiry(int64(expiry)).Execute()
+	// } else if expiry < 0 {
+	// 	token, _, err = client.ld.AccessTokensApi.ResetToken(client.ctx, accessTokenID).Execute()
+	// }
+	// if err != nil {
+	// 	return token, fmt.Errorf("failed to reset access token with id %q: %s", accessTokenID, handleLdapiErr(err))
+	// }
+	// return token, nil
+	endpoint := fmt.Sprintf("%s/api/v2/tokens/%s/reset", client.apiHost, accessTokenID)
+	if !strings.HasPrefix(endpoint, "http") {
+		endpoint = "https://" + endpoint
+	}
+	var body io.Reader
+	if expiry > 0 {
+		rawBody, err := json.Marshal(map[string]int{
+			"expiry": expiry,
+		})
+		if err != nil {
+			return token, err
+		}
+		body = bytes.NewBuffer(rawBody)
+	}
+	req, err := http.NewRequest("POST", endpoint, body)
+	if err != nil {
+		return token, err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", client.apiKey)
+
+	resp, err := client.fallbackClient.Do(req)
+	if err != nil {
+		return token, err
+	}
+
+	rawBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return token, err
+	}
+
+	err = json.Unmarshal(rawBody, &token)
+	if err != nil {
+		return token, err
+	}
+
+	return token, nil
 }

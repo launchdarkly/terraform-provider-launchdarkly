@@ -8,7 +8,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
-	ldapi "github.com/launchdarkly/api-client-go"
+	ldapi "github.com/launchdarkly/api-client-go/v7"
 	"github.com/stretchr/testify/require"
 )
 
@@ -25,12 +25,10 @@ data "launchdarkly_environment" "test" {
 // for environment data source tests
 func testAccDataSourceEnvironmentScaffold(client *Client, projectKey string, envBody ldapi.EnvironmentPost) (*ldapi.Environment, error) {
 	// create project
-	projectBody := ldapi.ProjectBody{
-		Name: "Env Test Project",
-		Key:  projectKey,
-		Environments: []ldapi.EnvironmentPost{
-			envBody,
-		},
+	projectBody := ldapi.ProjectPost{
+		Name:         "Env Test Project",
+		Key:          projectKey,
+		Environments: &[]ldapi.EnvironmentPost{envBody},
 	}
 	project, err := testAccDataSourceProjectCreate(client, projectBody)
 	if err != nil {
@@ -52,7 +50,7 @@ func TestAccDataSourceEnvironment_noMatchReturnsError(t *testing.T) {
 	client, err := newClient(os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN), os.Getenv(LAUNCHDARKLY_API_HOST), false)
 	require.NoError(t, err)
 	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
-	projectBody := ldapi.ProjectBody{
+	projectBody := ldapi.ProjectPost{
 		Name: "Terraform Env Test Project",
 		Key:  projectKey,
 	}
@@ -96,8 +94,8 @@ func TestAccDataSourceEnv_exists(t *testing.T) {
 		Name:       envName,
 		Key:        envKey,
 		Color:      envColor,
-		SecureMode: true,
-		Tags: []string{
+		SecureMode: ldapi.PtrBool(true),
+		Tags: &[]string{
 			"some", "tag",
 		},
 	}

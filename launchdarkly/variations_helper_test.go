@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	ldapi "github.com/launchdarkly/api-client-go"
+	ldapi "github.com/launchdarkly/api-client-go/v7"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -32,8 +32,8 @@ func TestVariationsFromResourceData(t *testing.T) {
 					},
 				}},
 			expected: []ldapi.Variation{
-				{Name: "nameValue", Description: "descValue", Value: ptr("a string value")},
-				{Name: "nameValue2", Description: "descValue2", Value: ptr("another string value")},
+				{Name: strPtr("nameValue"), Description: strPtr("descValue"), Value: ptr("a string value")},
+				{Name: strPtr("nameValue2"), Description: strPtr("descValue2"), Value: ptr("another string value")},
 			},
 		},
 		{
@@ -110,7 +110,7 @@ func TestVariationsFromResourceData(t *testing.T) {
 			for idx, expected := range tc.expected {
 				assert.Equal(t, expected.Name, actualVariations[idx].Name)
 				assert.Equal(t, expected.Description, actualVariations[idx].Description)
-				assert.Equal(t, *expected.Value, *actualVariations[idx].Value)
+				assert.Equal(t, expected.Value, actualVariations[idx].Value)
 			}
 		})
 	}

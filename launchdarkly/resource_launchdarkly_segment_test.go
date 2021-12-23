@@ -291,7 +291,7 @@ func testAccCheckSegmentExists(resourceName string) resource.TestCheckFunc {
 			return fmt.Errorf("project key not found: %s", resourceName)
 		}
 		client := testAccProvider.Meta().(*Client)
-		_, _, err := client.ld.UserSegmentsApi.GetUserSegment(client.ctx, projKey, envKey, segmentKey)
+		_, _, err := client.ld.SegmentsApi.GetSegment(client.ctx, projKey, envKey, segmentKey).Execute()
 		if err != nil {
 			return fmt.Errorf("received an error getting environment. %s", err)
 		}

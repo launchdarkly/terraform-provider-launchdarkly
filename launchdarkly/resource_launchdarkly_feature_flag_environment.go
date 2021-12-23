@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	ldapi "github.com/launchdarkly/api-client-go"
+	ldapi "github.com/launchdarkly/api-client-go/v7"
 )
 
 func resourceFeatureFlagEnvironment() *schema.Resource {
@@ -105,15 +105,16 @@ func resourceFeatureFlagEnvironmentCreate(d *schema.ResourceData, metaRaw interf
 	patches = append(patches, patchReplace(patchFlagEnvPath(d, "fallthrough"), fall))
 
 	if len(patches) > 0 {
-		patch := ldapi.PatchComment{
-			Comment: "Terraform",
+		comment := "Terraform"
+		patch := ldapi.PatchWithComment{
+			Comment: &comment,
 			Patch:   patches,
 		}
 		log.Printf("[DEBUG] %+v\n", patch)
 
 		_, _, err = handleRateLimit(func() (interface{}, *http.Response, error) {
 			return handleNoConflict(func() (interface{}, *http.Response, error) {
-				return client.ld.FeatureFlagsApi.PatchFeatureFlag(client.ctx, projectKey, flagKey, patch)
+				return client.ld.FeatureFlagsApi.PatchFeatureFlag(client.ctx, projectKey, flagKey).PatchWithComment(patch).Execute()
 			})
 		})
 		if err != nil {
@@ -167,8 +168,9 @@ func resourceFeatureFlagEnvironmentUpdate(d *schema.ResourceData, metaRaw interf
 	}
 	offVariation := d.Get(OFF_VARIATION)
 
-	patch := ldapi.PatchComment{
-		Comment: "Terraform",
+	comment := "Terraform"
+	patch := ldapi.PatchWithComment{
+		Comment: &comment,
 		Patch: []ldapi.PatchOperation{
 			patchReplace(patchFlagEnvPath(d, "on"), on),
 			patchReplace(patchFlagEnvPath(d, "rules"), rules),
@@ -182,7 +184,7 @@ func resourceFeatureFlagEnvironmentUpdate(d *schema.ResourceData, metaRaw interf
 	log.Printf("[DEBUG] %+v\n", patch)
 	_, _, err = handleRateLimit(func() (interface{}, *http.Response, error) {
 		return handleNoConflict(func() (interface{}, *http.Response, error) {
-			return client.ld.FeatureFlagsApi.PatchFeatureFlag(client.ctx, projectKey, flagKey, patch)
+			return client.ld.FeatureFlagsApi.PatchFeatureFlag(client.ctx, projectKey, flagKey).PatchWithComment(patch).Execute()
 		})
 	})
 	if err != nil {
@@ -214,7 +216,7 @@ func resourceFeatureFlagEnvironmentDelete(d *schema.ResourceData, metaRaw interf
 		return fmt.Errorf("failed to find environment with key %q", envKey)
 	}
 
-	flag, _, err := client.ld.FeatureFlagsApi.GetFeatureFlag(client.ctx, projectKey, flagKey, nil)
+	flag, _, err := client.ld.FeatureFlagsApi.GetFeatureFlag(client.ctx, projectKey, flagKey).Execute()
 	if err != nil {
 		return fmt.Errorf("failed to update flag %q in project %q, environment %q: %s", flagKey, projectKey, envKey, handleLdapiErr(err))
 	}
@@ -222,8 +224,9 @@ func resourceFeatureFlagEnvironmentDelete(d *schema.ResourceData, metaRaw interf
 	// Set off variation to match default with how a rule is created
 	offVariation := len(flag.Variations) - 1
 
-	patch := ldapi.PatchComment{
-		Comment: "Terraform",
+	comment := "Terraform"
+	patch := ldapi.PatchWithComment{
+		Comment: &comment,
 		Patch: []ldapi.PatchOperation{
 			patchReplace(patchFlagEnvPath(d, "on"), false),
 			patchReplace(patchFlagEnvPath(d, "rules"), []ldapi.Rule{}),
@@ -237,7 +240,7 @@ func resourceFeatureFlagEnvironmentDelete(d *schema.ResourceData, metaRaw interf
 
 	_, _, err = handleRateLimit(func() (interface{}, *http.Response, error) {
 		return handleNoConflict(func() (interface{}, *http.Response, error) {
-			return client.ld.FeatureFlagsApi.PatchFeatureFlag(client.ctx, projectKey, flagKey, patch)
+			return client.ld.FeatureFlagsApi.PatchFeatureFlag(client.ctx, projectKey, flagKey).PatchWithComment(patch).Execute()
 		})
 	})
 	if err != nil {
