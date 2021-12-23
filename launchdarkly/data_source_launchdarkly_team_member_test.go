@@ -8,7 +8,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
-	ldapi "github.com/launchdarkly/api-client-go"
+	ldapi "github.com/launchdarkly/api-client-go/v7"
 	"github.com/stretchr/testify/require"
 )
 
@@ -21,14 +21,12 @@ data "launchdarkly_team_member" "test" {
 }
 
 func testAccDataSourceTeamMemberCreate(client *Client, email string) (*ldapi.Member, error) {
-	membersBody := ldapi.MembersBody{
+	membersBody := []ldapi.NewMemberForm{{
 		Email:     email,
-		FirstName: "Test",
-		LastName:  "Account",
-	}
-	members, _, err := client.ld.TeamMembersApi.PostMembers(client.ctx, []ldapi.MembersBody{
-		membersBody,
-	})
+		FirstName: ldapi.PtrString("Test"),
+		LastName:  ldapi.PtrString("Account"),
+	}}
+	members, _, err := client.ld.AccountMembersApi.PostMembers(client.ctx).NewMemberForm(membersBody).Execute()
 	if err != nil {
 		return nil, err
 	}
@@ -36,7 +34,7 @@ func testAccDataSourceTeamMemberCreate(client *Client, email string) (*ldapi.Mem
 }
 
 func testAccDataSourceTeamMemberDelete(client *Client, id string) error {
-	_, err := client.ld.TeamMembersApi.DeleteMember(client.ctx, id)
+	_, err := client.ld.AccountMembersApi.DeleteMember(client.ctx, id).Execute()
 	if err != nil {
 		return err
 	}
@@ -91,8 +89,8 @@ func TestAccDataSourceTeamMember_exists(t *testing.T) {
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttrSet(resourceName, "email"),
 					resource.TestCheckResourceAttr(resourceName, "email", testMember.Email),
-					resource.TestCheckResourceAttr(resourceName, "first_name", testMember.FirstName),
-					resource.TestCheckResourceAttr(resourceName, "last_name", testMember.LastName),
+					resource.TestCheckResourceAttr(resourceName, "first_name", *testMember.FirstName),
+					resource.TestCheckResourceAttr(resourceName, "last_name", *testMember.LastName),
 					resource.TestCheckResourceAttr(resourceName, "id", testMember.Id),
 				),
 			},

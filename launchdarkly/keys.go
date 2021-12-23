@@ -84,4 +84,6 @@ const (
 	MIN_NUM_APPROVALS          = "min_num_approvals"
 	CAN_APPLY_DECLINED_CHANGES = "can_apply_declined_changes"
 	REQUIRED_APPROVAL_TAGS     = "required_approval_tags"
+	USING_ENVIRONMENT_ID       = "using_environment_id"
+	USING_MOBILE_KEY           = "using_mobile_key"
 )

@@ -3,7 +3,7 @@ package launchdarkly
 import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
-	ldapi "github.com/launchdarkly/api-client-go"
+	ldapi "github.com/launchdarkly/api-client-go/v7"
 )
 
 func segmentRulesSchema() *schema.Schema {
@@ -47,9 +47,11 @@ func segmentRulesFromResourceData(d *schema.ResourceData, metaRaw interface{}) (
 
 func segmentRuleFromResourceData(val interface{}) (ldapi.UserSegmentRule, error) {
 	ruleMap := val.(map[string]interface{})
+	weight := int32(ruleMap[WEIGHT].(int))
+	bucketBy := ruleMap[BUCKET_BY].(string)
 	r := ldapi.UserSegmentRule{
-		Weight:   int32(ruleMap[WEIGHT].(int)),
-		BucketBy: ruleMap[BUCKET_BY].(string),
+		Weight:   &weight,
+		BucketBy: &bucketBy,
 	}
 	for _, c := range ruleMap[CLAUSES].([]interface{}) {
 		clause, err := clauseFromResourceData(c)

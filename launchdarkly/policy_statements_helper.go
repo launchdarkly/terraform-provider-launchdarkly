@@ -5,7 +5,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
-	ldapi "github.com/launchdarkly/api-client-go"
+	ldapi "github.com/launchdarkly/api-client-go/v7"
 )
 
 // policyStatementSchemaOptions is used to help with renaming 'policy_statements' to statements for the launchdarkly_webhook resource.
@@ -93,8 +93,8 @@ func validatePolicyStatement(statement map[string]interface{}) error {
 	return nil
 }
 
-func policyStatementsFromResourceData(schemaStatements []interface{}) ([]ldapi.Statement, error) {
-	statements := make([]ldapi.Statement, 0, len(schemaStatements))
+func policyStatementsFromResourceData(schemaStatements []interface{}) ([]ldapi.StatementPost, error) {
+	statements := make([]ldapi.StatementPost, 0, len(schemaStatements))
 	for _, stmt := range schemaStatements {
 		statement := stmt.(map[string]interface{})
 		err := validatePolicyStatement(statement)
@@ -107,60 +107,74 @@ func policyStatementsFromResourceData(schemaStatements []interface{}) ([]ldapi.S
 	return statements, nil
 }
 
-func policyStatementFromResourceData(statement map[string]interface{}) ldapi.Statement {
-	ret := ldapi.Statement{
+func policyStatementFromResourceData(statement map[string]interface{}) ldapi.StatementPost {
+	ret := ldapi.StatementPost{
 		Effect: statement[EFFECT].(string),
 	}
 	for _, r := range statement[RESOURCES].([]interface{}) {
 		ret.Resources = append(ret.Resources, r.(string))
 	}
-	for _, n := range statement[NOT_RESOURCES].([]interface{}) {
-		ret.NotResources = append(ret.NotResources, n.(string))
-	}
 	for _, a := range statement[ACTIONS].([]interface{}) {
 		ret.Actions = append(ret.Actions, a.(string))
 	}
-	for _, n := range statement[NOT_ACTIONS].([]interface{}) {
-		ret.NotActions = append(ret.NotActions, n.(string))
+	// optional fields
+	rawNotResources := statement[NOT_RESOURCES].([]interface{})
+	var notResources []string
+	for _, n := range rawNotResources {
+		notResources = append(notResources, n.(string))
+		ret.NotResources = &notResources
+	}
+	rawNotActions := statement[NOT_ACTIONS].([]interface{})
+	var notActions []string
+	for _, n := range rawNotActions {
+		notActions = append(notActions, n.(string))
+		ret.NotActions = &notActions
 	}
 	return ret
 }
 
-func policyStatementsToResourceData(statements []ldapi.Statement) []interface{} {
+func policyStatementsToResourceData(statements []ldapi.StatementRep) []interface{} {
 	transformed := make([]interface{}, 0, len(statements))
 	for _, s := range statements {
 		t := map[string]interface{}{
 			EFFECT: s.Effect,
 		}
-		if len(s.Resources) > 0 {
-			t[RESOURCES] = stringSliceToInterfaceSlice(s.Resources)
+		if s.Resources != nil && len(*s.Resources) > 0 {
+			var resources []interface{}
+			for _, v := range *s.Resources {
+				resources = append(resources, v)
+			}
+			t[RESOURCES] = resources
 		}
-		if len(s.NotResources) > 0 {
-			t[NOT_RESOURCES] = stringSliceToInterfaceSlice(s.NotResources)
+		if s.NotResources != nil && len(*s.NotResources) > 0 {
+			var notResources []interface{}
+			for _, v := range *s.NotResources {
+				notResources = append(notResources, v)
+			}
+			t[NOT_RESOURCES] = notResources
 		}
-		if len(s.Actions) > 0 {
-			t[ACTIONS] = stringSliceToInterfaceSlice(s.Actions)
+		if s.Actions != nil && len(*s.Actions) > 0 {
+			t[ACTIONS] = stringSliceToInterfaceSlice(*s.Actions)
 		}
-		if len(s.NotActions) > 0 {
-			t[NOT_ACTIONS] = stringSliceToInterfaceSlice(s.NotActions)
+		if s.NotActions != nil && len(*s.NotActions) > 0 {
+			t[NOT_ACTIONS] = stringSliceToInterfaceSlice(*s.NotActions)
 		}
 		transformed = append(transformed, t)
 	}
 	return transformed
 }
 
-func statementsToPolicies(statements []ldapi.Statement) []ldapi.Policy {
-	policies := make([]ldapi.Policy, 0, len(statements))
-	for _, s := range statements {
-		policies = append(policies, ldapi.Policy(s))
-	}
-	return policies
-}
-
-func policiesToStatements(policies []ldapi.Policy) []ldapi.Statement {
-	statements := make([]ldapi.Statement, 0, len(policies))
+func statementsToStatementReps(policies []ldapi.Statement) []ldapi.StatementRep {
+	statements := make([]ldapi.StatementRep, 0, len(policies))
 	for _, p := range policies {
-		statements = append(statements, ldapi.Statement(p))
+		rep := ldapi.StatementRep{
+			Resources:    p.Resources,
+			Actions:      p.Actions,
+			NotResources: p.NotResources,
+			NotActions:   p.NotActions,
+			Effect:       p.Effect,
+		}
+		statements = append(statements, rep)
 	}
 	return statements
 }

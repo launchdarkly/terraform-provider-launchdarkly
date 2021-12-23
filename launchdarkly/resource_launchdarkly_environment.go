@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	ldapi "github.com/launchdarkly/api-client-go"
+	ldapi "github.com/launchdarkly/api-client-go/v7"
 )
 
 func resourceEnvironment() *schema.Resource {
@@ -39,7 +39,7 @@ func resourceEnvironmentCreate(d *schema.ResourceData, metaRaw interface{}) erro
 	key := d.Get(KEY).(string)
 	name := d.Get(NAME).(string)
 	color := d.Get(COLOR).(string)
-	defaultTTL := float32(d.Get(DEFAULT_TTL).(int))
+	defaultTTL := int32(d.Get(DEFAULT_TTL).(int))
 	secureMode := d.Get(SECURE_MODE).(bool)
 	defaultTrackEvents := d.Get(DEFAULT_TRACK_EVENTS).(bool)
 	tags := stringsFromSchemaSet(d.Get(TAGS).(*schema.Set))
@@ -50,16 +50,16 @@ func resourceEnvironmentCreate(d *schema.ResourceData, metaRaw interface{}) erro
 		Name:               name,
 		Key:                key,
 		Color:              color,
-		DefaultTtl:         defaultTTL,
-		SecureMode:         secureMode,
-		DefaultTrackEvents: defaultTrackEvents,
-		Tags:               tags,
-		RequireComments:    requireComments,
-		ConfirmChanges:     confirmChanges,
+		DefaultTtl:         &defaultTTL,
+		SecureMode:         &secureMode,
+		DefaultTrackEvents: &defaultTrackEvents,
+		Tags:               &tags,
+		RequireComments:    &requireComments,
+		ConfirmChanges:     &confirmChanges,
 	}
 
 	_, _, err := handleRateLimit(func() (interface{}, *http.Response, error) {
-		return client.ld.EnvironmentsApi.PostEnvironment(client.ctx, projectKey, envPost)
+		return client.ld.EnvironmentsApi.PostEnvironment(client.ctx, projectKey).EnvironmentPost(envPost).Execute()
 	})
 	if err != nil {
 		return fmt.Errorf("failed to create environment: [%+v] for project key: %s: %s", envPost, projectKey, handleLdapiErr(err))
@@ -70,7 +70,7 @@ func resourceEnvironmentCreate(d *schema.ResourceData, metaRaw interface{}) erro
 		err = resourceEnvironmentUpdate(d, metaRaw)
 		if err != nil {
 			// if there was a problem in the update state, we need to clean up completely by deleting the env
-			_, deleteErr := client.ld.EnvironmentsApi.DeleteEnvironment(client.ctx, projectKey, key)
+			_, deleteErr := client.ld.EnvironmentsApi.DeleteEnvironment(client.ctx, projectKey, key).Execute()
 			if deleteErr != nil {
 				return fmt.Errorf("failed to clean up environment %q from project %q: %s", key, projectKey, handleLdapiErr(err))
 			}
@@ -118,7 +118,7 @@ func resourceEnvironmentUpdate(d *schema.ResourceData, metaRaw interface{}) erro
 	patch = append(patch, approvalPatch...)
 	_, _, err = handleRateLimit(func() (interface{}, *http.Response, error) {
 		return handleNoConflict(func() (interface{}, *http.Response, error) {
-			return client.ld.EnvironmentsApi.PatchEnvironment(client.ctx, projectKey, key, patch)
+			return client.ld.EnvironmentsApi.PatchEnvironment(client.ctx, projectKey, key).PatchOperation(patch).Execute()
 		})
 	})
 	if err != nil {
@@ -134,7 +134,7 @@ func resourceEnvironmentDelete(d *schema.ResourceData, metaRaw interface{}) erro
 	key := d.Get(KEY).(string)
 
 	_, _, err := handleRateLimit(func() (interface{}, *http.Response, error) {
-		res, err := client.ld.EnvironmentsApi.DeleteEnvironment(client.ctx, projectKey, key)
+		res, err := client.ld.EnvironmentsApi.DeleteEnvironment(client.ctx, projectKey, key).Execute()
 		return nil, res, err
 	})
 
@@ -151,7 +151,7 @@ func resourceEnvironmentExists(d *schema.ResourceData, metaRaw interface{}) (boo
 
 func environmentExists(projectKey string, key string, meta *Client) (bool, error) {
 	_, res, err := handleRateLimit(func() (interface{}, *http.Response, error) {
-		return meta.ld.EnvironmentsApi.GetEnvironment(meta.ctx, projectKey, key)
+		return meta.ld.EnvironmentsApi.GetEnvironment(meta.ctx, projectKey, key).Execute()
 	})
 	if isStatusNotFound(res) {
 		return false, nil

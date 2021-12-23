@@ -3,7 +3,7 @@ package launchdarkly
 import (
 	"testing"
 
-	ldapi "github.com/launchdarkly/api-client-go"
+	ldapi "github.com/launchdarkly/api-client-go/v7"
 	"github.com/stretchr/testify/require"
 )
 
@@ -25,7 +25,7 @@ func TestEnvironmentPostFromResourceData(t *testing.T) {
 				Name:       "envName",
 				Key:        "envKey",
 				Color:      "000000",
-				DefaultTtl: 50,
+				DefaultTtl: ldapi.PtrInt32(50),
 			},
 		},
 		{

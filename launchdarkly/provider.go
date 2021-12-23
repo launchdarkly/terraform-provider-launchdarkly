@@ -2,6 +2,8 @@ package launchdarkly
 
 import (
 	"fmt"
+	"net/url"
+	"strings"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
@@ -70,11 +72,15 @@ func Provider() *schema.Provider {
 
 func providerConfigure(d *schema.ResourceData) (interface{}, error) {
 	host := d.Get(api_host).(string)
+	if strings.HasPrefix(host, "http") {
+		u, _ := url.Parse(host)
+		host = u.Host
+	}
 	accessToken := d.Get(access_token).(string)
 	oauthToken := d.Get(oauth_token).(string)
 
 	if oauthToken == "" && accessToken == "" {
-		return nil, fmt.Errorf("either an %q or %q must be specified.", access_token, oauth_token)
+		return nil, fmt.Errorf("either an %q or %q must be specified", access_token, oauth_token)
 	}
 
 	if oauthToken != "" {

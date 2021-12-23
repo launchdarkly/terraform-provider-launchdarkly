@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"time"
 
-	ldapi "github.com/launchdarkly/api-client-go"
+	ldapi "github.com/launchdarkly/api-client-go/v7"
 )
 
 const (
@@ -80,6 +80,8 @@ func intPtr(i int) *int {
 
 func strPtr(v string) *string { return &v }
 
+func strArrayPtr(v []string) *[]string { return &v }
+
 func patchReplace(path string, value interface{}) ldapi.PatchOperation {
 	return ldapi.PatchOperation{
 		Op:    "replace",
@@ -109,7 +111,7 @@ func handleLdapiErr(err error) error {
 	if err == nil {
 		return nil
 	}
-	if swaggerErr, ok := err.(ldapi.GenericSwaggerError); ok {
+	if swaggerErr, ok := err.(ldapi.GenericOpenAPIError); ok {
 		return fmt.Errorf("%s: %s", swaggerErr.Error(), string(swaggerErr.Body()))
 	}
 	return err

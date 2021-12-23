@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	ldapi "github.com/launchdarkly/api-client-go"
+	ldapi "github.com/launchdarkly/api-client-go/v7"
 )
 
 func defaultVariationsFromResourceData(d *schema.ResourceData) (*ldapi.Defaults, error) {

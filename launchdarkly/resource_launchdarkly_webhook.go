@@ -5,7 +5,7 @@ import (
 	"net/http"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	ldapi "github.com/launchdarkly/api-client-go"
+	ldapi "github.com/launchdarkly/api-client-go/v7"
 )
 
 func resourceWebhook() *schema.Resource {
@@ -41,29 +41,32 @@ func resourceWebhookCreate(d *schema.ResourceData, metaRaw interface{}) error {
 	webhookURL := d.Get(URL).(string)
 	webhookSecret := d.Get(SECRET).(string)
 	webhookName := d.Get(NAME).(string)
-	statements, err := policyStatementsFromResourceData(d.Get(STATEMENTS).([]interface{}))
-	if err != nil {
-		return err
-	}
 
 	webhookOn := d.Get(ON).(bool)
 
-	webhookBody := ldapi.WebhookBody{
-		Url:        webhookURL,
-		Secret:     webhookSecret,
-		On:         webhookOn,
-		Name:       webhookName,
-		Statements: statements,
+	webhookBody := ldapi.WebhookPost{
+		Url:  webhookURL,
+		On:   webhookOn,
+		Name: &webhookName,
+	}
+
+	if rawStatements, ok := d.GetOk(STATEMENTS); ok {
+		statements, err := policyStatementsFromResourceData(rawStatements.([]interface{}))
+		if err != nil {
+			return err
+		}
+		webhookBody.Statements = &statements
 	}
 
 	// The sign field isn't returned when GETting a webhook so terraform can't import it properly.
 	// We hide the field from terraform to avoid import problems.
 	if webhookSecret != "" {
+		webhookBody.Secret = &webhookSecret
 		webhookBody.Sign = true
 	}
 
 	webhookRaw, _, err := handleRateLimit(func() (interface{}, *http.Response, error) {
-		return client.ld.WebhooksApi.PostWebhook(client.ctx, webhookBody)
+		return client.ld.WebhooksApi.PostWebhook(client.ctx).WebhookPost(webhookBody).Execute()
 	})
 	webhook := webhookRaw.(ldapi.Webhook)
 	if err != nil {
@@ -117,7 +120,7 @@ func resourceWebhookUpdate(d *schema.ResourceData, metaRaw interface{}) error {
 
 	_, _, err = handleRateLimit(func() (interface{}, *http.Response, error) {
 		return handleNoConflict(func() (interface{}, *http.Response, error) {
-			return client.ld.WebhooksApi.PatchWebhook(client.ctx, webhookID, patch)
+			return client.ld.WebhooksApi.PatchWebhook(client.ctx, webhookID).PatchOperation(patch).Execute()
 		})
 	})
 	if err != nil {
@@ -132,7 +135,7 @@ func resourceWebhookDelete(d *schema.ResourceData, metaRaw interface{}) error {
 	webhookID := d.Id()
 
 	_, _, err := handleRateLimit(func() (interface{}, *http.Response, error) {
-		res, err := client.ld.WebhooksApi.DeleteWebhook(client.ctx, webhookID)
+		res, err := client.ld.WebhooksApi.DeleteWebhook(client.ctx, webhookID).Execute()
 		return nil, res, err
 	})
 
@@ -149,7 +152,7 @@ func resourceWebhookExists(d *schema.ResourceData, metaRaw interface{}) (bool, e
 
 func webhookExists(webhookID string, meta *Client) (bool, error) {
 	_, res, err := handleRateLimit(func() (interface{}, *http.Response, error) {
-		return meta.ld.WebhooksApi.GetWebhook(meta.ctx, webhookID)
+		return meta.ld.WebhooksApi.GetWebhook(meta.ctx, webhookID).Execute()
 	})
 	if isStatusNotFound(res) {
 		return false, nil

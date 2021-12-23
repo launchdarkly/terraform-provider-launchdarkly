@@ -1,12 +1,55 @@
 package launchdarkly
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	ldapi "github.com/launchdarkly/api-client-go"
+	ldapi "github.com/launchdarkly/api-client-go/v7"
 )
+
+// We assign a custom diff in cases where the customer has not assigned CSA or IIS in config for a flag in order to respect project level defaults
+func customizeDiff(ctx context.Context, diff *schema.ResourceDiff, v interface{}) error {
+	config := diff.GetRawConfig()
+	client := v.(*Client)
+	projectKey := diff.Get(PROJECT_KEY).(string)
+
+	// Below values will exist due to the schema, we need to check if they are all null
+	snippetInConfig := config.GetAttr(INCLUDE_IN_SNIPPET)
+	csaInConfig := config.GetAttr(CLIENT_SIDE_AVAILABILITY)
+
+	// If we have no keys in the CSA block in the config (length is 0) we know the customer hasn't set any CSA values
+	csaKeys := csaInConfig.AsValueSlice()
+	if len(csaKeys) == 0 {
+		// When we have no values for either clienSideAvailability or includeInSnippet
+		// Force an UPDATE call by setting a new value for INCLUDE_IN_SNIPPET in the diff according to project defaults
+		if snippetInConfig.IsNull() {
+			defaultCSA, includeInSnippetByDefault, err := getProjectDefaultCSAandIncludeInSnippet(client, projectKey)
+			// We will fall into this block during the first config read when a user creates a flag at the same time they create the parent project
+			// (and during our tests)
+			// We can ignore the error here, as it is correctly handled during update/create (and doesn't occur then as the project will have been created)
+			if err != nil {
+			} else {
+				// We set our values to the project defaults in order to guarantee an update call happening
+				// If we don't do this, we can run into an edge case described below
+				// IF previous value of INCLUDE_IN_SNIPPET was false
+				// AND the project default value for INCLUDE_IN_SNIPPET is true
+				// AND the customer removes the INCLUDE_IN_SNIPPET key from the config without replacing with defaultCSA
+				// The read would assume no changes are needed, HOWEVER we need to jump back to project level set defaults
+				// Hence the setting below
+				diff.SetNew(INCLUDE_IN_SNIPPET, includeInSnippetByDefault)
+				diff.SetNew(CLIENT_SIDE_AVAILABILITY, []map[string]interface{}{{
+					USING_ENVIRONMENT_ID: defaultCSA.UsingEnvironmentId,
+					USING_MOBILE_KEY:     defaultCSA.UsingMobileKey,
+				}})
+			}
+		}
+
+	}
+
+	return nil
+}
 
 func resourceFeatureFlag() *schema.Resource {
 	schemaMap := baseFeatureFlagSchema()
@@ -26,7 +69,8 @@ func resourceFeatureFlag() *schema.Resource {
 		Importer: &schema.ResourceImporter{
 			State: resourceFeatureFlagImport,
 		},
-		Schema: schemaMap,
+		Schema:        schemaMap,
+		CustomizeDiff: customizeDiff,
 	}
 }
 
@@ -46,6 +90,14 @@ func resourceFeatureFlagCreate(d *schema.ResourceData, metaRaw interface{}) erro
 	flagName := d.Get(NAME).(string)
 	tags := stringsFromResourceData(d, TAGS)
 	includeInSnippet := d.Get(INCLUDE_IN_SNIPPET).(bool)
+	// GetOkExists is 'deprecated', but needed as optional booleans set to false return a 'false' ok value from GetOk
+	// Also not really deprecated as they are keeping it around pending a replacement https://github.com/hashicorp/terraform-plugin-sdk/pull/350#issuecomment-597888969
+	_, includeInSnippetOk := d.GetOkExists(INCLUDE_IN_SNIPPET)
+	_, clientSideAvailabilityOk := d.GetOk(CLIENT_SIDE_AVAILABILITY)
+	clientSideAvailability := &ldapi.ClientSideAvailabilityPost{
+		UsingEnvironmentId: d.Get("client_side_availability.0.using_environment_id").(bool),
+		UsingMobileKey:     d.Get("client_side_availability.0.using_mobile_key").(bool),
+	}
 	temporary := d.Get(TEMPORARY).(bool)
 
 	variations, err := variationsFromResourceData(d)
@@ -59,18 +111,37 @@ func resourceFeatureFlagCreate(d *schema.ResourceData, metaRaw interface{}) erro
 	}
 
 	flag := ldapi.FeatureFlagBody{
-		Name:             flagName,
-		Key:              key,
-		Description:      description,
-		Variations:       variations,
-		Temporary:        temporary,
-		Tags:             tags,
-		IncludeInSnippet: includeInSnippet,
-		Defaults:         defaults,
+		Name:        flagName,
+		Key:         key,
+		Description: &description,
+		Variations:  &variations,
+		Temporary:   &temporary,
+		Tags:        &tags,
+		Defaults:    defaults,
 	}
 
+	if clientSideAvailabilityOk {
+		flag.ClientSideAvailability = clientSideAvailability
+	} else if includeInSnippetOk {
+		// If includeInSnippet is set, still use clientSideAvailability behind the scenes in order to switch UsingMobileKey to false if needed
+		flag.ClientSideAvailability = &ldapi.ClientSideAvailabilityPost{
+			UsingEnvironmentId: includeInSnippet,
+			UsingMobileKey:     false,
+		}
+	} else {
+		// If neither value is set, we should get the default from the project level and apply that
+		// IncludeInSnippetdefault is the same as defaultCSA.UsingEnvironmentId, so we can _ it
+		defaultCSA, _, err := getProjectDefaultCSAandIncludeInSnippet(client, projectKey)
+		if err != nil {
+			return fmt.Errorf("failed to get project level client side availability defaults. %v", err)
+		}
+		flag.ClientSideAvailability = &ldapi.ClientSideAvailabilityPost{
+			UsingEnvironmentId: *defaultCSA.UsingEnvironmentId,
+			UsingMobileKey:     *defaultCSA.UsingMobileKey,
+		}
+	}
 	_, _, err = handleRateLimit(func() (interface{}, *http.Response, error) {
-		return client.ld.FeatureFlagsApi.PostFeatureFlag(client.ctx, projectKey, flag, nil)
+		return client.ld.FeatureFlagsApi.PostFeatureFlag(client.ctx, projectKey).FeatureFlagBody(flag).Execute()
 	})
 
 	if err != nil {
@@ -82,7 +153,7 @@ func resourceFeatureFlagCreate(d *schema.ResourceData, metaRaw interface{}) erro
 	err = resourceFeatureFlagUpdate(d, metaRaw)
 	if err != nil {
 		// if there was a problem in the update state, we need to clean up completely by deleting the flag
-		_, deleteErr := client.ld.FeatureFlagsApi.DeleteFeatureFlag(client.ctx, projectKey, key)
+		_, deleteErr := client.ld.FeatureFlagsApi.DeleteFeatureFlag(client.ctx, projectKey, key).Execute()
 		if deleteErr != nil {
 			return fmt.Errorf("failed to delete flag %q from project %q: %s", key, projectKey, handleLdapiErr(err))
 		}
@@ -106,21 +177,53 @@ func resourceFeatureFlagUpdate(d *schema.ResourceData, metaRaw interface{}) erro
 	name := d.Get(NAME).(string)
 	tags := stringsFromResourceData(d, TAGS)
 	includeInSnippet := d.Get(INCLUDE_IN_SNIPPET).(bool)
+
+	snippetHasChange := d.HasChange(INCLUDE_IN_SNIPPET)
+	clientSideHasChange := d.HasChange(CLIENT_SIDE_AVAILABILITY)
+	// GetOkExists is 'deprecated', but needed as optional booleans set to false return a 'false' ok value from GetOk
+	// Also not really deprecated as they are keeping it around pending a replacement https://github.com/hashicorp/terraform-plugin-sdk/pull/350#issuecomment-597888969
+	_, includeInSnippetOk := d.GetOkExists(INCLUDE_IN_SNIPPET)
+	_, clientSideAvailabilityOk := d.GetOk(CLIENT_SIDE_AVAILABILITY)
 	temporary := d.Get(TEMPORARY).(bool)
 	customProperties := customPropertiesFromResourceData(d)
 	archived := d.Get(ARCHIVED).(bool)
+	clientSideAvailability := &ldapi.ClientSideAvailabilityPost{
+		UsingEnvironmentId: d.Get("client_side_availability.0.using_environment_id").(bool),
+		UsingMobileKey:     d.Get("client_side_availability.0.using_mobile_key").(bool),
+	}
 
-	patch := ldapi.PatchComment{
-		Comment: "Terraform",
+	comment := "Terraform"
+	patch := ldapi.PatchWithComment{
+		Comment: &comment,
 		Patch: []ldapi.PatchOperation{
 			patchReplace("/name", name),
 			patchReplace("/description", description),
 			patchReplace("/tags", tags),
-			patchReplace("/includeInSnippet", includeInSnippet),
 			patchReplace("/temporary", temporary),
 			patchReplace("/customProperties", customProperties),
 			patchReplace("/archived", archived),
 		}}
+
+	if clientSideAvailabilityOk && clientSideHasChange {
+		patch.Patch = append(patch.Patch, patchReplace("/clientSideAvailability", clientSideAvailability))
+	} else if includeInSnippetOk && snippetHasChange {
+		// If includeInSnippet is set, still use clientSideAvailability behind the scenes in order to switch UsingMobileKey to false if needed
+		patch.Patch = append(patch.Patch, patchReplace("/clientSideAvailability", &ldapi.ClientSideAvailabilityPost{
+			UsingEnvironmentId: includeInSnippet,
+			UsingMobileKey:     false,
+		}))
+	} else {
+		// If the user doesn't set either CSA or IIS in config, we pull the defaults from their Project level settings and apply those
+		// IncludeInSnippetdefault is the same as defaultCSA.UsingEnvironmentId, so we can _ it
+		defaultCSA, _, err := getProjectDefaultCSAandIncludeInSnippet(client, projectKey)
+		if err != nil {
+			return fmt.Errorf("failed to get project level client side availability defaults. %v", err)
+		}
+		patch.Patch = append(patch.Patch, patchReplace("/clientSideAvailability", &ldapi.ClientSideAvailabilityPost{
+			UsingEnvironmentId: *defaultCSA.UsingEnvironmentId,
+			UsingMobileKey:     *defaultCSA.UsingMobileKey,
+		}))
+	}
 
 	variationPatches, err := variationPatchesFromResourceData(d)
 	if err != nil {
@@ -145,7 +248,7 @@ func resourceFeatureFlagUpdate(d *schema.ResourceData, metaRaw interface{}) erro
 
 	_, _, err = handleRateLimit(func() (interface{}, *http.Response, error) {
 		return handleNoConflict(func() (interface{}, *http.Response, error) {
-			return client.ld.FeatureFlagsApi.PatchFeatureFlag(client.ctx, projectKey, key, patch)
+			return client.ld.FeatureFlagsApi.PatchFeatureFlag(client.ctx, projectKey, key).PatchWithComment(*&patch).Execute()
 		})
 	})
 
@@ -162,7 +265,7 @@ func resourceFeatureFlagDelete(d *schema.ResourceData, metaRaw interface{}) erro
 	key := d.Get(KEY).(string)
 
 	_, _, err := handleRateLimit(func() (interface{}, *http.Response, error) {
-		res, err := client.ld.FeatureFlagsApi.DeleteFeatureFlag(client.ctx, projectKey, key)
+		res, err := client.ld.FeatureFlagsApi.DeleteFeatureFlag(client.ctx, projectKey, key).Execute()
 		return nil, res, err
 	})
 	if err != nil {
@@ -177,7 +280,7 @@ func resourceFeatureFlagExists(d *schema.ResourceData, metaRaw interface{}) (boo
 	projectKey := d.Get(PROJECT_KEY).(string)
 	key := d.Get(KEY).(string)
 
-	_, res, err := client.ld.FeatureFlagsApi.GetFeatureFlag(client.ctx, projectKey, key, nil)
+	_, res, err := client.ld.FeatureFlagsApi.GetFeatureFlag(client.ctx, projectKey, key).Execute()
 	if isStatusNotFound(res) {
 		return false, nil
 	}

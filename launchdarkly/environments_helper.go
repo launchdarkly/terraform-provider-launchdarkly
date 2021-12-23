@@ -7,7 +7,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
-	ldapi "github.com/launchdarkly/api-client-go"
+	ldapi "github.com/launchdarkly/api-client-go/v7"
 )
 
 // baseEnvironmentSchema covers the overlap between the data source and resource schemas
@@ -175,7 +175,7 @@ func environmentPostFromResourceData(env interface{}) ldapi.EnvironmentPost {
 	}
 
 	if defaultTTL, ok := envMap[DEFAULT_TTL]; ok {
-		envPost.DefaultTtl = float32(defaultTTL.(int))
+		envPost.DefaultTtl = ldapi.PtrInt32(int32(defaultTTL.(int)))
 	}
 	return envPost
 }
@@ -225,7 +225,7 @@ func environmentRead(d *schema.ResourceData, meta interface{}, isDataSource bool
 	key := d.Get(KEY).(string)
 
 	envRaw, res, err := handleRateLimit(func() (interface{}, *http.Response, error) {
-		return client.ld.EnvironmentsApi.GetEnvironment(client.ctx, projectKey, key)
+		return client.ld.EnvironmentsApi.GetEnvironment(client.ctx, projectKey, key).Execute()
 	})
 	if isStatusNotFound(res) && !isDataSource {
 		log.Printf("[WARN] failed to find environment with key %q in project %q, removing from state", key, projectKey)

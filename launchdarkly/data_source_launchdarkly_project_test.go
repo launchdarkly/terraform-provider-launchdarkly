@@ -8,7 +8,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
-	ldapi "github.com/launchdarkly/api-client-go"
+	ldapi "github.com/launchdarkly/api-client-go/v7"
 	"github.com/stretchr/testify/require"
 )
 
@@ -57,25 +57,25 @@ func TestAccDataSourceProject_exists(t *testing.T) {
 	client, err := newClient(os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN), os.Getenv(LAUNCHDARKLY_API_HOST), false)
 	require.NoError(t, err)
 
-	projectBody := ldapi.ProjectBody{
+	projectBody := ldapi.ProjectPost{
 		Name: projectName,
 		Key:  projectKey,
-		DefaultClientSideAvailability: &ldapi.ClientSideAvailability{
+		DefaultClientSideAvailability: &ldapi.DefaultClientSideAvailabilityPost{
 			UsingEnvironmentId: false,
 			UsingMobileKey:     false,
 		},
-		Tags: []string{
+		Tags: &[]string{
 			tag,
 		},
-		Environments: []ldapi.EnvironmentPost{
+		Environments: &[]ldapi.EnvironmentPost{
 			{
 				Name:            envName,
 				Key:             envKey,
 				Color:           envColor,
-				SecureMode:      true,
-				ConfirmChanges:  true,
-				RequireComments: true,
-				Tags: []string{
+				SecureMode:      ldapi.PtrBool(true),
+				ConfirmChanges:  ldapi.PtrBool(true),
+				RequireComments: ldapi.PtrBool(true),
+				Tags: &[]string{
 					tag,
 				},
 			},

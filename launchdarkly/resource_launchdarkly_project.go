@@ -7,7 +7,7 @@ import (
 	"net/http"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	ldapi "github.com/launchdarkly/api-client-go"
+	ldapi "github.com/launchdarkly/api-client-go/v7"
 )
 
 func resourceProject() *schema.Resource {
@@ -62,17 +62,17 @@ func resourceProjectCreate(d *schema.ResourceData, metaRaw interface{}) error {
 	envs := environmentPostsFromResourceData(d)
 
 	d.SetId(projectKey)
-	projectBody := ldapi.ProjectBody{
+	projectBody := ldapi.ProjectPost{
 		Name: name,
 		Key:  projectKey,
 	}
 
 	if len(envs) > 0 {
-		projectBody.Environments = envs
+		projectBody.Environments = &envs
 	}
 
 	_, _, err := handleRateLimit(func() (interface{}, *http.Response, error) {
-		return client.ld.ProjectsApi.PostProject(client.ctx, projectBody)
+		return client.ld.ProjectsApi.PostProject(client.ctx).ProjectPost(projectBody).Execute()
 	})
 	if err != nil {
 		return fmt.Errorf("failed to create project with name %s and projectKey %s: %v", name, projectKey, handleLdapiErr(err))
@@ -105,7 +105,7 @@ func resourceProjectUpdate(d *schema.ResourceData, metaRaw interface{}) error {
 
 	_, _, err := handleRateLimit(func() (interface{}, *http.Response, error) {
 		return handleNoConflict(func() (interface{}, *http.Response, error) {
-			return client.ld.ProjectsApi.PatchProject(client.ctx, projectKey, patch)
+			return client.ld.ProjectsApi.PatchProject(client.ctx, projectKey).PatchOperation(patch).Execute()
 		})
 	})
 	if err != nil {
@@ -115,7 +115,7 @@ func resourceProjectUpdate(d *schema.ResourceData, metaRaw interface{}) error {
 	oldSchemaEnvList, newSchemaEnvList := d.GetChange(ENVIRONMENTS)
 	// Get the project so we can see if we need to create any environments or just update existing environments
 	rawProject, _, err := handleRateLimit(func() (interface{}, *http.Response, error) {
-		return client.ld.ProjectsApi.GetProject(client.ctx, projectKey)
+		return client.ld.ProjectsApi.GetProject(client.ctx, projectKey).Execute()
 	})
 	if err != nil {
 		return fmt.Errorf("failed to load project %q before updating environments: %s", projectKey, handleLdapiErr(err))
@@ -142,7 +142,7 @@ func resourceProjectUpdate(d *schema.ResourceData, metaRaw interface{}) error {
 		if !exists {
 			envPost := environmentPostFromResourceData(env)
 			_, _, err := handleRateLimit(func() (interface{}, *http.Response, error) {
-				return client.ld.EnvironmentsApi.PostEnvironment(client.ctx, projectKey, envPost)
+				return client.ld.EnvironmentsApi.PostEnvironment(client.ctx, projectKey).EnvironmentPost(envPost).Execute()
 			})
 			if err != nil {
 				return fmt.Errorf("failed to create environment %q in project %q: %s", envKey, projectKey, handleLdapiErr(err))
@@ -154,13 +154,13 @@ func resourceProjectUpdate(d *schema.ResourceData, metaRaw interface{}) error {
 			oldEnvConfig = rawOldConfig
 		}
 		// by default patching an env that was not recently tracked in the state will import it into the tf state
-		patches, err := getEnvironmentUpdatePatches(oldEnvConfig, envConfig)
+		patch, err := getEnvironmentUpdatePatches(oldEnvConfig, envConfig)
 		if err != nil {
 			return err
 		}
 		_, _, err = handleRateLimit(func() (interface{}, *http.Response, error) {
 			return handleNoConflict(func() (interface{}, *http.Response, error) {
-				return client.ld.EnvironmentsApi.PatchEnvironment(client.ctx, projectKey, envKey, patches)
+				return client.ld.EnvironmentsApi.PatchEnvironment(client.ctx, projectKey, envKey).PatchOperation(patch).Execute()
 			})
 		})
 		if err != nil {
@@ -175,7 +175,7 @@ func resourceProjectUpdate(d *schema.ResourceData, metaRaw interface{}) error {
 		envKey := envConfig[KEY].(string)
 		if _, persists := envConfigsForCompare[envKey]; !persists {
 			_, _, err = handleRateLimit(func() (interface{}, *http.Response, error) {
-				res, err := client.ld.EnvironmentsApi.DeleteEnvironment(client.ctx, projectKey, envKey)
+				res, err := client.ld.EnvironmentsApi.DeleteEnvironment(client.ctx, projectKey, envKey).Execute()
 				return nil, res, err
 			})
 			if err != nil {
@@ -192,7 +192,7 @@ func resourceProjectDelete(d *schema.ResourceData, metaRaw interface{}) error {
 	projectKey := d.Get(KEY).(string)
 
 	_, _, err := handleRateLimit(func() (interface{}, *http.Response, error) {
-		res, err := client.ld.ProjectsApi.DeleteProject(client.ctx, projectKey)
+		res, err := client.ld.ProjectsApi.DeleteProject(client.ctx, projectKey).Execute()
 		return nil, res, err
 	})
 
@@ -209,7 +209,7 @@ func resourceProjectExists(d *schema.ResourceData, metaRaw interface{}) (bool, e
 
 func projectExists(projectKey string, meta *Client) (bool, error) {
 	_, res, err := handleRateLimit(func() (interface{}, *http.Response, error) {
-		return meta.ld.ProjectsApi.GetProject(meta.ctx, projectKey)
+		return meta.ld.ProjectsApi.GetProject(meta.ctx, projectKey).Execute()
 	})
 	if isStatusNotFound(res) {
 		log.Println("got 404 when getting project. returning false.")

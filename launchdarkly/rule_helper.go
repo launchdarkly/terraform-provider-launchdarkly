@@ -6,7 +6,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
-	ldapi "github.com/launchdarkly/api-client-go"
+	ldapi "github.com/launchdarkly/api-client-go/v7"
 )
 
 func rulesSchema() *schema.Schema {
@@ -69,7 +69,7 @@ func ruleFromResourceData(val interface{}) (rule, error) {
 	if len(rolloutFromResourceData(ruleMap[ROLLOUT_WEIGHTS]).Variations) > 0 {
 		r.Rollout = rolloutFromResourceData(ruleMap[ROLLOUT_WEIGHTS])
 		if bucketByFound {
-			r.Rollout.BucketBy = bucketBy
+			r.Rollout.BucketBy = &bucketBy
 		}
 	} else {
 		if bucketByFound && bucketBy != "" {

@@ -364,7 +364,7 @@ func testAccCheckProjectExists(resourceName string) resource.TestCheckFunc {
 		}
 
 		client := testAccProvider.Meta().(*Client)
-		_, _, err := client.ld.ProjectsApi.GetProject(client.ctx, rs.Primary.ID)
+		_, _, err := client.ld.ProjectsApi.GetProject(client.ctx, rs.Primary.ID).Execute()
 		if err != nil {
 			return fmt.Errorf("received an error getting project. %s", err)
 		}

@@ -5,7 +5,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
-	ldapi "github.com/launchdarkly/api-client-go"
+	ldapi "github.com/launchdarkly/api-client-go/v7"
 )
 
 func approvalSchema() *schema.Schema {
@@ -54,15 +54,15 @@ func approvalSchema() *schema.Schema {
 	}
 }
 
-func approvalSettingsFromResourceData(val interface{}) (ldapi.EnvironmentApprovalSettings, error) {
+func approvalSettingsFromResourceData(val interface{}) (ldapi.ApprovalSettings, error) {
 	raw := val.([]interface{})
 	if len(raw) == 0 {
-		return ldapi.EnvironmentApprovalSettings{}, nil
+		return ldapi.ApprovalSettings{}, nil
 	}
 	approvalSettingsMap := raw[0].(map[string]interface{})
-	settings := ldapi.EnvironmentApprovalSettings{
+	settings := ldapi.ApprovalSettings{
 		CanReviewOwnRequest:     approvalSettingsMap[CAN_REVIEW_OWN_REQUEST].(bool),
-		MinNumApprovals:         int64(approvalSettingsMap[MIN_NUM_APPROVALS].(int)),
+		MinNumApprovals:         int32(approvalSettingsMap[MIN_NUM_APPROVALS].(int)),
 		CanApplyDeclinedChanges: approvalSettingsMap[CAN_APPLY_DECLINED_CHANGES].(bool),
 	}
 	// Required and RequiredApprovalTags should never be defined simultaneously
@@ -72,7 +72,7 @@ func approvalSettingsFromResourceData(val interface{}) (ldapi.EnvironmentApprova
 	tags := approvalSettingsMap[REQUIRED_APPROVAL_TAGS].([]interface{})
 	if len(tags) > 0 {
 		if required {
-			return ldapi.EnvironmentApprovalSettings{}, fmt.Errorf("invalid approval_settings config: required and required_approval_tags cannot be set simultaneously")
+			return ldapi.ApprovalSettings{}, fmt.Errorf("invalid approval_settings config: required and required_approval_tags cannot be set simultaneously")
 		}
 		stringTags := make([]string, len(tags))
 		for i := range tags {
@@ -85,7 +85,7 @@ func approvalSettingsFromResourceData(val interface{}) (ldapi.EnvironmentApprova
 	return settings, nil
 }
 
-func approvalSettingsToResourceData(settings ldapi.EnvironmentApprovalSettings) interface{} {
+func approvalSettingsToResourceData(settings ldapi.ApprovalSettings) interface{} {
 	transformed := map[string]interface{}{
 		CAN_REVIEW_OWN_REQUEST:     settings.CanReviewOwnRequest,
 		MIN_NUM_APPROVALS:          settings.MinNumApprovals,

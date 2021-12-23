@@ -6,7 +6,7 @@ import (
 	"net/http"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	ldapi "github.com/launchdarkly/api-client-go"
+	ldapi "github.com/launchdarkly/api-client-go/v7"
 )
 
 func baseWebhookSchema() map[string]*schema.Schema {
@@ -37,7 +37,7 @@ func webhookRead(d *schema.ResourceData, meta interface{}, isDataSource bool) er
 	}
 
 	webhookRaw, res, err := handleRateLimit(func() (interface{}, *http.Response, error) {
-		return client.ld.WebhooksApi.GetWebhook(client.ctx, webhookID)
+		return client.ld.WebhooksApi.GetWebhook(client.ctx, webhookID).Execute()
 	})
 	webhook := webhookRaw.(ldapi.Webhook)
 	if isStatusNotFound(res) && !isDataSource {
@@ -48,7 +48,13 @@ func webhookRead(d *schema.ResourceData, meta interface{}, isDataSource bool) er
 	if err != nil {
 		return fmt.Errorf("failed to get webhook with id %q: %s", webhookID, handleLdapiErr(err))
 	}
-	statements := policyStatementsToResourceData(webhook.Statements)
+	if webhook.Statements != nil {
+		statements := policyStatementsToResourceData(*webhook.Statements)
+		err = d.Set(STATEMENTS, statements)
+		if err != nil {
+			return fmt.Errorf("failed to set statements on webhook with id %q: %v", webhookID, err)
+		}
+	}
 
 	if isDataSource {
 		d.SetId(webhook.Id)
@@ -57,11 +63,6 @@ func webhookRead(d *schema.ResourceData, meta interface{}, isDataSource bool) er
 	_ = d.Set(SECRET, webhook.Secret)
 	_ = d.Set(ON, webhook.On)
 	_ = d.Set(NAME, webhook.Name)
-
-	err = d.Set(STATEMENTS, statements)
-	if err != nil {
-		return fmt.Errorf("failed to set statements on webhook with id %q: %v", webhookID, err)
-	}
 
 	err = d.Set(TAGS, webhook.Tags)
 	if err != nil {

@@ -96,9 +96,12 @@ resource "launchdarkly_feature_flag" "json_example" {
 
 - `temporary` - (Optional) Specifies whether the flag is a temporary flag.
 
-- `include_in_snippet` - (Optional) Specifies whether this flag should be made available to the client-side JavaScript SDK.
+- `include_in_snippet` - **Deprecated** (Optional) Specifies whether this flag should be made available to the client-side JavaScript SDK using the client-side Id. This value gets its default from your project configuration if not set. `include_in_snippet` is now deprecated. Please migrate to `client_side_availability.using_environment_id` to maintain future compatability.
+
+- `client_side_availability` - (Optional) A block describing whether this flag should be made available to the client-side JavaScript SDK using the client-side Id, mobile key, or both. This value gets its default from your project configuration if not set. To learn more, read [Nested Client-Side Availability Block](#nested-client-side-availability-block).
 
 - `custom_properties` - (Optional) List of nested blocks describing the feature flag's [custom properties](https://docs.launchdarkly.com/docs/custom-properties). To learn more, read [Nested Custom Properties](#nested-custom-properties).
+
 
 ### Nested Variations Blocks
 
@@ -125,6 +128,14 @@ Nested `defaults` blocks have the following structure:
 - `on_variation` - (Required) The index of the variation the flag will default to in all new environments when on.
 
 - `off_variation` - (Required) The index of the variation the flag will default to in all new environments when off.
+
+### Nested Client-Side Availibility Block
+
+The nested `client_side_availability` block has the following structure:
+
+- `using_environment_id` - (Optional) Whether this flag is available to SDKs using the client-side ID.
+
+- `using_mobile_key` - (Optional) Whether this flag is available to SDKs using a mobile key.
 
 ### Nested Custom Properties
 

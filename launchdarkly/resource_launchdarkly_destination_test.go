@@ -521,7 +521,7 @@ func testAccCheckDestinationExists(resourceName string) resource.TestCheckFunc {
 		if err != nil {
 			return err
 		}
-		_, _, err = client.ld.DataExportDestinationsApi.GetDestination(client.ctx, projKey, envKey, destID)
+		_, _, err = client.ld.DataExportDestinationsApi.GetDestination(client.ctx, projKey, envKey, destID).Execute()
 		if err != nil {
 			return fmt.Errorf("error getting destination: %s", err)
 		}

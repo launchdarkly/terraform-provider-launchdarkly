@@ -9,7 +9,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
-	ldapi "github.com/launchdarkly/api-client-go"
+	ldapi "github.com/launchdarkly/api-client-go/v7"
 	"github.com/stretchr/testify/require"
 )
 
@@ -31,7 +31,7 @@ type testSegmentUpdate struct {
 
 func testAccDataSourceSegmentCreate(client *Client, projectKey, segmentKey string, properties testSegmentUpdate) (*ldapi.UserSegment, error) {
 	envKey := "test"
-	projectBody := ldapi.ProjectBody{
+	projectBody := ldapi.ProjectPost{
 		Name: "Terraform Segment DS Test",
 		Key:  projectKey,
 	}
@@ -40,27 +40,29 @@ func testAccDataSourceSegmentCreate(client *Client, projectKey, segmentKey strin
 		return nil, err
 	}
 
-	segmentBody := ldapi.UserSegmentBody{
+	segmentBody := ldapi.SegmentBody{
 		Name:        "Data Source Test Segment",
 		Key:         segmentKey,
-		Description: "test description",
-		Tags:        []string{"terraform"},
+		Description: ldapi.PtrString("test description"),
+		Tags:        &[]string{"terraform"},
 	}
 	_, _, err = handleRateLimit(func() (interface{}, *http.Response, error) {
-		return client.ld.UserSegmentsApi.PostUserSegment(client.ctx, project.Key, envKey, segmentBody)
+		return client.ld.SegmentsApi.PostSegment(client.ctx, project.Key, envKey).SegmentBody(segmentBody).Execute()
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to create segment %q in project %q: %s", segmentKey, projectKey, handleLdapiErr(err))
 	}
 
-	patch := []ldapi.PatchOperation{
-		patchReplace("/included", properties.Included),
-		patchReplace("/excluded", properties.Excluded),
-		patchReplace("/rules", properties.Rules),
+	patch := ldapi.PatchWithComment{
+		Patch: []ldapi.PatchOperation{
+			patchReplace("/included", properties.Included),
+			patchReplace("/excluded", properties.Excluded),
+			patchReplace("/rules", properties.Rules),
+		},
 	}
 	rawSegment, _, err := handleRateLimit(func() (interface{}, *http.Response, error) {
 		return handleNoConflict(func() (interface{}, *http.Response, error) {
-			return client.ld.UserSegmentsApi.PatchUserSegment(client.ctx, projectKey, envKey, segmentKey, patch)
+			return client.ld.SegmentsApi.PatchSegment(client.ctx, projectKey, envKey, segmentKey).PatchWithComment(patch).Execute()
 		})
 	})
 	if err != nil {
@@ -83,7 +85,7 @@ func TestAccDataSourceSegment_noMatchReturnsError(t *testing.T) {
 	segmentKey := "bad-segment-key"
 	client, err := newClient(os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN), os.Getenv(LAUNCHDARKLY_API_HOST), false)
 	require.NoError(t, err)
-	_, err = testAccDataSourceProjectCreate(client, ldapi.ProjectBody{Name: "Segment DS No Match Test", Key: projectKey})
+	_, err = testAccDataSourceProjectCreate(client, ldapi.ProjectPost{Name: "Segment DS No Match Test", Key: projectKey})
 	require.NoError(t, err)
 
 	defer func() {

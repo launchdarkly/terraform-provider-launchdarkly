@@ -9,7 +9,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/structure"
-	ldapi "github.com/launchdarkly/api-client-go"
+	ldapi "github.com/launchdarkly/api-client-go/v7"
 )
 
 const (
@@ -168,30 +168,38 @@ func variationsFromResourceData(d *schema.ResourceData) ([]ldapi.Variation, erro
 func boolVariationFromResourceData(variation interface{}) ldapi.Variation {
 	variationMap := variation.(map[string]interface{})
 	v := variationMap[VALUE].(string) == "true"
-	return ldapi.Variation{
-		Name:        variationMap[NAME].(string),
-		Description: variationMap[DESCRIPTION].(string),
-		Value:       ptr(v),
+	transformed := ldapi.Variation{
+		Value: ptr(v),
 	}
+	name := variationMap[NAME].(string)
+	if name != "" {
+		transformed.Name = &name
+	}
+	description := variationMap[DESCRIPTION].(string)
+	if description != "" {
+		transformed.Description = &description
+	}
+	return transformed
 }
 
 func stringVariationFromResourceData(variation interface{}) ldapi.Variation {
-	var v interface{}
+	var transformed ldapi.Variation
 	if variation == nil { // handle empty string value
-		v = ""
-		return ldapi.Variation{
-			Name:        "",
-			Description: "",
-			Value:       &v,
-		}
+		transformed.Value = strPtr("")
+		return transformed
 	}
 	variationMap := variation.(map[string]interface{})
-	v = variationMap[VALUE]
-	return ldapi.Variation{
-		Name:        variationMap[NAME].(string),
-		Description: variationMap[DESCRIPTION].(string),
-		Value:       &v,
+	v := variationMap[VALUE]
+	transformed.Value = &v
+	name := variationMap[NAME].(string)
+	if name != "" {
+		transformed.Name = &name
 	}
+	description := variationMap[DESCRIPTION].(string)
+	if description != "" {
+		transformed.Description = &description
+	}
+	return transformed
 }
 
 func numberVariationFromResourceData(variation interface{}) (ldapi.Variation, error) {
@@ -201,11 +209,16 @@ func numberVariationFromResourceData(variation interface{}) (ldapi.Variation, er
 	if err != nil {
 		return ldapi.Variation{}, fmt.Errorf("%q is an invalid number variation value. %v", stringValue, err)
 	}
-	return ldapi.Variation{
-		Name:        variationMap[NAME].(string),
-		Description: variationMap[DESCRIPTION].(string),
-		Value:       ptr(v),
-	}, nil
+	transformed := ldapi.Variation{Value: ptr(v)}
+	name := variationMap[NAME].(string)
+	if name != "" {
+		transformed.Name = &name
+	}
+	description := variationMap[DESCRIPTION].(string)
+	if description != "" {
+		transformed.Description = &description
+	}
+	return transformed, nil
 }
 
 func jsonVariationFromResourceData(variation interface{}) (ldapi.Variation, error) {
@@ -216,11 +229,16 @@ func jsonVariationFromResourceData(variation interface{}) (ldapi.Variation, erro
 	if err != nil {
 		return ldapi.Variation{}, fmt.Errorf("%q is an invalid json variation value. %v", stringValue, err)
 	}
-	return ldapi.Variation{
-		Name:        variationMap[NAME].(string),
-		Description: variationMap[DESCRIPTION].(string),
-		Value:       ptr(v),
-	}, nil
+	transformed := ldapi.Variation{Value: ptr(v)}
+	name := variationMap[NAME].(string)
+	if name != "" {
+		transformed.Name = &name
+	}
+	description := variationMap[DESCRIPTION].(string)
+	if description != "" {
+		transformed.Description = &description
+	}
+	return transformed, nil
 }
 
 func stringifyValue(value interface{}) string {
@@ -257,7 +275,7 @@ func variationsToResourceData(variations []ldapi.Variation, variationType string
 	transformed := make([]interface{}, 0, len(variations))
 
 	for _, variation := range variations {
-		v, err := variationValueToString(variation.Value, variationType)
+		v, err := variationValueToString(&variation.Value, variationType)
 		if err != nil {
 			return nil, err
 		}
@@ -273,11 +291,10 @@ func variationsToResourceData(variations []ldapi.Variation, variationType string
 
 func variationsToVariationType(variations []ldapi.Variation) (string, error) {
 	// since all variations have a uniform type, checking the first variation is sufficient
-	valPtr := variations[0].Value
-	if valPtr == nil {
-		return "", fmt.Errorf("nil variation value: %v", valPtr)
+	variationValue := variations[0].Value
+	if variationValue == nil {
+		return "", fmt.Errorf("nil variation value: %v", variationValue)
 	}
-	variationValue := *valPtr
 	var variationType string
 	switch variationValue.(type) {
 	case bool:

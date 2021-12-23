@@ -99,7 +99,7 @@ The nested `fallthrough` (previously `flag_fallthrough`) block has the following
 
 - `variation` - (Optional) The default integer variation index to serve if no `prerequisites`, `target`, or `rules` apply. You must specify either `variation` or `rollout_weights`.
 
-- `rollout_weights` - (Optional) List of integer percentage rollout weights (in thousandths of a percent) to apply to each variation if no `prerequisites`, `target`, or `rules` apply. The sum of the `rollout_weights` must equal 100000. You must specify either `variation` or `rollout_weights`.
+- `rollout_weights` - (Optional) List of integer percentage rollout weights (in thousandths of a percent) to apply to each variation if no `prerequisites`, `target`, or `rules` apply. The sum of the `rollout_weights` must equal 100000 and the number of rollout weights specified in the array must match the number of flag variations. You must specify either `variation` or `rollout_weights`.
 
 - `bucket_by` - (Optional) Group percentage rollout by a custom attribute. This argument is only valid if `rollout_weights` is also specified.
 
@@ -111,7 +111,7 @@ Nested `rules` blocks have the following structure:
 
 - `variation` - (Optional) The integer variation index to serve if the rule clauses evaluate to `true`. You must specify either `variation` or `rollout_weights`.
 
-- `rollout_weights` - (Optional) List of integer percentage rollout weights (in thousandths of a percent) to apply to each variation if the rule clauses evaluates to `true`. The sum of the `rollout_weights` must equal 100000. You must specify either `variation` or `rollout_weights`.
+- `rollout_weights` - (Optional) List of integer percentage rollout weights (in thousandths of a percent) to apply to each variation if the rule clauses evaluates to `true`. The sum of the `rollout_weights` must equal 100000 and the number of rollout weights specified in the array must match the number of flag variations. You must specify either `variation` or `rollout_weights`.
 
 - `bucket_by` - (Optional) Group percentage rollout by a custom attribute. This argument is only valid if `rollout_weights` is also specified.
 
@@ -133,7 +133,7 @@ Nested `fallthrough` blocks have the following structure:
 
 - `variation` - (Optional) The integer variation index to serve if the rule clauses evaluate to `true`. You must specify either `variation` or `rollout_weights`.
 
-- `rollout_weights` - (Optional) List of integer percentage rollout weights (in thousandths of a percent) to apply to each variation if the rule clauses evaluates to `true`. The sum of the `rollout_weights` must equal 100000. You must specify either `variation` or `rollout_weights`.
+- `rollout_weights` - (Optional) List of integer percentage rollout weights (in thousandths of a percent) to apply to each variation if the rule clauses evaluates to `true`. The sum of the `rollout_weights` must equal 100000 and the number of rollout weights specified in the array must match the number of flag variations. You must specify either `variation` or `rollout_weights`.
 
 ## Attributes Reference
 
