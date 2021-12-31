@@ -51,10 +51,13 @@ resource "launchdarkly_project" "example" {
 - `name` - (Required) The project's name.
 
 - `environments` - (Required) List of nested `environments` blocks describing LaunchDarkly environments that belong to the project. When managing LaunchDarkly projects in Terraform, you should always manage your environments as nested project resources. To learn more, read [Nested Environments Blocks](#nested-environments-blocks).
+### Nested Environments Blocks
 
 -> **Note:** Mixing the use of nested `environments` blocks and [`launchdarkly_environment`](/docs/providers/launchdarkly/r/environment.html) resources is not recommended. `launchdarkly_environment` resources should only be used when the encapsulating project is not managed in Terraform.
 
-- `include_in_snippet - (Optional) Whether feature flags created under the project should be available to client-side SDKs by default.
+- `include_in_snippet` - **Deprecated** (Optional) Whether feature flags created under the project should be available to client-side SDKs by default. Please migrate to `default_client_side_availability` to maintain future compatibility.
+
+- `default_client_side_availability` - (Optional) A block describing which client-side SDKs can use new flags by default. To learn more, read [Nested Client Side Availability Block](#nested-client-side-availability-block).
 
 - `tags` - (Optional) The project's set of tags.
 
@@ -95,6 +98,14 @@ Nested environments `approval_settings` blocks have the following structure:
 - `can_apply_declined_changes` - Set to `true` if changes can be applied as long as the `min_num_approvals` is met, regardless of whether any reviewers have declined a request. Defaults to `true`.
 
 - `required_approval_tags` - An array of tags used to specify which flags with those tags require approval. You may only set `required_approval_tags` if `required` is not set to `true` and vice versa.
+
+### Nested Client side Availibility Block
+
+The nested `default_client_side_availability` block describes which client-side SDKs can use new flags by default. To learn more about this setting, read [Making flags available to client-side and mobile SDKs](https://docs.launchdarkly.com/home/getting-started/feature-flags#making-flags-available-to-client-side-and-mobile-sdks). This block has the following structure:
+
+- `using_environment_id` - (Required) Whether feature flags created under the project are available to JavaScript SDKs using the client-side ID by default. Defaults to `false` when not using `default_client_side_availability`.
+
+- `using_mobile_key` - (Required) Whether feature flags created under the project are available to mobile SDKs, and other non-JavaScript SDKs, using a mobile key by default. Defaults to `true` when not using `default_client_side_availability`.
 
 ## Import
 

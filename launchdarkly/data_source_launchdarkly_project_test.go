@@ -106,8 +106,11 @@ func TestAccDataSourceProject_exists(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "name", project.Name),
 					resource.TestCheckResourceAttr(resourceName, "id", project.Id),
 					resource.TestCheckResourceAttr(resourceName, "tags.#", "1"),
+					// TODO: remove deprecated client_side_availability attribute tests pending next major release
 					resource.TestCheckResourceAttr(resourceName, "client_side_availability.0.using_environment_id", "false"),
 					resource.TestCheckResourceAttr(resourceName, "client_side_availability.0.using_mobile_key", "false"),
+					resource.TestCheckResourceAttr(resourceName, "default_client_side_availability.0.using_environment_id", "false"),
+					resource.TestCheckResourceAttr(resourceName, "default_client_side_availability.0.using_mobile_key", "false"),
 				),
 			},
 		},

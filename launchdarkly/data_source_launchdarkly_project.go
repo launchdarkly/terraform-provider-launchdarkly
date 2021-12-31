@@ -18,8 +18,9 @@ func dataSourceProject() *schema.Resource {
 				Computed: true,
 			},
 			CLIENT_SIDE_AVAILABILITY: {
-				Type:     schema.TypeList,
-				Computed: true,
+				Type:       schema.TypeList,
+				Computed:   true,
+				Deprecated: "'client_side_availability' is now deprecated. Please migrate to 'default_client_side_availability' to maintain future compatability.",
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
 						"using_environment_id": {
@@ -29,6 +30,22 @@ func dataSourceProject() *schema.Resource {
 						"using_mobile_key": {
 							Type:     schema.TypeBool,
 							Optional: true,
+						},
+					},
+				},
+			},
+			DEFAULT_CLIENT_SIDE_AVAILABILITY: {
+				Type:     schema.TypeList,
+				Computed: true,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"using_environment_id": {
+							Type:     schema.TypeBool,
+							Required: true,
+						},
+						"using_mobile_key": {
+							Type:     schema.TypeBool,
+							Required: true,
 						},
 					},
 				},

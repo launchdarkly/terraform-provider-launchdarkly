@@ -10,6 +10,40 @@ import (
 	ldapi "github.com/launchdarkly/api-client-go/v7"
 )
 
+// We assign a custom diff in cases where the customer has not assigned a default for CSA or IIS in config
+//  in order to respect the LD backend defaults and reflect that in our plans
+func customizeProjectDiff(ctx context.Context, diff *schema.ResourceDiff, v interface{}) error {
+	config := diff.GetRawConfig()
+
+	// Below values will exist due to the schema, we need to check if they are all null
+	snippetInConfig := config.GetAttr(INCLUDE_IN_SNIPPET)
+	csaInConfig := config.GetAttr(DEFAULT_CLIENT_SIDE_AVAILABILITY)
+
+	// If we have no keys in the CSA block in the config (length is 0) we know the customer hasn't set any CSA values
+	csaKeys := csaInConfig.AsValueSlice()
+	if len(csaKeys) == 0 {
+		// When we have no values for either clienSideAvailability or includeInSnippet
+		// Force an UPDATE call by setting a new value for INCLUDE_IN_SNIPPET in the diff according to project defaults
+		if snippetInConfig.IsNull() {
+			// We set our values to the LD backend defaults in order to guarantee an update call happening
+			// If we don't do this, we can run into an edge case described below
+			// IF previous value of INCLUDE_IN_SNIPPET was false
+			// AND the project default value for INCLUDE_IN_SNIPPET is true
+			// AND the customer removes the INCLUDE_IN_SNIPPET key from the config without replacing with defaultCSA
+			// The read would assume no changes are needed, HOWEVER we need to jump back to LD set defaults
+			// Hence the setting below
+			diff.SetNew(INCLUDE_IN_SNIPPET, false)
+			diff.SetNew(CLIENT_SIDE_AVAILABILITY, []map[string]interface{}{{
+				USING_ENVIRONMENT_ID: false,
+				USING_MOBILE_KEY:     true,
+			}})
+
+		}
+
+	}
+
+	return nil
+}
 func resourceProject() *schema.Resource {
 	return &schema.Resource{
 		Create: resourceProjectCreate,
@@ -17,6 +51,8 @@ func resourceProject() *schema.Resource {
 		Update: resourceProjectUpdate,
 		Delete: resourceProjectDelete,
 		Exists: resourceProjectExists,
+
+		CustomizeDiff: customizeProjectDiff,
 
 		Importer: &schema.ResourceImporter{
 			StateContext: resourceProjectImport,
@@ -36,10 +72,35 @@ func resourceProject() *schema.Resource {
 				Description: "A human-readable name for your project",
 			},
 			INCLUDE_IN_SNIPPET: {
-				Type:        schema.TypeBool,
-				Optional:    true,
-				Description: "Whether feature flags created under the project should be available to client-side SDKs by default",
-				Default:     false,
+				Type:          schema.TypeBool,
+				Optional:      true,
+				Description:   "Whether feature flags created under the project should be available to client-side SDKs by default",
+				Computed:      true,
+				Deprecated:    "'include_in_snippet' is now deprecated. Please migrate to 'default_client_side_availability' to maintain future compatability.",
+				ConflictsWith: []string{DEFAULT_CLIENT_SIDE_AVAILABILITY},
+			},
+			DEFAULT_CLIENT_SIDE_AVAILABILITY: {
+				Type:     schema.TypeList,
+				Optional: true,
+				// Can't set defaults for lists/sets :( https://github.com/hashicorp/terraform-plugin-sdk/issues/142
+				// Since we can't set defaults, we run into misleading plans when users remove this attribute from their config
+				// As the plan output suggests the values will be changed to -> null, when we actually have LD set defaults of false and true respectively
+				// Sorting that by using Computed for now
+				Computed:      true,
+				Description:   "List determining which SDKs have access to new flags created under the project by default",
+				ConflictsWith: []string{INCLUDE_IN_SNIPPET},
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						USING_ENVIRONMENT_ID: {
+							Type:     schema.TypeBool,
+							Required: true,
+						},
+						USING_MOBILE_KEY: {
+							Type:     schema.TypeBool,
+							Required: true,
+						},
+					},
+				},
 			},
 			TAGS: tagsSchema(),
 			ENVIRONMENTS: {
@@ -95,12 +156,38 @@ func resourceProjectUpdate(d *schema.ResourceData, metaRaw interface{}) error {
 	projectKey := d.Get(KEY).(string)
 	projName := d.Get(NAME)
 	projTags := stringsFromResourceData(d, TAGS)
-	includeInSnippet := d.Get(INCLUDE_IN_SNIPPET)
+	includeInSnippet := d.Get(INCLUDE_IN_SNIPPET).(bool)
+
+	snippetHasChange := d.HasChange(INCLUDE_IN_SNIPPET)
+	clientSideHasChange := d.HasChange(DEFAULT_CLIENT_SIDE_AVAILABILITY)
+	// GetOkExists is 'deprecated', but needed as optional booleans set to false return a 'false' ok value from GetOk
+	// Also not really deprecated as they are keeping it around pending a replacement https://github.com/hashicorp/terraform-plugin-sdk/pull/350#issuecomment-597888969
+	_, includeInSnippetOk := d.GetOkExists(INCLUDE_IN_SNIPPET)
+	_, clientSideAvailabilityOk := d.GetOk(DEFAULT_CLIENT_SIDE_AVAILABILITY)
+	defaultClientSideAvailability := &ldapi.ClientSideAvailabilityPost{
+		UsingEnvironmentId: d.Get(fmt.Sprintf("%s.0.using_environment_id", DEFAULT_CLIENT_SIDE_AVAILABILITY)).(bool),
+		UsingMobileKey:     d.Get(fmt.Sprintf("%s.0.using_mobile_key", DEFAULT_CLIENT_SIDE_AVAILABILITY)).(bool),
+	}
 
 	patch := []ldapi.PatchOperation{
 		patchReplace("/name", &projName),
 		patchReplace("/tags", &projTags),
-		patchReplace("/includeInSnippetByDefault", includeInSnippet),
+	}
+
+	if clientSideAvailabilityOk && clientSideHasChange {
+		patch = append(patch, patchReplace("/defaultClientSideAvailability", defaultClientSideAvailability))
+	} else if includeInSnippetOk && snippetHasChange {
+		// If includeInSnippet is set, still use clientSideAvailability behind the scenes in order to switch UsingMobileKey to false if needed
+		patch = append(patch, patchReplace("/defaultClientSideAvailability", &ldapi.ClientSideAvailabilityPost{
+			UsingEnvironmentId: includeInSnippet,
+			UsingMobileKey:     true,
+		}))
+	} else {
+		// If the user doesn't set either CSA or IIS in config, we set defaults to match API behaviour
+		patch = append(patch, patchReplace("/defaultClientSideAvailability", &ldapi.ClientSideAvailabilityPost{
+			UsingEnvironmentId: false,
+			UsingMobileKey:     true,
+		}))
 	}
 
 	_, _, err := handleRateLimit(func() (interface{}, *http.Response, error) {

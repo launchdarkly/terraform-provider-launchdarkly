@@ -1,3 +1,15 @@
+## [UNRELEASED] (unreleased)
+
+FEATURES:
+
+- Added `default_client_side_availability` block to the `launchdarkly_project` resource to specify whether feature flags created under the project should be available to client-side SDKs by default.
+
+NOTES: 
+
+- The `launchdarkly_project` resource's argument `include_in_snippet` has been deprecated in favor of `default_client_side_availability`. Please update your config to use `default_client_side_availability` in order to maintain compatibility with future versions.
+
+- The `launchdarkly_project` data source's attribute `client_side_availability` has been renamed to `default_client_side_availability`. Please update your config to use `default_client_side_availability` in order to maintain compatibility with future versions.
+
 ## [2.2.0] (December 23, 2021)
 
 ENHANCEMENTS:

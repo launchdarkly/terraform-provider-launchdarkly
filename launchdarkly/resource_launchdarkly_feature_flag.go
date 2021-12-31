@@ -10,7 +10,7 @@ import (
 )
 
 // We assign a custom diff in cases where the customer has not assigned CSA or IIS in config for a flag in order to respect project level defaults
-func customizeDiff(ctx context.Context, diff *schema.ResourceDiff, v interface{}) error {
+func customizeFlagDiff(ctx context.Context, diff *schema.ResourceDiff, v interface{}) error {
 	config := diff.GetRawConfig()
 	client := v.(*Client)
 	projectKey := diff.Get(PROJECT_KEY).(string)
@@ -70,7 +70,7 @@ func resourceFeatureFlag() *schema.Resource {
 			State: resourceFeatureFlagImport,
 		},
 		Schema:        schemaMap,
-		CustomizeDiff: customizeDiff,
+		CustomizeDiff: customizeFlagDiff,
 	}
 }
 
