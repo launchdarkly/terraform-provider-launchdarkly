@@ -17,29 +17,11 @@ jobs:
           name: go vet
           command: make vet
       - run:
-          name: Test Custom Properties
-          command: TESTARGS="-run TestCustomProperties" make testacc
+          name: Run unit tests
+          command: TESTARGS="-v" make test
       - run:
           name: Test Data Sources
           command: TESTARGS="-run TestAccDataSource" make testacc
-      - run:
-          name: Test Default Variations
-          command: TESTARGS="-run TestDefaultVariations" make testacc
-      - run:
-          name: Test Environment Helper
-          command: TESTARGS="-run TestEnvironmentPost" make testacc
-      - run:
-          name: Test Target Helper
-          command: TESTARGS="-run TestTargets" make testacc
-      - run:
-          name: Test Variations Helper
-          command: TESTARGS="-run TestVariations" make testacc
-      - run:
-          name: Test Handlers
-          command: TESTARGS="-run TestHandle" make testacc
-      - run:
-          name: Test Policy Statements
-          command: TESTARGS="-run TestPolicyStatement" make testacc
       - run:
           name: Test Access Token Resource
           command: TESTARGS="-run TestAccAccessToken" make testacc

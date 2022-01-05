@@ -192,7 +192,7 @@ func environmentsToResourceDataMap(envs []ldapi.Environment) map[string]envResou
 }
 
 func environmentToResourceData(env ldapi.Environment) envResourceData {
-	return envResourceData{
+	envData := envResourceData{
 		KEY:                  env.Key,
 		NAME:                 env.Name,
 		API_KEY:              env.ApiKey,
@@ -205,8 +205,11 @@ func environmentToResourceData(env ldapi.Environment) envResourceData {
 		REQUIRE_COMMENTS:     env.RequireComments,
 		CONFIRM_CHANGES:      env.ConfirmChanges,
 		TAGS:                 env.Tags,
-		APPROVAL_SETTINGS:    approvalSettingsToResourceData(*env.ApprovalSettings),
 	}
+	if env.ApprovalSettings != nil {
+		envData[APPROVAL_SETTINGS] = approvalSettingsToResourceData(*env.ApprovalSettings)
+	}
+	return envData
 }
 
 func rawEnvironmentConfigsToKeyList(rawEnvs []interface{}) []string {
@@ -250,7 +253,13 @@ func environmentRead(d *schema.ResourceData, meta interface{}, isDataSource bool
 	_ = d.Set(TAGS, env.Tags)
 	_ = d.Set(REQUIRE_COMMENTS, env.RequireComments)
 	_ = d.Set(CONFIRM_CHANGES, env.ConfirmChanges)
-	_ = d.Set(APPROVAL_SETTINGS, approvalSettingsToResourceData(*env.ApprovalSettings))
+
+	if env.ApprovalSettings != nil {
+		err = d.Set(APPROVAL_SETTINGS, approvalSettingsToResourceData(*env.ApprovalSettings))
+		if err != nil {
+			return err
+		}
+	}
 
 	return nil
 }
