@@ -1,3 +1,19 @@
+## [2.3.0] (January 4, 2022)
+
+FEATURES:
+
+- Added `default_client_side_availability` block to the `launchdarkly_project` resource to specify whether feature flags created under the project should be available to client-side SDKs by default.
+
+BUG FIXES:
+
+- Fixed a bug in the `launchdarkly_project` and `launchdarkly_environment` resources which caused Terraform to crash when environment approvals settings are omitted from the LaunchDarkly API response.
+
+NOTES:
+
+- The `launchdarkly_project` resource's argument `include_in_snippet` has been deprecated in favor of `default_client_side_availability`. Please update your config to use `default_client_side_availability` in order to maintain compatibility with future versions.
+
+- The `launchdarkly_project` data source's attribute `client_side_availability` has been renamed to `default_client_side_availability`. Please update your config to use `default_client_side_availability` in order to maintain compatibility with future versions.
+
 ## [2.2.0] (December 23, 2021)
 
 ENHANCEMENTS:
@@ -7,9 +23,9 @@ ENHANCEMENTS:
 
 FEATURES:
 
-- Added `client_side_availability` block to the `launchdarkly_feature_flag` resource to allow setting whether this flag should be made available to the client-side JavaScript SDK using the client-side ID, mobile key, or both. 
+- Added `client_side_availability` block to the `launchdarkly_feature_flag` resource to allow setting whether this flag should be made available to the client-side JavaScript SDK using the client-side ID, mobile key, or both.
 
-NOTES: 
+NOTES:
 
 - The `launchdarkly_feature_flag` resource's argument `include_in_snippet` has been deprecated in favor of `client_side_availability`. Please update your config to use `client_side_availability` in order to maintain compatibility with future versions.
 

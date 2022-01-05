@@ -134,6 +134,23 @@ resource "launchdarkly_project" "env_test" {
 	}
 }	
 `
+
+	testAccProjectClientSideAvailabilityTrue = `
+resource "launchdarkly_project" "test" {
+	key = "%s"
+	name = "test project"
+	default_client_side_availability {
+		using_environment_id = true
+		using_mobile_key = true
+	}
+	tags = [ "terraform", "test" ]
+	environments {
+	  name  = "Test Environment"
+	  key   = "test-env"
+	  color = "010101"
+	}
+}
+`
 )
 
 func TestAccProject_Create(t *testing.T) {
@@ -214,6 +231,57 @@ func TestAccProject_Update(t *testing.T) {
 					resource.TestCheckNoResourceAttr(resourceName, "tags"),
 					resource.TestCheckNoResourceAttr(resourceName, "tags.#"),
 					resource.TestCheckResourceAttr(resourceName, "include_in_snippet", "false"),
+				),
+			},
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
+		},
+	})
+}
+
+func TestAccProject_CSA_Update_And_Revert(t *testing.T) {
+	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	resourceName := "launchdarkly_project.test"
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck: func() {
+			testAccPreCheck(t)
+		},
+		Providers: testAccProviders,
+		Steps: []resource.TestStep{
+			{
+				Config: fmt.Sprintf(testAccProjectCreate, projectKey),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckProjectExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, "key", projectKey),
+					resource.TestCheckResourceAttr(resourceName, "name", "test project"),
+					resource.TestCheckResourceAttr(resourceName, "include_in_snippet", "false"),
+					resource.TestCheckResourceAttr(resourceName, "default_client_side_availability.0.using_environment_id", "false"),
+					resource.TestCheckResourceAttr(resourceName, "default_client_side_availability.0.using_mobile_key", "true"),
+				),
+			},
+			{
+				Config: fmt.Sprintf(testAccProjectClientSideAvailabilityTrue, projectKey),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckProjectExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, "key", projectKey),
+					resource.TestCheckResourceAttr(resourceName, "name", "test project"),
+					resource.TestCheckResourceAttr(resourceName, "include_in_snippet", "true"),
+					resource.TestCheckResourceAttr(resourceName, "default_client_side_availability.0.using_environment_id", "true"),
+					resource.TestCheckResourceAttr(resourceName, "default_client_side_availability.0.using_mobile_key", "true"),
+				),
+			},
+			{ // make sure that removal of optional attributes reverts them to their default value
+				Config: fmt.Sprintf(testAccProjectUpdateRemoveOptional, projectKey),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckProjectExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, "key", projectKey),
+					resource.TestCheckResourceAttr(resourceName, "name", "awesome test project"),
+					resource.TestCheckResourceAttr(resourceName, "include_in_snippet", "false"),
+					resource.TestCheckResourceAttr(resourceName, "default_client_side_availability.0.using_environment_id", "false"),
+					resource.TestCheckResourceAttr(resourceName, "default_client_side_availability.0.using_mobile_key", "true"),
 				),
 			},
 			{

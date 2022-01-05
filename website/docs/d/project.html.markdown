@@ -31,13 +31,16 @@ In addition to the arguments above, the resource exports the following attribute
 
 - `name` - The project's name.
 
-- `client_side_availability` - A map describing whether flags in this project are available to the client-side JavaScript SDK by default. To learn more, read [Nested Client-Side Availability Block](#nested-client-side-availability-block).
+- `client_side_availability` - **Deprecated** A map describing which client-side SDKs can use new flags by default. To learn more, read [Nested Client-Side Availability Block](#nested-client-side-availability-block).
+Please migrate to `default_client_side_availability` to maintain future compatability.
+
+- `default_client_side_availability` - A block describing which client-side SDKs can use new flags by default. To learn more, read [Nested Client-Side Availability Block](#nested-client-side-availability-block).
 
 - `tags` - The project's set of tags.
 
 ### Nested Client-Side Availibility Block
 
-The nested `client_side_availability` block has the following attributes:
+The nested `default_client_side_availability` block has the following attributes:
 
 - `using_environment_id` - When set to true, the flags in this project are available to SDKs using the client-side ID by default.
 

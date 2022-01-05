@@ -27,9 +27,18 @@ func projectRead(d *schema.ResourceData, meta interface{}, isDataSource bool) er
 	}
 
 	project := rawProject.(ldapi.Project)
-	// the Id needs to be set on reads for the data source, but it will mess up the state for resource reads
+	defaultCSA := *project.DefaultClientSideAvailability
+	clientSideAvailability := []map[string]interface{}{{
+		"using_environment_id": defaultCSA.UsingEnvironmentId,
+		"using_mobile_key":     defaultCSA.UsingMobileKey,
+	}}
+	// the Id and deprecated client_side_availability need to be set on reads for the data source, but it will mess up the state for resource reads
 	if isDataSource {
 		d.SetId(project.Id)
+		err = d.Set(CLIENT_SIDE_AVAILABILITY, clientSideAvailability)
+		if err != nil {
+			return fmt.Errorf("could not set client_side_availability on project with key %q: %v", project.Key, err)
+		}
 	}
 	_ = d.Set(KEY, project.Key)
 	_ = d.Set(NAME, project.Name)
@@ -68,27 +77,22 @@ func projectRead(d *schema.ResourceData, meta interface{}, isDataSource bool) er
 		if err != nil {
 			return fmt.Errorf("could not set environments on project with key %q: %v", project.Key, err)
 		}
+
+		err = d.Set(INCLUDE_IN_SNIPPET, project.IncludeInSnippetByDefault)
+		if err != nil {
+			return fmt.Errorf("could not set include_in_snippet on project with key %q: %v", project.Key, err)
+		}
 	}
 
 	err = d.Set(TAGS, project.Tags)
 	if err != nil {
 		return fmt.Errorf("could not set tags on project with key %q: %v", project.Key, err)
 	}
-	if isDataSource {
-		defaultCSA := *project.DefaultClientSideAvailability
-		clientSideAvailability := []map[string]interface{}{{
-			"using_environment_id": defaultCSA.UsingEnvironmentId,
-			"using_mobile_key":     defaultCSA.UsingMobileKey,
-		}}
-		err = d.Set(CLIENT_SIDE_AVAILABILITY, clientSideAvailability)
-		if err != nil {
-			return fmt.Errorf("could not set client_side_availability on project with key %q: %v", project.Key, err)
-		}
-	} else {
-		err = d.Set(INCLUDE_IN_SNIPPET, project.IncludeInSnippetByDefault)
-		if err != nil {
-			return fmt.Errorf("could not set include_in_snippet on project with key %q: %v", project.Key, err)
-		}
+
+	err = d.Set(DEFAULT_CLIENT_SIDE_AVAILABILITY, clientSideAvailability)
+	if err != nil {
+		return fmt.Errorf("could not set default_client_side_availability on project with key %q: %v", project.Key, err)
 	}
+
 	return nil
 }
