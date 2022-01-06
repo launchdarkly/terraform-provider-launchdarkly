@@ -107,17 +107,17 @@ func TestAccDataSourceWebhook_exists(t *testing.T) {
 			{
 				Config: fmt.Sprintf(testAccDataSourceWebhook, webhook.Id),
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttrSet(resourceName, "id"),
-					resource.TestCheckResourceAttr(resourceName, "id", webhook.Id),
-					resource.TestCheckResourceAttr(resourceName, "name", webhookName),
-					resource.TestCheckResourceAttr(resourceName, "url", webhook.Url),
-					resource.TestCheckResourceAttr(resourceName, "on", "true"),
+					resource.TestCheckResourceAttrSet(resourceName, ID),
+					resource.TestCheckResourceAttr(resourceName, ID, webhook.Id),
+					resource.TestCheckResourceAttr(resourceName, NAME, webhookName),
+					resource.TestCheckResourceAttr(resourceName, URL, webhook.Url),
+					resource.TestCheckResourceAttr(resourceName, ON, "true"),
 					resource.TestCheckResourceAttr(resourceName, "tags.#", "1"),
 					resource.TestCheckResourceAttr(resourceName, "statements.#", "1"),
 					resource.TestCheckResourceAttr(resourceName, "statements.0.resources.0", "proj/*"),
 					resource.TestCheckResourceAttr(resourceName, "statements.0.actions.0", "turnFlagOn"),
 					resource.TestCheckResourceAttr(resourceName, "statements.0.effect", "allow"),
-					resource.TestCheckResourceAttr(resourceName, "secret", ""), // since we set Sign to false
+					resource.TestCheckResourceAttr(resourceName, SECRET, ""), // since we set Sign to false
 
 				),
 			},

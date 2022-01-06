@@ -1,3 +1,11 @@
+## [2.4.0] (Unreleased)
+
+ENHANCEMENTS:
+
+- Updated tests to use the constant attribute keys defined in launchdarkly/keys.go
+
+- Added a pre-commit file with a hook to alphabetize launchdarkly/keys.go
+
 ## [2.3.0] (January 4, 2022)
 
 FEATURES:

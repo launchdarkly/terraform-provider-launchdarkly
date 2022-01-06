@@ -73,9 +73,9 @@ func TestAccCustomRole_Create(t *testing.T) {
 				Config: fmt.Sprintf(testAccCustomRoleCreate, key, name),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckCustomRoleExists(resourceName),
-					resource.TestCheckResourceAttr(resourceName, "key", key),
-					resource.TestCheckResourceAttr(resourceName, "name", "Custom role - "+name),
-					resource.TestCheckResourceAttr(resourceName, "description", "Deny all actions on production environments"),
+					resource.TestCheckResourceAttr(resourceName, KEY, key),
+					resource.TestCheckResourceAttr(resourceName, NAME, "Custom role - "+name),
+					resource.TestCheckResourceAttr(resourceName, DESCRIPTION, "Deny all actions on production environments"),
 					resource.TestCheckResourceAttr(resourceName, "policy.#", "1"),
 					resource.TestCheckResourceAttr(resourceName, "policy.0.actions.#", "1"),
 					resource.TestCheckResourceAttr(resourceName, "policy.0.actions.0", "*"),
@@ -102,9 +102,9 @@ func TestAccCustomRole_CreateWithStatements(t *testing.T) {
 				Config: fmt.Sprintf(testAccCustomRoleCreateWithStatements, key, name),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckCustomRoleExists(resourceName),
-					resource.TestCheckResourceAttr(resourceName, "key", key),
-					resource.TestCheckResourceAttr(resourceName, "name", "Custom role - "+name),
-					resource.TestCheckResourceAttr(resourceName, "description", "Allow all actions on staging environments"),
+					resource.TestCheckResourceAttr(resourceName, KEY, key),
+					resource.TestCheckResourceAttr(resourceName, NAME, "Custom role - "+name),
+					resource.TestCheckResourceAttr(resourceName, DESCRIPTION, "Allow all actions on staging environments"),
 					resource.TestCheckResourceAttr(resourceName, "policy.#", "0"),
 					resource.TestCheckResourceAttr(resourceName, "policy_statements.#", "1"),
 					resource.TestCheckResourceAttr(resourceName, "policy_statements.0.actions.#", "1"),
@@ -143,9 +143,9 @@ func TestAccCustomRole_Update(t *testing.T) {
 				Config: fmt.Sprintf(testAccCustomRoleUpdate, key, name),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckCustomRoleExists(resourceName),
-					resource.TestCheckResourceAttr(resourceName, "key", key),
-					resource.TestCheckResourceAttr(resourceName, "name", "Updated - "+name),
-					resource.TestCheckResourceAttr(resourceName, "description", ""), // should be empty after removal
+					resource.TestCheckResourceAttr(resourceName, KEY, key),
+					resource.TestCheckResourceAttr(resourceName, NAME, "Updated - "+name),
+					resource.TestCheckResourceAttr(resourceName, DESCRIPTION, ""), // should be empty after removal
 					resource.TestCheckResourceAttr(resourceName, "policy.#", "1"),
 					resource.TestCheckResourceAttr(resourceName, "policy.0.actions.#", "1"),
 					resource.TestCheckResourceAttr(resourceName, "policy.0.actions.0", "*"),
@@ -178,9 +178,9 @@ func TestAccCustomRole_UpdateWithStatements(t *testing.T) {
 				Config: fmt.Sprintf(testAccCustomRoleUpdateWithStatements, key, name),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckCustomRoleExists(resourceName),
-					resource.TestCheckResourceAttr(resourceName, "key", key),
-					resource.TestCheckResourceAttr(resourceName, "name", "Updated role - "+name),
-					resource.TestCheckResourceAttr(resourceName, "description", "Deny all actions on production environments"),
+					resource.TestCheckResourceAttr(resourceName, KEY, key),
+					resource.TestCheckResourceAttr(resourceName, NAME, "Updated role - "+name),
+					resource.TestCheckResourceAttr(resourceName, DESCRIPTION, "Deny all actions on production environments"),
 					resource.TestCheckResourceAttr(resourceName, "policy.#", "0"),
 					resource.TestCheckResourceAttr(resourceName, "policy_statements.#", "1"),
 					resource.TestCheckResourceAttr(resourceName, "policy_statements.0.actions.#", "1"),

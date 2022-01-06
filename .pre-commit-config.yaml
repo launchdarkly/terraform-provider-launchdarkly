@@ -1,0 +1,5 @@
+repos:
+  - repo: git@github.com:ashanbrown/gofmts
+    rev: v0.1.4
+    hooks:
+      - id: gofmts
