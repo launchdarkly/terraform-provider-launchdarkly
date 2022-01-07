@@ -64,7 +64,7 @@ func resourceProject() *schema.Resource {
 				Required:     true,
 				Description:  "The project's unique key",
 				ForceNew:     true,
-				ValidateFunc: validateKey(),
+				ValidateFunc: validateKeyAndLength(1, 20),
 			},
 			NAME: {
 				Type:        schema.TypeString,
