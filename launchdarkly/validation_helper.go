@@ -14,6 +14,16 @@ func validateKey() schema.SchemaValidateFunc {
 	)
 }
 
+func validateKeyAndLength(minLength, maxLength int) schema.SchemaValidateFunc {
+	return validation.All(
+		validation.StringMatch(
+			regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9_.-]*$`),
+			"Must contain only letters, numbers, '.', '-', or '_' and must start with an alphanumeric",
+		),
+		validation.StringLenBetween(minLength, maxLength),
+	)
+}
+
 func validateID() schema.SchemaValidateFunc {
 	return validation.All(
 		validation.StringMatch(regexp.MustCompile(`^[a-fA-F0-9]*$`), "Must be a 24 character hexadecimal string"),
