@@ -1,10 +1,12 @@
 package launchdarkly
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"strings"
 
+	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 	ldapi "github.com/launchdarkly/api-client-go/v7"
@@ -12,11 +14,11 @@ import (
 
 func resourceDestination() *schema.Resource {
 	return &schema.Resource{
-		Create: resourceDestinationCreate,
-		Read:   resourceDestinationRead,
-		Update: resourceDestinationUpdate,
-		Delete: resourceDestinationDelete,
-		Exists: resourceDestinationExists,
+		CreateContext: resourceDestinationCreate,
+		ReadContext:   resourceDestinationRead,
+		UpdateContext: resourceDestinationUpdate,
+		DeleteContext: resourceDestinationDelete,
+		Exists:        resourceDestinationExists,
 
 		Importer: &schema.ResourceImporter{
 			State: resourceDestinationImport,
@@ -24,11 +26,11 @@ func resourceDestination() *schema.Resource {
 
 		Schema: map[string]*schema.Schema{
 			PROJECT_KEY: {
-				Type:         schema.TypeString,
-				Required:     true,
-				ForceNew:     true,
-				Description:  "The LaunchDarkly project key",
-				ValidateFunc: validateKey(),
+				Type:             schema.TypeString,
+				Required:         true,
+				ForceNew:         true,
+				Description:      "The LaunchDarkly project key",
+				ValidateDiagFunc: validateKey(),
 			},
 			ENV_KEY: {
 				Type:        schema.TypeString,
@@ -43,11 +45,11 @@ func resourceDestination() *schema.Resource {
 			},
 			// kind can only be one of five types (kinesis, google-pubsub, mparticle, azure-event-hubs, or segment)
 			KIND: {
-				Type:         schema.TypeString,
-				Required:     true,
-				Description:  "The data export destination type. Available choices are 'kinesis', 'google-pubsub', 'segment', 'azure-event-hubs', and 'mparticle'",
-				ValidateFunc: validation.StringInSlice([]string{"kinesis", "google-pubsub", "mparticle", "azure-event-hubs", "segment"}, false),
-				ForceNew:     true,
+				Type:             schema.TypeString,
+				Required:         true,
+				Description:      "The data export destination type. Available choices are 'kinesis', 'google-pubsub', 'segment', 'azure-event-hubs', and 'mparticle'",
+				ValidateDiagFunc: validation.ToDiagFunc(validation.StringInSlice([]string{"kinesis", "google-pubsub", "mparticle", "azure-event-hubs", "segment"}, false)),
+				ForceNew:         true,
 			},
 			CONFIG: {
 				Type:        schema.TypeMap,
@@ -65,7 +67,7 @@ func resourceDestination() *schema.Resource {
 	}
 }
 
-func resourceDestinationCreate(d *schema.ResourceData, metaRaw interface{}) error {
+func resourceDestinationCreate(ctx context.Context, d *schema.ResourceData, metaRaw interface{}) diag.Diagnostics {
 	client := metaRaw.(*Client)
 	destinationProjKey := d.Get(PROJECT_KEY).(string)
 	destinationEnvKey := d.Get(ENV_KEY).(string)
@@ -75,7 +77,7 @@ func resourceDestinationCreate(d *schema.ResourceData, metaRaw interface{}) erro
 
 	destinationConfig, err := destinationConfigFromResourceData(d)
 	if err != nil {
-		return err
+		return diag.FromErr(err)
 	}
 
 	destinationBody := ldapi.DestinationPost{
@@ -88,20 +90,21 @@ func resourceDestinationCreate(d *schema.ResourceData, metaRaw interface{}) erro
 	destination, _, err := client.ld.DataExportDestinationsApi.PostDestination(client.ctx, destinationProjKey, destinationEnvKey).DestinationPost(destinationBody).Execute()
 	if err != nil {
 		d.SetId("")
-		return fmt.Errorf("failed to create destination with project key %q and env key %q: %s", destinationProjKey, destinationEnvKey, handleLdapiErr(err))
+		return diag.Errorf("failed to create destination with project key %q and env key %q: %s", destinationProjKey, destinationEnvKey, handleLdapiErr(err))
 	}
 
 	// destination defined in api-client-go/model_destination.go
 	d.SetId(strings.Join([]string{destinationProjKey, destinationEnvKey, *destination.Id}, "/"))
 
-	return resourceDestinationRead(d, metaRaw)
+	return resourceDestinationRead(ctx, d, metaRaw)
 }
 
-func resourceDestinationRead(d *schema.ResourceData, metaRaw interface{}) error {
+func resourceDestinationRead(ctx context.Context, d *schema.ResourceData, metaRaw interface{}) diag.Diagnostics {
+	var diags diag.Diagnostics
 	client := metaRaw.(*Client)
 	_, _, destinationID, err := destinationImportIDtoKeys(d.Id())
 	if err != nil {
-		return err
+		return diag.FromErr(err)
 	}
 
 	destinationProjKey := d.Get(PROJECT_KEY).(string)
@@ -111,11 +114,15 @@ func resourceDestinationRead(d *schema.ResourceData, metaRaw interface{}) error 
 
 	if isStatusNotFound(res) {
 		log.Printf("[WARN] failed to find destination with id: %q in project %q, environment: %q, removing from state", destinationID, destinationProjKey, destinationEnvKey)
+		diags = append(diags, diag.Diagnostic{
+			Severity: diag.Warning,
+			Summary:  fmt.Sprintf("[WARN] failed to find destination with id: %q in project %q, environment: %q, removing from state", destinationID, destinationProjKey, destinationEnvKey),
+		})
 		d.SetId("")
-		return nil
+		return diags
 	}
 	if err != nil {
-		return fmt.Errorf("failed to get destination with id %q: %s", destinationID, handleLdapiErr(err))
+		return diag.Errorf("failed to get destination with id %q: %s", destinationID, handleLdapiErr(err))
 	}
 
 	cfg := destinationConfigToResourceData(*destination.Kind, destination.Config)
@@ -127,14 +134,14 @@ func resourceDestinationRead(d *schema.ResourceData, metaRaw interface{}) error 
 	_ = d.Set(ON, destination.On)
 
 	d.SetId(strings.Join([]string{destinationProjKey, destinationEnvKey, *destination.Id}, "/"))
-	return nil
+	return diags
 }
 
-func resourceDestinationUpdate(d *schema.ResourceData, metaRaw interface{}) error {
+func resourceDestinationUpdate(ctx context.Context, d *schema.ResourceData, metaRaw interface{}) diag.Diagnostics {
 	client := metaRaw.(*Client)
 	_, _, destinationID, err := destinationImportIDtoKeys(d.Id())
 	if err != nil {
-		return err
+		return diag.FromErr(err)
 	}
 	destinationProjKey := d.Get(PROJECT_KEY).(string)
 	destinationEnvKey := d.Get(ENV_KEY).(string)
@@ -142,7 +149,7 @@ func resourceDestinationUpdate(d *schema.ResourceData, metaRaw interface{}) erro
 	destinationKind := d.Get(KIND).(string)
 	destinationConfig, err := destinationConfigFromResourceData(d)
 	if err != nil {
-		return err
+		return diag.FromErr(err)
 	}
 	destinationOn := d.Get(ON).(bool)
 
@@ -155,27 +162,29 @@ func resourceDestinationUpdate(d *schema.ResourceData, metaRaw interface{}) erro
 
 	_, _, err = client.ld.DataExportDestinationsApi.PatchDestination(client.ctx, destinationProjKey, destinationEnvKey, destinationID).PatchOperation(patch).Execute()
 	if err != nil {
-		return fmt.Errorf("failed to update destination with id %q: %s", destinationID, handleLdapiErr(err))
+		return diag.Errorf("failed to update destination with id %q: %s", destinationID, handleLdapiErr(err))
 	}
 
-	return resourceDestinationRead(d, metaRaw)
+	return resourceDestinationRead(ctx, d, metaRaw)
 }
 
-func resourceDestinationDelete(d *schema.ResourceData, metaRaw interface{}) error {
+func resourceDestinationDelete(ctx context.Context, d *schema.ResourceData, metaRaw interface{}) diag.Diagnostics {
+	var diags diag.Diagnostics
+
 	client := metaRaw.(*Client)
 	_, _, destinationID, err := destinationImportIDtoKeys(d.Id())
 	if err != nil {
-		return err
+		return diag.FromErr(err)
 	}
 	destinationProjKey := d.Get(PROJECT_KEY).(string)
 	destinationEnvKey := d.Get(ENV_KEY).(string)
 
 	_, err = client.ld.DataExportDestinationsApi.DeleteDestination(client.ctx, destinationProjKey, destinationEnvKey, destinationID).Execute()
 	if err != nil {
-		return fmt.Errorf("failed to delete destination with id %q: %s", destinationID, handleLdapiErr(err))
+		return diag.Errorf("failed to delete destination with id %q: %s", destinationID, handleLdapiErr(err))
 	}
 
-	return nil
+	return diags
 }
 
 func resourceDestinationExists(d *schema.ResourceData, metaRaw interface{}) (bool, error) {

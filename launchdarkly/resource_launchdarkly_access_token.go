@@ -2,6 +2,7 @@ package launchdarkly
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -9,6 +10,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 
@@ -27,11 +29,11 @@ func resourceAccessToken() *schema.Resource {
 		conflictsWith: []string{ROLE, CUSTOM_ROLES, INLINE_ROLES},
 	})
 	return &schema.Resource{
-		Create: resourceAccessTokenCreate,
-		Read:   resourceAccessTokenRead,
-		Update: resourceAccessTokenUpdate,
-		Delete: resourceAccessTokenDelete,
-		Exists: resourceAccessTokenExists,
+		CreateContext: resourceAccessTokenCreate,
+		ReadContext:   resourceAccessTokenRead,
+		UpdateContext: resourceAccessTokenUpdate,
+		DeleteContext: resourceAccessTokenDelete,
+		Exists:        resourceAccessTokenExists,
 
 		Schema: map[string]*schema.Schema{
 			NAME: {
@@ -40,11 +42,11 @@ func resourceAccessToken() *schema.Resource {
 				Optional:    true,
 			},
 			ROLE: {
-				Type:          schema.TypeString,
-				Description:   `The default built-in role for the token. Available options are "reader", "writer", and "admin"`,
-				Optional:      true,
-				ValidateFunc:  validation.StringInSlice([]string{"reader", "writer", "admin"}, false),
-				ConflictsWith: []string{CUSTOM_ROLES, POLICY_STATEMENTS},
+				Type:             schema.TypeString,
+				Description:      `The default built-in role for the token. Available options are "reader", "writer", and "admin"`,
+				Optional:         true,
+				ValidateDiagFunc: validation.ToDiagFunc(validation.StringInSlice([]string{"reader", "writer", "admin"}, false)),
+				ConflictsWith:    []string{CUSTOM_ROLES, POLICY_STATEMENTS},
 			},
 			CUSTOM_ROLES: {
 				Type:          schema.TypeSet,
@@ -64,12 +66,12 @@ func resourceAccessToken() *schema.Resource {
 				Default:     false,
 			},
 			DEFAULT_API_VERSION: {
-				Type:         schema.TypeInt,
-				Description:  "The default API version for this token",
-				Optional:     true,
-				ForceNew:     true,
-				Computed:     true,
-				ValidateFunc: validateAPIVersion,
+				Type:             schema.TypeInt,
+				Description:      "The default API version for this token",
+				Optional:         true,
+				ForceNew:         true,
+				Computed:         true,
+				ValidateDiagFunc: validation.ToDiagFunc(validateAPIVersion),
 			},
 			TOKEN: {
 				Type:        schema.TypeString,
@@ -78,11 +80,11 @@ func resourceAccessToken() *schema.Resource {
 				Sensitive:   true,
 			},
 			EXPIRE: {
-				Deprecated:   "'expire' is deprecated and will be removed in the next major release of the LaunchDarkly provider",
-				Type:         schema.TypeInt,
-				Description:  "Replace the computed token secret with a new value. The expired secret will no longer be able to authorize usage of the LaunchDarkly API. Should be an expiration time for the current token secret, expressed as a Unix epoch time in milliseconds. Setting this to a negative value will expire the existing token immediately. To reset the token value again, change 'expire' to a new value. Setting this field at resource creation time WILL NOT set an expiration time for the token.",
-				Optional:     true,
-				ValidateFunc: validation.NoZeroValues,
+				Deprecated:       "'expire' is deprecated and will be removed in the next major release of the LaunchDarkly provider",
+				Type:             schema.TypeInt,
+				Description:      "Replace the computed token secret with a new value. The expired secret will no longer be able to authorize usage of the LaunchDarkly API. Should be an expiration time for the current token secret, expressed as a Unix epoch time in milliseconds. Setting this to a negative value will expire the existing token immediately. To reset the token value again, change 'expire' to a new value. Setting this field at resource creation time WILL NOT set an expiration time for the token.",
+				Optional:         true,
+				ValidateDiagFunc: validation.ToDiagFunc(validation.NoZeroValues),
 			},
 		},
 	}
@@ -119,10 +121,10 @@ func validateAccessTokenResource(d *schema.ResourceData) error {
 	return nil
 }
 
-func resourceAccessTokenCreate(d *schema.ResourceData, metaRaw interface{}) error {
+func resourceAccessTokenCreate(ctx context.Context, d *schema.ResourceData, metaRaw interface{}) diag.Diagnostics {
 	err := validateAccessTokenResource(d)
 	if err != nil {
-		return err
+		return diag.FromErr(err)
 	}
 
 	client := metaRaw.(*Client)
@@ -159,15 +161,17 @@ func resourceAccessTokenCreate(d *schema.ResourceData, metaRaw interface{}) erro
 	token, _, err := client.ld.AccessTokensApi.PostToken(client.ctx).AccessTokenPost(accessTokenBody).Execute()
 
 	if err != nil {
-		return fmt.Errorf("failed to create access token with name %q: %s", accessTokenName, handleLdapiErr(err))
+		return diag.Errorf("failed to create access token with name %q: %s", accessTokenName, handleLdapiErr(err))
 	}
 
 	_ = d.Set(TOKEN, token.Token)
 	d.SetId(token.Id)
-	return resourceAccessTokenRead(d, metaRaw)
+	return resourceAccessTokenRead(ctx, d, metaRaw)
 }
 
-func resourceAccessTokenRead(d *schema.ResourceData, metaRaw interface{}) error {
+func resourceAccessTokenRead(ctx context.Context, d *schema.ResourceData, metaRaw interface{}) diag.Diagnostics {
+	var diags diag.Diagnostics
+
 	client := metaRaw.(*Client)
 	accessTokenID := d.Id()
 
@@ -175,11 +179,15 @@ func resourceAccessTokenRead(d *schema.ResourceData, metaRaw interface{}) error 
 
 	if isStatusNotFound(res) {
 		log.Printf("[WARN] failed to find access token with id %q, removing from state", accessTokenID)
+		diags = append(diags, diag.Diagnostic{
+			Severity: diag.Warning,
+			Summary:  fmt.Sprintf("[WARN] failed to find access token with id %q, removing from state", accessTokenID),
+		})
 		d.SetId("")
-		return nil
+		return diags
 	}
 	if err != nil {
-		return fmt.Errorf("failed to get access token with id %q: %s", accessTokenID, handleLdapiErr(err))
+		return diag.Errorf("failed to get access token with id %q: %s", accessTokenID, handleLdapiErr(err))
 	}
 
 	_ = d.Set(NAME, accessToken.Name)
@@ -189,7 +197,7 @@ func resourceAccessTokenRead(d *schema.ResourceData, metaRaw interface{}) error 
 	if accessToken.CustomRoleIds != nil && len(*accessToken.CustomRoleIds) > 0 {
 		customRoleKeys, err := customRoleIDsToKeys(client, *accessToken.CustomRoleIds)
 		if err != nil {
-			return err
+			return diag.FromErr(err)
 		}
 		_ = d.Set(CUSTOM_ROLES, customRoleKeys)
 	}
@@ -205,17 +213,17 @@ func resourceAccessTokenRead(d *schema.ResourceData, metaRaw interface{}) error 
 			err = d.Set(INLINE_ROLES, policyStatementsToResourceData(*policies))
 		}
 		if err != nil {
-			return fmt.Errorf("could not set policy on access token with id %q: %v", accessTokenID, err)
+			return diag.Errorf("could not set policy on access token with id %q: %v", accessTokenID, err)
 		}
 	}
 
-	return nil
+	return diags
 }
 
-func resourceAccessTokenUpdate(d *schema.ResourceData, metaRaw interface{}) error {
+func resourceAccessTokenUpdate(ctx context.Context, d *schema.ResourceData, metaRaw interface{}) diag.Diagnostics {
 	err := validateAccessTokenResource(d)
 	if err != nil {
-		return err
+		return diag.FromErr(err)
 	}
 
 	client := metaRaw.(*Client)
@@ -230,7 +238,7 @@ func resourceAccessTokenUpdate(d *schema.ResourceData, metaRaw interface{}) erro
 	}
 	customRoleIds, err := customRoleKeysToIDs(client, customRoleKeys)
 	if err != nil {
-		return err
+		return diag.FromErr(err)
 	}
 
 	inlineRoles, _ := policyStatementsFromResourceData(d.Get(POLICY_STATEMENTS).([]interface{}))
@@ -273,7 +281,7 @@ func resourceAccessTokenUpdate(d *schema.ResourceData, metaRaw interface{}) erro
 
 	_, _, err = client.ld.AccessTokensApi.PatchToken(client.ctx, accessTokenID).PatchOperation(patch).Execute()
 	if err != nil {
-		return fmt.Errorf("failed to update access token with id %q: %s", accessTokenID, handleLdapiErr(err))
+		return diag.Errorf("failed to update access token with id %q: %s", accessTokenID, handleLdapiErr(err))
 	}
 
 	// Reset the access token if the expire field has been updated
@@ -284,27 +292,29 @@ func resourceAccessTokenUpdate(d *schema.ResourceData, metaRaw interface{}) erro
 		if oldExpire != newExpire && newExpire != 0 {
 			token, err := resetAccessToken(client, accessTokenID, newExpire)
 			if err != nil {
-				return fmt.Errorf("failed to reset access token with id %q: %s", accessTokenID, handleLdapiErr(err))
+				return diag.Errorf("failed to reset access token with id %q: %s", accessTokenID, handleLdapiErr(err))
 			}
 			_ = d.Set(EXPIRE, newExpire)
 			_ = d.Set(TOKEN, token.Token)
 		}
 	}
 
-	return resourceAccessTokenRead(d, metaRaw)
+	return resourceAccessTokenRead(ctx, d, metaRaw)
 }
 
-func resourceAccessTokenDelete(d *schema.ResourceData, metaRaw interface{}) error {
+func resourceAccessTokenDelete(ctx context.Context, d *schema.ResourceData, metaRaw interface{}) diag.Diagnostics {
+	var diags diag.Diagnostics
+
 	client := metaRaw.(*Client)
 	accessTokenID := d.Id()
 
 	_, err := client.ld.AccessTokensApi.DeleteToken(client.ctx, accessTokenID).Execute()
 
 	if err != nil {
-		return fmt.Errorf("failed to delete access token with id %q: %s", accessTokenID, handleLdapiErr(err))
+		return diag.Errorf("failed to delete access token with id %q: %s", accessTokenID, handleLdapiErr(err))
 	}
 
-	return nil
+	return diags
 }
 
 func resourceAccessTokenExists(d *schema.ResourceData, metaRaw interface{}) (bool, error) {

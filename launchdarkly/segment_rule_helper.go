@@ -14,11 +14,11 @@ func segmentRulesSchema() *schema.Schema {
 			Schema: map[string]*schema.Schema{
 				CLAUSES: clauseSchema(),
 				WEIGHT: {
-					Type:         schema.TypeInt,
-					Elem:         &schema.Schema{Type: schema.TypeInt},
-					Optional:     true,
-					ValidateFunc: validation.IntBetween(0, 100000),
-					Description:  "The integer weight of the rule (between 0 and 100000).",
+					Type:             schema.TypeInt,
+					Elem:             &schema.Schema{Type: schema.TypeInt},
+					Optional:         true,
+					ValidateDiagFunc: validation.ToDiagFunc(validation.IntBetween(0, 100000)),
+					Description:      "The integer weight of the rule (between 0 and 100000).",
 				},
 				BUCKET_BY: {
 					Type:        schema.TypeString,

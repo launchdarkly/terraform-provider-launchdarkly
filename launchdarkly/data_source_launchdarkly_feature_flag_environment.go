@@ -1,14 +1,19 @@
 package launchdarkly
 
-import "github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+import (
+	"context"
+
+	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+)
 
 func dataSourceFeatureFlagEnvironment() *schema.Resource {
 	return &schema.Resource{
-		Read:   dataSourceFeatureFlagEnvironmentRead,
-		Schema: baseFeatureFlagEnvironmentSchema(true),
+		ReadContext: dataSourceFeatureFlagEnvironmentRead,
+		Schema:      baseFeatureFlagEnvironmentSchema(true),
 	}
 }
 
-func dataSourceFeatureFlagEnvironmentRead(d *schema.ResourceData, meta interface{}) error {
-	return featureFlagEnvironmentRead(d, meta, true)
+func dataSourceFeatureFlagEnvironmentRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+	return featureFlagEnvironmentRead(ctx, d, meta, true)
 }

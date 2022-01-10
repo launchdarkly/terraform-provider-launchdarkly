@@ -64,9 +64,9 @@ func policyStatementsSchema(options policyStatementSchemaOptions) *schema.Schema
 					MinItems:    1,
 				},
 				EFFECT: {
-					Type:         schema.TypeString,
-					Required:     true,
-					ValidateFunc: validation.StringInSlice([]string{"allow", "deny"}, false),
+					Type:             schema.TypeString,
+					Required:         true,
+					ValidateDiagFunc: validation.ToDiagFunc(validation.StringInSlice([]string{"allow", "deny"}, false)),
 				},
 			},
 		},

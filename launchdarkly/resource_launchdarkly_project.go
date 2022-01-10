@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 
+	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	ldapi "github.com/launchdarkly/api-client-go/v7"
 )
@@ -51,11 +52,11 @@ func customizeProjectDiff(ctx context.Context, diff *schema.ResourceDiff, v inte
 }
 func resourceProject() *schema.Resource {
 	return &schema.Resource{
-		Create: resourceProjectCreate,
-		Read:   resourceProjectRead,
-		Update: resourceProjectUpdate,
-		Delete: resourceProjectDelete,
-		Exists: resourceProjectExists,
+		CreateContext: resourceProjectCreate,
+		ReadContext:   resourceProjectRead,
+		UpdateContext: resourceProjectUpdate,
+		DeleteContext: resourceProjectDelete,
+		Exists:        resourceProjectExists,
 
 		CustomizeDiff: customizeProjectDiff,
 
@@ -121,7 +122,8 @@ func resourceProject() *schema.Resource {
 	}
 }
 
-func resourceProjectCreate(d *schema.ResourceData, metaRaw interface{}) error {
+func resourceProjectCreate(ctx context.Context, d *schema.ResourceData, metaRaw interface{}) diag.Diagnostics {
+	var diags diag.Diagnostics
 	client := metaRaw.(*Client)
 	projectKey := d.Get(KEY).(string)
 	name := d.Get(NAME).(string)
@@ -139,22 +141,26 @@ func resourceProjectCreate(d *schema.ResourceData, metaRaw interface{}) error {
 
 	_, _, err := client.ld.ProjectsApi.PostProject(client.ctx).ProjectPost(projectBody).Execute()
 	if err != nil {
-		return fmt.Errorf("failed to create project with name %s and projectKey %s: %v", name, projectKey, handleLdapiErr(err))
+		return diag.Errorf("failed to create project with name %s and projectKey %s: %v", name, projectKey, handleLdapiErr(err))
 	}
 
 	// ld's api does not allow tags to be passed in during project creation so we do an update
-	err = resourceProjectUpdate(d, metaRaw)
-	if err != nil {
-		return fmt.Errorf("failed to update project with name %s and projectKey %s: %v", name, projectKey, err)
+	updateDiags := resourceProjectUpdate(ctx, d, metaRaw)
+	if updateDiags.HasError() {
+		updateDiags = append(updateDiags, diag.Diagnostic{
+			Severity: diag.Error,
+			Summary:  fmt.Sprintf("failed to update project with name %s and projectKey %s: %v", name, projectKey, err),
+		})
+		return updateDiags
 	}
-	return nil
+	return diags
 }
 
-func resourceProjectRead(d *schema.ResourceData, metaRaw interface{}) error {
-	return projectRead(d, metaRaw, false)
+func resourceProjectRead(ctx context.Context, d *schema.ResourceData, metaRaw interface{}) diag.Diagnostics {
+	return projectRead(ctx, d, metaRaw, false)
 }
 
-func resourceProjectUpdate(d *schema.ResourceData, metaRaw interface{}) error {
+func resourceProjectUpdate(ctx context.Context, d *schema.ResourceData, metaRaw interface{}) diag.Diagnostics {
 	client := metaRaw.(*Client)
 	projectKey := d.Get(KEY).(string)
 	projName := d.Get(NAME)
@@ -196,14 +202,14 @@ func resourceProjectUpdate(d *schema.ResourceData, metaRaw interface{}) error {
 
 	_, _, err := client.ld.ProjectsApi.PatchProject(client.ctx, projectKey).PatchOperation(patch).Execute()
 	if err != nil {
-		return fmt.Errorf("failed to update project with key %q: %s", projectKey, handleLdapiErr(err))
+		return diag.Errorf("failed to update project with key %q: %s", projectKey, handleLdapiErr(err))
 	}
 	// Update environments if necessary
 	oldSchemaEnvList, newSchemaEnvList := d.GetChange(ENVIRONMENTS)
 	// Get the project so we can see if we need to create any environments or just update existing environments
 	project, _, err := client.ld.ProjectsApi.GetProject(client.ctx, projectKey).Execute()
 	if err != nil {
-		return fmt.Errorf("failed to load project %q before updating environments: %s", projectKey, handleLdapiErr(err))
+		return diag.Errorf("failed to load project %q before updating environments: %s", projectKey, handleLdapiErr(err))
 	}
 
 	environmentConfigs := newSchemaEnvList.([]interface{})
@@ -227,7 +233,7 @@ func resourceProjectUpdate(d *schema.ResourceData, metaRaw interface{}) error {
 			envPost := environmentPostFromResourceData(env)
 			_, _, err := client.ld.EnvironmentsApi.PostEnvironment(client.ctx, projectKey).EnvironmentPost(envPost).Execute()
 			if err != nil {
-				return fmt.Errorf("failed to create environment %q in project %q: %s", envKey, projectKey, handleLdapiErr(err))
+				return diag.Errorf("failed to create environment %q in project %q: %s", envKey, projectKey, handleLdapiErr(err))
 			}
 		}
 
@@ -238,11 +244,11 @@ func resourceProjectUpdate(d *schema.ResourceData, metaRaw interface{}) error {
 		// by default patching an env that was not recently tracked in the state will import it into the tf state
 		patch, err := getEnvironmentUpdatePatches(oldEnvConfig, envConfig)
 		if err != nil {
-			return err
+			return diag.FromErr(err)
 		}
 		_, _, err = client.ld.EnvironmentsApi.PatchEnvironment(client.ctx, projectKey, envKey).PatchOperation(patch).Execute()
 		if err != nil {
-			return fmt.Errorf("failed to update environment with key %q for project: %q: %+v", envKey, projectKey, err)
+			return diag.Errorf("failed to update environment with key %q for project: %q: %+v", envKey, projectKey, err)
 		}
 	}
 	// we also want to delete environments that were previously tracked in state and have been removed from the config
@@ -254,24 +260,26 @@ func resourceProjectUpdate(d *schema.ResourceData, metaRaw interface{}) error {
 		if _, persists := envConfigsForCompare[envKey]; !persists {
 			_, err = client.ld.EnvironmentsApi.DeleteEnvironment(client.ctx, projectKey, envKey).Execute()
 			if err != nil {
-				return fmt.Errorf("failed to delete environment %q in project %q: %s", envKey, projectKey, handleLdapiErr(err))
+				return diag.Errorf("failed to delete environment %q in project %q: %s", envKey, projectKey, handleLdapiErr(err))
 			}
 		}
 	}
 
-	return resourceProjectRead(d, metaRaw)
+	return resourceProjectRead(ctx, d, metaRaw)
 }
 
-func resourceProjectDelete(d *schema.ResourceData, metaRaw interface{}) error {
+func resourceProjectDelete(ctx context.Context, d *schema.ResourceData, metaRaw interface{}) diag.Diagnostics {
+	var diags diag.Diagnostics
+
 	client := metaRaw.(*Client)
 	projectKey := d.Get(KEY).(string)
 
 	_, err := client.ld.ProjectsApi.DeleteProject(client.ctx, projectKey).Execute()
 	if err != nil {
-		return fmt.Errorf("failed to delete project with key %q: %s", projectKey, handleLdapiErr(err))
+		return diag.Errorf("failed to delete project with key %q: %s", projectKey, handleLdapiErr(err))
 	}
 
-	return nil
+	return diags
 }
 
 func resourceProjectExists(d *schema.ResourceData, metaRaw interface{}) (bool, error) {

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	ldapi "github.com/launchdarkly/api-client-go/v7"
 )
@@ -65,11 +66,11 @@ func resourceFeatureFlag() *schema.Resource {
 	}
 	schemaMap[VARIATION_TYPE] = variationTypeSchema()
 	return &schema.Resource{
-		Create: resourceFeatureFlagCreate,
-		Read:   resourceFeatureFlagRead,
-		Update: resourceFeatureFlagUpdate,
-		Delete: resourceFeatureFlagDelete,
-		Exists: resourceFeatureFlagExists,
+		CreateContext: resourceFeatureFlagCreate,
+		ReadContext:   resourceFeatureFlagRead,
+		UpdateContext: resourceFeatureFlagUpdate,
+		DeleteContext: resourceFeatureFlagDelete,
+		Exists:        resourceFeatureFlagExists,
 
 		Importer: &schema.ResourceImporter{
 			State: resourceFeatureFlagImport,
@@ -79,15 +80,15 @@ func resourceFeatureFlag() *schema.Resource {
 	}
 }
 
-func resourceFeatureFlagCreate(d *schema.ResourceData, metaRaw interface{}) error {
+func resourceFeatureFlagCreate(ctx context.Context, d *schema.ResourceData, metaRaw interface{}) diag.Diagnostics {
 	client := metaRaw.(*Client)
 	projectKey := d.Get(PROJECT_KEY).(string)
 
 	if exists, err := projectExists(projectKey, client); !exists {
 		if err != nil {
-			return err
+			return diag.FromErr(err)
 		}
-		return fmt.Errorf("cannot find project with key %q", projectKey)
+		return diag.Errorf("cannot find project with key %q", projectKey)
 	}
 
 	key := d.Get(KEY).(string)
@@ -108,12 +109,12 @@ func resourceFeatureFlagCreate(d *schema.ResourceData, metaRaw interface{}) erro
 
 	variations, err := variationsFromResourceData(d)
 	if err != nil {
-		return fmt.Errorf("invalid variations: %v", err)
+		return diag.Errorf("invalid variations: %v", err)
 	}
 
 	defaults, err := defaultVariationsFromResourceData(d)
 	if err != nil {
-		return fmt.Errorf("invalid default variations: %v", err)
+		return diag.Errorf("invalid default variations: %v", err)
 	}
 
 	flag := ldapi.FeatureFlagBody{
@@ -139,7 +140,7 @@ func resourceFeatureFlagCreate(d *schema.ResourceData, metaRaw interface{}) erro
 		// IncludeInSnippetdefault is the same as defaultCSA.UsingEnvironmentId, so we can _ it
 		defaultCSA, _, err := getProjectDefaultCSAandIncludeInSnippet(client, projectKey)
 		if err != nil {
-			return fmt.Errorf("failed to get project level client side availability defaults. %v", err)
+			return diag.Errorf("failed to get project level client side availability defaults. %v", err)
 		}
 		flag.ClientSideAvailability = &ldapi.ClientSideAvailabilityPost{
 			UsingEnvironmentId: *defaultCSA.UsingEnvironmentId,
@@ -148,31 +149,33 @@ func resourceFeatureFlagCreate(d *schema.ResourceData, metaRaw interface{}) erro
 	}
 	_, _, err = client.ld.FeatureFlagsApi.PostFeatureFlag(client.ctx, projectKey).FeatureFlagBody(flag).Execute()
 	if err != nil {
-		return fmt.Errorf("failed to create flag %q in project %q: %s", key, projectKey, handleLdapiErr(err))
+		return diag.Errorf("failed to create flag %q in project %q: %s", key, projectKey, handleLdapiErr(err))
 	}
 
 	// ld's api does not allow some fields to be passed in during flag creation so we do an update:
 	// https://apidocs.launchdarkly.com/docs/create-feature-flag
-	err = resourceFeatureFlagUpdate(d, metaRaw)
-	if err != nil {
+	updateDiags := resourceFeatureFlagUpdate(ctx, d, metaRaw)
+	if updateDiags.HasError() {
 		// if there was a problem in the update state, we need to clean up completely by deleting the flag
 		_, deleteErr := client.ld.FeatureFlagsApi.DeleteFeatureFlag(client.ctx, projectKey, key).Execute()
 		if deleteErr != nil {
-			return fmt.Errorf("failed to delete flag %q from project %q: %s", key, projectKey, handleLdapiErr(err))
+			return diag.Errorf("failed to delete flag %q from project %q: %s", key, projectKey, handleLdapiErr(deleteErr))
 		}
-		return fmt.Errorf("failed to update flag with name %q key %q for projectKey %q: %s",
-			flagName, key, projectKey, handleLdapiErr(err))
+		// TODO: Figure out if we can get the err out of updateDiag (not looking likely) to use in hanldeLdapiErr
+		return updateDiags
+		// return diag.Errorf("failed to update flag with name %q key %q for projectKey %q: %s",
+		// 	flagName, key, projectKey, handleLdapiErr(errs))
 	}
 
 	d.SetId(projectKey + "/" + key)
-	return resourceFeatureFlagRead(d, metaRaw)
+	return resourceFeatureFlagRead(ctx, d, metaRaw)
 }
 
-func resourceFeatureFlagRead(d *schema.ResourceData, metaRaw interface{}) error {
-	return featureFlagRead(d, metaRaw, false)
+func resourceFeatureFlagRead(ctx context.Context, d *schema.ResourceData, metaRaw interface{}) diag.Diagnostics {
+	return featureFlagRead(ctx, d, metaRaw, false)
 }
 
-func resourceFeatureFlagUpdate(d *schema.ResourceData, metaRaw interface{}) error {
+func resourceFeatureFlagUpdate(ctx context.Context, d *schema.ResourceData, metaRaw interface{}) diag.Diagnostics {
 	client := metaRaw.(*Client)
 	key := d.Get(KEY).(string)
 	projectKey := d.Get(PROJECT_KEY).(string)
@@ -221,7 +224,7 @@ func resourceFeatureFlagUpdate(d *schema.ResourceData, metaRaw interface{}) erro
 		// IncludeInSnippetdefault is the same as defaultCSA.UsingEnvironmentId, so we can _ it
 		defaultCSA, _, err := getProjectDefaultCSAandIncludeInSnippet(client, projectKey)
 		if err != nil {
-			return fmt.Errorf("failed to get project level client side availability defaults. %v", err)
+			return diag.Errorf("failed to get project level client side availability defaults. %v", err)
 		}
 		patch.Patch = append(patch.Patch, patchReplace("/clientSideAvailability", &ldapi.ClientSideAvailabilityPost{
 			UsingEnvironmentId: *defaultCSA.UsingEnvironmentId,
@@ -231,14 +234,14 @@ func resourceFeatureFlagUpdate(d *schema.ResourceData, metaRaw interface{}) erro
 
 	variationPatches, err := variationPatchesFromResourceData(d)
 	if err != nil {
-		return fmt.Errorf("failed to build variation patches. %v", err)
+		return diag.Errorf("failed to build variation patches. %v", err)
 	}
 	patch.Patch = append(patch.Patch, variationPatches...)
 
 	// Only update the defaults if they are specified in the schema
 	defaults, err := defaultVariationsFromResourceData(d)
 	if err != nil {
-		return fmt.Errorf("invalid default variations: %v", err)
+		return diag.Errorf("invalid default variations: %v", err)
 	}
 	if defaults != nil {
 		patch.Patch = append(patch.Patch, patchReplace("/defaults", defaults))
@@ -252,23 +255,25 @@ func resourceFeatureFlagUpdate(d *schema.ResourceData, metaRaw interface{}) erro
 
 	_, _, err = client.ld.FeatureFlagsApi.PatchFeatureFlag(client.ctx, projectKey, key).PatchWithComment(patch).Execute()
 	if err != nil {
-		return fmt.Errorf("failed to update flag %q in project %q: %s", key, projectKey, handleLdapiErr(err))
+		return diag.Errorf("failed to update flag %q in project %q: %s", key, projectKey, handleLdapiErr(err))
 	}
 
-	return resourceFeatureFlagRead(d, metaRaw)
+	return resourceFeatureFlagRead(ctx, d, metaRaw)
 }
 
-func resourceFeatureFlagDelete(d *schema.ResourceData, metaRaw interface{}) error {
+func resourceFeatureFlagDelete(ctx context.Context, d *schema.ResourceData, metaRaw interface{}) diag.Diagnostics {
+	var diags diag.Diagnostics
+
 	client := metaRaw.(*Client)
 	projectKey := d.Get(PROJECT_KEY).(string)
 	key := d.Get(KEY).(string)
 
 	_, err := client.ld.FeatureFlagsApi.DeleteFeatureFlag(client.ctx, projectKey, key).Execute()
 	if err != nil {
-		return fmt.Errorf("failed to delete flag %q from project %q: %s", key, projectKey, handleLdapiErr(err))
+		return diag.Errorf("failed to delete flag %q from project %q: %s", key, projectKey, handleLdapiErr(err))
 	}
 
-	return nil
+	return diags
 }
 
 func resourceFeatureFlagExists(d *schema.ResourceData, metaRaw interface{}) (bool, error) {

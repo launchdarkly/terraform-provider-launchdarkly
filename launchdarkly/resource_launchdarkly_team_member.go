@@ -1,9 +1,11 @@
 package launchdarkly
 
 import (
+	"context"
 	"fmt"
 	"log"
 
+	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 
@@ -12,11 +14,11 @@ import (
 
 func resourceTeamMember() *schema.Resource {
 	return &schema.Resource{
-		Create: resourceTeamMemberCreate,
-		Read:   resourceTeamMemberRead,
-		Update: resourceTeamMemberUpdate,
-		Delete: resourceTeamMemberDelete,
-		Exists: resourceTeamMemberExists,
+		CreateContext: resourceTeamMemberCreate,
+		ReadContext:   resourceTeamMemberRead,
+		UpdateContext: resourceTeamMemberUpdate,
+		DeleteContext: resourceTeamMemberDelete,
+		Exists:        resourceTeamMemberExists,
 
 		Importer: &schema.ResourceImporter{
 			StateContext: schema.ImportStatePassthroughContext,
@@ -40,12 +42,12 @@ func resourceTeamMember() *schema.Resource {
 				Description: "The team member's last name",
 			},
 			ROLE: {
-				Type:         schema.TypeString,
-				Optional:     true,
-				Computed:     true,
-				Description:  "The team member's role. This must be reader, writer, admin, or owner. Team members must have either a role or custom role",
-				ValidateFunc: validation.StringInSlice([]string{"reader", "writer", "admin"}, false),
-				AtLeastOneOf: []string{ROLE, CUSTOM_ROLES},
+				Type:             schema.TypeString,
+				Optional:         true,
+				Computed:         true,
+				Description:      "The team member's role. This must be reader, writer, admin, or owner. Team members must have either a role or custom role",
+				ValidateDiagFunc: validation.ToDiagFunc(validation.StringInSlice([]string{"reader", "writer", "admin"}, false)),
+				AtLeastOneOf:     []string{ROLE, CUSTOM_ROLES},
 			},
 			CUSTOM_ROLES: {
 				Type:         schema.TypeSet,
@@ -59,7 +61,7 @@ func resourceTeamMember() *schema.Resource {
 	}
 }
 
-func resourceTeamMemberCreate(d *schema.ResourceData, metaRaw interface{}) error {
+func resourceTeamMemberCreate(ctx context.Context, d *schema.ResourceData, metaRaw interface{}) diag.Diagnostics {
 	client := metaRaw.(*Client)
 	memberEmail := d.Get(EMAIL).(string)
 	firstName := d.Get(FIRST_NAME).(string)
@@ -82,25 +84,31 @@ func resourceTeamMemberCreate(d *schema.ResourceData, metaRaw interface{}) error
 
 	members, _, err := client.ld.AccountMembersApi.PostMembers(client.ctx).NewMemberForm([]ldapi.NewMemberForm{membersBody}).Execute()
 	if err != nil {
-		return fmt.Errorf("failed to create team member with email: %s: %v", memberEmail, handleLdapiErr(err))
+		return diag.Errorf("failed to create team member with email: %s: %v", memberEmail, handleLdapiErr(err))
 	}
 
 	d.SetId(members.Items[0].Id)
-	return resourceTeamMemberRead(d, metaRaw)
+	return resourceTeamMemberRead(ctx, d, metaRaw)
 }
 
-func resourceTeamMemberRead(d *schema.ResourceData, metaRaw interface{}) error {
+func resourceTeamMemberRead(ctx context.Context, d *schema.ResourceData, metaRaw interface{}) diag.Diagnostics {
+	var diags diag.Diagnostics
+
 	client := metaRaw.(*Client)
 	memberID := d.Id()
 
 	member, res, err := client.ld.AccountMembersApi.GetMember(client.ctx, memberID).Execute()
 	if isStatusNotFound(res) {
 		log.Printf("[WARN] failed to find member with id %q, removing from state", memberID)
+		diags = append(diags, diag.Diagnostic{
+			Severity: diag.Warning,
+			Summary:  fmt.Sprintf("[WARN] failed to find member with id %q, removing from state", memberID),
+		})
 		d.SetId("")
-		return nil
+		return diags
 	}
 	if err != nil {
-		return fmt.Errorf("failed to get member with id %q: %v", memberID, err)
+		return diag.Errorf("failed to get member with id %q: %v", memberID, err)
 	}
 
 	d.SetId(member.Id)
@@ -111,16 +119,16 @@ func resourceTeamMemberRead(d *schema.ResourceData, metaRaw interface{}) error {
 
 	customRoleKeys, err := customRoleIDsToKeys(client, member.CustomRoles)
 	if err != nil {
-		return err
+		return diag.FromErr(err)
 	}
 	err = d.Set(CUSTOM_ROLES, customRoleKeys)
 	if err != nil {
-		return fmt.Errorf("failed to set custom roles on team member with id %q: %v", member.Id, err)
+		return diag.Errorf("failed to set custom roles on team member with id %q: %v", member.Id, err)
 	}
-	return nil
+	return diags
 }
 
-func resourceTeamMemberUpdate(d *schema.ResourceData, metaRaw interface{}) error {
+func resourceTeamMemberUpdate(ctx context.Context, d *schema.ResourceData, metaRaw interface{}) diag.Diagnostics {
 	client := metaRaw.(*Client)
 	memberID := d.Id()
 	memberRole := d.Get(ROLE).(string)
@@ -132,7 +140,7 @@ func resourceTeamMemberUpdate(d *schema.ResourceData, metaRaw interface{}) error
 	}
 	customRoleIds, err := customRoleKeysToIDs(client, customRoleKeys)
 	if err != nil {
-		return err
+		return diag.FromErr(err)
 	}
 
 	patch := []ldapi.PatchOperation{
@@ -143,21 +151,23 @@ func resourceTeamMemberUpdate(d *schema.ResourceData, metaRaw interface{}) error
 
 	_, _, err = client.ld.AccountMembersApi.PatchMember(client.ctx, memberID).PatchOperation(patch).Execute()
 	if err != nil {
-		return fmt.Errorf("failed to update team member with id %q: %s", memberID, handleLdapiErr(err))
+		return diag.Errorf("failed to update team member with id %q: %s", memberID, handleLdapiErr(err))
 	}
 
-	return resourceTeamMemberRead(d, metaRaw)
+	return resourceTeamMemberRead(ctx, d, metaRaw)
 }
 
-func resourceTeamMemberDelete(d *schema.ResourceData, metaRaw interface{}) error {
+func resourceTeamMemberDelete(ctx context.Context, d *schema.ResourceData, metaRaw interface{}) diag.Diagnostics {
+	var diags diag.Diagnostics
+
 	client := metaRaw.(*Client)
 
 	_, err := client.ld.AccountMembersApi.DeleteMember(client.ctx, d.Id()).Execute()
 	if err != nil {
-		return fmt.Errorf("failed to delete team member with id %q: %s", d.Id(), handleLdapiErr(err))
+		return diag.Errorf("failed to delete team member with id %q: %s", d.Id(), handleLdapiErr(err))
 	}
 
-	return nil
+	return diags
 }
 
 func resourceTeamMemberExists(d *schema.ResourceData, metaRaw interface{}) (bool, error) {

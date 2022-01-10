@@ -1,13 +1,16 @@
 package launchdarkly
 
 import (
+	"context"
 	"fmt"
 	"log"
 
+	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
-func projectRead(d *schema.ResourceData, meta interface{}, isDataSource bool) error {
+func projectRead(ctx context.Context, d *schema.ResourceData, meta interface{}, isDataSource bool) diag.Diagnostics {
+	var diags diag.Diagnostics
 	client := meta.(*Client)
 	projectKey := d.Get(KEY).(string)
 
@@ -16,11 +19,15 @@ func projectRead(d *schema.ResourceData, meta interface{}, isDataSource bool) er
 	// return nil error for resource reads but 404 for data source reads
 	if isStatusNotFound(res) && !isDataSource {
 		log.Printf("[WARN] failed to find project with key %q, removing from state if present", projectKey)
+		diags = append(diags, diag.Diagnostic{
+			Severity: diag.Warning,
+			Summary:  fmt.Sprintf("[WARN] failed to find project with key %q, removing from state if present", projectKey),
+		})
 		d.SetId("")
-		return nil
+		return diags
 	}
 	if err != nil {
-		return fmt.Errorf("failed to get project with key %q: %v", projectKey, err)
+		return diag.Errorf("failed to get project with key %q: %v", projectKey, err)
 	}
 
 	defaultCSA := *project.DefaultClientSideAvailability
@@ -33,7 +40,7 @@ func projectRead(d *schema.ResourceData, meta interface{}, isDataSource bool) er
 		d.SetId(project.Id)
 		err = d.Set(CLIENT_SIDE_AVAILABILITY, clientSideAvailability)
 		if err != nil {
-			return fmt.Errorf("could not set client_side_availability on project with key %q: %v", project.Key, err)
+			return diag.Errorf("could not set client_side_availability on project with key %q: %v", project.Key, err)
 		}
 	}
 	_ = d.Set(KEY, project.Key)
@@ -71,24 +78,24 @@ func projectRead(d *schema.ResourceData, meta interface{}, isDataSource bool) er
 
 		err = d.Set(ENVIRONMENTS, environments)
 		if err != nil {
-			return fmt.Errorf("could not set environments on project with key %q: %v", project.Key, err)
+			return diag.Errorf("could not set environments on project with key %q: %v", project.Key, err)
 		}
 
 		err = d.Set(INCLUDE_IN_SNIPPET, project.IncludeInSnippetByDefault)
 		if err != nil {
-			return fmt.Errorf("could not set include_in_snippet on project with key %q: %v", project.Key, err)
+			return diag.Errorf("could not set include_in_snippet on project with key %q: %v", project.Key, err)
 		}
 	}
 
 	err = d.Set(TAGS, project.Tags)
 	if err != nil {
-		return fmt.Errorf("could not set tags on project with key %q: %v", project.Key, err)
+		return diag.Errorf("could not set tags on project with key %q: %v", project.Key, err)
 	}
 
 	err = d.Set(DEFAULT_CLIENT_SIDE_AVAILABILITY, clientSideAvailability)
 	if err != nil {
-		return fmt.Errorf("could not set default_client_side_availability on project with key %q: %v", project.Key, err)
+		return diag.Errorf("could not set default_client_side_availability on project with key %q: %v", project.Key, err)
 	}
 
-	return nil
+	return diags
 }

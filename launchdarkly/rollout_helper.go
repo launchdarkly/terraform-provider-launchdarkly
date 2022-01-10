@@ -14,7 +14,9 @@ func rolloutSchema() *schema.Schema {
 		Type:     schema.TypeList,
 		Optional: true,
 		Elem: &schema.Schema{
-			Type:         schema.TypeInt,
+			Type: schema.TypeInt,
+			// Can't use validation.ToDiagFunc converted validators on TypeList at the moment
+			// https://github.com/hashicorp/terraform-plugin-sdk/issues/734
 			ValidateFunc: validation.IntBetween(0, 100000),
 		},
 	}

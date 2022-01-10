@@ -1,15 +1,17 @@
 package launchdarkly
 
 import (
+	"context"
 	"fmt"
 
+	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	ldapi "github.com/launchdarkly/api-client-go/v7"
 )
 
 func dataSourceTeamMember() *schema.Resource {
 	return &schema.Resource{
-		Read: dataSourceTeamMemberRead,
+		ReadContext: dataSourceTeamMemberRead,
 
 		Schema: map[string]*schema.Schema{
 			EMAIL: {
@@ -73,12 +75,13 @@ func getTeamMemberByEmail(client *Client, memberEmail string) (*ldapi.Member, er
 
 }
 
-func dataSourceTeamMemberRead(d *schema.ResourceData, meta interface{}) error {
+func dataSourceTeamMemberRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+	var diags diag.Diagnostics
 	client := meta.(*Client)
 	memberEmail := d.Get(EMAIL).(string)
 	member, err := getTeamMemberByEmail(client, memberEmail)
 	if err != nil {
-		return err
+		return diag.FromErr(err)
 	}
 	d.SetId(member.Id)
 	_ = d.Set(EMAIL, member.Email)
@@ -87,8 +90,8 @@ func dataSourceTeamMemberRead(d *schema.ResourceData, meta interface{}) error {
 	_ = d.Set(ROLE, member.Role)
 	err = d.Set(CUSTOM_ROLES, member.CustomRoles)
 	if err != nil {
-		return fmt.Errorf("failed to set custom roles on team member with email %q: %v", member.Email, err)
+		return diag.Errorf("failed to set custom roles on team member with email %q: %v", member.Email, err)
 	}
 
-	return nil
+	return diags
 }

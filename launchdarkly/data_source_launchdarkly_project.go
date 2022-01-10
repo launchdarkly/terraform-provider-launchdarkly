@@ -1,12 +1,15 @@
 package launchdarkly
 
 import (
+	"context"
+
+	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
 func dataSourceProject() *schema.Resource {
 	return &schema.Resource{
-		Read: dataSourceProjectRead,
+		ReadContext: dataSourceProjectRead,
 
 		Schema: map[string]*schema.Schema{
 			KEY: {
@@ -55,6 +58,6 @@ func dataSourceProject() *schema.Resource {
 	}
 }
 
-func dataSourceProjectRead(d *schema.ResourceData, meta interface{}) error {
-	return projectRead(d, meta, true)
+func dataSourceProjectRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+	return projectRead(ctx, d, meta, true)
 }

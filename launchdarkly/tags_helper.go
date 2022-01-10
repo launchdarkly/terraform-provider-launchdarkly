@@ -9,8 +9,10 @@ func tagsSchema() *schema.Schema {
 		Type: schema.TypeSet,
 		Set:  schema.HashString,
 		Elem: &schema.Schema{
-			Type:         schema.TypeString,
-			ValidateFunc: validateTags(),
+			Type: schema.TypeString,
+			// Can't use validation.ToDiagFunc converted validators on TypeSet at the moment
+			// https://github.com/hashicorp/terraform-plugin-sdk/issues/734
+			ValidateFunc: validateTagsNoDiag(),
 		},
 		Optional:    true,
 		Description: "Tags associated with your resource",

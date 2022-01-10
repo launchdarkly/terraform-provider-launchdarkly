@@ -29,10 +29,10 @@ func clauseSchema() *schema.Schema {
 					Description: "The user attribute to operate on",
 				},
 				OP: {
-					Type:         schema.TypeString,
-					Required:     true,
-					Description:  "The operator associated with the rule clause. Available options are in, endsWith, startsWith, matches, contains, lessThan, lessThanOrEqual, greaterThanOrEqual, before, after, segmentMatch, semVerEqual, semVerLessThan, and semVerGreaterThan",
-					ValidateFunc: validateOp(),
+					Type:             schema.TypeString,
+					Required:         true,
+					Description:      "The operator associated with the rule clause. Available options are in, endsWith, startsWith, matches, contains, lessThan, lessThanOrEqual, greaterThanOrEqual, before, after, segmentMatch, semVerEqual, semVerLessThan, and semVerGreaterThan",
+					ValidateDiagFunc: validateOp(),
 				},
 				VALUES: {
 					Type: schema.TypeList,
@@ -47,14 +47,14 @@ func clauseSchema() *schema.Schema {
 					Default:     STRING_CLAUSE_VALUE,
 					Optional:    true,
 					Description: "The type for each of the clause's values. Available types are boolean, string, and number. If omitted, value_type defaults to string",
-					ValidateFunc: validation.StringInSlice(
+					ValidateDiagFunc: validation.ToDiagFunc(validation.StringInSlice(
 						[]string{
 							BOOL_CLAUSE_VALUE,
 							STRING_CLAUSE_VALUE,
 							NUMBER_CLAUSE_VALUE,
 						},
 						false,
-					),
+					)),
 				},
 				NEGATE: {
 					Type:        schema.TypeBool,

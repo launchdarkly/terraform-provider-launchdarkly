@@ -22,21 +22,23 @@ func customPropertiesSchema() *schema.Schema {
 		Elem: &schema.Resource{
 			Schema: map[string]*schema.Schema{
 				KEY: {
-					Type:         schema.TypeString,
-					Required:     true,
-					ValidateFunc: validation.StringLenBetween(1, CUSTOM_PROPERTY_CHAR_LIMIT),
+					Type:             schema.TypeString,
+					Required:         true,
+					ValidateDiagFunc: validation.ToDiagFunc(validation.StringLenBetween(1, CUSTOM_PROPERTY_CHAR_LIMIT)),
 				},
 				NAME: {
-					Type:         schema.TypeString,
-					Required:     true,
-					ValidateFunc: validation.StringLenBetween(1, CUSTOM_PROPERTY_CHAR_LIMIT),
+					Type:             schema.TypeString,
+					Required:         true,
+					ValidateDiagFunc: validation.ToDiagFunc(validation.StringLenBetween(1, CUSTOM_PROPERTY_CHAR_LIMIT)),
 				},
 				VALUE: {
 					Type:     schema.TypeList,
 					Required: true,
 					MaxItems: CUSTOM_PROPERTY_ITEM_LIMIT,
 					Elem: &schema.Schema{
-						Type:         schema.TypeString,
+						Type: schema.TypeString,
+						// Can't use validation.ToDiagFunc converted validators on TypeList at the moment
+						// https://github.com/hashicorp/terraform-plugin-sdk/issues/734
 						ValidateFunc: validation.StringLenBetween(1, CUSTOM_PROPERTY_CHAR_LIMIT),
 					},
 				},

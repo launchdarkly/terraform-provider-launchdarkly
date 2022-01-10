@@ -1,20 +1,22 @@
 package launchdarkly
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"strings"
 
+	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	ldapi "github.com/launchdarkly/api-client-go/v7"
 )
 
 func resourceFeatureFlagEnvironment() *schema.Resource {
 	return &schema.Resource{
-		Create: resourceFeatureFlagEnvironmentCreate,
-		Read:   resourceFeatureFlagEnvironmentRead,
-		Update: resourceFeatureFlagEnvironmentUpdate,
-		Delete: resourceFeatureFlagEnvironmentDelete,
+		CreateContext: resourceFeatureFlagEnvironmentCreate,
+		ReadContext:   resourceFeatureFlagEnvironmentRead,
+		UpdateContext: resourceFeatureFlagEnvironmentUpdate,
+		DeleteContext: resourceFeatureFlagEnvironmentDelete,
 
 		Importer: &schema.ResourceImporter{
 			State: resourceFeatureFlagEnvironmentImport,
@@ -29,7 +31,7 @@ func validateFlagID(val interface{}, key string) (warns []string, errs []error) 
 		return warns, append(errs, fmt.Errorf("%q must be in the format 'project_key/flag_key'. Got: %s", key, v))
 	}
 	for _, part := range strings.SplitN(v, "/", 2) {
-		w, e := validateKey()(part, key)
+		w, e := validateKeyNoDiag()(part, key)
 		if len(e) > 0 {
 			return w, e
 		}
@@ -37,28 +39,28 @@ func validateFlagID(val interface{}, key string) (warns []string, errs []error) 
 	return warns, errs
 }
 
-func resourceFeatureFlagEnvironmentCreate(d *schema.ResourceData, metaRaw interface{}) error {
+func resourceFeatureFlagEnvironmentCreate(ctx context.Context, d *schema.ResourceData, metaRaw interface{}) diag.Diagnostics {
 	client := metaRaw.(*Client)
 	flagId := d.Get(FLAG_ID).(string)
 
 	projectKey, flagKey, err := flagIdToKeys(flagId)
 	if err != nil {
-		return err
+		return diag.FromErr(err)
 	}
 	envKey := d.Get(ENV_KEY).(string)
 
 	if exists, err := projectExists(projectKey, client); !exists {
 		if err != nil {
-			return err
+			return diag.FromErr(err)
 		}
-		return fmt.Errorf("cannot find project with key %q", projectKey)
+		return diag.Errorf("cannot find project with key %q", projectKey)
 	}
 
 	if exists, err := environmentExists(projectKey, envKey, client); !exists {
 		if err != nil {
-			return err
+			return diag.FromErr(err)
 		}
-		return fmt.Errorf("failed to find environment with key %q", envKey)
+		return diag.Errorf("failed to find environment with key %q", envKey)
 	}
 
 	patches := make([]ldapi.PatchOperation, 0)
@@ -79,7 +81,7 @@ func resourceFeatureFlagEnvironmentCreate(d *schema.ResourceData, metaRaw interf
 	if ok {
 		rules, err := rulesFromResourceData(d)
 		if err != nil {
-			return err
+			return diag.FromErr(err)
 		}
 		patches = append(patches, patchReplace(patchFlagEnvPath(d, "rules"), rules))
 	}
@@ -99,7 +101,7 @@ func resourceFeatureFlagEnvironmentCreate(d *schema.ResourceData, metaRaw interf
 	// fallthrough is required
 	fall, err := fallthroughFromResourceData(d)
 	if err != nil {
-		return err
+		return diag.FromErr(err)
 	}
 	patches = append(patches, patchReplace(patchFlagEnvPath(d, "fallthrough"), fall))
 
@@ -113,45 +115,45 @@ func resourceFeatureFlagEnvironmentCreate(d *schema.ResourceData, metaRaw interf
 
 		_, _, err = client.ld.FeatureFlagsApi.PatchFeatureFlag(client.ctx, projectKey, flagKey).PatchWithComment(patch).Execute()
 		if err != nil {
-			return fmt.Errorf("failed to update flag %q in project %q: %s", flagKey, projectKey, handleLdapiErr(err))
+			return diag.Errorf("failed to update flag %q in project %q: %s", flagKey, projectKey, handleLdapiErr(err))
 		}
 	}
 
 	d.SetId(projectKey + "/" + envKey + "/" + flagKey)
-	return resourceFeatureFlagEnvironmentRead(d, metaRaw)
+	return resourceFeatureFlagEnvironmentRead(ctx, d, metaRaw)
 }
 
-func resourceFeatureFlagEnvironmentRead(d *schema.ResourceData, metaRaw interface{}) error {
-	return featureFlagEnvironmentRead(d, metaRaw, false)
+func resourceFeatureFlagEnvironmentRead(ctx context.Context, d *schema.ResourceData, metaRaw interface{}) diag.Diagnostics {
+	return featureFlagEnvironmentRead(ctx, d, metaRaw, false)
 }
 
-func resourceFeatureFlagEnvironmentUpdate(d *schema.ResourceData, metaRaw interface{}) error {
+func resourceFeatureFlagEnvironmentUpdate(ctx context.Context, d *schema.ResourceData, metaRaw interface{}) diag.Diagnostics {
 	client := metaRaw.(*Client)
 	flagId := d.Get(FLAG_ID).(string)
 	projectKey, flagKey, err := flagIdToKeys(flagId)
 	if err != nil {
-		return err
+		return diag.FromErr(err)
 	}
 	envKey := d.Get(ENV_KEY).(string)
 
 	if exists, err := projectExists(projectKey, client); !exists {
 		if err != nil {
-			return err
+			return diag.FromErr(err)
 		}
-		return fmt.Errorf("cannot find project with key %q", projectKey)
+		return diag.Errorf("cannot find project with key %q", projectKey)
 	}
 
 	if exists, err := environmentExists(projectKey, envKey, client); !exists {
 		if err != nil {
-			return err
+			return diag.FromErr(err)
 		}
-		return fmt.Errorf("failed to find environment with key %q", envKey)
+		return diag.Errorf("failed to find environment with key %q", envKey)
 	}
 
 	on := d.Get(ON)
 	rules, err := rulesFromResourceData(d)
 	if err != nil {
-		return err
+		return diag.FromErr(err)
 	}
 	trackEvents := d.Get(TRACK_EVENTS).(bool)
 	prerequisites := prerequisitesFromResourceData(d, PREREQUISITES)
@@ -159,7 +161,7 @@ func resourceFeatureFlagEnvironmentUpdate(d *schema.ResourceData, metaRaw interf
 
 	fall, err := fallthroughFromResourceData(d)
 	if err != nil {
-		return err
+		return diag.FromErr(err)
 	}
 	offVariation := d.Get(OFF_VARIATION)
 
@@ -179,37 +181,39 @@ func resourceFeatureFlagEnvironmentUpdate(d *schema.ResourceData, metaRaw interf
 	log.Printf("[DEBUG] %+v\n", patch)
 	_, _, err = client.ld.FeatureFlagsApi.PatchFeatureFlag(client.ctx, projectKey, flagKey).PatchWithComment(patch).Execute()
 	if err != nil {
-		return fmt.Errorf("failed to update flag %q in project %q, environment %q: %s", flagKey, projectKey, envKey, handleLdapiErr(err))
+		return diag.Errorf("failed to update flag %q in project %q, environment %q: %s", flagKey, projectKey, envKey, handleLdapiErr(err))
 	}
-	return resourceFeatureFlagEnvironmentRead(d, metaRaw)
+	return resourceFeatureFlagEnvironmentRead(ctx, d, metaRaw)
 }
 
-func resourceFeatureFlagEnvironmentDelete(d *schema.ResourceData, metaRaw interface{}) error {
+func resourceFeatureFlagEnvironmentDelete(ctx context.Context, d *schema.ResourceData, metaRaw interface{}) diag.Diagnostics {
+	var diags diag.Diagnostics
+
 	client := metaRaw.(*Client)
 	flagId := d.Get(FLAG_ID).(string)
 	projectKey, flagKey, err := flagIdToKeys(flagId)
 	if err != nil {
-		return err
+		return diag.FromErr(err)
 	}
 	envKey := d.Get(ENV_KEY).(string)
 
 	if exists, err := projectExists(projectKey, client); !exists {
 		if err != nil {
-			return err
+			return diag.FromErr(err)
 		}
-		return fmt.Errorf("cannot find project with key %q", projectKey)
+		return diag.Errorf("cannot find project with key %q", projectKey)
 	}
 
 	if exists, err := environmentExists(projectKey, envKey, client); !exists {
 		if err != nil {
-			return err
+			return diag.FromErr(err)
 		}
-		return fmt.Errorf("failed to find environment with key %q", envKey)
+		return diag.Errorf("failed to find environment with key %q", envKey)
 	}
 
 	flag, _, err := client.ld.FeatureFlagsApi.GetFeatureFlag(client.ctx, projectKey, flagKey).Execute()
 	if err != nil {
-		return fmt.Errorf("failed to update flag %q in project %q, environment %q: %s", flagKey, projectKey, envKey, handleLdapiErr(err))
+		return diag.Errorf("failed to update flag %q in project %q, environment %q: %s", flagKey, projectKey, envKey, handleLdapiErr(err))
 	}
 
 	// Set off variation to match default with how a rule is created
@@ -231,10 +235,10 @@ func resourceFeatureFlagEnvironmentDelete(d *schema.ResourceData, metaRaw interf
 
 	_, _, err = client.ld.FeatureFlagsApi.PatchFeatureFlag(client.ctx, projectKey, flagKey).PatchWithComment(patch).Execute()
 	if err != nil {
-		return fmt.Errorf("failed to update flag %q in project %q, environment %q: %s", flagKey, projectKey, envKey, handleLdapiErr(err))
+		return diag.Errorf("failed to update flag %q in project %q, environment %q: %s", flagKey, projectKey, envKey, handleLdapiErr(err))
 	}
 
-	return nil
+	return diags
 }
 
 func resourceFeatureFlagEnvironmentImport(d *schema.ResourceData, meta interface{}) ([]*schema.ResourceData, error) {

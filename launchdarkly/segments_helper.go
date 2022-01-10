@@ -1,9 +1,11 @@
 package launchdarkly
 
 import (
+	"context"
 	"fmt"
 	"log"
 
+	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
@@ -36,7 +38,8 @@ func baseSegmentSchema() map[string]*schema.Schema {
 	}
 }
 
-func segmentRead(d *schema.ResourceData, raw interface{}, isDataSource bool) error {
+func segmentRead(ctx context.Context, d *schema.ResourceData, raw interface{}, isDataSource bool) diag.Diagnostics {
+	var diags diag.Diagnostics
 	client := raw.(*Client)
 	projectKey := d.Get(PROJECT_KEY).(string)
 	envKey := d.Get(ENV_KEY).(string)
@@ -45,11 +48,15 @@ func segmentRead(d *schema.ResourceData, raw interface{}, isDataSource bool) err
 	segment, res, err := client.ld.SegmentsApi.GetSegment(client.ctx, projectKey, envKey, segmentKey).Execute()
 	if isStatusNotFound(res) && !isDataSource {
 		log.Printf("[WARN] failed to find segment %q in project %q, environment %q, removing from state", segmentKey, projectKey, envKey)
+		diags = append(diags, diag.Diagnostic{
+			Severity: diag.Warning,
+			Summary:  fmt.Sprintf("[WARN] failed to find segment %q in project %q, environment %q, removing from state", segmentKey, projectKey, envKey),
+		})
 		d.SetId("")
-		return nil
+		return diags
 	}
 	if err != nil {
-		return fmt.Errorf("failed to get segment %q of project %q: %s", segmentKey, projectKey, handleLdapiErr(err))
+		return diag.Errorf("failed to get segment %q of project %q: %s", segmentKey, projectKey, handleLdapiErr(err))
 	}
 
 	if isDataSource {
@@ -61,26 +68,26 @@ func segmentRead(d *schema.ResourceData, raw interface{}, isDataSource bool) err
 
 	err = d.Set(TAGS, segment.Tags)
 	if err != nil {
-		return fmt.Errorf("failed to set tags on segment with key %q: %v", segmentKey, err)
+		return diag.Errorf("failed to set tags on segment with key %q: %v", segmentKey, err)
 	}
 
 	err = d.Set(INCLUDED, segment.Included)
 	if err != nil {
-		return fmt.Errorf("failed to set included on segment with key %q: %v", segmentKey, err)
+		return diag.Errorf("failed to set included on segment with key %q: %v", segmentKey, err)
 	}
 
 	err = d.Set(EXCLUDED, segment.Excluded)
 	if err != nil {
-		return fmt.Errorf("failed to set excluded on segment with key %q: %v", segmentKey, err)
+		return diag.Errorf("failed to set excluded on segment with key %q: %v", segmentKey, err)
 	}
 
 	rules, err := segmentRulesToResourceData(segment.Rules)
 	if err != nil {
-		return fmt.Errorf("failed to read rules on segment with key %q: %v", segmentKey, err)
+		return diag.Errorf("failed to read rules on segment with key %q: %v", segmentKey, err)
 	}
 	err = d.Set(RULES, rules)
 	if err != nil {
-		return fmt.Errorf("failed to set excluded on segment with key %q: %v", segmentKey, err)
+		return diag.Errorf("failed to set excluded on segment with key %q: %v", segmentKey, err)
 	}
-	return nil
+	return diags
 }

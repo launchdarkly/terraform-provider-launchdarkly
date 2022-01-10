@@ -1,9 +1,10 @@
 package launchdarkly
 
 import (
-	"fmt"
+	"context"
 	"log"
 
+	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
@@ -25,7 +26,8 @@ func baseWebhookSchema() map[string]*schema.Schema {
 	}
 }
 
-func webhookRead(d *schema.ResourceData, meta interface{}, isDataSource bool) error {
+func webhookRead(ctx context.Context, d *schema.ResourceData, meta interface{}, isDataSource bool) diag.Diagnostics {
+	var diags diag.Diagnostics
 	client := meta.(*Client)
 	var webhookID string
 	if isDataSource {
@@ -41,13 +43,13 @@ func webhookRead(d *schema.ResourceData, meta interface{}, isDataSource bool) er
 		return nil
 	}
 	if err != nil {
-		return fmt.Errorf("failed to get webhook with id %q: %s", webhookID, handleLdapiErr(err))
+		return diag.Errorf("failed to get webhook with id %q: %s", webhookID, handleLdapiErr(err))
 	}
 	if webhook.Statements != nil {
 		statements := policyStatementsToResourceData(*webhook.Statements)
 		err = d.Set(STATEMENTS, statements)
 		if err != nil {
-			return fmt.Errorf("failed to set statements on webhook with id %q: %v", webhookID, err)
+			return diag.Errorf("failed to set statements on webhook with id %q: %v", webhookID, err)
 		}
 	}
 
@@ -61,7 +63,7 @@ func webhookRead(d *schema.ResourceData, meta interface{}, isDataSource bool) er
 
 	err = d.Set(TAGS, webhook.Tags)
 	if err != nil {
-		return fmt.Errorf("failed to set tags on webhook with id %q: %v", webhookID, err)
+		return diag.Errorf("failed to set tags on webhook with id %q: %v", webhookID, err)
 	}
-	return nil
+	return diags
 }
