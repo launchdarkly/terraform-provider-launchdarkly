@@ -307,19 +307,6 @@ resource "launchdarkly_feature_flag" "defaults" {
 	}
 }
 `
-	testAccFeatureFlagDefaultsMissingOffInvalid = `
-resource "launchdarkly_feature_flag" "defaults" {
-	project_key = launchdarkly_project.test.key
-	key = "defaults-flag"
-	name = "Feature flag with defaults"
-	variation_type = "boolean"
-	defaults {
-		on_variation = 2
-		off_variation = 3
-	}
-}
-`
-
 	testAccFeatureFlagDefaultsMultivariate = `
 resource "launchdarkly_feature_flag" "defaults-multivariate" {
 	project_key = launchdarkly_project.test.key

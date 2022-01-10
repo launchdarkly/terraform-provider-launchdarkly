@@ -6,6 +6,8 @@ ENHANCEMENTS:
 
 - Added a pre-commit file with a hook to alphabetize launchdarkly/keys.go
 
+- Improved 409 and 429 retry handling.
+
 ## [2.3.0] (January 4, 2022)
 
 FEATURES:

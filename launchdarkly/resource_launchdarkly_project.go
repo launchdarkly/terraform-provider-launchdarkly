@@ -31,11 +31,17 @@ func customizeProjectDiff(ctx context.Context, diff *schema.ResourceDiff, v inte
 			// AND the customer removes the INCLUDE_IN_SNIPPET key from the config without replacing with defaultCSA
 			// The read would assume no changes are needed, HOWEVER we need to jump back to LD set defaults
 			// Hence the setting below
-			diff.SetNew(INCLUDE_IN_SNIPPET, false)
-			diff.SetNew(CLIENT_SIDE_AVAILABILITY, []map[string]interface{}{{
+			err := diff.SetNew(INCLUDE_IN_SNIPPET, false)
+			if err != nil {
+				return err
+			}
+			err = diff.SetNew(DEFAULT_CLIENT_SIDE_AVAILABILITY, []map[string]interface{}{{
 				USING_ENVIRONMENT_ID: false,
 				USING_MOBILE_KEY:     true,
 			}})
+			if err != nil {
+				return err
+			}
 
 		}
 
@@ -159,6 +165,7 @@ func resourceProjectUpdate(d *schema.ResourceData, metaRaw interface{}) error {
 	clientSideHasChange := d.HasChange(DEFAULT_CLIENT_SIDE_AVAILABILITY)
 	// GetOkExists is 'deprecated', but needed as optional booleans set to false return a 'false' ok value from GetOk
 	// Also not really deprecated as they are keeping it around pending a replacement https://github.com/hashicorp/terraform-plugin-sdk/pull/350#issuecomment-597888969
+	//nolint:staticcheck // SA1019
 	_, includeInSnippetOk := d.GetOkExists(INCLUDE_IN_SNIPPET)
 	_, clientSideAvailabilityOk := d.GetOk(DEFAULT_CLIENT_SIDE_AVAILABILITY)
 	defaultClientSideAvailability := &ldapi.ClientSideAvailabilityPost{

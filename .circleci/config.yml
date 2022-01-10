@@ -3,19 +3,17 @@ version: 2.1
 
 orbs:
   go: circleci/go@1.7.0
+  linter: talkiq/linter@1.4.1
 
 jobs:
-  build:
+  test:
     executor:
       name: go/default
-      tag: "1.16"
+      tag: &go_version "1.16.10"
 
     steps:
       - checkout
       - go/mod-download-cached
-      - run:
-          name: go vet
-          command: make vet
       - run:
           name: Run unit tests
           command: TESTARGS="-v" make test
@@ -57,7 +55,22 @@ jobs:
           name: Test Webhook Resource
           command: TESTARGS="-run TestAccWebhook" make testacc
 
+  lint:
+    executor:
+      name: go/default
+      tag: *go_version
+
+    steps:
+      - checkout
+      - run:
+          name: Install python
+          command: |
+            sudo apt update
+            sudo apt install python3-pip python-is-python3
+      - linter/pre-commit
+
 workflows:
   main:
     jobs:
-      - build
+      - test
+      - lint

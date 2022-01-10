@@ -37,11 +37,17 @@ func customizeFlagDiff(ctx context.Context, diff *schema.ResourceDiff, v interfa
 				// AND the customer removes the INCLUDE_IN_SNIPPET key from the config without replacing with defaultCSA
 				// The read would assume no changes are needed, HOWEVER we need to jump back to project level set defaults
 				// Hence the setting below
-				diff.SetNew(INCLUDE_IN_SNIPPET, includeInSnippetByDefault)
-				diff.SetNew(CLIENT_SIDE_AVAILABILITY, []map[string]interface{}{{
+				err := diff.SetNew(INCLUDE_IN_SNIPPET, includeInSnippetByDefault)
+				if err != nil {
+					return err
+				}
+				err = diff.SetNew(CLIENT_SIDE_AVAILABILITY, []map[string]interface{}{{
 					USING_ENVIRONMENT_ID: defaultCSA.UsingEnvironmentId,
 					USING_MOBILE_KEY:     defaultCSA.UsingMobileKey,
 				}})
+				if err != nil {
+					return err
+				}
 			}
 		}
 
@@ -91,6 +97,7 @@ func resourceFeatureFlagCreate(d *schema.ResourceData, metaRaw interface{}) erro
 	includeInSnippet := d.Get(INCLUDE_IN_SNIPPET).(bool)
 	// GetOkExists is 'deprecated', but needed as optional booleans set to false return a 'false' ok value from GetOk
 	// Also not really deprecated as they are keeping it around pending a replacement https://github.com/hashicorp/terraform-plugin-sdk/pull/350#issuecomment-597888969
+	//nolint:staticcheck // SA1019
 	_, includeInSnippetOk := d.GetOkExists(INCLUDE_IN_SNIPPET)
 	_, clientSideAvailabilityOk := d.GetOk(CLIENT_SIDE_AVAILABILITY)
 	clientSideAvailability := &ldapi.ClientSideAvailabilityPost{
@@ -178,6 +185,7 @@ func resourceFeatureFlagUpdate(d *schema.ResourceData, metaRaw interface{}) erro
 	clientSideHasChange := d.HasChange(CLIENT_SIDE_AVAILABILITY)
 	// GetOkExists is 'deprecated', but needed as optional booleans set to false return a 'false' ok value from GetOk
 	// Also not really deprecated as they are keeping it around pending a replacement https://github.com/hashicorp/terraform-plugin-sdk/pull/350#issuecomment-597888969
+	//nolint:staticcheck // SA1019
 	_, includeInSnippetOk := d.GetOkExists(INCLUDE_IN_SNIPPET)
 	_, clientSideAvailabilityOk := d.GetOk(CLIENT_SIDE_AVAILABILITY)
 	temporary := d.Get(TEMPORARY).(bool)
@@ -242,7 +250,7 @@ func resourceFeatureFlagUpdate(d *schema.ResourceData, metaRaw interface{}) erro
 		patch.Patch = append(patch.Patch, patchReplace("/maintainerId", maintainerID.(string)))
 	}
 
-	_, _, err = client.ld.FeatureFlagsApi.PatchFeatureFlag(client.ctx, projectKey, key).PatchWithComment(*&patch).Execute()
+	_, _, err = client.ld.FeatureFlagsApi.PatchFeatureFlag(client.ctx, projectKey, key).PatchWithComment(patch).Execute()
 	if err != nil {
 		return fmt.Errorf("failed to update flag %q in project %q: %s", key, projectKey, handleLdapiErr(err))
 	}

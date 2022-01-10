@@ -7,6 +7,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 )
 
+//nolint:staticcheck // SA1019 TODO: return SchemaValidateDiagFunc type
 func validateKey() schema.SchemaValidateFunc {
 	return validation.StringMatch(
 		regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9_.-]*$`),
@@ -14,6 +15,7 @@ func validateKey() schema.SchemaValidateFunc {
 	)
 }
 
+//nolint:staticcheck // SA1019 TODO: return SchemaValidateDiagFunc type
 func validateKeyAndLength(minLength, maxLength int) schema.SchemaValidateFunc {
 	return validation.All(
 		validation.StringMatch(
@@ -24,6 +26,7 @@ func validateKeyAndLength(minLength, maxLength int) schema.SchemaValidateFunc {
 	)
 }
 
+//nolint:staticcheck // SA1019 TODO: return SchemaValidateDiagFunc type
 func validateID() schema.SchemaValidateFunc {
 	return validation.All(
 		validation.StringMatch(regexp.MustCompile(`^[a-fA-F0-9]*$`), "Must be a 24 character hexadecimal string"),
@@ -31,6 +34,7 @@ func validateID() schema.SchemaValidateFunc {
 	)
 }
 
+//nolint:staticcheck // SA1019 TODO: return SchemaValidateDiagFunc type
 func validateTags() schema.SchemaValidateFunc {
 	return validation.All(
 		validation.StringLenBetween(1, 64),
@@ -41,6 +45,7 @@ func validateTags() schema.SchemaValidateFunc {
 	)
 }
 
+//nolint:staticcheck // SA1019 TODO: return SchemaValidateDiagFunc type
 func validateOp() schema.SchemaValidateFunc {
 	return validation.StringInSlice([]string{
 		"in",

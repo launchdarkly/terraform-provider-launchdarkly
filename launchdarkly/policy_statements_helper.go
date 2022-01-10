@@ -167,13 +167,7 @@ func policyStatementsToResourceData(statements []ldapi.StatementRep) []interface
 func statementsToStatementReps(policies []ldapi.Statement) []ldapi.StatementRep {
 	statements := make([]ldapi.StatementRep, 0, len(policies))
 	for _, p := range policies {
-		rep := ldapi.StatementRep{
-			Resources:    p.Resources,
-			Actions:      p.Actions,
-			NotResources: p.NotResources,
-			NotActions:   p.NotActions,
-			Effect:       p.Effect,
-		}
+		rep := ldapi.StatementRep(p)
 		statements = append(statements, rep)
 	}
 	return statements

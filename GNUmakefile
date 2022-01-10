@@ -29,6 +29,8 @@ vet:
 	fi
 
 fmt:
+	go install github.com/ashanbrown/gofmts/cmd/gofmts@v0.1.4
+	gofmts -w $(GOFMT_FILES)
 	gofmt -w $(GOFMT_FILES)
 
 fmtcheck:
