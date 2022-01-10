@@ -2,7 +2,6 @@ package launchdarkly
 
 import (
 	"fmt"
-	"net/http"
 	"os"
 	"testing"
 
@@ -41,30 +40,21 @@ func testAccDataSourceFeatureFlagEnvironmentScaffold(client *Client, projectKey,
 	patch := ldapi.NewPatchWithComment(envConfigPatches)
 	patch.SetComment("Terraform feature flag env data source test")
 
-	_, _, err = handleRateLimit(func() (interface{}, *http.Response, error) {
-		return handleNoConflict(func() (interface{}, *http.Response, error) {
-			return client.ld.FeatureFlagsApi.PatchFeatureFlag(client.ctx, projectKey, flagKey).PatchWithComment(*patch).Execute()
-		})
-	})
+	_, _, err = client.ld.FeatureFlagsApi.PatchFeatureFlag(client.ctx, projectKey, flagKey).PatchWithComment(*patch).Execute()
+
 	if err != nil {
 		// delete project if anything fails because otherwise we will see a
 		// 409 error later and have to clean it up manually
 		_ = testAccDataSourceProjectDelete(client, projectKey)
 		return nil, fmt.Errorf("failed to create feature flag env config: %s", err.Error())
 	}
-	flagRaw, _, err := handleRateLimit(func() (interface{}, *http.Response, error) {
-		return client.ld.FeatureFlagsApi.GetFeatureFlag(client.ctx, projectKey, flagKey).Execute()
-	})
+	flag, _, err := client.ld.FeatureFlagsApi.GetFeatureFlag(client.ctx, projectKey, flagKey).Execute()
+
 	if err != nil {
 		_ = testAccDataSourceProjectDelete(client, projectKey)
 		return nil, fmt.Errorf("failed to get feature flag: %s", err.Error())
 	}
 
-	flag, ok := flagRaw.(ldapi.FeatureFlag)
-	if !ok {
-		_ = testAccDataSourceProjectDelete(client, projectKey)
-		return nil, fmt.Errorf("failed to create feature flag env config")
-	}
 	return &flag, nil
 }
 

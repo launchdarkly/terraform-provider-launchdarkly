@@ -156,10 +156,8 @@ func resourceAccessTokenCreate(d *schema.ResourceData, metaRaw interface{}) erro
 		accessTokenBody.Role = ldapi.PtrString(accessTokenRole.(string))
 	}
 
-	tokenRaw, _, err := handleRateLimit(func() (interface{}, *http.Response, error) {
-		return client.ld.AccessTokensApi.PostToken(client.ctx).AccessTokenPost(accessTokenBody).Execute()
-	})
-	token := tokenRaw.(ldapi.Token)
+	token, _, err := client.ld.AccessTokensApi.PostToken(client.ctx).AccessTokenPost(accessTokenBody).Execute()
+
 	if err != nil {
 		return fmt.Errorf("failed to create access token with name %q: %s", accessTokenName, handleLdapiErr(err))
 	}
@@ -173,10 +171,8 @@ func resourceAccessTokenRead(d *schema.ResourceData, metaRaw interface{}) error 
 	client := metaRaw.(*Client)
 	accessTokenID := d.Id()
 
-	accessTokenRaw, res, err := handleRateLimit(func() (interface{}, *http.Response, error) {
-		return client.ld.AccessTokensApi.GetToken(client.ctx, accessTokenID).Execute()
-	})
-	accessToken := accessTokenRaw.(ldapi.Token)
+	accessToken, res, err := client.ld.AccessTokensApi.GetToken(client.ctx, accessTokenID).Execute()
+
 	if isStatusNotFound(res) {
 		log.Printf("[WARN] failed to find access token with id %q, removing from state", accessTokenID)
 		d.SetId("")
@@ -275,9 +271,7 @@ func resourceAccessTokenUpdate(d *schema.ResourceData, metaRaw interface{}) erro
 		patch = append(patch, op)
 	}
 
-	_, _, err = handleRateLimit(func() (interface{}, *http.Response, error) {
-		return client.ld.AccessTokensApi.PatchToken(client.ctx, accessTokenID).PatchOperation(patch).Execute()
-	})
+	_, _, err = client.ld.AccessTokensApi.PatchToken(client.ctx, accessTokenID).PatchOperation(patch).Execute()
 	if err != nil {
 		return fmt.Errorf("failed to update access token with id %q: %s", accessTokenID, handleLdapiErr(err))
 	}
@@ -304,10 +298,8 @@ func resourceAccessTokenDelete(d *schema.ResourceData, metaRaw interface{}) erro
 	client := metaRaw.(*Client)
 	accessTokenID := d.Id()
 
-	_, _, err := handleRateLimit(func() (interface{}, *http.Response, error) {
-		res, err := client.ld.AccessTokensApi.DeleteToken(client.ctx, accessTokenID).Execute()
-		return nil, res, err
-	})
+	_, err := client.ld.AccessTokensApi.DeleteToken(client.ctx, accessTokenID).Execute()
+
 	if err != nil {
 		return fmt.Errorf("failed to delete access token with id %q: %s", accessTokenID, handleLdapiErr(err))
 	}

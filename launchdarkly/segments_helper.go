@@ -3,10 +3,8 @@ package launchdarkly
 import (
 	"fmt"
 	"log"
-	"net/http"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	ldapi "github.com/launchdarkly/api-client-go/v7"
 )
 
 func baseSegmentSchema() map[string]*schema.Schema {
@@ -44,10 +42,7 @@ func segmentRead(d *schema.ResourceData, raw interface{}, isDataSource bool) err
 	envKey := d.Get(ENV_KEY).(string)
 	segmentKey := d.Get(KEY).(string)
 
-	segmentRaw, res, err := handleRateLimit(func() (interface{}, *http.Response, error) {
-		return client.ld.SegmentsApi.GetSegment(client.ctx, projectKey, envKey, segmentKey).Execute()
-	})
-	segment := segmentRaw.(ldapi.UserSegment)
+	segment, res, err := client.ld.SegmentsApi.GetSegment(client.ctx, projectKey, envKey, segmentKey).Execute()
 	if isStatusNotFound(res) && !isDataSource {
 		log.Printf("[WARN] failed to find segment %q in project %q, environment %q, removing from state", segmentKey, projectKey, envKey)
 		d.SetId("")

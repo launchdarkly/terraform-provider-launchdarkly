@@ -2,7 +2,6 @@ package launchdarkly
 
 import (
 	"fmt"
-	"net/http"
 	"strings"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -69,10 +68,7 @@ func resourceSegmentCreate(d *schema.ResourceData, metaRaw interface{}) error {
 		Tags:        &tags,
 	}
 
-	_, _, err := handleRateLimit(func() (interface{}, *http.Response, error) {
-		return client.ld.SegmentsApi.PostSegment(client.ctx, projectKey, envKey).SegmentBody(segment).Execute()
-	})
-
+	_, _, err := client.ld.SegmentsApi.PostSegment(client.ctx, projectKey, envKey).SegmentBody(segment).Execute()
 	if err != nil {
 		return fmt.Errorf("failed to create segment %q in project %q: %s", key, projectKey, handleLdapiErr(err))
 	}
@@ -120,11 +116,7 @@ func resourceSegmentUpdate(d *schema.ResourceData, metaRaw interface{}) error {
 			patchReplace("/rules", rules),
 		}}
 
-	_, _, err = handleRateLimit(func() (interface{}, *http.Response, error) {
-		return handleNoConflict(func() (interface{}, *http.Response, error) {
-			return client.ld.SegmentsApi.PatchSegment(client.ctx, projectKey, envKey, key).PatchWithComment(patch).Execute()
-		})
-	})
+	_, _, err = client.ld.SegmentsApi.PatchSegment(client.ctx, projectKey, envKey, key).PatchWithComment(patch).Execute()
 	if err != nil {
 		return fmt.Errorf("failed to update segment %q in project %q: %s", key, projectKey, handleLdapiErr(err))
 	}
@@ -138,11 +130,7 @@ func resourceSegmentDelete(d *schema.ResourceData, metaRaw interface{}) error {
 	envKey := d.Get(ENV_KEY).(string)
 	key := d.Get(KEY).(string)
 
-	_, _, err := handleRateLimit(func() (interface{}, *http.Response, error) {
-		res, err := client.ld.SegmentsApi.DeleteSegment(client.ctx, projectKey, envKey, key).Execute()
-		return nil, res, err
-	})
-
+	_, err := client.ld.SegmentsApi.DeleteSegment(client.ctx, projectKey, envKey, key).Execute()
 	if err != nil {
 		return fmt.Errorf("failed to delete segment %q from project %q: %s", key, projectKey, handleLdapiErr(err))
 	}
@@ -156,9 +144,7 @@ func resourceSegmentExists(d *schema.ResourceData, metaRaw interface{}) (bool, e
 	envKey := d.Get(ENV_KEY).(string)
 	key := d.Get(KEY).(string)
 
-	_, res, err := handleRateLimit(func() (interface{}, *http.Response, error) {
-		return client.ld.SegmentsApi.GetSegment(client.ctx, projectKey, envKey, key).Execute()
-	})
+	_, res, err := client.ld.SegmentsApi.GetSegment(client.ctx, projectKey, envKey, key).Execute()
 	if isStatusNotFound(res) {
 		return false, nil
 	}

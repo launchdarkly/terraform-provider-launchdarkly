@@ -3,7 +3,6 @@ package launchdarkly
 import (
 	"fmt"
 	"log"
-	"net/http"
 	"strings"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -86,10 +85,7 @@ func resourceDestinationCreate(d *schema.ResourceData, metaRaw interface{}) erro
 		On:     &destinationOn,
 	}
 
-	destinationRaw, _, err := handleRateLimit(func() (interface{}, *http.Response, error) {
-		return client.ld.DataExportDestinationsApi.PostDestination(client.ctx, destinationProjKey, destinationEnvKey).DestinationPost(destinationBody).Execute()
-	})
-	destination := destinationRaw.(ldapi.Destination)
+	destination, _, err := client.ld.DataExportDestinationsApi.PostDestination(client.ctx, destinationProjKey, destinationEnvKey).DestinationPost(destinationBody).Execute()
 	if err != nil {
 		d.SetId("")
 		return fmt.Errorf("failed to create destination with project key %q and env key %q: %s", destinationProjKey, destinationEnvKey, handleLdapiErr(err))
@@ -111,10 +107,8 @@ func resourceDestinationRead(d *schema.ResourceData, metaRaw interface{}) error 
 	destinationProjKey := d.Get(PROJECT_KEY).(string)
 	destinationEnvKey := d.Get(ENV_KEY).(string)
 
-	destinationRaw, res, err := handleRateLimit(func() (interface{}, *http.Response, error) {
-		return client.ld.DataExportDestinationsApi.GetDestination(client.ctx, destinationProjKey, destinationEnvKey, destinationID).Execute()
-	})
-	destination := destinationRaw.(ldapi.Destination)
+	destination, res, err := client.ld.DataExportDestinationsApi.GetDestination(client.ctx, destinationProjKey, destinationEnvKey, destinationID).Execute()
+
 	if isStatusNotFound(res) {
 		log.Printf("[WARN] failed to find destination with id: %q in project %q, environment: %q, removing from state", destinationID, destinationProjKey, destinationEnvKey)
 		d.SetId("")
@@ -159,11 +153,7 @@ func resourceDestinationUpdate(d *schema.ResourceData, metaRaw interface{}) erro
 		patchReplace("/config", &destinationConfig),
 	}
 
-	_, _, err = handleRateLimit(func() (interface{}, *http.Response, error) {
-		return handleNoConflict((func() (interface{}, *http.Response, error) {
-			return client.ld.DataExportDestinationsApi.PatchDestination(client.ctx, destinationProjKey, destinationEnvKey, destinationID).PatchOperation(patch).Execute()
-		}))
-	})
+	_, _, err = client.ld.DataExportDestinationsApi.PatchDestination(client.ctx, destinationProjKey, destinationEnvKey, destinationID).PatchOperation(patch).Execute()
 	if err != nil {
 		return fmt.Errorf("failed to update destination with id %q: %s", destinationID, handleLdapiErr(err))
 	}
@@ -180,11 +170,7 @@ func resourceDestinationDelete(d *schema.ResourceData, metaRaw interface{}) erro
 	destinationProjKey := d.Get(PROJECT_KEY).(string)
 	destinationEnvKey := d.Get(ENV_KEY).(string)
 
-	_, _, err = handleRateLimit(func() (interface{}, *http.Response, error) {
-		res, err := client.ld.DataExportDestinationsApi.DeleteDestination(client.ctx, destinationProjKey, destinationEnvKey, destinationID).Execute()
-		return nil, res, err
-	})
-
+	_, err = client.ld.DataExportDestinationsApi.DeleteDestination(client.ctx, destinationProjKey, destinationEnvKey, destinationID).Execute()
 	if err != nil {
 		return fmt.Errorf("failed to delete destination with id %q: %s", destinationID, handleLdapiErr(err))
 	}
@@ -201,9 +187,7 @@ func resourceDestinationExists(d *schema.ResourceData, metaRaw interface{}) (boo
 	destinationProjKey := d.Get(PROJECT_KEY).(string)
 	destinationEnvKey := d.Get(ENV_KEY).(string)
 
-	_, res, err := handleRateLimit(func() (interface{}, *http.Response, error) {
-		return client.ld.DataExportDestinationsApi.GetDestination(client.ctx, destinationProjKey, destinationEnvKey, destinationID).Execute()
-	})
+	_, res, err := client.ld.DataExportDestinationsApi.GetDestination(client.ctx, destinationProjKey, destinationEnvKey, destinationID).Execute()
 	if isStatusNotFound(res) {
 		return false, nil
 	}

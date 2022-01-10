@@ -3,19 +3,16 @@ package launchdarkly
 import (
 	"fmt"
 	"log"
-	"net/http"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	ldapi "github.com/launchdarkly/api-client-go/v7"
 )
 
 func projectRead(d *schema.ResourceData, meta interface{}, isDataSource bool) error {
 	client := meta.(*Client)
 	projectKey := d.Get(KEY).(string)
 
-	rawProject, res, err := handleRateLimit(func() (interface{}, *http.Response, error) {
-		return client.ld.ProjectsApi.GetProject(client.ctx, projectKey).Execute()
-	})
+	project, res, err := client.ld.ProjectsApi.GetProject(client.ctx, projectKey).Execute()
+
 	// return nil error for resource reads but 404 for data source reads
 	if isStatusNotFound(res) && !isDataSource {
 		log.Printf("[WARN] failed to find project with key %q, removing from state if present", projectKey)
@@ -26,7 +23,6 @@ func projectRead(d *schema.ResourceData, meta interface{}, isDataSource bool) er
 		return fmt.Errorf("failed to get project with key %q: %v", projectKey, err)
 	}
 
-	project := rawProject.(ldapi.Project)
 	defaultCSA := *project.DefaultClientSideAvailability
 	clientSideAvailability := []map[string]interface{}{{
 		"using_environment_id": defaultCSA.UsingEnvironmentId,

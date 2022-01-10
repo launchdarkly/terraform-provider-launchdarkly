@@ -2,7 +2,6 @@ package launchdarkly
 
 import (
 	"fmt"
-	"net/http"
 	"strings"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -58,9 +57,7 @@ func resourceEnvironmentCreate(d *schema.ResourceData, metaRaw interface{}) erro
 		ConfirmChanges:     &confirmChanges,
 	}
 
-	_, _, err := handleRateLimit(func() (interface{}, *http.Response, error) {
-		return client.ld.EnvironmentsApi.PostEnvironment(client.ctx, projectKey).EnvironmentPost(envPost).Execute()
-	})
+	_, _, err := client.ld.EnvironmentsApi.PostEnvironment(client.ctx, projectKey).EnvironmentPost(envPost).Execute()
 	if err != nil {
 		return fmt.Errorf("failed to create environment: [%+v] for project key: %s: %s", envPost, projectKey, handleLdapiErr(err))
 	}
@@ -116,11 +113,7 @@ func resourceEnvironmentUpdate(d *schema.ResourceData, metaRaw interface{}) erro
 		return err
 	}
 	patch = append(patch, approvalPatch...)
-	_, _, err = handleRateLimit(func() (interface{}, *http.Response, error) {
-		return handleNoConflict(func() (interface{}, *http.Response, error) {
-			return client.ld.EnvironmentsApi.PatchEnvironment(client.ctx, projectKey, key).PatchOperation(patch).Execute()
-		})
-	})
+	_, _, err = client.ld.EnvironmentsApi.PatchEnvironment(client.ctx, projectKey, key).PatchOperation(patch).Execute()
 	if err != nil {
 		return fmt.Errorf("failed to update environment with key %q for project: %q: %s", key, projectKey, handleLdapiErr(err))
 	}
@@ -133,11 +126,7 @@ func resourceEnvironmentDelete(d *schema.ResourceData, metaRaw interface{}) erro
 	projectKey := d.Get(PROJECT_KEY).(string)
 	key := d.Get(KEY).(string)
 
-	_, _, err := handleRateLimit(func() (interface{}, *http.Response, error) {
-		res, err := client.ld.EnvironmentsApi.DeleteEnvironment(client.ctx, projectKey, key).Execute()
-		return nil, res, err
-	})
-
+	_, err := client.ld.EnvironmentsApi.DeleteEnvironment(client.ctx, projectKey, key).Execute()
 	if err != nil {
 		return fmt.Errorf("failed to delete project with key %q for project %q: %s", key, projectKey, handleLdapiErr(err))
 	}
@@ -150,9 +139,7 @@ func resourceEnvironmentExists(d *schema.ResourceData, metaRaw interface{}) (boo
 }
 
 func environmentExists(projectKey string, key string, meta *Client) (bool, error) {
-	_, res, err := handleRateLimit(func() (interface{}, *http.Response, error) {
-		return meta.ld.EnvironmentsApi.GetEnvironment(meta.ctx, projectKey, key).Execute()
-	})
+	_, res, err := meta.ld.EnvironmentsApi.GetEnvironment(meta.ctx, projectKey, key).Execute()
 	if isStatusNotFound(res) {
 		return false, nil
 	}

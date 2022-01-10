@@ -2,7 +2,6 @@ package launchdarkly
 
 import (
 	"fmt"
-	"net/http"
 	"os"
 	"regexp"
 	"testing"
@@ -36,24 +35,18 @@ func testAccDataSourceWebhookCreate(client *Client, webhookName string) (*ldapi.
 			},
 		},
 	}
-	webhookRaw, _, err := handleRateLimit(func() (interface{}, *http.Response, error) {
-		return client.ld.WebhooksApi.PostWebhook(client.ctx).WebhookPost(webhookBody).Execute()
-	})
+	webhook, _, err := client.ld.WebhooksApi.PostWebhook(client.ctx).WebhookPost(webhookBody).Execute()
+
 	if err != nil {
 		return nil, fmt.Errorf("failed to create webhook with name %q: %s", webhookName, handleLdapiErr(err))
 	}
 
-	if webhook, ok := webhookRaw.(ldapi.Webhook); ok {
-		return &webhook, nil
-	}
-	return nil, fmt.Errorf("failed to create webhook")
+	return &webhook, nil
 }
 
 func testAccDataSourceWebhookDelete(client *Client, webhookId string) error {
-	_, _, err := handleRateLimit(func() (interface{}, *http.Response, error) {
-		res, err := client.ld.WebhooksApi.DeleteWebhook(client.ctx, webhookId).Execute()
-		return nil, res, err
-	})
+	_, err := client.ld.WebhooksApi.DeleteWebhook(client.ctx, webhookId).Execute()
+
 	if err != nil {
 		return fmt.Errorf("failed to delete webhook with id %q: %s", webhookId, handleLdapiErr(err))
 	}

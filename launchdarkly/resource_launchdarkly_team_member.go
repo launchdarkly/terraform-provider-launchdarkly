@@ -3,7 +3,6 @@ package launchdarkly
 import (
 	"fmt"
 	"log"
-	"net/http"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
@@ -81,10 +80,7 @@ func resourceTeamMemberCreate(d *schema.ResourceData, metaRaw interface{}) error
 		CustomRoles: &customRoles,
 	}
 
-	membersRaw, _, err := handleRateLimit(func() (interface{}, *http.Response, error) {
-		return client.ld.AccountMembersApi.PostMembers(client.ctx).NewMemberForm([]ldapi.NewMemberForm{membersBody}).Execute()
-	})
-	members := membersRaw.(ldapi.Members)
+	members, _, err := client.ld.AccountMembersApi.PostMembers(client.ctx).NewMemberForm([]ldapi.NewMemberForm{membersBody}).Execute()
 	if err != nil {
 		return fmt.Errorf("failed to create team member with email: %s: %v", memberEmail, handleLdapiErr(err))
 	}
@@ -97,10 +93,7 @@ func resourceTeamMemberRead(d *schema.ResourceData, metaRaw interface{}) error {
 	client := metaRaw.(*Client)
 	memberID := d.Id()
 
-	memberRaw, res, err := handleRateLimit(func() (interface{}, *http.Response, error) {
-		return client.ld.AccountMembersApi.GetMember(client.ctx, memberID).Execute()
-	})
-	member := memberRaw.(ldapi.Member)
+	member, res, err := client.ld.AccountMembersApi.GetMember(client.ctx, memberID).Execute()
 	if isStatusNotFound(res) {
 		log.Printf("[WARN] failed to find member with id %q, removing from state", memberID)
 		d.SetId("")
@@ -148,11 +141,7 @@ func resourceTeamMemberUpdate(d *schema.ResourceData, metaRaw interface{}) error
 		patchReplace("/customRoles", &customRoleIds),
 	}
 
-	_, _, err = handleRateLimit(func() (interface{}, *http.Response, error) {
-		return handleNoConflict(func() (interface{}, *http.Response, error) {
-			return client.ld.AccountMembersApi.PatchMember(client.ctx, memberID).PatchOperation(patch).Execute()
-		})
-	})
+	_, _, err = client.ld.AccountMembersApi.PatchMember(client.ctx, memberID).PatchOperation(patch).Execute()
 	if err != nil {
 		return fmt.Errorf("failed to update team member with id %q: %s", memberID, handleLdapiErr(err))
 	}
@@ -163,10 +152,7 @@ func resourceTeamMemberUpdate(d *schema.ResourceData, metaRaw interface{}) error
 func resourceTeamMemberDelete(d *schema.ResourceData, metaRaw interface{}) error {
 	client := metaRaw.(*Client)
 
-	_, _, err := handleRateLimit(func() (interface{}, *http.Response, error) {
-		res, err := client.ld.AccountMembersApi.DeleteMember(client.ctx, d.Id()).Execute()
-		return nil, res, err
-	})
+	_, err := client.ld.AccountMembersApi.DeleteMember(client.ctx, d.Id()).Execute()
 	if err != nil {
 		return fmt.Errorf("failed to delete team member with id %q: %s", d.Id(), handleLdapiErr(err))
 	}

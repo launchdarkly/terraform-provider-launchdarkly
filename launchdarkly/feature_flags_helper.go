@@ -3,7 +3,6 @@ package launchdarkly
 import (
 	"fmt"
 	"log"
-	"net/http"
 	"strings"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -114,10 +113,8 @@ func featureFlagRead(d *schema.ResourceData, raw interface{}, isDataSource bool)
 	projectKey := d.Get(PROJECT_KEY).(string)
 	key := d.Get(KEY).(string)
 
-	flagRaw, res, err := handleRateLimit(func() (interface{}, *http.Response, error) {
-		return client.ld.FeatureFlagsApi.GetFeatureFlag(client.ctx, projectKey, key).Execute()
-	})
-	flag := flagRaw.(ldapi.FeatureFlag)
+	flag, res, err := client.ld.FeatureFlagsApi.GetFeatureFlag(client.ctx, projectKey, key).Execute()
+
 	if isStatusNotFound(res) && !isDataSource {
 		log.Printf("[WARN] feature flag %q in project %q not found, removing from state", key, projectKey)
 		d.SetId("")
@@ -206,12 +203,10 @@ func flagIdToKeys(id string) (projectKey string, flagKey string, err error) {
 }
 
 func getProjectDefaultCSAandIncludeInSnippet(client *Client, projectKey string) (ldapi.ClientSideAvailability, bool, error) {
-	rawProject, _, err := handleRateLimit(func() (interface{}, *http.Response, error) {
-		return client.ld.ProjectsApi.GetProject(client.ctx, projectKey).Execute()
-	})
+	project, _, err := client.ld.ProjectsApi.GetProject(client.ctx, projectKey).Execute()
 	if err != nil {
 		return ldapi.ClientSideAvailability{}, false, err
 	}
-	project := rawProject.(ldapi.Project)
+
 	return *project.DefaultClientSideAvailability, project.IncludeInSnippetByDefault, nil
 }

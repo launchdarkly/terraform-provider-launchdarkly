@@ -2,7 +2,6 @@ package launchdarkly
 
 import (
 	"fmt"
-	"net/http"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	ldapi "github.com/launchdarkly/api-client-go/v7"
@@ -65,10 +64,7 @@ func resourceWebhookCreate(d *schema.ResourceData, metaRaw interface{}) error {
 		webhookBody.Sign = true
 	}
 
-	webhookRaw, _, err := handleRateLimit(func() (interface{}, *http.Response, error) {
-		return client.ld.WebhooksApi.PostWebhook(client.ctx).WebhookPost(webhookBody).Execute()
-	})
-	webhook := webhookRaw.(ldapi.Webhook)
+	webhook, _, err := client.ld.WebhooksApi.PostWebhook(client.ctx).WebhookPost(webhookBody).Execute()
 	if err != nil {
 		return fmt.Errorf("failed to create webhook with name %q: %s", webhookName, handleLdapiErr(err))
 	}
@@ -118,11 +114,7 @@ func resourceWebhookUpdate(d *schema.ResourceData, metaRaw interface{}) error {
 		}
 	}
 
-	_, _, err = handleRateLimit(func() (interface{}, *http.Response, error) {
-		return handleNoConflict(func() (interface{}, *http.Response, error) {
-			return client.ld.WebhooksApi.PatchWebhook(client.ctx, webhookID).PatchOperation(patch).Execute()
-		})
-	})
+	_, _, err = client.ld.WebhooksApi.PatchWebhook(client.ctx, webhookID).PatchOperation(patch).Execute()
 	if err != nil {
 		return fmt.Errorf("failed to update webhook with id %q: %s", webhookID, handleLdapiErr(err))
 	}
@@ -134,11 +126,7 @@ func resourceWebhookDelete(d *schema.ResourceData, metaRaw interface{}) error {
 	client := metaRaw.(*Client)
 	webhookID := d.Id()
 
-	_, _, err := handleRateLimit(func() (interface{}, *http.Response, error) {
-		res, err := client.ld.WebhooksApi.DeleteWebhook(client.ctx, webhookID).Execute()
-		return nil, res, err
-	})
-
+	_, err := client.ld.WebhooksApi.DeleteWebhook(client.ctx, webhookID).Execute()
 	if err != nil {
 		return fmt.Errorf("failed to delete webhook with id %q: %s", webhookID, handleLdapiErr(err))
 	}
@@ -151,9 +139,7 @@ func resourceWebhookExists(d *schema.ResourceData, metaRaw interface{}) (bool, e
 }
 
 func webhookExists(webhookID string, meta *Client) (bool, error) {
-	_, res, err := handleRateLimit(func() (interface{}, *http.Response, error) {
-		return meta.ld.WebhooksApi.GetWebhook(meta.ctx, webhookID).Execute()
-	})
+	_, res, err := meta.ld.WebhooksApi.GetWebhook(meta.ctx, webhookID).Execute()
 	if isStatusNotFound(res) {
 		return false, nil
 	}

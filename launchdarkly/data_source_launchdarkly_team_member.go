@@ -2,7 +2,6 @@ package launchdarkly
 
 import (
 	"fmt"
-	"net/http"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	ldapi "github.com/launchdarkly/api-client-go/v7"
@@ -43,27 +42,24 @@ func getTeamMemberByEmail(client *Client, memberEmail string) (*ldapi.Member, er
 	// this should be the max limit allowed when the member-list-max-limit flag is on
 	teamMemberLimit := int64(1000)
 
-	membersRaw, _, err := handleRateLimit(func() (interface{}, *http.Response, error) {
-		return client.ld.AccountMembersApi.GetMembers(client.ctx).Limit(teamMemberLimit).Execute()
-	})
+	members, _, err := client.ld.AccountMembersApi.GetMembers(client.ctx).Limit(teamMemberLimit).Execute()
+
 	if err != nil {
 		return nil, fmt.Errorf("failed to read team member with email: %s: %v", memberEmail, handleLdapiErr(err))
 	}
 
-	members := membersRaw.(ldapi.Members)
 	totalMemberCount := int(*members.TotalCount)
 
 	memberItems := members.Items
 	membersPulled := len(memberItems)
 	for membersPulled < totalMemberCount {
 		offset := int64(membersPulled)
-		newRawMembers, _, err := handleRateLimit(func() (interface{}, *http.Response, error) {
-			return client.ld.AccountMembersApi.GetMembers(client.ctx).Limit(teamMemberLimit).Offset(offset).Execute()
-		})
+		newMembers, _, err := client.ld.AccountMembersApi.GetMembers(client.ctx).Limit(teamMemberLimit).Offset(offset).Execute()
+
 		if err != nil {
 			return nil, fmt.Errorf("failed to read team member with email: %s: %v", memberEmail, handleLdapiErr(err))
 		}
-		newMembers := newRawMembers.(ldapi.Members)
+
 		memberItems = append(memberItems, newMembers.Items...)
 		membersPulled = len(memberItems)
 	}

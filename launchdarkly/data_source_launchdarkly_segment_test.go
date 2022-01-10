@@ -2,7 +2,6 @@ package launchdarkly
 
 import (
 	"fmt"
-	"net/http"
 	"os"
 	"regexp"
 	"testing"
@@ -46,9 +45,8 @@ func testAccDataSourceSegmentCreate(client *Client, projectKey, segmentKey strin
 		Description: ldapi.PtrString("test description"),
 		Tags:        &[]string{"terraform"},
 	}
-	_, _, err = handleRateLimit(func() (interface{}, *http.Response, error) {
-		return client.ld.SegmentsApi.PostSegment(client.ctx, project.Key, envKey).SegmentBody(segmentBody).Execute()
-	})
+	_, _, err = client.ld.SegmentsApi.PostSegment(client.ctx, project.Key, envKey).SegmentBody(segmentBody).Execute()
+
 	if err != nil {
 		return nil, fmt.Errorf("failed to create segment %q in project %q: %s", segmentKey, projectKey, handleLdapiErr(err))
 	}
@@ -60,19 +58,13 @@ func testAccDataSourceSegmentCreate(client *Client, projectKey, segmentKey strin
 			patchReplace("/rules", properties.Rules),
 		},
 	}
-	rawSegment, _, err := handleRateLimit(func() (interface{}, *http.Response, error) {
-		return handleNoConflict(func() (interface{}, *http.Response, error) {
-			return client.ld.SegmentsApi.PatchSegment(client.ctx, projectKey, envKey, segmentKey).PatchWithComment(patch).Execute()
-		})
-	})
+	segment, _, err := client.ld.SegmentsApi.PatchSegment(client.ctx, projectKey, envKey, segmentKey).PatchWithComment(patch).Execute()
+
 	if err != nil {
 		return nil, fmt.Errorf("failed to update segment %q in project %q: %s", segmentKey, projectKey, handleLdapiErr(err))
 	}
 
-	if segment, ok := rawSegment.(ldapi.UserSegment); ok {
-		return &segment, nil
-	}
-	return nil, fmt.Errorf("failed to create segment %q in project %q: %s", segmentKey, projectKey, handleLdapiErr(err))
+	return &segment, nil
 }
 
 func TestAccDataSourceSegment_noMatchReturnsError(t *testing.T) {

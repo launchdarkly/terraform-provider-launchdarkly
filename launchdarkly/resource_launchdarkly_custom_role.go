@@ -3,7 +3,6 @@ package launchdarkly
 import (
 	"fmt"
 	"log"
-	"net/http"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 
@@ -67,9 +66,8 @@ func resourceCustomRoleCreate(d *schema.ResourceData, metaRaw interface{}) error
 		Policy:      customRolePolicies,
 	}
 
-	_, _, err = handleRateLimit(func() (interface{}, *http.Response, error) {
-		return client.ld.CustomRolesApi.PostCustomRole(client.ctx).CustomRolePost(customRoleBody).Execute()
-	})
+	_, _, err = client.ld.CustomRolesApi.PostCustomRole(client.ctx).CustomRolePost(customRoleBody).Execute()
+
 	if err != nil {
 		return fmt.Errorf("failed to create custom role with name %q: %s", customRoleName, handleLdapiErr(err))
 	}
@@ -82,10 +80,8 @@ func resourceCustomRoleRead(d *schema.ResourceData, metaRaw interface{}) error {
 	client := metaRaw.(*Client)
 	customRoleID := d.Id()
 
-	customRoleRaw, res, err := handleRateLimit(func() (interface{}, *http.Response, error) {
-		return client.ld.CustomRolesApi.GetCustomRole(client.ctx, customRoleID).Execute()
-	})
-	customRole := customRoleRaw.(ldapi.CustomRole)
+	customRole, res, err := client.ld.CustomRolesApi.GetCustomRole(client.ctx, customRoleID).Execute()
+
 	if isStatusNotFound(res) {
 		log.Printf("[WARN] failed to find custom role with id %q, removing from state", customRoleID)
 		d.SetId("")
@@ -134,11 +130,7 @@ func resourceCustomRoleUpdate(d *schema.ResourceData, metaRaw interface{}) error
 			patchReplace("/policy", &customRolePolicies),
 		}}
 
-	_, _, err = handleRateLimit(func() (interface{}, *http.Response, error) {
-		return handleNoConflict(func() (interface{}, *http.Response, error) {
-			return client.ld.CustomRolesApi.PatchCustomRole(client.ctx, customRoleKey).PatchWithComment(patch).Execute()
-		})
-	})
+	_, _, err = client.ld.CustomRolesApi.PatchCustomRole(client.ctx, customRoleKey).PatchWithComment(patch).Execute()
 	if err != nil {
 		return fmt.Errorf("failed to update custom role with key %q: %s", customRoleKey, handleLdapiErr(err))
 	}
@@ -150,10 +142,7 @@ func resourceCustomRoleDelete(d *schema.ResourceData, metaRaw interface{}) error
 	client := metaRaw.(*Client)
 	customRoleKey := d.Id()
 
-	_, _, err := handleRateLimit(func() (interface{}, *http.Response, error) {
-		res, err := client.ld.CustomRolesApi.DeleteCustomRole(client.ctx, customRoleKey).Execute()
-		return nil, res, err
-	})
+	_, err := client.ld.CustomRolesApi.DeleteCustomRole(client.ctx, customRoleKey).Execute()
 
 	if err != nil {
 		return fmt.Errorf("failed to delete custom role with key %q: %s", customRoleKey, handleLdapiErr(err))

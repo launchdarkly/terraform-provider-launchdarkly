@@ -3,7 +3,6 @@ package launchdarkly
 import (
 	"fmt"
 	"log"
-	"net/http"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
@@ -227,9 +226,8 @@ func environmentRead(d *schema.ResourceData, meta interface{}, isDataSource bool
 	projectKey := d.Get(PROJECT_KEY).(string)
 	key := d.Get(KEY).(string)
 
-	envRaw, res, err := handleRateLimit(func() (interface{}, *http.Response, error) {
-		return client.ld.EnvironmentsApi.GetEnvironment(client.ctx, projectKey, key).Execute()
-	})
+	env, res, err := client.ld.EnvironmentsApi.GetEnvironment(client.ctx, projectKey, key).Execute()
+
 	if isStatusNotFound(res) && !isDataSource {
 		log.Printf("[WARN] failed to find environment with key %q in project %q, removing from state", key, projectKey)
 		d.SetId("")
@@ -239,7 +237,6 @@ func environmentRead(d *schema.ResourceData, meta interface{}, isDataSource bool
 		return fmt.Errorf("failed to get environment with key %q for project key: %q: %v", key, projectKey, handleLdapiErr(err))
 	}
 
-	env := envRaw.(ldapi.Environment)
 	d.SetId(projectKey + "/" + key)
 	_ = d.Set(KEY, env.Key)
 	_ = d.Set(NAME, env.Name)
