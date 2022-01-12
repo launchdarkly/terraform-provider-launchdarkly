@@ -4,7 +4,7 @@ FEATURES:
 
 - Added a `launchdarkly_team_members` data source to allow using multiple team members in one data source.
 
-ENHANCEMENTS:
+- Added a new `launchdarkly_metric` resource and data source for managing LaunchDarkly experiment flag metrics.
 
 - Added a new `launchdarkly_flag_triggers` resource and data source for managing LaunchDarkly flag triggers.
 

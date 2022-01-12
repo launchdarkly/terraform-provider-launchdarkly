@@ -45,6 +45,9 @@ jobs:
           name: Test Flag Trigger Resource
           command: TESTARGS="-run TestAccFlagTrigger" make testacc
       - run:
+          name: Test Metric Resource
+          command: TESTARGS="-run TestAccMetric" make testacc
+      - run:
           name: Test Project Resource
           command: TESTARGS="-run TestAccProject" make testacc
       - run:
