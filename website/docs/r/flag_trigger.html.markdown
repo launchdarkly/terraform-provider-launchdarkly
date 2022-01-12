@@ -5,7 +5,7 @@ description: |-
   Create and manage LaunchDarkly flag triggers.
 ---
 
-# launchdarkly_project
+# launchdarkly_flag_trigger
 
 Provides a LaunchDarkly flag trigger resource.
 
