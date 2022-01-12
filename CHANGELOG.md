@@ -2,9 +2,11 @@
 
 FEATURES:
 
-- Added a new `launchdarkly_audit_log_subscription` resource and data source.
+- Added the `launchdarkly_relay_proxy_configuration` for managing configurations for the Relay Proxy's [automatic configuration](https://docs.launchdarkly.com/home/relay-proxy/automatic-configuration#writing-an-inline-policy) feature.
 
-  ENHANCEMENTS:
+- Added a the `launchdarkly_audit_log_subscription` resource and data source for managing LaunchDarkly adit log integration subscriptions.
+
+ENHANCEMENTS:
 
 - Updated tests to use the constant attribute keys defined in launchdarkly/keys.go
 

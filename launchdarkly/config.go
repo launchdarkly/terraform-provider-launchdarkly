@@ -14,7 +14,7 @@ import (
 	ldapi "github.com/launchdarkly/api-client-go/v7"
 )
 
-// The version string gets updated at build time using -ldflags
+//nolint:staticcheck // The version string gets updated at build time using -ldflags
 var version = "unreleased"
 
 const (

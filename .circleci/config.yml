@@ -45,6 +45,9 @@ jobs:
           name: Test Project Resource
           command: TESTARGS="-run TestAccProject" make testacc
       - run:
+          name: Test Relay Proxy Configuration Resource
+          command: TESTARGS="-run TestAccRelayProxy" make testacc
+      - run:
           name: Test Segment Resource
           command: TESTARGS="-run TestAccSegment" make testacc
       - run:

@@ -5,7 +5,7 @@ description: |-
   Create and manage LaunchDarkly access tokens.
 ---
 
-# launchdarkly_access
+# launchdarkly_access_token
 
 Provides a LaunchDarkly access token resource.
 
@@ -15,7 +15,7 @@ This resource allows you to create and manage access tokens within your LaunchDa
 
 ## Example Usage
 
-Resource must contain either a `role`, `custom_role` or an `inline_roles` (previously `policy_statements`) block. As of v1.7.0, `policy_statements` has been deprecated in favor of `inline_roles`.
+The resource must contain either a `role`, `custom_role` or an `inline_roles` (previously `policy_statements`) block. As of v1.7.0, `policy_statements` has been deprecated in favor of `inline_roles`.
 
 With a built-in role
 

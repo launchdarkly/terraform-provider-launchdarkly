@@ -21,12 +21,12 @@ type policyStatementSchemaOptions struct {
 func policyStatementsSchema(options policyStatementSchemaOptions) *schema.Schema {
 	schema := &schema.Schema{
 		Type:          schema.TypeList,
+		Optional:      !options.required,
+		Required:      options.required,
 		MinItems:      1,
 		Description:   options.description,
 		Deprecated:    options.deprecated,
 		ConflictsWith: options.conflictsWith,
-		Optional:      !options.required,
-		Required:      options.required,
 		Elem: &schema.Resource{
 			Schema: map[string]*schema.Schema{
 				RESOURCES: {
@@ -171,6 +171,22 @@ func statementsToStatementReps(policies []ldapi.Statement) []ldapi.StatementRep 
 	statements := make([]ldapi.StatementRep, 0, len(policies))
 	for _, p := range policies {
 		rep := ldapi.StatementRep(p)
+		statements = append(statements, rep)
+	}
+	return statements
+}
+
+// The relay proxy config api requires a statementRep in the POST body
+func statementPostsToStatementReps(policies []ldapi.StatementPost) []ldapi.StatementRep {
+	statements := make([]ldapi.StatementRep, 0, len(policies))
+	for _, p := range policies {
+		rep := ldapi.StatementRep{
+			Resources:    &p.Resources,
+			Actions:      &p.Actions,
+			NotResources: p.NotResources,
+			NotActions:   p.NotActions,
+			Effect:       p.Effect,
+		}
 		statements = append(statements, rep)
 	}
 	return statements
