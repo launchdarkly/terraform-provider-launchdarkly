@@ -44,6 +44,7 @@ const (
 	INCLUDED                         = "included"
 	INCLUDE_IN_SNIPPET               = "include_in_snippet"
 	INLINE_ROLES                     = "inline_roles"
+	INTEGRATION_KEY                  = "integration_key"
 	KEY                              = "key"
 	KIND                             = "kind"
 	LAST_NAME                        = "last_name"

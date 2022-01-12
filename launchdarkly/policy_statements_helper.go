@@ -15,16 +15,18 @@ type policyStatementSchemaOptions struct {
 	deprecated    string
 	description   string
 	conflictsWith []string
+	required      bool
 }
 
 func policyStatementsSchema(options policyStatementSchemaOptions) *schema.Schema {
-	return &schema.Schema{
+	schema := &schema.Schema{
 		Type:          schema.TypeList,
-		Optional:      true,
 		MinItems:      1,
 		Description:   options.description,
 		Deprecated:    options.deprecated,
 		ConflictsWith: options.conflictsWith,
+		Optional:      !options.required,
+		Required:      options.required,
 		Elem: &schema.Resource{
 			Schema: map[string]*schema.Schema{
 				RESOURCES: {
@@ -71,6 +73,7 @@ func policyStatementsSchema(options policyStatementSchemaOptions) *schema.Schema
 			},
 		},
 	}
+	return schema
 }
 
 func validatePolicyStatement(statement map[string]interface{}) error {

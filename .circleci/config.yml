@@ -24,6 +24,9 @@ jobs:
           name: Test Access Token Resource
           command: TESTARGS="-run TestAccAccessToken" make testacc
       - run:
+          name: Test Audit Log Subscription Resource
+          command: TESTARGS="-run TestAccAuditLogSubscription" make testacc
+      - run:
           name: Test Custom Role Resource
           command: TESTARGS="-run TestAccCustomRole" make testacc
       - run:

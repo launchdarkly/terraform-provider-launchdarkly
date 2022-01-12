@@ -1,6 +1,10 @@
 ## [2.4.0] (Unreleased)
 
-ENHANCEMENTS:
+FEATURES:
+
+- Added a new `launchdarkly_audit_log_subscription` resource and data source.
+
+  ENHANCEMENTS:
 
 - Updated tests to use the constant attribute keys defined in launchdarkly/keys.go
 
