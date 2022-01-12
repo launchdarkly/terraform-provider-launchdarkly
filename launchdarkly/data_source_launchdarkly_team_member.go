@@ -9,34 +9,42 @@ import (
 	ldapi "github.com/launchdarkly/api-client-go/v7"
 )
 
+func memberSchema() map[string]*schema.Schema {
+	return map[string]*schema.Schema{
+		EMAIL: {
+			Type:     schema.TypeString,
+			Required: true,
+		},
+		ID: {
+			Type:     schema.TypeString,
+			Computed: true,
+			Optional: true,
+		},
+		FIRST_NAME: {
+			Type:     schema.TypeString,
+			Computed: true,
+		},
+		LAST_NAME: {
+			Type:     schema.TypeString,
+			Computed: true,
+		},
+		ROLE: {
+			Type:     schema.TypeString,
+			Computed: true,
+		},
+		CUSTOM_ROLES: {
+			Type:     schema.TypeSet,
+			Set:      schema.HashString,
+			Elem:     &schema.Schema{Type: schema.TypeString},
+			Computed: true,
+		},
+	}
+}
+
 func dataSourceTeamMember() *schema.Resource {
 	return &schema.Resource{
 		ReadContext: dataSourceTeamMemberRead,
-
-		Schema: map[string]*schema.Schema{
-			EMAIL: {
-				Type:     schema.TypeString,
-				Required: true,
-			},
-			FIRST_NAME: {
-				Type:     schema.TypeString,
-				Computed: true,
-			},
-			LAST_NAME: {
-				Type:     schema.TypeString,
-				Computed: true,
-			},
-			ROLE: {
-				Type:     schema.TypeString,
-				Computed: true,
-			},
-			CUSTOM_ROLES: {
-				Type:     schema.TypeSet,
-				Set:      schema.HashString,
-				Elem:     &schema.Schema{Type: schema.TypeString},
-				Computed: true,
-			},
-		},
+		Schema:      memberSchema(),
 	}
 }
 
@@ -44,7 +52,8 @@ func getTeamMemberByEmail(client *Client, memberEmail string) (*ldapi.Member, er
 	// this should be the max limit allowed when the member-list-max-limit flag is on
 	teamMemberLimit := int64(1000)
 
-	members, _, err := client.ld.AccountMembersApi.GetMembers(client.ctx).Limit(teamMemberLimit).Execute()
+	// After changing this to query by member email, we shouldn't need the limit and recursion on requests, but leaving it in just to be extra safe
+	members, _, err := client.ld.AccountMembersApi.GetMembers(client.ctx).Limit(teamMemberLimit).Filter(fmt.Sprintf("query:%s", memberEmail)).Execute()
 
 	if err != nil {
 		return nil, fmt.Errorf("failed to read team member with email: %s: %v", memberEmail, handleLdapiErr(err))
@@ -56,7 +65,7 @@ func getTeamMemberByEmail(client *Client, memberEmail string) (*ldapi.Member, er
 	membersPulled := len(memberItems)
 	for membersPulled < totalMemberCount {
 		offset := int64(membersPulled)
-		newMembers, _, err := client.ld.AccountMembersApi.GetMembers(client.ctx).Limit(teamMemberLimit).Offset(offset).Execute()
+		newMembers, _, err := client.ld.AccountMembersApi.GetMembers(client.ctx).Limit(teamMemberLimit).Offset(offset).Filter(fmt.Sprintf("query:%s", memberEmail)).Execute()
 
 		if err != nil {
 			return nil, fmt.Errorf("failed to read team member with email: %s: %v", memberEmail, handleLdapiErr(err))

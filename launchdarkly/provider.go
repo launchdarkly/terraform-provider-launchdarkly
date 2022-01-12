@@ -61,6 +61,7 @@ func Provider() *schema.Provider {
 		},
 		DataSourcesMap: map[string]*schema.Resource{
 			"launchdarkly_team_member":              dataSourceTeamMember(),
+			"launchdarkly_team_members":             dataSourceTeamMembers(),
 			"launchdarkly_project":                  dataSourceProject(),
 			"launchdarkly_environment":              dataSourceEnvironment(),
 			"launchdarkly_feature_flag":             dataSourceFeatureFlag(),

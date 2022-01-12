@@ -1,6 +1,10 @@
 ## [2.4.0] (Unreleased)
 
-FEATURES:
+FEATURES: 
+
+- Added a `launchdarkly_team_members` data source to allow using multiple team members in one data source.
+
+ENHANCEMENTS:
 
 - Added the `launchdarkly_relay_proxy_configuration` for managing configurations for the Relay Proxy's [automatic configuration](https://docs.launchdarkly.com/home/relay-proxy/automatic-configuration#writing-an-inline-policy) feature.
 
