@@ -6,13 +6,15 @@ FEATURES:
 
 ENHANCEMENTS:
 
+- Added a new `launchdarkly_flag_triggers` resource and data source for managing LaunchDarkly flag triggers.
+
 - Added the `launchdarkly_relay_proxy_configuration` for managing configurations for the Relay Proxy's [automatic configuration](https://docs.launchdarkly.com/home/relay-proxy/automatic-configuration#writing-an-inline-policy) feature.
 
-- Added a the `launchdarkly_audit_log_subscription` resource and data source for managing LaunchDarkly adit log integration subscriptions.
+- Added a the `launchdarkly_audit_log_subscription` resource and data source for managing LaunchDarkly audit log integration subscriptions.
 
 ENHANCEMENTS:
 
-- Updated tests to use the constant attribute keys defined in launchdarkly/keys.go
+- Updated tests to use the constant attribute keys defined in launchdarkly/keys.go.
 
 - Added a pre-commit file with a hook to alphabetize launchdarkly/keys.go
 
@@ -48,6 +50,10 @@ FEATURES:
 NOTES:
 
 - The `launchdarkly_feature_flag` resource's argument `include_in_snippet` has been deprecated in favor of `client_side_availability`. Please update your config to use `client_side_availability` in order to maintain compatibility with future versions.
+
+ENHANCEMENTS:
+
+- Upgraded the LaunchDarkly API client to version 7.
 
 ## [2.1.1] (October 11, 2021)
 

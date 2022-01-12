@@ -56,8 +56,9 @@ func Provider() *schema.Provider {
 			"launchdarkly_feature_flag_environment":  resourceFeatureFlagEnvironment(),
 			"launchdarkly_destination":               resourceDestination(),
 			"launchdarkly_access_token":              resourceAccessToken(),
-			"launchdarkly_relay_proxy_configuration": resourceRelayProxyConfig(),
+			"launchdarkly_flag_trigger":              resourceFlagTrigger(),
 			"launchdarkly_audit_log_subscription":    resourceAuditLogSubscription(),
+			"launchdarkly_relay_proxy_configuration": resourceRelayProxyConfig(),
 		},
 		DataSourcesMap: map[string]*schema.Resource{
 			"launchdarkly_team_member":              dataSourceTeamMember(),
@@ -68,6 +69,7 @@ func Provider() *schema.Provider {
 			"launchdarkly_feature_flag_environment": dataSourceFeatureFlagEnvironment(),
 			"launchdarkly_webhook":                  dataSourceWebhook(),
 			"launchdarkly_segment":                  dataSourceSegment(),
+			"launchdarkly_flag_trigger":             dataSourceFlagTrigger(),
 			"launchdarkly_audit_log_subscription":   dataSourceAuditLogSubscription(),
 		},
 		ConfigureFunc: providerConfigure,

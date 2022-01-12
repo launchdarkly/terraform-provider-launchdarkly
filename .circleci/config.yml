@@ -42,6 +42,9 @@ jobs:
           name: Test Feature Flag Environment Resource
           command: TESTARGS="-run TestAccFeatureFlagEnvironment" make testacc
       - run:
+          name: Test Flag Trigger Resource
+          command: TESTARGS="-run TestAccFlagTrigger" make testacc
+      - run:
           name: Test Project Resource
           command: TESTARGS="-run TestAccProject" make testacc
       - run:
