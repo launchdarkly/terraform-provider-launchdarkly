@@ -74,7 +74,7 @@ func TestAccDataSourceTeamMembers_exists(t *testing.T) {
 
 	teamMembers := make([]ldapi.Member, 0, teamMemberCount)
 	for i := 0; i < teamMemberCount; i++ {
-		randomEmail := fmt.Sprintf("%s@example.com", acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum))
+		randomEmail := fmt.Sprintf("%s@example.com", acctest.RandStringFromCharSet(10, "abcdefghijklmnopqrstuvwxyz012346789+"))
 		member, err := testAccDataSourceTeamMemberCreate(client, randomEmail)
 		require.NoError(t, err)
 		teamMembers = append(teamMembers, *member)
