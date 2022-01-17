@@ -1,10 +1,11 @@
 package launchdarkly
 
 import (
-	"fmt"
+	"context"
 	"net/url"
 	"strings"
 
+	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
@@ -74,11 +75,12 @@ func Provider() *schema.Provider {
 			"launchdarkly_audit_log_subscription":   dataSourceAuditLogSubscription(),
 			"launchdarkly_metric":                   dataSourceMetric(),
 		},
-		ConfigureFunc: providerConfigure,
+		ConfigureContextFunc: providerConfigure,
 	}
 }
 
-func providerConfigure(d *schema.ResourceData) (interface{}, error) {
+func providerConfigure(ctx context.Context, d *schema.ResourceData) (interface{}, diag.Diagnostics) {
+	var diags diag.Diagnostics
 	host := d.Get(api_host).(string)
 	if strings.HasPrefix(host, "http") {
 		u, _ := url.Parse(host)
@@ -88,12 +90,20 @@ func providerConfigure(d *schema.ResourceData) (interface{}, error) {
 	oauthToken := d.Get(oauth_token).(string)
 
 	if oauthToken == "" && accessToken == "" {
-		return nil, fmt.Errorf("either an %q or %q must be specified", access_token, oauth_token)
+		return nil, diag.Errorf("either an %q or %q must be specified", access_token, oauth_token)
 	}
 
 	if oauthToken != "" {
-		return newClient(oauthToken, host, true)
+		client, err := newClient(oauthToken, host, true)
+		if err != nil {
+			return client, diag.FromErr(err)
+		}
+		return client, diags
 	}
 
-	return newClient(accessToken, host, false)
+	client, err := newClient(accessToken, host, false)
+	if err != nil {
+		return client, diag.FromErr(err)
+	}
+	return client, diags
 }
