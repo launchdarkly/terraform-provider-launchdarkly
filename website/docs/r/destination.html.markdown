@@ -9,6 +9,8 @@ description: |-
 
 Provides a LaunchDarkly Data Export Destination resource.
 
+-> **Note:** Data Export is available to customers on an Enterprise LaunchDarkly plan. To learn more, read about our pricing. To upgrade your plan, [contact LaunchDarkly Sales](https://launchdarkly.com/contact-sales/).
+
 Data Export Destinations are locations that receive exported data. This resource allows you to configure destinations for the export of raw analytics data, including feature flag requests, analytics events, custom events, and more.
 
 To learn more about data export, read [Data Export Documentation](https://docs.launchdarkly.com/integrations/data-export).
@@ -98,13 +100,13 @@ resource "launchdarkly_destination" "example" {
 
 ## Argument Reference
 
-- `project_key` - (Required) - The LaunchDarkly project key.
+- `project_key` - (Required) - The LaunchDarkly project key. A change in this field will force the destruction of the existing resource and the creation of a new one.
 
-- `env_key` - (Required) - The environment key.
+- `env_key` - (Required) - The environment key. A change in this field will force the destruction of the existing resource and the creation of a new one.
 
 - `name` - (Required) - A human-readable name for your data export destination.
 
-- `kind` - (Required) - The data export destination type. Available choices are `kinesis`, `google-pubsub`, `mparticle`, `azure-event-hubs`, and `segment`.
+- `kind` - (Required) - The data export destination type. Available choices are `kinesis`, `google-pubsub`, `mparticle`, `azure-event-hubs`, and `segment`. A change in this field will force the destruction of the existing resource and the creation of a new one.
 
 - `config` - (Required) - The destination-specific configuration. To learn more, read [Destination-Specific Configs](#destination-specific-configs).
 

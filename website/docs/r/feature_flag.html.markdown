@@ -76,9 +76,9 @@ resource "launchdarkly_feature_flag" "json_example" {
 
 ## Argument Reference
 
-- `project_key` - (Required) The feature flag's project key.
+- `project_key` - (Required) The feature flag's project key. A change in this field will force the destruction of the existing resource and the creation of a new one.
 
-- `key` - (Required) The unique feature flag key that references the flag in your application code.
+- `key` - (Required) The unique feature flag key that references the flag in your application code. A change in this field will force the destruction of the existing resource and the creation of a new one.
 
 - `name` - (Required) The human-readable name of the feature flag.
 
@@ -101,7 +101,6 @@ resource "launchdarkly_feature_flag" "json_example" {
 - `client_side_availability` - (Optional) A block describing whether this flag should be made available to the client-side JavaScript SDK using the client-side Id, mobile key, or both. This value gets its default from your project configuration if not set. To learn more, read [Nested Client-Side Availability Block](#nested-client-side-availability-block).
 
 - `custom_properties` - (Optional) List of nested blocks describing the feature flag's [custom properties](https://docs.launchdarkly.com/docs/custom-properties). To learn more, read [Nested Custom Properties](#nested-custom-properties).
-
 
 ### Nested Variations Blocks
 

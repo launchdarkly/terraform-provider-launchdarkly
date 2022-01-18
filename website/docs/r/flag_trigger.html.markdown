@@ -32,13 +32,13 @@ resource "launchdarkly_flag_trigger" "example" {
 
 ## Argument Reference
 
-- `project_key` - (Required) The unique key of the project encompassing the associated flag.
+- `project_key` - (Required) The unique key of the project encompassing the associated flag. A change in this field will force the destruction of the existing resource and the creation of a new one.
 
-- `env_key` - (Required) The unique key of the environment the flag trigger will work in.
+- `env_key` - (Required) The unique key of the environment the flag trigger will work in. A change in this field will force the destruction of the existing resource and the creation of a new one.
 
-- `flag_key` - (Required) The unique key of the associated flag.
+- `flag_key` - (Required) The unique key of the associated flag. A change in this field will force the destruction of the existing resource and the creation of a new one.
 
-- `integration_key` - (Required) The unique identifier of the integration you intend to set your trigger up with. Currently supported are `"datadog"`, `"dynatrace"`, `"honeycomb"`, `"new-relic-apm"`, `"signalfx"`, and `"generic-trigger"`. `"generic-trigger"` should be used for integrations not explicitly supported.
+- `integration_key` - (Required) The unique identifier of the integration you intend to set your trigger up with. Currently supported are `"datadog"`, `"dynatrace"`, `"honeycomb"`, `"new-relic-apm"`, `"signalfx"`, and `"generic-trigger"`. `"generic-trigger"` should be used for integrations not explicitly supported. A change in this field will force the destruction of the existing resource and the creation of a new one.
 
 - `instructions` - (Required) Instructions containing the action to perform when invoking the trigger. Currently supported flag actions are `"turnFlagOn"` and `"turnFlagOff"`. This must be passed as the key-value pair `{ kind = "<flag_action>" }`.
 

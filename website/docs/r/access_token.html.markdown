@@ -53,8 +53,9 @@ resource "launchdarkly_access_token" "token_with_policy_statements" {
 
 - `name` - (Optional) A human-friendly name for the access token.
 
-- `service_token` - (Optional) Whether the token will be a [service token](https://docs.launchdarkly.com/home/account-security/api-access-tokens#service-tokens)
-- `default_api_version` - (Optional) The default API version for this token. Defaults to the latest API version.
+- `service_token` - (Optional) Whether the token will be a [service token](https://docs.launchdarkly.com/home/account-security/api-access-tokens#service-tokens). A change in this field will force the destruction of the existing token and the creation of a new one.
+
+- `default_api_version` - (Optional) The default API version for this token. Defaults to the latest API version. A change in this field will force the destruction of the existing token in state and the creation of a new one.
 
 An access token may have its permissions specified by a built-in LaunchDarkly role, a set of custom role keys, or by an inline custom role (policy statements).
 

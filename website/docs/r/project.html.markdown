@@ -46,11 +46,12 @@ resource "launchdarkly_project" "example" {
 
 ## Argument Reference
 
-- `key` - (Required) The project's unique key.
+- `key` - (Required) The project's unique key. A change in this field will force the destruction of the existing resource and the creation of a new one.
 
 - `name` - (Required) The project's name.
 
 - `environments` - (Required) List of nested `environments` blocks describing LaunchDarkly environments that belong to the project. When managing LaunchDarkly projects in Terraform, you should always manage your environments as nested project resources. To learn more, read [Nested Environments Blocks](#nested-environments-blocks).
+
 ### Nested Environments Blocks
 
 -> **Note:** Mixing the use of nested `environments` blocks and [`launchdarkly_environment`](/docs/providers/launchdarkly/r/environment.html) resources is not recommended. `launchdarkly_environment` resources should only be used when the encapsulating project is not managed in Terraform.
@@ -67,7 +68,7 @@ Nested `environments` blocks have the following structure:
 
 - `name` - (Required) The name of the environment.
 
-- `key` - (Required) The project-unique key for the environment.
+- `key` - (Required) The project-unique key for the environment. A change in this field will force the destruction of the existing environment and the creation of a new one.
 
 - `color` - (Required) The color swatch as an RGB hex value with no leading `#`. For example: `000000`.
 

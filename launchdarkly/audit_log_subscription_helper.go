@@ -32,6 +32,7 @@ func auditLogSubscriptionSchema(isDataSource bool) map[string]*schema.Schema {
 			Required: true,
 			// we are omitting appdynamics for now because it requires oauth
 			ValidateFunc: validation.StringNotInSlice([]string{"appdynamics"}, false),
+			ForceNew:     true,
 		},
 		NAME: {
 			Type:     schema.TypeString,

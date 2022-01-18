@@ -32,13 +32,13 @@ resource "launchdarkly_metric" "example" {
 
 ## Argument Reference
 
-- `key` - (Required) The unique key that references the metric.
+- `key` - (Required) The unique key that references the metric. A change in this field will force the destruction of the existing resource and the creation of a new one.
 
-- `project_key` - (Required) The metrics's project key.
+- `project_key` - (Required) The metrics's project key. A change in this field will force the destruction of the existing resource and the creation of a new one.
 
 - `name` - (Required) The human-friendly name for the metric.
 
-- `kind` - (Required) The metric type. Available choices are `click`, `custom`, and `pageview`.
+- `kind` - (Required) The metric type. Available choices are `click`, `custom`, and `pageview`. A change in this field will force the destruction of the existing resource and the creation of a new one.
 
 - `description` - (Optional) The description of the metric's purpose.
 
@@ -50,15 +50,15 @@ resource "launchdarkly_metric" "example" {
 
 - `maintainerId` - (Optional) The userId of the user maintaining the metric.
 
-- `selector` - (Required for kind `click`) The CSS selector for `click` metrics. 
+- `selector` - (Required for kind `click`) The CSS selector for `click` metrics.
 
 - `urls` - (Required for kind `click` and `pageview`) A block determining which URLs the metric watches. To learn more, read [Nested Urls Blocks](#nested-urls-blocks).
 
-- `event_key` - (Required for kind `custom`) The event key to watch for `custom` metrics. 
+- `event_key` - (Required for kind `custom`) The event key to watch for `custom` metrics.
 
 - `success_criteria` - (Required for kind `custom`) The success criteria for numeric `custom` metrics.
 
-- `unit` - (Required for kind `custom`) The unit for numeric `custom` metrics. 
+- `unit` - (Required for kind `custom`) The unit for numeric `custom` metrics.
 
 ### Nested Urls Blocks
 

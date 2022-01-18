@@ -59,9 +59,9 @@ resource "launchdarkly_feature_flag_environment" "number_env" {
 
 ## Argument Reference
 
-- `flag_id` - (Required) The feature flag's unique `id` in the format `project_key/flag_key`.
+- `flag_id` - (Required) The feature flag's unique `id` in the format `project_key/flag_key`. A change in this field will force the destruction of the existing resource and the creation of a new one.
 
-- `env_key` - (Required) The environment key.
+- `env_key` - (Required) The environment key. A change in this field will force the destruction of the existing resource and the creation of a new one.
 
 - `on` (previously `targeting_enabled`) - (Optional) Whether targeting is enabled. Defaults to `false` if not set.
 
