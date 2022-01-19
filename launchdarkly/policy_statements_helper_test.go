@@ -70,7 +70,7 @@ func TestPolicyStatementsRoundTripConversion(t *testing.T) {
 			},
 		},
 		{
-			name: "not_resource example",
+			name: "not_resources example",
 			policyStatements: map[string]interface{}{
 				POLICY_STATEMENTS: []interface{}{
 					map[string]interface{}{
@@ -85,6 +85,25 @@ func TestPolicyStatementsRoundTripConversion(t *testing.T) {
 					NotResources: strArrayPtr([]string{"proj/*:env/production:flag/*"}),
 					Actions:      &statementPostActions,
 					Effect:       "allow",
+				},
+			},
+		},
+		{
+			name: "not_actions example",
+			policyStatements: map[string]interface{}{
+				POLICY_STATEMENTS: []interface{}{
+					map[string]interface{}{
+						RESOURCES:   []interface{}{"proj/*:env/production:flag/*"},
+						NOT_ACTIONS: []interface{}{"*"},
+						EFFECT:      "allow",
+					},
+				},
+			},
+			expected: []ldapi.StatementPost{
+				{
+					Resources:  strArrayPtr([]string{"proj/*:env/production:flag/*"}),
+					NotActions: &statementPostActions,
+					Effect:     "allow",
 				},
 			},
 		},

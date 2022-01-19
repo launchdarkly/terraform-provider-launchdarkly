@@ -79,3 +79,11 @@ func stringSliceToInterfaceSlice(input []string) []interface{} {
 	}
 	return o
 }
+
+func interfaceSliceToStringSlice(input []interface{}) []string {
+	o := make([]string, 0, len(input))
+	for _, v := range input {
+		o = append(o, v.(string))
+	}
+	return o
+}
