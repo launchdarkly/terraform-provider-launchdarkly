@@ -15,14 +15,8 @@ import (
 const (
 	testAccDataSourceMetric = `
 data "launchdarkly_metric" "testing" {
-	key = "%s"
+	key         = "%s"
 	project_key = "%s"
-	name = "%s"
-	kind = "pageview"
-	urls {
-	  kind = "substring"
-	  substring = "foo"
-	}
 }
 `
 )
@@ -66,7 +60,6 @@ func TestAccDataSourceMetric_noMatchReturnsError(t *testing.T) {
 	}()
 
 	metricKey := "nonexistent-metric"
-	metricName := "Metric Data Source Test"
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
 			testAccPreCheck(t)
@@ -74,7 +67,7 @@ func TestAccDataSourceMetric_noMatchReturnsError(t *testing.T) {
 		Providers: testAccProviders,
 		Steps: []resource.TestStep{
 			{
-				Config:      fmt.Sprintf(testAccDataSourceMetric, metricKey, project.Key, metricName),
+				Config:      fmt.Sprintf(testAccDataSourceMetric, metricKey, project.Key),
 				ExpectError: regexp.MustCompile("Error: 404 Not Found"),
 			},
 		},
@@ -121,7 +114,7 @@ func TestAccDataSourceMetric_exists(t *testing.T) {
 		Providers: testAccProviders,
 		Steps: []resource.TestStep{
 			{
-				Config: fmt.Sprintf(testAccDataSourceMetric, metricKey, projectKey, metricName),
+				Config: fmt.Sprintf(testAccDataSourceMetric, metricKey, projectKey),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttrSet(resourceName, KEY),
 					resource.TestCheckResourceAttrSet(resourceName, NAME),
