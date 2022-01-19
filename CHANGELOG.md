@@ -1,6 +1,6 @@
 ## [2.4.0] (Unreleased)
 
-FEATURES: 
+FEATURES:
 
 - Added a `launchdarkly_team_members` data source to allow using multiple team members in one data source.
 
@@ -8,9 +8,9 @@ FEATURES:
 
 - Added a new `launchdarkly_flag_triggers` resource and data source for managing LaunchDarkly flag triggers.
 
-- Added the `launchdarkly_relay_proxy_configuration` for managing configurations for the Relay Proxy's [automatic configuration](https://docs.launchdarkly.com/home/relay-proxy/automatic-configuration#writing-an-inline-policy) feature.
+- Added a new `launchdarkly_relay_proxy_configuration` resource and data source for managing configurations for the Relay Proxy's [automatic configuration](https://docs.launchdarkly.com/home/relay-proxy/automatic-configuration#writing-an-inline-policy) feature.
 
-- Added a the `launchdarkly_audit_log_subscription` resource and data source for managing LaunchDarkly audit log integration subscriptions.
+- Added a new `launchdarkly_audit_log_subscription` resource and data source for managing LaunchDarkly audit log integration subscriptions.
 
 ENHANCEMENTS:
 

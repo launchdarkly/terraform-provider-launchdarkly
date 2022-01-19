@@ -12,7 +12,7 @@ import (
 func resourceRelayProxyConfig() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: relayProxyConfigCreate,
-		ReadContext:   relayProxyConfigRead,
+		ReadContext:   resourceRelayProxyConfigRead,
 		UpdateContext: relayProxyConfigUpdate,
 		DeleteContext: relayProxyConfigDelete,
 		Importer: &schema.ResourceImporter{
@@ -67,16 +67,23 @@ func relayProxyConfigCreate(ctx context.Context, d *schema.ResourceData, m inter
 		return diag.FromErr(err)
 	}
 
-	return relayProxyConfigRead(ctx, d, m)
+	return resourceRelayProxyConfigRead(ctx, d, m)
 }
 
-func relayProxyConfigRead(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
+func resourceRelayProxyConfigRead(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
+	return relayProxyConfigRead(ctx, d, m, false)
+}
+
+func relayProxyConfigRead(ctx context.Context, d *schema.ResourceData, m interface{}, isDataSource bool) diag.Diagnostics {
 	var diags diag.Diagnostics
 	client := m.(*Client)
 
 	id := d.Id()
 	proxyConfig, res, err := client.ld.RelayProxyConfigurationsApi.GetRelayProxyConfig(client.ctx, id).Execute()
 	if isStatusNotFound(res) {
+		if isDataSource {
+			return diag.Errorf("Relay Proxy configuration with id %q not found.", id)
+		}
 		log.Printf("[DEBUG] Relay Proxy configuration with id %q not found on LaunchDarkly. Removing from state", id)
 		d.SetId("")
 		return diags
