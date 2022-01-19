@@ -55,6 +55,10 @@ ENHANCEMENTS:
 
 - Upgraded the LaunchDarkly API client to version 7.
 
+=======
+
+> > > > > > > 8c7d0fc67b7d6038363a5a9c20ff8a5ef0f364df
+
 ## [2.1.1] (October 11, 2021)
 
 BUG FIXES:

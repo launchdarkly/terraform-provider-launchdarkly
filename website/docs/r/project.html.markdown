@@ -51,6 +51,7 @@ resource "launchdarkly_project" "example" {
 - `name` - (Required) The project's name.
 
 - `environments` - (Required) List of nested `environments` blocks describing LaunchDarkly environments that belong to the project. When managing LaunchDarkly projects in Terraform, you should always manage your environments as nested project resources. To learn more, read [Nested Environments Blocks](#nested-environments-blocks).
+### Nested Environments Blocks
 
 ### Nested Environments Blocks
 
