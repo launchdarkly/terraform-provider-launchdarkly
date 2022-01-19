@@ -90,11 +90,6 @@ func projectRead(ctx context.Context, d *schema.ResourceData, meta interface{}, 
 		if err != nil {
 			return diag.Errorf("could not set include_in_snippet on project with key %q: %v", project.Key, err)
 		}
-
-		err = d.Set(INCLUDE_IN_SNIPPET, project.IncludeInSnippetByDefault)
-		if err != nil {
-			return diag.Errorf("could not set include_in_snippet on project with key %q: %v", project.Key, err)
-		}
 	}
 
 	err = d.Set(TAGS, project.Tags)
