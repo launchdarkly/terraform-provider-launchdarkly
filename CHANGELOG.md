@@ -1,4 +1,4 @@
-## [2.4.0] (Unreleased)
+## [2.4.0] (January 19, 2022)
 
 FEATURES:
 
