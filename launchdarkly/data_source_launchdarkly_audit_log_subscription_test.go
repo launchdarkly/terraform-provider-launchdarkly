@@ -28,10 +28,12 @@ data "launchdarkly_audit_log_subscription" "test" {
 )
 
 func testAccDataSourceAuditLogSubscriptionCreate(client *Client, integrationKey string, subscriptionBody ldapi.SubscriptionPost) (*ldapi.Integration, error) {
+	statementResources := []string{"proj/*"}
+	statementActions := []string{"*"}
 	statements := []ldapi.StatementPost{{
 		Effect:    "allow",
-		Resources: []string{"proj/*"},
-		Actions:   []string{"*"},
+		Resources: &statementResources,
+		Actions:   &statementActions,
 	}}
 	subscriptionBody.Statements = &statements
 

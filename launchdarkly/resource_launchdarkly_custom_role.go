@@ -105,8 +105,14 @@ func resourceCustomRoleRead(ctx context.Context, d *schema.ResourceData, metaRaw
 
 	// Because "policy" is now deprecated in favor of "policy_statements", only set "policy" if it has
 	// already been set by the user.
+	// TODO: Somehow this seems to also add an empty policystatement of
+	// 	policy {
+	// 		+ actions   = []
+	// 		+ resources = []
+	// 	  }
 	if _, ok := d.GetOk(POLICY); ok {
-		err = d.Set(POLICY, policiesToResourceData(customRole.Policy))
+		policies := policiesToResourceData(customRole.Policy)
+		err = d.Set(POLICY, policies)
 	} else {
 		err = d.Set(POLICY_STATEMENTS, policyStatementsToResourceData(statementsToStatementReps(customRole.Policy)))
 	}
@@ -114,7 +120,7 @@ func resourceCustomRoleRead(ctx context.Context, d *schema.ResourceData, metaRaw
 	if err != nil {
 		return diag.Errorf("could not set policy on custom role with id %q: %v", customRoleID, err)
 	}
-	return nil
+	return diags
 }
 
 func resourceCustomRoleUpdate(ctx context.Context, d *schema.ResourceData, metaRaw interface{}) diag.Diagnostics {

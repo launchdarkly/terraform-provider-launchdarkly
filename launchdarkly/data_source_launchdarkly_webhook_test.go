@@ -21,6 +21,8 @@ data "launchdarkly_webhook" "test" {
 )
 
 func testAccDataSourceWebhookCreate(client *Client, webhookName string) (*ldapi.Webhook, error) {
+	statementResources := []string{"proj/*"}
+	statementActions := []string{"turnFlagOn"}
 	webhookBody := ldapi.WebhookPost{
 		Url:  "https://www.example.com",
 		Sign: false,
@@ -29,8 +31,8 @@ func testAccDataSourceWebhookCreate(client *Client, webhookName string) (*ldapi.
 		Tags: &[]string{"terraform"},
 		Statements: &[]ldapi.StatementPost{
 			{
-				Resources: []string{"proj/*"},
-				Actions:   []string{"turnFlagOn"},
+				Resources: &statementResources,
+				Actions:   &statementActions,
 				Effect:    "allow",
 			},
 		},

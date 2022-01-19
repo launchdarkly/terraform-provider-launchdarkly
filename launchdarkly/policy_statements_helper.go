@@ -2,6 +2,7 @@ package launchdarkly
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
@@ -104,36 +105,56 @@ func policyStatementsFromResourceData(schemaStatements []interface{}) ([]ldapi.S
 		if err != nil {
 			return statements, err
 		}
-		s := policyStatementFromResourceData(statement)
+		s, err := policyStatementFromResourceData(statement)
+		if err != nil {
+			return statements, err
+		}
 		statements = append(statements, s)
 	}
 	return statements, nil
 }
 
-func policyStatementFromResourceData(statement map[string]interface{}) ldapi.StatementPost {
+func policyStatementFromResourceData(statement map[string]interface{}) (ldapi.StatementPost, error) {
+	statementResources := []string{}
+	statementActions := []string{}
+	statementNotResources := []string{}
+	statementNotActions := []string{}
 	ret := ldapi.StatementPost{
 		Effect: statement[EFFECT].(string),
 	}
+	// Build our policy fields
 	for _, r := range statement[RESOURCES].([]interface{}) {
-		ret.Resources = append(ret.Resources, r.(string))
+		statementResources = append(statementResources, r.(string))
 	}
 	for _, a := range statement[ACTIONS].([]interface{}) {
-		ret.Actions = append(ret.Actions, a.(string))
+		statementActions = append(statementActions, a.(string))
 	}
 	// optional fields
 	rawNotResources := statement[NOT_RESOURCES].([]interface{})
-	var notResources []string
 	for _, n := range rawNotResources {
-		notResources = append(notResources, n.(string))
-		ret.NotResources = &notResources
+		statementNotResources = append(statementNotResources, n.(string))
 	}
 	rawNotActions := statement[NOT_ACTIONS].([]interface{})
-	var notActions []string
 	for _, n := range rawNotActions {
-		notActions = append(notActions, n.(string))
-		ret.NotActions = &notActions
+		statementNotActions = append(statementNotActions, n.(string))
 	}
-	return ret
+	// Add the appropriate fields to the statement
+	if len(statement[RESOURCES].([]interface{})) > 0 {
+		ret.Resources = &statementResources
+	} else if len(statement[NOT_RESOURCES].([]interface{})) > 0 {
+		ret.NotResources = &statementNotResources
+	} else {
+		return ret, fmt.Errorf("please provide either 'resources' or not_resources' for your policy_statement")
+	}
+	if len(statement[ACTIONS].([]interface{})) > 0 {
+		ret.Actions = &statementActions
+	} else if len(statement[NOT_ACTIONS].([]interface{})) > 0 {
+		ret.NotActions = &statementNotActions
+	} else {
+		return ret, fmt.Errorf("please provide either 'actions' or not_actions' for your policy_statement")
+	}
+
+	return ret, nil
 }
 
 func policyStatementsToResourceData(statements []ldapi.StatementRep) []interface{} {
@@ -180,13 +201,7 @@ func statementsToStatementReps(policies []ldapi.Statement) []ldapi.StatementRep 
 func statementPostsToStatementReps(policies []ldapi.StatementPost) []ldapi.StatementRep {
 	statements := make([]ldapi.StatementRep, 0, len(policies))
 	for _, p := range policies {
-		rep := ldapi.StatementRep{
-			Resources:    &p.Resources,
-			Actions:      &p.Actions,
-			NotResources: p.NotResources,
-			NotActions:   p.NotActions,
-			Effect:       p.Effect,
-		}
+		rep := ldapi.StatementRep(p)
 		statements = append(statements, rep)
 	}
 	return statements
