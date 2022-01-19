@@ -37,11 +37,11 @@ resource "launchdarkly_segment" "example" {
 
 ## Argument Reference
 
-- `key` - (Required) The unique key that references the segment.
+- `key` - (Required) The unique key that references the segment. A change in this field will force the destruction of the existing resource and the creation of a new one.
 
-- `project_key` - (Required) The segment's project key.
+- `project_key` - (Required) The segment's project key. A change in this field will force the destruction of the existing resource and the creation of a new one.
 
-- `env_key` - (Required) The segment's environment key.
+- `env_key` - (Required) The segment's environment key. A change in this field will force the destruction of the existing resource and the creation of a new one.
 
 - `name` - (Required) The human-friendly name for the segment.
 

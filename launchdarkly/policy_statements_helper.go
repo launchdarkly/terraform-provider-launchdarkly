@@ -15,12 +15,14 @@ type policyStatementSchemaOptions struct {
 	deprecated    string
 	description   string
 	conflictsWith []string
+	required      bool
 }
 
 func policyStatementsSchema(options policyStatementSchemaOptions) *schema.Schema {
-	return &schema.Schema{
+	schema := &schema.Schema{
 		Type:          schema.TypeList,
-		Optional:      true,
+		Optional:      !options.required,
+		Required:      options.required,
 		MinItems:      1,
 		Description:   options.description,
 		Deprecated:    options.deprecated,
@@ -64,13 +66,14 @@ func policyStatementsSchema(options policyStatementSchemaOptions) *schema.Schema
 					MinItems:    1,
 				},
 				EFFECT: {
-					Type:         schema.TypeString,
-					Required:     true,
-					ValidateFunc: validation.StringInSlice([]string{"allow", "deny"}, false),
+					Type:             schema.TypeString,
+					Required:         true,
+					ValidateDiagFunc: validation.ToDiagFunc(validation.StringInSlice([]string{"allow", "deny"}, false)),
 				},
 			},
 		},
 	}
+	return schema
 }
 
 func validatePolicyStatement(statement map[string]interface{}) error {
@@ -97,40 +100,41 @@ func policyStatementsFromResourceData(schemaStatements []interface{}) ([]ldapi.S
 	statements := make([]ldapi.StatementPost, 0, len(schemaStatements))
 	for _, stmt := range schemaStatements {
 		statement := stmt.(map[string]interface{})
-		err := validatePolicyStatement(statement)
+		s, err := policyStatementFromResourceData(statement)
 		if err != nil {
 			return statements, err
 		}
-		s := policyStatementFromResourceData(statement)
 		statements = append(statements, s)
 	}
 	return statements, nil
 }
 
-func policyStatementFromResourceData(statement map[string]interface{}) ldapi.StatementPost {
+func policyStatementFromResourceData(statement map[string]interface{}) (ldapi.StatementPost, error) {
+	err := validatePolicyStatement(statement)
+	if err != nil {
+		return ldapi.StatementPost{}, err
+	}
 	ret := ldapi.StatementPost{
 		Effect: statement[EFFECT].(string),
 	}
-	for _, r := range statement[RESOURCES].([]interface{}) {
-		ret.Resources = append(ret.Resources, r.(string))
+	resources := interfaceSliceToStringSlice(statement[RESOURCES].([]interface{}))
+	if len(resources) > 0 {
+		ret.SetResources(resources)
 	}
-	for _, a := range statement[ACTIONS].([]interface{}) {
-		ret.Actions = append(ret.Actions, a.(string))
+	notResources := interfaceSliceToStringSlice(statement[NOT_RESOURCES].([]interface{}))
+	if len(notResources) > 0 {
+		ret.SetNotResources(notResources)
 	}
-	// optional fields
-	rawNotResources := statement[NOT_RESOURCES].([]interface{})
-	var notResources []string
-	for _, n := range rawNotResources {
-		notResources = append(notResources, n.(string))
-		ret.NotResources = &notResources
+	actions := interfaceSliceToStringSlice(statement[ACTIONS].([]interface{}))
+	if len(actions) > 0 {
+		ret.SetActions(actions)
 	}
-	rawNotActions := statement[NOT_ACTIONS].([]interface{})
-	var notActions []string
-	for _, n := range rawNotActions {
-		notActions = append(notActions, n.(string))
-		ret.NotActions = &notActions
+	notActions := interfaceSliceToStringSlice(statement[NOT_ACTIONS].([]interface{}))
+	if len(notActions) > 0 {
+		ret.SetNotActions(notActions)
 	}
-	return ret
+
+	return ret, nil
 }
 
 func policyStatementsToResourceData(statements []ldapi.StatementRep) []interface{} {
@@ -140,18 +144,10 @@ func policyStatementsToResourceData(statements []ldapi.StatementRep) []interface
 			EFFECT: s.Effect,
 		}
 		if s.Resources != nil && len(*s.Resources) > 0 {
-			var resources []interface{}
-			for _, v := range *s.Resources {
-				resources = append(resources, v)
-			}
-			t[RESOURCES] = resources
+			t[RESOURCES] = stringSliceToInterfaceSlice(*s.Resources)
 		}
 		if s.NotResources != nil && len(*s.NotResources) > 0 {
-			var notResources []interface{}
-			for _, v := range *s.NotResources {
-				notResources = append(notResources, v)
-			}
-			t[NOT_RESOURCES] = notResources
+			t[NOT_RESOURCES] = stringSliceToInterfaceSlice(*s.NotResources)
 		}
 		if s.Actions != nil && len(*s.Actions) > 0 {
 			t[ACTIONS] = stringSliceToInterfaceSlice(*s.Actions)
@@ -167,13 +163,17 @@ func policyStatementsToResourceData(statements []ldapi.StatementRep) []interface
 func statementsToStatementReps(policies []ldapi.Statement) []ldapi.StatementRep {
 	statements := make([]ldapi.StatementRep, 0, len(policies))
 	for _, p := range policies {
-		rep := ldapi.StatementRep{
-			Resources:    p.Resources,
-			Actions:      p.Actions,
-			NotResources: p.NotResources,
-			NotActions:   p.NotActions,
-			Effect:       p.Effect,
-		}
+		rep := ldapi.StatementRep(p)
+		statements = append(statements, rep)
+	}
+	return statements
+}
+
+// The relay proxy config api requires a statementRep in the POST body
+func statementPostsToStatementReps(policies []ldapi.StatementPost) []ldapi.StatementRep {
+	statements := make([]ldapi.StatementRep, 0, len(policies))
+	for _, p := range policies {
+		rep := ldapi.StatementRep(p)
 		statements = append(statements, rep)
 	}
 	return statements

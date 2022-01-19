@@ -3,19 +3,17 @@ version: 2.1
 
 orbs:
   go: circleci/go@1.7.0
+  linter: talkiq/linter@1.4.1
 
 jobs:
-  build:
+  test:
     executor:
       name: go/default
-      tag: "1.16"
+      tag: &go_version "1.16.10"
 
     steps:
       - checkout
       - go/mod-download-cached
-      - run:
-          name: go vet
-          command: make vet
       - run:
           name: Run unit tests
           command: TESTARGS="-v" make test
@@ -25,6 +23,9 @@ jobs:
       - run:
           name: Test Access Token Resource
           command: TESTARGS="-run TestAccAccessToken" make testacc
+      - run:
+          name: Test Audit Log Subscription Resource
+          command: TESTARGS="-run TestAccAuditLogSubscription" make testacc
       - run:
           name: Test Custom Role Resource
           command: TESTARGS="-run TestAccCustomRole" make testacc
@@ -41,8 +42,17 @@ jobs:
           name: Test Feature Flag Environment Resource
           command: TESTARGS="-run TestAccFeatureFlagEnvironment" make testacc
       - run:
+          name: Test Flag Trigger Resource
+          command: TESTARGS="-run TestAccFlagTrigger" make testacc
+      - run:
+          name: Test Metric Resource
+          command: TESTARGS="-run TestAccMetric" make testacc
+      - run:
           name: Test Project Resource
           command: TESTARGS="-run TestAccProject" make testacc
+      - run:
+          name: Test Relay Proxy Configuration Resource
+          command: TESTARGS="-run TestAccRelayProxy" make testacc
       - run:
           name: Test Segment Resource
           command: TESTARGS="-run TestAccSegment" make testacc
@@ -57,7 +67,22 @@ jobs:
           name: Test Webhook Resource
           command: TESTARGS="-run TestAccWebhook" make testacc
 
+  lint:
+    executor:
+      name: go/default
+      tag: *go_version
+
+    steps:
+      - checkout
+      - run:
+          name: Install python
+          command: |
+            sudo apt update
+            sudo apt install python3-pip python-is-python3
+      - linter/pre-commit
+
 workflows:
   main:
     jobs:
-      - build
+      - test
+      - lint

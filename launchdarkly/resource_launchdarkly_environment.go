@@ -1,10 +1,11 @@
 package launchdarkly
 
 import (
+	"context"
 	"fmt"
-	"net/http"
 	"strings"
 
+	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	ldapi "github.com/launchdarkly/api-client-go/v7"
 )
@@ -12,19 +13,19 @@ import (
 func resourceEnvironment() *schema.Resource {
 	envSchema := environmentSchema(false)
 	envSchema[PROJECT_KEY] = &schema.Schema{
-		Type:         schema.TypeString,
-		Required:     true,
-		Description:  "The LaunchDarkly project key",
-		ForceNew:     true,
-		ValidateFunc: validateKey(),
+		Type:             schema.TypeString,
+		Required:         true,
+		Description:      "The LaunchDarkly project key",
+		ForceNew:         true,
+		ValidateDiagFunc: validateKey(),
 	}
 
 	return &schema.Resource{
-		Create: resourceEnvironmentCreate,
-		Read:   resourceEnvironmentRead,
-		Update: resourceEnvironmentUpdate,
-		Delete: resourceEnvironmentDelete,
-		Exists: resourceEnvironmentExists,
+		CreateContext: resourceEnvironmentCreate,
+		ReadContext:   resourceEnvironmentRead,
+		UpdateContext: resourceEnvironmentUpdate,
+		DeleteContext: resourceEnvironmentDelete,
+		Exists:        resourceEnvironmentExists,
 
 		Importer: &schema.ResourceImporter{
 			State: resourceEnvironmentImport,
@@ -33,7 +34,7 @@ func resourceEnvironment() *schema.Resource {
 	}
 }
 
-func resourceEnvironmentCreate(d *schema.ResourceData, metaRaw interface{}) error {
+func resourceEnvironmentCreate(ctx context.Context, d *schema.ResourceData, metaRaw interface{}) diag.Diagnostics {
 	client := metaRaw.(*Client)
 	projectKey := d.Get(PROJECT_KEY).(string)
 	key := d.Get(KEY).(string)
@@ -58,36 +59,36 @@ func resourceEnvironmentCreate(d *schema.ResourceData, metaRaw interface{}) erro
 		ConfirmChanges:     &confirmChanges,
 	}
 
-	_, _, err := handleRateLimit(func() (interface{}, *http.Response, error) {
-		return client.ld.EnvironmentsApi.PostEnvironment(client.ctx, projectKey).EnvironmentPost(envPost).Execute()
-	})
+	_, _, err := client.ld.EnvironmentsApi.PostEnvironment(client.ctx, projectKey).EnvironmentPost(envPost).Execute()
 	if err != nil {
-		return fmt.Errorf("failed to create environment: [%+v] for project key: %s: %s", envPost, projectKey, handleLdapiErr(err))
+		return diag.Errorf("failed to create environment: [%+v] for project key: %s: %s", envPost, projectKey, handleLdapiErr(err))
 	}
 
 	approvalSettings := d.Get(APPROVAL_SETTINGS)
 	if len(approvalSettings.([]interface{})) > 0 {
-		err = resourceEnvironmentUpdate(d, metaRaw)
-		if err != nil {
+		updateDiags := resourceEnvironmentUpdate(ctx, d, metaRaw)
+		if updateDiags.HasError() {
 			// if there was a problem in the update state, we need to clean up completely by deleting the env
 			_, deleteErr := client.ld.EnvironmentsApi.DeleteEnvironment(client.ctx, projectKey, key).Execute()
+			// TODO: Figure out if we can get the err out of updateDiag (not looking likely) to use in hanldeLdapiErr
 			if deleteErr != nil {
-				return fmt.Errorf("failed to clean up environment %q from project %q: %s", key, projectKey, handleLdapiErr(err))
+				return updateDiags
+				// return diag.Errorf("failed to clean up environment %q from project %q: %s", key, projectKey, handleLdapiErr(errs))
 			}
-			return fmt.Errorf("failed to update environment with name %q key %q for projectKey %q: %s",
+			return diag.Errorf("failed to update environment with name %q key %q for projectKey %q: %s",
 				name, key, projectKey, handleLdapiErr(err))
 		}
 	}
 
 	d.SetId(projectKey + "/" + key)
-	return resourceEnvironmentRead(d, metaRaw)
+	return resourceEnvironmentRead(ctx, d, metaRaw)
 }
 
-func resourceEnvironmentRead(d *schema.ResourceData, metaRaw interface{}) error {
-	return environmentRead(d, metaRaw, false)
+func resourceEnvironmentRead(ctx context.Context, d *schema.ResourceData, metaRaw interface{}) diag.Diagnostics {
+	return environmentRead(ctx, d, metaRaw, false)
 }
 
-func resourceEnvironmentUpdate(d *schema.ResourceData, metaRaw interface{}) error {
+func resourceEnvironmentUpdate(ctx context.Context, d *schema.ResourceData, metaRaw interface{}) diag.Diagnostics {
 	client := metaRaw.(*Client)
 
 	//required fields
@@ -113,36 +114,30 @@ func resourceEnvironmentUpdate(d *schema.ResourceData, metaRaw interface{}) erro
 	oldApprovalSettings, newApprovalSettings := d.GetChange(APPROVAL_SETTINGS)
 	approvalPatch, err := approvalPatchFromSettings(oldApprovalSettings, newApprovalSettings)
 	if err != nil {
-		return err
+		return diag.FromErr(err)
 	}
 	patch = append(patch, approvalPatch...)
-	_, _, err = handleRateLimit(func() (interface{}, *http.Response, error) {
-		return handleNoConflict(func() (interface{}, *http.Response, error) {
-			return client.ld.EnvironmentsApi.PatchEnvironment(client.ctx, projectKey, key).PatchOperation(patch).Execute()
-		})
-	})
+	_, _, err = client.ld.EnvironmentsApi.PatchEnvironment(client.ctx, projectKey, key).PatchOperation(patch).Execute()
 	if err != nil {
-		return fmt.Errorf("failed to update environment with key %q for project: %q: %s", key, projectKey, handleLdapiErr(err))
+		return diag.Errorf("failed to update environment with key %q for project: %q: %s", key, projectKey, handleLdapiErr(err))
 	}
 
-	return resourceEnvironmentRead(d, metaRaw)
+	return resourceEnvironmentRead(ctx, d, metaRaw)
 }
 
-func resourceEnvironmentDelete(d *schema.ResourceData, metaRaw interface{}) error {
+func resourceEnvironmentDelete(ctx context.Context, d *schema.ResourceData, metaRaw interface{}) diag.Diagnostics {
+	var diags diag.Diagnostics
+
 	client := metaRaw.(*Client)
 	projectKey := d.Get(PROJECT_KEY).(string)
 	key := d.Get(KEY).(string)
 
-	_, _, err := handleRateLimit(func() (interface{}, *http.Response, error) {
-		res, err := client.ld.EnvironmentsApi.DeleteEnvironment(client.ctx, projectKey, key).Execute()
-		return nil, res, err
-	})
-
+	_, err := client.ld.EnvironmentsApi.DeleteEnvironment(client.ctx, projectKey, key).Execute()
 	if err != nil {
-		return fmt.Errorf("failed to delete project with key %q for project %q: %s", key, projectKey, handleLdapiErr(err))
+		return diag.Errorf("failed to delete project with key %q for project %q: %s", key, projectKey, handleLdapiErr(err))
 	}
 
-	return nil
+	return diags
 }
 
 func resourceEnvironmentExists(d *schema.ResourceData, metaRaw interface{}) (bool, error) {
@@ -150,9 +145,7 @@ func resourceEnvironmentExists(d *schema.ResourceData, metaRaw interface{}) (boo
 }
 
 func environmentExists(projectKey string, key string, meta *Client) (bool, error) {
-	_, res, err := handleRateLimit(func() (interface{}, *http.Response, error) {
-		return meta.ld.EnvironmentsApi.GetEnvironment(meta.ctx, projectKey, key).Execute()
-	})
+	_, res, err := meta.ld.EnvironmentsApi.GetEnvironment(meta.ctx, projectKey, key).Execute()
 	if isStatusNotFound(res) {
 		return false, nil
 	}

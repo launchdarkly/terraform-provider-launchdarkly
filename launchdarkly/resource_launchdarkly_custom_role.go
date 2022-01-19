@@ -1,10 +1,11 @@
 package launchdarkly
 
 import (
+	"context"
 	"fmt"
 	"log"
-	"net/http"
 
+	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 
 	ldapi "github.com/launchdarkly/api-client-go/v7"
@@ -12,11 +13,11 @@ import (
 
 func resourceCustomRole() *schema.Resource {
 	return &schema.Resource{
-		Create: resourceCustomRoleCreate,
-		Read:   resourceCustomRoleRead,
-		Update: resourceCustomRoleUpdate,
-		Delete: resourceCustomRoleDelete,
-		Exists: resourceCustomRoleExists,
+		CreateContext: resourceCustomRoleCreate,
+		ReadContext:   resourceCustomRoleRead,
+		UpdateContext: resourceCustomRoleUpdate,
+		DeleteContext: resourceCustomRoleDelete,
+		Exists:        resourceCustomRoleExists,
 
 		Importer: &schema.ResourceImporter{
 			State: resourceCustomRoleImport,
@@ -24,11 +25,11 @@ func resourceCustomRole() *schema.Resource {
 
 		Schema: map[string]*schema.Schema{
 			KEY: {
-				Type:         schema.TypeString,
-				Required:     true,
-				Description:  "A unique key that will be used to reference the custom role in your code",
-				ForceNew:     true,
-				ValidateFunc: validateKey(),
+				Type:             schema.TypeString,
+				Required:         true,
+				Description:      "A unique key that will be used to reference the custom role in your code",
+				ForceNew:         true,
+				ValidateDiagFunc: validateKey(),
 			},
 			NAME: {
 				Type:        schema.TypeString,
@@ -46,7 +47,7 @@ func resourceCustomRole() *schema.Resource {
 	}
 }
 
-func resourceCustomRoleCreate(d *schema.ResourceData, metaRaw interface{}) error {
+func resourceCustomRoleCreate(ctx context.Context, d *schema.ResourceData, metaRaw interface{}) diag.Diagnostics {
 	client := metaRaw.(*Client)
 	customRoleKey := d.Get(KEY).(string)
 	customRoleName := d.Get(NAME).(string)
@@ -54,7 +55,7 @@ func resourceCustomRoleCreate(d *schema.ResourceData, metaRaw interface{}) error
 	customRolePolicies := policiesFromResourceData(d)
 	policyStatements, err := policyStatementsFromResourceData(d.Get(POLICY_STATEMENTS).([]interface{}))
 	if err != nil {
-		return err
+		return diag.FromErr(err)
 	}
 	if len(policyStatements) > 0 {
 		customRolePolicies = policyStatements
@@ -67,32 +68,35 @@ func resourceCustomRoleCreate(d *schema.ResourceData, metaRaw interface{}) error
 		Policy:      customRolePolicies,
 	}
 
-	_, _, err = handleRateLimit(func() (interface{}, *http.Response, error) {
-		return client.ld.CustomRolesApi.PostCustomRole(client.ctx).CustomRolePost(customRoleBody).Execute()
-	})
+	_, _, err = client.ld.CustomRolesApi.PostCustomRole(client.ctx).CustomRolePost(customRoleBody).Execute()
+
 	if err != nil {
-		return fmt.Errorf("failed to create custom role with name %q: %s", customRoleName, handleLdapiErr(err))
+		return diag.Errorf("failed to create custom role with name %q: %s", customRoleName, handleLdapiErr(err))
 	}
 
 	d.SetId(customRoleKey)
-	return resourceCustomRoleRead(d, metaRaw)
+	return resourceCustomRoleRead(ctx, d, metaRaw)
 }
 
-func resourceCustomRoleRead(d *schema.ResourceData, metaRaw interface{}) error {
+func resourceCustomRoleRead(ctx context.Context, d *schema.ResourceData, metaRaw interface{}) diag.Diagnostics {
+	var diags diag.Diagnostics
+
 	client := metaRaw.(*Client)
 	customRoleID := d.Id()
 
-	customRoleRaw, res, err := handleRateLimit(func() (interface{}, *http.Response, error) {
-		return client.ld.CustomRolesApi.GetCustomRole(client.ctx, customRoleID).Execute()
-	})
-	customRole := customRoleRaw.(ldapi.CustomRole)
+	customRole, res, err := client.ld.CustomRolesApi.GetCustomRole(client.ctx, customRoleID).Execute()
+
 	if isStatusNotFound(res) {
 		log.Printf("[WARN] failed to find custom role with id %q, removing from state", customRoleID)
+		diags = append(diags, diag.Diagnostic{
+			Severity: diag.Warning,
+			Summary:  fmt.Sprintf("[WARN] failed to find custom role with id %q, removing from state", customRoleID),
+		})
 		d.SetId("")
-		return nil
+		return diags
 	}
 	if err != nil {
-		return fmt.Errorf("failed to get custom role with id %q: %s", customRoleID, handleLdapiErr(err))
+		return diag.Errorf("failed to get custom role with id %q: %s", customRoleID, handleLdapiErr(err))
 	}
 
 	_ = d.Set(KEY, customRole.Key)
@@ -101,19 +105,25 @@ func resourceCustomRoleRead(d *schema.ResourceData, metaRaw interface{}) error {
 
 	// Because "policy" is now deprecated in favor of "policy_statements", only set "policy" if it has
 	// already been set by the user.
+	// TODO: Somehow this seems to also add an empty policystatement of
+	// 	policy {
+	// 		+ actions   = []
+	// 		+ resources = []
+	// 	  }
 	if _, ok := d.GetOk(POLICY); ok {
-		err = d.Set(POLICY, policiesToResourceData(customRole.Policy))
+		policies := policiesToResourceData(customRole.Policy)
+		err = d.Set(POLICY, policies)
 	} else {
 		err = d.Set(POLICY_STATEMENTS, policyStatementsToResourceData(statementsToStatementReps(customRole.Policy)))
 	}
 
 	if err != nil {
-		return fmt.Errorf("could not set policy on custom role with id %q: %v", customRoleID, err)
+		return diag.Errorf("could not set policy on custom role with id %q: %v", customRoleID, err)
 	}
-	return nil
+	return diags
 }
 
-func resourceCustomRoleUpdate(d *schema.ResourceData, metaRaw interface{}) error {
+func resourceCustomRoleUpdate(ctx context.Context, d *schema.ResourceData, metaRaw interface{}) diag.Diagnostics {
 	client := metaRaw.(*Client)
 	customRoleKey := d.Get(KEY).(string)
 	customRoleName := d.Get(NAME).(string)
@@ -121,7 +131,7 @@ func resourceCustomRoleUpdate(d *schema.ResourceData, metaRaw interface{}) error
 	customRolePolicies := policiesFromResourceData(d)
 	policyStatements, err := policyStatementsFromResourceData(d.Get(POLICY_STATEMENTS).([]interface{}))
 	if err != nil {
-		return err
+		return diag.FromErr(err)
 	}
 	if len(policyStatements) > 0 {
 		customRolePolicies = policyStatements
@@ -134,32 +144,27 @@ func resourceCustomRoleUpdate(d *schema.ResourceData, metaRaw interface{}) error
 			patchReplace("/policy", &customRolePolicies),
 		}}
 
-	_, _, err = handleRateLimit(func() (interface{}, *http.Response, error) {
-		return handleNoConflict(func() (interface{}, *http.Response, error) {
-			return client.ld.CustomRolesApi.PatchCustomRole(client.ctx, customRoleKey).PatchWithComment(patch).Execute()
-		})
-	})
+	_, _, err = client.ld.CustomRolesApi.PatchCustomRole(client.ctx, customRoleKey).PatchWithComment(patch).Execute()
 	if err != nil {
-		return fmt.Errorf("failed to update custom role with key %q: %s", customRoleKey, handleLdapiErr(err))
+		return diag.Errorf("failed to update custom role with key %q: %s", customRoleKey, handleLdapiErr(err))
 	}
 
-	return resourceCustomRoleRead(d, metaRaw)
+	return resourceCustomRoleRead(ctx, d, metaRaw)
 }
 
-func resourceCustomRoleDelete(d *schema.ResourceData, metaRaw interface{}) error {
+func resourceCustomRoleDelete(ctx context.Context, d *schema.ResourceData, metaRaw interface{}) diag.Diagnostics {
+	var diags diag.Diagnostics
+
 	client := metaRaw.(*Client)
 	customRoleKey := d.Id()
 
-	_, _, err := handleRateLimit(func() (interface{}, *http.Response, error) {
-		res, err := client.ld.CustomRolesApi.DeleteCustomRole(client.ctx, customRoleKey).Execute()
-		return nil, res, err
-	})
+	_, err := client.ld.CustomRolesApi.DeleteCustomRole(client.ctx, customRoleKey).Execute()
 
 	if err != nil {
-		return fmt.Errorf("failed to delete custom role with key %q: %s", customRoleKey, handleLdapiErr(err))
+		return diag.Errorf("failed to delete custom role with key %q: %s", customRoleKey, handleLdapiErr(err))
 	}
 
-	return nil
+	return diags
 }
 
 func resourceCustomRoleExists(d *schema.ResourceData, metaRaw interface{}) (bool, error) {

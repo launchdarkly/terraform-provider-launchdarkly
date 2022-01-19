@@ -1,0 +1,22 @@
+minimum_pre_commit_version: "2.9.3"
+
+repos:
+  - repo: https://github.com/ashanbrown/gofmts
+    rev: v0.1.4
+    hooks:
+      - id: gofmts
+  - repo: https://github.com/golangci/golangci-lint
+    rev: v1.43.0
+    hooks:
+      - id: golangci-lint
+  - repo: local
+    hooks:
+      - id: generate-audit-log-subscription-configs
+        name: Generate Audit Log Subscription Configurations
+        description: This hook runs a python script to update the audit log subscription configuration validation fields.
+        entry: python scripts/generate_integration_audit_log_configs.py
+        pass_filenames: false
+        language: python
+        additional_dependencies: ['requests']
+        verbose: true
+

@@ -1,41 +1,51 @@
 package launchdarkly
 
 import (
+	"context"
 	"fmt"
-	"net/http"
+	"net/url"
 
+	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	ldapi "github.com/launchdarkly/api-client-go/v7"
 )
 
+func memberSchema() map[string]*schema.Schema {
+	return map[string]*schema.Schema{
+		EMAIL: {
+			Type:     schema.TypeString,
+			Required: true,
+		},
+		ID: {
+			Type:     schema.TypeString,
+			Computed: true,
+			Optional: true,
+		},
+		FIRST_NAME: {
+			Type:     schema.TypeString,
+			Computed: true,
+		},
+		LAST_NAME: {
+			Type:     schema.TypeString,
+			Computed: true,
+		},
+		ROLE: {
+			Type:     schema.TypeString,
+			Computed: true,
+		},
+		CUSTOM_ROLES: {
+			Type:     schema.TypeSet,
+			Set:      schema.HashString,
+			Elem:     &schema.Schema{Type: schema.TypeString},
+			Computed: true,
+		},
+	}
+}
+
 func dataSourceTeamMember() *schema.Resource {
 	return &schema.Resource{
-		Read: dataSourceTeamMemberRead,
-
-		Schema: map[string]*schema.Schema{
-			EMAIL: {
-				Type:     schema.TypeString,
-				Required: true,
-			},
-			FIRST_NAME: {
-				Type:     schema.TypeString,
-				Computed: true,
-			},
-			LAST_NAME: {
-				Type:     schema.TypeString,
-				Computed: true,
-			},
-			ROLE: {
-				Type:     schema.TypeString,
-				Computed: true,
-			},
-			CUSTOM_ROLES: {
-				Type:     schema.TypeSet,
-				Set:      schema.HashString,
-				Elem:     &schema.Schema{Type: schema.TypeString},
-				Computed: true,
-			},
-		},
+		ReadContext: dataSourceTeamMemberRead,
+		Schema:      memberSchema(),
 	}
 }
 
@@ -43,27 +53,25 @@ func getTeamMemberByEmail(client *Client, memberEmail string) (*ldapi.Member, er
 	// this should be the max limit allowed when the member-list-max-limit flag is on
 	teamMemberLimit := int64(1000)
 
-	membersRaw, _, err := handleRateLimit(func() (interface{}, *http.Response, error) {
-		return client.ld.AccountMembersApi.GetMembers(client.ctx).Limit(teamMemberLimit).Execute()
-	})
+	// After changing this to query by member email, we shouldn't need the limit and recursion on requests, but leaving it in just to be extra safe
+	members, _, err := client.ld.AccountMembersApi.GetMembers(client.ctx).Filter(fmt.Sprintf("query:%s", url.QueryEscape(memberEmail))).Execute()
+
 	if err != nil {
 		return nil, fmt.Errorf("failed to read team member with email: %s: %v", memberEmail, handleLdapiErr(err))
 	}
 
-	members := membersRaw.(ldapi.Members)
 	totalMemberCount := int(*members.TotalCount)
 
 	memberItems := members.Items
 	membersPulled := len(memberItems)
 	for membersPulled < totalMemberCount {
 		offset := int64(membersPulled)
-		newRawMembers, _, err := handleRateLimit(func() (interface{}, *http.Response, error) {
-			return client.ld.AccountMembersApi.GetMembers(client.ctx).Limit(teamMemberLimit).Offset(offset).Execute()
-		})
+		newMembers, _, err := client.ld.AccountMembersApi.GetMembers(client.ctx).Limit(teamMemberLimit).Offset(offset).Filter(fmt.Sprintf("query:%s", url.QueryEscape(memberEmail))).Execute()
+
 		if err != nil {
 			return nil, fmt.Errorf("failed to read team member with email: %s: %v", memberEmail, handleLdapiErr(err))
 		}
-		newMembers := newRawMembers.(ldapi.Members)
+
 		memberItems = append(memberItems, newMembers.Items...)
 		membersPulled = len(memberItems)
 	}
@@ -77,12 +85,13 @@ func getTeamMemberByEmail(client *Client, memberEmail string) (*ldapi.Member, er
 
 }
 
-func dataSourceTeamMemberRead(d *schema.ResourceData, meta interface{}) error {
+func dataSourceTeamMemberRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+	var diags diag.Diagnostics
 	client := meta.(*Client)
 	memberEmail := d.Get(EMAIL).(string)
 	member, err := getTeamMemberByEmail(client, memberEmail)
 	if err != nil {
-		return err
+		return diag.FromErr(err)
 	}
 	d.SetId(member.Id)
 	_ = d.Set(EMAIL, member.Email)
@@ -91,8 +100,8 @@ func dataSourceTeamMemberRead(d *schema.ResourceData, meta interface{}) error {
 	_ = d.Set(ROLE, member.Role)
 	err = d.Set(CUSTOM_ROLES, member.CustomRoles)
 	if err != nil {
-		return fmt.Errorf("failed to set custom roles on team member with email %q: %v", member.Email, err)
+		return diag.Errorf("failed to set custom roles on team member with email %q: %v", member.Email, err)
 	}
 
-	return nil
+	return diags
 }

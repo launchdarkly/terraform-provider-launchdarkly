@@ -1,9 +1,10 @@
 package launchdarkly
 
 import (
+	"context"
 	"fmt"
-	"net/http"
 
+	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	ldapi "github.com/launchdarkly/api-client-go/v7"
 )
@@ -22,11 +23,11 @@ func resourceWebhook() *schema.Resource {
 		Default:     false,
 	}
 	return &schema.Resource{
-		Create: resourceWebhookCreate,
-		Read:   resourceWebhookRead,
-		Update: resourceWebhookUpdate,
-		Delete: resourceWebhookDelete,
-		Exists: resourceWebhookExists,
+		CreateContext: resourceWebhookCreate,
+		ReadContext:   resourceWebhookRead,
+		UpdateContext: resourceWebhookUpdate,
+		DeleteContext: resourceWebhookDelete,
+		Exists:        resourceWebhookExists,
 
 		Importer: &schema.ResourceImporter{
 			StateContext: schema.ImportStatePassthroughContext,
@@ -36,7 +37,7 @@ func resourceWebhook() *schema.Resource {
 	}
 }
 
-func resourceWebhookCreate(d *schema.ResourceData, metaRaw interface{}) error {
+func resourceWebhookCreate(ctx context.Context, d *schema.ResourceData, metaRaw interface{}) diag.Diagnostics {
 	client := metaRaw.(*Client)
 	webhookURL := d.Get(URL).(string)
 	webhookSecret := d.Get(SECRET).(string)
@@ -53,7 +54,7 @@ func resourceWebhookCreate(d *schema.ResourceData, metaRaw interface{}) error {
 	if rawStatements, ok := d.GetOk(STATEMENTS); ok {
 		statements, err := policyStatementsFromResourceData(rawStatements.([]interface{}))
 		if err != nil {
-			return err
+			return diag.FromErr(err)
 		}
 		webhookBody.Statements = &statements
 	}
@@ -65,30 +66,31 @@ func resourceWebhookCreate(d *schema.ResourceData, metaRaw interface{}) error {
 		webhookBody.Sign = true
 	}
 
-	webhookRaw, _, err := handleRateLimit(func() (interface{}, *http.Response, error) {
-		return client.ld.WebhooksApi.PostWebhook(client.ctx).WebhookPost(webhookBody).Execute()
-	})
-	webhook := webhookRaw.(ldapi.Webhook)
+	webhook, _, err := client.ld.WebhooksApi.PostWebhook(client.ctx).WebhookPost(webhookBody).Execute()
 	if err != nil {
-		return fmt.Errorf("failed to create webhook with name %q: %s", webhookName, handleLdapiErr(err))
+		return diag.Errorf("failed to create webhook with name %q: %s", webhookName, handleLdapiErr(err))
 	}
 
 	d.SetId(webhook.Id)
 
 	// ld's api does not allow tags to be passed in during webhook creation so we do an update
-	err = resourceWebhookUpdate(d, metaRaw)
-	if err != nil {
-		return fmt.Errorf("error updating after webhook creation. Webhook name: %q", webhookName)
+	updateDiags := resourceWebhookUpdate(ctx, d, metaRaw)
+	if updateDiags.HasError() {
+		updateDiags = append(updateDiags, diag.Diagnostic{
+			Severity: diag.Error,
+			Summary:  fmt.Sprintf("error updating after webhook creation. Webhook name: %q", webhookName),
+		})
+		return updateDiags
 	}
 
-	return resourceWebhookRead(d, metaRaw)
+	return resourceWebhookRead(ctx, d, metaRaw)
 }
 
-func resourceWebhookRead(d *schema.ResourceData, metaRaw interface{}) error {
-	return webhookRead(d, metaRaw, false)
+func resourceWebhookRead(ctx context.Context, d *schema.ResourceData, metaRaw interface{}) diag.Diagnostics {
+	return webhookRead(ctx, d, metaRaw, false)
 }
 
-func resourceWebhookUpdate(d *schema.ResourceData, metaRaw interface{}) error {
+func resourceWebhookUpdate(ctx context.Context, d *schema.ResourceData, metaRaw interface{}) diag.Diagnostics {
 	client := metaRaw.(*Client)
 	webhookID := d.Id()
 	webhookURL := d.Get(URL).(string)
@@ -107,7 +109,7 @@ func resourceWebhookUpdate(d *schema.ResourceData, metaRaw interface{}) error {
 
 	statements, err := policyStatementsFromResourceData(d.Get(STATEMENTS).([]interface{}))
 	if err != nil {
-		return err
+		return diag.FromErr(err)
 	}
 
 	if d.HasChange(STATEMENTS) {
@@ -118,32 +120,26 @@ func resourceWebhookUpdate(d *schema.ResourceData, metaRaw interface{}) error {
 		}
 	}
 
-	_, _, err = handleRateLimit(func() (interface{}, *http.Response, error) {
-		return handleNoConflict(func() (interface{}, *http.Response, error) {
-			return client.ld.WebhooksApi.PatchWebhook(client.ctx, webhookID).PatchOperation(patch).Execute()
-		})
-	})
+	_, _, err = client.ld.WebhooksApi.PatchWebhook(client.ctx, webhookID).PatchOperation(patch).Execute()
 	if err != nil {
-		return fmt.Errorf("failed to update webhook with id %q: %s", webhookID, handleLdapiErr(err))
+		return diag.Errorf("failed to update webhook with id %q: %s", webhookID, handleLdapiErr(err))
 	}
 
-	return resourceWebhookRead(d, metaRaw)
+	return resourceWebhookRead(ctx, d, metaRaw)
 }
 
-func resourceWebhookDelete(d *schema.ResourceData, metaRaw interface{}) error {
+func resourceWebhookDelete(ctx context.Context, d *schema.ResourceData, metaRaw interface{}) diag.Diagnostics {
+	var diags diag.Diagnostics
+
 	client := metaRaw.(*Client)
 	webhookID := d.Id()
 
-	_, _, err := handleRateLimit(func() (interface{}, *http.Response, error) {
-		res, err := client.ld.WebhooksApi.DeleteWebhook(client.ctx, webhookID).Execute()
-		return nil, res, err
-	})
-
+	_, err := client.ld.WebhooksApi.DeleteWebhook(client.ctx, webhookID).Execute()
 	if err != nil {
-		return fmt.Errorf("failed to delete webhook with id %q: %s", webhookID, handleLdapiErr(err))
+		return diag.Errorf("failed to delete webhook with id %q: %s", webhookID, handleLdapiErr(err))
 	}
 
-	return nil
+	return diags
 }
 
 func resourceWebhookExists(d *schema.ResourceData, metaRaw interface{}) (bool, error) {
@@ -151,9 +147,7 @@ func resourceWebhookExists(d *schema.ResourceData, metaRaw interface{}) (bool, e
 }
 
 func webhookExists(webhookID string, meta *Client) (bool, error) {
-	_, res, err := handleRateLimit(func() (interface{}, *http.Response, error) {
-		return meta.ld.WebhooksApi.GetWebhook(meta.ctx, webhookID).Execute()
-	})
+	_, res, err := meta.ld.WebhooksApi.GetWebhook(meta.ctx, webhookID).Execute()
 	if isStatusNotFound(res) {
 		return false, nil
 	}

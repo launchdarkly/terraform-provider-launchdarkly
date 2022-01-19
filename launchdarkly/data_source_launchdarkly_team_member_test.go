@@ -70,7 +70,7 @@ func TestAccDataSourceTeamMember_exists(t *testing.T) {
 
 	teamMembers := make([]ldapi.Member, 0, teamMemberCount)
 	for i := 0; i < teamMemberCount; i++ {
-		randomEmail := fmt.Sprintf("%s@example.com", acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum))
+		randomEmail := fmt.Sprintf("%s@example.com", acctest.RandStringFromCharSet(10, "abcdefghijklmnopqrstuvwxyz012346789+"))
 		member, err := testAccDataSourceTeamMemberCreate(client, randomEmail)
 		require.NoError(t, err)
 		teamMembers = append(teamMembers, *member)
@@ -87,11 +87,11 @@ func TestAccDataSourceTeamMember_exists(t *testing.T) {
 			{
 				Config: testAccDataSourceTeamMemberConfig(testMember.Email),
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttrSet(resourceName, "email"),
-					resource.TestCheckResourceAttr(resourceName, "email", testMember.Email),
-					resource.TestCheckResourceAttr(resourceName, "first_name", *testMember.FirstName),
-					resource.TestCheckResourceAttr(resourceName, "last_name", *testMember.LastName),
-					resource.TestCheckResourceAttr(resourceName, "id", testMember.Id),
+					resource.TestCheckResourceAttrSet(resourceName, EMAIL),
+					resource.TestCheckResourceAttr(resourceName, EMAIL, testMember.Email),
+					resource.TestCheckResourceAttr(resourceName, FIRST_NAME, *testMember.FirstName),
+					resource.TestCheckResourceAttr(resourceName, LAST_NAME, *testMember.LastName),
+					resource.TestCheckResourceAttr(resourceName, ID, testMember.Id),
 				),
 			},
 		},

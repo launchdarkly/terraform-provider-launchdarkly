@@ -1,6 +1,9 @@
 package launchdarkly
 
 import (
+	"context"
+
+	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
@@ -20,11 +23,11 @@ func dataSourceWebhook() *schema.Resource {
 		Description: "The ID of the webhook",
 	}
 	return &schema.Resource{
-		Read:   dataSourceWebhookRead,
-		Schema: schemaMap,
+		ReadContext: dataSourceWebhookRead,
+		Schema:      schemaMap,
 	}
 }
 
-func dataSourceWebhookRead(d *schema.ResourceData, meta interface{}) error {
-	return webhookRead(d, meta, true)
+func dataSourceWebhookRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+	return webhookRead(ctx, d, meta, true)
 }

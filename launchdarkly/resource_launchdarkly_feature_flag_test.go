@@ -307,19 +307,6 @@ resource "launchdarkly_feature_flag" "defaults" {
 	}
 }
 `
-	testAccFeatureFlagDefaultsMissingOffInvalid = `
-resource "launchdarkly_feature_flag" "defaults" {
-	project_key = launchdarkly_project.test.key
-	key = "defaults-flag"
-	name = "Feature flag with defaults"
-	variation_type = "boolean"
-	defaults {
-		on_variation = 2
-		off_variation = 3
-	}
-}
-`
-
 	testAccFeatureFlagDefaultsMultivariate = `
 resource "launchdarkly_feature_flag" "defaults-multivariate" {
 	project_key = launchdarkly_project.test.key
@@ -513,7 +500,7 @@ func TestAccFeatureFlag_Basic(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "variations.#", "2"),
 					resource.TestCheckResourceAttr(resourceName, "variations.0.value", "true"),
 					resource.TestCheckResourceAttr(resourceName, "variations.1.value", "false"),
-					resource.TestCheckNoResourceAttr(resourceName, "maintainer_id"),
+					resource.TestCheckNoResourceAttr(resourceName, MAINTAINER_ID),
 				),
 			},
 			{
@@ -540,9 +527,9 @@ func TestAccFeatureFlag_Update(t *testing.T) {
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckProjectExists("launchdarkly_project.test"),
 					testAccCheckFeatureFlagExists(resourceName),
-					resource.TestCheckResourceAttr(resourceName, "name", "Basic feature flag"),
-					resource.TestCheckResourceAttr(resourceName, "key", "basic-flag"),
-					resource.TestCheckResourceAttr(resourceName, "project_key", projectKey),
+					resource.TestCheckResourceAttr(resourceName, NAME, "Basic feature flag"),
+					resource.TestCheckResourceAttr(resourceName, KEY, "basic-flag"),
+					resource.TestCheckResourceAttr(resourceName, PROJECT_KEY, projectKey),
 				),
 			},
 			{
@@ -550,15 +537,15 @@ func TestAccFeatureFlag_Update(t *testing.T) {
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckProjectExists("launchdarkly_project.test"),
 					testAccCheckFeatureFlagExists(resourceName),
-					resource.TestCheckResourceAttr(resourceName, "name", "Less basic feature flag"),
-					resource.TestCheckResourceAttr(resourceName, "key", "basic-flag"),
-					resource.TestCheckResourceAttr(resourceName, "project_key", projectKey),
-					resource.TestCheckResourceAttr(resourceName, "description", "this is a boolean flag by default becausethe variations field is omitted"),
+					resource.TestCheckResourceAttr(resourceName, NAME, "Less basic feature flag"),
+					resource.TestCheckResourceAttr(resourceName, KEY, "basic-flag"),
+					resource.TestCheckResourceAttr(resourceName, PROJECT_KEY, projectKey),
+					resource.TestCheckResourceAttr(resourceName, DESCRIPTION, "this is a boolean flag by default becausethe variations field is omitted"),
 					resource.TestCheckResourceAttr(resourceName, "tags.#", "2"),
 					resource.TestCheckResourceAttr(resourceName, "tags.0", "terraform"),
 					resource.TestCheckResourceAttr(resourceName, "tags.1", "update"),
-					resource.TestCheckResourceAttr(resourceName, "include_in_snippet", "true"),
-					resource.TestCheckResourceAttr(resourceName, "temporary", "true"),
+					resource.TestCheckResourceAttr(resourceName, INCLUDE_IN_SNIPPET, "true"),
+					resource.TestCheckResourceAttr(resourceName, TEMPORARY, "true"),
 					resource.TestCheckResourceAttr(resourceName, "defaults.0.on_variation", "0"),
 					resource.TestCheckResourceAttr(resourceName, "defaults.0.off_variation", "1"),
 				),
@@ -670,10 +657,10 @@ func TestAccFeatureFlag_WithMaintainer(t *testing.T) {
 					testAccCheckProjectExists("launchdarkly_project.test"),
 					testAccCheckMemberExists("launchdarkly_team_member.test"),
 					testAccCheckFeatureFlagExists(resourceName),
-					resource.TestCheckResourceAttr(resourceName, "name", "Maintained feature flag"),
-					resource.TestCheckResourceAttr(resourceName, "key", "maintained-flag"),
-					resource.TestCheckResourceAttr(resourceName, "project_key", projectKey),
-					resource.TestCheckResourceAttrPair(resourceName, "maintainer_id", "launchdarkly_team_member.test", "id"),
+					resource.TestCheckResourceAttr(resourceName, NAME, "Maintained feature flag"),
+					resource.TestCheckResourceAttr(resourceName, KEY, "maintained-flag"),
+					resource.TestCheckResourceAttr(resourceName, PROJECT_KEY, projectKey),
+					resource.TestCheckResourceAttrPair(resourceName, MAINTAINER_ID, "launchdarkly_team_member.test", "id"),
 				),
 			},
 			{
@@ -681,11 +668,11 @@ func TestAccFeatureFlag_WithMaintainer(t *testing.T) {
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckProjectExists("launchdarkly_project.test"),
 					testAccCheckFeatureFlagExists(resourceName),
-					resource.TestCheckResourceAttr(resourceName, "name", "Maintained feature flag"),
-					resource.TestCheckResourceAttr(resourceName, "key", "maintained-flag"),
-					resource.TestCheckResourceAttr(resourceName, "project_key", projectKey),
+					resource.TestCheckResourceAttr(resourceName, NAME, "Maintained feature flag"),
+					resource.TestCheckResourceAttr(resourceName, KEY, "maintained-flag"),
+					resource.TestCheckResourceAttr(resourceName, PROJECT_KEY, projectKey),
 					// when removed it should reset back to the most recently-set maintainer
-					resource.TestCheckResourceAttrPair(resourceName, "maintainer_id", "launchdarkly_team_member.test", "id"),
+					resource.TestCheckResourceAttrPair(resourceName, MAINTAINER_ID, "launchdarkly_team_member.test", "id"),
 				),
 			},
 			{
@@ -693,12 +680,12 @@ func TestAccFeatureFlag_WithMaintainer(t *testing.T) {
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckProjectExists("launchdarkly_project.test"),
 					testAccCheckFeatureFlagExists(resourceName),
-					resource.TestCheckResourceAttr(resourceName, "name", "Maintained feature flag"),
-					resource.TestCheckResourceAttr(resourceName, "key", "maintained-flag"),
-					resource.TestCheckResourceAttr(resourceName, "project_key", projectKey),
+					resource.TestCheckResourceAttr(resourceName, NAME, "Maintained feature flag"),
+					resource.TestCheckResourceAttr(resourceName, KEY, "maintained-flag"),
+					resource.TestCheckResourceAttr(resourceName, PROJECT_KEY, projectKey),
 					// it will still be set to the most recently set one even if that member has been deleted
 					// the UI will not show a maintainer because it will not be able to find the record post-member delete
-					resource.TestCheckResourceAttrSet(resourceName, "maintainer_id"),
+					resource.TestCheckResourceAttrSet(resourceName, MAINTAINER_ID),
 				),
 			},
 		},
@@ -727,10 +714,10 @@ func TestAccFeatureFlag_InvalidMaintainer(t *testing.T) {
 					testAccCheckProjectExists("launchdarkly_project.test"),
 					testAccCheckMemberExists("launchdarkly_team_member.test"),
 					testAccCheckFeatureFlagExists(resourceName),
-					resource.TestCheckResourceAttr(resourceName, "name", "Maintained feature flag"),
-					resource.TestCheckResourceAttr(resourceName, "key", "maintained-flag"),
-					resource.TestCheckResourceAttr(resourceName, "project_key", projectKey),
-					resource.TestCheckResourceAttrPair(resourceName, "maintainer_id", "launchdarkly_team_member.test", "id"),
+					resource.TestCheckResourceAttr(resourceName, NAME, "Maintained feature flag"),
+					resource.TestCheckResourceAttr(resourceName, KEY, "maintained-flag"),
+					resource.TestCheckResourceAttr(resourceName, PROJECT_KEY, projectKey),
+					resource.TestCheckResourceAttrPair(resourceName, MAINTAINER_ID, "launchdarkly_team_member.test", "id"),
 				),
 			},
 			{
@@ -738,12 +725,12 @@ func TestAccFeatureFlag_InvalidMaintainer(t *testing.T) {
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckProjectExists("launchdarkly_project.test"),
 					testAccCheckFeatureFlagExists(resourceName),
-					resource.TestCheckResourceAttr(resourceName, "name", "Maintained feature flag"),
-					resource.TestCheckResourceAttr(resourceName, "key", "maintained-flag"),
-					resource.TestCheckResourceAttr(resourceName, "project_key", projectKey),
+					resource.TestCheckResourceAttr(resourceName, NAME, "Maintained feature flag"),
+					resource.TestCheckResourceAttr(resourceName, KEY, "maintained-flag"),
+					resource.TestCheckResourceAttr(resourceName, PROJECT_KEY, projectKey),
 					// this is the best we can do. it should default back to the most recently-set maintainer but
 					// we have no easy way of a
-					resource.TestCheckResourceAttrSet(resourceName, "maintainer_id"),
+					resource.TestCheckResourceAttrSet(resourceName, MAINTAINER_ID),
 				),
 			},
 		},
@@ -764,10 +751,10 @@ func TestAccFeatureFlag_CreateMultivariate(t *testing.T) {
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckProjectExists("launchdarkly_project.test"),
 					testAccCheckFeatureFlagExists(resourceName),
-					resource.TestCheckResourceAttr(resourceName, "name", "multivariate flag 1 name"),
-					resource.TestCheckResourceAttr(resourceName, "key", "multivariate-flag-1"),
-					resource.TestCheckResourceAttr(resourceName, "project_key", projectKey),
-					resource.TestCheckResourceAttr(resourceName, "description", "this is a multivariate flag because we explicitly define the variations"),
+					resource.TestCheckResourceAttr(resourceName, NAME, "multivariate flag 1 name"),
+					resource.TestCheckResourceAttr(resourceName, KEY, "multivariate-flag-1"),
+					resource.TestCheckResourceAttr(resourceName, PROJECT_KEY, projectKey),
+					resource.TestCheckResourceAttr(resourceName, DESCRIPTION, "this is a multivariate flag because we explicitly define the variations"),
 					resource.TestCheckResourceAttr(resourceName, "variations.#", "3"),
 					resource.TestCheckResourceAttr(resourceName, "variations.0.description", "a description"),
 					resource.TestCheckResourceAttr(resourceName, "variations.0.name", "variation1"),
@@ -810,11 +797,11 @@ func TestAccFeatureFlag_CreateMultivariate2(t *testing.T) {
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckProjectExists("launchdarkly_project.test"),
 					testAccCheckFeatureFlagExists(resourceName),
-					resource.TestCheckResourceAttr(resourceName, "name", "multivariate flag 2 name"),
-					resource.TestCheckResourceAttr(resourceName, "key", "multivariate-flag-2"),
-					resource.TestCheckResourceAttr(resourceName, "project_key", projectKey),
-					resource.TestCheckResourceAttr(resourceName, "description", "this is a multivariate flag to test big number values"),
-					resource.TestCheckResourceAttr(resourceName, "variation_type", "number"),
+					resource.TestCheckResourceAttr(resourceName, NAME, "multivariate flag 2 name"),
+					resource.TestCheckResourceAttr(resourceName, KEY, "multivariate-flag-2"),
+					resource.TestCheckResourceAttr(resourceName, PROJECT_KEY, projectKey),
+					resource.TestCheckResourceAttr(resourceName, DESCRIPTION, "this is a multivariate flag to test big number values"),
+					resource.TestCheckResourceAttr(resourceName, VARIATION_TYPE, "number"),
 					resource.TestCheckResourceAttr(resourceName, "variations.#", "3"),
 					resource.TestCheckResourceAttr(resourceName, "variations.0.description", "a description"),
 					resource.TestCheckResourceAttr(resourceName, "variations.0.name", "variation1"),
@@ -869,10 +856,10 @@ func TestAccFeatureFlag_UpdateMultivariate(t *testing.T) {
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckProjectExists("launchdarkly_project.test"),
 					testAccCheckFeatureFlagExists(resourceName),
-					resource.TestCheckResourceAttr(resourceName, "name", "multivariate flag 1 name"),
-					resource.TestCheckResourceAttr(resourceName, "key", "multivariate-flag-1"),
-					resource.TestCheckResourceAttr(resourceName, "project_key", projectKey),
-					resource.TestCheckResourceAttr(resourceName, "description", "this is a multivariate flag because we explicitly define the variations"),
+					resource.TestCheckResourceAttr(resourceName, NAME, "multivariate flag 1 name"),
+					resource.TestCheckResourceAttr(resourceName, KEY, "multivariate-flag-1"),
+					resource.TestCheckResourceAttr(resourceName, PROJECT_KEY, projectKey),
+					resource.TestCheckResourceAttr(resourceName, DESCRIPTION, "this is a multivariate flag because we explicitly define the variations"),
 					resource.TestCheckResourceAttr(resourceName, "variations.#", "4"),
 					resource.TestCheckResourceAttr(resourceName, "variations.0.description", "a description"),
 					resource.TestCheckResourceAttr(resourceName, "variations.0.name", "variation1"),
@@ -1052,7 +1039,7 @@ func TestAccFeatureFlag_ClientSideAvailabilityUpdate(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "variations.#", "2"),
 					resource.TestCheckResourceAttr(resourceName, "variations.0.value", "true"),
 					resource.TestCheckResourceAttr(resourceName, "variations.1.value", "false"),
-					resource.TestCheckNoResourceAttr(resourceName, "maintainer_id"),
+					resource.TestCheckNoResourceAttr(resourceName, MAINTAINER_ID),
 					resource.TestCheckResourceAttr(resourceName, "client_side_availability.0.using_environment_id", "true"),
 					resource.TestCheckResourceAttr(resourceName, "client_side_availability.0.using_mobile_key", "true"),
 				),
@@ -1069,7 +1056,7 @@ func TestAccFeatureFlag_ClientSideAvailabilityUpdate(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "variations.#", "2"),
 					resource.TestCheckResourceAttr(resourceName, "variations.0.value", "true"),
 					resource.TestCheckResourceAttr(resourceName, "variations.1.value", "false"),
-					resource.TestCheckNoResourceAttr(resourceName, "maintainer_id"),
+					resource.TestCheckNoResourceAttr(resourceName, MAINTAINER_ID),
 					resource.TestCheckResourceAttr(resourceName, "client_side_availability.0.using_environment_id", "false"),
 					resource.TestCheckResourceAttr(resourceName, "client_side_availability.0.using_mobile_key", "false"),
 				),
@@ -1099,8 +1086,8 @@ func TestAccFeatureFlag_IncludeInSnippetToClientSide(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "variations.#", "2"),
 					resource.TestCheckResourceAttr(resourceName, "variations.0.value", "true"),
 					resource.TestCheckResourceAttr(resourceName, "variations.1.value", "false"),
-					resource.TestCheckNoResourceAttr(resourceName, "maintainer_id"),
-					resource.TestCheckResourceAttr(resourceName, "include_in_snippet", "true"),
+					resource.TestCheckNoResourceAttr(resourceName, MAINTAINER_ID),
+					resource.TestCheckResourceAttr(resourceName, INCLUDE_IN_SNIPPET, "true"),
 				),
 			},
 			{
@@ -1115,10 +1102,10 @@ func TestAccFeatureFlag_IncludeInSnippetToClientSide(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "variations.#", "2"),
 					resource.TestCheckResourceAttr(resourceName, "variations.0.value", "true"),
 					resource.TestCheckResourceAttr(resourceName, "variations.1.value", "false"),
-					resource.TestCheckNoResourceAttr(resourceName, "maintainer_id"),
+					resource.TestCheckNoResourceAttr(resourceName, MAINTAINER_ID),
 					resource.TestCheckResourceAttr(resourceName, "client_side_availability.0.using_environment_id", "true"),
 					resource.TestCheckResourceAttr(resourceName, "client_side_availability.0.using_mobile_key", "true"),
-					resource.TestCheckResourceAttr(resourceName, "include_in_snippet", "true"),
+					resource.TestCheckResourceAttr(resourceName, INCLUDE_IN_SNIPPET, "true"),
 				),
 			},
 			{
@@ -1133,10 +1120,10 @@ func TestAccFeatureFlag_IncludeInSnippetToClientSide(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "variations.#", "2"),
 					resource.TestCheckResourceAttr(resourceName, "variations.0.value", "true"),
 					resource.TestCheckResourceAttr(resourceName, "variations.1.value", "false"),
-					resource.TestCheckNoResourceAttr(resourceName, "maintainer_id"),
+					resource.TestCheckNoResourceAttr(resourceName, MAINTAINER_ID),
 					resource.TestCheckResourceAttr(resourceName, "client_side_availability.0.using_environment_id", "false"),
 					resource.TestCheckResourceAttr(resourceName, "client_side_availability.0.using_mobile_key", "false"),
-					resource.TestCheckResourceAttr(resourceName, "include_in_snippet", "false"),
+					resource.TestCheckResourceAttr(resourceName, INCLUDE_IN_SNIPPET, "false"),
 				),
 			},
 		},
@@ -1164,10 +1151,10 @@ func TestAccFeatureFlag_ClientSideToIncludeInSnippet(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "variations.#", "2"),
 					resource.TestCheckResourceAttr(resourceName, "variations.0.value", "true"),
 					resource.TestCheckResourceAttr(resourceName, "variations.1.value", "false"),
-					resource.TestCheckNoResourceAttr(resourceName, "maintainer_id"),
+					resource.TestCheckNoResourceAttr(resourceName, MAINTAINER_ID),
 					resource.TestCheckResourceAttr(resourceName, "client_side_availability.0.using_environment_id", "true"),
 					resource.TestCheckResourceAttr(resourceName, "client_side_availability.0.using_mobile_key", "true"),
-					resource.TestCheckResourceAttr(resourceName, "include_in_snippet", "true"),
+					resource.TestCheckResourceAttr(resourceName, INCLUDE_IN_SNIPPET, "true"),
 				),
 			},
 			{
@@ -1182,10 +1169,10 @@ func TestAccFeatureFlag_ClientSideToIncludeInSnippet(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "variations.#", "2"),
 					resource.TestCheckResourceAttr(resourceName, "variations.0.value", "true"),
 					resource.TestCheckResourceAttr(resourceName, "variations.1.value", "false"),
-					resource.TestCheckNoResourceAttr(resourceName, "maintainer_id"),
+					resource.TestCheckNoResourceAttr(resourceName, MAINTAINER_ID),
 					resource.TestCheckResourceAttr(resourceName, "client_side_availability.0.using_environment_id", "false"),
 					resource.TestCheckResourceAttr(resourceName, "client_side_availability.0.using_mobile_key", "false"),
-					resource.TestCheckResourceAttr(resourceName, "include_in_snippet", "false"),
+					resource.TestCheckResourceAttr(resourceName, INCLUDE_IN_SNIPPET, "false"),
 				),
 			},
 		},
@@ -1207,10 +1194,10 @@ func TestAccFeatureFlag_IncludeInSnippetRevertToDefault(t *testing.T) {
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckProjectExists("launchdarkly_project.test"),
 					testAccCheckFeatureFlagExists(resourceName),
-					resource.TestCheckResourceAttr(resourceName, "name", "Basic feature flag"),
-					resource.TestCheckResourceAttr(resourceName, "key", "basic-flag-sdk-settings"),
-					resource.TestCheckResourceAttr(resourceName, "project_key", projectKey),
-					resource.TestCheckResourceAttr(resourceName, "include_in_snippet", "true"),
+					resource.TestCheckResourceAttr(resourceName, NAME, "Basic feature flag"),
+					resource.TestCheckResourceAttr(resourceName, KEY, "basic-flag-sdk-settings"),
+					resource.TestCheckResourceAttr(resourceName, PROJECT_KEY, projectKey),
+					resource.TestCheckResourceAttr(resourceName, INCLUDE_IN_SNIPPET, "true"),
 				),
 			},
 			// Replace default value with specific value
@@ -1219,10 +1206,10 @@ func TestAccFeatureFlag_IncludeInSnippetRevertToDefault(t *testing.T) {
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckProjectExists("launchdarkly_project.test"),
 					testAccCheckFeatureFlagExists(resourceName),
-					resource.TestCheckResourceAttr(resourceName, "name", "Basic feature flag"),
-					resource.TestCheckResourceAttr(resourceName, "key", "basic-flag-sdk-settings"),
-					resource.TestCheckResourceAttr(resourceName, "project_key", projectKey),
-					resource.TestCheckResourceAttr(resourceName, "include_in_snippet", "false"),
+					resource.TestCheckResourceAttr(resourceName, NAME, "Basic feature flag"),
+					resource.TestCheckResourceAttr(resourceName, KEY, "basic-flag-sdk-settings"),
+					resource.TestCheckResourceAttr(resourceName, PROJECT_KEY, projectKey),
+					resource.TestCheckResourceAttr(resourceName, INCLUDE_IN_SNIPPET, "false"),
 				),
 			},
 			// Clear specific value, check for default
@@ -1231,10 +1218,10 @@ func TestAccFeatureFlag_IncludeInSnippetRevertToDefault(t *testing.T) {
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckProjectExists("launchdarkly_project.test"),
 					testAccCheckFeatureFlagExists(resourceName),
-					resource.TestCheckResourceAttr(resourceName, "name", "Basic feature flag"),
-					resource.TestCheckResourceAttr(resourceName, "key", "basic-flag-sdk-settings"),
-					resource.TestCheckResourceAttr(resourceName, "project_key", projectKey),
-					resource.TestCheckResourceAttr(resourceName, "include_in_snippet", "true"),
+					resource.TestCheckResourceAttr(resourceName, NAME, "Basic feature flag"),
+					resource.TestCheckResourceAttr(resourceName, KEY, "basic-flag-sdk-settings"),
+					resource.TestCheckResourceAttr(resourceName, PROJECT_KEY, projectKey),
+					resource.TestCheckResourceAttr(resourceName, INCLUDE_IN_SNIPPET, "true"),
 				),
 			},
 		},

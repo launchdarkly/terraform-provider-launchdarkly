@@ -1,3 +1,25 @@
+## [2.4.0] (January 19, 2022)
+
+FEATURES:
+
+- Added a `launchdarkly_team_members` data source to allow using multiple team members in one data source.
+
+- Added a new `launchdarkly_metric` resource and data source for managing LaunchDarkly experiment flag metrics.
+
+- Added a new `launchdarkly_flag_triggers` resource and data source for managing LaunchDarkly flag triggers.
+
+- Added a new `launchdarkly_relay_proxy_configuration` resource and data source for managing configurations for the Relay Proxy's [automatic configuration](https://docs.launchdarkly.com/home/relay-proxy/automatic-configuration#writing-an-inline-policy) feature.
+
+- Added a new `launchdarkly_audit_log_subscription` resource and data source for managing LaunchDarkly audit log integration subscriptions.
+
+ENHANCEMENTS:
+
+- Updated tests to use the constant attribute keys defined in launchdarkly/keys.go.
+
+- Added a pre-commit file with a hook to alphabetize launchdarkly/keys.go
+
+- Improved 409 and 429 retry handling.
+
 ## [2.3.0] (January 4, 2022)
 
 FEATURES:
@@ -28,6 +50,14 @@ FEATURES:
 NOTES:
 
 - The `launchdarkly_feature_flag` resource's argument `include_in_snippet` has been deprecated in favor of `client_side_availability`. Please update your config to use `client_side_availability` in order to maintain compatibility with future versions.
+
+ENHANCEMENTS:
+
+- Upgraded the LaunchDarkly API client to version 7.
+
+=======
+
+> > > > > > > 8c7d0fc67b7d6038363a5a9c20ff8a5ef0f364df
 
 ## [2.1.1] (October 11, 2021)
 

@@ -1,11 +1,12 @@
 package launchdarkly
 
 import (
+	"context"
 	"fmt"
 	"log"
-	"net/http"
 	"strings"
 
+	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 	ldapi "github.com/launchdarkly/api-client-go/v7"
@@ -14,25 +15,25 @@ import (
 func baseFeatureFlagSchema() map[string]*schema.Schema {
 	return map[string]*schema.Schema{
 		PROJECT_KEY: {
-			Type:         schema.TypeString,
-			Required:     true,
-			ForceNew:     true,
-			Description:  "The LaunchDarkly project key",
-			ValidateFunc: validateKey(),
+			Type:             schema.TypeString,
+			Required:         true,
+			ForceNew:         true,
+			Description:      "The LaunchDarkly project key",
+			ValidateDiagFunc: validateKey(),
 		},
 		KEY: {
-			Type:         schema.TypeString,
-			Required:     true,
-			ForceNew:     true,
-			ValidateFunc: validateKey(),
-			Description:  "A unique key that will be used to reference the flag in your code",
+			Type:             schema.TypeString,
+			Required:         true,
+			ForceNew:         true,
+			ValidateDiagFunc: validateKey(),
+			Description:      "A unique key that will be used to reference the flag in your code",
 		},
 		MAINTAINER_ID: {
-			Type:         schema.TypeString,
-			Optional:     true,
-			Computed:     true,
-			Description:  "The LaunchDarkly id of the user who will maintain the flag. If not set, the API will automatically apply the member associated with your Terraform API key or the most recently set maintainer",
-			ValidateFunc: validateID(),
+			Type:             schema.TypeString,
+			Optional:         true,
+			Computed:         true,
+			Description:      "The LaunchDarkly id of the user who will maintain the flag. If not set, the API will automatically apply the member associated with your Terraform API key or the most recently set maintainer",
+			ValidateDiagFunc: validateID(),
 		},
 		DESCRIPTION: {
 			Type:        schema.TypeString,
@@ -86,16 +87,16 @@ func baseFeatureFlagSchema() map[string]*schema.Schema {
 			Elem: &schema.Resource{
 				Schema: map[string]*schema.Schema{
 					ON_VARIATION: {
-						Type:         schema.TypeInt,
-						Required:     true,
-						Description:  "The index of the variation served when the flag is on for new environments",
-						ValidateFunc: validation.IntAtLeast(0),
+						Type:             schema.TypeInt,
+						Required:         true,
+						Description:      "The index of the variation served when the flag is on for new environments",
+						ValidateDiagFunc: validation.ToDiagFunc(validation.IntAtLeast(0)),
 					},
 					OFF_VARIATION: {
-						Type:         schema.TypeInt,
-						Required:     true,
-						Description:  "The index of the variation served when the flag is off for new environments",
-						ValidateFunc: validation.IntAtLeast(0),
+						Type:             schema.TypeInt,
+						Required:         true,
+						Description:      "The index of the variation served when the flag is off for new environments",
+						ValidateDiagFunc: validation.ToDiagFunc(validation.IntAtLeast(0)),
 					},
 				},
 			},
@@ -109,23 +110,27 @@ func baseFeatureFlagSchema() map[string]*schema.Schema {
 	}
 }
 
-func featureFlagRead(d *schema.ResourceData, raw interface{}, isDataSource bool) error {
+func featureFlagRead(ctx context.Context, d *schema.ResourceData, raw interface{}, isDataSource bool) diag.Diagnostics {
+	var diags diag.Diagnostics
 	client := raw.(*Client)
 	projectKey := d.Get(PROJECT_KEY).(string)
 	key := d.Get(KEY).(string)
 
-	flagRaw, res, err := handleRateLimit(func() (interface{}, *http.Response, error) {
-		return client.ld.FeatureFlagsApi.GetFeatureFlag(client.ctx, projectKey, key).Execute()
-	})
-	flag := flagRaw.(ldapi.FeatureFlag)
+	flag, res, err := client.ld.FeatureFlagsApi.GetFeatureFlag(client.ctx, projectKey, key).Execute()
+
 	if isStatusNotFound(res) && !isDataSource {
+		// TODO: Can probably get rid of all of these WARN logs?
 		log.Printf("[WARN] feature flag %q in project %q not found, removing from state", key, projectKey)
+		diags = append(diags, diag.Diagnostic{
+			Severity: diag.Warning,
+			Summary:  fmt.Sprintf("[WARN] feature flag %q in project %q not found, removing from state", key, projectKey),
+		})
 		d.SetId("")
-		return nil
+		return diags
 	}
 
 	if err != nil {
-		return fmt.Errorf("failed to get flag %q of project %q: %s", key, projectKey, handleLdapiErr(err))
+		return diag.Errorf("failed to get flag %q of project %q: %s", key, projectKey, handleLdapiErr(err))
 	}
 
 	transformedCustomProperties := customPropertiesToResourceData(flag.CustomProperties)
@@ -152,30 +157,30 @@ func featureFlagRead(d *schema.ResourceData, raw interface{}, isDataSource bool)
 
 	variationType, err := variationsToVariationType(flag.Variations)
 	if err != nil {
-		return fmt.Errorf("failed to determine variation type on flag with key %q: %v", flag.Key, err)
+		return diag.Errorf("failed to determine variation type on flag with key %q: %v", flag.Key, err)
 	}
 	err = d.Set(VARIATION_TYPE, variationType)
 	if err != nil {
-		return fmt.Errorf("failed to set variation type on flag with key %q: %v", flag.Key, err)
+		return diag.Errorf("failed to set variation type on flag with key %q: %v", flag.Key, err)
 	}
 
 	parsedVariations, err := variationsToResourceData(flag.Variations, variationType)
 	if err != nil {
-		return fmt.Errorf("failed to parse variations on flag with key %q: %v", flag.Key, err)
+		return diag.Errorf("failed to parse variations on flag with key %q: %v", flag.Key, err)
 	}
 	err = d.Set(VARIATIONS, parsedVariations)
 	if err != nil {
-		return fmt.Errorf("failed to set variations on flag with key %q: %v", flag.Key, err)
+		return diag.Errorf("failed to set variations on flag with key %q: %v", flag.Key, err)
 	}
 
 	err = d.Set(TAGS, flag.Tags)
 	if err != nil {
-		return fmt.Errorf("failed to set tags on flag with key %q: %v", flag.Key, err)
+		return diag.Errorf("failed to set tags on flag with key %q: %v", flag.Key, err)
 	}
 
 	err = d.Set(CUSTOM_PROPERTIES, transformedCustomProperties)
 	if err != nil {
-		return fmt.Errorf("failed to set custom properties on flag with key %q: %v", flag.Key, err)
+		return diag.Errorf("failed to set custom properties on flag with key %q: %v", flag.Key, err)
 	}
 
 	var defaults []map[string]interface{}
@@ -193,7 +198,7 @@ func featureFlagRead(d *schema.ResourceData, raw interface{}, isDataSource bool)
 	_ = d.Set(DEFAULTS, defaults)
 
 	d.SetId(projectKey + "/" + key)
-	return nil
+	return diags
 }
 
 func flagIdToKeys(id string) (projectKey string, flagKey string, err error) {
@@ -206,12 +211,10 @@ func flagIdToKeys(id string) (projectKey string, flagKey string, err error) {
 }
 
 func getProjectDefaultCSAandIncludeInSnippet(client *Client, projectKey string) (ldapi.ClientSideAvailability, bool, error) {
-	rawProject, _, err := handleRateLimit(func() (interface{}, *http.Response, error) {
-		return client.ld.ProjectsApi.GetProject(client.ctx, projectKey).Execute()
-	})
+	project, _, err := client.ld.ProjectsApi.GetProject(client.ctx, projectKey).Execute()
 	if err != nil {
 		return ldapi.ClientSideAvailability{}, false, err
 	}
-	project := rawProject.(ldapi.Project)
+
 	return *project.DefaultClientSideAvailability, project.IncludeInSnippetByDefault, nil
 }

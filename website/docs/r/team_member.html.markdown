@@ -26,7 +26,7 @@ resource "launchdarkly_team_member" "example" {
 
 ## Argument Reference
 
-- `email` - (Required) The unique email address associated with the team member.
+- `email` - (Required) The unique email address associated with the team member. A change in this field will force the destruction of the existing resource and the creation of a new one.
 
 - `first_name` - (Optional) The team member's given name. Please note that, once created, this cannot be updated except by the team member themself.
 

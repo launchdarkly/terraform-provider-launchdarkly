@@ -2,7 +2,6 @@ package launchdarkly
 
 import (
 	"fmt"
-	"net/http"
 	"os"
 	"regexp"
 	"testing"
@@ -46,9 +45,8 @@ func testAccDataSourceSegmentCreate(client *Client, projectKey, segmentKey strin
 		Description: ldapi.PtrString("test description"),
 		Tags:        &[]string{"terraform"},
 	}
-	_, _, err = handleRateLimit(func() (interface{}, *http.Response, error) {
-		return client.ld.SegmentsApi.PostSegment(client.ctx, project.Key, envKey).SegmentBody(segmentBody).Execute()
-	})
+	_, _, err = client.ld.SegmentsApi.PostSegment(client.ctx, project.Key, envKey).SegmentBody(segmentBody).Execute()
+
 	if err != nil {
 		return nil, fmt.Errorf("failed to create segment %q in project %q: %s", segmentKey, projectKey, handleLdapiErr(err))
 	}
@@ -60,19 +58,13 @@ func testAccDataSourceSegmentCreate(client *Client, projectKey, segmentKey strin
 			patchReplace("/rules", properties.Rules),
 		},
 	}
-	rawSegment, _, err := handleRateLimit(func() (interface{}, *http.Response, error) {
-		return handleNoConflict(func() (interface{}, *http.Response, error) {
-			return client.ld.SegmentsApi.PatchSegment(client.ctx, projectKey, envKey, segmentKey).PatchWithComment(patch).Execute()
-		})
-	})
+	segment, _, err := client.ld.SegmentsApi.PatchSegment(client.ctx, projectKey, envKey, segmentKey).PatchWithComment(patch).Execute()
+
 	if err != nil {
 		return nil, fmt.Errorf("failed to update segment %q in project %q: %s", segmentKey, projectKey, handleLdapiErr(err))
 	}
 
-	if segment, ok := rawSegment.(ldapi.UserSegment); ok {
-		return &segment, nil
-	}
-	return nil, fmt.Errorf("failed to create segment %q in project %q: %s", segmentKey, projectKey, handleLdapiErr(err))
+	return &segment, nil
 }
 
 func TestAccDataSourceSegment_noMatchReturnsError(t *testing.T) {
@@ -151,12 +143,12 @@ func TestAccDataSourceSegment_exists(t *testing.T) {
 			{
 				Config: fmt.Sprintf(testAccDataSourceSegment, segmentKey, projectKey),
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttrSet(resourceName, "key"),
-					resource.TestCheckResourceAttr(resourceName, "name", segment.Name),
-					resource.TestCheckResourceAttr(resourceName, "key", segment.Key),
-					resource.TestCheckResourceAttr(resourceName, "id", projectKey+"/test/"+segmentKey),
-					resource.TestCheckResourceAttr(resourceName, "project_key", projectKey),
-					resource.TestCheckResourceAttr(resourceName, "env_key", "test"),
+					resource.TestCheckResourceAttrSet(resourceName, KEY),
+					resource.TestCheckResourceAttr(resourceName, NAME, segment.Name),
+					resource.TestCheckResourceAttr(resourceName, KEY, segment.Key),
+					resource.TestCheckResourceAttr(resourceName, ID, projectKey+"/test/"+segmentKey),
+					resource.TestCheckResourceAttr(resourceName, PROJECT_KEY, projectKey),
+					resource.TestCheckResourceAttr(resourceName, ENV_KEY, "test"),
 					resource.TestCheckResourceAttr(resourceName, "rules.0.clauses.0.attribute", "name"),
 					resource.TestCheckResourceAttr(resourceName, "rules.0.clauses.0.op", "startsWith"),
 					resource.TestCheckResourceAttr(resourceName, "rules.0.clauses.0.values.#", "1"),
@@ -165,7 +157,7 @@ func TestAccDataSourceSegment_exists(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "excluded.#", "1"),
 					resource.TestCheckResourceAttr(resourceName, "excluded.0", "some_bad@email.com"),
 					resource.TestCheckResourceAttr(resourceName, "tags.#", "1"),
-					resource.TestCheckResourceAttrSet(resourceName, "creation_date"),
+					resource.TestCheckResourceAttrSet(resourceName, CREATION_DATE),
 				),
 			},
 		},

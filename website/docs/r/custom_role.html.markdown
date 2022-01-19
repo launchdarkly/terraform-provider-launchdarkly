@@ -9,9 +9,9 @@ description: |-
 
 Provides a LaunchDarkly custom role resource.
 
-This resource allows you to create and manage custom roles within your LaunchDarkly organization.
+-> **Note:** Custom roles are available to customers on an Enterprise LaunchDarkly plan. To learn more, read about our pricing. To upgrade your plan, [contact LaunchDarkly Sales](https://launchdarkly.com/contact-sales/).
 
--> **Note:** Custom roles are only available to customers on enterprise plans. To learn more about enterprise plans, contact sales@launchdarkly.com.
+This resource allows you to create and manage custom roles within your LaunchDarkly organization.
 
 ## Example Usage
 
@@ -36,7 +36,7 @@ resource "launchdarkly_custom_role" "example" {
 
 ## Argument Reference
 
-- `key` - (Required) The unique key that references the custom role.
+- `key` - (Required) The unique key that references the custom role. A change in this field will force the destruction of the existing resource and the creation of a new one.
 
 - `name` - (Required) The human-readable name for the custom role.
 

@@ -46,11 +46,11 @@ resource "launchdarkly_environment" "approvals_example" {
 
 ## Argument Reference
 
-- `project_key` - (Required) - The environment's project key.
+- `project_key` - (Required) - The environment's project key. A change in this field will force the destruction of the existing resource and the creation of a new one.
 
 - `name` - (Required) The name of the environment.
 
-- `key` - (Required) The project-unique key for the environment.
+- `key` - (Required) The project-unique key for the environment. A change in this field will force the destruction of the existing resource and the creation of a new one.
 
 - `color` - (Required) The color swatch as an RGB hex value with no leading `#`. For example: `000000`.
 

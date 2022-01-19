@@ -166,8 +166,8 @@ func TestAccProject_Create(t *testing.T) {
 				Config: fmt.Sprintf(testAccProjectCreate, projectKey),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckProjectExists(resourceName),
-					resource.TestCheckResourceAttr(resourceName, "key", projectKey),
-					resource.TestCheckResourceAttr(resourceName, "name", "test project"),
+					resource.TestCheckResourceAttr(resourceName, KEY, projectKey),
+					resource.TestCheckResourceAttr(resourceName, NAME, "test project"),
 					resource.TestCheckResourceAttr(resourceName, "tags.#", "2"),
 					resource.TestCheckResourceAttr(resourceName, "tags.0", "terraform"),
 					resource.TestCheckResourceAttr(resourceName, "tags.1", "test"),
@@ -195,10 +195,10 @@ func TestAccProject_Update(t *testing.T) {
 				Config: fmt.Sprintf(testAccProjectCreate, projectKey),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckProjectExists(resourceName),
-					resource.TestCheckResourceAttr(resourceName, "key", projectKey),
-					resource.TestCheckResourceAttr(resourceName, "name", "test project"),
+					resource.TestCheckResourceAttr(resourceName, KEY, projectKey),
+					resource.TestCheckResourceAttr(resourceName, NAME, "test project"),
 					resource.TestCheckResourceAttr(resourceName, "tags.#", "2"),
-					resource.TestCheckResourceAttr(resourceName, "include_in_snippet", "false"),
+					resource.TestCheckResourceAttr(resourceName, INCLUDE_IN_SNIPPET, "false"),
 					resource.TestCheckResourceAttr(resourceName, "tags.0", "terraform"),
 					resource.TestCheckResourceAttr(resourceName, "tags.1", "test"),
 					resource.TestCheckResourceAttr(resourceName, "environments.#", "1"),
@@ -211,9 +211,9 @@ func TestAccProject_Update(t *testing.T) {
 				Config: fmt.Sprintf(testAccProjectUpdate, projectKey),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckProjectExists(resourceName),
-					resource.TestCheckResourceAttr(resourceName, "key", projectKey),
-					resource.TestCheckResourceAttr(resourceName, "name", "awesome test project"),
-					resource.TestCheckResourceAttr(resourceName, "include_in_snippet", "true"),
+					resource.TestCheckResourceAttr(resourceName, KEY, projectKey),
+					resource.TestCheckResourceAttr(resourceName, NAME, "awesome test project"),
+					resource.TestCheckResourceAttr(resourceName, INCLUDE_IN_SNIPPET, "true"),
 					resource.TestCheckResourceAttr(resourceName, "tags.#", "1"),
 					resource.TestCheckResourceAttr(resourceName, "tags.0", "terraform"),
 					resource.TestCheckResourceAttr(resourceName, "environments.#", "1"),
@@ -226,11 +226,11 @@ func TestAccProject_Update(t *testing.T) {
 				Config: fmt.Sprintf(testAccProjectUpdateRemoveOptional, projectKey),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckProjectExists(resourceName),
-					resource.TestCheckResourceAttr(resourceName, "key", projectKey),
-					resource.TestCheckResourceAttr(resourceName, "name", "awesome test project"),
+					resource.TestCheckResourceAttr(resourceName, KEY, projectKey),
+					resource.TestCheckResourceAttr(resourceName, NAME, "awesome test project"),
 					resource.TestCheckNoResourceAttr(resourceName, "tags"),
 					resource.TestCheckNoResourceAttr(resourceName, "tags.#"),
-					resource.TestCheckResourceAttr(resourceName, "include_in_snippet", "false"),
+					resource.TestCheckResourceAttr(resourceName, INCLUDE_IN_SNIPPET, "false"),
 				),
 			},
 			{
@@ -255,9 +255,9 @@ func TestAccProject_CSA_Update_And_Revert(t *testing.T) {
 				Config: fmt.Sprintf(testAccProjectCreate, projectKey),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckProjectExists(resourceName),
-					resource.TestCheckResourceAttr(resourceName, "key", projectKey),
-					resource.TestCheckResourceAttr(resourceName, "name", "test project"),
-					resource.TestCheckResourceAttr(resourceName, "include_in_snippet", "false"),
+					resource.TestCheckResourceAttr(resourceName, KEY, projectKey),
+					resource.TestCheckResourceAttr(resourceName, NAME, "test project"),
+					resource.TestCheckResourceAttr(resourceName, INCLUDE_IN_SNIPPET, "false"),
 					resource.TestCheckResourceAttr(resourceName, "default_client_side_availability.0.using_environment_id", "false"),
 					resource.TestCheckResourceAttr(resourceName, "default_client_side_availability.0.using_mobile_key", "true"),
 				),
@@ -266,9 +266,9 @@ func TestAccProject_CSA_Update_And_Revert(t *testing.T) {
 				Config: fmt.Sprintf(testAccProjectClientSideAvailabilityTrue, projectKey),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckProjectExists(resourceName),
-					resource.TestCheckResourceAttr(resourceName, "key", projectKey),
-					resource.TestCheckResourceAttr(resourceName, "name", "test project"),
-					resource.TestCheckResourceAttr(resourceName, "include_in_snippet", "true"),
+					resource.TestCheckResourceAttr(resourceName, KEY, projectKey),
+					resource.TestCheckResourceAttr(resourceName, NAME, "test project"),
+					resource.TestCheckResourceAttr(resourceName, INCLUDE_IN_SNIPPET, "true"),
 					resource.TestCheckResourceAttr(resourceName, "default_client_side_availability.0.using_environment_id", "true"),
 					resource.TestCheckResourceAttr(resourceName, "default_client_side_availability.0.using_mobile_key", "true"),
 				),
@@ -277,9 +277,9 @@ func TestAccProject_CSA_Update_And_Revert(t *testing.T) {
 				Config: fmt.Sprintf(testAccProjectUpdateRemoveOptional, projectKey),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckProjectExists(resourceName),
-					resource.TestCheckResourceAttr(resourceName, "key", projectKey),
-					resource.TestCheckResourceAttr(resourceName, "name", "awesome test project"),
-					resource.TestCheckResourceAttr(resourceName, "include_in_snippet", "false"),
+					resource.TestCheckResourceAttr(resourceName, KEY, projectKey),
+					resource.TestCheckResourceAttr(resourceName, NAME, "awesome test project"),
+					resource.TestCheckResourceAttr(resourceName, INCLUDE_IN_SNIPPET, "false"),
 					resource.TestCheckResourceAttr(resourceName, "default_client_side_availability.0.using_environment_id", "false"),
 					resource.TestCheckResourceAttr(resourceName, "default_client_side_availability.0.using_mobile_key", "true"),
 				),
@@ -306,8 +306,8 @@ func TestAccProject_WithEnvironments(t *testing.T) {
 				Config: fmt.Sprintf(testAccProjectWithEnvironment, projectKey),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckProjectExists(resourceName),
-					resource.TestCheckResourceAttr(resourceName, "key", projectKey),
-					resource.TestCheckResourceAttr(resourceName, "name", "test project"),
+					resource.TestCheckResourceAttr(resourceName, KEY, projectKey),
+					resource.TestCheckResourceAttr(resourceName, NAME, "test project"),
 					resource.TestCheckResourceAttr(resourceName, "environments.#", "1"),
 					resource.TestCheckResourceAttr(resourceName, "environments.0.name", "test environment"),
 					resource.TestCheckResourceAttr(resourceName, "environments.0.tags.#", "2"),
@@ -330,8 +330,8 @@ func TestAccProject_WithEnvironments(t *testing.T) {
 				Config: fmt.Sprintf(testAccProjectWithEnvironmentUpdate, projectKey),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckProjectExists(resourceName),
-					resource.TestCheckResourceAttr(resourceName, "key", projectKey),
-					resource.TestCheckResourceAttr(resourceName, "name", "test project"),
+					resource.TestCheckResourceAttr(resourceName, KEY, projectKey),
+					resource.TestCheckResourceAttr(resourceName, NAME, "test project"),
 					resource.TestCheckResourceAttr(resourceName, "environments.#", "2"),
 
 					// Check environment 0 was updated
@@ -368,8 +368,8 @@ func TestAccProject_WithEnvironments(t *testing.T) {
 				Config: fmt.Sprintf(testAccProjectWithEnvironmentUpdateApprovalSettings, projectKey),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckProjectExists(resourceName),
-					resource.TestCheckResourceAttr(resourceName, "key", projectKey),
-					resource.TestCheckResourceAttr(resourceName, "name", "test project"),
+					resource.TestCheckResourceAttr(resourceName, KEY, projectKey),
+					resource.TestCheckResourceAttr(resourceName, NAME, "test project"),
 					resource.TestCheckResourceAttr(resourceName, "environments.#", "2"),
 
 					// Check approval_settings have updated as expected
@@ -397,8 +397,8 @@ func TestAccProject_WithEnvironments(t *testing.T) {
 				Config: fmt.Sprintf(testAccProjectWithEnvironmentUpdateRemove, projectKey),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckProjectExists(resourceName),
-					resource.TestCheckResourceAttr(resourceName, "key", projectKey),
-					resource.TestCheckResourceAttr(resourceName, "name", "test project"),
+					resource.TestCheckResourceAttr(resourceName, KEY, projectKey),
+					resource.TestCheckResourceAttr(resourceName, NAME, "test project"),
 					resource.TestCheckResourceAttr(resourceName, "environments.#", "1"),
 
 					// Check that optional attributes defaulted back to false

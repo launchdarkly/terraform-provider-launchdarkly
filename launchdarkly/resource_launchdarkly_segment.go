@@ -1,10 +1,11 @@
 package launchdarkly
 
 import (
+	"context"
 	"fmt"
-	"net/http"
 	"strings"
 
+	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	ldapi "github.com/launchdarkly/api-client-go/v7"
 )
@@ -12,25 +13,25 @@ import (
 func resourceSegment() *schema.Resource {
 	schemaMap := baseSegmentSchema()
 	schemaMap[PROJECT_KEY] = &schema.Schema{
-		Type:         schema.TypeString,
-		Required:     true,
-		ForceNew:     true,
-		ValidateFunc: validateKey(),
-		Description:  "The segment's project key.",
+		Type:             schema.TypeString,
+		Required:         true,
+		ForceNew:         true,
+		ValidateDiagFunc: validateKey(),
+		Description:      "The segment's project key.",
 	}
 	schemaMap[ENV_KEY] = &schema.Schema{
-		Type:         schema.TypeString,
-		Required:     true,
-		ForceNew:     true,
-		ValidateFunc: validateKey(),
-		Description:  "The segment's environment key.",
+		Type:             schema.TypeString,
+		Required:         true,
+		ForceNew:         true,
+		ValidateDiagFunc: validateKey(),
+		Description:      "The segment's environment key.",
 	}
 	schemaMap[KEY] = &schema.Schema{
-		Type:         schema.TypeString,
-		Required:     true,
-		ForceNew:     true,
-		ValidateFunc: validateKey(),
-		Description:  "The unique key that references the segment.",
+		Type:             schema.TypeString,
+		Required:         true,
+		ForceNew:         true,
+		ValidateDiagFunc: validateKey(),
+		Description:      "The unique key that references the segment.",
 	}
 	schemaMap[NAME] = &schema.Schema{
 		Type:        schema.TypeString,
@@ -38,11 +39,11 @@ func resourceSegment() *schema.Resource {
 		Description: "The human-friendly name for the segment.",
 	}
 	return &schema.Resource{
-		Create: resourceSegmentCreate,
-		Read:   resourceSegmentRead,
-		Update: resourceSegmentUpdate,
-		Delete: resourceSegmentDelete,
-		Exists: resourceSegmentExists,
+		CreateContext: resourceSegmentCreate,
+		ReadContext:   resourceSegmentRead,
+		UpdateContext: resourceSegmentUpdate,
+		DeleteContext: resourceSegmentDelete,
+		Exists:        resourceSegmentExists,
 
 		Importer: &schema.ResourceImporter{
 			State: resourceSegmentImport,
@@ -52,7 +53,7 @@ func resourceSegment() *schema.Resource {
 	}
 }
 
-func resourceSegmentCreate(d *schema.ResourceData, metaRaw interface{}) error {
+func resourceSegmentCreate(ctx context.Context, d *schema.ResourceData, metaRaw interface{}) diag.Diagnostics {
 	client := metaRaw.(*Client)
 	projectKey := d.Get(PROJECT_KEY).(string)
 	envKey := d.Get(ENV_KEY).(string)
@@ -69,31 +70,30 @@ func resourceSegmentCreate(d *schema.ResourceData, metaRaw interface{}) error {
 		Tags:        &tags,
 	}
 
-	_, _, err := handleRateLimit(func() (interface{}, *http.Response, error) {
-		return client.ld.SegmentsApi.PostSegment(client.ctx, projectKey, envKey).SegmentBody(segment).Execute()
-	})
-
+	_, _, err := client.ld.SegmentsApi.PostSegment(client.ctx, projectKey, envKey).SegmentBody(segment).Execute()
 	if err != nil {
-		return fmt.Errorf("failed to create segment %q in project %q: %s", key, projectKey, handleLdapiErr(err))
+		return diag.Errorf("failed to create segment %q in project %q: %s", key, projectKey, handleLdapiErr(err))
 	}
 
 	// ld's api does not allow some fields to be passed in during segment creation so we do an update:
 	// https://apidocs.launchdarkly.com/reference#create-segment
-	err = resourceSegmentUpdate(d, metaRaw)
-	if err != nil {
-		return fmt.Errorf("failed to update segment with name %q key %q for projectKey %q: %s",
-			segmentName, key, projectKey, handleLdapiErr(err))
+	updateDiags := resourceSegmentUpdate(ctx, d, metaRaw)
+	if updateDiags.HasError() {
+		// TODO: Figure out if we can get the err out of updateDiag (not looking likely) to use in hanldeLdapiErr
+		return updateDiags
+		// return diag.Errorf("failed to update segment with name %q key %q for projectKey %q: %s",
+		// 	segmentName, key, projectKey, handleLdapiErr(errs))
 	}
 
 	d.SetId(projectKey + "/" + envKey + "/" + key)
-	return resourceSegmentRead(d, metaRaw)
+	return resourceSegmentRead(ctx, d, metaRaw)
 }
 
-func resourceSegmentRead(d *schema.ResourceData, metaRaw interface{}) error {
-	return segmentRead(d, metaRaw, false)
+func resourceSegmentRead(ctx context.Context, d *schema.ResourceData, metaRaw interface{}) diag.Diagnostics {
+	return segmentRead(ctx, d, metaRaw, false)
 }
 
-func resourceSegmentUpdate(d *schema.ResourceData, metaRaw interface{}) error {
+func resourceSegmentUpdate(ctx context.Context, d *schema.ResourceData, metaRaw interface{}) diag.Diagnostics {
 	client := metaRaw.(*Client)
 	key := d.Get(KEY).(string)
 	projectKey := d.Get(PROJECT_KEY).(string)
@@ -105,7 +105,7 @@ func resourceSegmentUpdate(d *schema.ResourceData, metaRaw interface{}) error {
 	excluded := d.Get(EXCLUDED).([]interface{})
 	rules, err := segmentRulesFromResourceData(d, RULES)
 	if err != nil {
-		return err
+		return diag.FromErr(err)
 	}
 	comment := "Terraform"
 	patch := ldapi.PatchWithComment{
@@ -120,34 +120,28 @@ func resourceSegmentUpdate(d *schema.ResourceData, metaRaw interface{}) error {
 			patchReplace("/rules", rules),
 		}}
 
-	_, _, err = handleRateLimit(func() (interface{}, *http.Response, error) {
-		return handleNoConflict(func() (interface{}, *http.Response, error) {
-			return client.ld.SegmentsApi.PatchSegment(client.ctx, projectKey, envKey, key).PatchWithComment(patch).Execute()
-		})
-	})
+	_, _, err = client.ld.SegmentsApi.PatchSegment(client.ctx, projectKey, envKey, key).PatchWithComment(patch).Execute()
 	if err != nil {
-		return fmt.Errorf("failed to update segment %q in project %q: %s", key, projectKey, handleLdapiErr(err))
+		return diag.Errorf("failed to update segment %q in project %q: %s", key, projectKey, handleLdapiErr(err))
 	}
 
-	return resourceSegmentRead(d, metaRaw)
+	return resourceSegmentRead(ctx, d, metaRaw)
 }
 
-func resourceSegmentDelete(d *schema.ResourceData, metaRaw interface{}) error {
+func resourceSegmentDelete(ctx context.Context, d *schema.ResourceData, metaRaw interface{}) diag.Diagnostics {
+	var diags diag.Diagnostics
+
 	client := metaRaw.(*Client)
 	projectKey := d.Get(PROJECT_KEY).(string)
 	envKey := d.Get(ENV_KEY).(string)
 	key := d.Get(KEY).(string)
 
-	_, _, err := handleRateLimit(func() (interface{}, *http.Response, error) {
-		res, err := client.ld.SegmentsApi.DeleteSegment(client.ctx, projectKey, envKey, key).Execute()
-		return nil, res, err
-	})
-
+	_, err := client.ld.SegmentsApi.DeleteSegment(client.ctx, projectKey, envKey, key).Execute()
 	if err != nil {
-		return fmt.Errorf("failed to delete segment %q from project %q: %s", key, projectKey, handleLdapiErr(err))
+		return diag.Errorf("failed to delete segment %q from project %q: %s", key, projectKey, handleLdapiErr(err))
 	}
 
-	return nil
+	return diags
 }
 
 func resourceSegmentExists(d *schema.ResourceData, metaRaw interface{}) (bool, error) {
@@ -156,9 +150,7 @@ func resourceSegmentExists(d *schema.ResourceData, metaRaw interface{}) (bool, e
 	envKey := d.Get(ENV_KEY).(string)
 	key := d.Get(KEY).(string)
 
-	_, res, err := handleRateLimit(func() (interface{}, *http.Response, error) {
-		return client.ld.SegmentsApi.GetSegment(client.ctx, projectKey, envKey, key).Execute()
-	})
+	_, res, err := client.ld.SegmentsApi.GetSegment(client.ctx, projectKey, envKey, key).Execute()
 	if isStatusNotFound(res) {
 		return false, nil
 	}

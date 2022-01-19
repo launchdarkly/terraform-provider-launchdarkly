@@ -1,10 +1,11 @@
 package launchdarkly
 
 import (
+	"context"
 	"fmt"
 	"log"
-	"net/http"
 
+	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 	ldapi "github.com/launchdarkly/api-client-go/v7"
@@ -20,8 +21,8 @@ func baseEnvironmentSchema(forProject bool) map[string]*schema.Schema {
 			Required:    true,
 			Description: "A project-unique key for the new environment",
 			// Don't force new if the environment schema will be nested in a project
-			ForceNew:     !forProject,
-			ValidateFunc: validateKey(),
+			ForceNew:         !forProject,
+			ValidateDiagFunc: validateKey(),
 		},
 		API_KEY: {
 			Type:      schema.TypeString,
@@ -43,8 +44,8 @@ func baseEnvironmentSchema(forProject bool) map[string]*schema.Schema {
 			Optional: true,
 			Default:  0,
 			// Default TTL should be between 0 and 60 minutes: https://docs.launchdarkly.com/docs/environments
-			Description:  "The TTL for the environment. This must be between 0 and 60 minutes. The TTL setting only applies to environments using the PHP SDK",
-			ValidateFunc: validation.IntBetween(0, 60),
+			Description:      "The TTL for the environment. This must be between 0 and 60 minutes. The TTL setting only applies to environments using the PHP SDK",
+			ValidateDiagFunc: validation.ToDiagFunc(validation.IntBetween(0, 60)),
 		},
 		SECURE_MODE: {
 			Default:     false,
@@ -222,24 +223,27 @@ func rawEnvironmentConfigsToKeyList(rawEnvs []interface{}) []string {
 	return keys
 }
 
-func environmentRead(d *schema.ResourceData, meta interface{}, isDataSource bool) error {
+func environmentRead(ctx context.Context, d *schema.ResourceData, meta interface{}, isDataSource bool) diag.Diagnostics {
+	var diags diag.Diagnostics
 	client := meta.(*Client)
 	projectKey := d.Get(PROJECT_KEY).(string)
 	key := d.Get(KEY).(string)
 
-	envRaw, res, err := handleRateLimit(func() (interface{}, *http.Response, error) {
-		return client.ld.EnvironmentsApi.GetEnvironment(client.ctx, projectKey, key).Execute()
-	})
+	env, res, err := client.ld.EnvironmentsApi.GetEnvironment(client.ctx, projectKey, key).Execute()
+
 	if isStatusNotFound(res) && !isDataSource {
 		log.Printf("[WARN] failed to find environment with key %q in project %q, removing from state", key, projectKey)
+		diags = append(diags, diag.Diagnostic{
+			Severity: diag.Warning,
+			Summary:  fmt.Sprintf("[WARN] failed to find environment with key %q in project %q, removing from state", key, projectKey),
+		})
 		d.SetId("")
-		return nil
+		return diags
 	}
 	if err != nil {
-		return fmt.Errorf("failed to get environment with key %q for project key: %q: %v", key, projectKey, handleLdapiErr(err))
+		return diag.Errorf("failed to get environment with key %q for project key: %q: %v", key, projectKey, handleLdapiErr(err))
 	}
 
-	env := envRaw.(ldapi.Environment)
 	d.SetId(projectKey + "/" + key)
 	_ = d.Set(KEY, env.Key)
 	_ = d.Set(NAME, env.Name)
@@ -257,9 +261,9 @@ func environmentRead(d *schema.ResourceData, meta interface{}, isDataSource bool
 	if env.ApprovalSettings != nil {
 		err = d.Set(APPROVAL_SETTINGS, approvalSettingsToResourceData(*env.ApprovalSettings))
 		if err != nil {
-			return err
+			return diag.FromErr(err)
 		}
 	}
 
-	return nil
+	return diags
 }

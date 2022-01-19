@@ -16,17 +16,17 @@ func prerequisitesSchema() *schema.Schema {
 		Elem: &schema.Resource{
 			Schema: map[string]*schema.Schema{
 				FLAG_KEY: {
-					Type:         schema.TypeString,
-					Required:     true,
-					Description:  "The prerequisite feature flag's key",
-					ValidateFunc: validateKey(),
+					Type:             schema.TypeString,
+					Required:         true,
+					Description:      "The prerequisite feature flag's key",
+					ValidateDiagFunc: validateKey(),
 				},
 				VARIATION: {
-					Type:         schema.TypeInt,
-					Elem:         &schema.Schema{Type: schema.TypeInt},
-					Required:     true,
-					Description:  "The index of the prerequisite feature flag's variation to target",
-					ValidateFunc: validation.IntAtLeast(0),
+					Type:             schema.TypeInt,
+					Elem:             &schema.Schema{Type: schema.TypeInt},
+					Required:         true,
+					Description:      "The index of the prerequisite feature flag's variation to target",
+					ValidateDiagFunc: validation.ToDiagFunc(validation.IntAtLeast(0)),
 				},
 			},
 		},

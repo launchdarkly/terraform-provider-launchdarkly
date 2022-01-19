@@ -76,9 +76,9 @@ resource "launchdarkly_feature_flag" "json_example" {
 
 ## Argument Reference
 
-- `project_key` - (Required) The feature flag's project key.
+- `project_key` - (Required) The feature flag's project key. A change in this field will force the destruction of the existing resource and the creation of a new one.
 
-- `key` - (Required) The unique feature flag key that references the flag in your application code.
+- `key` - (Required) The unique feature flag key that references the flag in your application code. A change in this field will force the destruction of the existing resource and the creation of a new one.
 
 - `name` - (Required) The human-readable name of the feature flag.
 

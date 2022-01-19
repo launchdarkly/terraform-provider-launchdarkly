@@ -1,32 +1,35 @@
 package launchdarkly
 
 import (
+	"context"
 	"fmt"
 	"log"
-	"net/http"
 
+	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	ldapi "github.com/launchdarkly/api-client-go/v7"
 )
 
-func projectRead(d *schema.ResourceData, meta interface{}, isDataSource bool) error {
+func projectRead(ctx context.Context, d *schema.ResourceData, meta interface{}, isDataSource bool) diag.Diagnostics {
+	var diags diag.Diagnostics
 	client := meta.(*Client)
 	projectKey := d.Get(KEY).(string)
 
-	rawProject, res, err := handleRateLimit(func() (interface{}, *http.Response, error) {
-		return client.ld.ProjectsApi.GetProject(client.ctx, projectKey).Execute()
-	})
+	project, res, err := client.ld.ProjectsApi.GetProject(client.ctx, projectKey).Execute()
+
 	// return nil error for resource reads but 404 for data source reads
 	if isStatusNotFound(res) && !isDataSource {
 		log.Printf("[WARN] failed to find project with key %q, removing from state if present", projectKey)
+		diags = append(diags, diag.Diagnostic{
+			Severity: diag.Warning,
+			Summary:  fmt.Sprintf("[WARN] failed to find project with key %q, removing from state if present", projectKey),
+		})
 		d.SetId("")
-		return nil
+		return diags
 	}
 	if err != nil {
-		return fmt.Errorf("failed to get project with key %q: %v", projectKey, err)
+		return diag.Errorf("failed to get project with key %q: %v", projectKey, err)
 	}
 
-	project := rawProject.(ldapi.Project)
 	defaultCSA := *project.DefaultClientSideAvailability
 	clientSideAvailability := []map[string]interface{}{{
 		"using_environment_id": defaultCSA.UsingEnvironmentId,
@@ -37,7 +40,7 @@ func projectRead(d *schema.ResourceData, meta interface{}, isDataSource bool) er
 		d.SetId(project.Id)
 		err = d.Set(CLIENT_SIDE_AVAILABILITY, clientSideAvailability)
 		if err != nil {
-			return fmt.Errorf("could not set client_side_availability on project with key %q: %v", project.Key, err)
+			return diag.Errorf("could not set client_side_availability on project with key %q: %v", project.Key, err)
 		}
 	}
 	_ = d.Set(KEY, project.Key)
@@ -75,24 +78,29 @@ func projectRead(d *schema.ResourceData, meta interface{}, isDataSource bool) er
 
 		err = d.Set(ENVIRONMENTS, environments)
 		if err != nil {
-			return fmt.Errorf("could not set environments on project with key %q: %v", project.Key, err)
+			return diag.Errorf("could not set environments on project with key %q: %v", project.Key, err)
 		}
 
 		err = d.Set(INCLUDE_IN_SNIPPET, project.IncludeInSnippetByDefault)
 		if err != nil {
-			return fmt.Errorf("could not set include_in_snippet on project with key %q: %v", project.Key, err)
+			return diag.Errorf("could not set include_in_snippet on project with key %q: %v", project.Key, err)
+		}
+
+		err = d.Set(INCLUDE_IN_SNIPPET, project.IncludeInSnippetByDefault)
+		if err != nil {
+			return diag.Errorf("could not set include_in_snippet on project with key %q: %v", project.Key, err)
 		}
 	}
 
 	err = d.Set(TAGS, project.Tags)
 	if err != nil {
-		return fmt.Errorf("could not set tags on project with key %q: %v", project.Key, err)
+		return diag.Errorf("could not set tags on project with key %q: %v", project.Key, err)
 	}
 
 	err = d.Set(DEFAULT_CLIENT_SIDE_AVAILABILITY, clientSideAvailability)
 	if err != nil {
-		return fmt.Errorf("could not set default_client_side_availability on project with key %q: %v", project.Key, err)
+		return diag.Errorf("could not set default_client_side_availability on project with key %q: %v", project.Key, err)
 	}
 
-	return nil
+	return diags
 }

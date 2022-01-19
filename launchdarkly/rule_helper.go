@@ -18,11 +18,11 @@ func rulesSchema() *schema.Schema {
 			Schema: map[string]*schema.Schema{
 				CLAUSES: clauseSchema(),
 				VARIATION: {
-					Type:         schema.TypeInt,
-					Elem:         &schema.Schema{Type: schema.TypeInt},
-					Optional:     true,
-					Description:  "The integer variation index to serve if the rule clauses evaluate to true. This argument is only valid if clauses are also specified",
-					ValidateFunc: validation.IntAtLeast(0),
+					Type:             schema.TypeInt,
+					Elem:             &schema.Schema{Type: schema.TypeInt},
+					Optional:         true,
+					Description:      "The integer variation index to serve if the rule clauses evaluate to true. This argument is only valid if clauses are also specified",
+					ValidateDiagFunc: validation.ToDiagFunc(validation.IntAtLeast(0)),
 				},
 				ROLLOUT_WEIGHTS: rolloutSchema(),
 				BUCKET_BY: {

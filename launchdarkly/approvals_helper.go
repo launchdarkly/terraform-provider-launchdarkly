@@ -28,11 +28,11 @@ func approvalSchema() *schema.Schema {
 					Default:     false,
 				},
 				MIN_NUM_APPROVALS: {
-					Type:         schema.TypeInt,
-					Optional:     true,
-					Description:  "The number of approvals required before an approval request can be applied.",
-					ValidateFunc: validation.IntBetween(1, 5),
-					Default:      1,
+					Type:             schema.TypeInt,
+					Optional:         true,
+					Description:      "The number of approvals required before an approval request can be applied.",
+					ValidateDiagFunc: validation.ToDiagFunc(validation.IntBetween(1, 5)),
+					Default:          1,
 				},
 				CAN_APPLY_DECLINED_CHANGES: {
 					Type:        schema.TypeBool,
@@ -45,8 +45,10 @@ func approvalSchema() *schema.Schema {
 					Optional:    true,
 					Description: "An array of tags used to specify which flags with those tags require approval. You may only set requiredApprovalTags or required, not both.",
 					Elem: &schema.Schema{
-						Type:         schema.TypeString,
-						ValidateFunc: validateTags(),
+						Type: schema.TypeString,
+						// Can't use validation.ToDiagFunc converted validators on TypeList at the moment
+						// https://github.com/hashicorp/terraform-plugin-sdk/issues/734
+						ValidateFunc: validateTagsNoDiag(),
 					},
 				},
 			},

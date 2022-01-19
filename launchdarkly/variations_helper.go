@@ -9,6 +9,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/structure"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 	ldapi "github.com/launchdarkly/api-client-go/v7"
 )
 
@@ -26,7 +27,7 @@ func variationTypeSchema() *schema.Schema {
 		ForceNew: true,
 		Description: fmt.Sprintf("The uniform type for all variations. Can be either %q, %q, %q, or %q.",
 			BOOL_VARIATION, STRING_VARIATION, NUMBER_VARIATION, JSON_VARIATION),
-		ValidateFunc: validateVariationType,
+		ValidateDiagFunc: validation.ToDiagFunc(validateVariationType),
 	}
 }
 
@@ -50,10 +51,10 @@ func variationsSchema() *schema.Schema {
 					Description: "A description for the variation",
 				},
 				VALUE: {
-					Type:         schema.TypeString,
-					Required:     true,
-					Description:  "The value of the flag for this variation",
-					ValidateFunc: validateVariationValue,
+					Type:             schema.TypeString,
+					Required:         true,
+					Description:      "The value of the flag for this variation",
+					ValidateDiagFunc: validation.ToDiagFunc(validateVariationValue),
 					StateFunc: func(i interface{}) string {
 						// All values are stored as strings in TF state
 						v, err := structure.NormalizeJsonString(i)

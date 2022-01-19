@@ -53,20 +53,24 @@ func policiesFromResourceData(d *schema.ResourceData) []ldapi.StatementPost {
 
 func policyFromResourceData(val interface{}) ldapi.StatementPost {
 	policyMap := val.(map[string]interface{})
-	p := ldapi.StatementPost{
-		Resources: []string{},
-		Actions:   []string{},
-		Effect:    policyMap[EFFECT].(string),
-	}
+	statementResources := []string{}
+	statementActions := []string{}
+
 	for _, r := range policyMap[RESOURCES].([]interface{}) {
-		p.Resources = append(p.Resources, r.(string))
+		statementResources = append(statementResources, r.(string))
 	}
 	for _, a := range policyMap[ACTIONS].([]interface{}) {
-		p.Actions = append(p.Actions, a.(string))
+		statementActions = append(statementActions, a.(string))
 	}
 
-	sort.Strings(p.Actions)
-	sort.Strings(p.Resources)
+	sort.Strings(statementActions)
+	sort.Strings(statementResources)
+
+	p := ldapi.StatementPost{
+		Resources: &statementResources,
+		Actions:   &statementActions,
+		Effect:    policyMap[EFFECT].(string),
+	}
 	return p
 }
 
@@ -84,7 +88,22 @@ func policiesToResourceData(policies []ldapi.Statement) interface{} {
 }
 
 // https://godoc.org/github.com/hashicorp/terraform/helper/schema#SchemaSetFunc
+type hashStatement struct {
+	Resources []string
+	Actions   []string
+	Effect    string
+}
+
+// https://godoc.org/github.com/hashicorp/terraform/helper/schema#SchemaSetFunc
 func policyHash(val interface{}) int {
-	policy := policyFromResourceData(val)
+	rawPolicy := policyFromResourceData(val)
+	// since this function runs once for each sub-field (unclear why)
+	// it was creating 3 different hash indices per policy since it was hashing the
+	// pointer addresses rather than the values themselves
+	policy := hashStatement{
+		Resources: *rawPolicy.Resources,
+		Actions:   *rawPolicy.Actions,
+		Effect:    rawPolicy.Effect,
+	}
 	return schema.HashString(fmt.Sprintf("%v", policy))
 }

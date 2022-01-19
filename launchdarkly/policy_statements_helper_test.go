@@ -10,6 +10,12 @@ import (
 )
 
 func TestPolicyStatementsRoundTripConversion(t *testing.T) {
+	statementResources := []string{"proj/*"}
+	statementActions := []string{"*"}
+	statementPostResources1 := []string{"proj/*:env/*;qa_*"}
+	statementPostResources2 := []string{"proj/*:env/*;qa_*:/flag/*"}
+	statementPostActions := []string{"*"}
+
 	testCases := []struct {
 		name             string
 		policyStatements map[string]interface{}
@@ -28,8 +34,8 @@ func TestPolicyStatementsRoundTripConversion(t *testing.T) {
 			},
 			expected: []ldapi.StatementPost{
 				{
-					Resources: []string{"proj/*"},
-					Actions:   []string{"*"},
+					Resources: &statementResources,
+					Actions:   &statementActions,
 					Effect:    "allow",
 				},
 			},
@@ -52,19 +58,19 @@ func TestPolicyStatementsRoundTripConversion(t *testing.T) {
 			},
 			expected: []ldapi.StatementPost{
 				{
-					Resources: []string{"proj/*:env/*;qa_*"},
-					Actions:   []string{"*"},
+					Resources: &statementPostResources1,
+					Actions:   &statementPostActions,
 					Effect:    "allow",
 				},
 				{
-					Resources: []string{"proj/*:env/*;qa_*:/flag/*"},
-					Actions:   []string{"*"},
+					Resources: &statementPostResources2,
+					Actions:   &statementPostActions,
 					Effect:    "allow",
 				},
 			},
 		},
 		{
-			name: "not_resource example",
+			name: "not_resources example",
 			policyStatements: map[string]interface{}{
 				POLICY_STATEMENTS: []interface{}{
 					map[string]interface{}{
@@ -77,8 +83,27 @@ func TestPolicyStatementsRoundTripConversion(t *testing.T) {
 			expected: []ldapi.StatementPost{
 				{
 					NotResources: strArrayPtr([]string{"proj/*:env/production:flag/*"}),
-					Actions:      []string{"*"},
+					Actions:      &statementPostActions,
 					Effect:       "allow",
+				},
+			},
+		},
+		{
+			name: "not_actions example",
+			policyStatements: map[string]interface{}{
+				POLICY_STATEMENTS: []interface{}{
+					map[string]interface{}{
+						RESOURCES:   []interface{}{"proj/*:env/production:flag/*"},
+						NOT_ACTIONS: []interface{}{"*"},
+						EFFECT:      "allow",
+					},
+				},
+			},
+			expected: []ldapi.StatementPost{
+				{
+					Resources:  strArrayPtr([]string{"proj/*:env/production:flag/*"}),
+					NotActions: &statementPostActions,
+					Effect:     "allow",
 				},
 			},
 		},
@@ -170,13 +195,7 @@ func statementPostsToStatements(posts []ldapi.StatementPost) []ldapi.Statement {
 	var statements []ldapi.Statement
 	for _, p := range posts {
 		p := p
-		statement := ldapi.Statement{
-			Resources:    &p.Resources,
-			NotResources: p.NotResources,
-			Actions:      &p.Actions,
-			NotActions:   p.NotActions,
-			Effect:       p.Effect,
-		}
+		statement := ldapi.Statement(p)
 		statements = append(statements, statement)
 	}
 	return statements

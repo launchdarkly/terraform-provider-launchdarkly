@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"net/http"
 
+	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	ldapi "github.com/launchdarkly/api-client-go/v7"
 )
@@ -32,11 +32,17 @@ func customizeProjectDiff(ctx context.Context, diff *schema.ResourceDiff, v inte
 			// AND the customer removes the INCLUDE_IN_SNIPPET key from the config without replacing with defaultCSA
 			// The read would assume no changes are needed, HOWEVER we need to jump back to LD set defaults
 			// Hence the setting below
-			diff.SetNew(INCLUDE_IN_SNIPPET, false)
-			diff.SetNew(CLIENT_SIDE_AVAILABILITY, []map[string]interface{}{{
+			err := diff.SetNew(INCLUDE_IN_SNIPPET, false)
+			if err != nil {
+				return err
+			}
+			err = diff.SetNew(DEFAULT_CLIENT_SIDE_AVAILABILITY, []map[string]interface{}{{
 				USING_ENVIRONMENT_ID: false,
 				USING_MOBILE_KEY:     true,
 			}})
+			if err != nil {
+				return err
+			}
 
 		}
 
@@ -46,11 +52,11 @@ func customizeProjectDiff(ctx context.Context, diff *schema.ResourceDiff, v inte
 }
 func resourceProject() *schema.Resource {
 	return &schema.Resource{
-		Create: resourceProjectCreate,
-		Read:   resourceProjectRead,
-		Update: resourceProjectUpdate,
-		Delete: resourceProjectDelete,
-		Exists: resourceProjectExists,
+		CreateContext: resourceProjectCreate,
+		ReadContext:   resourceProjectRead,
+		UpdateContext: resourceProjectUpdate,
+		DeleteContext: resourceProjectDelete,
+		Exists:        resourceProjectExists,
 
 		CustomizeDiff: customizeProjectDiff,
 
@@ -64,7 +70,7 @@ func resourceProject() *schema.Resource {
 				Required:     true,
 				Description:  "The project's unique key",
 				ForceNew:     true,
-				ValidateFunc: validateKey(),
+				ValidateFunc: validateKeyAndLength(1, 20),
 			},
 			NAME: {
 				Type:        schema.TypeString,
@@ -116,7 +122,8 @@ func resourceProject() *schema.Resource {
 	}
 }
 
-func resourceProjectCreate(d *schema.ResourceData, metaRaw interface{}) error {
+func resourceProjectCreate(ctx context.Context, d *schema.ResourceData, metaRaw interface{}) diag.Diagnostics {
+	var diags diag.Diagnostics
 	client := metaRaw.(*Client)
 	projectKey := d.Get(KEY).(string)
 	name := d.Get(NAME).(string)
@@ -132,26 +139,28 @@ func resourceProjectCreate(d *schema.ResourceData, metaRaw interface{}) error {
 		projectBody.Environments = &envs
 	}
 
-	_, _, err := handleRateLimit(func() (interface{}, *http.Response, error) {
-		return client.ld.ProjectsApi.PostProject(client.ctx).ProjectPost(projectBody).Execute()
-	})
+	_, _, err := client.ld.ProjectsApi.PostProject(client.ctx).ProjectPost(projectBody).Execute()
 	if err != nil {
-		return fmt.Errorf("failed to create project with name %s and projectKey %s: %v", name, projectKey, handleLdapiErr(err))
+		return diag.Errorf("failed to create project with name %s and projectKey %s: %v", name, projectKey, handleLdapiErr(err))
 	}
 
 	// ld's api does not allow tags to be passed in during project creation so we do an update
-	err = resourceProjectUpdate(d, metaRaw)
-	if err != nil {
-		return fmt.Errorf("failed to update project with name %s and projectKey %s: %v", name, projectKey, err)
+	updateDiags := resourceProjectUpdate(ctx, d, metaRaw)
+	if updateDiags.HasError() {
+		updateDiags = append(updateDiags, diag.Diagnostic{
+			Severity: diag.Error,
+			Summary:  fmt.Sprintf("failed to update project with name %s and projectKey %s: %v", name, projectKey, err),
+		})
+		return updateDiags
 	}
-	return nil
+	return diags
 }
 
-func resourceProjectRead(d *schema.ResourceData, metaRaw interface{}) error {
-	return projectRead(d, metaRaw, false)
+func resourceProjectRead(ctx context.Context, d *schema.ResourceData, metaRaw interface{}) diag.Diagnostics {
+	return projectRead(ctx, d, metaRaw, false)
 }
 
-func resourceProjectUpdate(d *schema.ResourceData, metaRaw interface{}) error {
+func resourceProjectUpdate(ctx context.Context, d *schema.ResourceData, metaRaw interface{}) diag.Diagnostics {
 	client := metaRaw.(*Client)
 	projectKey := d.Get(KEY).(string)
 	projName := d.Get(NAME)
@@ -162,6 +171,7 @@ func resourceProjectUpdate(d *schema.ResourceData, metaRaw interface{}) error {
 	clientSideHasChange := d.HasChange(DEFAULT_CLIENT_SIDE_AVAILABILITY)
 	// GetOkExists is 'deprecated', but needed as optional booleans set to false return a 'false' ok value from GetOk
 	// Also not really deprecated as they are keeping it around pending a replacement https://github.com/hashicorp/terraform-plugin-sdk/pull/350#issuecomment-597888969
+	//nolint:staticcheck // SA1019
 	_, includeInSnippetOk := d.GetOkExists(INCLUDE_IN_SNIPPET)
 	_, clientSideAvailabilityOk := d.GetOk(DEFAULT_CLIENT_SIDE_AVAILABILITY)
 	defaultClientSideAvailability := &ldapi.ClientSideAvailabilityPost{
@@ -190,24 +200,17 @@ func resourceProjectUpdate(d *schema.ResourceData, metaRaw interface{}) error {
 		}))
 	}
 
-	_, _, err := handleRateLimit(func() (interface{}, *http.Response, error) {
-		return handleNoConflict(func() (interface{}, *http.Response, error) {
-			return client.ld.ProjectsApi.PatchProject(client.ctx, projectKey).PatchOperation(patch).Execute()
-		})
-	})
+	_, _, err := client.ld.ProjectsApi.PatchProject(client.ctx, projectKey).PatchOperation(patch).Execute()
 	if err != nil {
-		return fmt.Errorf("failed to update project with key %q: %s", projectKey, handleLdapiErr(err))
+		return diag.Errorf("failed to update project with key %q: %s", projectKey, handleLdapiErr(err))
 	}
 	// Update environments if necessary
 	oldSchemaEnvList, newSchemaEnvList := d.GetChange(ENVIRONMENTS)
 	// Get the project so we can see if we need to create any environments or just update existing environments
-	rawProject, _, err := handleRateLimit(func() (interface{}, *http.Response, error) {
-		return client.ld.ProjectsApi.GetProject(client.ctx, projectKey).Execute()
-	})
+	project, _, err := client.ld.ProjectsApi.GetProject(client.ctx, projectKey).Execute()
 	if err != nil {
-		return fmt.Errorf("failed to load project %q before updating environments: %s", projectKey, handleLdapiErr(err))
+		return diag.Errorf("failed to load project %q before updating environments: %s", projectKey, handleLdapiErr(err))
 	}
-	project := rawProject.(ldapi.Project)
 
 	environmentConfigs := newSchemaEnvList.([]interface{})
 	oldEnvironmentConfigs := oldSchemaEnvList.([]interface{})
@@ -228,11 +231,9 @@ func resourceProjectUpdate(d *schema.ResourceData, metaRaw interface{}) error {
 		exists := environmentExistsInProject(project, envKey)
 		if !exists {
 			envPost := environmentPostFromResourceData(env)
-			_, _, err := handleRateLimit(func() (interface{}, *http.Response, error) {
-				return client.ld.EnvironmentsApi.PostEnvironment(client.ctx, projectKey).EnvironmentPost(envPost).Execute()
-			})
+			_, _, err := client.ld.EnvironmentsApi.PostEnvironment(client.ctx, projectKey).EnvironmentPost(envPost).Execute()
 			if err != nil {
-				return fmt.Errorf("failed to create environment %q in project %q: %s", envKey, projectKey, handleLdapiErr(err))
+				return diag.Errorf("failed to create environment %q in project %q: %s", envKey, projectKey, handleLdapiErr(err))
 			}
 		}
 
@@ -243,15 +244,11 @@ func resourceProjectUpdate(d *schema.ResourceData, metaRaw interface{}) error {
 		// by default patching an env that was not recently tracked in the state will import it into the tf state
 		patch, err := getEnvironmentUpdatePatches(oldEnvConfig, envConfig)
 		if err != nil {
-			return err
+			return diag.FromErr(err)
 		}
-		_, _, err = handleRateLimit(func() (interface{}, *http.Response, error) {
-			return handleNoConflict(func() (interface{}, *http.Response, error) {
-				return client.ld.EnvironmentsApi.PatchEnvironment(client.ctx, projectKey, envKey).PatchOperation(patch).Execute()
-			})
-		})
+		_, _, err = client.ld.EnvironmentsApi.PatchEnvironment(client.ctx, projectKey, envKey).PatchOperation(patch).Execute()
 		if err != nil {
-			return fmt.Errorf("failed to update environment with key %q for project: %q: %+v", envKey, projectKey, err)
+			return diag.Errorf("failed to update environment with key %q for project: %q: %+v", envKey, projectKey, err)
 		}
 	}
 	// we also want to delete environments that were previously tracked in state and have been removed from the config
@@ -261,33 +258,28 @@ func resourceProjectUpdate(d *schema.ResourceData, metaRaw interface{}) error {
 		envConfig := env.(map[string]interface{})
 		envKey := envConfig[KEY].(string)
 		if _, persists := envConfigsForCompare[envKey]; !persists {
-			_, _, err = handleRateLimit(func() (interface{}, *http.Response, error) {
-				res, err := client.ld.EnvironmentsApi.DeleteEnvironment(client.ctx, projectKey, envKey).Execute()
-				return nil, res, err
-			})
+			_, err = client.ld.EnvironmentsApi.DeleteEnvironment(client.ctx, projectKey, envKey).Execute()
 			if err != nil {
-				return fmt.Errorf("failed to delete environment %q in project %q: %s", envKey, projectKey, handleLdapiErr(err))
+				return diag.Errorf("failed to delete environment %q in project %q: %s", envKey, projectKey, handleLdapiErr(err))
 			}
 		}
 	}
 
-	return resourceProjectRead(d, metaRaw)
+	return resourceProjectRead(ctx, d, metaRaw)
 }
 
-func resourceProjectDelete(d *schema.ResourceData, metaRaw interface{}) error {
+func resourceProjectDelete(ctx context.Context, d *schema.ResourceData, metaRaw interface{}) diag.Diagnostics {
+	var diags diag.Diagnostics
+
 	client := metaRaw.(*Client)
 	projectKey := d.Get(KEY).(string)
 
-	_, _, err := handleRateLimit(func() (interface{}, *http.Response, error) {
-		res, err := client.ld.ProjectsApi.DeleteProject(client.ctx, projectKey).Execute()
-		return nil, res, err
-	})
-
+	_, err := client.ld.ProjectsApi.DeleteProject(client.ctx, projectKey).Execute()
 	if err != nil {
-		return fmt.Errorf("failed to delete project with key %q: %s", projectKey, handleLdapiErr(err))
+		return diag.Errorf("failed to delete project with key %q: %s", projectKey, handleLdapiErr(err))
 	}
 
-	return nil
+	return diags
 }
 
 func resourceProjectExists(d *schema.ResourceData, metaRaw interface{}) (bool, error) {
@@ -295,9 +287,7 @@ func resourceProjectExists(d *schema.ResourceData, metaRaw interface{}) (bool, e
 }
 
 func projectExists(projectKey string, meta *Client) (bool, error) {
-	_, res, err := handleRateLimit(func() (interface{}, *http.Response, error) {
-		return meta.ld.ProjectsApi.GetProject(meta.ctx, projectKey).Execute()
-	})
+	_, res, err := meta.ld.ProjectsApi.GetProject(meta.ctx, projectKey).Execute()
 	if isStatusNotFound(res) {
 		log.Println("got 404 when getting project. returning false.")
 		return false, nil
