@@ -52,8 +52,6 @@ resource "launchdarkly_project" "example" {
 
 - `environments` - (Required) List of nested `environments` blocks describing LaunchDarkly environments that belong to the project. When managing LaunchDarkly projects in Terraform, you should always manage your environments as nested project resources. To learn more, read [Nested Environments Blocks](#nested-environments-blocks).
 
-### Nested Environments Blocks
-
 -> **Note:** Mixing the use of nested `environments` blocks and [`launchdarkly_environment`](/docs/providers/launchdarkly/r/environment.html) resources is not recommended. `launchdarkly_environment` resources should only be used when the encapsulating project is not managed in Terraform.
 
 - `include_in_snippet` - **Deprecated** (Optional) Whether feature flags created under the project should be available to client-side SDKs by default. Please migrate to `default_client_side_availability` to maintain future compatibility.
