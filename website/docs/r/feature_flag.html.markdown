@@ -102,6 +102,7 @@ resource "launchdarkly_feature_flag" "json_example" {
 
 - `custom_properties` - (Optional) List of nested blocks describing the feature flag's [custom properties](https://docs.launchdarkly.com/docs/custom-properties). To learn more, read [Nested Custom Properties](#nested-custom-properties).
 
+
 ### Nested Variations Blocks
 
 Nested `variations` blocks have the following structure:
