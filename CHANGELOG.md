@@ -1,3 +1,11 @@
+## [2.4.1] (January 21, 2022)
+
+BUG FIXES:
+
+- Fixed a [bug](https://app.shortcut.com/launchdarkly/story/138913/terraform-provider-panics-when-trying-to-create-triggers-that-are-enabled) preventing `launchdarkly_flag_trigger`s from being created in the `enabled` state.
+
+- Fixed a [bug](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/79) introduced in v2.2.0 where `launchdarkly_segments` with `rule` blocks not containing a `weight` were defaulting to a `weight` of 0.
+
 ## [2.4.0] (January 19, 2022)
 
 FEATURES:

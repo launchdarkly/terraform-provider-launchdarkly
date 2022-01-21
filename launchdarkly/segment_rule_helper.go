@@ -17,8 +17,8 @@ func segmentRulesSchema() *schema.Schema {
 					Type:             schema.TypeInt,
 					Elem:             &schema.Schema{Type: schema.TypeInt},
 					Optional:         true,
-					ValidateDiagFunc: validation.ToDiagFunc(validation.IntBetween(0, 100000)),
-					Description:      "The integer weight of the rule (between 0 and 100000).",
+					ValidateDiagFunc: validation.ToDiagFunc(validation.IntBetween(1, 100000)),
+					Description:      "The integer weight of the rule (between 1 and 100000).",
 				},
 				BUCKET_BY: {
 					Type:        schema.TypeString,
@@ -47,21 +47,31 @@ func segmentRulesFromResourceData(d *schema.ResourceData, metaRaw interface{}) (
 
 func segmentRuleFromResourceData(val interface{}) (ldapi.UserSegmentRule, error) {
 	ruleMap := val.(map[string]interface{})
-	weight := int32(ruleMap[WEIGHT].(int))
-	bucketBy := ruleMap[BUCKET_BY].(string)
-	r := ldapi.UserSegmentRule{
-		Weight:   &weight,
-		BucketBy: &bucketBy,
-	}
-	for _, c := range ruleMap[CLAUSES].([]interface{}) {
+	rawClauses := ruleMap[CLAUSES].([]interface{})
+	clauses := make([]ldapi.Clause, 0, len(rawClauses))
+	for _, c := range rawClauses {
 		clause, err := clauseFromResourceData(c)
 		if err != nil {
-			return r, err
+			return ldapi.UserSegmentRule{}, err
 		}
-		r.Clauses = append(r.Clauses, clause)
+		clauses = append(clauses, clause)
 	}
 
-	return r, nil
+	r := ldapi.NewUserSegmentRule(clauses)
+
+	bucketBy := ruleMap[BUCKET_BY].(string)
+	if bucketBy != "" {
+		r.SetBucketBy(bucketBy)
+	}
+
+	// weight == 0 when omitted from the config. In this case we do not want to include a weight in the PATCH
+	// request because the results will be counterintuitive. See: https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/79
+	weight := int32(ruleMap[WEIGHT].(int))
+	if weight > 0 {
+		r.SetWeight(weight)
+	}
+
+	return *r, nil
 }
 
 func segmentRulesToResourceData(rules []ldapi.UserSegmentRule) (interface{}, error) {

@@ -59,7 +59,7 @@ resource "launchdarkly_segment" "example" {
 
 Nested `rules` blocks have the following structure:
 
-- `weight` - (Optional) The integer weight of the rule (between 0 and 100000).
+- `weight` - (Optional) The integer weight of the rule (between 1 and 100000).
 
 - `bucket_by` - (Optional) The attribute by which to group users together.
 
