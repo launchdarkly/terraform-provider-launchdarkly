@@ -1,4 +1,4 @@
-## [2.4.1] (Unreleased)
+## [2.4.1] (January 21, 2022)
 
 BUG FIXES:
 
