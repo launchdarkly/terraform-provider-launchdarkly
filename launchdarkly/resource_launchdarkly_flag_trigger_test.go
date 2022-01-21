@@ -22,6 +22,20 @@ resource "launchdarkly_flag_trigger" "basic" {
 	enabled = false
 }
 `
+
+	testAccFlagTriggerCreateEnabled = `
+resource "launchdarkly_flag_trigger" "basic" {
+	project_key = launchdarkly_project.test.key
+	env_key = "test"
+	flag_key = launchdarkly_feature_flag.trigger_flag.key
+	integration_key = "generic-trigger"
+	instructions {
+		kind = "turnFlagOff"
+	}
+	enabled = true
+}
+`
+
 	testAccFlagTriggerUpdate = `
 resource "launchdarkly_flag_trigger" "basic" {
 	project_key = launchdarkly_project.test.key
@@ -112,6 +126,42 @@ func TestAccFlagTrigger_CreateUpdate(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, INTEGRATION_KEY, "generic-trigger"),
 					resource.TestCheckResourceAttr(resourceName, "instructions.0.kind", "turnFlagOff"),
 					resource.TestCheckResourceAttr(resourceName, ENABLED, "false"),
+					resource.TestCheckResourceAttrSet(resourceName, TRIGGER_URL),
+					resource.TestCheckResourceAttrSet(resourceName, MAINTAINER_ID),
+				),
+			},
+			{
+				ResourceName:            resourceName,
+				ImportState:             true,
+				ImportStateIdPrefix:     fmt.Sprintf("%s/test/%s/", projectKey, flagKey),
+				ImportStateVerify:       true,
+				ImportStateVerifyIgnore: []string{TRIGGER_URL},
+			},
+		},
+	})
+}
+
+func TestAccFlagTrigger_CreateEnabled(t *testing.T) {
+	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	flagKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	resourceName := "launchdarkly_flag_trigger.basic"
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck: func() {
+			testAccPreCheck(t)
+		},
+		Providers: testAccProviders,
+		Steps: []resource.TestStep{
+			{
+				Config: withRandomProject(projectKey, withRandomFlag(flagKey, testAccFlagTriggerCreateEnabled)),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckProjectExists("launchdarkly_project.test"),
+					testAccCheckFlagExists(projectKey, "launchdarkly_feature_flag.trigger_flag"),
+					resource.TestCheckResourceAttr(resourceName, PROJECT_KEY, projectKey),
+					resource.TestCheckResourceAttr(resourceName, ENV_KEY, "test"),
+					resource.TestCheckResourceAttr(resourceName, FLAG_KEY, flagKey),
+					resource.TestCheckResourceAttr(resourceName, INTEGRATION_KEY, "generic-trigger"),
+					resource.TestCheckResourceAttr(resourceName, "instructions.0.kind", "turnFlagOff"),
+					resource.TestCheckResourceAttr(resourceName, ENABLED, "true"),
 					resource.TestCheckResourceAttrSet(resourceName, TRIGGER_URL),
 					resource.TestCheckResourceAttrSet(resourceName, MAINTAINER_ID),
 				),

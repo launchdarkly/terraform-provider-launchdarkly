@@ -38,15 +38,19 @@ func resourceFlagTriggerCreate(ctx context.Context, d *schema.ResourceData, meta
 	triggerBody := ldapi.NewTriggerPost(integrationKey)
 	triggerBody.Instructions = &instructions
 
-	preUpdateTrigger, _, err := client.ld.FlagTriggersApi.CreateTriggerWorkflow(client.ctx, projectKey, envKey, flagKey).TriggerPost(*triggerBody).Execute()
+	createdTrigger, _, err := client.ld.FlagTriggersApi.CreateTriggerWorkflow(client.ctx, projectKey, envKey, flagKey).TriggerPost(*triggerBody).Execute()
 	if err != nil {
 		return diag.Errorf("failed to create %s trigger for proj/env/flag %s/%s/%s: %s", integrationKey, projectKey, envKey, flagKey, err.Error())
 	}
-	_ = d.Set(TRIGGER_URL, preUpdateTrigger.TriggerURL)
+	_ = d.Set(TRIGGER_URL, createdTrigger.TriggerURL)
+
+	if createdTrigger.Id == nil {
+		return diag.Errorf("received a nil trigger ID when creating %s trigger for proj/env/flag %s/%s/%s: %s", integrationKey, projectKey, envKey, flagKey, err.Error())
+	}
+	d.SetId(*createdTrigger.Id)
 
 	// if enabled is false upon creation, we need to do a patch since the create endpoint
 	// does not accept multiple instructions
-	var postUpdateTrigger ldapi.TriggerWorkflowRep
 	if !enabled {
 		instructions = []map[string]interface{}{{
 			KIND: "disableTrigger",
@@ -55,13 +59,11 @@ func resourceFlagTriggerCreate(ctx context.Context, d *schema.ResourceData, meta
 			Instructions: &instructions,
 		}
 
-		postUpdateTrigger, _, err = client.ld.FlagTriggersApi.PatchTriggerWorkflow(client.ctx, projectKey, envKey, flagKey, *preUpdateTrigger.Id).FlagTriggerInput(input).Execute()
+		_, _, err = client.ld.FlagTriggersApi.PatchTriggerWorkflow(client.ctx, projectKey, envKey, flagKey, *createdTrigger.Id).FlagTriggerInput(input).Execute()
 		if err != nil {
 			return diag.Errorf("failed to update %s trigger for proj/env/flag %s/%s/%s: %s", integrationKey, projectKey, envKey, flagKey, err.Error())
 		}
 	}
-
-	d.SetId(*postUpdateTrigger.Id)
 	return resourceFlagTriggerRead(ctx, d, metaRaw)
 }
 
