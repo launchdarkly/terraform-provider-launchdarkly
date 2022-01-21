@@ -1,3 +1,9 @@
+## [2.4.1] (Unreleased)
+
+BUG FIXES:
+
+- Fixes a [bug](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/79) introduced in v2.2.0 where `launchdarkly_segments` with `rule` blocks not containing a `weight` were defaulting to a `weight` of 0.
+
 ## [2.4.0] (January 19, 2022)
 
 FEATURES:
