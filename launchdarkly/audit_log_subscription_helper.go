@@ -55,9 +55,9 @@ func auditLogSubscriptionSchema(isDataSource bool) map[string]*schema.Schema {
 }
 
 func parseAuditLogSubscriptionConfigs() map[string]IntegrationConfig {
-	// SUBSCRIPTION_CONFIGURATION_FIELDS can be found in audit_log_subscription_configs.go
-	configs := make(map[string]IntegrationConfig, len(SUBSCRIPTION_CONFIGURATION_FIELDS))
-	for integrationKey, rawVariables := range SUBSCRIPTION_CONFIGURATION_FIELDS {
+	rawConfigFields := getSubscriptionConfigurationFields()
+	configs := make(map[string]IntegrationConfig, len(rawConfigFields))
+	for integrationKey, rawVariables := range rawConfigFields {
 		cfg := IntegrationConfig{}
 		variables := rawVariables.(map[string]interface{})
 		for k, v := range variables {
@@ -162,7 +162,7 @@ func configFromResourceData(d *schema.ResourceData) (map[string]interface{}, err
 	return convertedConfig, nil
 }
 
-func configToResourceData(d *schema.ResourceData, config map[string]interface{}) (map[string]interface{}, error) {
+func configToResourceData(d *schema.ResourceData, config map[string]interface{}, isDataSource bool) (map[string]interface{}, error) {
 	integrationKey := d.Get(INTEGRATION_KEY).(string)
 	configMap := parseAuditLogSubscriptionConfigs()
 	configFormat, ok := configMap[integrationKey]
@@ -174,9 +174,9 @@ func configToResourceData(d *schema.ResourceData, config map[string]interface{})
 	for k, v := range config {
 		key := strcase.SnakeCase(k)
 		// some attributes have defaults that the API will return and terraform will complain since config
-		// is not a computed attribute (cannot be both required & computed)
+		// is not a computed attribute (cannot be both required & computed). This does not apply for data sources.
 		// TODO: handle this in a SuppressDiff function
-		if _, setByUser := originalConfig[key]; !setByUser {
+		if _, setByUser := originalConfig[key]; !setByUser && !isDataSource {
 			continue
 		}
 		convertedConfig[key] = v
@@ -221,10 +221,9 @@ func auditLogSubscriptionRead(ctx context.Context, d *schema.ResourceData, metaR
 		d.SetId(*sub.Id)
 	}
 
-	_ = d.Set(INTEGRATION_KEY, sub.Kind)
 	_ = d.Set(NAME, sub.Name)
 	_ = d.Set(ON, sub.On)
-	cfg, err := configToResourceData(d, *sub.Config)
+	cfg, err := configToResourceData(d, *sub.Config, isDataSource)
 	if err != nil {
 		return diag.Errorf("failed to set config on integration with id %q: %v", *sub.Id, err)
 	}

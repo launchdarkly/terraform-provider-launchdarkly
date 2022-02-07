@@ -177,6 +177,43 @@ func TestAccAuditLogSubscription_CreateMSTeams(t *testing.T) {
 	})
 }
 
+func TestAccAuditLogSubscription_CreateSlack(t *testing.T) {
+	// splunk specifically needs to be converted to kebab case, so we need to handle it specially
+	integrationKey := "slack"
+	config := `{
+		url = "https://hooks.slack.com/services/SOME-RANDOM-HOOK"
+	}		
+	`
+
+	resourceName := fmt.Sprintf("launchdarkly_audit_log_subscription.%s_tf_test", integrationKey)
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck: func() {
+			testAccPreCheck(t)
+		},
+		Providers: testAccProviders,
+		Steps: []resource.TestStep{
+			{
+				Config: fmt.Sprintf(testAccAuditLogSubscriptionCreate, integrationKey, integrationKey, config),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckIntegrationExists(resourceName),
+					resource.TestCheckResourceAttrSet(resourceName, ID),
+					resource.TestCheckResourceAttr(resourceName, INTEGRATION_KEY, integrationKey),
+					resource.TestCheckResourceAttr(resourceName, NAME, "terraform test"),
+					resource.TestCheckResourceAttr(resourceName, ON, "true"),
+					resource.TestCheckResourceAttr(resourceName, "config.url", "https://hooks.slack.com/services/SOME-RANDOM-HOOK"),
+					resource.TestCheckResourceAttr(resourceName, "tags.#", "2"),
+					resource.TestCheckResourceAttr(resourceName, "tags.0", "integrations"),
+					resource.TestCheckResourceAttr(resourceName, "tags.1", "terraform"),
+					resource.TestCheckResourceAttr(resourceName, "statements.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "statements.0.actions.0", "*"),
+					resource.TestCheckResourceAttr(resourceName, "statements.0.resources.0", "proj/*:env/*:flag/*"),
+					resource.TestCheckResourceAttr(resourceName, "statements.0.effect", "deny"),
+				),
+			},
+		},
+	})
+}
+
 func TestAccAuditLogSubscription_CreateSplunk(t *testing.T) {
 	// splunk specifically needs to be converted to kebab case, so we need to handle it specially
 	integrationKey := "splunk"

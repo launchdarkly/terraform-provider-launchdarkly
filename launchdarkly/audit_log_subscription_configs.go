@@ -49,6 +49,9 @@ var SUBSCRIPTION_CONFIGURATION_FIELDS = map[string]interface{}{
 			"allowedValues": []interface{}{
 				"https://api.datadoghq.com",
 				"https://api.datadoghq.eu",
+				"https://us3.datadoghq.com",
+				"https://us5.datadoghq.com",
+				"https://app.ddog-gov.com",
 			},
 			"defaultValue": "https://api.datadoghq.com",
 			"isSecret":     false,
@@ -295,4 +298,29 @@ var SUBSCRIPTION_CONFIGURATION_FIELDS = map[string]interface{}{
 			"isSecret":      false,
 		},
 	},
+}
+
+// There is not currently a manifest for slack webhooks so we have to use this for now.
+var EXTRA_SUBSCRIPTION_CONFIGURATION_FIELDS = map[string]interface{}{
+	"slack": map[string]interface{}{
+		"url": map[string]interface{}{
+			"type":          "uri",
+			"isOptional":    false,
+			"allowedValues": nil,
+			"defaultValue":  nil,
+			"isSecret":      false,
+		},
+	},
+}
+
+func getSubscriptionConfigurationFields() map[string]interface{} {
+	fields := make(map[string]interface{}, len(SUBSCRIPTION_CONFIGURATION_FIELDS)+len(EXTRA_SUBSCRIPTION_CONFIGURATION_FIELDS))
+
+	for k, v := range SUBSCRIPTION_CONFIGURATION_FIELDS {
+		fields[k] = v
+	}
+	for k, v := range EXTRA_SUBSCRIPTION_CONFIGURATION_FIELDS {
+		fields[k] = v
+	}
+	return fields
 }

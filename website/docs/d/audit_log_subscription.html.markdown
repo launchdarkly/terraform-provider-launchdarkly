@@ -24,7 +24,7 @@ data "launchdarkly_audit_log_subscription" "test" {
 
 - `id` (Required) - The unique subscription ID. This can be found in the URL of the pull-out configuration sidebar for the given subscription on your [LaunchDarkly Integrations page](https://app.launchdarkly.com/default/integrations).
 
-- `integration_key` (Required) - The integration key. As of January 2022, supported integrations are `"datadog"`, `"dynatrace"`, `"elastic"`, `"honeycomb"`, `"logdna"`, `"msteams"`, `"new-relic-apm"`, `"signalfx"`, and `"splunk"`.
+- `integration_key` (Required) - The integration key. As of February 2022, supported integrations are `"datadog"`, `"dynatrace"`, `"elastic"`, `"honeycomb"`, `"logdna"`, `"msteams"`, `"new-relic-apm"`, `"signalfx"`, `"slack"`, and `"splunk"`.
 
 ## Attributes Reference
 
