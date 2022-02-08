@@ -4,6 +4,24 @@ version: 2.1
 orbs:
   go: circleci/go@1.7.0
   linter: talkiq/linter@1.4.1
+  slack: circleci/slack@4.7.1
+
+commands:
+  notify-slack-of-failures:
+    parameters:
+      branch_pattern:
+        type: string
+        default: main
+    steps:
+      - slack/notify:
+          branch_pattern: <<parameters.branch_pattern>>
+          channel: CLR408M4Y #proj-terraform
+          event: fail
+          custom: |
+            {"text":"A terraform provider test failed","blocks":[{"type":"section",
+            "text":{"type":"mrkdwn","text":":terraform-on-fire: A terraform provider *${CIRCLE_JOB}* job failed"}},
+            {"type":"context","elements":[{"type":"mrkdwn","text":"branch: _${CIRCLE_BRANCH}_"}]},{"type":"actions","elements":
+            [{"type":"button","text":{"type":"plain_text","text":"View job"},"url":"${CIRCLE_BUILD_URL}"}]}]}
 
 jobs:
   test:
@@ -66,6 +84,7 @@ jobs:
       - run:
           name: Test Webhook Resource
           command: TESTARGS="-run TestAccWebhook" make testacc
+      - notify-slack-of-failures
 
   lint:
     executor:
@@ -80,9 +99,26 @@ jobs:
             sudo apt update
             sudo apt install python3-pip python-is-python3
       - linter/pre-commit
+      - notify-slack-of-failures
 
 workflows:
   main:
     jobs:
-      - test
-      - lint
+      - test:
+          context: slack-orb
+      - lint:
+          context: slack-orb
+
+  daily:
+    triggers:
+      - schedule:
+          cron: "0 0 * * *"
+          filters:
+            branches:
+              only:
+                - main
+    jobs:
+      - test:
+          context: slack-orb
+      - lint:
+          context: slack-orb
