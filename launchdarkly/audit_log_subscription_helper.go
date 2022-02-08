@@ -12,16 +12,43 @@ import (
 	strcase "github.com/stoewer/go-strcase"
 )
 
+//go:generate codegen -o audit_log_subscription_configs_generated.go
+
 var KEBAB_CASE_INTEGRATIONS = []string{"splunk"}
 
 type IntegrationConfig map[string]FormVariable
 
 type FormVariable struct {
 	Type          string
-	IsOptional    *bool
-	AllowedValues *[]string
-	DefaultValue  *interface{}
-	IsSecret      *bool
+	IsOptional    bool
+	AllowedValues []string
+	DefaultValue  interface{}
+	Description   string
+	IsSecret      bool
+}
+
+// There is not currently a manifest for slack webhooks so we have to use this for now.
+var EXTRA_SUBSCRIPTION_CONFIGURATION_FIELDS = map[string]IntegrationConfig{
+	"slack": {
+		"url": {
+			Type:          "uri",
+			IsOptional:    false,
+			AllowedValues: []string{},
+			DefaultValue:  nil,
+			IsSecret:      false,
+		},
+	},
+}
+
+func getSubscriptionConfigurationMap() map[string]IntegrationConfig {
+	configs := make(map[string]IntegrationConfig, len(SUBSCRIPTION_CONFIGURATION_FIELDS)+len(EXTRA_SUBSCRIPTION_CONFIGURATION_FIELDS))
+	for k, v := range SUBSCRIPTION_CONFIGURATION_FIELDS {
+		configs[k] = v
+	}
+	for k, v := range EXTRA_SUBSCRIPTION_CONFIGURATION_FIELDS {
+		configs[k] = v
+	}
+	return configs
 }
 
 func auditLogSubscriptionSchema(isDataSource bool) map[string]*schema.Schema {
@@ -54,42 +81,6 @@ func auditLogSubscriptionSchema(isDataSource bool) map[string]*schema.Schema {
 	}
 }
 
-func parseAuditLogSubscriptionConfigs() map[string]IntegrationConfig {
-	rawConfigFields := getSubscriptionConfigurationFields()
-	configs := make(map[string]IntegrationConfig, len(rawConfigFields))
-	for integrationKey, rawVariables := range rawConfigFields {
-		cfg := IntegrationConfig{}
-		variables := rawVariables.(map[string]interface{})
-		for k, v := range variables {
-			variable := v.(map[string]interface{})
-			formVariable := FormVariable{Type: variable["type"].(string)}
-			if variable["isOptional"] != nil {
-				isOptional := variable["isOptional"].(bool)
-				formVariable.IsOptional = &isOptional
-			}
-			if variable["allowedValues"] != nil {
-				rawValues := variable["allowedValues"].([]interface{})
-				var allowedValues []string
-				for _, value := range rawValues {
-					allowedValues = append(allowedValues, value.(string))
-				}
-				formVariable.AllowedValues = &allowedValues
-			}
-			if variable["isSecret"] != nil {
-				isSecret := variable["isSecret"].(bool)
-				formVariable.IsSecret = &isSecret
-			}
-			if variable["defaultValue"] != nil {
-				defaultValue := variable["defaultValue"]
-				formVariable.DefaultValue = &defaultValue
-			}
-			cfg[k] = formVariable
-		}
-		configs[integrationKey] = cfg
-	}
-	return configs
-}
-
 func getConfigFieldKey(integrationKey, resourceKey string) string {
 	// a select number of integrations take fields in kebab case, ex. "skip-ca-verification"
 	// currently this only applies to splunk
@@ -107,7 +98,7 @@ func configFromResourceData(d *schema.ResourceData) (map[string]interface{}, err
 	// TODO: refactor to return list of diags warnings with all formatting errors
 	integrationKey := d.Get(INTEGRATION_KEY).(string)
 	config := d.Get(CONFIG).(map[string]interface{})
-	configMap := parseAuditLogSubscriptionConfigs()
+	configMap := getSubscriptionConfigurationMap()
 	configFormat, ok := configMap[integrationKey]
 	if !ok {
 		return config, fmt.Errorf("%s is not a valid integration_key for audit log subscriptions", integrationKey)
@@ -128,7 +119,7 @@ func configFromResourceData(d *schema.ResourceData) (map[string]interface{}, err
 		key := strcase.SnakeCase(k) // convert to snake case to validate user config
 		rawValue, ok := config[key]
 		if !ok {
-			if !*v.IsOptional {
+			if !v.IsOptional {
 				return config, fmt.Errorf("config variable %s must be set", key)
 			}
 			// we will let the API handle default configs for now since it otherwise messes
@@ -150,8 +141,8 @@ func configFromResourceData(d *schema.ResourceData) (map[string]interface{}, err
 			convertedConfig[k] = value
 		case "enum":
 			value := rawValue.(string)
-			if !stringInSlice(value, *v.AllowedValues) {
-				return config, fmt.Errorf("config value %s for %v must be one of the following approved string values: %v", rawValue, k, *v.AllowedValues)
+			if !stringInSlice(value, v.AllowedValues) {
+				return config, fmt.Errorf("config value %s for %v must be one of the following approved string values: %v", rawValue, k, v.AllowedValues)
 			}
 			convertedConfig[k] = value
 		default:
@@ -164,7 +155,7 @@ func configFromResourceData(d *schema.ResourceData) (map[string]interface{}, err
 
 func configToResourceData(d *schema.ResourceData, config map[string]interface{}, isDataSource bool) (map[string]interface{}, error) {
 	integrationKey := d.Get(INTEGRATION_KEY).(string)
-	configMap := parseAuditLogSubscriptionConfigs()
+	configMap := getSubscriptionConfigurationMap()
 	configFormat, ok := configMap[integrationKey]
 	if !ok {
 		return config, fmt.Errorf("%s is not a currently supported integration_key for audit log subscriptions", integrationKey)
@@ -183,7 +174,7 @@ func configToResourceData(d *schema.ResourceData, config map[string]interface{},
 		if value, isBool := v.(bool); isBool {
 			convertedConfig[key] = strconv.FormatBool(value)
 		}
-		if *configFormat[k].IsSecret {
+		if configFormat[k].IsSecret {
 			// if the user didn't put it in as obfuscated, we don't want to set it as obfuscated
 			convertedConfig[key] = originalConfig[key]
 		}
