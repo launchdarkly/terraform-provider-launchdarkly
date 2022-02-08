@@ -1,3 +1,14 @@
+## [2.5.0] (February 7, 2022)
+
+FEATURES:
+
+- Added Slack webhooks to the `launchdarkly_audit_log_subscription` resource and data source. [#16](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/16)
+- Added more Datadog host URLs to the Datadog `launchdarkly_audit_log_subscription` resource.
+
+BUG FIXES:
+
+- Fixed an issue where the `config` was not being set on the `launchdarkly_audit_log_subscription` data source.
+
 ## [2.4.1] (January 21, 2022)
 
 BUG FIXES:

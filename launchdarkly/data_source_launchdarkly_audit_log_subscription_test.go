@@ -116,3 +116,46 @@ func TestAccDataSourceAuditLogSubscription_exists(t *testing.T) {
 		},
 	})
 }
+
+func TestAccDataSourceAuditLogSubscription_Slack(t *testing.T) {
+	accTest := os.Getenv("TF_ACC")
+	if accTest == "" {
+		t.SkipNow()
+	}
+
+	integrationKey := "slack"
+	client, err := newClient(os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN), os.Getenv(LAUNCHDARKLY_API_HOST), false)
+	require.NoError(t, err)
+
+	subscriptionBody := ldapi.SubscriptionPost{
+		Name: "test subscription",
+		Config: map[string]interface{}{
+			"url": "https://hooks.slack.com/services/SOME-RANDOM-HOOK",
+		},
+	}
+	sub, err := testAccDataSourceAuditLogSubscriptionCreate(client, integrationKey, subscriptionBody)
+	require.NoError(t, err)
+
+	defer func() {
+		err := testAccDataSourceAuditLogSubscriptionDelete(client, integrationKey, *sub.Id)
+		require.NoError(t, err)
+	}()
+
+	resourceName := "data.launchdarkly_audit_log_subscription.test"
+	resource.Test(t, resource.TestCase{
+		PreCheck: func() {
+			testAccPreCheck(t)
+		},
+		Providers: testAccProviders,
+		Steps: []resource.TestStep{
+			{
+				Config: fmt.Sprintf(testAccDataSourceAuditLogSubscriptionExists, *sub.Id, integrationKey),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttrSet(resourceName, "id"),
+					resource.TestCheckResourceAttr(resourceName, "id", *sub.Id),
+					resource.TestCheckResourceAttr(resourceName, "config.url", "https://hooks.slack.com/services/SOME-RANDOM-HOOK"),
+				),
+			},
+		},
+	})
+}

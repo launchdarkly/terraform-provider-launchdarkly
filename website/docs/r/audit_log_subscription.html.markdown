@@ -35,7 +35,7 @@ resource "launchdarkly_audit_log_subscription" "example" {
 
 ## Argument Reference
 
-- `integration_key` (Required) The integration key. As of January 2022, supported integrations are `"datadog"`, `"dynatrace"`, `"elastic"`, `"honeycomb"`, `"logdna"`, `"msteams"`, `"new-relic-apm"`, `"signalfx"`, and `"splunk"`. A change in this field will force the destruction of the existing resource and the creation of a new one.
+- `integration_key` (Required) The integration key. As of January 2022, supported integrations are `"datadog"`, `"dynatrace"`, `"elastic"`, `"honeycomb"`, `"logdna"`, `"msteams"`, `"new-relic-apm"`, `"signalfx"`, `"slack"`, and `"splunk"`. A change in this field will force the destruction of the existing resource and the creation of a new one.
 
 - `name` (Required) - A human-friendly name for your audit log subscription viewable from within the LaunchDarkly Integrations page.
 
