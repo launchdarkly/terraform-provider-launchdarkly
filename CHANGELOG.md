@@ -1,3 +1,9 @@
+## [Unreleased]
+
+ENHANCEMENTS:
+
+- Added the `hide_member_details` argument to the Datadog `config` for the `launchdarkly_audit_log_subscription` resource.  When `hide_member_details` is `true`, LaunchDarkly member information will be redacted before events are sent to Datadog.
+
 ## [2.5.0] (February 7, 2022)
 
 FEATURES:

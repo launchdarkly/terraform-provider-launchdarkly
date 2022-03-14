@@ -12,6 +12,14 @@ var SUBSCRIPTION_CONFIGURATION_FIELDS = map[string]IntegrationConfig{
 			IsSecret:      true,
 			Type:          "string",
 		},
+		"hideMemberDetails": {
+			AllowedValues: []string{},
+			DefaultValue:  false,
+			Description:   "Don't send related member email and names.",
+			IsOptional:    true,
+			IsSecret:      false,
+			Type:          "boolean",
+		},
 		"hostURL": {
 			AllowedValues: []string{"https://api.datadoghq.com", "https://api.datadoghq.eu", "https://us3.datadoghq.com", "https://us5.datadoghq.com", "https://app.ddog-gov.com"},
 			DefaultValue:  "https://api.datadoghq.com",

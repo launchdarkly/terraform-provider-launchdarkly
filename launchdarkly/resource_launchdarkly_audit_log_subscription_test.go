@@ -50,7 +50,8 @@ func TestAccAuditLogSubscription_CreateUpdateDatadog(t *testing.T) {
 	integrationKey := "datadog"
 	// omitting host_url = "https://api.datadoghq.com" to test the handling of attributes with default values
 	config := `{
-		api_key = "thisisasecretkey"
+		api_key             = "thisisasecretkey"
+		hide_member_details = true
 	}		
 	`
 
@@ -70,6 +71,7 @@ func TestAccAuditLogSubscription_CreateUpdateDatadog(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, NAME, "terraform test"),
 					resource.TestCheckResourceAttr(resourceName, ON, "true"),
 					resource.TestCheckResourceAttr(resourceName, "config.api_key", "thisisasecretkey"),
+					resource.TestCheckResourceAttr(resourceName, "config.hide_member_details", "true"),
 					// resource.TestCheckResourceAttr(resourceName, "config.host_url", "https://api.datadoghq.com"),
 					resource.TestCheckResourceAttr(resourceName, "tags.#", "2"),
 					resource.TestCheckResourceAttr(resourceName, "tags.0", "integrations"),
