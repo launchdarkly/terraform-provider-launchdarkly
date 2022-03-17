@@ -29,6 +29,10 @@ jobs:
       name: go/default
       tag: &go_version "1.16.10"
 
+    environment:
+      # sc-146360 - overrides the default timeout of 3000ms when reaching checkpoint-api.hashicorp.com
+      CHECKPOINT_TIMEOUT: 10000
+
     steps:
       - checkout
       - go/mod-download-cached
