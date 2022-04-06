@@ -13,7 +13,7 @@ const (
 	testAccDestinationCreateKinesis = `
 resource "launchdarkly_destination" "test" {
 	project_key = launchdarkly_project.test.key
-	env_key     = "test"
+	env_key     = "%s"
 	name        = "kinesis-dest"
 	kind        = "kinesis"
 	config = {
@@ -28,7 +28,7 @@ resource "launchdarkly_destination" "test" {
 	testAccDestinationCreatePubsub = `
 resource "launchdarkly_destination" "test" {
 	project_key = launchdarkly_project.test.key
-	env_key     = "test"
+	env_key     = "%s"
 	name        = "pubsub-dest"
 	kind        = "google-pubsub"
 	config = {
@@ -41,7 +41,7 @@ resource "launchdarkly_destination" "test" {
 	testAccDestinationCreateMparticle = `
 resource "launchdarkly_destination" "test" {
 	project_key = launchdarkly_project.test.key
-	env_key = "test"
+	env_key = "%s"
 	name = "mparticle-dest"
 	kind = "mparticle"
 	config = {
@@ -58,7 +58,7 @@ resource "launchdarkly_destination" "test" {
 	testAccDestinationCreateSegment = `
 resource "launchdarkly_destination" "test" {
 	project_key = launchdarkly_project.test.key
-	env_key = "test"
+	env_key = "%s"
 	name    = "segment-dest"
 	kind    = "segment"
 	config  = {
@@ -72,7 +72,7 @@ resource "launchdarkly_destination" "test" {
 	testAccDestinationCreateAzureEventHubs = `
 resource "launchdarkly_destination" "test" {
 	project_key = launchdarkly_project.test.key
-	env_key = "test"
+	env_key = "%s"
 	name    = "azure-event-hubs-dest"
 	kind    = "azure-event-hubs"
 	config  = {
@@ -89,7 +89,7 @@ resource "launchdarkly_destination" "test" {
 	testAccDestinationUpdateKinesis = `
 resource "launchdarkly_destination" "test" {
 	project_key = launchdarkly_project.test.key
-	env_key = "test"
+	env_key = "%s"
 	name = "updated-kinesis-dest"
 	kind = "kinesis"
 	config = {
@@ -104,7 +104,7 @@ resource "launchdarkly_destination" "test" {
 	testAccDestinationUpdatePubsub = `
 resource "launchdarkly_destination" "test" {
 	project_key = launchdarkly_project.test.key
-	env_key = "test"
+	env_key = "%s"
 	name = "updated-pubsub-dest"
 	kind = "google-pubsub"
 	config = {
@@ -119,7 +119,7 @@ resource "launchdarkly_destination" "test" {
 	testAccDestinationUpdateMparticle = `
 resource "launchdarkly_destination" "test" {
 	project_key = launchdarkly_project.test.key
-	env_key = "test"
+	env_key = "%s"
 	name = "updated-mparticle-dest"
 	kind = "mparticle"
 	config = {
@@ -136,7 +136,7 @@ resource "launchdarkly_destination" "test" {
 	testAccDestinationUpdateSegment = `
 resource "launchdarkly_destination" "test" {
 	project_key = launchdarkly_project.test.key
-	env_key = "test"
+	env_key = "%s"
 	name = "segment-dest"
 	kind = "segment"
 	config = {
@@ -149,7 +149,7 @@ resource "launchdarkly_destination" "test" {
 	testAccDestinationUpdateAzureEventHubs = `
 resource "launchdarkly_destination" "test" {
 	project_key = launchdarkly_project.test.key
-	env_key = "test"
+	env_key = "%s"
 	name    = "updated-azure-event-hubs-dest"
 	kind    = "azure-event-hubs"
 	config  = {
@@ -169,6 +169,7 @@ func TestAccDestination_CreateKinesis(t *testing.T) {
 	// make sure you also test that the kind conforms to one of the three acceptable ones
 	// kinesis, google-pubsub, or mparticle
 	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	envKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	resourceName := "launchdarkly_destination.test"
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
@@ -177,11 +178,11 @@ func TestAccDestination_CreateKinesis(t *testing.T) {
 		Providers: testAccProviders,
 		Steps: []resource.TestStep{
 			{
-				Config: withRandomProject(projectKey, testAccDestinationCreateKinesis),
+				Config: withRandomProjectAndEnv(projectKey, envKey, fmt.Sprintf(testAccDestinationCreateKinesis, envKey)),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckProjectExists("launchdarkly_project.test"),
 					testAccCheckDestinationExists(resourceName),
-					resource.TestCheckResourceAttr(resourceName, ENV_KEY, "test"),
+					resource.TestCheckResourceAttr(resourceName, ENV_KEY, envKey),
 					resource.TestCheckResourceAttr(resourceName, NAME, "kinesis-dest"),
 					resource.TestCheckResourceAttr(resourceName, KIND, "kinesis"),
 					resource.TestCheckResourceAttr(resourceName, "config.region", "us-east-1"),
@@ -200,6 +201,7 @@ func TestAccDestination_CreateKinesis(t *testing.T) {
 
 func TestAccDestination_CreateMparticle(t *testing.T) {
 	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	envKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	resourceName := "launchdarkly_destination.test"
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
@@ -208,11 +210,11 @@ func TestAccDestination_CreateMparticle(t *testing.T) {
 		Providers: testAccProviders,
 		Steps: []resource.TestStep{
 			{
-				Config: withRandomProject(projectKey, testAccDestinationCreateMparticle),
+				Config: withRandomProjectAndEnv(projectKey, envKey, fmt.Sprintf(testAccDestinationCreateMparticle, envKey)),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckProjectExists("launchdarkly_project.test"),
 					testAccCheckDestinationExists(resourceName),
-					resource.TestCheckResourceAttr(resourceName, ENV_KEY, "test"),
+					resource.TestCheckResourceAttr(resourceName, ENV_KEY, envKey),
 					resource.TestCheckResourceAttr(resourceName, NAME, "mparticle-dest"),
 					resource.TestCheckResourceAttr(resourceName, KIND, "mparticle"),
 					resource.TestCheckResourceAttr(resourceName, "config.api_key", "apiKeyfromMParticle"),
@@ -225,6 +227,7 @@ func TestAccDestination_CreateMparticle(t *testing.T) {
 
 func TestAccDestination_CreatePubsub(t *testing.T) {
 	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	envKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	resourceName := "launchdarkly_destination.test"
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
@@ -233,11 +236,11 @@ func TestAccDestination_CreatePubsub(t *testing.T) {
 		Providers: testAccProviders,
 		Steps: []resource.TestStep{
 			{
-				Config: withRandomProject(projectKey, testAccDestinationCreatePubsub),
+				Config: withRandomProjectAndEnv(projectKey, envKey, fmt.Sprintf(testAccDestinationCreatePubsub, envKey)),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckProjectExists("launchdarkly_project.test"),
 					testAccCheckDestinationExists(resourceName),
-					resource.TestCheckResourceAttr(resourceName, ENV_KEY, "test"),
+					resource.TestCheckResourceAttr(resourceName, ENV_KEY, envKey),
 					resource.TestCheckResourceAttr(resourceName, NAME, "pubsub-dest"),
 					resource.TestCheckResourceAttr(resourceName, KIND, "google-pubsub"),
 					resource.TestCheckResourceAttr(resourceName, ON, "false"),
@@ -251,6 +254,7 @@ func TestAccDestination_CreatePubsub(t *testing.T) {
 
 func TestAccDestination_CreateSegment(t *testing.T) {
 	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	envKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	resourceName := "launchdarkly_destination.test"
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
@@ -259,11 +263,11 @@ func TestAccDestination_CreateSegment(t *testing.T) {
 		Providers: testAccProviders,
 		Steps: []resource.TestStep{
 			{
-				Config: withRandomProject(projectKey, testAccDestinationCreateSegment),
+				Config: withRandomProjectAndEnv(projectKey, envKey, fmt.Sprintf(testAccDestinationCreateSegment, envKey)),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckProjectExists("launchdarkly_project.test"),
 					testAccCheckDestinationExists(resourceName),
-					resource.TestCheckResourceAttr(resourceName, ENV_KEY, "test"),
+					resource.TestCheckResourceAttr(resourceName, ENV_KEY, envKey),
 					resource.TestCheckResourceAttr(resourceName, NAME, "segment-dest"),
 					resource.TestCheckResourceAttr(resourceName, KIND, "segment"),
 					resource.TestCheckResourceAttr(resourceName, "config.write_key", "super-secret-write-key"),
@@ -276,6 +280,7 @@ func TestAccDestination_CreateSegment(t *testing.T) {
 
 func TestAccDestination_CreateAzureEventHubs(t *testing.T) {
 	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	envKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	resourceName := "launchdarkly_destination.test"
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
@@ -284,11 +289,11 @@ func TestAccDestination_CreateAzureEventHubs(t *testing.T) {
 		Providers: testAccProviders,
 		Steps: []resource.TestStep{
 			{
-				Config: withRandomProject(projectKey, testAccDestinationCreateAzureEventHubs),
+				Config: withRandomProjectAndEnv(projectKey, envKey, fmt.Sprintf(testAccDestinationCreateAzureEventHubs, envKey)),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckProjectExists("launchdarkly_project.test"),
 					testAccCheckDestinationExists(resourceName),
-					resource.TestCheckResourceAttr(resourceName, ENV_KEY, "test"),
+					resource.TestCheckResourceAttr(resourceName, ENV_KEY, envKey),
 					resource.TestCheckResourceAttr(resourceName, NAME, "azure-event-hubs-dest"),
 					resource.TestCheckResourceAttr(resourceName, KIND, "azure-event-hubs"),
 					resource.TestCheckResourceAttr(resourceName, "config.namespace", "namespace"),
@@ -304,6 +309,7 @@ func TestAccDestination_CreateAzureEventHubs(t *testing.T) {
 
 func TestAccDestination_UpdateKinesis(t *testing.T) {
 	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	envKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	resourceName := "launchdarkly_destination.test"
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
@@ -312,11 +318,11 @@ func TestAccDestination_UpdateKinesis(t *testing.T) {
 		Providers: testAccProviders,
 		Steps: []resource.TestStep{
 			{
-				Config: withRandomProject(projectKey, testAccDestinationCreateKinesis),
+				Config: withRandomProjectAndEnv(projectKey, envKey, fmt.Sprintf(testAccDestinationCreateKinesis, envKey)),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckProjectExists("launchdarkly_project.test"),
 					testAccCheckDestinationExists(resourceName),
-					resource.TestCheckResourceAttr(resourceName, ENV_KEY, "test"),
+					resource.TestCheckResourceAttr(resourceName, ENV_KEY, envKey),
 					resource.TestCheckResourceAttr(resourceName, NAME, "kinesis-dest"),
 					resource.TestCheckResourceAttr(resourceName, KIND, "kinesis"),
 					resource.TestCheckResourceAttr(resourceName, "config.role_arn", "arn:aws:iam::123456789012:role/marketingadmin"),
@@ -324,10 +330,10 @@ func TestAccDestination_UpdateKinesis(t *testing.T) {
 				),
 			},
 			{
-				Config: withRandomProject(projectKey, testAccDestinationUpdateKinesis),
+				Config: withRandomProjectAndEnv(projectKey, envKey, fmt.Sprintf(testAccDestinationUpdateKinesis, envKey)),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckDestinationExists(resourceName),
-					resource.TestCheckResourceAttr(resourceName, ENV_KEY, "test"),
+					resource.TestCheckResourceAttr(resourceName, ENV_KEY, envKey),
 					resource.TestCheckResourceAttr(resourceName, NAME, "updated-kinesis-dest"),
 					resource.TestCheckResourceAttr(resourceName, KIND, "kinesis"),
 					resource.TestCheckResourceAttr(resourceName, "config.role_arn", "arn:aws:iam::123456789012:role/marketingadmin"),
@@ -341,6 +347,7 @@ func TestAccDestination_UpdateKinesis(t *testing.T) {
 
 func TestAccDestination_UpdatePubsub(t *testing.T) {
 	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	envKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	resourceName := "launchdarkly_destination.test"
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
@@ -349,11 +356,11 @@ func TestAccDestination_UpdatePubsub(t *testing.T) {
 		Providers: testAccProviders,
 		Steps: []resource.TestStep{
 			{
-				Config: withRandomProject(projectKey, testAccDestinationCreatePubsub),
+				Config: withRandomProjectAndEnv(projectKey, envKey, fmt.Sprintf(testAccDestinationCreatePubsub, envKey)),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckProjectExists("launchdarkly_project.test"),
 					testAccCheckDestinationExists(resourceName),
-					resource.TestCheckResourceAttr(resourceName, ENV_KEY, "test"),
+					resource.TestCheckResourceAttr(resourceName, ENV_KEY, envKey),
 					resource.TestCheckResourceAttr(resourceName, NAME, "pubsub-dest"),
 					resource.TestCheckResourceAttr(resourceName, KIND, "google-pubsub"),
 					resource.TestCheckResourceAttr(resourceName, "config.project", "test-project"),
@@ -361,10 +368,10 @@ func TestAccDestination_UpdatePubsub(t *testing.T) {
 				),
 			},
 			{
-				Config: withRandomProject(projectKey, testAccDestinationUpdatePubsub),
+				Config: withRandomProjectAndEnv(projectKey, envKey, fmt.Sprintf(testAccDestinationUpdatePubsub, envKey)),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckDestinationExists(resourceName),
-					resource.TestCheckResourceAttr(resourceName, ENV_KEY, "test"),
+					resource.TestCheckResourceAttr(resourceName, ENV_KEY, envKey),
 					resource.TestCheckResourceAttr(resourceName, NAME, "updated-pubsub-dest"),
 					resource.TestCheckResourceAttr(resourceName, KIND, "google-pubsub"),
 					resource.TestCheckResourceAttr(resourceName, "config.project", "renamed-project"),
@@ -378,6 +385,7 @@ func TestAccDestination_UpdatePubsub(t *testing.T) {
 
 func TestAccDestination_UpdateMparticle(t *testing.T) {
 	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	envKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	resourceName := "launchdarkly_destination.test"
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
@@ -386,11 +394,11 @@ func TestAccDestination_UpdateMparticle(t *testing.T) {
 		Providers: testAccProviders,
 		Steps: []resource.TestStep{
 			{
-				Config: withRandomProject(projectKey, testAccDestinationCreateMparticle),
+				Config: withRandomProjectAndEnv(projectKey, envKey, fmt.Sprintf(testAccDestinationCreateMparticle, envKey)),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckProjectExists("launchdarkly_project.test"),
 					testAccCheckDestinationExists(resourceName),
-					resource.TestCheckResourceAttr(resourceName, ENV_KEY, "test"),
+					resource.TestCheckResourceAttr(resourceName, ENV_KEY, envKey),
 					resource.TestCheckResourceAttr(resourceName, NAME, "mparticle-dest"),
 					resource.TestCheckResourceAttr(resourceName, KIND, "mparticle"),
 					resource.TestCheckResourceAttr(resourceName, "config.secret", "mParticleSecret"),
@@ -399,10 +407,10 @@ func TestAccDestination_UpdateMparticle(t *testing.T) {
 				),
 			},
 			{
-				Config: withRandomProject(projectKey, testAccDestinationUpdateMparticle),
+				Config: withRandomProjectAndEnv(projectKey, envKey, fmt.Sprintf(testAccDestinationUpdateMparticle, envKey)),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckDestinationExists(resourceName),
-					resource.TestCheckResourceAttr(resourceName, ENV_KEY, "test"),
+					resource.TestCheckResourceAttr(resourceName, ENV_KEY, envKey),
 					resource.TestCheckResourceAttr(resourceName, NAME, "updated-mparticle-dest"),
 					resource.TestCheckResourceAttr(resourceName, KIND, "mparticle"),
 					resource.TestCheckResourceAttr(resourceName, "config.secret", "updatedSecret"),
@@ -417,6 +425,7 @@ func TestAccDestination_UpdateMparticle(t *testing.T) {
 
 func TestAccDestination_UpdateSegment(t *testing.T) {
 	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	envKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	resourceName := "launchdarkly_destination.test"
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
@@ -425,11 +434,11 @@ func TestAccDestination_UpdateSegment(t *testing.T) {
 		Providers: testAccProviders,
 		Steps: []resource.TestStep{
 			{
-				Config: withRandomProject(projectKey, testAccDestinationCreateSegment),
+				Config: withRandomProjectAndEnv(projectKey, envKey, fmt.Sprintf(testAccDestinationCreateSegment, envKey)),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckProjectExists("launchdarkly_project.test"),
 					testAccCheckDestinationExists(resourceName),
-					resource.TestCheckResourceAttr(resourceName, ENV_KEY, "test"),
+					resource.TestCheckResourceAttr(resourceName, ENV_KEY, envKey),
 					resource.TestCheckResourceAttr(resourceName, NAME, "segment-dest"),
 					resource.TestCheckResourceAttr(resourceName, KIND, "segment"),
 					resource.TestCheckResourceAttr(resourceName, ON, "true"),
@@ -438,11 +447,11 @@ func TestAccDestination_UpdateSegment(t *testing.T) {
 				),
 			},
 			{
-				Config: withRandomProject(projectKey, testAccDestinationUpdateSegment),
+				Config: withRandomProjectAndEnv(projectKey, envKey, fmt.Sprintf(testAccDestinationUpdateSegment, envKey)),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckProjectExists("launchdarkly_project.test"),
 					testAccCheckDestinationExists(resourceName),
-					resource.TestCheckResourceAttr(resourceName, ENV_KEY, "test"),
+					resource.TestCheckResourceAttr(resourceName, ENV_KEY, envKey),
 					resource.TestCheckResourceAttr(resourceName, NAME, "segment-dest"),
 					resource.TestCheckResourceAttr(resourceName, KIND, "segment"),
 					resource.TestCheckResourceAttr(resourceName, ON, "false"), // should default to false when removed
@@ -456,6 +465,7 @@ func TestAccDestination_UpdateSegment(t *testing.T) {
 
 func TestAccDestination_UpdateAzureEventHubs(t *testing.T) {
 	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	envKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	resourceName := "launchdarkly_destination.test"
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
@@ -464,11 +474,11 @@ func TestAccDestination_UpdateAzureEventHubs(t *testing.T) {
 		Providers: testAccProviders,
 		Steps: []resource.TestStep{
 			{
-				Config: withRandomProject(projectKey, testAccDestinationCreateAzureEventHubs),
+				Config: withRandomProjectAndEnv(projectKey, envKey, fmt.Sprintf(testAccDestinationCreateAzureEventHubs, envKey)),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckProjectExists("launchdarkly_project.test"),
 					testAccCheckDestinationExists(resourceName),
-					resource.TestCheckResourceAttr(resourceName, ENV_KEY, "test"),
+					resource.TestCheckResourceAttr(resourceName, ENV_KEY, envKey),
 					resource.TestCheckResourceAttr(resourceName, NAME, "azure-event-hubs-dest"),
 					resource.TestCheckResourceAttr(resourceName, KIND, "azure-event-hubs"),
 					resource.TestCheckResourceAttr(resourceName, "config.namespace", "namespace"),
@@ -480,11 +490,11 @@ func TestAccDestination_UpdateAzureEventHubs(t *testing.T) {
 				),
 			},
 			{
-				Config: withRandomProject(projectKey, testAccDestinationUpdateAzureEventHubs),
+				Config: withRandomProjectAndEnv(projectKey, envKey, fmt.Sprintf(testAccDestinationUpdateAzureEventHubs, envKey)),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckProjectExists("launchdarkly_project.test"),
 					testAccCheckDestinationExists(resourceName),
-					resource.TestCheckResourceAttr(resourceName, ENV_KEY, "test"),
+					resource.TestCheckResourceAttr(resourceName, ENV_KEY, envKey),
 					resource.TestCheckResourceAttr(resourceName, NAME, "updated-azure-event-hubs-dest"),
 					resource.TestCheckResourceAttr(resourceName, KIND, "azure-event-hubs"),
 					resource.TestCheckResourceAttr(resourceName, "config.namespace", "namespace"),
