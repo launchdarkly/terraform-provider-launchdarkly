@@ -10,6 +10,10 @@ This example contains three config files:
 - [flag_types_example.tf](./flag_types_example.tf), which provides examples of the different ways you can define binary (boolean) and multivariate (string, numeric, and JSON) flag variations using the `launchdarkly_feature_flag` resource
 - [targeting_example.tf](./targeting_example.tf), which provides complex examples of user targeting using the `launchdarkly_feature_flag_environment` resource. For more detail on user targeting, see the [official LaunchDarkly documentation](https://docs.launchdarkly.com/home/managing-flags/targeting-users).
 
+### Bypassing approval requests
+
+If [approval requests are required](https://docs.launchdarkly.com/home/feature-workflows/environment-approvals#configuring-approval-settings) in the feature flag's environment, you can bypass them by adding the [`bypassRequiredApproval` action](https://docs.launchdarkly.com/home/feature-workflows/environment-approvals#bypassing-required-approvals) to the role associated with the LaunchDarkly access token or service token used by the provider.
+
 ### Run
 
 Init your working directory from the CL with `terraform init` and then apply the changes with `terraform apply`. You should see output resembling the following:
