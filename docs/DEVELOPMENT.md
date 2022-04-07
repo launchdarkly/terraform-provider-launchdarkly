@@ -20,7 +20,7 @@ $ mkdir -p $HOME/development/terraform-providers/; cd $HOME/development/terrafor
 $ git clone git@github.com:launchdarkly/terraform-provider-launchdarkly
 ```
 
-If you are working on the `launchdarkly_audit_log_subscription` resource, you will want to ensure the configuration field mapping is up-to-date with the [most recent changes](https://github.com/launchdarkly/integration-framework/tree/master/integrations) while testing by `cd`-ing into `scripts/` and running `python generate_integration_audit_log_configs.py`. Please note you will need to have the Python `requests` package installed locally. Otherwise, this will be run as a git commit hook. Then, to update the go mapping, follow the instructions in audit_log_subscription_configs.go and commit and push your changes.
+If you are working on the `launchdarkly_audit_log_subscription` resource, you will want to ensure the configuration field mapping is up-to-date with the [most recent changes](https://github.com/launchdarkly/integration-framework/tree/master/integrations) by running `make generate`.
 
 To compile the provider, run `make build`. This will build the provider and put the provider binary in the `$GOPATH/bin` directory.
 

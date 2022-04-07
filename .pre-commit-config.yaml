@@ -5,18 +5,17 @@ repos:
     rev: v0.1.4
     hooks:
       - id: gofmts
+
   - repo: https://github.com/golangci/golangci-lint
     rev: v1.43.0
     hooks:
       - id: golangci-lint
+
   - repo: local
     hooks:
-      - id: generate-audit-log-subscription-configs
-        name: Generate Audit Log Subscription Configurations
-        description: This hook runs a python script to update the audit log subscription configuration validation fields.
-        entry: python scripts/generate_integration_audit_log_configs.py
+      - id: make-generate-no-change
+        name: Make generate does not create additional changes
+        description: Ensures make generate does not create additional changes
+        entry: bash -c 'make generate'
         pass_filenames: false
-        language: python
-        additional_dependencies: ['requests']
-        verbose: true
-
+        language: system

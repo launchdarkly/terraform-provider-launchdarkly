@@ -62,6 +62,6 @@ terraform {
 }
 ```
 
-Some resources or attributes, such as [webhook policy_statements](./webhook/example.tf), that were added later may require a provider version later than 1.0; check the [changelog](https://github.com/launchdarkly/terraform-provider-launchdarkly/blob/master/CHANGELOG.md) for more information on versions.
+Some resources or attributes, such as [webhook policy_statements](./webhook/example.tf), that were added later may require a provider version later than 1.0; check the [changelog](https://github.com/launchdarkly/terraform-provider-launchdarkly/blob/main/CHANGELOG.md) for more information on versions.
 
 If you would prefer to define your variables some other way, see [Terraform's documentation on input variables](https://learn.hashicorp.com/terraform/getting-started/variables) for some other ways to do so.

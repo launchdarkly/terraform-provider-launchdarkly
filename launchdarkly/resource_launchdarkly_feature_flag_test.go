@@ -460,6 +460,24 @@ func withRandomProject(randomProject, resource string) string {
 	%s`, randomProject, resource)
 }
 
+func withRandomProjectAndEnv(randomProject, randomEnvironment, resource string) string {
+	return fmt.Sprintf(`
+	resource "launchdarkly_project" "test" {
+		lifecycle {
+			ignore_changes = [environments]
+		}
+		name = "testProject"
+		key = "%s"
+		environments {
+			name  = "testEnvironment"
+			key   = "%s"
+			color = "000000"
+		}
+	}
+	
+	%s`, randomProject, randomEnvironment, resource)
+}
+
 func withRandomProjectIncludeInSnippetTrue(randomProject, resource string) string {
 	return fmt.Sprintf(`
 	resource "launchdarkly_project" "test" {
