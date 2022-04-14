@@ -17,6 +17,11 @@ resource "launchdarkly_project" "tf_flag_examples" {
     name = "example environment"
     key = "example-env"
     color = "ababab"
+    # You can configure approval settings per environment to control who can apply flag changes
+    approval_settings {
+      min_num_approvals = 2
+      required = true
+    }
   }
 
   tags = [
