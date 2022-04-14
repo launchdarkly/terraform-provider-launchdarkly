@@ -18,8 +18,6 @@ resource "launchdarkly_project" "tf_flag_examples" {
     key = "example-env"
     color = "ababab"
     # You can configure approval settings per environment to control who can apply flag changes
-    # Your Terraform user can be configured with a custom role to allow it to bypass approval requirements
-    # See https://docs.launchdarkly.com/home/feature-workflows/environment-approvals#configuring-approval-settings
     approval_settings {
       min_num_approvals = 2
       required = true

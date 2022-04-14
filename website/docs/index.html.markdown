@@ -43,8 +43,8 @@ Please refer to [Terraform's documentation on upgrading to v0.13](https://www.te
 
 The provider supports the following arguments:
 
-- `access_token` - (Optional) The [API access token](https://docs.launchdarkly.com/docs/api-access-tokens) or [service token](https://docs.launchdarkly.com/home/account-security/api-access-tokens#service-tokens) used to authenticate with LaunchDarkly. You can also set this with the `LAUNCHDARKLY_ACCESS_TOKEN` environment variable. You must provide either `access_token` or `oauth_token`.  
-If you want to grant the terraform provider the ability to make flag changes without requesting approval in an environment that is configured to require approvals, you can add the [`bypassRequiredApproval` action](https://docs.launchdarkly.com/home/feature-workflows/environment-approvals#bypassing-required-approvals) to the service token's custom role. To learn about custom role actions, read [Custom role actions](https://docs.launchdarkly.com/home/members/role-actions).
+- `access_token` - (Optional) The [personal access token](https://docs.launchdarkly.com/api-access-tokens) or [service token](https://docs.launchdarkly.com/home/account-security/api-access-tokens#service-tokens) used to authenticate with LaunchDarkly. You can also set this with the `LAUNCHDARKLY_ACCESS_TOKEN` environment variable. You must provide either `access_token` or `oauth_token`.
+
 
 - `oauth_token` - (Optional) An OAuth V2 token you use to authenticate with LaunchDarkly. You can also set this with the `LAUNCHDARKLY_OAUTH_TOKEN` environment variable. You must provide either `access_token` or `oauth_token`.
 
