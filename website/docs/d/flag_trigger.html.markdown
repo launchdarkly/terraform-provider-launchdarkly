@@ -30,7 +30,7 @@ data "launchdarkly_flag_trigger" "example" {
 - `id` - (Required) The Terraform trigger ID. This ID takes the following format: `<project_key>/<env_key>/<flag_key>/<trigger_id>`. The unique trigger ID can be found in your saved trigger URL:
 
 ```
-https://app.launchdarkly.com/webhook/triggers/<THIS_IS_YOUR_TRIGGER_ID>/aff25a53-17d9-4112-a9b8-12718d1a2e79
+https://app.launchdarkly.com/webhook/triggers/THIS_IS_YOUR_TRIGGER_ID/aff25a53-17d9-4112-a9b8-12718d1a2e79
 ```
 
 Please note that if you did not save this upon creation of the resource, you will have to reset it to get a new value, which can cause breaking changes.

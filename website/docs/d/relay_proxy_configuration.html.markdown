@@ -31,7 +31,7 @@ resource "launchdarkly_relay_proxy_configuration" "example" {
 - `id` - (Required) The Relay Proxy configuration's unique 24 character ID. The unique relay proxy ID can be found in the relay proxy edit page URL, which you can locate by clicking the three dot menu on your relay proxy item in the UI and selecting 'Edit configuration':
 
 ```
-https://app.launchdarkly.com/settings/relay/<THIS_IS_YOUR_RELAY_PROXY_ID>/edit
+https://app.launchdarkly.com/settings/relay/THIS_IS_YOUR_RELAY_PROXY_ID/edit
 ```
 
 ## Attribute Reference
