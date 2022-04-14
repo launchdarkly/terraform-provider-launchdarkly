@@ -1,4 +1,10 @@
-## [2.5.1] (April 7, 2022)
+## [Unreleased]
+
+NOTES: 
+
+- Removed callout to `bypassRequiredApproval` action in documentation pending further development.
+
+## [2.6.0] (April 7, 2022)
 
 ENHANCEMENTS:
 
