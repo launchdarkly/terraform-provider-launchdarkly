@@ -68,11 +68,11 @@ func resourceCustomRoleCreate(ctx context.Context, d *schema.ResourceData, metaR
 	}
 
 	customRoleBody := ldapi.CustomRolePost{
-		Key:  		     customRoleKey,
-		Name:        	 customRoleName,
-		Description:	 ldapi.PtrString(customRoleDescription),
-		BasePermissions: customRoleBasePermissions,
-		Policy:      	 customRolePolicies,
+		Key:             customRoleKey,
+		Name:            customRoleName,
+		Description:     ldapi.PtrString(customRoleDescription),
+		BasePermissions: ldapi.PtrString(customRoleBasePermissions),
+		Policy:          customRolePolicies,
 	}
 
 	_, _, err = client.ld.CustomRolesApi.PostCustomRole(client.ctx).CustomRolePost(customRoleBody).Execute()
