@@ -41,6 +41,11 @@ func resourceCustomRole() *schema.Resource {
 				Optional:    true,
 				Description: "Description of the custom role",
 			},
+			BASE_PERMISSIONS: {
+				Type:        schema.TypeString,
+				Optional:    true,
+				Description: "The base persmission level either reader or no_access",
+			},
 			POLICY:            policyArraySchema(),
 			POLICY_STATEMENTS: policyStatementsSchema(policyStatementSchemaOptions{}),
 		},
@@ -52,6 +57,7 @@ func resourceCustomRoleCreate(ctx context.Context, d *schema.ResourceData, metaR
 	customRoleKey := d.Get(KEY).(string)
 	customRoleName := d.Get(NAME).(string)
 	customRoleDescription := d.Get(DESCRIPTION).(string)
+	customRoleBasePermissions := d.Get(BASE_PERMISSIONS).(string)
 	customRolePolicies := policiesFromResourceData(d)
 	policyStatements, err := policyStatementsFromResourceData(d.Get(POLICY_STATEMENTS).([]interface{}))
 	if err != nil {
@@ -62,10 +68,11 @@ func resourceCustomRoleCreate(ctx context.Context, d *schema.ResourceData, metaR
 	}
 
 	customRoleBody := ldapi.CustomRolePost{
-		Key:         customRoleKey,
-		Name:        customRoleName,
-		Description: ldapi.PtrString(customRoleDescription),
-		Policy:      customRolePolicies,
+		Key:  		     customRoleKey,
+		Name:        	 customRoleName,
+		Description:	 ldapi.PtrString(customRoleDescription),
+		BasePermissions: customRoleBasePermissions,
+		Policy:      	 customRolePolicies,
 	}
 
 	_, _, err = client.ld.CustomRolesApi.PostCustomRole(client.ctx).CustomRolePost(customRoleBody).Execute()
@@ -102,6 +109,7 @@ func resourceCustomRoleRead(ctx context.Context, d *schema.ResourceData, metaRaw
 	_ = d.Set(KEY, customRole.Key)
 	_ = d.Set(NAME, customRole.Name)
 	_ = d.Set(DESCRIPTION, customRole.Description)
+	_ = d.Set(BASE_PERMISSIONS, customRole.BasePermissions)
 
 	// Because "policy" is now deprecated in favor of "policy_statements", only set "policy" if it has
 	// already been set by the user.
@@ -128,6 +136,7 @@ func resourceCustomRoleUpdate(ctx context.Context, d *schema.ResourceData, metaR
 	customRoleKey := d.Get(KEY).(string)
 	customRoleName := d.Get(NAME).(string)
 	customRoleDescription := d.Get(DESCRIPTION).(string)
+	customRoleBasePermissions := d.Get(BASE_PERMISSIONS).(string)
 	customRolePolicies := policiesFromResourceData(d)
 	policyStatements, err := policyStatementsFromResourceData(d.Get(POLICY_STATEMENTS).([]interface{}))
 	if err != nil {
@@ -141,6 +150,7 @@ func resourceCustomRoleUpdate(ctx context.Context, d *schema.ResourceData, metaR
 		Patch: []ldapi.PatchOperation{
 			patchReplace("/name", &customRoleName),
 			patchReplace("/description", &customRoleDescription),
+			patchReplace("/basePermissions", &customRoleBasePermissions),
 			patchReplace("/policy", &customRolePolicies),
 		}}
 
