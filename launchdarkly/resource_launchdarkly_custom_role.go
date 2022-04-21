@@ -44,7 +44,7 @@ func resourceCustomRole() *schema.Resource {
 			BASE_PERMISSIONS: {
 				Type:        schema.TypeString,
 				Optional:    true,
-				Description: "The base persmission level either reader or no_access",
+				Description: "The base permission level either reader or no_access",
 			},
 			POLICY:            policyArraySchema(),
 			POLICY_STATEMENTS: policyStatementsSchema(policyStatementSchemaOptions{}),
