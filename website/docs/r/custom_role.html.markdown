@@ -42,6 +42,7 @@ resource "launchdarkly_custom_role" "example" {
 
 - `description` - (Optional) The description of the custom role.
 
+- `base_permissions` - (Optional) The base permission level. For example, reader or no access
 - `policy_statements` - (Required) The custom role policy block. To learn more, read [Policies in custom roles](https://docs.launchdarkly.com/docs/policies-in-custom-roles).
 
 Custom role `policy_statements` blocks are composed of the following arguments:
