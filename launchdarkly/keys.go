@@ -9,6 +9,7 @@ const (
 	APPROVAL_SETTINGS                = "approval_settings"
 	ARCHIVED                         = "archived"
 	ATTRIBUTE                        = "attribute"
+	BASE_PERMISSIONS                 = "base_permissions"
 	BUCKET_BY                        = "bucket_by"
 	CAN_APPLY_DECLINED_CHANGES       = "can_apply_declined_changes"
 	CAN_REVIEW_OWN_REQUEST           = "can_review_own_request"

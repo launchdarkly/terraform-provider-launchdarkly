@@ -7,6 +7,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 
 	ldapi "github.com/launchdarkly/api-client-go/v7"
 )
@@ -41,6 +42,13 @@ func resourceCustomRole() *schema.Resource {
 				Optional:    true,
 				Description: "Description of the custom role",
 			},
+			BASE_PERMISSIONS: {
+				Type:             schema.TypeString,
+				Optional:         true,
+				Description:      "The base permission level - either reader or no_access. Defaults to reader",
+				ValidateDiagFunc: validation.ToDiagFunc(validation.StringInSlice([]string{"reader", "no_access"}, false)),
+				Default:          "reader",
+			},
 			POLICY:            policyArraySchema(),
 			POLICY_STATEMENTS: policyStatementsSchema(policyStatementSchemaOptions{}),
 		},
@@ -52,6 +60,7 @@ func resourceCustomRoleCreate(ctx context.Context, d *schema.ResourceData, metaR
 	customRoleKey := d.Get(KEY).(string)
 	customRoleName := d.Get(NAME).(string)
 	customRoleDescription := d.Get(DESCRIPTION).(string)
+	customRoleBasePermissions := d.Get(BASE_PERMISSIONS).(string)
 	customRolePolicies := policiesFromResourceData(d)
 	policyStatements, err := policyStatementsFromResourceData(d.Get(POLICY_STATEMENTS).([]interface{}))
 	if err != nil {
@@ -66,6 +75,9 @@ func resourceCustomRoleCreate(ctx context.Context, d *schema.ResourceData, metaR
 		Name:        customRoleName,
 		Description: ldapi.PtrString(customRoleDescription),
 		Policy:      customRolePolicies,
+	}
+	if customRoleBasePermissions != "" {
+		customRoleBody.BasePermissions = ldapi.PtrString(customRoleBasePermissions)
 	}
 
 	_, _, err = client.ld.CustomRolesApi.PostCustomRole(client.ctx).CustomRolePost(customRoleBody).Execute()
@@ -102,6 +114,7 @@ func resourceCustomRoleRead(ctx context.Context, d *schema.ResourceData, metaRaw
 	_ = d.Set(KEY, customRole.Key)
 	_ = d.Set(NAME, customRole.Name)
 	_ = d.Set(DESCRIPTION, customRole.Description)
+	_ = d.Set(BASE_PERMISSIONS, customRole.BasePermissions)
 
 	// Because "policy" is now deprecated in favor of "policy_statements", only set "policy" if it has
 	// already been set by the user.
@@ -128,6 +141,7 @@ func resourceCustomRoleUpdate(ctx context.Context, d *schema.ResourceData, metaR
 	customRoleKey := d.Get(KEY).(string)
 	customRoleName := d.Get(NAME).(string)
 	customRoleDescription := d.Get(DESCRIPTION).(string)
+	customRoleBasePermissions := d.Get(BASE_PERMISSIONS).(string)
 	customRolePolicies := policiesFromResourceData(d)
 	policyStatements, err := policyStatementsFromResourceData(d.Get(POLICY_STATEMENTS).([]interface{}))
 	if err != nil {
@@ -143,6 +157,9 @@ func resourceCustomRoleUpdate(ctx context.Context, d *schema.ResourceData, metaR
 			patchReplace("/description", &customRoleDescription),
 			patchReplace("/policy", &customRolePolicies),
 		}}
+	if customRoleBasePermissions != "" {
+		patch.Patch = append(patch.Patch, patchReplace("/basePermissions", &customRoleBasePermissions))
+	}
 
 	_, _, err = client.ld.CustomRolesApi.PatchCustomRole(client.ctx, customRoleKey).PatchWithComment(patch).Execute()
 	if err != nil {
