@@ -1,4 +1,4 @@
-## [2.6.2] (Unreleased)
+## [2.6.2] (May 5, 2022)
 
 FEATURES:
 
