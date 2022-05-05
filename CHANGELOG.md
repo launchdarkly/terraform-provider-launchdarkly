@@ -1,6 +1,12 @@
+## [2.7.0] (Unreleased)
+
+FEATURES:
+
+- Added the `base_permissions` field to the `launchdarkly_custom_role` resource.
+
 ## [2.6.1] (April 12, 2022)
 
-NOTES: 
+NOTES:
 
 - Removed callout to `bypassRequiredApproval` action in documentation pending further development.
 - Fix formatting in some documentation
@@ -9,7 +15,7 @@ NOTES:
 
 ENHANCEMENTS:
 
-- Added the `hide_member_details` argument to the Datadog `config` for the `launchdarkly_audit_log_subscription` resource.  When `hide_member_details` is `true`, LaunchDarkly member information will be redacted before events are sent to Datadog.
+- Added the `hide_member_details` argument to the Datadog `config` for the `launchdarkly_audit_log_subscription` resource. When `hide_member_details` is `true`, LaunchDarkly member information will be redacted before events are sent to Datadog.
 
 NOTES:
 

@@ -7,7 +7,7 @@ var SUBSCRIPTION_CONFIGURATION_FIELDS = map[string]IntegrationConfig{
 		"apiKey": {
 			AllowedValues: []string{},
 			DefaultValue:  nil,
-			Description:   "Enter your Datadog [API key](https://app.datadoghq.com/account/settings#api).",
+			Description:   "Enter your Datadog [API key](https://app.datadoghq.com/organization-settings/api-keys).",
 			IsOptional:    false,
 			IsSecret:      true,
 			Type:          "string",

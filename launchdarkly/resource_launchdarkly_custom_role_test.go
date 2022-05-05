@@ -14,7 +14,8 @@ const (
 	resource "launchdarkly_custom_role" "test" {
 		key = "%s"
 		name = "Custom role - %s"
-		description= "Deny all actions on production environments"
+		description = "Deny all actions on production environments"
+		base_permissions = "no_access"
 		policy {
 			actions = ["*"]	
 			effect = "deny"
@@ -100,6 +101,7 @@ func TestAccCustomRole_Create(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, KEY, key),
 					resource.TestCheckResourceAttr(resourceName, NAME, "Custom role - "+name),
 					resource.TestCheckResourceAttr(resourceName, DESCRIPTION, "Deny all actions on production environments"),
+					resource.TestCheckResourceAttr(resourceName, BASE_PERMISSIONS, "no_access"),
 					resource.TestCheckResourceAttr(resourceName, "policy.#", "1"),
 					resource.TestCheckResourceAttr(resourceName, "policy.0.actions.#", "1"),
 					resource.TestCheckResourceAttr(resourceName, "policy.0.actions.0", "*"),
@@ -164,6 +166,7 @@ func TestAccCustomRole_CreateWithNotStatements(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, KEY, key),
 					resource.TestCheckResourceAttr(resourceName, NAME, "Custom role - "+name),
 					resource.TestCheckResourceAttr(resourceName, DESCRIPTION, "Don't allow all actions on non-staging environments"),
+					resource.TestCheckResourceAttr(resourceName, BASE_PERMISSIONS, "reader"),
 					resource.TestCheckResourceAttr(resourceName, "policy.#", "0"),
 					resource.TestCheckResourceAttr(resourceName, "policy_statements.#", "1"),
 					resource.TestCheckResourceAttr(resourceName, "policy_statements.0.not_actions.#", "1"),
@@ -205,6 +208,7 @@ func TestAccCustomRole_Update(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, KEY, key),
 					resource.TestCheckResourceAttr(resourceName, NAME, "Updated - "+name),
 					resource.TestCheckResourceAttr(resourceName, DESCRIPTION, ""), // should be empty after removal
+					resource.TestCheckResourceAttr(resourceName, BASE_PERMISSIONS, "reader"),
 					resource.TestCheckResourceAttr(resourceName, "policy.#", "1"),
 					resource.TestCheckResourceAttr(resourceName, "policy.0.actions.#", "1"),
 					resource.TestCheckResourceAttr(resourceName, "policy.0.actions.0", "*"),
