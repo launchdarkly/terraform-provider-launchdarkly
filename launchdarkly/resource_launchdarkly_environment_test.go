@@ -299,7 +299,7 @@ func TestAccEnvironmentWithApprovals(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.can_review_own_request", "true"),
 					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.can_apply_declined_changes", "false"),
 					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.min_num_approvals", "1"),
-					resource.TestCheckNoResourceAttr(resourceName, "approval_settings.0.required_approval_tags"),
+					resource.TestCheckNoResourceAttr(resourceName, "approval_settings.0.required_approval_tags.#"),
 				),
 			},
 			{
@@ -316,7 +316,7 @@ func TestAccEnvironmentWithApprovals(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, KEY, "approvals-test"),
 					resource.TestCheckResourceAttr(resourceName, COLOR, "bababa"),
 					resource.TestCheckResourceAttr(resourceName, PROJECT_KEY, projectKey),
-					resource.TestCheckNoResourceAttr(resourceName, APPROVAL_SETTINGS),
+					resource.TestCheckNoResourceAttr(resourceName, fmt.Sprintf("%s.%%", APPROVAL_SETTINGS)),
 				),
 			},
 		},

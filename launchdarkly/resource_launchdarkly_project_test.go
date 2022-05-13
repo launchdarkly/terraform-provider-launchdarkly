@@ -228,7 +228,6 @@ func TestAccProject_Update(t *testing.T) {
 					testAccCheckProjectExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, KEY, projectKey),
 					resource.TestCheckResourceAttr(resourceName, NAME, "awesome test project"),
-					resource.TestCheckNoResourceAttr(resourceName, "tags"),
 					resource.TestCheckNoResourceAttr(resourceName, "tags.#"),
 					resource.TestCheckResourceAttr(resourceName, INCLUDE_IN_SNIPPET, "false"),
 				),

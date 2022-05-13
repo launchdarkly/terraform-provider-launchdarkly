@@ -208,7 +208,7 @@ func TestAccSegment_Update(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "excluded.#", "2"),
 					resource.TestCheckResourceAttr(resourceName, "excluded.0", "user3"),
 					resource.TestCheckResourceAttr(resourceName, "excluded.1", "user4"),
-					resource.TestCheckNoResourceAttr(resourceName, RULES),
+					resource.TestCheckNoResourceAttr(resourceName, fmt.Sprintf("%s.#", RULES)),
 				),
 			},
 			{
