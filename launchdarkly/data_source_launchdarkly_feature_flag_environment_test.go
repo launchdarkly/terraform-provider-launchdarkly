@@ -7,7 +7,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
-	ldapi "github.com/launchdarkly/api-client-go/v7"
+	ldapi "github.com/launchdarkly/api-client-go/v10"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -26,7 +26,7 @@ func testAccDataSourceFeatureFlagEnvironmentScaffold(client *Client, projectKey,
 	flagBody := ldapi.FeatureFlagBody{
 		Name: "Feature Flag Env Data Source Test",
 		Key:  flagKey,
-		Variations: &[]ldapi.Variation{
+		Variations: []ldapi.Variation{
 			{Value: intfPtr(true)},
 			{Value: intfPtr(false)},
 		},
@@ -55,7 +55,7 @@ func testAccDataSourceFeatureFlagEnvironmentScaffold(client *Client, projectKey,
 		return nil, fmt.Errorf("failed to get feature flag: %s", err.Error())
 	}
 
-	return &flag, nil
+	return flag, nil
 }
 
 func TestAccDataSourceFeatureFlagEnvironment_noMatchReturnsError(t *testing.T) {

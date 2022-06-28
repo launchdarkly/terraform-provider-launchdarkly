@@ -9,7 +9,7 @@ LDFLAGS:=-ldflags="-X github.com/launchdarkly/terraform-provider-launchdarkly/la
 default: build
 
 build: fmtcheck
-	go install $(LDFLAGS)
+	go install github.com/ashanbrown/gofmts/cmd/gofmts@v0.1.4
 
 test: fmtcheck
 	go test -i $(TEST) || exit 1

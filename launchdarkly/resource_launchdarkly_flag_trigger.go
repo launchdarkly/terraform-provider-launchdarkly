@@ -7,7 +7,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	ldapi "github.com/launchdarkly/api-client-go/v7"
+	ldapi "github.com/launchdarkly/api-client-go/v10"
 )
 
 func resourceFlagTrigger() *schema.Resource {
@@ -36,7 +36,7 @@ func resourceFlagTriggerCreate(ctx context.Context, d *schema.ResourceData, meta
 	enabled := d.Get(ENABLED).(bool)
 
 	triggerBody := ldapi.NewTriggerPost(integrationKey)
-	triggerBody.Instructions = &instructions
+	triggerBody.Instructions = instructions
 
 	createdTrigger, _, err := client.ld.FlagTriggersApi.CreateTriggerWorkflow(client.ctx, projectKey, envKey, flagKey).TriggerPost(*triggerBody).Execute()
 	if err != nil {
@@ -56,7 +56,7 @@ func resourceFlagTriggerCreate(ctx context.Context, d *schema.ResourceData, meta
 			KIND: "disableTrigger",
 		}}
 		input := ldapi.FlagTriggerInput{
-			Instructions: &instructions,
+			Instructions: instructions,
 		}
 
 		_, _, err = client.ld.FlagTriggersApi.PatchTriggerWorkflow(client.ctx, projectKey, envKey, flagKey, *createdTrigger.Id).FlagTriggerInput(input).Execute()
@@ -94,7 +94,7 @@ func resourceFlagTriggerUpdate(ctx context.Context, d *schema.ResourceData, meta
 		}
 	}
 	input := ldapi.FlagTriggerInput{
-		Instructions: &instructions,
+		Instructions: instructions,
 	}
 
 	_, _, err := client.ld.FlagTriggersApi.PatchTriggerWorkflow(client.ctx, projectKey, envKey, flagKey, triggerId).FlagTriggerInput(input).Execute()

@@ -29,6 +29,7 @@
 #
 # example.tfvars
 
+api-client-go/
 /.idea/
 /crash.log
 /terraform-provider-launchdarkly

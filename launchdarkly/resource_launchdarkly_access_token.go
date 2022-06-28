@@ -14,7 +14,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 
-	ldapi "github.com/launchdarkly/api-client-go/v7"
+	ldapi "github.com/launchdarkly/api-client-go/v10"
 )
 
 func resourceAccessToken() *schema.Resource {
@@ -151,9 +151,9 @@ func resourceAccessTokenCreate(ctx context.Context, d *schema.ResourceData, meta
 		for i, cr := range customRolesRaw {
 			customRoles[i] = cr.(string)
 		}
-		accessTokenBody.CustomRoleIds = &customRoles
+		accessTokenBody.CustomRoleIds = customRoles
 	} else if len(inlineRoles) > 0 {
-		accessTokenBody.InlineRole = &inlineRoles
+		accessTokenBody.InlineRole = inlineRoles
 	} else if accessTokenRole, ok := d.GetOk(ROLE); ok {
 		accessTokenBody.Role = ldapi.PtrString(accessTokenRole.(string))
 	}
@@ -194,8 +194,8 @@ func resourceAccessTokenRead(ctx context.Context, d *schema.ResourceData, metaRa
 	if accessToken.Role != nil {
 		_ = d.Set(ROLE, *accessToken.Role)
 	}
-	if accessToken.CustomRoleIds != nil && len(*accessToken.CustomRoleIds) > 0 {
-		customRoleKeys, err := customRoleIDsToKeys(client, *accessToken.CustomRoleIds)
+	if accessToken.CustomRoleIds != nil && len(accessToken.CustomRoleIds) > 0 {
+		customRoleKeys, err := customRoleIDsToKeys(client, accessToken.CustomRoleIds)
 		if err != nil {
 			return diag.FromErr(err)
 		}
@@ -205,12 +205,12 @@ func resourceAccessTokenRead(ctx context.Context, d *schema.ResourceData, metaRa
 	_ = d.Set(DEFAULT_API_VERSION, accessToken.DefaultApiVersion)
 
 	policies := accessToken.InlineRole
-	if policies != nil && len(*policies) > 0 {
+	if len(policies) > 0 {
 		policyStatements, _ := policyStatementsFromResourceData(d.Get(POLICY_STATEMENTS).([]interface{}))
 		if len(policyStatements) > 0 {
-			err = d.Set(POLICY_STATEMENTS, policyStatementsToResourceData(*policies))
+			err = d.Set(POLICY_STATEMENTS, policyStatementsToResourceData(policies))
 		} else {
-			err = d.Set(INLINE_ROLES, policyStatementsToResourceData(*policies))
+			err = d.Set(INLINE_ROLES, policyStatementsToResourceData(policies))
 		}
 		if err != nil {
 			return diag.Errorf("could not set policy on access token with id %q: %v", accessTokenID, err)

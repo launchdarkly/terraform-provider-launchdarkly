@@ -8,7 +8,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
-	ldapi "github.com/launchdarkly/api-client-go/v7"
+	ldapi "github.com/launchdarkly/api-client-go/v10"
 	"github.com/stretchr/testify/require"
 )
 
@@ -71,7 +71,7 @@ func TestAccDataSourceFeatureFlag_exists(t *testing.T) {
 	flagBody := ldapi.FeatureFlagBody{
 		Name: flagName,
 		Key:  flagKey,
-		Variations: &[]ldapi.Variation{
+		Variations: []ldapi.Variation{
 			{Value: intfPtr(true)},
 			{Value: intfPtr(false)},
 		},

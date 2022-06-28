@@ -7,7 +7,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 
-	ldapi "github.com/launchdarkly/api-client-go/v7"
+	ldapi "github.com/launchdarkly/api-client-go/v10"
 )
 
 // Our required fields for metrics depend on the value of the 'kind' enum.
@@ -152,12 +152,12 @@ func resourceMetricCreate(ctx context.Context, d *schema.ResourceData, metaRaw i
 		Name:        &name,
 		Key:         key,
 		Description: &description,
-		Tags:        &tags,
+		Tags:        tags,
 		Kind:        kind,
 		IsActive:    &isActive,
 		IsNumeric:   &isNumeric,
 		Selector:    &selector,
-		Urls:        &urls,
+		Urls:        urls,
 		Unit:        &unit,
 		EventKey:    &eventKey,
 	}

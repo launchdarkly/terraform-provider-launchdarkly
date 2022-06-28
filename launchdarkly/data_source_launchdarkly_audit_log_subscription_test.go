@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
-	ldapi "github.com/launchdarkly/api-client-go/v7"
+	ldapi "github.com/launchdarkly/api-client-go/v10"
 	"github.com/stretchr/testify/require"
 )
 
@@ -32,16 +32,16 @@ func testAccDataSourceAuditLogSubscriptionCreate(client *Client, integrationKey 
 	statementActions := []string{"*"}
 	statements := []ldapi.StatementPost{{
 		Effect:    "allow",
-		Resources: &statementResources,
-		Actions:   &statementActions,
+		Resources: statementResources,
+		Actions:   statementActions,
 	}}
-	subscriptionBody.Statements = &statements
+	subscriptionBody.Statements = statements
 
 	sub, _, err := client.ld.IntegrationAuditLogSubscriptionsApi.CreateSubscription(client.ctx, integrationKey).SubscriptionPost(subscriptionBody).Execute()
 	if err != nil {
 		return nil, fmt.Errorf("failed to create integration subscription for test: %v", handleLdapiErr(err))
 	}
-	return &sub, nil
+	return sub, nil
 }
 
 func testAccDataSourceAuditLogSubscriptionDelete(client *Client, integrationKey, id string) error {
