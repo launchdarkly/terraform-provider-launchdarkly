@@ -8,7 +8,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
-	ldapi "github.com/launchdarkly/api-client-go/v7"
+	ldapi "github.com/launchdarkly/api-client-go/v10"
 	"github.com/stretchr/testify/require"
 )
 
@@ -28,13 +28,13 @@ func testAccDataSourceEnvironmentScaffold(client *Client, projectKey string, env
 	projectBody := ldapi.ProjectPost{
 		Name:         "Env Test Project",
 		Key:          projectKey,
-		Environments: &[]ldapi.EnvironmentPost{envBody},
+		Environments: []ldapi.EnvironmentPost{envBody},
 	}
 	project, err := testAccDataSourceProjectCreate(client, projectBody)
 	if err != nil {
 		return nil, err
 	}
-	for _, env := range project.Environments {
+	for _, env := range project.Environments.Items {
 		if env.Key == envBody.Key {
 			return &env, nil
 		}
@@ -95,7 +95,7 @@ func TestAccDataSourceEnv_exists(t *testing.T) {
 		Key:        envKey,
 		Color:      envColor,
 		SecureMode: ldapi.PtrBool(true),
-		Tags: &[]string{
+		Tags: []string{
 			"some", "tag",
 		},
 	}

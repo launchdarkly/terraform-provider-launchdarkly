@@ -11,14 +11,14 @@ import (
 	"time"
 
 	retryablehttp "github.com/hashicorp/go-retryablehttp"
-	ldapi "github.com/launchdarkly/api-client-go/v7"
+	ldapi "github.com/launchdarkly/api-client-go/v10"
 )
 
 //nolint:staticcheck // The version string gets updated at build time using -ldflags
 var version = "unreleased"
 
 const (
-	APIVersion     = "20191212"
+	APIVersion     = "20220603"
 	MAX_RETRIES    = 8
 	RETRY_WAIT_MIN = 200 * time.Millisecond
 	RETRY_WAIT_MAX = 2000 * time.Millisecond

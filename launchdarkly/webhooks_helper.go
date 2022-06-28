@@ -46,7 +46,7 @@ func webhookRead(ctx context.Context, d *schema.ResourceData, meta interface{}, 
 		return diag.Errorf("failed to get webhook with id %q: %s", webhookID, handleLdapiErr(err))
 	}
 	if webhook.Statements != nil {
-		statements := policyStatementsToResourceData(*webhook.Statements)
+		statements := policyStatementsToResourceData(webhook.Statements)
 		err = d.Set(STATEMENTS, statements)
 		if err != nil {
 			return diag.Errorf("failed to set statements on webhook with id %q: %v", webhookID, err)

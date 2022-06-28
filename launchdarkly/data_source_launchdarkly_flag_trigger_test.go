@@ -8,7 +8,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
-	ldapi "github.com/launchdarkly/api-client-go/v7"
+	ldapi "github.com/launchdarkly/api-client-go/v10"
 	"github.com/stretchr/testify/require"
 )
 
@@ -32,7 +32,7 @@ func testAccDataSourceFlagTriggerScaffold(client *Client, projectKey, flagKey st
 	if err != nil {
 		return nil, err
 	}
-	return &trigger, nil
+	return trigger, nil
 }
 
 func TestAccDataSourceFlagTrigger_noMatchReturnsError(t *testing.T) {
@@ -80,7 +80,7 @@ func TestAccDataSourceFlagTrigger_exists(t *testing.T) {
 	flagKey := "trigger-test"
 	instructions := []map[string]interface{}{{"kind": "turnFlagOff"}}
 	post := ldapi.NewTriggerPost("datadog")
-	post.Instructions = &instructions
+	post.Instructions = instructions
 	trigger, err := testAccDataSourceFlagTriggerScaffold(client, projectKey, flagKey, post)
 	require.NoError(t, err)
 

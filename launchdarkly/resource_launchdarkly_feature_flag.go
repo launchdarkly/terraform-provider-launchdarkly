@@ -6,7 +6,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	ldapi "github.com/launchdarkly/api-client-go/v7"
+	ldapi "github.com/launchdarkly/api-client-go/v10"
 )
 
 // We assign a custom diff in cases where the customer has not assigned CSA or IIS in config for a flag in order to respect project level defaults
@@ -121,9 +121,9 @@ func resourceFeatureFlagCreate(ctx context.Context, d *schema.ResourceData, meta
 		Name:        flagName,
 		Key:         key,
 		Description: &description,
-		Variations:  &variations,
+		Variations:  variations,
 		Temporary:   &temporary,
-		Tags:        &tags,
+		Tags:        tags,
 		Defaults:    defaults,
 	}
 

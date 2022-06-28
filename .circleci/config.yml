@@ -86,6 +86,11 @@ jobs:
             TESTARGS="-run TestAccTeamMember_CreateWithCustomRole" make testacc
             TESTARGS="-run TestAccTeamMember_UpdateWithCustomRole" make testacc
       - run:
+        name: Test Team Resource
+        command: |
+          TESTARGS="-run TestAccTeam_Create" make testacc
+          TESTARGS="-run TestAccTeam_Update" make testacc
+      - run:
           name: Test Webhook Resource
           command: TESTARGS="-run TestAccWebhook" make testacc
       - notify-slack-of-failures

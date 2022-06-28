@@ -1,16 +1,18 @@
 package launchdarkly
 
 import (
-	ldapi "github.com/launchdarkly/api-client-go/v7"
+	ldapi "github.com/launchdarkly/api-client-go/v10"
 )
 
 // testAccDataSourceProjectCreate creates a project with the given project parameters
 func testAccDataSourceProjectCreate(client *Client, projectBody ldapi.ProjectPost) (*ldapi.Project, error) {
-	project, _, err := client.ld.ProjectsApi.PostProject(client.ctx).ProjectPost(projectBody).Execute()
+	_, _, err := client.ld.ProjectsApi.PostProject(client.ctx).ProjectPost(projectBody).Execute()
 	if err != nil {
 		return nil, err
 	}
-	return &project, nil
+	project, _, err := client.ld.ProjectsApi.GetProject(client.ctx, projectBody.Key).Expand("environments").Execute()
+
+	return project, nil
 }
 
 func testAccDataSourceProjectDelete(client *Client, projectKey string) error {
@@ -35,7 +37,7 @@ func testAccDataSourceFeatureFlagScaffold(client *Client, projectKey string, fla
 	if err != nil {
 		return nil, err
 	}
-	return &flag, nil
+	return flag, nil
 
 }
 

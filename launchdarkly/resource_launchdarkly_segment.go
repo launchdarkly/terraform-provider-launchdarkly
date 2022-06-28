@@ -7,7 +7,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	ldapi "github.com/launchdarkly/api-client-go/v7"
+	ldapi "github.com/launchdarkly/api-client-go/v10"
 )
 
 func resourceSegment() *schema.Resource {
@@ -67,7 +67,7 @@ func resourceSegmentCreate(ctx context.Context, d *schema.ResourceData, metaRaw 
 		Name:        segmentName,
 		Key:         key,
 		Description: &description,
-		Tags:        &tags,
+		Tags:        tags,
 	}
 
 	_, _, err := client.ld.SegmentsApi.PostSegment(client.ctx, projectKey, envKey).SegmentBody(segment).Execute()

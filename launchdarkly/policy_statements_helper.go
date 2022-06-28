@@ -5,7 +5,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
-	ldapi "github.com/launchdarkly/api-client-go/v7"
+	ldapi "github.com/launchdarkly/api-client-go/v10"
 )
 
 // policyStatementSchemaOptions is used to help with renaming 'policy_statements' to statements for the launchdarkly_webhook resource.
@@ -137,43 +137,43 @@ func policyStatementFromResourceData(statement map[string]interface{}) (ldapi.St
 	return ret, nil
 }
 
-func policyStatementsToResourceData(statements []ldapi.StatementRep) []interface{} {
+func policyStatementsToResourceData(statements []ldapi.Statement) []interface{} {
 	transformed := make([]interface{}, 0, len(statements))
 	for _, s := range statements {
 		t := map[string]interface{}{
 			EFFECT: s.Effect,
 		}
-		if s.Resources != nil && len(*s.Resources) > 0 {
-			t[RESOURCES] = stringSliceToInterfaceSlice(*s.Resources)
+		if s.Resources != nil && len(s.Resources) > 0 {
+			t[RESOURCES] = stringSliceToInterfaceSlice(s.Resources)
 		}
-		if s.NotResources != nil && len(*s.NotResources) > 0 {
-			t[NOT_RESOURCES] = stringSliceToInterfaceSlice(*s.NotResources)
+		if s.NotResources != nil && len(s.NotResources) > 0 {
+			t[NOT_RESOURCES] = stringSliceToInterfaceSlice(s.NotResources)
 		}
-		if s.Actions != nil && len(*s.Actions) > 0 {
-			t[ACTIONS] = stringSliceToInterfaceSlice(*s.Actions)
+		if s.Actions != nil && len(s.Actions) > 0 {
+			t[ACTIONS] = stringSliceToInterfaceSlice(s.Actions)
 		}
-		if s.NotActions != nil && len(*s.NotActions) > 0 {
-			t[NOT_ACTIONS] = stringSliceToInterfaceSlice(*s.NotActions)
+		if s.NotActions != nil && len(s.NotActions) > 0 {
+			t[NOT_ACTIONS] = stringSliceToInterfaceSlice(s.NotActions)
 		}
 		transformed = append(transformed, t)
 	}
 	return transformed
 }
 
-func statementsToStatementReps(policies []ldapi.Statement) []ldapi.StatementRep {
-	statements := make([]ldapi.StatementRep, 0, len(policies))
+func statementsToStatementReps(policies []ldapi.Statement) []ldapi.Statement {
+	statements := make([]ldapi.Statement, 0, len(policies))
 	for _, p := range policies {
-		rep := ldapi.StatementRep(p)
+		rep := ldapi.Statement(p)
 		statements = append(statements, rep)
 	}
 	return statements
 }
 
 // The relay proxy config api requires a statementRep in the POST body
-func statementPostsToStatementReps(policies []ldapi.StatementPost) []ldapi.StatementRep {
-	statements := make([]ldapi.StatementRep, 0, len(policies))
+func statementPostsToStatementReps(policies []ldapi.StatementPost) []ldapi.Statement {
+	statements := make([]ldapi.Statement, 0, len(policies))
 	for _, p := range policies {
-		rep := ldapi.StatementRep(p)
+		rep := ldapi.Statement(p)
 		statements = append(statements, rep)
 	}
 	return statements

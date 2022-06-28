@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"time"
 
-	ldapi "github.com/launchdarkly/api-client-go/v7"
+	ldapi "github.com/launchdarkly/api-client-go/v10"
 )
 
 var randomRetrySleepSeeded = false
@@ -59,7 +59,7 @@ func handleLdapiErr(err error) error {
 	if err == nil {
 		return nil
 	}
-	if swaggerErr, ok := err.(ldapi.GenericOpenAPIError); ok {
+	if swaggerErr, ok := err.(*ldapi.GenericOpenAPIError); ok {
 		return fmt.Errorf("%s: %s", swaggerErr.Error(), string(swaggerErr.Body()))
 	}
 	return err

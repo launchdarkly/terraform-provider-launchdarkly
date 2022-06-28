@@ -214,7 +214,7 @@ func auditLogSubscriptionRead(ctx context.Context, d *schema.ResourceData, metaR
 
 	_ = d.Set(NAME, sub.Name)
 	_ = d.Set(ON, sub.On)
-	cfg, err := configToResourceData(d, *sub.Config, isDataSource)
+	cfg, err := configToResourceData(d, sub.Config, isDataSource)
 	if err != nil {
 		return diag.Errorf("failed to set config on integration with id %q: %v", *sub.Id, err)
 	}
@@ -222,7 +222,7 @@ func auditLogSubscriptionRead(ctx context.Context, d *schema.ResourceData, metaR
 	if err != nil {
 		return diag.Errorf("failed to set config on integration with id %q: %v", *sub.Id, err)
 	}
-	err = d.Set(STATEMENTS, policyStatementsToResourceData(*sub.Statements))
+	err = d.Set(STATEMENTS, policyStatementsToResourceData(sub.Statements))
 	if err != nil {
 		return diag.Errorf("failed to set statements on integration with id %q: %v", *sub.Id, err)
 	}
