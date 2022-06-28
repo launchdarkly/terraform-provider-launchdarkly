@@ -47,6 +47,7 @@ func Provider() *schema.Provider {
 			},
 		},
 		ResourcesMap: map[string]*schema.Resource{
+			"launchdarkly_team":                      resourceTeam(),
 			"launchdarkly_project":                   resourceProject(),
 			"launchdarkly_environment":               resourceEnvironment(),
 			"launchdarkly_feature_flag":              resourceFeatureFlag(),
@@ -63,6 +64,7 @@ func Provider() *schema.Provider {
 			"launchdarkly_metric":                    resourceMetric(),
 		},
 		DataSourcesMap: map[string]*schema.Resource{
+			"launchdarkly_team":                      dataSourceTeam(),
 			"launchdarkly_team_member":               dataSourceTeamMember(),
 			"launchdarkly_team_members":              dataSourceTeamMembers(),
 			"launchdarkly_project":                   dataSourceProject(),

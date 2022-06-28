@@ -1,0 +1,94 @@
+package launchdarkly
+
+import (
+	"fmt"
+	"log"
+	"os"
+	"regexp"
+	"testing"
+
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	ldapi "github.com/launchdarkly/api-client-go/v10"
+	"github.com/stretchr/testify/require"
+)
+
+func testAccDataSourceTeamConfig(teamKey string) string {
+	return fmt.Sprintf(`
+data "launchdarkly_team" "chicken-nugget" {
+  key = "%s"
+}
+`, teamKey)
+}
+
+func testAccDataSourceTeamCreate(client *Client, teamKey string) (*ldapi.Team, error) {
+	teamPostInput := ldapi.TeamPostInput{
+		Key:  teamKey,
+		Name: teamKey,
+	}
+	team, resp, err := client.ld.TeamsApi.PostTeam(client.ctx).TeamPostInput(teamPostInput).Execute()
+	if err != nil {
+		log.Printf("Error when calling `TeamsApi.PostTeam``:\nTeam: %v\nResponse: %v\nError:%v\n", team, resp, err)
+		return nil, err
+	}
+	return team, nil
+}
+
+func testAccDataSourceTeamDelete(client *Client, teamKey string) error {
+	_, err := client.ld.TeamsApi.DeleteTeam(client.ctx, teamKey).Execute()
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func TestAccDataSourceTeam_noMatchReturnsError(t *testing.T) {
+	key := "false-teeth"
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck: func() {
+			testAccPreCheck(t)
+		},
+		Providers: testAccProviders,
+		Steps: []resource.TestStep{
+			{
+				Config:      testAccDataSourceTeamConfig(key),
+				ExpectError: regexp.MustCompile(`404 Not Found`),
+			},
+		},
+	})
+}
+
+func TestAccDataSourceTeam_exists(t *testing.T) {
+	accTest := os.Getenv("TF_ACC")
+	if accTest == "" {
+		t.SkipNow()
+	}
+
+	// Populate account with dummy team
+	client, err := newClient(os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN), os.Getenv(LAUNCHDARKLY_API_HOST), false)
+	require.NoError(t, err)
+	teamKey := "chicken-nugget"
+	team, createErr := testAccDataSourceTeamCreate(client, teamKey)
+	require.NoError(t, createErr)
+
+	resourceName := fmt.Sprintf("data.launchdarkly_team.%s", teamKey)
+	resource.Test(t, resource.TestCase{
+		PreCheck: func() {
+			testAccPreCheck(t)
+		},
+		Providers: testAccProviders,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccDataSourceTeamConfig(teamKey),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttrSet(resourceName, KEY),
+					resource.TestCheckResourceAttr(resourceName, KEY, *team.Key),
+					resource.TestCheckResourceAttr(resourceName, NAME, *team.Name),
+					resource.TestCheckResourceAttr(resourceName, DESCRIPTION, *team.Description),
+					resource.TestCheckResourceAttr(resourceName, ID, *team.Key),
+				),
+			},
+		},
+	})
+	deleteErr := testAccDataSourceTeamDelete(client, teamKey)
+	require.NoError(t, deleteErr)
+}
