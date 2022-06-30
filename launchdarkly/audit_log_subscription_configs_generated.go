@@ -67,7 +67,7 @@ var SUBSCRIPTION_CONFIGURATION_FIELDS = map[string]IntegrationConfig{
 		"token": {
 			AllowedValues: []string{},
 			DefaultValue:  nil,
-			Description:   "Enter the [base64 _credentials_ based on your API Key](https://www.elastic.co/guide/en/elasticsearch/reference/current/security-api-create-api-key.html)",
+			Description:   "Enter the base64 _credentials_ based on your [API Key](https://www.elastic.co/guide/en/elasticsearch/reference/current/security-api-create-api-key.html)",
 			IsOptional:    false,
 			IsSecret:      true,
 			Type:          "string",
@@ -75,7 +75,7 @@ var SUBSCRIPTION_CONFIGURATION_FIELDS = map[string]IntegrationConfig{
 		"url": {
 			AllowedValues: []string{},
 			DefaultValue:  nil,
-			Description:   "Enter the URL for your Elasticsearch endpoint including socket",
+			Description:   "Enter the URL for your Elasticsearch endpoint, including the socket",
 			IsOptional:    false,
 			IsSecret:      false,
 			Type:          "uri",
