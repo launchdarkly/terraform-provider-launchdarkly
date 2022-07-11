@@ -93,7 +93,7 @@ var SUBSCRIPTION_CONFIGURATION_FIELDS = map[string]IntegrationConfig{
 		"datasetName": {
 			AllowedValues: []string{},
 			DefaultValue:  nil,
-			Description:   "Enter the name of your Honeycomb dataset. This value will associate LaunchDarkly data with the corresponding Honeycomb dataset.",
+			Description:   "Enter the name of your Honeycomb dataset. This associates LaunchDarkly data with the corresponding Honeycomb dataset.",
 			IsOptional:    false,
 			IsSecret:      false,
 			Type:          "string",
