@@ -74,7 +74,7 @@ func featureFlagEnvironmentRead(ctx context.Context, d *schema.ResourceData, raw
 	}
 	envKey := d.Get(ENV_KEY).(string)
 
-	_, res, err := getEnvironment(client, projectKey, envKey)
+	_, res, _ := getEnvironment(client, projectKey, envKey)
 	if isStatusNotFound(res) {
 		log.Printf("[WARN] failed to find environment %q in project %q, removing from state", envKey, projectKey)
 		diags = append(diags, diag.Diagnostic{
