@@ -60,6 +60,10 @@ func getFeatureFlagEnvironment(client *Client, projectKey, flagKey, environmentK
 	return client.ld.FeatureFlagsApi.GetFeatureFlag(client.ctx, projectKey, flagKey).Env(environmentKey).Execute()
 }
 
+func getEnvironment(client *Client, projectKey, environmentKey string) (ldapi.Environment, *http.Response, error) {
+	return client.ld.EnvironmentsApi.GetEnvironment(client.ctx, projectKey, environmentKey).Execute()
+}
+
 func featureFlagEnvironmentRead(ctx context.Context, d *schema.ResourceData, raw interface{}, isDataSource bool) diag.Diagnostics {
 	var diags diag.Diagnostics
 	client := raw.(*Client)
@@ -69,6 +73,17 @@ func featureFlagEnvironmentRead(ctx context.Context, d *schema.ResourceData, raw
 		return diag.FromErr(err)
 	}
 	envKey := d.Get(ENV_KEY).(string)
+
+	_, res, err := getEnvironment(client, projectKey, envKey)
+	if isStatusNotFound(res) {
+		log.Printf("[WARN] failed to find environment %q in project %q, removing from state", envKey, projectKey)
+		diags = append(diags, diag.Diagnostic{
+			Severity: diag.Warning,
+			Summary:  fmt.Sprintf("[WARN] failed to find environment %q in project %q, removing from state", envKey, projectKey),
+		})
+		d.SetId("")
+		return diags
+	}
 
 	flag, res, err := getFeatureFlagEnvironment(client, projectKey, flagKey, envKey)
 	if isStatusNotFound(res) && !isDataSource {
