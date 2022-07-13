@@ -81,24 +81,6 @@ var SUBSCRIPTION_CONFIGURATION_FIELDS = map[string]IntegrationConfig{
 			Type:          "uri",
 		},
 	},
-	"grafana": {
-		"apiKey": {
-			AllowedValues: []string{},
-			DefaultValue:  nil,
-			Description:   "Enter an API key to your Grafana instance. This API key must have editor privileges.",
-			IsOptional:    false,
-			IsSecret:      true,
-			Type:          "string",
-		},
-		"endpointUrl": {
-			AllowedValues: []string{},
-			DefaultValue:  nil,
-			Description:   "Enter your Grafana instance's URL. This instance must be accessible to LaunchDarkly's servers.",
-			IsOptional:    false,
-			IsSecret:      false,
-			Type:          "uri",
-		},
-	},
 	"honeycomb": {
 		"apiKey": {
 			AllowedValues: []string{},
@@ -143,24 +125,6 @@ var SUBSCRIPTION_CONFIGURATION_FIELDS = map[string]IntegrationConfig{
 		IsSecret:      false,
 		Type:          "uri",
 	}},
-	"new-relic": {
-		"accountId": {
-			AllowedValues: []string{},
-			DefaultValue:  nil,
-			Description:   "Enter your [New Relic account ID](https://docs.newrelic.com/docs/accounts/install-new-relic/account-setup/account-id). The associated account must be enabled for Insights Pro.",
-			IsOptional:    false,
-			IsSecret:      false,
-			Type:          "string",
-		},
-		"apiKey": {
-			AllowedValues: []string{},
-			DefaultValue:  nil,
-			Description:   "Enter your [New Relic API key](https://docs.newrelic.com/docs/insights/insights-data-sources/custom-data/introduction-event-api#register).",
-			IsOptional:    false,
-			IsSecret:      true,
-			Type:          "string",
-		},
-	},
 	"new-relic-apm": {
 		"apiKey": {
 			AllowedValues: []string{},
