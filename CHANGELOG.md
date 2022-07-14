@@ -4,6 +4,10 @@ FEATURES:
 
 - Added the `base_permissions` field to the `launchdarkly_custom_role` resource.
 
+BUG FIXES:
+
+- Datasource `launchdarkly_feature_flag_environment` now checks whether the environment exists and print out a more descriptive error.
+
 ## [2.6.1] (April 12, 2022)
 
 NOTES:
