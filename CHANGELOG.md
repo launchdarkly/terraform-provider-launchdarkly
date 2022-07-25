@@ -2,7 +2,7 @@
 
 BUG FIXES:
 
-- Datasource `launchdarkly_feature_flag_environment` now checks whether the environment exists and print out a more descriptive error.
+- Datasource `launchdarkly_feature_flag_environment` now checks whether the environment exists and print out a more descriptive error. [#101](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/101)
 
 ## [2.7.0] (May 5, 2022)
 
