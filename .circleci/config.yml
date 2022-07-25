@@ -35,7 +35,7 @@ jobs:
 
     environment:
       # sc-146360 - overrides the default timeout of 3000ms when reaching checkpoint-api.hashicorp.com
-      CHECKPOINT_TIMEOUT: 10000
+      CHECKPOINT_TIMEOUT: 15000
 
     steps:
       - checkout
