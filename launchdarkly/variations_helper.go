@@ -3,7 +3,6 @@ package launchdarkly
 import (
 	"encoding/json"
 	"fmt"
-	"reflect"
 	"strconv"
 	"strings"
 
@@ -307,7 +306,7 @@ func variationsToVariationType(variations []ldapi.Variation) (string, error) {
 	case map[string]interface{}, []interface{}:
 		variationType = JSON_VARIATION
 	default:
-		return "", fmt.Errorf("unknown variation type: %q", reflect.TypeOf(variationValue))
+		return "", fmt.Errorf("unknown variation type: %T", variationValue)
 	}
 	return variationType, nil
 }

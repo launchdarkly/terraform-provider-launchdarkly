@@ -3,6 +3,32 @@
 package launchdarkly
 
 var SUBSCRIPTION_CONFIGURATION_FIELDS = map[string]IntegrationConfig{
+	"cloudtrail": {
+		"accountId": {
+			AllowedValues: []string{},
+			DefaultValue:  nil,
+			Description:   "Enter your [AWS account ID](https://docs.aws.amazon.com/IAM/latest/UserGuide/console_account-alias.html#FindingYourAWSId). The associated account must be configured to use CloudTrail Lake.",
+			IsOptional:    false,
+			IsSecret:      false,
+			Type:          "string",
+		},
+		"iamRoleArn": {
+			AllowedValues: []string{},
+			DefaultValue:  nil,
+			Description:   "Enter the ARN of the IAM Role for LaunchDarkly to assume to post to your AWS CloudTrail destination.",
+			IsOptional:    false,
+			IsSecret:      true,
+			Type:          "string",
+		},
+		"ingestionChannelArn": {
+			AllowedValues: []string{},
+			DefaultValue:  nil,
+			Description:   "Enter the ARN of the CloudTrail Ingestion Channel for LaunchDarkly to use.",
+			IsOptional:    false,
+			IsSecret:      true,
+			Type:          "string",
+		},
+	},
 	"datadog": {
 		"apiKey": {
 			AllowedValues: []string{},
@@ -67,7 +93,7 @@ var SUBSCRIPTION_CONFIGURATION_FIELDS = map[string]IntegrationConfig{
 		"token": {
 			AllowedValues: []string{},
 			DefaultValue:  nil,
-			Description:   "Enter the [base64 _credentials_ based on your API Key](https://www.elastic.co/guide/en/elasticsearch/reference/current/security-api-create-api-key.html)",
+			Description:   "Enter the base64 _credentials_ based on your [API Key](https://www.elastic.co/guide/en/elasticsearch/reference/current/security-api-create-api-key.html)",
 			IsOptional:    false,
 			IsSecret:      true,
 			Type:          "string",
@@ -75,7 +101,7 @@ var SUBSCRIPTION_CONFIGURATION_FIELDS = map[string]IntegrationConfig{
 		"url": {
 			AllowedValues: []string{},
 			DefaultValue:  nil,
-			Description:   "Enter the URL for your Elasticsearch endpoint including socket",
+			Description:   "Enter the URL for your Elasticsearch endpoint, including the socket",
 			IsOptional:    false,
 			IsSecret:      false,
 			Type:          "uri",
@@ -93,7 +119,7 @@ var SUBSCRIPTION_CONFIGURATION_FIELDS = map[string]IntegrationConfig{
 		"datasetName": {
 			AllowedValues: []string{},
 			DefaultValue:  nil,
-			Description:   "Enter the name of your Honeycomb dataset. This value will associate LaunchDarkly data with the corresponding Honeycomb dataset.",
+			Description:   "Enter the name of your Honeycomb dataset. This associates LaunchDarkly data with the corresponding Honeycomb dataset.",
 			IsOptional:    false,
 			IsSecret:      false,
 			Type:          "string",
@@ -195,4 +221,38 @@ var SUBSCRIPTION_CONFIGURATION_FIELDS = map[string]IntegrationConfig{
 			Type:          "string",
 		},
 	},
+	"terraform-cloud": {
+		"hostName": {
+			AllowedValues: []string{},
+			DefaultValue:  "https://app.terraform.io",
+			Description:   "Enter your Terraform Enterprise host name in the format https://HOST_URL.",
+			IsOptional:    true,
+			IsSecret:      false,
+			Type:          "string",
+		},
+		"token": {
+			AllowedValues: []string{},
+			DefaultValue:  nil,
+			Description:   "Enter your Terraform Enterprise [user token or team token](https://www.terraform.io/cloud-docs/users-teams-organizations/users#creating-a-token).",
+			IsOptional:    false,
+			IsSecret:      true,
+			Type:          "string",
+		},
+		"workspaceId": {
+			AllowedValues: []string{},
+			DefaultValue:  nil,
+			Description:   "Enter the ID of the Terraform workspace you want runs to trigger for based on the policy below.",
+			IsOptional:    false,
+			IsSecret:      false,
+			Type:          "string",
+		},
+	},
+	"zapier": {"url": {
+		AllowedValues: []string{},
+		DefaultValue:  nil,
+		Description:   "Enter your zap webhook URL",
+		IsOptional:    false,
+		IsSecret:      false,
+		Type:          "uri",
+	}},
 }
