@@ -77,10 +77,10 @@ func featureFlagEnvironmentRead(ctx context.Context, d *schema.ResourceData, raw
 	}
 
 	if !envExists {
-		log.Printf("[WARN] failed to find environment %q in project %q, removing from state", envKey, projectKey)
+		log.Printf("[WARN] failed to find environment %q in project %q, removing resource from state", envKey, projectKey)
 		diags = append(diags, diag.Diagnostic{
 			Severity: diag.Warning,
-			Summary:  fmt.Sprintf("[WARN] failed to find environment %q in project %q, removing from state", envKey, projectKey),
+			Summary:  fmt.Sprintf("[WARN] failed to find environment %q in project %q, removing resource from state", envKey, projectKey),
 		})
 		d.SetId("")
 		return diags
