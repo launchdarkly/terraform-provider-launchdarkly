@@ -14,6 +14,10 @@ NOTES:
 
 - Upgrade Go version to 1.18
 
+NOTES:
+
+- Upgrade Go version to 1.18
+
 ## [2.7.0] (May 5, 2022)
 
 FEATURES:
