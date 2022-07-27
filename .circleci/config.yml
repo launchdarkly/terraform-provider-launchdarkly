@@ -3,7 +3,7 @@ version: 2.1
 
 orbs:
   go: circleci/go@1.7.0
-  linter: talkiq/linter@1.4.1
+  linter: talkiq/linter@2.0.0
   slack: circleci/slack@4.7.1
 
 commands:
@@ -27,7 +27,7 @@ jobs:
   test:
     executor:
       name: go/default
-      tag: &go_version "1.16.10"
+      tag: &go_version "1.18.1"
 
     environment:
       # sc-146360 - overrides the default timeout of 3000ms when reaching checkpoint-api.hashicorp.com
@@ -102,7 +102,8 @@ jobs:
           command: |
             sudo apt update
             sudo apt install python3-pip python-is-python3
-      - linter/pre-commit
+      - linter/pre-commit:
+          cache_prefix: "0"
       - notify-slack-of-failures
 
 workflows:
