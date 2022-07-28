@@ -10,6 +10,14 @@ BUG FIXES:
 
 - The `launchdarkly_feature_flag_environment` data source now checks whether the environment exists and prints out a more descriptive error. [#101](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/101)
 
+NOTES:
+
+- Upgrade Go version to 1.18
+
+## [2.7.0] (May 5, 2022)
+
+FEATURES:
+
 - Added the `base_permissions` field to the `launchdarkly_custom_role` resource.
 
 ## [2.6.1] (April 12, 2022)
