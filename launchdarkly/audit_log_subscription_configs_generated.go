@@ -195,12 +195,4 @@ var SUBSCRIPTION_CONFIGURATION_FIELDS = map[string]IntegrationConfig{
 			Type:          "string",
 		},
 	},
-	"zapier": {"url": {
-		AllowedValues: []string{},
-		DefaultValue:  nil,
-		Description:   "Enter your zap webhook URL",
-		IsOptional:    false,
-		IsSecret:      false,
-		Type:          "uri",
-	}},
 }

@@ -1,8 +1,14 @@
-## [2.7.1] (July 21, 2022)
+## [2.7.2] (July 28, 2022)
 
 BUG FIXES:
 
-- Datasource `launchdarkly_feature_flag_environment` now checks whether the environment exists and print out a more descriptive error. [#101](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/101)
+- Remove invalid configurations from the `launchdarkly_audit_log_subscription` resource.
+
+## [2.7.1] (July 27, 2022)
+
+BUG FIXES:
+
+- The `launchdarkly_feature_flag_environment` data source now checks whether the environment exists and prints out a more descriptive error. [#101](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/101)
 
 NOTES:
 
