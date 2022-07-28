@@ -1,3 +1,5 @@
+## [2.7.2] (July 28, 2022)
+
 BUG FIXES:
 
 - Remove invalid configurations from the `launchdarkly_audit_log_subscription` resource.
