@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	ldapi "github.com/launchdarkly/api-client-go/v7"
+	ldapi "github.com/launchdarkly/api-client-go/v10"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -34,8 +34,8 @@ func TestPolicyStatementsRoundTripConversion(t *testing.T) {
 			},
 			expected: []ldapi.StatementPost{
 				{
-					Resources: &statementResources,
-					Actions:   &statementActions,
+					Resources: statementResources,
+					Actions:   statementActions,
 					Effect:    "allow",
 				},
 			},
@@ -58,13 +58,13 @@ func TestPolicyStatementsRoundTripConversion(t *testing.T) {
 			},
 			expected: []ldapi.StatementPost{
 				{
-					Resources: &statementPostResources1,
-					Actions:   &statementPostActions,
+					Resources: statementPostResources1,
+					Actions:   statementPostActions,
 					Effect:    "allow",
 				},
 				{
-					Resources: &statementPostResources2,
-					Actions:   &statementPostActions,
+					Resources: statementPostResources2,
+					Actions:   statementPostActions,
 					Effect:    "allow",
 				},
 			},
@@ -82,8 +82,8 @@ func TestPolicyStatementsRoundTripConversion(t *testing.T) {
 			},
 			expected: []ldapi.StatementPost{
 				{
-					NotResources: strArrayPtr([]string{"proj/*:env/production:flag/*"}),
-					Actions:      &statementPostActions,
+					NotResources: *strArrayPtr([]string{"proj/*:env/production:flag/*"}),
+					Actions:      statementPostActions,
 					Effect:       "allow",
 				},
 			},
@@ -101,8 +101,8 @@ func TestPolicyStatementsRoundTripConversion(t *testing.T) {
 			},
 			expected: []ldapi.StatementPost{
 				{
-					Resources:  strArrayPtr([]string{"proj/*:env/production:flag/*"}),
-					NotActions: &statementPostActions,
+					Resources:  *strArrayPtr([]string{"proj/*:env/production:flag/*"}),
+					NotActions: statementPostActions,
 					Effect:     "allow",
 				},
 			},

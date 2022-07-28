@@ -6,7 +6,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	ldapi "github.com/launchdarkly/api-client-go/v7"
+	ldapi "github.com/launchdarkly/api-client-go/v10"
 )
 
 func resourceWebhook() *schema.Resource {
@@ -56,7 +56,7 @@ func resourceWebhookCreate(ctx context.Context, d *schema.ResourceData, metaRaw 
 		if err != nil {
 			return diag.FromErr(err)
 		}
-		webhookBody.Statements = &statements
+		webhookBody.Statements = statements
 	}
 
 	// The sign field isn't returned when GETting a webhook so terraform can't import it properly.

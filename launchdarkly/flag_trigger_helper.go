@@ -114,7 +114,7 @@ func flagTriggerRead(ctx context.Context, d *schema.ResourceData, metaRaw interf
 	_ = d.Set(ENV_KEY, envKey)
 	_ = d.Set(FLAG_KEY, flagKey)
 	_ = d.Set(INTEGRATION_KEY, *trigger.IntegrationKey)
-	_ = d.Set(INSTRUCTIONS, *trigger.Instructions)
+	_ = d.Set(INSTRUCTIONS, trigger.Instructions)
 	_ = d.Set(MAINTAINER_ID, trigger.MaintainerId)
 	_ = d.Set(ENABLED, trigger.Enabled)
 	// NOTE: we do not want to set the trigger url at any point past the create as it will always be obscured

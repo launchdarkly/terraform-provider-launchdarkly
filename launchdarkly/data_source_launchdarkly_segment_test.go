@@ -8,7 +8,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
-	ldapi "github.com/launchdarkly/api-client-go/v7"
+	ldapi "github.com/launchdarkly/api-client-go/v10"
 	"github.com/stretchr/testify/require"
 )
 
@@ -43,7 +43,7 @@ func testAccDataSourceSegmentCreate(client *Client, projectKey, segmentKey strin
 		Name:        "Data Source Test Segment",
 		Key:         segmentKey,
 		Description: ldapi.PtrString("test description"),
-		Tags:        &[]string{"terraform"},
+		Tags:        []string{"terraform"},
 	}
 	_, _, err = client.ld.SegmentsApi.PostSegment(client.ctx, project.Key, envKey).SegmentBody(segmentBody).Execute()
 
@@ -64,7 +64,7 @@ func testAccDataSourceSegmentCreate(client *Client, projectKey, segmentKey strin
 		return nil, fmt.Errorf("failed to update segment %q in project %q: %s", segmentKey, projectKey, handleLdapiErr(err))
 	}
 
-	return &segment, nil
+	return segment, nil
 }
 
 func TestAccDataSourceSegment_noMatchReturnsError(t *testing.T) {

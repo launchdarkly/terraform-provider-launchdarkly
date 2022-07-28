@@ -7,7 +7,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	ldapi "github.com/launchdarkly/api-client-go/v7"
+	ldapi "github.com/launchdarkly/api-client-go/v10"
 )
 
 // We assign a custom diff in cases where the customer has not assigned a default for CSA or IIS in config
@@ -136,7 +136,7 @@ func resourceProjectCreate(ctx context.Context, d *schema.ResourceData, metaRaw 
 	}
 
 	if len(envs) > 0 {
-		projectBody.Environments = &envs
+		projectBody.Environments = envs
 	}
 
 	_, _, err := client.ld.ProjectsApi.PostProject(client.ctx).ProjectPost(projectBody).Execute()
@@ -207,7 +207,7 @@ func resourceProjectUpdate(ctx context.Context, d *schema.ResourceData, metaRaw 
 	// Update environments if necessary
 	oldSchemaEnvList, newSchemaEnvList := d.GetChange(ENVIRONMENTS)
 	// Get the project so we can see if we need to create any environments or just update existing environments
-	project, _, err := client.ld.ProjectsApi.GetProject(client.ctx, projectKey).Execute()
+	project, _, err := getFullProject(client, projectKey)
 	if err != nil {
 		return diag.Errorf("failed to load project %q before updating environments: %s", projectKey, handleLdapiErr(err))
 	}
@@ -228,7 +228,7 @@ func resourceProjectUpdate(ctx context.Context, d *schema.ResourceData, metaRaw 
 		envKey := envConfig[KEY].(string)
 		envConfigsForCompare[envKey] = envConfig
 		// Check if the environment already exists. If it does not exist, create it
-		exists := environmentExistsInProject(project, envKey)
+		exists := environmentExistsInProject(*project, envKey)
 		if !exists {
 			envPost := environmentPostFromResourceData(env)
 			_, _, err := client.ld.EnvironmentsApi.PostEnvironment(client.ctx, projectKey).EnvironmentPost(envPost).Execute()

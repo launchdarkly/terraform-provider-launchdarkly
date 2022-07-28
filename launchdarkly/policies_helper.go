@@ -5,7 +5,7 @@ import (
 	"sort"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	ldapi "github.com/launchdarkly/api-client-go/v7"
+	ldapi "github.com/launchdarkly/api-client-go/v10"
 )
 
 func policyArraySchema() *schema.Schema {
@@ -67,8 +67,8 @@ func policyFromResourceData(val interface{}) ldapi.StatementPost {
 	sort.Strings(statementResources)
 
 	p := ldapi.StatementPost{
-		Resources: &statementResources,
-		Actions:   &statementActions,
+		Resources: statementResources,
+		Actions:   statementActions,
 		Effect:    policyMap[EFFECT].(string),
 	}
 	return p
@@ -101,8 +101,8 @@ func policyHash(val interface{}) int {
 	// it was creating 3 different hash indices per policy since it was hashing the
 	// pointer addresses rather than the values themselves
 	policy := hashStatement{
-		Resources: *rawPolicy.Resources,
-		Actions:   *rawPolicy.Actions,
+		Resources: rawPolicy.Resources,
+		Actions:   rawPolicy.Actions,
 		Effect:    rawPolicy.Effect,
 	}
 	return schema.HashString(fmt.Sprintf("%v", policy))
