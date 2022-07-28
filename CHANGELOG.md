@@ -14,13 +14,11 @@ NOTES:
 
 - Upgrade Go version to 1.18
 
-NOTES:
+## [2.7.1] (July 27, 2022)
 
-- Upgrade Go version to 1.18
+BUG FIXES:
 
-## [2.7.0] (May 5, 2022)
-
-FEATURES:
+- The `launchdarkly_feature_flag_environment` data source now checks whether the environment exists and prints out a more descriptive error. [#101](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/101)
 
 - Added the `base_permissions` field to the `launchdarkly_custom_role` resource.
 
