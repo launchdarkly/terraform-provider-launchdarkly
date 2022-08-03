@@ -9,31 +9,30 @@ description: |-
 
 Provides a LaunchDarkly team data source.
 
-This data source allows you to retrieve team information from your LaunchDarkly organization on a team.
+This data source allows you to retrieve team information from your LaunchDarkly organization.
 
 ## Example Usage
 
 ```hcl
-data "launchdarkly_team" "example" {
-  key = ["example_key_1"]
+data "launchdarkly_team" "platform_team" {
+  key = "platform_team"
 }
 ```
 
 ## Argument Reference
 
-- `key` - (Required) A string associated with a team key.
-
-- `name` - (Optional) A string associated with a team name.
-
-- `description` - (Optional) A string associated with a team description.
+- `key` - (Required) The team key.
 
 ## Attributes Reference
 
-In addition to the arguments above, the resource exports the found team as `team`.  
-The following attributes are available for a team:
+In addition to the arguments above, the resource exports the following attributes:
 
-- `member ID's` - The list of team member's IDs as strings.
+- `custom_role_keys` - The list of the keys of the custom roles that you have assigned to the team.
 
-- `maintainers` - The list of team maintainers as strings.
+- `description` - The team description.
 
-- `custom_role_keys` - The list of keys for custom roles the team has.
+- `maintainers` - The list of team maintainers as [team member objects](/docs/providers/launchdarkly/d/team_member.html).
+
+- `name` - Human readable name for the team.
+
+- `project_keys` - The list of keys of the projects that the team has any write access to.
