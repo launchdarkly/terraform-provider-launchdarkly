@@ -8,7 +8,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 
-
 	ldapi "github.com/launchdarkly/api-client-go/v10"
 )
 
@@ -84,13 +83,13 @@ func makeAddAndRemoveArrays(old, updated []string) (remove, add []string) {
 
 	for _, item := range updated {
 		if _, ok := m[item]; ok {
-			intersection_map[item] = true
+			intersectionMap[item] = true
 		}
 	}
 
 	for _, item := range old {
 		// if item in old isn't in intersecion append it
-		_, ok := intersection_map[item]
+		_, ok := intersectionMap[item]
 		if !ok {
 			remove = append(remove, item)
 		}
@@ -98,7 +97,7 @@ func makeAddAndRemoveArrays(old, updated []string) (remove, add []string) {
 
 	for _, item := range updated {
 		// if item in new isn't in intersecion append it
-		_, ok := intersection_map[item]
+		_, ok := intersectionMap[item]
 		if !ok {
 			add = append(add, item)
 		}
@@ -155,6 +154,7 @@ func resourceTeamCreate(ctx context.Context, d *schema.ResourceData, metaRaw int
 	if err != nil {
 		return diag.Errorf("Error when calling `TeamsApi.PostTeam`: %v\n\n request: %v", err, teamBody)
 	}
+	d.SetId(key)
 
 	return resourceTeamRead(ctx, d, metaRaw)
 }
