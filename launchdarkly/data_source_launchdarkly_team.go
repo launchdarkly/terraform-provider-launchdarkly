@@ -25,7 +25,7 @@ func teamSchema() map[string]*schema.Schema {
 			Description: "The team's human-readable name",
 		},
 		MAINTAINERS: {
-			Type:     schema.TypeList,
+			Type:     schema.TypeSet,
 			Computed: true,
 			Elem: &schema.Resource{
 				Schema: map[string]*schema.Schema{
@@ -55,13 +55,13 @@ func teamSchema() map[string]*schema.Schema {
 			Description: "A list of maintainers as 'member' objects",
 		},
 		PROJECT_KEYS: {
-			Type:        schema.TypeList,
+			Type:        schema.TypeSet,
 			Computed:    true,
 			Elem:        &schema.Schema{Type: schema.TypeString},
 			Description: "A list of keys of projects that this team owns",
 		},
 		CUSTOM_ROLE_KEYS: {
-			Type:        schema.TypeList,
+			Type:        schema.TypeSet,
 			Optional:    true,
 			Elem:        &schema.Schema{Type: schema.TypeString},
 			Description: "A list of keys for custom roles the team has",

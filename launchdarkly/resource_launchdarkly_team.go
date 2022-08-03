@@ -4,12 +4,10 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"sort"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 
-	//"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 
 	ldapi "github.com/launchdarkly/api-client-go/v10"
 )
@@ -43,19 +41,19 @@ func resourceTeam() *schema.Resource {
 				Description: "The team's human-readable name",
 			},
 			MEMBER_IDS: {
-				Type:        schema.TypeList,
+				Type:        schema.TypeSet,
 				Optional:    true,
 				Elem:        &schema.Schema{Type: schema.TypeString},
 				Description: "A list of team member IDs as strings",
 			},
 			MAINTAINERS: {
-				Type:        schema.TypeList,
+				Type:        schema.TypeSet,
 				Optional:    true,
 				Elem:        &schema.Schema{Type: schema.TypeString},
 				Description: "A list of team maintainer IDs as strings",
 			},
 			CUSTOM_ROLE_KEYS: {
-				Type:        schema.TypeList,
+				Type:        schema.TypeSet,
 				Optional:    true,
 				Elem:        &schema.Schema{Type: schema.TypeString},
 				Description: "A list of custom role keys for the team",
@@ -65,20 +63,19 @@ func resourceTeam() *schema.Resource {
 }
 
 func interfaceToArr(old interface{}) []string {
-	interfaceArr := old.([]interface{})
+	interfaceArr := old.(*schema.Set).List()
 
 	stringArr := make([]string, len(interfaceArr))
 	for i, str := range interfaceArr {
 		stringArr[i] = str.(string)
 	}
 
-	return sort.StringSlice(stringArr)
-
+	return stringArr
 }
 
 func makeAddAndRemoveArrays(old, updated []string) (remove, add []string) {
 	m := make(map[string]bool)
-	intersection_map := make(map[string]bool)
+	intersectionMap := make(map[string]bool)
 
 	// creates the intersection
 	for _, item := range old {
@@ -115,9 +112,9 @@ func resourceTeamCreate(ctx context.Context, d *schema.ResourceData, metaRaw int
 	key := d.Get(KEY).(string)
 	name := d.Get(NAME).(string)
 	description := d.Get(DESCRIPTION).(string)
-	memberIDs := d.Get(MEMBER_IDS).([]interface{})
-	maintainers := d.Get(MAINTAINERS).([]interface{})
-	customRoleKeys := d.Get(CUSTOM_ROLE_KEYS).([]interface{})
+	memberIDs := d.Get(MEMBER_IDS).(*schema.Set).List()
+	maintainers := d.Get(MAINTAINERS).(*schema.Set).List()
+	customRoleKeys := d.Get(CUSTOM_ROLE_KEYS).(*schema.Set).List()
 
 	stringMemberIDs := make([]string, len(memberIDs))
 	for i := range memberIDs {
@@ -153,8 +150,6 @@ func resourceTeamCreate(ctx context.Context, d *schema.ResourceData, metaRaw int
 		PermissionGrants: permissionGrantArray,
 	}
 
-	d.SetId(key)
-
 	_, _, err := client.ld.TeamsApi.PostTeam(client.ctx).TeamPostInput(teamBody).Execute()
 
 	if err != nil {
@@ -177,7 +172,7 @@ func resourceTeamRead(ctx context.Context, d *schema.ResourceData, metaRaw inter
 			Severity: diag.Warning,
 			Summary:  fmt.Sprintf("[WARN] failed to find team %q, removing from state", teamKey),
 		})
-		d.SetId(teamKey)
+		d.SetId("")
 		return diags
 	}
 
@@ -197,9 +192,9 @@ func resourceTeamRead(ctx context.Context, d *schema.ResourceData, metaRaw inter
 			log.Printf("[WARN] failed to find members for team %q, removing from state", teamKey)
 			diags = append(diags, diag.Diagnostic{
 				Severity: diag.Warning,
-				Summary:  fmt.Sprintf("[WARN] failed to find members for team %q, removing from state", teamKey),
+				Summary:  fmt.Sprintf("[WARN] failed to find members for team %q, removing team from state", teamKey),
 			})
-			d.SetId(teamKey)
+			d.SetId("")
 			return diags
 		}
 
@@ -249,17 +244,17 @@ func resourceTeamUpdate(ctx context.Context, d *schema.ResourceData, metaRaw int
 	maintainTeam := "maintainTeam"
 
 	if d.HasChange(NAME) {
-		_, new := d.GetChange(NAME)
+		name := d.Get(NAME)
 		instruction := make(map[string]interface{})
 		instruction["kind"] = "updateName"
-		instruction["value"] = new.(string)
+		instruction["value"] = name.(string)
 		instructions = append(instructions, instruction)
 	}
 	if d.HasChange(DESCRIPTION) {
-		_, new := d.GetChange(DESCRIPTION)
+		description := d.Get(DESCRIPTION)
 		instruction := make(map[string]interface{})
 		instruction["kind"] = "updateDescription"
-		instruction["value"] = new.(string)
+		instruction["value"] = description.(string)
 		instructions = append(instructions, instruction)
 	}
 	if d.HasChange(MEMBER_IDS) {
