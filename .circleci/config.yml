@@ -87,7 +87,7 @@ jobs:
             TESTARGS="-run TestAccTeamMember_UpdateWithCustomRole" make testacc
       - run:
           name: Test Team Resource
-          command: TESTARGS="-run TestAccTeam_CreateUpdate" make testacc
+          command: TESTARGS="-run TestAccTeam_" make testacc
       - run:
           name: Test Webhook Resource
           command: TESTARGS="-run TestAccWebhook" make testacc

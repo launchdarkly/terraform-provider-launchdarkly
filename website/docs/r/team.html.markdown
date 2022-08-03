@@ -38,7 +38,7 @@ resource "launchdarkly_team" "platform_team" {
 
 - `maintainers` - (Optional) List of member IDs for users who maintain the team.
 
-- `custom_role_keys` - (Optional) List of custom role keys the team will access.
+- `custom_role_keys` - (Optional) List of custom role keys the team will access. The referenced custom roles must already exist in LaunchDarkly. If they don't, the provider may behave unexpectedly.
 
 
 ## Import
