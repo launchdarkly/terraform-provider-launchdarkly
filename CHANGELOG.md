@@ -1,3 +1,13 @@
+## [2.8.0] (August 04, 2022)
+
+FEATURES:
+
+- Added `launchdarkly_team` data source and provider.
+
+NOTES:
+
+- Updated LaunchDarkly go api client from v7 to v10.
+
 ## [2.7.2] (July 28, 2022)
 
 BUG FIXES:
@@ -14,9 +24,11 @@ NOTES:
 
 - Upgrade Go version to 1.18
 
-## [2.7.0] (May 5, 2022)
+## [2.7.1] (July 27, 2022)
 
-FEATURES:
+BUG FIXES:
+
+- The `launchdarkly_feature_flag_environment` data source now checks whether the environment exists and prints out a more descriptive error. [#101](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/101)
 
 - Added the `base_permissions` field to the `launchdarkly_custom_role` resource.
 
