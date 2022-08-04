@@ -1,3 +1,13 @@
+## [2.8.0] (August 04, 2022)
+
+FEATURES:
+
+- Added `launchdarkly_team` data source and provider.
+
+NOTES:
+
+- Updated LaunchDarkly go api client from v7 to v10.
+
 ## [2.7.2] (July 28, 2022)
 
 BUG FIXES:
