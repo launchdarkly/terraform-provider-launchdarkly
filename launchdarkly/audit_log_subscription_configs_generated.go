@@ -111,7 +111,7 @@ var SUBSCRIPTION_CONFIGURATION_FIELDS = map[string]IntegrationConfig{
 		"level": {
 			AllowedValues: []string{},
 			DefaultValue:  "INFO",
-			Description:   "The log level with which LaunchDarkly messages will be published.",
+			Description:   "The level of log messages from LaunchDarkly.",
 			IsOptional:    true,
 			IsSecret:      false,
 			Type:          "string",

@@ -73,7 +73,6 @@ const (
 	ON_VARIATION                     = "on_variation"
 	OP                               = "op"
 	PATTERN                          = "pattern"
-	PERMISSION_GRANTS                = "permission_grants"
 	POLICY                           = "policy"
 	POLICY_STATEMENTS                = "policy_statements"
 	PREREQUISITES                    = "prerequisites"
