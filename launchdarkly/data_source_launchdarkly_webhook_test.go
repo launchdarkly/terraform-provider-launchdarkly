@@ -8,7 +8,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
-	ldapi "github.com/launchdarkly/api-client-go/v7"
+	ldapi "github.com/launchdarkly/api-client-go/v10"
 	"github.com/stretchr/testify/require"
 )
 
@@ -28,11 +28,11 @@ func testAccDataSourceWebhookCreate(client *Client, webhookName string) (*ldapi.
 		Sign: false,
 		On:   true,
 		Name: ldapi.PtrString(webhookName),
-		Tags: &[]string{"terraform"},
-		Statements: &[]ldapi.StatementPost{
+		Tags: []string{"terraform"},
+		Statements: []ldapi.StatementPost{
 			{
-				Resources: &statementResources,
-				Actions:   &statementActions,
+				Resources: statementResources,
+				Actions:   statementActions,
 				Effect:    "allow",
 			},
 		},
@@ -43,7 +43,7 @@ func testAccDataSourceWebhookCreate(client *Client, webhookName string) (*ldapi.
 		return nil, fmt.Errorf("failed to create webhook with name %q: %s", webhookName, handleLdapiErr(err))
 	}
 
-	return &webhook, nil
+	return webhook, nil
 }
 
 func testAccDataSourceWebhookDelete(client *Client, webhookId string) error {

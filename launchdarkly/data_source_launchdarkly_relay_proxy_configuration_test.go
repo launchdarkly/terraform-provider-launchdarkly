@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
-	ldapi "github.com/launchdarkly/api-client-go/v7"
+	ldapi "github.com/launchdarkly/api-client-go/v10"
 	"github.com/stretchr/testify/require"
 )
 
@@ -50,9 +50,9 @@ func TestAccDataSourceRelayProxyConfig_exists(t *testing.T) {
 
 	name := "test config"
 	resourceSpec := "proj/*:env/*"
-	policy := []ldapi.StatementRep{{
-		Resources: &([]string{resourceSpec}),
-		Actions:   &([]string{"*"}),
+	policy := []ldapi.Statement{{
+		Resources: ([]string{resourceSpec}),
+		Actions:   ([]string{"*"}),
 		Effect:    "allow",
 	}}
 
@@ -97,9 +97,9 @@ func TestAccDataSourceRelayProxyConfig_NotResource(t *testing.T) {
 
 	name := "test config"
 	resourceSpec := "proj/*:env/*"
-	policy := []ldapi.StatementRep{{
-		NotResources: &([]string{resourceSpec}),
-		Actions:      &([]string{"*"}),
+	policy := []ldapi.Statement{{
+		NotResources: ([]string{resourceSpec}),
+		Actions:      ([]string{"*"}),
 		Effect:       "allow",
 	}}
 

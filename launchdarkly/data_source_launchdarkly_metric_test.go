@@ -8,7 +8,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
-	ldapi "github.com/launchdarkly/api-client-go/v7"
+	ldapi "github.com/launchdarkly/api-client-go/v10"
 	"github.com/stretchr/testify/require"
 )
 
@@ -36,7 +36,7 @@ func testAccDataSourceMetricScaffold(client *Client, projectKey string, metricBo
 		return nil, err
 	}
 
-	return &metric, nil
+	return metric, nil
 }
 
 func TestAccDataSourceMetric_noMatchReturnsError(t *testing.T) {
@@ -92,7 +92,7 @@ func TestAccDataSourceMetric_exists(t *testing.T) {
 		Name: &metricName,
 		Key:  metricKey,
 		Kind: "pageview",
-		Urls: &[]ldapi.UrlPost{{
+		Urls: []ldapi.UrlPost{{
 			Kind:      &metricUrlKind,
 			Substring: &metricUrlSubstring,
 		}},

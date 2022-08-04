@@ -9,7 +9,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 
-	ldapi "github.com/launchdarkly/api-client-go/v7"
+	ldapi "github.com/launchdarkly/api-client-go/v10"
 )
 
 func resourceTeamMember() *schema.Resource {
@@ -79,7 +79,7 @@ func resourceTeamMemberCreate(ctx context.Context, d *schema.ResourceData, metaR
 		FirstName:   &firstName,
 		LastName:    &lastName,
 		Role:        &memberRole,
-		CustomRoles: &customRoles,
+		CustomRoles: customRoles,
 	}
 
 	members, _, err := client.ld.AccountMembersApi.PostMembers(client.ctx).NewMemberForm([]ldapi.NewMemberForm{membersBody}).Execute()

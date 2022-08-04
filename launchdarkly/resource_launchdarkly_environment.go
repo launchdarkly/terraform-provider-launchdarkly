@@ -7,7 +7,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	ldapi "github.com/launchdarkly/api-client-go/v7"
+	ldapi "github.com/launchdarkly/api-client-go/v10"
 )
 
 func resourceEnvironment() *schema.Resource {
@@ -54,7 +54,7 @@ func resourceEnvironmentCreate(ctx context.Context, d *schema.ResourceData, meta
 		DefaultTtl:         &defaultTTL,
 		SecureMode:         &secureMode,
 		DefaultTrackEvents: &defaultTrackEvents,
-		Tags:               &tags,
+		Tags:               tags,
 		RequireComments:    &requireComments,
 		ConfirmChanges:     &confirmChanges,
 	}
@@ -157,7 +157,7 @@ func environmentExists(projectKey string, key string, meta *Client) (bool, error
 }
 
 func environmentExistsInProject(project ldapi.Project, envKey string) bool {
-	for _, env := range project.Environments {
+	for _, env := range project.Environments.Items {
 		if env.Key == envKey {
 			return true
 		}

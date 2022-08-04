@@ -4,9 +4,11 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"net/http"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	ldapi "github.com/launchdarkly/api-client-go/v10"
 )
 
 func projectRead(ctx context.Context, d *schema.ResourceData, meta interface{}, isDataSource bool) diag.Diagnostics {
@@ -14,7 +16,7 @@ func projectRead(ctx context.Context, d *schema.ResourceData, meta interface{}, 
 	client := meta.(*Client)
 	projectKey := d.Get(KEY).(string)
 
-	project, res, err := client.ld.ProjectsApi.GetProject(client.ctx, projectKey).Execute()
+	project, res, err := getFullProject(client, projectKey)
 
 	// return nil error for resource reads but 404 for data source reads
 	if isStatusNotFound(res) && !isDataSource {
@@ -51,14 +53,14 @@ func projectRead(ctx context.Context, d *schema.ResourceData, meta interface{}, 
 	if !isDataSource {
 		// Convert the returned environment list to a map so we can lookup each environment by key while preserving the
 		// order defined in the config
-		envMap := environmentsToResourceDataMap(project.Environments)
+		envMap := environmentsToResourceDataMap(project.Environments.Items)
 
 		// iterate over the environment keys in the order defined by the config and look up the environment returned by
 		// LD's API
 		rawEnvs := d.Get(ENVIRONMENTS).([]interface{})
 
 		envConfigKeys := rawEnvironmentConfigsToKeyList(rawEnvs)
-		envAddedMap := make(map[string]bool, len(project.Environments))
+		envAddedMap := make(map[string]bool, len(project.Environments.Items))
 		environments := make([]interface{}, 0, len(envConfigKeys))
 		for _, envKey := range envConfigKeys {
 			environments = append(environments, envMap[envKey])
@@ -68,7 +70,7 @@ func projectRead(ctx context.Context, d *schema.ResourceData, meta interface{}, 
 		// Now add all environments that are not specified in the config.
 		// This is required in order to successfully import nested environments because rawEnvs is always an empty slice
 		// durning import, even if nested environments are defined in the config.
-		for _, env := range project.Environments {
+		for _, env := range project.Environments.Items {
 			alreadyAdded := envAddedMap[env.Key]
 			if !alreadyAdded {
 				environments = append(environments, envMap[env.Key])
@@ -98,4 +100,8 @@ func projectRead(ctx context.Context, d *schema.ResourceData, meta interface{}, 
 	}
 
 	return diags
+}
+
+func getFullProject(client *Client, projectKey string) (*ldapi.Project, *http.Response, error) {
+	return client.ld.ProjectsApi.GetProject(client.ctx, projectKey).Expand("environments").Execute()
 }
