@@ -43,10 +43,11 @@ func clauseSchema() *schema.Schema {
 					Description: "The list of values associated with the rule clause",
 				},
 				VALUE_TYPE: {
-					Type:        schema.TypeString,
-					Default:     STRING_CLAUSE_VALUE,
-					Optional:    true,
-					Description: "The type for each of the clause's values. Available types are boolean, string, and number. If omitted, value_type defaults to string",
+					Type:             schema.TypeString,
+					Default:          STRING_CLAUSE_VALUE,
+					Optional:         true,
+					Description:      "The type for each of the clause's values. Available types are boolean, string, and number. If omitted, value_type defaults to string",
+					DiffSuppressFunc: diffSuppressFunc,
 					ValidateDiagFunc: validation.ToDiagFunc(validation.StringInSlice(
 						[]string{
 							BOOL_CLAUSE_VALUE,
@@ -67,6 +68,10 @@ func clauseSchema() *schema.Schema {
 	}
 }
 
+func diffSuppressFunc(_, old, new string, d *schema.ResourceData) bool {
+	return (old == "" && new == "string" && d.Get("value_type") == nil)
+}
+
 func clauseFromResourceData(val interface{}) (ldapi.Clause, error) {
 	clauseMap := val.(map[string]interface{})
 	c := ldapi.Clause{
@@ -75,6 +80,9 @@ func clauseFromResourceData(val interface{}) (ldapi.Clause, error) {
 		Negate:    clauseMap[NEGATE].(bool),
 	}
 	valueType := clauseMap[VALUE_TYPE].(string)
+	if valueType == "" {
+		valueType = STRING_CLAUSE_VALUE
+	}
 	values, err := clauseValuesFromResourceData(clauseMap[VALUES].([]interface{}), valueType)
 	if err != nil {
 		return c, err
