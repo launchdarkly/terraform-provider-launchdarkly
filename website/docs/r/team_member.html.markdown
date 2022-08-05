@@ -32,7 +32,7 @@ resource "launchdarkly_team_member" "example" {
 
 - `last_name` - (Optional) The team member's family name. Please note that, once created, this cannot be updated except by the team member themself.
 
-- `role` - (Optional) The role associated with team member. Supported roles are `reader`, `writer`, or `admin`. If you don't specify a role, `reader` is assigned by default.
+- `role` - (Optional) The role associated with team member. Supported roles are `reader`, `writer`, `no_access`, or `admin`. If you don't specify a role, `reader` is assigned by default.
 
 - `custom_roles` - (Optional) The list of custom roles keys associated with the team member. Custom roles are only available to customers on enterprise plans. To learn more about enterprise plans, contact sales@launchdarkly.com.
 
