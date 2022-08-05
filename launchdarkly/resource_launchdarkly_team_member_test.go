@@ -24,7 +24,7 @@ resource "launchdarkly_team_member" "test" {
 	email = "%s@example.com"
 	first_name = "first"
 	last_name = "last"
-	role = "writer"
+	role = "no_access"
 	custom_roles = []
 }
 `
@@ -136,7 +136,7 @@ func TestAccTeamMember_UpdateGeneric(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, EMAIL, fmt.Sprintf("%s@example.com", randomName)),
 					resource.TestCheckResourceAttr(resourceName, FIRST_NAME, "first"),
 					resource.TestCheckResourceAttr(resourceName, LAST_NAME, "last"),
-					resource.TestCheckResourceAttr(resourceName, ROLE, "writer"),
+					resource.TestCheckResourceAttr(resourceName, ROLE, "no_access"),
 					resource.TestCheckResourceAttr(resourceName, "custom_roles.#", "0"),
 				),
 			},

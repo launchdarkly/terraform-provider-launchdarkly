@@ -45,8 +45,8 @@ func resourceTeamMember() *schema.Resource {
 				Type:             schema.TypeString,
 				Optional:         true,
 				Computed:         true,
-				Description:      "The team member's role. This must be reader, writer, admin, or owner. Team members must have either a role or custom role",
-				ValidateDiagFunc: validation.ToDiagFunc(validation.StringInSlice([]string{"reader", "writer", "admin"}, false)),
+				Description:      "The team member's role. This must be reader, writer, admin, or no_access. Team members must have either a role or custom role",
+				ValidateDiagFunc: validation.ToDiagFunc(validation.StringInSlice([]string{"reader", "writer", "admin", "no_access"}, false)),
 				AtLeastOneOf:     []string{ROLE, CUSTOM_ROLES},
 			},
 			CUSTOM_ROLES: {
