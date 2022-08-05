@@ -1,3 +1,9 @@
+## [2.9.0] (August 05, 2022)
+
+FEATURES:
+
+- Add `no_access` role as a valid value for the `role` key for the `launchdarkly_team_member` resource.
+
 ## [2.8.0] (August 04, 2022)
 
 FEATURES:
