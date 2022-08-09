@@ -98,7 +98,7 @@ Nested environments `approval_settings` blocks have the following structure:
 
 - `required_approval_tags` - An array of tags used to specify which flags with those tags require approval. You may only set `required_approval_tags` if `required` is not set to `true` and vice versa.
 
-### Nested Client side Availibility Block
+### Nested Client side Availability Block
 
 The nested `default_client_side_availability` block describes which client-side SDKs can use new flags by default. To learn more about this setting, read [Making flags available to client-side and mobile SDKs](https://docs.launchdarkly.com/home/getting-started/feature-flags#making-flags-available-to-client-side-and-mobile-sdks). This block has the following structure:
 
