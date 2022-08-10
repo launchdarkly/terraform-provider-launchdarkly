@@ -33,7 +33,7 @@ var SUBSCRIPTION_CONFIGURATION_FIELDS = map[string]IntegrationConfig{
 		"apiToken": {
 			AllowedValues: []string{},
 			DefaultValue:  nil,
-			Description:   "Enter your Dynatrace API token. [Learn more](https://www.dynatrace.com/support/help/shortlink/api-authentication#generate-a-token) about generating tokens. The 'access problem and event feed, metrics, and topology' scope is required.",
+			Description:   "Enter your Dynatrace Access token. [Learn more](https://www.dynatrace.com/support/help/shortlink/api-authentication#generate-a-token) about generating tokens. The 'Access problem and event feed, metrics, and topology' scope is required.",
 			IsOptional:    false,
 			IsSecret:      true,
 			Type:          "string",
