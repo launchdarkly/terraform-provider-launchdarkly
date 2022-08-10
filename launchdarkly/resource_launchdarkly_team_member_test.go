@@ -12,7 +12,7 @@ import (
 const (
 	testAccTeamMemberCreate = `
 resource "launchdarkly_team_member" "test" {
-	email = "%s@example.com"
+	email = "%s+wbteste2e@launchdarkly.com"
 	first_name = "first"
 	last_name = "last"
 	role = "admin"
@@ -21,7 +21,7 @@ resource "launchdarkly_team_member" "test" {
 `
 	testAccTeamMemberUpdate = `
 resource "launchdarkly_team_member" "test" {
-	email = "%s@example.com"
+	email = "%s+wbteste2e@launchdarkly.com"
 	first_name = "first"
 	last_name = "last"
 	role = "no_access"
@@ -42,7 +42,7 @@ resource "launchdarkly_custom_role" "test" {
 }
 
 resource "launchdarkly_team_member" "custom_role_test" {
-	email = "%s@example.com"
+	email = "%s+wbteste2e@launchdarkly.com"
 	first_name = "first"
 	last_name = "last"
 	custom_roles = [launchdarkly_custom_role.test.key]
@@ -72,7 +72,7 @@ resource "launchdarkly_custom_role" "test_2" {
 }
 
 resource "launchdarkly_team_member" "custom_role_test" {
-	email = "%s@example.com"
+	email = "%s+wbteste2e@launchdarkly.com"
 	first_name = "first"
 	last_name = "last"
 	custom_roles = [launchdarkly_custom_role.test_2.key]
@@ -93,7 +93,7 @@ func TestAccTeamMember_CreateGeneric(t *testing.T) {
 				Config: fmt.Sprintf(testAccTeamMemberCreate, randomName),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckMemberExists(resourceName),
-					resource.TestCheckResourceAttr(resourceName, EMAIL, fmt.Sprintf("%s@example.com", randomName)),
+					resource.TestCheckResourceAttr(resourceName, EMAIL, fmt.Sprintf("%s+wbteste2e@launchdarkly.com", randomName)),
 					resource.TestCheckResourceAttr(resourceName, FIRST_NAME, "first"),
 					resource.TestCheckResourceAttr(resourceName, LAST_NAME, "last"),
 					resource.TestCheckResourceAttr(resourceName, ROLE, "admin"),
@@ -122,7 +122,7 @@ func TestAccTeamMember_UpdateGeneric(t *testing.T) {
 				Config: fmt.Sprintf(testAccTeamMemberCreate, randomName),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckMemberExists(resourceName),
-					resource.TestCheckResourceAttr(resourceName, EMAIL, fmt.Sprintf("%s@example.com", randomName)),
+					resource.TestCheckResourceAttr(resourceName, EMAIL, fmt.Sprintf("%s+wbteste2e@launchdarkly.com", randomName)),
 					resource.TestCheckResourceAttr(resourceName, FIRST_NAME, "first"),
 					resource.TestCheckResourceAttr(resourceName, LAST_NAME, "last"),
 					resource.TestCheckResourceAttr(resourceName, ROLE, "admin"),
@@ -133,7 +133,7 @@ func TestAccTeamMember_UpdateGeneric(t *testing.T) {
 				Config: fmt.Sprintf(testAccTeamMemberUpdate, randomName),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckMemberExists(resourceName),
-					resource.TestCheckResourceAttr(resourceName, EMAIL, fmt.Sprintf("%s@example.com", randomName)),
+					resource.TestCheckResourceAttr(resourceName, EMAIL, fmt.Sprintf("%s+wbteste2e@launchdarkly.com", randomName)),
 					resource.TestCheckResourceAttr(resourceName, FIRST_NAME, "first"),
 					resource.TestCheckResourceAttr(resourceName, LAST_NAME, "last"),
 					resource.TestCheckResourceAttr(resourceName, ROLE, "no_access"),
@@ -160,7 +160,7 @@ func TestAccTeamMember_CreateWithCustomRole(t *testing.T) {
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckCustomRoleExists(roleResourceName),
 					testAccCheckMemberExists(resourceName),
-					resource.TestCheckResourceAttr(resourceName, EMAIL, fmt.Sprintf("%s@example.com", randomName)),
+					resource.TestCheckResourceAttr(resourceName, EMAIL, fmt.Sprintf("%s+wbteste2e@launchdarkly.com", randomName)),
 					resource.TestCheckResourceAttr(resourceName, FIRST_NAME, "first"),
 					resource.TestCheckResourceAttr(resourceName, LAST_NAME, "last"),
 					resource.TestCheckResourceAttr(resourceName, "custom_roles.#", "1"),
@@ -194,7 +194,7 @@ func TestAccTeamMember_UpdateWithCustomRole(t *testing.T) {
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckCustomRoleExists(roleResourceName1),
 					testAccCheckMemberExists(resourceName),
-					resource.TestCheckResourceAttr(resourceName, EMAIL, fmt.Sprintf("%s@example.com", randomName)),
+					resource.TestCheckResourceAttr(resourceName, EMAIL, fmt.Sprintf("%s+wbteste2e@launchdarkly.com", randomName)),
 					resource.TestCheckResourceAttr(resourceName, FIRST_NAME, "first"),
 					resource.TestCheckResourceAttr(resourceName, LAST_NAME, "last"),
 					resource.TestCheckResourceAttr(resourceName, "custom_roles.#", "1"),
@@ -211,7 +211,7 @@ func TestAccTeamMember_UpdateWithCustomRole(t *testing.T) {
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckCustomRoleExists(roleResourceName2),
 					testAccCheckMemberExists(resourceName),
-					resource.TestCheckResourceAttr(resourceName, EMAIL, fmt.Sprintf("%s@example.com", randomName)),
+					resource.TestCheckResourceAttr(resourceName, EMAIL, fmt.Sprintf("%s+wbteste2e@launchdarkly.com", randomName)),
 					resource.TestCheckResourceAttr(resourceName, FIRST_NAME, "first"),
 					resource.TestCheckResourceAttr(resourceName, LAST_NAME, "last"),
 					resource.TestCheckResourceAttr(resourceName, "custom_roles.#", "1"),

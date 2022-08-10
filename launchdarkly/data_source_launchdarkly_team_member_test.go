@@ -42,7 +42,7 @@ func testAccDataSourceTeamMemberDelete(client *Client, id string) error {
 }
 
 func TestAccDataSourceTeamMember_noMatchReturnsError(t *testing.T) {
-	email := "does-not-exist@example.com"
+	email := "does-not-exist+wbteste2e@launchdarkly.com"
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
 			testAccPreCheck(t)
@@ -70,7 +70,7 @@ func TestAccDataSourceTeamMember_exists(t *testing.T) {
 
 	teamMembers := make([]ldapi.Member, 0, teamMemberCount)
 	for i := 0; i < teamMemberCount; i++ {
-		randomEmail := fmt.Sprintf("%s@example.com", acctest.RandStringFromCharSet(10, "abcdefghijklmnopqrstuvwxyz012346789+"))
+		randomEmail := fmt.Sprintf("%s+wbteste2e@launchdarkly.com", acctest.RandStringFromCharSet(10, "abcdefghijklmnopqrstuvwxyz012346789+"))
 		member, err := testAccDataSourceTeamMemberCreate(client, randomEmail)
 		require.NoError(t, err)
 		teamMembers = append(teamMembers, *member)
