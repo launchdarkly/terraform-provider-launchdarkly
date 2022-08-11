@@ -6,6 +6,7 @@ on:
 jobs:
   generate-manifest:
     runs-on: ubuntu-latest
+    if: github.repository == 'launchdarkly/terraform-provider-launchdarkly-private'
     steps:
       # Check out goaltender and LDIF side by side
       - uses: actions/checkout@v3
