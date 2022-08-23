@@ -69,7 +69,7 @@ func clauseSchema() *schema.Schema {
 }
 
 func diffSuppressFunc(_, old, new string, d *schema.ResourceData) bool {
-	return (old == "" && new == "string" && d.Get("value_type") == nil)
+	return (old == "" && new == STRING_CLAUSE_VALUE && d.Get("value_type") == nil)
 }
 
 func clauseFromResourceData(val interface{}) (ldapi.Clause, error) {
