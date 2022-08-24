@@ -17,9 +17,12 @@ test: fmtcheck
 		xargs -t -n4 go test $(TESTARGS) -timeout=30s -parallel=4
 
 testacc: fmtcheck
-	TF_ACC=1 go test $(TEST) -v $(TESTARGS) -timeout 120m; if [ $$? -eq 1 ]; then \
+	TF_ACC=1 go test $(TEST) -v $(TESTARGS) -timeout 120m
+
+testacc-with-retry: fmtcheck
+	make testacc; if [ $$? -eq 1 ]; then \
 		printf "\n\nRetrying failed test\n\n"; \
-		TF_ACC=1 go test $(TEST) -v $(TESTARGS) -timeout 120m; \
+		make testacc; \
 	fi
 
 vet:
@@ -70,4 +73,4 @@ ifeq (,$(wildcard $(GOPATH)/src/$(WEBSITE_REPO)))
 endif
 	@$(MAKE) -C $(GOPATH)/src/$(WEBSITE_REPO) website-provider-test PROVIDER_PATH=$(shell pwd) PROVIDER_NAME=$(PKG_NAME)
 
-.PHONY: build install apply test testacc vet fmt fmtcheck errcheck lint test-compile website website-test
+.PHONY: build install apply test testacc testacc-with-retry vet fmt fmtcheck errcheck lint test-compile website website-test

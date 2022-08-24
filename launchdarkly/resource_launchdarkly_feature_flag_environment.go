@@ -150,39 +150,59 @@ func resourceFeatureFlagEnvironmentUpdate(ctx context.Context, d *schema.Resourc
 		return diag.Errorf("failed to find environment with key %q", envKey)
 	}
 
-	on := d.Get(ON)
-	rules, err := rulesFromResourceData(d)
-	if err != nil {
-		return diag.FromErr(err)
+	patchOperations := make([]ldapi.PatchOperation, 0, 7)
+	if d.HasChange(ON) {
+		on := d.Get(ON)
+		patchOperations = append(patchOperations, patchReplace(patchFlagEnvPath(d, "on"), on))
 	}
-	trackEvents := d.Get(TRACK_EVENTS).(bool)
-	prerequisites := prerequisitesFromResourceData(d, PREREQUISITES)
-	targets := targetsFromResourceData(d)
 
-	fall, err := fallthroughFromResourceData(d)
-	if err != nil {
-		return diag.FromErr(err)
+	if d.HasChange(RULES) {
+		rules, err := rulesFromResourceData(d)
+		if err != nil {
+			return diag.FromErr(err)
+		}
+		patchOperations = append(patchOperations, patchReplace(patchFlagEnvPath(d, "rules"), rules))
 	}
-	offVariation := d.Get(OFF_VARIATION)
+
+	if d.HasChange(TRACK_EVENTS) {
+		trackEvents := d.Get(TRACK_EVENTS).(bool)
+		patchOperations = append(patchOperations, patchReplace(patchFlagEnvPath(d, "trackEvents"), trackEvents))
+	}
+
+	if d.HasChange(PREREQUISITES) {
+		prerequisites := prerequisitesFromResourceData(d, PREREQUISITES)
+		patchOperations = append(patchOperations, patchReplace(patchFlagEnvPath(d, "prerequisites"), prerequisites))
+	}
+
+	if d.HasChange(TARGETS) {
+		targets := targetsFromResourceData(d)
+		patchOperations = append(patchOperations, patchReplace(patchFlagEnvPath(d, "targets"), targets))
+	}
+
+	if d.HasChange(FALLTHROUGH) {
+		fall, err := fallthroughFromResourceData(d)
+		if err != nil {
+			return diag.FromErr(err)
+		}
+		patchOperations = append(patchOperations, patchReplace(patchFlagEnvPath(d, "fallthrough"), fall))
+	}
+
+	if d.HasChange(OFF_VARIATION) {
+		offVariation := d.Get(OFF_VARIATION)
+		patchOperations = append(patchOperations, patchReplace(patchFlagEnvPath(d, "offVariation"), offVariation))
+	}
 
 	comment := "Terraform"
-	patch := ldapi.PatchWithComment{
-		Comment: &comment,
-		Patch: []ldapi.PatchOperation{
-			patchReplace(patchFlagEnvPath(d, "on"), on),
-			patchReplace(patchFlagEnvPath(d, "rules"), rules),
-			patchReplace(patchFlagEnvPath(d, "trackEvents"), trackEvents),
-			patchReplace(patchFlagEnvPath(d, "prerequisites"), prerequisites),
-			patchReplace(patchFlagEnvPath(d, "targets"), targets),
-			patchReplace(patchFlagEnvPath(d, "fallthrough"), fall),
-			patchReplace(patchFlagEnvPath(d, "offVariation"), offVariation),
-		}}
-
+	patch := ldapi.PatchWithComment{Comment: &comment, Patch: patchOperations}
 	log.Printf("[DEBUG] %+v\n", patch)
-	_, _, err = client.ld.FeatureFlagsApi.PatchFeatureFlag(client.ctx, projectKey, flagKey).PatchWithComment(patch).Execute()
-	if err != nil {
-		return diag.Errorf("failed to update flag %q in project %q, environment %q: %s", flagKey, projectKey, envKey, handleLdapiErr(err))
+
+	if len(patchOperations) > 0 {
+		_, _, err = client.ld.FeatureFlagsApi.PatchFeatureFlag(client.ctx, projectKey, flagKey).PatchWithComment(patch).Execute()
+		if err != nil {
+			return diag.Errorf("failed to update flag %q in project %q, environment %q: %s", flagKey, projectKey, envKey, handleLdapiErr(err))
+		}
 	}
+
 	return resourceFeatureFlagEnvironmentRead(ctx, d, metaRaw)
 }
 

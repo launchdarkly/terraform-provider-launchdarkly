@@ -1,3 +1,9 @@
+## [2.9.1] (Unreleased)
+
+BUG FIXES:
+
+- Fixes a bug in the `launchdarkly_feature_flag_environment` that prevented users from updating targeting rule clauses when the targeting rule was being used as the fallthrough variation with a percentage rollout.
+
 ## [2.9.0] (August 05, 2022)
 
 FEATURES:

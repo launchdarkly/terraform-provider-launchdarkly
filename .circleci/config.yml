@@ -41,56 +41,56 @@ jobs:
           command: TESTARGS="-v" make test
       - run:
           name: Test Data Sources
-          command: TESTARGS="-run TestAccDataSource" make testacc
+          command: TESTARGS="-run TestAccDataSource" make testacc-with-retry
       - run:
           name: Test Access Token Resource
-          command: TESTARGS="-run TestAccAccessToken" make testacc
+          command: TESTARGS="-run TestAccAccessToken" make testacc-with-retry
       - run:
           name: Test Audit Log Subscription Resource
-          command: TESTARGS="-run TestAccAuditLogSubscription" make testacc
+          command: TESTARGS="-run TestAccAuditLogSubscription" make testacc-with-retry
       - run:
           name: Test Custom Role Resource
-          command: TESTARGS="-run TestAccCustomRole" make testacc
+          command: TESTARGS="-run TestAccCustomRole" make testacc-with-retry
       - run:
           name: Test Destination Resource
-          command: TESTARGS="-run TestAccDestination" make testacc
+          command: TESTARGS="-run TestAccDestination" make testacc-with-retry
       - run:
           name: Test Environment Resource
-          command: TESTARGS="-run TestAccEnvironment" make testacc
+          command: TESTARGS="-run TestAccEnvironment" make testacc-with-retry
       - run:
           name: Test Feature Flag Resource
-          command: TESTARGS="-run TestAccFeatureFlag" make testacc
+          command: TESTARGS="-run TestAccFeatureFlag" make testacc-with-retry
       - run:
           name: Test Feature Flag Environment Resource
-          command: TESTARGS="-run TestAccFeatureFlagEnvironment" make testacc
+          command: TESTARGS="-run TestAccFeatureFlagEnvironment" make testacc-with-retry
       - run:
           name: Test Flag Trigger Resource
-          command: TESTARGS="-run TestAccFlagTrigger" make testacc
+          command: TESTARGS="-run TestAccFlagTrigger" make testacc-with-retry
       - run:
           name: Test Metric Resource
-          command: TESTARGS="-run TestAccMetric" make testacc
+          command: TESTARGS="-run TestAccMetric" make testacc-with-retry
       - run:
           name: Test Project Resource
-          command: TESTARGS="-run TestAccProject" make testacc
+          command: TESTARGS="-run TestAccProject" make testacc-with-retry
       - run:
           name: Test Relay Proxy Configuration Resource
-          command: TESTARGS="-run TestAccRelayProxy" make testacc
+          command: TESTARGS="-run TestAccRelayProxy" make testacc-with-retry
       - run:
           name: Test Segment Resource
-          command: TESTARGS="-run TestAccSegment" make testacc
+          command: TESTARGS="-run TestAccSegment" make testacc-with-retry
       - run:
           name: Test Team Members
           command: |
-            TESTARGS="-run TestAccTeamMember_CreateGeneric" make testacc
-            TESTARGS="-run TestAccTeamMember_UpdateGeneric" make testacc
-            TESTARGS="-run TestAccTeamMember_CreateWithCustomRole" make testacc
-            TESTARGS="-run TestAccTeamMember_UpdateWithCustomRole" make testacc
+            TESTARGS="-run TestAccTeamMember_CreateGeneric" make testacc-with-retry
+            TESTARGS="-run TestAccTeamMember_UpdateGeneric" make testacc-with-retry
+            TESTARGS="-run TestAccTeamMember_CreateWithCustomRole" make testacc-with-retry
+            TESTARGS="-run TestAccTeamMember_UpdateWithCustomRole" make testacc-with-retry
       - run:
           name: Test Team Resource
-          command: TESTARGS="-run TestAccTeam_" make testacc
+          command: TESTARGS="-run TestAccTeam_" make testacc-with-retry
       - run:
           name: Test Webhook Resource
-          command: TESTARGS="-run TestAccWebhook" make testacc
+          command: TESTARGS="-run TestAccWebhook" make testacc-with-retry
       - notify-slack-of-failures
 
   lint:
