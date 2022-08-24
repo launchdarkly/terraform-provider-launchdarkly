@@ -129,7 +129,7 @@ Nested `defaults` blocks have the following structure:
 
 - `off_variation` - (Required) The index of the variation the flag will default to in all new environments when off.
 
-### Nested Client-Side Availibility Block
+### Nested Client-Side Availability Block
 
 The nested `client_side_availability` block has the following structure:
 

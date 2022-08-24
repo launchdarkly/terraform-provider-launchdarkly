@@ -38,7 +38,7 @@ Please migrate to `default_client_side_availability` to maintain future compatab
 
 - `tags` - The project's set of tags.
 
-### Nested Client-Side Availibility Block
+### Nested Client-Side Availability Block
 
 The nested `default_client_side_availability` block has the following attributes:
 
