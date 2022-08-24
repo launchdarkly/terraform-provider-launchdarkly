@@ -1,0 +1,35 @@
+name: Open PR when integration configs change
+on:
+  schedule:
+    # Run every 30 minutes
+    - cron: "5,35 * * * *"
+jobs:
+  generate-manifest:
+    runs-on: ubuntu-latest
+    if: github.repository == 'launchdarkly/terraform-provider-launchdarkly-private'
+    steps:
+      # Check out goaltender and LDIF side by side
+      - uses: actions/checkout@v3
+
+      - uses: actions/setup-go@v3
+        with:
+          go-version-file: scripts/codegen/go.mod
+          cache: true
+          cache-dependency-path: |
+            scripts/codegen/go.sum
+            go.sum
+
+      - run: make generate
+        env:
+          LAUNCHDARKLY_ACCESS_TOKEN: ${{secrets.LAUNCHDARKLY_ACCESS_TOKEN}}
+
+      - name: Create Pull request
+        uses: peter-evans/create-pull-request@v4
+        with:
+          branch: regenerate-integration-configs/patch
+          delete-branch: true
+          commit-message: "[bot] Regenerate integration configs"
+          title: "[bot] Regenerate integration configs"
+          body: |
+            This PR regenerates `launchdarkly/audit_log_subscription_configs_generated.go` based on recent changes to the [integrations manifest endpoint](https://app.launchdarkly.com/api/v2/integration-manifests).
+          labels: bot

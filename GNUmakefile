@@ -19,6 +19,12 @@ test: fmtcheck
 testacc: fmtcheck
 	TF_ACC=1 go test $(TEST) -v $(TESTARGS) -timeout 120m
 
+testacc-with-retry: fmtcheck
+	make testacc; if [ $$? -eq 1 ]; then \
+		printf "\n\nRetrying failed test\n\n"; \
+		make testacc; \
+	fi
+
 vet:
 	@echo "go vet ."
 	@go vet $$(go list ./...) ; if [ $$? -eq 1 ]; then \
@@ -67,4 +73,4 @@ ifeq (,$(wildcard $(GOPATH)/src/$(WEBSITE_REPO)))
 endif
 	@$(MAKE) -C $(GOPATH)/src/$(WEBSITE_REPO) website-provider-test PROVIDER_PATH=$(shell pwd) PROVIDER_NAME=$(PKG_NAME)
 
-.PHONY: build install apply test testacc vet fmt fmtcheck errcheck lint test-compile website website-test
+.PHONY: build install apply test testacc testacc-with-retry vet fmt fmtcheck errcheck lint test-compile website website-test

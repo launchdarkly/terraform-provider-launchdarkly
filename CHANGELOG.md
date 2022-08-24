@@ -1,3 +1,11 @@
+## [2.9.1] (August 24, 2022)
+
+BUG FIXES:
+
+- Fixes a bug in the `launchdarkly_feature_flag_environment` that prevented users from updating targeting rule clauses when the targeting rule was being used as the fallthrough variation with a percentage rollout.
+
+- Fixes a bug in the `launchdarkly_feature_flag_environment` that resulted in the default `string` rule clause value type not being respected. [#102](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/102)
+
 ## [2.9.0] (August 05, 2022)
 
 FEATURES:
@@ -30,9 +38,11 @@ NOTES:
 
 - Upgrade Go version to 1.18
 
-## [2.7.0] (May 5, 2022)
+## [2.7.1] (July 27, 2022)
 
-FEATURES:
+BUG FIXES:
+
+- The `launchdarkly_feature_flag_environment` data source now checks whether the environment exists and prints out a more descriptive error. [#101](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/101)
 
 - Added the `base_permissions` field to the `launchdarkly_custom_role` resource.
 
