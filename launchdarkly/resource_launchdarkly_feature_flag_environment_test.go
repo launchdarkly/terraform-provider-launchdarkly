@@ -314,6 +314,88 @@ resource "launchdarkly_feature_flag_environment" "invalid_bucket_by" {
 }
 `
 
+	testAccPercentageRollout = `
+resource "launchdarkly_feature_flag" "rollout" {
+	project_key    = launchdarkly_project.test.key
+	key            = "bool-flag"
+	name           = "Basic boolean flag"
+	variation_type = "boolean"
+  variations {
+    value = true
+  }
+  variations {
+    value = false
+  }
+
+  defaults {
+    on_variation  = 1
+    off_variation = 0
+  }
+}	
+
+resource "launchdarkly_feature_flag_environment" "rollout" {
+	flag_id = launchdarkly_feature_flag.rollout.id
+	env_key = "test"
+	on      = true	  
+	rules {
+		clauses {
+      attribute = "country"
+      op        = "startsWith"
+      values    = ["aus", "nz", "united"]
+      negate    = false
+    }
+		variation = 0
+	}
+	fallthrough {
+    variation       = 0
+    rollout_weights = [60000, 40000]
+    bucket_by       = "country"
+  }
+  off_variation = 1
+}
+`
+
+	testAccPercentageRolloutClauseUpdate = `
+resource "launchdarkly_feature_flag" "rollout" {
+	project_key    = launchdarkly_project.test.key
+	key            = "bool-flag"
+	name           = "Basic boolean flag"
+	variation_type = "boolean"
+  variations {
+    value = true
+  }
+  variations {
+    value = false
+  }
+
+  defaults {
+    on_variation  = 1
+    off_variation = 0
+  }
+}	
+
+resource "launchdarkly_feature_flag_environment" "rollout" {
+	flag_id = launchdarkly_feature_flag.rollout.id
+	env_key = "test"
+	on      = true	  
+	rules {
+		clauses {
+      attribute = "country"
+      op        = "startsWith"
+      values    = ["aus", "us", "united"]
+      negate    = false
+    }
+		variation = 0
+	}
+	fallthrough {
+    variation       = 0
+    rollout_weights = [60000, 40000]
+    bucket_by       = "country"
+  }
+  off_variation = 1
+}
+`
+
 	testAccInvalidRuleBucketBy = `
 resource "launchdarkly_feature_flag" "basic" {
 	project_key = launchdarkly_project.test.key
@@ -588,6 +670,69 @@ func TestAccFeatureFlagEnvironment_NumberClauseValue(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "rules.0.clauses.0.values.0", "42"),
 					resource.TestCheckResourceAttr(resourceName, "rules.0.clauses.0.values.1", "84"),
 					resource.TestCheckResourceAttr(resourceName, "fallthrough.0.variation", "0"),
+					resource.TestCheckResourceAttr(resourceName, OFF_VARIATION, "1"),
+				),
+			},
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
+		},
+	})
+}
+
+func TestAccFeatureFlagEnvironment_UpdateClauseWithRollout(t *testing.T) {
+	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	resourceName := "launchdarkly_feature_flag_environment.rollout"
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck: func() {
+			testAccPreCheck(t)
+		},
+		Providers: testAccProviders,
+		Steps: []resource.TestStep{
+			{
+				Config: withRandomProject(projectKey, testAccPercentageRollout),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckFeatureFlagEnvironmentExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, ON, "true"),
+					resource.TestCheckResourceAttr(resourceName, "rules.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "rules.0.clauses.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "rules.0.clauses.0.value_type", "string"),
+					resource.TestCheckResourceAttr(resourceName, "rules.0.clauses.0.values.#", "3"),
+					resource.TestCheckResourceAttr(resourceName, "rules.0.clauses.0.values.0", "aus"),
+					resource.TestCheckResourceAttr(resourceName, "rules.0.clauses.0.values.1", "nz"),
+					resource.TestCheckResourceAttr(resourceName, "rules.0.clauses.0.values.2", "united"),
+					resource.TestCheckResourceAttr(resourceName, "fallthrough.0.variation", "0"),
+					resource.TestCheckResourceAttr(resourceName, "fallthrough.0.rollout_weights.#", "2"),
+					resource.TestCheckResourceAttr(resourceName, "fallthrough.0.rollout_weights.0", "60000"),
+					resource.TestCheckResourceAttr(resourceName, "fallthrough.0.rollout_weights.1", "40000"),
+					resource.TestCheckResourceAttr(resourceName, "fallthrough.0.bucket_by", "country"),
+					resource.TestCheckResourceAttr(resourceName, OFF_VARIATION, "1"),
+				),
+			},
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
+			{
+				Config: withRandomProject(projectKey, testAccPercentageRolloutClauseUpdate),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckFeatureFlagEnvironmentExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, ON, "true"),
+					resource.TestCheckResourceAttr(resourceName, "rules.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "rules.0.clauses.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "rules.0.clauses.0.value_type", "string"),
+					resource.TestCheckResourceAttr(resourceName, "rules.0.clauses.0.values.#", "3"),
+					resource.TestCheckResourceAttr(resourceName, "rules.0.clauses.0.values.0", "aus"),
+					resource.TestCheckResourceAttr(resourceName, "rules.0.clauses.0.values.1", "us"),
+					resource.TestCheckResourceAttr(resourceName, "rules.0.clauses.0.values.2", "united"),
+					resource.TestCheckResourceAttr(resourceName, "fallthrough.0.variation", "0"),
+					resource.TestCheckResourceAttr(resourceName, "fallthrough.0.rollout_weights.#", "2"),
+					resource.TestCheckResourceAttr(resourceName, "fallthrough.0.rollout_weights.0", "60000"),
+					resource.TestCheckResourceAttr(resourceName, "fallthrough.0.rollout_weights.1", "40000"),
+					resource.TestCheckResourceAttr(resourceName, "fallthrough.0.bucket_by", "country"),
 					resource.TestCheckResourceAttr(resourceName, OFF_VARIATION, "1"),
 				),
 			},

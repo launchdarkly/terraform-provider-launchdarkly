@@ -1,3 +1,11 @@
+## [2.9.1] (August 24, 2022)
+
+BUG FIXES:
+
+- Fixes a bug in the `launchdarkly_feature_flag_environment` that prevented users from updating targeting rule clauses when the targeting rule was being used as the fallthrough variation with a percentage rollout.
+
+- Fixes a bug in the `launchdarkly_feature_flag_environment` that resulted in the default `string` rule clause value type not being respected. [#102](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/102)
+
 ## [2.9.0] (August 05, 2022)
 
 FEATURES:
