@@ -173,7 +173,7 @@ var SUBSCRIPTION_CONFIGURATION_FIELDS = map[string]IntegrationConfig{
 		"base-url": {
 			AllowedValues: []string{},
 			DefaultValue:  nil,
-			Description:   "Enter your [Splunk HTTP event collector base URL](https://docs.splunk.com/Documentation/Splunk/latest/Data/UsetheHTTPEventCollector).",
+			Description:   "Enter your [Splunk HTTP event collector base URL](https://docs.splunk.com/Documentation/Splunk/latest/Data/UsetheHTTPEventCollector) (omitting the path).",
 			IsOptional:    false,
 			IsSecret:      false,
 			Type:          "string",
