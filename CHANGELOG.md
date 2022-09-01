@@ -4,6 +4,7 @@ BUG FIXES:
 
 - Fixes a bug in the `launchdarkly_feature_flag` resource where explicit defaults were not getting set for boolean flags upon creation.
 
+
 ## [2.9.1] (August 24, 2022)
 
 BUG FIXES:
