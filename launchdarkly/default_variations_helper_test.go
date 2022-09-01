@@ -18,7 +18,7 @@ func TestDefaultVariationsFromResourceData(t *testing.T) {
 		expectedErr error
 	}{
 		{
-			name: "no defaults on boolean",
+			name: "automatic boolean defaults",
 			vars: map[string]interface{}{
 				VARIATIONS: []interface{}{
 					map[string]interface{}{
@@ -54,6 +54,28 @@ func TestDefaultVariationsFromResourceData(t *testing.T) {
 			expected: &ldapi.Defaults{
 				OnVariation:  0,
 				OffVariation: 1,
+			},
+		},
+		{
+			name: "explicit defautls overwrite default defaults",
+			vars: map[string]interface{}{
+				VARIATIONS: []interface{}{
+					map[string]interface{}{
+						VALUE: "true",
+					},
+					map[string]interface{}{
+						VALUE: "false",
+					},
+				},
+				DEFAULTS: []interface{}{
+					map[string]interface{}{
+						ON_VARIATION:  1,
+						OFF_VARIATION: 0,
+					}},
+			},
+			expected: &ldapi.Defaults{
+				OnVariation:  1,
+				OffVariation: 0,
 			},
 		},
 		{
