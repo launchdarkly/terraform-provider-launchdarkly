@@ -65,7 +65,8 @@ func ruleFromResourceData(val interface{}) (rule, error) {
 		}
 		r.Clauses = append(r.Clauses, clause)
 	}
-	bucketBy, bucketByFound := ruleMap["bucket_by"].(string)
+	bucketBy := ruleMap["bucket_by"].(string)
+	bucketByFound := bucketBy != ""
 	if len(rolloutFromResourceData(ruleMap[ROLLOUT_WEIGHTS]).Variations) > 0 {
 		r.Rollout = rolloutFromResourceData(ruleMap[ROLLOUT_WEIGHTS])
 		if bucketByFound {
