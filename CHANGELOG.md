@@ -1,3 +1,14 @@
+## [2.9.3] (October 3, 2022)
+
+BUG FIXES:
+
+- Correctly set bucketBy to nil when explicitly set to an empty string to avoid API errors [#120](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/120)
+- Print error message from API response for Teams resource
+
+NOTES:
+
+- Add `ignore_changes` guide
+
 ## [2.9.2] (September 1, 2022)
 
 BUG FIXES:
