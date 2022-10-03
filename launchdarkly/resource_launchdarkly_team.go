@@ -152,7 +152,7 @@ func resourceTeamCreate(ctx context.Context, d *schema.ResourceData, metaRaw int
 	_, _, err := client.ld.TeamsApi.PostTeam(client.ctx).TeamPostInput(teamBody).Execute()
 
 	if err != nil {
-		return diag.Errorf("Error when calling `TeamsApi.PostTeam`: %v\n\n request: %v", err, teamBody)
+		return diag.Errorf("Error when creating team %q: %s\n", key, handleLdapiErr(err))
 	}
 	d.SetId(key)
 
@@ -177,7 +177,7 @@ func resourceTeamRead(ctx context.Context, d *schema.ResourceData, metaRaw inter
 	}
 
 	if err != nil {
-		return diag.Errorf("failed to get team %q: %v", teamKey, err)
+		return diag.Errorf("failed to get team %q: %s", teamKey, handleLdapiErr(err))
 	}
 
 	members := make([]ldapi.Member, 0)
@@ -199,7 +199,7 @@ func resourceTeamRead(ctx context.Context, d *schema.ResourceData, metaRaw inter
 		}
 
 		if err != nil {
-			return diag.Errorf("failed to get members for team %q: %v", teamKey, err)
+			return diag.Errorf("failed to get members for team %q: %s", teamKey, handleLdapiErr(err))
 		}
 
 		members = append(members, memberResponse.Items...)

@@ -73,9 +73,9 @@ func fallthroughFromResourceData(d *schema.ResourceData) (fallthroughModel, erro
 	fall := f[0].(map[string]interface{})
 	if isPercentRollout(f) {
 		rollout := fallthroughModel{Rollout: rolloutFromResourceData(fall[ROLLOUT_WEIGHTS])}
-		bucketBy, ok := fall[BUCKET_BY]
-		if ok {
-			rollout.Rollout.BucketBy = ldapi.PtrString(bucketBy.(string))
+		bucketBy := fall[BUCKET_BY].(string)
+		if bucketBy != "" {
+			rollout.Rollout.BucketBy = &bucketBy
 		}
 		return rollout, nil
 

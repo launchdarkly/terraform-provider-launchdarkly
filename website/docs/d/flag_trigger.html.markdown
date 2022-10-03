@@ -2,7 +2,7 @@
 layout: "launchdarkly"
 page_title: "LaunchDarkly: launchdarkly_flag_trigger"
 description: |-
-  Get information about LaunchDarkly flag trigers.
+  Get information about LaunchDarkly flag triggers.
 ---
 
 # launchdarkly_flag_trigger

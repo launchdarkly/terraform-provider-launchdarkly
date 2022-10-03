@@ -127,4 +127,6 @@ resource "launchdarkly_project" "example" {
 	}
 ```
 
-Managing environment resources with Terraform should always be done on the project unless the project is not also managed with Terraform.
+**Note:** Following an import, the first apply may show a diff in the order of your environments as Terraform realigns its state with the order of configurations in your project configuration. This will not change your environments or their SDK keys.
+
+**Managing environment resources with Terraform should always be done on the project unless the project is not also managed with Terraform.**
