@@ -1,3 +1,10 @@
+## [2.9.4] (October 26, 2022)
+
+BUG FIXES:
+
+- Adds `ignore_changes` guide to the documentation sidebar
+- Fixes broken link in `account_members` resource documentation
+
 ## [2.9.3] (October 3, 2022)
 
 BUG FIXES:
