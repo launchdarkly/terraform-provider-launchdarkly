@@ -1,3 +1,9 @@
+## [2.9.4] (UNRELEASED)
+
+NOTES:
+
+- Adds a note to the `launchdarkly_feature_flag_environment` documentation to recommend against usage with experimentation.
+
 ## [2.9.4] (October 26, 2022)
 
 BUG FIXES:
