@@ -9,7 +9,7 @@ import (
 	ldapi "github.com/launchdarkly/api-client-go/v10"
 )
 
-// https://docs.launchdarkly.com/docs/custom-properties
+// https://docs.launchdarkly.com/home/connecting/custom-properties
 const CUSTOM_PROPERTY_CHAR_LIMIT = 64
 const CUSTOM_PROPERTY_ITEM_LIMIT = 64
 
