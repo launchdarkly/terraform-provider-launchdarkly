@@ -20,10 +20,7 @@ testacc: fmtcheck
 	TF_ACC=1 go test $(TEST) -v $(TESTARGS) -timeout 120m
 
 testacc-with-retry: fmtcheck
-	make testacc; if [ $$? -eq 1 ]; then \
-		printf "\n\nRetrying failed test\n\n"; \
-		make testacc; \
-	fi
+	make testacc || make testacc
 
 vet:
 	@echo "go vet ."
