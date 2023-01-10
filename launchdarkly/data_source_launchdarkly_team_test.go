@@ -7,6 +7,7 @@ import (
 	"regexp"
 	"testing"
 
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	ldapi "github.com/launchdarkly/api-client-go/v10"
 	"github.com/stretchr/testify/require"
@@ -14,7 +15,7 @@ import (
 
 func testAccDataSourceTeamConfig(teamKey string) string {
 	return fmt.Sprintf(`
-data "launchdarkly_team" "chicken-nugget" {
+data "launchdarkly_team" "test" {
   key = "%s"
 }
 `, teamKey)
@@ -66,11 +67,11 @@ func TestAccDataSourceTeam_exists(t *testing.T) {
 	// Populate account with dummy team
 	client, err := newClient(os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN), os.Getenv(LAUNCHDARKLY_API_HOST), false)
 	require.NoError(t, err)
-	teamKey := "chicken-nugget"
+	teamKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	team, createErr := testAccDataSourceTeamCreate(client, teamKey)
 	require.NoError(t, createErr)
 
-	resourceName := fmt.Sprintf("data.launchdarkly_team.%s", teamKey)
+	resourceName := "data.launchdarkly_team.test"
 	resource.Test(t, resource.TestCase{
 		PreCheck: func() {
 			testAccPreCheck(t)
