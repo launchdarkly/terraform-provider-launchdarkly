@@ -43,7 +43,7 @@ func baseEnvironmentSchema(forProject bool) map[string]*schema.Schema {
 			Type:     schema.TypeInt,
 			Optional: true,
 			Default:  0,
-			// Default TTL should be between 0 and 60 minutes: https://docs.launchdarkly.com/docs/environments
+			// Default TTL should be between 0 and 60 minutes: https://docs.launchdarkly.com/home/organize/environments#ttl-settings
 			Description:      "The TTL for the environment. This must be between 0 and 60 minutes. The TTL setting only applies to environments using the PHP SDK",
 			ValidateDiagFunc: validation.ToDiagFunc(validation.IntBetween(0, 60)),
 		},
