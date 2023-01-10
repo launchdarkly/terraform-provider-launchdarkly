@@ -96,10 +96,6 @@ resource "launchdarkly_feature_flag_environment" "basic" {
 		values    = ["user1", "user2"]
 		variation = 1
 	}
-	targets {
-		values    = []
-		variation = 2
-	}
 	rules {
 		clauses {
 			attribute = "country"
@@ -537,13 +533,11 @@ func TestAccFeatureFlagEnvironment_Update(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "fallthrough.0.rollout_weights.1", "40000"),
 					resource.TestCheckResourceAttr(resourceName, "fallthrough.0.rollout_weights.2", "0"),
 					resource.TestCheckResourceAttr(resourceName, "fallthrough.0.bucket_by", "email"),
-					resource.TestCheckResourceAttr(resourceName, "targets.#", "2"),
+					resource.TestCheckResourceAttr(resourceName, "targets.#", "1"),
 					resource.TestCheckResourceAttr(resourceName, "targets.0.values.#", "2"),
 					resource.TestCheckResourceAttr(resourceName, "targets.0.values.0", "user1"),
 					resource.TestCheckResourceAttr(resourceName, "targets.0.variation", "1"),
 					resource.TestCheckResourceAttr(resourceName, "targets.0.values.1", "user2"),
-					resource.TestCheckResourceAttr(resourceName, "targets.1.values.#", "0"),
-					resource.TestCheckResourceAttr(resourceName, "targets.1.variation", "2"),
 					resource.TestCheckResourceAttr(resourceName, "rules.#", "2"),
 					resource.TestCheckResourceAttr(resourceName, "rules.0.variation", "0"),
 					resource.TestCheckResourceAttr(resourceName, "rules.0.clauses.#", "1"),

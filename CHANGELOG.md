@@ -1,5 +1,9 @@
 ## [2.9.4] (UNRELEASED)
 
+BUG FIXES:
+
+- Fixes a bug that allowed target blocks to be defined with no values in Terraform, resulting in a plan differential post-apply. A minimum of 1 item has been applied to the `values` field of `launchdarkly_feature_flag_environment` resource blocks.
+
 NOTES:
 
 - Adds a note to the `launchdarkly_feature_flag_environment` documentation to recommend against usage with experimentation.

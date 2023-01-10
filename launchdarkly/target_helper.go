@@ -18,6 +18,7 @@ func targetsSchema() *schema.Schema {
 					Type:        schema.TypeList,
 					Elem:        &schema.Schema{Type: schema.TypeString},
 					Required:    true,
+					MinItems:    1,
 					Description: "List of user strings to target",
 				},
 				VARIATION: {
