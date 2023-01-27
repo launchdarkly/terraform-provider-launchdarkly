@@ -7,6 +7,7 @@ import (
 )
 
 var OMITTED_INTEGRATION_KEYS = []string{
+	"msteams-app",
 	"zapier", // Zapier is omitted because it the integration configuration is managed by Zapier
 }
 
