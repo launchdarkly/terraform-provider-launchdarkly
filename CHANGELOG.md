@@ -1,4 +1,4 @@
-## [2.9.5] (UNRELEASED)
+## [2.9.5] (January 30, 2023)
 
 BUG FIXES:
 
