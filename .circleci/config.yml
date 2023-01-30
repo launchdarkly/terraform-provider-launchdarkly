@@ -59,7 +59,7 @@ jobs:
           command: TESTARGS="-run TestAccEnvironment" make testacc-with-retry
       - run:
           name: Test Feature Flag Resource
-          command: TESTARGS="-run TestAccFeatureFlag" make testacc-with-retry
+          command: TESTARGS="-run TestAccFeatureFlag_" make testacc-with-retry
       - run:
           name: Test Feature Flag Environment Resource
           command: TESTARGS="-run TestAccFeatureFlagEnvironment" make testacc-with-retry

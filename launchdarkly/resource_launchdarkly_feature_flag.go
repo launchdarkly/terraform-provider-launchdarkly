@@ -153,7 +153,7 @@ func resourceFeatureFlagCreate(ctx context.Context, d *schema.ResourceData, meta
 	}
 
 	// ld's api does not allow some fields to be passed in during flag creation so we do an update:
-	// https://apidocs.launchdarkly.com/docs/create-feature-flag
+	// https://apidocs.launchdarkly.com/tag/Feature-flags#operation/postFeatureFlag
 	updateDiags := resourceFeatureFlagUpdate(ctx, d, metaRaw)
 	if updateDiags.HasError() {
 		// if there was a problem in the update state, we need to clean up completely by deleting the flag

@@ -63,9 +63,9 @@ An access token may have its permissions specified by a built-in LaunchDarkly ro
 
 - `custom_roles` - (Optional) A list of custom role IDs to use as access limits for the access token
 
-- `policy_statements` - (Optional, **Deprecated**) Define inline custom roles. An array of statements represented as config blocks with 3 attributes: effect, resources, actions. May be used in place of a built-in or custom role. [Policies in custom roles](https://docs.launchdarkly.com/docs/policies-in-custom-roles). May be specified more than once. This field argument is **deprecated**. Please update your config to use `inline_role` to maintain compatibility with future versions.
+- `policy_statements` - (Optional, **Deprecated**) Define inline custom roles. An array of statements represented as config blocks with three attributes: effect, resources, actions. May be used in place of a built-in or custom role. May be specified more than once. This field argument is **deprecated**. Update your config to use `inline_role` to maintain compatibility with future versions.
 
-- `inline_role` - (Optional) Define inline custom roles. An array of statements represented as config blocks with 3 attributes: effect, resources, actions. May be used in place of a built-in or custom role. [Policies in custom roles](https://docs.launchdarkly.com/docs/policies-in-custom-roles). May be specified more than once.
+- `inline_role` - (Optional) Define inline custom roles. An array of statements represented as config blocks with three attributes: effect, resources, actions. May be used in place of a built-in or custom role. [Using polices](https://docs.launchdarkly.com/home/members/role-policies). May be specified more than once.
 
 Access token `policy_statements` and `inline_role` blocks are composed of the following arguments:
 

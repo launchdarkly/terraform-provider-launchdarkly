@@ -52,7 +52,7 @@ In addition to the arguments above, the resource exports the following attribute
 
 - `client_side_availability` - A map describing whether this flag has been made available to the client-side JavaScript SDK. To learn more, read [Nested Client-Side Availability Block](#nested-client-side-availability-block).
 
-- `custom_properties` - List of nested blocks describing the feature flag's [custom properties](https://docs.launchdarkly.com/docs/custom-properties). To learn more, read [Nested Custom Properties](#nested-custom-properties).
+- `custom_properties` - List of nested blocks describing the feature flag's [custom properties](https://docs.launchdarkly.com/home/connecting/custom-properties). To learn more, read [Nested Custom Properties](#nested-custom-properties).
 
 ### Nested Variations Blocks
 

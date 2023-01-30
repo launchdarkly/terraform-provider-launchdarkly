@@ -40,9 +40,9 @@ In addition to the arguments above, the resource exports the following attribute
 
 - `secure_mode` - A value of true `true` ensures a user of the client-side SDK cannot impersonate another user.
 
-- `default_track_events` - A value of `true` enables data export for every flag created in this environment. To learn more, read [Data Export](https://docs.launchdarkly.com/docs/data-export).
+- `default_track_events` - A value of `true` enables data export for every flag created in this environment. To learn more, read [Data Export](https://docs.launchdarkly.com/home/data-export).
 
-- `default_ttl` - The TTL for the environment. This will be a numeric value between 0 and 60 in minutes. The TTL setting only applies to environments using the PHP SDK. To learn more, read [TTL settings](https://docs.launchdarkly.com/docs/environments#section-ttl-settings).
+- `default_ttl` - The TTL for the environment. This will be a numeric value between 0 and 60 in minutes. The TTL setting only applies to environments using the PHP SDK. To learn more, read [TTL settings](https://docs.launchdarkly.com/home/organize/environments#ttl-settings).
 
 - `require_comments` - A value of `true` indicates that this environment requires comments for flag and segment changes. 
 
