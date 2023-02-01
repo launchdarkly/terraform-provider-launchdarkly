@@ -76,6 +76,8 @@ Nested `rules` blocks have the following structure:
 
 - `clauses` - List of nested blocks specifying the logical clauses evaluated. To learn more, read [Nested Clauses Blocks](#nested-clauses-blocks).
 
+- `description` - (Optional) A human-readable description of the targeting rule.
+
 - `variation` - The integer variation index served if the rule clauses evaluate to `true`.
 
 - `rollout_weights` - List of integer percentage rollout weights applied to each variation when the rule clauses evaluates to `true`.

@@ -37,6 +37,7 @@ resource "launchdarkly_feature_flag_environment" "number_env" {
   }
 
   rules {
+    description = "example targeting rule with two clauses"
     clauses {
       attribute = "country"
       op        = "startsWith"
@@ -110,6 +111,8 @@ The nested `fallthrough` (previously `flag_fallthrough`) block has the following
 Nested `rules` blocks have the following structure:
 
 - `clauses` - (Required) List of nested blocks specifying the logical clauses to evaluate. To learn more, read [Nested Clauses Blocks](#nested-clauses-blocks).
+
+- `description` - (Optional) A human-readable description of the targeting rule.
 
 - `variation` - (Optional) The integer variation index to serve if the rule clauses evaluate to `true`. You must specify either `variation` or `rollout_weights`.
 

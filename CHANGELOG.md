@@ -1,3 +1,9 @@
+## [2.10.0] (Unreleased)
+
+FEATURES:
+
+- Adds the optional `description` argument to the nested `rules` blocks on the `launchdarkly_feature_flag_environment` resource and data source.
+
 ## [2.9.5] (January 30, 2023)
 
 BUG FIXES:

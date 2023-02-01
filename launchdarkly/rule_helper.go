@@ -16,6 +16,11 @@ func rulesSchema() *schema.Schema {
 		Description: "List of logical targeting rules. You must specify either clauses or rollout weights",
 		Elem: &schema.Resource{
 			Schema: map[string]*schema.Schema{
+				DESCRIPTION: {
+					Type:        schema.TypeString,
+					Optional:    true,
+					Description: "A human-readable description of the targeting rule",
+				},
 				CLAUSES: clauseSchema(),
 				VARIATION: {
 					Type:             schema.TypeInt,
@@ -36,9 +41,10 @@ func rulesSchema() *schema.Schema {
 }
 
 type rule struct {
-	Variation *int           `json:"variation,omitempty"`
-	Rollout   *ldapi.Rollout `json:"rollout,omitempty"`
-	Clauses   []ldapi.Clause `json:"clauses,omitempty"`
+	Description *string        `json:"description,omitempty"`
+	Variation   *int           `json:"variation,omitempty"`
+	Rollout     *ldapi.Rollout `json:"rollout,omitempty"`
+	Clauses     []ldapi.Clause `json:"clauses,omitempty"`
 }
 
 func rulesFromResourceData(d *schema.ResourceData) ([]rule, error) {
@@ -65,7 +71,7 @@ func ruleFromResourceData(val interface{}) (rule, error) {
 		}
 		r.Clauses = append(r.Clauses, clause)
 	}
-	bucketBy := ruleMap["bucket_by"].(string)
+	bucketBy := ruleMap[BUCKET_BY].(string)
 	bucketByFound := bucketBy != ""
 	if len(rolloutFromResourceData(ruleMap[ROLLOUT_WEIGHTS]).Variations) > 0 {
 		r.Rollout = rolloutFromResourceData(ruleMap[ROLLOUT_WEIGHTS])
@@ -78,6 +84,8 @@ func ruleFromResourceData(val interface{}) (rule, error) {
 		}
 		r.Variation = intPtr(ruleMap[VARIATION].(int))
 	}
+	description := ruleMap[DESCRIPTION].(string)
+	r.Description = &description
 	log.Printf("[DEBUG] %+v\n", r)
 	return r, nil
 }
@@ -99,6 +107,9 @@ func rulesToResourceData(rules []ldapi.Rule) (interface{}, error) {
 			ruleMap[BUCKET_BY] = r.Rollout.BucketBy
 		} else {
 			ruleMap[VARIATION] = r.Variation
+		}
+		if r.Description != nil {
+			ruleMap[DESCRIPTION] = r.GetDescription()
 		}
 		transformed = append(transformed, ruleMap)
 	}

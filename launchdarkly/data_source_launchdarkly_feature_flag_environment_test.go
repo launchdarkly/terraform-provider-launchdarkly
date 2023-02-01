@@ -93,7 +93,8 @@ func TestAccDataSourceFeatureFlagEnvironment_exists(t *testing.T) {
 
 	rules := []rule{
 		{
-			Variation: intPtr(1),
+			Description: strPtr("test rule"),
+			Variation:   intPtr(1),
 			Clauses: []ldapi.Clause{
 				{
 					Attribute: "thing",
@@ -155,6 +156,7 @@ func TestAccDataSourceFeatureFlagEnvironment_exists(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, ENV_KEY, envKey),
 					resource.TestCheckResourceAttr(resourceName, ON, fmt.Sprint(thisConfig.On)),
 					resource.TestCheckResourceAttr(resourceName, TRACK_EVENTS, fmt.Sprint(thisConfig.TrackEvents)),
+					resource.TestCheckResourceAttr(resourceName, "rules.0.description", *thisConfig.Rules[0].Description),
 					resource.TestCheckResourceAttr(resourceName, "rules.0.variation", fmt.Sprint(*thisConfig.Rules[0].Variation)),
 					resource.TestCheckResourceAttr(resourceName, "rules.0.clauses.0.attribute", thisConfig.Rules[0].Clauses[0].Attribute),
 					resource.TestCheckResourceAttr(resourceName, "rules.0.clauses.0.op", thisConfig.Rules[0].Clauses[0].Op),
