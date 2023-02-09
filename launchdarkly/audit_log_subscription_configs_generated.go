@@ -3,6 +3,32 @@
 package launchdarkly
 
 var SUBSCRIPTION_CONFIGURATION_FIELDS = map[string]IntegrationConfig{
+	"cloudtrail": {
+		"accountId": {
+			AllowedValues: []string{},
+			DefaultValue:  "",
+			Description:   "Enter your [AWS account ID](https://docs.aws.amazon.com/IAM/latest/UserGuide/console_account-alias.html#FindingYourAWSId). The associated account must be configured to use CloudTrail Lake.",
+			IsOptional:    true,
+			IsSecret:      false,
+			Type:          "string",
+		},
+		"externalId": {
+			AllowedValues: []string{},
+			DefaultValue:  nil,
+			Description:   "Use this [external id](https://docs.launchdarkly.com/integrations/cloudtrail) for your resource policy when setting up the integration in the AWS Console.",
+			IsOptional:    false,
+			IsSecret:      false,
+			Type:          "generated",
+		},
+		"ingestionChannelArn": {
+			AllowedValues: []string{},
+			DefaultValue:  nil,
+			Description:   "Enter the Channel ARN for LaunchDarkly to use.",
+			IsOptional:    false,
+			IsSecret:      false,
+			Type:          "string",
+		},
+	},
 	"datadog": {
 		"apiKey": {
 			AllowedValues: []string{},
