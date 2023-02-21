@@ -48,6 +48,8 @@ In addition to the arguments above, the resource exports the following attribute
 
 - `temporary` - Whether the flag is a temporary flag.
 
+- `archived` - Whether the flag is archived.
+
 - `include_in_snippet` - **Deprecated** A boolean describing whether this flag has been made available to the client-side Javescript SDK using the client-side ID only. `include_in_snippet` is now deprecated. Please retrieve information from `client_side_availability.using_environment_id` to maintain future compatability.
 
 - `client_side_availability` - A map describing whether this flag has been made available to the client-side JavaScript SDK. To learn more, read [Nested Client-Side Availability Block](#nested-client-side-availability-block).
