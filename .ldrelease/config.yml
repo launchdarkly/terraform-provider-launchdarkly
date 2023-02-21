@@ -1,17 +1,14 @@
 version: 2
-repo:
-  public: terraform-provider-launchdarkly
-  private: terraform-provider-launchdarkly-private
-
+  
 jobs:
   - docker:
       image: golang:1.18-buster
+      copyGitHistory: true
     template:
       name: go
-    env: 
-      # This won't do anything for now
-      SKIP_GITHUB_RELEASE: true
+      # We run the tests as part of every merge
+      skip:
+        - test
 
 branches:
   - name: main
-  

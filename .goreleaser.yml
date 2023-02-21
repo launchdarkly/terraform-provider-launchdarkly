@@ -1,5 +1,10 @@
 # Visit https://goreleaser.com for documentation on how to customize this
 # behavior.
+# TODO: Figure out why this won't grab the correct dir off env
+# dist: {{ .Env.LD_RELEASE_ARTIFACTS_DIR }} // fails with  unmarshal errors: cannot unmarshal !!map into string
+# dist: "{{ .Env.LD_RELEASE_ARTIFACTS_DIR }}" // Doesn't replace the variable with actual value
+# Below is the default that project-releaser sets - we can probably leave this hardcoded for now as it won't change
+dist: /tmp/project-releaser/artifacts
 before:
   hooks:
     # this is just an example and not a requirement for provider building/publishing
@@ -48,7 +53,7 @@ signs:
       - "--detach-sign"
       - "${artifact}"
 release:
-  # Visit your project's GitHub Releases page to publish this release.
-  draft: true
+  # Actually creating the release is handled by project-releaser
+  disable: true
 changelog:
   skip: true
