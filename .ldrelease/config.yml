@@ -1,4 +1,8 @@
 version: 2
+
+repo:
+  public: terraform-provider-launchdarkly
+  private: terraform-provider-launchdarkly-private
   
 jobs:
   - docker:
