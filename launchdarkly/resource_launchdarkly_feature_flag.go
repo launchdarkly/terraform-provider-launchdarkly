@@ -211,14 +211,20 @@ func resourceFeatureFlagUpdate(ctx context.Context, d *schema.ResourceData, meta
 			patchReplace("/archived", archived),
 		}}
 
-	if clientSideAvailabilityOk && clientSideHasChange {
-		patch.Patch = append(patch.Patch, patchReplace("/clientSideAvailability", clientSideAvailability))
-	} else if includeInSnippetOk && snippetHasChange {
-		// If includeInSnippet is set, still use clientSideAvailability behind the scenes in order to switch UsingMobileKey to false if needed
-		patch.Patch = append(patch.Patch, patchReplace("/clientSideAvailability", &ldapi.ClientSideAvailabilityPost{
-			UsingEnvironmentId: includeInSnippet,
-			UsingMobileKey:     false,
-		}))
+	if clientSideAvailabilityOk {
+		// Has a valid CSA block -- only apply a patch if the CSA block has a change
+		if clientSideHasChange {
+			patch.Patch = append(patch.Patch, patchReplace("/clientSideAvailability", clientSideAvailability))
+		}
+	} else if includeInSnippetOk {
+		// Has a valid IIS block -- only apply a patch if the IIS block has a change
+		if snippetHasChange {
+			// If includeInSnippet is set, still use clientSideAvailability behind the scenes in order to switch UsingMobileKey to false if needed
+			patch.Patch = append(patch.Patch, patchReplace("/clientSideAvailability", &ldapi.ClientSideAvailabilityPost{
+				UsingEnvironmentId: includeInSnippet,
+				UsingMobileKey:     false,
+			}))
+		}
 	} else {
 		// If the user doesn't set either CSA or IIS in config, we pull the defaults from their Project level settings and apply those
 		// IncludeInSnippetdefault is the same as defaultCSA.UsingEnvironmentId, so we can _ it
