@@ -11,7 +11,8 @@ import (
 )
 
 // We assign a custom diff in cases where the customer has not assigned a default for CSA or IIS in config
-//  in order to respect the LD backend defaults and reflect that in our plans
+//
+//	in order to respect the LD backend defaults and reflect that in our plans
 func customizeProjectDiff(ctx context.Context, diff *schema.ResourceDiff, v interface{}) error {
 	config := diff.GetRawConfig()
 

@@ -9,6 +9,7 @@ import (
 
 // Can't use validation.ToDiagFunc converted validators on TypeList at the moment
 // https://github.com/hashicorp/terraform-plugin-sdk/issues/734
+//
 //nolint:staticcheck // SA1019 TODO: return SchemaValidateDiagFunc type
 func validateKeyNoDiag() schema.SchemaValidateFunc {
 	return validation.StringMatch(
@@ -26,6 +27,7 @@ func validateKey() schema.SchemaValidateDiagFunc {
 
 // Can't use validation.ToDiagFunc converted validators on TypeList at the moment
 // https://github.com/hashicorp/terraform-plugin-sdk/issues/734
+//
 //nolint:staticcheck // SA1019 TODO: return SchemaValidateDiagFunc type
 func validateKeyAndLength(minLength, maxLength int) schema.SchemaValidateFunc {
 	return validation.All(
@@ -46,6 +48,7 @@ func validateID() schema.SchemaValidateDiagFunc {
 
 // Can't use validation.ToDiagFunc converted validators on TypeList at the moment
 // https://github.com/hashicorp/terraform-plugin-sdk/issues/734
+//
 //nolint:staticcheck // SA1019 TODO: return SchemaValidateDiagFunc type
 func validateTagsNoDiag() schema.SchemaValidateFunc {
 	return validation.All(
