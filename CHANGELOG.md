@@ -1,4 +1,4 @@
-## [2.9.5] (January 30, 2023)
+## [2.9.5] - 2023-01-30
 
 BUG FIXES:
 
@@ -21,7 +21,7 @@ BUG FIXES:
 BUG FIXES:
 
 - Correctly set bucketBy to nil when explicitly set to an empty string to avoid API errors [#120](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/120)
-- Print error message from API response for Teams resource
+- Print error message from API response for `launchdarkly_team` resource
 
 NOTES:
 

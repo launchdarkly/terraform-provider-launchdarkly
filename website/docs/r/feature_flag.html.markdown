@@ -37,6 +37,11 @@ resource "launchdarkly_feature_flag" "building_materials" {
     description = "The strongest variation"
   }
 
+  client_side_availability {
+		using_environment_id = false
+		using_mobile_key = true
+	}
+
   defaults {
     on_variation = 2
     off_variation = 0
@@ -96,12 +101,13 @@ resource "launchdarkly_feature_flag" "json_example" {
 
 - `temporary` - (Optional) Specifies whether the flag is a temporary flag.
 
+- `archived` - (Optional) Specifies whether the flag is archived or not. Note that you cannot create a new flag that is archived, but can update a flag to be archived.
+
 - `include_in_snippet` - **Deprecated** (Optional) Specifies whether this flag should be made available to the client-side JavaScript SDK using the client-side Id. This value gets its default from your project configuration if not set. `include_in_snippet` is now deprecated. Please migrate to `client_side_availability.using_environment_id` to maintain future compatability.
 
-- `client_side_availability` - (Optional) A block describing whether this flag should be made available to the client-side JavaScript SDK using the client-side Id, mobile key, or both. This value gets its default from your project configuration if not set. To learn more, read [Nested Client-Side Availability Block](#nested-client-side-availability-block).
+- `client_side_availability` - (Optional) A block describing whether this flag should be made available to the client-side JavaScript SDK using the client-side Id, mobile key, or both. This value gets its default from your project configuration if not set. Once set, if removed, it will retain its last set value. To learn more, read [Nested Client-Side Availability Block](#nested-client-side-availability-block).
 
 - `custom_properties` - (Optional) List of nested blocks describing the feature flag's [custom properties](https://docs.launchdarkly.com/home/connecting/custom-properties). To learn more, read [Nested Custom Properties](#nested-custom-properties).
-
 
 ### Nested Variations Blocks
 

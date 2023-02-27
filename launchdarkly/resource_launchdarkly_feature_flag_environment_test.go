@@ -106,6 +106,7 @@ resource "launchdarkly_feature_flag_environment" "basic" {
 		variation = 0
 	}
 	rules {
+		description = "names that start with 'h'"
 		clauses {
 			attribute = "name"
 			op        = "startsWith"
@@ -539,6 +540,7 @@ func TestAccFeatureFlagEnvironment_Update(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "targets.0.variation", "1"),
 					resource.TestCheckResourceAttr(resourceName, "targets.0.values.1", "user2"),
 					resource.TestCheckResourceAttr(resourceName, "rules.#", "2"),
+					resource.TestCheckResourceAttr(resourceName, "rules.0.description", ""),
 					resource.TestCheckResourceAttr(resourceName, "rules.0.variation", "0"),
 					resource.TestCheckResourceAttr(resourceName, "rules.0.clauses.#", "1"),
 					resource.TestCheckResourceAttr(resourceName, "rules.0.clauses.0.attribute", "country"),
@@ -547,6 +549,7 @@ func TestAccFeatureFlagEnvironment_Update(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "rules.0.clauses.0.values.0", "great"),
 					resource.TestCheckResourceAttr(resourceName, "rules.0.clauses.0.values.1", "amazing"),
 					resource.TestCheckResourceAttr(resourceName, "rules.0.clauses.0.negate", "false"),
+					resource.TestCheckResourceAttr(resourceName, "rules.1.description", "names that start with 'h'"),
 					resource.TestCheckResourceAttr(resourceName, "rules.1.rollout_weights.#", "3"),
 					resource.TestCheckResourceAttr(resourceName, "rules.1.rollout_weights.0", "90000"),
 					resource.TestCheckResourceAttr(resourceName, "rules.1.rollout_weights.1", "10000"),
@@ -559,6 +562,11 @@ func TestAccFeatureFlagEnvironment_Update(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "rules.1.clauses.0.negate", "false"),
 					resource.TestCheckResourceAttr(resourceName, OFF_VARIATION, "1"),
 				),
+			},
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
 			},
 			// After changes have been made to the resource, removing optional values should revert to their default / null values.
 			{
