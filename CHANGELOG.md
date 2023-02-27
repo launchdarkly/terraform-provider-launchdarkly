@@ -1,3 +1,11 @@
+## [2.10.0] - 2023-02-27
+FEATURES:
+- Adds the optional `description` argument to the nested `rules` blocks on the `launchdarkly_feature_flag_environment` resource and data source.
+
+BUG FIXES: 
+
+- Fixes an issue on the `launchdarkly_feature_flag` resource affecting some customers where the `client_side_availability` property would sometimes unexpectedly update. Also updates the behavior of that field to not default back to project defaults even if removed, in keeping with [the behavior of the LaunchDarkly API](https://docs.launchdarkly.com/home/organize/projects/?q=project#project-flag-defaults). If a feature flag resource is created for the first time without `client_side_availability` set, it will be set to the project defaults.
+
 ## [2.9.5] - 2023-01-30
 
 BUG FIXES:
