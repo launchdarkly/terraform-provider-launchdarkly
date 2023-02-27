@@ -9,54 +9,6 @@ import (
 	ldapi "github.com/launchdarkly/api-client-go/v10"
 )
 
-// We assign a custom diff in cases where the customer has not assigned CSA or IIS in config for a flag in order to respect project level defaults
-func customizeFlagDiff(ctx context.Context, diff *schema.ResourceDiff, v interface{}) error {
-	config := diff.GetRawConfig()
-	client := v.(*Client)
-	projectKey := diff.Get(PROJECT_KEY).(string)
-
-	// Below values will exist due to the schema, we need to check if they are all null
-	snippetInConfig := config.GetAttr(INCLUDE_IN_SNIPPET)
-	csaInConfig := config.GetAttr(CLIENT_SIDE_AVAILABILITY)
-
-	// If we have no keys in the CSA block in the config (length is 0) we know the customer hasn't set any CSA values
-	csaKeys := csaInConfig.AsValueSlice()
-	if len(csaKeys) == 0 {
-		// When we have no values for either clienSideAvailability or includeInSnippet
-		// Force an UPDATE call by setting a new value for INCLUDE_IN_SNIPPET in the diff according to project defaults
-		if snippetInConfig.IsNull() {
-			defaultCSA, includeInSnippetByDefault, err := getProjectDefaultCSAandIncludeInSnippet(client, projectKey)
-			// We will fall into this block during the first config read when a user creates a flag at the same time they create the parent project
-			// (and during our tests)
-			// We can ignore the error here, as it is correctly handled during update/create (and doesn't occur then as the project will have been created)
-			if err != nil {
-			} else {
-				// We set our values to the project defaults in order to guarantee an update call happening
-				// If we don't do this, we can run into an edge case described below
-				// IF previous value of INCLUDE_IN_SNIPPET was false
-				// AND the project default value for INCLUDE_IN_SNIPPET is true
-				// AND the customer removes the INCLUDE_IN_SNIPPET key from the config without replacing with defaultCSA
-				// The read would assume no changes are needed, HOWEVER we need to jump back to project level set defaults
-				// Hence the setting below
-				err := diff.SetNew(INCLUDE_IN_SNIPPET, includeInSnippetByDefault)
-				if err != nil {
-					return err
-				}
-				err = diff.SetNew(CLIENT_SIDE_AVAILABILITY, []map[string]interface{}{{
-					USING_ENVIRONMENT_ID: defaultCSA.UsingEnvironmentId,
-					USING_MOBILE_KEY:     defaultCSA.UsingMobileKey,
-				}})
-				if err != nil {
-					return err
-				}
-			}
-		}
-
-	}
-
-	return nil
-}
-
 func resourceFeatureFlag() *schema.Resource {
 	schemaMap := baseFeatureFlagSchema()
 	schemaMap[NAME] = &schema.Schema{
@@ -75,8 +27,7 @@ func resourceFeatureFlag() *schema.Resource {
 		Importer: &schema.ResourceImporter{
 			State: resourceFeatureFlagImport,
 		},
-		Schema:        schemaMap,
-		CustomizeDiff: customizeFlagDiff,
+		Schema: schemaMap,
 	}
 }
 
@@ -211,25 +162,14 @@ func resourceFeatureFlagUpdate(ctx context.Context, d *schema.ResourceData, meta
 			patchReplace("/archived", archived),
 		}}
 
+	// if it was previously set and then removed, we don't want to update it or revert to project defaults in this case
+	// because the LD API only sets it to project defaults upon flag creation and those defaults may have changed since
 	if clientSideAvailabilityOk && clientSideHasChange {
 		patch.Patch = append(patch.Patch, patchReplace("/clientSideAvailability", clientSideAvailability))
 	} else if includeInSnippetOk && snippetHasChange {
 		// If includeInSnippet is set, still use clientSideAvailability behind the scenes in order to switch UsingMobileKey to false if needed
-		patch.Patch = append(patch.Patch, patchReplace("/clientSideAvailability", &ldapi.ClientSideAvailabilityPost{
-			UsingEnvironmentId: includeInSnippet,
-			UsingMobileKey:     false,
-		}))
-	} else {
-		// If the user doesn't set either CSA or IIS in config, we pull the defaults from their Project level settings and apply those
-		// IncludeInSnippetdefault is the same as defaultCSA.UsingEnvironmentId, so we can _ it
-		defaultCSA, _, err := getProjectDefaultCSAandIncludeInSnippet(client, projectKey)
-		if err != nil {
-			return diag.Errorf("failed to get project level client side availability defaults. %v", err)
-		}
-		patch.Patch = append(patch.Patch, patchReplace("/clientSideAvailability", &ldapi.ClientSideAvailabilityPost{
-			UsingEnvironmentId: *defaultCSA.UsingEnvironmentId,
-			UsingMobileKey:     *defaultCSA.UsingMobileKey,
-		}))
+		clientSideAvailability.UsingEnvironmentId = includeInSnippet // overwrite with user-set value
+		patch.Patch = append(patch.Patch, patchReplace("/clientSideAvailability", clientSideAvailability))
 	}
 
 	variationPatches, err := variationPatchesFromResourceData(d)

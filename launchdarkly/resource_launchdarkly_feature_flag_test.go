@@ -19,13 +19,38 @@ resource "launchdarkly_feature_flag" "basic" {
 	variation_type = "boolean"
 }
 `
+	testAccFeatureFlagBasicWithTag = `
+resource "launchdarkly_feature_flag" "basic" {
+	project_key = launchdarkly_project.test.key
+	key = "basic-flag"
+	name = "Basic feature flag"
+	variation_type = "boolean"
+	tags = ["test"]
+}
+`
+
+	testAccFeatureFlagBasicWithCSASet = `
+resource "launchdarkly_feature_flag" "basic" {
+	project_key = launchdarkly_project.test.key
+	key = "basic-flag"
+	name = "Basic feature flag"
+	variation_type = "boolean"
+	tags = ["test"]
+
+	client_side_availability {
+		using_environment_id = true
+		using_mobile_key = true
+	}
+}
+`
+
 	testAccFeatureFlagUpdate = `
 resource "launchdarkly_feature_flag" "basic" {
 	project_key = launchdarkly_project.test.key
 	key = "basic-flag"
 	name = "Less basic feature flag"
 	variation_type = "boolean"
-	description = "this is a boolean flag by default becausethe variations field is omitted"
+	description = "this is a boolean flag by default because the variations field is omitted"
 	tags = ["update", "terraform"]
 	include_in_snippet = true
 	temporary = true
@@ -460,6 +485,28 @@ func withRandomProject(randomProject, resource string) string {
 	%s`, randomProject, resource)
 }
 
+func withProjectWithSpecifiedCSADefaults(randomProject string, resource string, usingEnvironmentId bool, usingMobileKey bool) string {
+	return fmt.Sprintf(`
+	resource "launchdarkly_project" "test" {
+		lifecycle {
+			ignore_changes = [environments]
+		}
+		name = "testProject"
+		key = "%s"
+		default_client_side_availability {
+			using_environment_id = %v
+			using_mobile_key = %v
+		}
+		environments {
+			name  = "testEnvironment"
+			key   = "test"
+			color = "000000"
+		}
+	}
+	
+	%s`, randomProject, usingEnvironmentId, usingMobileKey, resource)
+}
+
 func withRandomProjectAndEnv(randomProject, randomEnvironment, resource string) string {
 	return fmt.Sprintf(`
 	resource "launchdarkly_project" "test" {
@@ -525,10 +572,9 @@ func TestAccFeatureFlag_BasicCreateAndUpdate(t *testing.T) {
 				),
 			},
 			{
-				ResourceName: resourceName,
-				ImportState:  true,
-				// TODO: While we have to account for usingMobileKey being set to true by default, we cant use importStateVerify
-				// ImportStateVerify: true,
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
 			},
 			{
 				Config: withRandomProject(projectKey, testAccFeatureFlagUpdate),
@@ -538,7 +584,7 @@ func TestAccFeatureFlag_BasicCreateAndUpdate(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, NAME, "Less basic feature flag"),
 					resource.TestCheckResourceAttr(resourceName, KEY, "basic-flag"),
 					resource.TestCheckResourceAttr(resourceName, PROJECT_KEY, projectKey),
-					resource.TestCheckResourceAttr(resourceName, DESCRIPTION, "this is a boolean flag by default becausethe variations field is omitted"),
+					resource.TestCheckResourceAttr(resourceName, DESCRIPTION, "this is a boolean flag by default because the variations field is omitted"),
 					resource.TestCheckResourceAttr(resourceName, "tags.#", "2"),
 					resource.TestCheckResourceAttr(resourceName, "tags.0", "terraform"),
 					resource.TestCheckResourceAttr(resourceName, "tags.1", "update"),
@@ -547,6 +593,123 @@ func TestAccFeatureFlag_BasicCreateAndUpdate(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "defaults.0.on_variation", "1"),
 					resource.TestCheckResourceAttr(resourceName, "defaults.0.off_variation", "1"),
 				),
+			},
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
+		},
+	})
+}
+
+func TestAccFeatureFlag_CSAInteractionWithProjectDefaults(t *testing.T) {
+	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	resourceName := "launchdarkly_feature_flag.basic"
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck: func() {
+			testAccPreCheck(t)
+		},
+		Providers: testAccProviders,
+		Steps: []resource.TestStep{
+			{
+				Config: withRandomProject(projectKey, testAccFeatureFlagBasic),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckProjectExists("launchdarkly_project.test"),
+					testAccCheckFeatureFlagExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, NAME, "Basic feature flag"),
+					resource.TestCheckResourceAttr(resourceName, KEY, "basic-flag"),
+					resource.TestCheckResourceAttr(resourceName, PROJECT_KEY, projectKey),
+					resource.TestCheckResourceAttr(resourceName, VARIATION_TYPE, "boolean"),
+					resource.TestCheckResourceAttr(resourceName, "variations.#", "2"),
+					resource.TestCheckResourceAttr(resourceName, "variations.0.value", "true"),
+					resource.TestCheckResourceAttr(resourceName, "variations.1.value", "false"),
+					// bool variation defaults should default to 0 and 1 if not set
+					resource.TestCheckResourceAttr(resourceName, "defaults.0.on_variation", "0"),
+					resource.TestCheckResourceAttr(resourceName, "defaults.0.off_variation", "1"),
+					// these should be set to project defaults if not defined
+					resource.TestCheckResourceAttr(resourceName, "client_side_availability.0.using_environment_id", "false"),
+					resource.TestCheckResourceAttr(resourceName, "client_side_availability.0.using_mobile_key", "true"),
+					resource.TestCheckNoResourceAttr(resourceName, MAINTAINER_ID),
+				),
+			},
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
+			{
+				Config: withProjectWithSpecifiedCSADefaults(projectKey, testAccFeatureFlagBasicWithTag, false, false),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckProjectExists("launchdarkly_project.test"),
+					testAccCheckFeatureFlagExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, NAME, "Basic feature flag"),
+					resource.TestCheckResourceAttr(resourceName, KEY, "basic-flag"),
+					resource.TestCheckResourceAttr(resourceName, PROJECT_KEY, projectKey),
+					resource.TestCheckResourceAttr(resourceName, VARIATION_TYPE, "boolean"),
+					resource.TestCheckResourceAttr(resourceName, "variations.#", "2"),
+					resource.TestCheckResourceAttr(resourceName, "variations.0.value", "true"),
+					resource.TestCheckResourceAttr(resourceName, "variations.1.value", "false"),
+					resource.TestCheckResourceAttr(resourceName, "defaults.0.on_variation", "0"),
+					resource.TestCheckResourceAttr(resourceName, "defaults.0.off_variation", "1"),
+					resource.TestCheckResourceAttr(resourceName, "client_side_availability.0.using_environment_id", "false"),
+					resource.TestCheckResourceAttr(resourceName, "client_side_availability.0.using_mobile_key", "true"), // we expect this not to revert back to project defaults post-flag creation
+					resource.TestCheckNoResourceAttr(resourceName, MAINTAINER_ID),
+				),
+			},
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
+			{
+				Config: withProjectWithSpecifiedCSADefaults(projectKey, testAccFeatureFlagBasicWithCSASet, false, false),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckProjectExists("launchdarkly_project.test"),
+					testAccCheckFeatureFlagExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, NAME, "Basic feature flag"),
+					resource.TestCheckResourceAttr(resourceName, KEY, "basic-flag"),
+					resource.TestCheckResourceAttr(resourceName, PROJECT_KEY, projectKey),
+					resource.TestCheckResourceAttr(resourceName, VARIATION_TYPE, "boolean"),
+					resource.TestCheckResourceAttr(resourceName, "variations.#", "2"),
+					resource.TestCheckResourceAttr(resourceName, "variations.0.value", "true"),
+					resource.TestCheckResourceAttr(resourceName, "variations.1.value", "false"),
+					resource.TestCheckResourceAttr(resourceName, "defaults.0.on_variation", "0"),
+					resource.TestCheckResourceAttr(resourceName, "defaults.0.off_variation", "1"),
+					resource.TestCheckResourceAttr(resourceName, "client_side_availability.0.using_environment_id", "true"),
+					resource.TestCheckResourceAttr(resourceName, "client_side_availability.0.using_mobile_key", "true"),
+					resource.TestCheckNoResourceAttr(resourceName, MAINTAINER_ID),
+				),
+			},
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
+			{
+				Config: withProjectWithSpecifiedCSADefaults(projectKey, testAccFeatureFlagBasicWithTag, false, false),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckProjectExists("launchdarkly_project.test"),
+					testAccCheckFeatureFlagExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, NAME, "Basic feature flag"),
+					resource.TestCheckResourceAttr(resourceName, KEY, "basic-flag"),
+					resource.TestCheckResourceAttr(resourceName, PROJECT_KEY, projectKey),
+					resource.TestCheckResourceAttr(resourceName, VARIATION_TYPE, "boolean"),
+					resource.TestCheckResourceAttr(resourceName, "variations.#", "2"),
+					resource.TestCheckResourceAttr(resourceName, "variations.0.value", "true"),
+					resource.TestCheckResourceAttr(resourceName, "variations.1.value", "false"),
+					resource.TestCheckResourceAttr(resourceName, "defaults.0.on_variation", "0"),
+					resource.TestCheckResourceAttr(resourceName, "defaults.0.off_variation", "1"),
+					// these should stay as they previously were set even once removed
+					resource.TestCheckResourceAttr(resourceName, "client_side_availability.0.using_environment_id", "true"),
+					resource.TestCheckResourceAttr(resourceName, "client_side_availability.0.using_mobile_key", "true"),
+					resource.TestCheckNoResourceAttr(resourceName, MAINTAINER_ID),
+				),
+			},
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
 			},
 		},
 	})
@@ -576,10 +739,9 @@ func TestAccFeatureFlag_Number(t *testing.T) {
 				),
 			},
 			{
-				ResourceName: resourceName,
-				ImportState:  true,
-				// TODO: While we have to account for usingMobileKey being set to true by default, we cant use importStateVerify
-				// ImportStateVerify: true,
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
 			},
 		},
 	})
@@ -606,6 +768,11 @@ func TestAccFeatureFlag_JSONBasic(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "variations.#", "2"),
 					resource.TestCheckResourceAttr(resourceName, "variations.0.value", `{"foo":"bar"}`),
 				),
+			},
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
 			},
 		},
 	})
@@ -635,6 +802,11 @@ func TestAccFeatureFlag_JSON(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "variations.3.value", `{"foo":["nested","array"]}`),
 				),
 			},
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
 		},
 	})
 }
@@ -662,6 +834,11 @@ func TestAccFeatureFlag_WithMaintainer(t *testing.T) {
 				),
 			},
 			{
+				ResourceName: resourceName,
+				ImportState:  true,
+				// ImportStateVerify: true, // this is broken on this test
+			},
+			{
 				Config: withRandomProject(projectKey, fmt.Sprintf(testAccFeatureFlagMaintainerComputed, randomName)),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckProjectExists("launchdarkly_project.test"),
@@ -672,6 +849,11 @@ func TestAccFeatureFlag_WithMaintainer(t *testing.T) {
 					// when removed it should reset back to the most recently-set maintainer
 					resource.TestCheckResourceAttrPair(resourceName, MAINTAINER_ID, "launchdarkly_team_member.test", "id"),
 				),
+			},
+			{
+				ResourceName: resourceName,
+				ImportState:  true,
+				// ImportStateVerify: true,
 			},
 			{
 				Config: withRandomProject(projectKey, testAccFeatureFlagMaintainerDeleted),
@@ -685,6 +867,11 @@ func TestAccFeatureFlag_WithMaintainer(t *testing.T) {
 					// the UI will not show a maintainer because it will not be able to find the record post-member delete
 					resource.TestCheckResourceAttrSet(resourceName, MAINTAINER_ID),
 				),
+			},
+			{
+				ResourceName: resourceName,
+				ImportState:  true,
+				// ImportStateVerify: true,
 			},
 		},
 	})
@@ -778,6 +965,11 @@ func TestAccFeatureFlag_CreateAndUpdateMultivariate(t *testing.T) {
 				),
 			},
 			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
+			{
 				Config: withRandomProject(projectKey, testAccFeatureFlagUpdateMultivariate),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckProjectExists("launchdarkly_project.test"),
@@ -811,6 +1003,11 @@ func TestAccFeatureFlag_CreateAndUpdateMultivariate(t *testing.T) {
 				),
 			},
 			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
+			{
 				// Ensure variation Delete operations are working
 				Config: withRandomProject(projectKey, testAccFeatureFlagCreateMultivariate),
 				Check: resource.ComposeTestCheckFunc(
@@ -825,6 +1022,11 @@ func TestAccFeatureFlag_CreateAndUpdateMultivariate(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "defaults.0.on_variation", "2"),
 					resource.TestCheckResourceAttr(resourceName, "defaults.0.off_variation", "1"),
 				),
+			},
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
 			},
 		},
 	})
@@ -861,6 +1063,11 @@ func TestAccFeatureFlag_CreateMultivariate2(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "tags.2", "unordered"),
 				),
 			},
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
 		},
 	})
 }
@@ -884,6 +1091,11 @@ func TestAccFeatureFlag_UpdateDefaults(t *testing.T) {
 				),
 			},
 			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
+			{
 				Config: withRandomProject(projectKey, testAccFeatureFlagDefaultsUpdate),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckProjectExists("launchdarkly_project.test"),
@@ -893,10 +1105,9 @@ func TestAccFeatureFlag_UpdateDefaults(t *testing.T) {
 				),
 			},
 			{
-				ResourceName: resourceName,
-				ImportState:  true,
-				// TODO: While we have to account for usingMobileKey being set to true by default, we cant use importStateVerify
-				// ImportStateVerify: true,
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
 			},
 		},
 	})
@@ -921,6 +1132,11 @@ func TestAccFeatureFlag_UpdateMultivariateDefaults(t *testing.T) {
 				),
 			},
 			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
+			{
 				Config: withRandomProject(projectKey, testAccFeatureFlagDefaultsMultivariateUpdate),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckProjectExists("launchdarkly_project.test"),
@@ -928,6 +1144,11 @@ func TestAccFeatureFlag_UpdateMultivariateDefaults(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "defaults.0.on_variation", "2"),
 					resource.TestCheckResourceAttr(resourceName, "defaults.0.off_variation", "2"),
 				),
+			},
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
 			},
 			{
 				Config: withRandomProject(projectKey, testAccFeatureFlagDefaultsMultivariateUpdateRemoveVariation),
@@ -939,10 +1160,9 @@ func TestAccFeatureFlag_UpdateMultivariateDefaults(t *testing.T) {
 				),
 			},
 			{
-				ResourceName: resourceName,
-				ImportState:  true,
-				// TODO: While we have to account for usingMobileKey being set to true by default, we cant use importStateVerify
-				// ImportStateVerify: true,
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
 			},
 		},
 	})
@@ -1006,6 +1226,11 @@ func TestAccFeatureFlag_ClientSideAvailabilityUpdate(t *testing.T) {
 				),
 			},
 			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
+			{
 				Config: withRandomProject(projectKey, testAccFeatureFlagClientSideAvailabilityUpdate),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckProjectExists("launchdarkly_project.test"),
@@ -1021,6 +1246,11 @@ func TestAccFeatureFlag_ClientSideAvailabilityUpdate(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "client_side_availability.0.using_environment_id", "false"),
 					resource.TestCheckResourceAttr(resourceName, "client_side_availability.0.using_mobile_key", "false"),
 				),
+			},
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
 			},
 		},
 	})
@@ -1052,6 +1282,11 @@ func TestAccFeatureFlag_IncludeInSnippetToClientSide(t *testing.T) {
 				),
 			},
 			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
+			{
 				Config: withRandomProject(projectKey, testAccFeatureFlagClientSideAvailability),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckProjectExists("launchdarkly_project.test"),
@@ -1070,6 +1305,11 @@ func TestAccFeatureFlag_IncludeInSnippetToClientSide(t *testing.T) {
 				),
 			},
 			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
+			{
 				Config: withRandomProject(projectKey, testAccFeatureFlagClientSideAvailabilityUpdate),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckProjectExists("launchdarkly_project.test"),
@@ -1086,6 +1326,11 @@ func TestAccFeatureFlag_IncludeInSnippetToClientSide(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "client_side_availability.0.using_mobile_key", "false"),
 					resource.TestCheckResourceAttr(resourceName, INCLUDE_IN_SNIPPET, "false"),
 				),
+			},
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
 			},
 		},
 	})
@@ -1119,6 +1364,11 @@ func TestAccFeatureFlag_ClientSideToIncludeInSnippet(t *testing.T) {
 				),
 			},
 			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
+			{
 				Config: withRandomProject(projectKey, testAccFeatureFlagIncludeInSnippetUpdate),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckProjectExists("launchdarkly_project.test"),
@@ -1132,15 +1382,20 @@ func TestAccFeatureFlag_ClientSideToIncludeInSnippet(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "variations.1.value", "false"),
 					resource.TestCheckNoResourceAttr(resourceName, MAINTAINER_ID),
 					resource.TestCheckResourceAttr(resourceName, "client_side_availability.0.using_environment_id", "false"),
-					resource.TestCheckResourceAttr(resourceName, "client_side_availability.0.using_mobile_key", "false"),
+					resource.TestCheckResourceAttr(resourceName, "client_side_availability.0.using_mobile_key", "true"), // this should remain as previously set
 					resource.TestCheckResourceAttr(resourceName, INCLUDE_IN_SNIPPET, "false"),
 				),
+			},
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
 			},
 		},
 	})
 }
 
-func TestAccFeatureFlag_IncludeInSnippetRevertToDefault(t *testing.T) {
+func TestAccFeatureFlag_IncludeInSnippet(t *testing.T) {
 	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	resourceName := "launchdarkly_feature_flag.sdk_settings"
 	resource.ParallelTest(t, resource.TestCase{
@@ -1159,7 +1414,15 @@ func TestAccFeatureFlag_IncludeInSnippetRevertToDefault(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, KEY, "basic-flag-sdk-settings"),
 					resource.TestCheckResourceAttr(resourceName, PROJECT_KEY, projectKey),
 					resource.TestCheckResourceAttr(resourceName, INCLUDE_IN_SNIPPET, "true"),
+					// we still expect these to get set even if they're not defined by the user
+					resource.TestCheckResourceAttr(resourceName, "client_side_availability.0.using_environment_id", "true"),
+					resource.TestCheckResourceAttr(resourceName, "client_side_availability.0.using_mobile_key", "true"), // this is a project default
 				),
+			},
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
 			},
 			// Replace default value with specific value
 			{
@@ -1171,9 +1434,16 @@ func TestAccFeatureFlag_IncludeInSnippetRevertToDefault(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, KEY, "basic-flag-sdk-settings"),
 					resource.TestCheckResourceAttr(resourceName, PROJECT_KEY, projectKey),
 					resource.TestCheckResourceAttr(resourceName, INCLUDE_IN_SNIPPET, "false"),
+					resource.TestCheckResourceAttr(resourceName, "client_side_availability.0.using_environment_id", "false"),
+					resource.TestCheckResourceAttr(resourceName, "client_side_availability.0.using_mobile_key", "true"),
 				),
 			},
-			// Clear specific value, check for default
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
+			// Clear specific value, should not revert to default
 			{
 				Config: withRandomProjectIncludeInSnippetTrue(projectKey, testAccFeatureFlagIncludeInSnippetEmpty),
 				Check: resource.ComposeTestCheckFunc(
@@ -1182,8 +1452,15 @@ func TestAccFeatureFlag_IncludeInSnippetRevertToDefault(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, NAME, "Basic feature flag"),
 					resource.TestCheckResourceAttr(resourceName, KEY, "basic-flag-sdk-settings"),
 					resource.TestCheckResourceAttr(resourceName, PROJECT_KEY, projectKey),
-					resource.TestCheckResourceAttr(resourceName, INCLUDE_IN_SNIPPET, "true"),
+					resource.TestCheckResourceAttr(resourceName, INCLUDE_IN_SNIPPET, "false"),
+					resource.TestCheckResourceAttr(resourceName, "client_side_availability.0.using_environment_id", "false"),
+					resource.TestCheckResourceAttr(resourceName, "client_side_availability.0.using_mobile_key", "true"),
 				),
+			},
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
 			},
 		},
 	})
