@@ -1,3 +1,18 @@
+## [2.11.0] - 2023-02-28
+FEATURES:
+
+- Adds a new `context_targets` attribute to `launchdarkly_feature_flag_environment` resource blocks that allow you to target based on context kinds other than `"user"`.
+
+- Adds a new `context_kind` field to `launchdarkly_feature_flag_environment` fallthrough blocks.
+
+- Adds a new `context_kind` field to `launchdarkly_feature_flag_environment` rule clauses.
+
+- Adds `included_contexts` and `excluded_contexts` attribute to `launchdarkly_segment` resource blocks that allow you to target based on context kinds other than `"user"`.
+
+- Adds a new `rollout_context_kind` field to `launchdarkly_segment` rule blocks.
+
+- Adds `user_identities` field to the `launchdarkly_destination` mParticle configuration attribute that allow you to define mParticle user identities in tandem with their corresponding LaunchDarkly context kind.
+
 ## [2.10.0] - 2023-02-27
 
 FEATURES:
