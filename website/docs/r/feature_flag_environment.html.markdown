@@ -35,6 +35,11 @@ resource "launchdarkly_feature_flag_environment" "number_env" {
     values    = ["user1", "user2"]
     variation = 1
   }
+  context_targets {
+    values = ["accountX"]
+    variation = 1
+    context_kind = "account"
+  }
 
   rules {
     description = "example targeting rule with two clauses"
@@ -55,6 +60,8 @@ resource "launchdarkly_feature_flag_environment" "number_env" {
 
   fallthrough {
     rollout_weights = [60000, 40000, 0]
+    context_kind = "account"
+    bucket_by = "accountId"
   }
   off_variation = 2
 }
@@ -74,7 +81,9 @@ resource "launchdarkly_feature_flag_environment" "number_env" {
 
 - `prerequisites` - (Optional) List of nested blocks describing prerequisite feature flags rules. To learn more, read [Nested Prequisites Blocks](#nested-prerequisites-blocks).
 
-- `targets` (previously `user_targets`) - (Optional) Set of nested blocks describing the individual user targets for each variation. To learn more, read [Nested Target Blocks](#nested-targets-blocks).
+- `targets` (previously `user_targets`) - (Optional) Set of nested blocks describing the individual user targets for each variation. To learn more, read [Nested Targets / Context Targets Blocks](#nested-targets-context-targets-blocks).
+
+- `context_targets` - (Optional) Set of nested blocks describing the individual targets for non-user context kinds for each variation. To learn more, read [Nested Targets / Context Targets Blocks](#nested-targets-context-targets-blocks).
 
 - `rules` - (Optional) List of logical targeting rules. To learn more, read [Nested Rules Blocks](#nested-rules-blocks).
 
@@ -88,13 +97,15 @@ Nested `prerequisites` blocks have the following structure:
 
 - `variation` - (Required) The index of the prerequisite feature flag's variation to target.
 
-### Nested Targets Blocks
+### Nested Targets / Context Targets Blocks
 
-Nested `targets` blocks have the following structure:
+Nested `targets` / `context_targets` blocks have the following structure:
 
 - `values` - (Required) List of `user` strings to target.
 
 - `variation` - (Required) The index of the variation to serve is a user target value is matched.
+
+- [`context_targets` only] `context_kind` - (Required) The context kind on which the flag should target in this environment. User (`"user"`) targets should be specified as `targets` attribute blocks.
 
 ### Nested Fallthrough Block
 
@@ -105,6 +116,8 @@ The nested `fallthrough` (previously `flag_fallthrough`) block has the following
 - `rollout_weights` - (Optional) List of integer percentage rollout weights (in thousandths of a percent) to apply to each variation if no `prerequisites`, `target`, or `rules` apply. The sum of the `rollout_weights` must equal 100000 and the number of rollout weights specified in the array must match the number of flag variations. You must specify either `variation` or `rollout_weights`.
 
 - `bucket_by` - (Optional) Group percentage rollout by a custom attribute. This argument is only valid if `rollout_weights` is also specified.
+
+- `context_kind` - (Optional) The context kind associated with the specified rollout. This argument is only valid if `rollout_weights` is also specified. If omitted, defaults to `"user"`.
 
 ### Nested Rules Blocks
 
@@ -133,6 +146,8 @@ Nested `clauses` blocks have the following structure:
 - `value_type` - (Optional) The type for each of the clause's values. Available types are `boolean`, `string`, and `number`. If omitted, `value_type` defaults to `string`.
 
 - `negate` - (Required) Whether to negate the rule clause.
+
+- `context_kind` - (Optional) The context kind associated with this rule clause. This argument is only valid if `rollout_weights` is also specified. If omitted, defaults to `"user"`.
 
 Nested `fallthrough` blocks have the following structure:
 

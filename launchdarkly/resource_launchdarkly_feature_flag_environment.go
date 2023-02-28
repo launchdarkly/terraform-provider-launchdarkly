@@ -8,7 +8,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	ldapi "github.com/launchdarkly/api-client-go/v10"
+	ldapi "github.com/launchdarkly/api-client-go/v12"
 )
 
 func resourceFeatureFlagEnvironment() *schema.Resource {
@@ -94,8 +94,14 @@ func resourceFeatureFlagEnvironmentCreate(ctx context.Context, d *schema.Resourc
 
 	_, ok = d.GetOk(TARGETS)
 	if ok {
-		targets := targetsFromResourceData(d)
+		targets := targetsFromResourceData(d, targetOptions{isContextTarget: false})
 		patches = append(patches, patchReplace(patchFlagEnvPath(d, "targets"), targets))
+	}
+
+	_, ok = d.GetOk(CONTEXT_TARGETS)
+	if ok {
+		context_targets := targetsFromResourceData(d, targetOptions{isContextTarget: true})
+		patches = append(patches, patchReplace(patchFlagEnvPath(d, "contextTargets"), context_targets))
 	}
 
 	// fallthrough is required
@@ -175,8 +181,13 @@ func resourceFeatureFlagEnvironmentUpdate(ctx context.Context, d *schema.Resourc
 	}
 
 	if d.HasChange(TARGETS) {
-		targets := targetsFromResourceData(d)
+		targets := targetsFromResourceData(d, targetOptions{isContextTarget: false})
 		patchOperations = append(patchOperations, patchReplace(patchFlagEnvPath(d, "targets"), targets))
+	}
+
+	if d.HasChange(CONTEXT_TARGETS) {
+		contextTargets := targetsFromResourceData(d, targetOptions{isContextTarget: true})
+		patchOperations = append(patchOperations, patchReplace(patchFlagEnvPath(d, "contextTargets"), contextTargets))
 	}
 
 	if d.HasChange(FALLTHROUGH) {
@@ -249,6 +260,7 @@ func resourceFeatureFlagEnvironmentDelete(ctx context.Context, d *schema.Resourc
 			patchReplace(patchFlagEnvPath(d, "prerequisites"), []ldapi.Prerequisite{}),
 			patchReplace(patchFlagEnvPath(d, "offVariation"), offVariation),
 			patchReplace(patchFlagEnvPath(d, "targets"), []ldapi.Target{}),
+			patchReplace(patchFlagEnvPath(d, "contextTargets"), []ldapi.Target{}),
 			patchReplace(patchFlagEnvPath(d, "fallthough"), fallthroughModel{Variation: intPtr(0)}),
 		}}
 	log.Printf("[DEBUG] %+v\n", patch)

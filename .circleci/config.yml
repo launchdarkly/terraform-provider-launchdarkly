@@ -100,6 +100,7 @@ jobs:
 
     steps:
       - checkout
+      - go/mod-download-cached
       - run:
           name: Install python
           command: |

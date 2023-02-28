@@ -2,12 +2,15 @@ package launchdarkly
 
 import (
 	"fmt"
+	"os"
 	"regexp"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
+	ldapi "github.com/launchdarkly/api-client-go/v12"
+	"github.com/stretchr/testify/require"
 )
 
 const (
@@ -120,6 +123,7 @@ resource "launchdarkly_feature_flag_environment" "basic" {
 	fallthrough {
 		rollout_weights = [60000, 40000, 0]
 		bucket_by = "email"
+		context_kind = "user"
 	}
 	off_variation = 1
 }
@@ -336,18 +340,19 @@ resource "launchdarkly_feature_flag_environment" "rollout" {
 	on      = true	  
 	rules {
 		clauses {
-      attribute = "country"
-      op        = "startsWith"
-      values    = ["aus", "nz", "united"]
-      negate    = false
-    }
+			attribute = "country"
+			op        = "startsWith"
+			values    = ["aus", "nz", "united"]
+			negate    = false
+		}
 		variation = 0
 	}
 	fallthrough {
-    variation       = 0
-    rollout_weights = [60000, 40000]
-    bucket_by       = "country"
-  }
+		variation       = 0
+		rollout_weights = [60000, 40000]
+		bucket_by       = "country"
+		context_kind = "other"
+	}
   off_variation = 1
 }
 `
@@ -377,18 +382,19 @@ resource "launchdarkly_feature_flag_environment" "rollout" {
 	on      = true	  
 	rules {
 		clauses {
-      attribute = "country"
-      op        = "startsWith"
-      values    = ["aus", "us", "united"]
-      negate    = false
-    }
+			attribute = "country"
+			op        = "startsWith"
+			values    = ["aus", "us", "united"]
+			negate    = false
+		}
 		variation = 0
 	}
 	fallthrough {
-    variation       = 0
-    rollout_weights = [60000, 40000]
-    bucket_by       = "country"
-  }
+		variation       = 0
+		rollout_weights = [60000, 40000]
+		bucket_by       = "country"
+		context_kind = "other"
+	}
   off_variation = 1
 }
 `
@@ -430,38 +436,140 @@ resource "launchdarkly_feature_flag_environment" "invalid_bucket_by" {
 	off_variation = 1
 }
 `
-)
 
-func TestAccFeatureFlagEnvironment_Basic(t *testing.T) {
-	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
-	resourceName := "launchdarkly_feature_flag_environment.basic"
-	resource.ParallelTest(t, resource.TestCase{
-		PreCheck: func() {
-			testAccPreCheck(t)
-		},
-		Providers: testAccProviders,
-		Steps: []resource.TestStep{
-			{
-				Config: withRandomProject(projectKey, testAccFeatureFlagEnvironmentBasic),
-				Check: resource.ComposeTestCheckFunc(
-					testAccCheckFeatureFlagEnvironmentExists(resourceName),
-					resource.TestCheckResourceAttr(resourceName, ON, "false"),
-					resource.TestCheckResourceAttr(resourceName, "fallthrough.#", "1"),
-					resource.TestCheckResourceAttr(resourceName, "fallthrough.0.variation", "1"),
-					resource.TestCheckResourceAttr(resourceName, OFF_VARIATION, "2"),
-					resource.TestCheckResourceAttr(resourceName, "targets.#", "1"),
-					resource.TestCheckResourceAttr(resourceName, "targets.0.values.0", "user1"),
-					resource.TestCheckResourceAttr(resourceName, "targets.0.variation", "0"),
-				),
-			},
-			{
-				ResourceName:      resourceName,
-				ImportState:       true,
-				ImportStateVerify: true,
-			},
-		},
-	})
+	testAccContextKind = `
+resource "launchdarkly_feature_flag" "context_test" {
+	project_key = "%s"
+	key = "test-flag"
+	name = "Context Kind Test Flag"
+	variation_type = "boolean"
 }
+
+resource "launchdarkly_feature_flag_environment" "custom_context" {
+	flag_id 		  = launchdarkly_feature_flag.context_test.id
+	env_key 		  = "test"
+	on = true
+	off_variation = 0
+	targets {
+		values    = ["user1", "user2"]
+		variation = 1
+	}
+	context_targets {
+		values = ["account1", "account2"]
+		variation = 0
+		context_kind = "%s"
+	}
+	context_targets {
+		values = ["other1", "other2"]
+		variation = 1
+		context_kind = "%s"
+	}
+	fallthrough {
+		variation = 0
+	}
+}
+`
+
+	testAccContextKindUpdate = `
+resource "launchdarkly_feature_flag" "context_test" {
+	project_key = "%s"
+	key = "test-flag"
+	name = "Context Kind Test Flag"
+	variation_type = "boolean"
+}
+
+resource "launchdarkly_feature_flag_environment" "custom_context" {
+	flag_id 		  = launchdarkly_feature_flag.context_test.id
+	env_key 		  = "test"
+	on = true
+	off_variation = 0
+	targets {
+		values    = ["user1"]
+		variation = 0
+	}
+	targets {
+		values    = ["user2"]
+		variation = 1
+	}
+	context_targets {
+		values = ["account1"]
+		variation = 1
+		context_kind = "%s"
+	}
+	fallthrough {
+		variation = 0
+	}
+}
+`
+
+	testAccContextKindReorderTargets = `
+resource "launchdarkly_feature_flag" "context_test" {
+	project_key = "%s"
+	key = "test-flag"
+	name = "Context Kind Test Flag"
+	variation_type = "boolean"
+}
+
+resource "launchdarkly_feature_flag_environment" "custom_context" {
+	flag_id 		  = launchdarkly_feature_flag.context_test.id
+	env_key 		  = "test"
+	on = true
+	off_variation = 0
+	targets {
+		values    = ["user2"]
+		variation = 1
+	}
+	context_targets {
+		values = ["account1"]
+		variation = 1
+		context_kind = "%s"
+	}
+	targets {
+		values    = ["user1"]
+		variation = 0
+	}
+	fallthrough {
+		variation = 0
+	}
+}
+`
+
+	testAccFallthroughAndRulesContextKind = `
+resource "launchdarkly_feature_flag" "context_test" {
+	project_key = "%s"
+	key = "test-flag"
+	name = "Context Kind Test Flag"
+	variation_type = "boolean"
+}
+
+resource "launchdarkly_feature_flag_environment" "rules_custom_context" {
+	flag_id 		  = launchdarkly_feature_flag.context_test.id
+	env_key 		  = "production"
+	on = false
+	off_variation = 1
+	rules {
+		clauses {
+			attribute = "name"
+			op = "startsWith"
+			values = ["X", "O"]
+			negate = true
+		}
+		clauses {
+			attribute = "account_type"
+			op = "matches"
+			values = ["professional", "enterprise"]
+			negate = false
+			context_kind = "%s"
+		}
+		variation = 0
+	}
+	fallthrough {
+		rollout_weights = [30000, 70000]
+		bucket_by = "account_id"
+	}
+}
+`
+)
 
 func TestAccFeatureFlagEnvironment_Empty(t *testing.T) {
 	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
@@ -522,6 +630,11 @@ func TestAccFeatureFlagEnvironment_Update(t *testing.T) {
 				),
 			},
 			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
+			{
 				Config: withRandomProject(projectKey, testAccFeatureFlagEnvironmentUpdate),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckFeatureFlagEnvironmentExists(resourceName),
@@ -534,6 +647,7 @@ func TestAccFeatureFlagEnvironment_Update(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "fallthrough.0.rollout_weights.1", "40000"),
 					resource.TestCheckResourceAttr(resourceName, "fallthrough.0.rollout_weights.2", "0"),
 					resource.TestCheckResourceAttr(resourceName, "fallthrough.0.bucket_by", "email"),
+					resource.TestCheckResourceAttr(resourceName, "fallthrough.0.context_kind", "user"),
 					resource.TestCheckResourceAttr(resourceName, "targets.#", "1"),
 					resource.TestCheckResourceAttr(resourceName, "targets.0.values.#", "2"),
 					resource.TestCheckResourceAttr(resourceName, "targets.0.values.0", "user1"),
@@ -710,6 +824,7 @@ func TestAccFeatureFlagEnvironment_UpdateClauseWithRollout(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "fallthrough.0.rollout_weights.0", "60000"),
 					resource.TestCheckResourceAttr(resourceName, "fallthrough.0.rollout_weights.1", "40000"),
 					resource.TestCheckResourceAttr(resourceName, "fallthrough.0.bucket_by", "country"),
+					resource.TestCheckResourceAttr(resourceName, "fallthrough.0.context_kind", "other"),
 					resource.TestCheckResourceAttr(resourceName, OFF_VARIATION, "1"),
 				),
 			},
@@ -735,6 +850,7 @@ func TestAccFeatureFlagEnvironment_UpdateClauseWithRollout(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "fallthrough.0.rollout_weights.0", "60000"),
 					resource.TestCheckResourceAttr(resourceName, "fallthrough.0.rollout_weights.1", "40000"),
 					resource.TestCheckResourceAttr(resourceName, "fallthrough.0.bucket_by", "country"),
+					resource.TestCheckResourceAttr(resourceName, "fallthrough.0.context_kind", "other"),
 					resource.TestCheckResourceAttr(resourceName, OFF_VARIATION, "1"),
 				),
 			},
@@ -802,6 +918,160 @@ func TestAccFeatureFlagEnvironment_Prereq(t *testing.T) {
 	})
 }
 
+func TestAccFeatureFlagEnvironment_ContextTargets(t *testing.T) {
+	// scaffold. we have to do it via API request because we do not yet have the ability to add context_kind resources
+	// to projects via terraform
+	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	client, err := newClient(os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN), os.Getenv(LAUNCHDARKLY_API_HOST), false)
+	require.NoError(t, err)
+	// TODO at some point the context kind API will no longer be in beta and we will want to update/remove this
+	betaClient, err := newBetaClient(os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN), os.Getenv(LAUNCHDARKLY_API_HOST), false)
+	require.NoError(t, err)
+	accountContextKind := "account"
+	otherContextKind := "other"
+	err = testAccProjectWithCustomContextKindScaffold(client, betaClient, projectKey, []string{accountContextKind})
+	require.NoError(t, err)
+	defer func() {
+		err := testAccProjectScaffoldDelete(client, projectKey)
+		require.NoError(t, err)
+	}()
+	resourceName := "launchdarkly_feature_flag_environment.custom_context"
+	resourceName2 := "launchdarkly_feature_flag_environment.rules_custom_context"
+
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck: func() {
+			testAccPreCheck(t)
+		},
+		Providers: testAccProviders,
+		Steps: []resource.TestStep{
+			{
+				Config: fmt.Sprintf(testAccContextKind, projectKey, accountContextKind, otherContextKind),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckFeatureFlagEnvironmentExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, ON, "true"),
+					resource.TestCheckResourceAttr(resourceName, "targets.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "targets.0.values.#", "2"),
+					resource.TestCheckResourceAttr(resourceName, "targets.0.values.0", "user1"),
+					resource.TestCheckResourceAttr(resourceName, "targets.0.values.1", "user2"),
+					resource.TestCheckResourceAttr(resourceName, "targets.0.variation", "1"),
+					resource.TestCheckNoResourceAttr(resourceName, "targets.0.context_kind"),
+					resource.TestCheckResourceAttr(resourceName, "context_targets.#", "2"),
+					resource.TestCheckResourceAttr(resourceName, "context_targets.0.values.#", "2"),
+					resource.TestCheckResourceAttr(resourceName, "context_targets.0.values.0", "account1"),
+					resource.TestCheckResourceAttr(resourceName, "context_targets.0.values.1", "account2"),
+					resource.TestCheckResourceAttr(resourceName, "context_targets.0.variation", "0"),
+					resource.TestCheckResourceAttr(resourceName, "context_targets.0.context_kind", accountContextKind),
+					resource.TestCheckResourceAttr(resourceName, "context_targets.1.values.#", "2"),
+					resource.TestCheckResourceAttr(resourceName, "context_targets.1.values.0", "other1"),
+					resource.TestCheckResourceAttr(resourceName, "context_targets.1.values.1", "other2"),
+					resource.TestCheckResourceAttr(resourceName, "context_targets.1.variation", "1"),
+					// this should simply create a new context kind on the project and not error -
+					// have confirmed via UI this is happening
+					resource.TestCheckResourceAttr(resourceName, "context_targets.1.context_kind", otherContextKind),
+					resource.TestCheckResourceAttr(resourceName, OFF_VARIATION, "0"),
+					resource.TestCheckResourceAttr(resourceName, "fallthrough.0.variation", "0"),
+				),
+			},
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
+			{
+				Config: fmt.Sprintf(testAccContextKindUpdate, projectKey, accountContextKind),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckFeatureFlagEnvironmentExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, ON, "true"),
+					resource.TestCheckResourceAttr(resourceName, "targets.#", "2"),
+					resource.TestCheckResourceAttr(resourceName, "targets.0.values.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "targets.0.values.0", "user1"),
+					resource.TestCheckResourceAttr(resourceName, "targets.0.variation", "0"),
+					resource.TestCheckResourceAttr(resourceName, "targets.1.values.0", "user2"),
+					resource.TestCheckResourceAttr(resourceName, "targets.1.variation", "1"),
+					resource.TestCheckResourceAttr(resourceName, "context_targets.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "context_targets.0.values.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "context_targets.0.values.0", "account1"),
+					resource.TestCheckResourceAttr(resourceName, "context_targets.0.variation", "1"),
+					resource.TestCheckResourceAttr(resourceName, "context_targets.0.context_kind", accountContextKind),
+					resource.TestCheckNoResourceAttr(resourceName, "context_targets.1"),
+					resource.TestCheckResourceAttr(resourceName, OFF_VARIATION, "0"),
+					resource.TestCheckResourceAttr(resourceName, "fallthrough.0.variation", "0"),
+				),
+			},
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
+			{
+				// this should be exactly the same as the previous one, as target reordering shouldn't matter
+				Config: fmt.Sprintf(testAccContextKindReorderTargets, projectKey, accountContextKind),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckFeatureFlagEnvironmentExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, ON, "true"),
+					resource.TestCheckResourceAttr(resourceName, "targets.#", "2"),
+					resource.TestCheckResourceAttr(resourceName, "targets.0.values.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "targets.0.values.0", "user1"),
+					resource.TestCheckResourceAttr(resourceName, "targets.0.variation", "0"),
+					resource.TestCheckResourceAttr(resourceName, "targets.1.values.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "targets.1.values.0", "user2"),
+					resource.TestCheckResourceAttr(resourceName, "targets.1.variation", "1"),
+					resource.TestCheckResourceAttr(resourceName, "context_targets.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "context_targets.0.values.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "context_targets.0.values.0", "account1"),
+					resource.TestCheckResourceAttr(resourceName, "context_targets.0.variation", "1"),
+					resource.TestCheckResourceAttr(resourceName, "context_targets.0.context_kind", accountContextKind),
+					resource.TestCheckNoResourceAttr(resourceName, "context_targets.1"),
+					resource.TestCheckResourceAttr(resourceName, OFF_VARIATION, "0"),
+					resource.TestCheckResourceAttr(resourceName, "fallthrough.0.variation", "0"),
+				),
+			},
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
+			{
+				// this will actually create a new feature flag env resource on a different environment (production)
+				// against the same flag. the previous resource will be torn down
+				Config: fmt.Sprintf(testAccFallthroughAndRulesContextKind, projectKey, accountContextKind),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckFeatureFlagEnvironmentExists(resourceName2),
+					resource.TestCheckResourceAttr(resourceName2, ON, "false"),
+					resource.TestCheckResourceAttr(resourceName2, OFF_VARIATION, "1"),
+					resource.TestCheckResourceAttr(resourceName2, "rules.0.clauses.#", "2"),
+					resource.TestCheckResourceAttr(resourceName2, "rules.0.clauses.0.attribute", "name"),
+					resource.TestCheckResourceAttr(resourceName2, "rules.0.clauses.0.op", "startsWith"),
+					resource.TestCheckResourceAttr(resourceName2, "rules.0.clauses.0.value_type", "string"), // should default even if not set
+					resource.TestCheckResourceAttr(resourceName2, "rules.0.clauses.0.values.#", "2"),
+					resource.TestCheckResourceAttr(resourceName2, "rules.0.clauses.0.values.0", "X"),
+					resource.TestCheckResourceAttr(resourceName2, "rules.0.clauses.0.values.1", "O"),
+					resource.TestCheckResourceAttr(resourceName2, "rules.0.clauses.0.negate", "true"),
+					resource.TestCheckResourceAttr(resourceName2, "rules.0.clauses.0.context_kind", "user"),
+					resource.TestCheckResourceAttr(resourceName2, "rules.0.clauses.1.attribute", "account_type"),
+					resource.TestCheckResourceAttr(resourceName2, "rules.0.clauses.1.op", "matches"),
+					resource.TestCheckResourceAttr(resourceName2, "rules.0.clauses.1.value_type", "string"), // should default even if not set
+					resource.TestCheckResourceAttr(resourceName2, "rules.0.clauses.1.values.#", "2"),
+					resource.TestCheckResourceAttr(resourceName2, "rules.0.clauses.1.values.0", "professional"),
+					resource.TestCheckResourceAttr(resourceName2, "rules.0.clauses.1.values.1", "enterprise"),
+					resource.TestCheckResourceAttr(resourceName2, "rules.0.clauses.1.negate", "false"),
+					resource.TestCheckResourceAttr(resourceName2, "rules.0.clauses.1.context_kind", accountContextKind),
+					resource.TestCheckResourceAttr(resourceName2, "rules.0.variation", "0"),
+					resource.TestCheckResourceAttr(resourceName2, "fallthrough.0.rollout_weights.0", "30000"),
+					resource.TestCheckResourceAttr(resourceName2, "fallthrough.0.rollout_weights.1", "70000"),
+					resource.TestCheckResourceAttr(resourceName2, "fallthrough.0.context_kind", "user"), // this should be automatically set by the API
+					resource.TestCheckResourceAttr(resourceName2, "fallthrough.0.bucket_by", "account_id"),
+				),
+			},
+			{
+				ResourceName:      resourceName2,
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
+		},
+	})
+}
+
 func testAccCheckFeatureFlagEnvironmentExists(resourceName string) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
 		rs, ok := s.RootModule().Resources[resourceName]
@@ -827,4 +1097,23 @@ func testAccCheckFeatureFlagEnvironmentExists(resourceName string) resource.Test
 		}
 		return nil
 	}
+}
+
+func testAccProjectWithCustomContextKindScaffold(client *Client, betaClient *Client, projectKey string, contextKindKeys []string) error {
+	projectBody := ldapi.ProjectPost{
+		Name: "Context Kind Test Project",
+		Key:  projectKey,
+	}
+	_, err := testAccProjectScaffoldCreate(client, projectBody)
+	if err != nil {
+		return err
+	}
+
+	for _, key := range contextKindKeys {
+		err := addContextKindToProject(betaClient, projectKey, key)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }

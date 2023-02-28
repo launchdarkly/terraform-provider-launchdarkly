@@ -8,7 +8,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
-	ldapi "github.com/launchdarkly/api-client-go/v10"
+	ldapi "github.com/launchdarkly/api-client-go/v12"
 	"github.com/stretchr/testify/require"
 )
 
@@ -23,9 +23,11 @@ data "launchdarkly_segment" "test" {
 )
 
 type testSegmentUpdate struct {
-	Included []interface{}
-	Excluded []interface{}
-	Rules    []ldapi.UserSegmentRule
+	Included         []interface{}
+	Excluded         []interface{}
+	IncludedContexts []ldapi.SegmentTarget
+	ExcludedContexts []ldapi.SegmentTarget
+	Rules            []ldapi.UserSegmentRule
 }
 
 func testAccDataSourceSegmentCreate(client *Client, projectKey, segmentKey string, properties testSegmentUpdate) (*ldapi.UserSegment, error) {
@@ -34,7 +36,7 @@ func testAccDataSourceSegmentCreate(client *Client, projectKey, segmentKey strin
 		Name: "Terraform Segment DS Test",
 		Key:  projectKey,
 	}
-	project, err := testAccDataSourceProjectCreate(client, projectBody)
+	project, err := testAccProjectScaffoldCreate(client, projectBody)
 	if err != nil {
 		return nil, err
 	}
@@ -55,6 +57,8 @@ func testAccDataSourceSegmentCreate(client *Client, projectKey, segmentKey strin
 		Patch: []ldapi.PatchOperation{
 			patchReplace("/included", properties.Included),
 			patchReplace("/excluded", properties.Excluded),
+			patchReplace("/includedContexts", properties.IncludedContexts),
+			patchReplace("/excludedContexts", properties.ExcludedContexts),
 			patchReplace("/rules", properties.Rules),
 		},
 	}
@@ -77,11 +81,11 @@ func TestAccDataSourceSegment_noMatchReturnsError(t *testing.T) {
 	segmentKey := "bad-segment-key"
 	client, err := newClient(os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN), os.Getenv(LAUNCHDARKLY_API_HOST), false)
 	require.NoError(t, err)
-	_, err = testAccDataSourceProjectCreate(client, ldapi.ProjectPost{Name: "Segment DS No Match Test", Key: projectKey})
+	_, err = testAccProjectScaffoldCreate(client, ldapi.ProjectPost{Name: "Segment DS No Match Test", Key: projectKey})
 	require.NoError(t, err)
 
 	defer func() {
-		err := testAccDataSourceProjectDelete(client, projectKey)
+		err := testAccProjectScaffoldDelete(client, projectKey)
 		require.NoError(t, err)
 	}()
 
@@ -110,9 +114,24 @@ func TestAccDataSourceSegment_exists(t *testing.T) {
 	client, err := newClient(os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN), os.Getenv(LAUNCHDARKLY_API_HOST), false)
 	require.NoError(t, err)
 
+	weight := int32(30000)
+	testContextKind := "test-kind"
+	accountContextKind := "account-kind"
 	properties := testSegmentUpdate{
 		Included: []interface{}{"some@email.com", "some_other@email.com"},
 		Excluded: []interface{}{"some_bad@email.com"},
+		IncludedContexts: []ldapi.SegmentTarget{
+			{
+				Values:      []string{"account1", "account2"},
+				ContextKind: &accountContextKind,
+			},
+		},
+		ExcludedContexts: []ldapi.SegmentTarget{
+			{
+				Values:      []string{"test1", "test2"},
+				ContextKind: &testContextKind,
+			},
+		},
 		Rules: []ldapi.UserSegmentRule{
 			{
 				Clauses: []ldapi.Clause{
@@ -122,6 +141,8 @@ func TestAccDataSourceSegment_exists(t *testing.T) {
 						Values:    []interface{}{"a"},
 					},
 				},
+				Weight:             &weight,
+				RolloutContextKind: &testContextKind,
 			},
 		},
 	}
@@ -129,7 +150,7 @@ func TestAccDataSourceSegment_exists(t *testing.T) {
 	require.NoError(t, err)
 
 	defer func() {
-		err := testAccDataSourceProjectDelete(client, projectKey)
+		err := testAccProjectScaffoldDelete(client, projectKey)
 		require.NoError(t, err)
 	}()
 
@@ -152,10 +173,18 @@ func TestAccDataSourceSegment_exists(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "rules.0.clauses.0.attribute", "name"),
 					resource.TestCheckResourceAttr(resourceName, "rules.0.clauses.0.op", "startsWith"),
 					resource.TestCheckResourceAttr(resourceName, "rules.0.clauses.0.values.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "rules.0.weight", "30000"),
+					resource.TestCheckResourceAttr(resourceName, "rules.0.rollout_context_kind", "test-kind"),
 					resource.TestCheckResourceAttr(resourceName, "included.#", "2"),
 					resource.TestCheckResourceAttr(resourceName, "included.0", "some@email.com"),
 					resource.TestCheckResourceAttr(resourceName, "excluded.#", "1"),
 					resource.TestCheckResourceAttr(resourceName, "excluded.0", "some_bad@email.com"),
+					resource.TestCheckResourceAttr(resourceName, "included_contexts.0.values.0", "account1"),
+					resource.TestCheckResourceAttr(resourceName, "included_contexts.0.values.1", "account2"),
+					resource.TestCheckResourceAttr(resourceName, "included_contexts.0.context_kind", "account-kind"),
+					resource.TestCheckResourceAttr(resourceName, "excluded_contexts.0.values.0", "test1"),
+					resource.TestCheckResourceAttr(resourceName, "excluded_contexts.0.values.1", "test2"),
+					resource.TestCheckResourceAttr(resourceName, "excluded_contexts.0.context_kind", "test-kind"),
 					resource.TestCheckResourceAttr(resourceName, "tags.#", "1"),
 					resource.TestCheckResourceAttrSet(resourceName, CREATION_DATE),
 				),

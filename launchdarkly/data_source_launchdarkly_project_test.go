@@ -8,7 +8,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
-	ldapi "github.com/launchdarkly/api-client-go/v10"
+	ldapi "github.com/launchdarkly/api-client-go/v12"
 	"github.com/stretchr/testify/require"
 )
 
@@ -82,11 +82,11 @@ func TestAccDataSourceProject_exists(t *testing.T) {
 		},
 	}
 
-	project, err := testAccDataSourceProjectCreate(client, projectBody)
+	project, err := testAccProjectScaffoldCreate(client, projectBody)
 	require.NoError(t, err)
 
 	defer func() {
-		err := testAccDataSourceProjectDelete(client, projectKey)
+		err := testAccProjectScaffoldDelete(client, projectKey)
 		require.NoError(t, err)
 	}()
 

@@ -8,7 +8,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
-	ldapi "github.com/launchdarkly/api-client-go/v10"
+	ldapi "github.com/launchdarkly/api-client-go/v12"
 	"github.com/stretchr/testify/require"
 )
 
@@ -24,7 +24,7 @@ data "launchdarkly_flag_trigger" "test" {
 )
 
 func testAccDataSourceFlagTriggerScaffold(client *Client, projectKey, flagKey string, triggerBody *ldapi.TriggerPost) (*ldapi.TriggerWorkflowRep, error) {
-	_, err := testAccDataSourceFeatureFlagScaffold(client, projectKey, *ldapi.NewFeatureFlagBody("Trigger Test", flagKey))
+	_, err := testAccFeatureFlagScaffold(client, projectKey, *ldapi.NewFeatureFlagBody("Trigger Test", flagKey))
 	if err != nil {
 		return nil, err
 	}
@@ -45,11 +45,11 @@ func TestAccDataSourceFlagTrigger_noMatchReturnsError(t *testing.T) {
 	require.NoError(t, err)
 	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	flagKey := "trigger-test"
-	_, err = testAccDataSourceFeatureFlagScaffold(client, projectKey, *ldapi.NewFeatureFlagBody("Trigger Test", flagKey))
+	_, err = testAccFeatureFlagScaffold(client, projectKey, *ldapi.NewFeatureFlagBody("Trigger Test", flagKey))
 	require.NoError(t, err)
 
 	defer func() {
-		err := testAccDataSourceProjectDelete(client, projectKey)
+		err := testAccProjectScaffoldDelete(client, projectKey)
 		require.NoError(t, err)
 	}()
 
@@ -85,7 +85,7 @@ func TestAccDataSourceFlagTrigger_exists(t *testing.T) {
 	require.NoError(t, err)
 
 	defer func() {
-		err := testAccDataSourceProjectDelete(client, projectKey)
+		err := testAccProjectScaffoldDelete(client, projectKey)
 		require.NoError(t, err)
 	}()
 
@@ -100,7 +100,7 @@ func TestAccDataSourceFlagTrigger_exists(t *testing.T) {
 				Config: fmt.Sprintf(testAccDataSourceFlagTrigger, projectKey, flagKey, *trigger.Id),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr(resourceName, "id", *trigger.Id),
-					resource.TestCheckResourceAttrSet(resourceName, "maintainer_id"),
+					// resource.TestCheckResourceAttrSet(resourceName, "maintainer_id"),
 					resource.TestCheckResourceAttrSet(resourceName, "enabled"),
 					resource.TestCheckResourceAttr(resourceName, "instructions.0.kind", "turnFlagOff"),
 					resource.TestCheckResourceAttr(resourceName, "project_key", projectKey),

@@ -3,7 +3,7 @@ package launchdarkly
 import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
-	ldapi "github.com/launchdarkly/api-client-go/v10"
+	ldapi "github.com/launchdarkly/api-client-go/v12"
 )
 
 func segmentRulesSchema() *schema.Schema {
@@ -15,16 +15,20 @@ func segmentRulesSchema() *schema.Schema {
 				CLAUSES: clauseSchema(),
 				WEIGHT: {
 					Type:             schema.TypeInt,
-					Elem:             &schema.Schema{Type: schema.TypeInt},
 					Optional:         true,
 					ValidateDiagFunc: validation.ToDiagFunc(validation.IntBetween(1, 100000)),
 					Description:      "The integer weight of the rule (between 1 and 100000).",
 				},
 				BUCKET_BY: {
 					Type:        schema.TypeString,
-					Elem:        &schema.Schema{Type: schema.TypeString},
 					Optional:    true,
 					Description: "The attribute by which to group users together.",
+				},
+				ROLLOUT_CONTEXT_KIND: {
+					Type:             schema.TypeString,
+					Optional:         true,
+					Description:      "The context kind associated with this segment rule. This argument is only valid if weight is also specified. If omitted, defaults to 'user'",
+					DiffSuppressFunc: rolloutContextKindDiffSuppressFunc(),
 				},
 			},
 		},
@@ -69,6 +73,11 @@ func segmentRuleFromResourceData(val interface{}) (ldapi.UserSegmentRule, error)
 	weight := int32(ruleMap[WEIGHT].(int))
 	if weight > 0 {
 		r.SetWeight(weight)
+		// rollout context kind should be ignored when weight is nil (0) but is required for rollouts
+		rolloutContextKind := ruleMap[ROLLOUT_CONTEXT_KIND].(string)
+		if rolloutContextKind != "" {
+			r.SetRolloutContextKind(rolloutContextKind)
+		}
 	}
 
 	return *r, nil
@@ -83,11 +92,21 @@ func segmentRulesToResourceData(rules []ldapi.UserSegmentRule) (interface{}, err
 			return nil, err
 		}
 		transformed[i] = map[string]interface{}{
-			CLAUSES:   clauses,
-			WEIGHT:    r.Weight,
-			BUCKET_BY: r.BucketBy,
+			CLAUSES:              clauses,
+			WEIGHT:               r.Weight,
+			BUCKET_BY:            r.BucketBy,
+			ROLLOUT_CONTEXT_KIND: r.RolloutContextKind,
 		}
 	}
 
 	return transformed, nil
+}
+
+func rolloutContextKindDiffSuppressFunc() schema.SchemaDiffSuppressFunc {
+	return func(k, oldValue, newValue string, d *schema.ResourceData) bool {
+		if oldValue == "user" && newValue == "" {
+			return true
+		}
+		return false
+	}
 }

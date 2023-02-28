@@ -7,7 +7,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
-	ldapi "github.com/launchdarkly/api-client-go/v10"
+	ldapi "github.com/launchdarkly/api-client-go/v12"
 )
 
 const (
@@ -63,6 +63,12 @@ func clauseSchema() *schema.Schema {
 					Default:     false,
 					Description: "Whether to negate the rule clause",
 				},
+				CONTEXT_KIND: {
+					Type:        schema.TypeString,
+					Optional:    true,
+					Default:     "user",
+					Description: "The context kind associated with this rule clause. If omitted, defaults to user",
+				},
 			},
 		},
 	}
@@ -78,6 +84,11 @@ func clauseFromResourceData(val interface{}) (ldapi.Clause, error) {
 		Attribute: clauseMap[ATTRIBUTE].(string),
 		Op:        clauseMap[OP].(string),
 		Negate:    clauseMap[NEGATE].(bool),
+	}
+	if contextKind, ok := clauseMap[CONTEXT_KIND].(string); ok {
+		if contextKind != "" {
+			c.ContextKind = &contextKind
+		}
 	}
 	valueType := clauseMap[VALUE_TYPE].(string)
 	if valueType == "" {
@@ -151,12 +162,17 @@ func clausesToResourceData(clauses []ldapi.Clause) (interface{}, error) {
 			}
 			strValues = append(strValues, stringifyValue(v))
 		}
+		contextKind := "user" // should default to user
+		if c.ContextKind != nil {
+			contextKind = *c.ContextKind
+		}
 		transformed[i] = map[string]interface{}{
-			ATTRIBUTE:  c.Attribute,
-			OP:         c.Op,
-			VALUES:     strValues,
-			VALUE_TYPE: valueType,
-			NEGATE:     c.Negate,
+			ATTRIBUTE:    c.Attribute,
+			OP:           c.Op,
+			VALUES:       strValues,
+			VALUE_TYPE:   valueType,
+			NEGATE:       c.Negate,
+			CONTEXT_KIND: contextKind,
 		}
 	}
 	return transformed, nil

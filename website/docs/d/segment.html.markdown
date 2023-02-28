@@ -45,6 +45,10 @@ In addition to the arguments above, the resource exports the following attribute
 
 - `excluded` - List of user keys excluded from the segment.
 
+- `included_contexts` - Non-user target objects included in the segment. To learn more, read [Nested Context Target Blocks](#nested-context-target-blocks).
+
+- `excluded_contexts` - Non-user target objects excluded from the segment. To learn more, read [Nested Context Target Blocks](#nested-context-target-blocks).
+
 - `rules` - List of nested custom rule blocks to apply to the segment. To learn more, read [Nested Rules Blocks](#nested-rules-blocks).
 
 - `creation_date` - The segment's creation date represented as a UNIX epoch timestamp.
@@ -59,6 +63,8 @@ Nested `rules` blocks have the following structure:
 
 - `clauses` - List of nested custom rule clause blocks. To learn more, read [Nested Clauses Blocks](#nested-clauses-blocks).
 
+- `rollout_context_kind` - The context kind associated with the segment rule.
+
 ### Nested Clauses Blocks
 
 Nested `clauses` blocks have the following structure:
@@ -72,3 +78,11 @@ Nested `clauses` blocks have the following structure:
 - `value_type` - The type for each of the clause's values. Available types are `boolean`, `string`, and `number`.
 
 - `negate` - Whether the rule clause is negated.
+
+### Nested Context Target Blocks
+
+Other context types can be targeted on using the `included_contexts` and `excluded_contexts` attribute blocks. These have the following structure:
+
+- `values` - List of target object keys included in or excluded from the segment.
+
+- `context_kind` - The context kind associated with this segment target. To view included or excluded user contexts, see the `included` and `excluded` attributes.

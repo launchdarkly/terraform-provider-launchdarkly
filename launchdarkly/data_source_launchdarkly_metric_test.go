@@ -8,7 +8,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
-	ldapi "github.com/launchdarkly/api-client-go/v10"
+	ldapi "github.com/launchdarkly/api-client-go/v12"
 	"github.com/stretchr/testify/require"
 )
 
@@ -26,7 +26,7 @@ func testAccDataSourceMetricScaffold(client *Client, projectKey string, metricBo
 		Name: "Metric Test Project",
 		Key:  projectKey,
 	}
-	project, err := testAccDataSourceProjectCreate(client, projectBody)
+	project, err := testAccProjectScaffoldCreate(client, projectBody)
 	if err != nil {
 		return nil, err
 	}
@@ -51,11 +51,11 @@ func TestAccDataSourceMetric_noMatchReturnsError(t *testing.T) {
 		Name: "Terraform Metric Test Project",
 		Key:  projectKey,
 	}
-	project, err := testAccDataSourceProjectCreate(client, projectBody)
+	project, err := testAccProjectScaffoldCreate(client, projectBody)
 	require.NoError(t, err)
 
 	defer func() {
-		err := testAccDataSourceProjectDelete(client, projectKey)
+		err := testAccProjectScaffoldDelete(client, projectKey)
 		require.NoError(t, err)
 	}()
 
@@ -102,7 +102,7 @@ func TestAccDataSourceMetric_exists(t *testing.T) {
 	require.NoError(t, err)
 
 	defer func() {
-		err := testAccDataSourceProjectDelete(client, projectKey)
+		err := testAccProjectScaffoldDelete(client, projectKey)
 		require.NoError(t, err)
 	}()
 
