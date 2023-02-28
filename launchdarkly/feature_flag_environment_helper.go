@@ -10,7 +10,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
-	ldapi "github.com/launchdarkly/api-client-go/v10"
+	ldapi "github.com/launchdarkly/api-client-go/v12"
 )
 
 func baseFeatureFlagEnvironmentSchema(forDataSource bool) map[string]*schema.Schema {
@@ -35,10 +35,11 @@ func baseFeatureFlagEnvironmentSchema(forDataSource bool) map[string]*schema.Sch
 			Description: "Whether targeting is enabled",
 			Default:     false,
 		},
-		TARGETS:       targetsSchema(),
-		RULES:         rulesSchema(),
-		PREREQUISITES: prerequisitesSchema(),
-		FALLTHROUGH:   fallthroughSchema(forDataSource),
+		TARGETS:         targetsSchema(),
+		CONTEXT_TARGETS: contextTargetsSchema(),
+		RULES:           rulesSchema(),
+		PREREQUISITES:   prerequisitesSchema(),
+		FALLTHROUGH:     fallthroughSchema(forDataSource),
 		TRACK_EVENTS: {
 			Type:        schema.TypeBool,
 			Optional:    true,
@@ -131,9 +132,14 @@ func featureFlagEnvironmentRead(ctx context.Context, d *schema.ResourceData, raw
 		return diag.Errorf("failed to set rules on flag with key %q: %v", flagKey, err)
 	}
 
-	err = d.Set(TARGETS, targetsToResourceData(environment.Targets))
+	err = d.Set(TARGETS, targetsToResourceData(environment.Targets, targetOptions{isContextTarget: false}))
 	if err != nil {
 		return diag.Errorf("failed to set targets on flag with key %q: %v", flagKey, err)
+	}
+
+	err = d.Set(CONTEXT_TARGETS, targetsToResourceData(environment.ContextTargets, targetOptions{isContextTarget: true}))
+	if err != nil {
+		return diag.Errorf("failed to set context targets on flag with key %q: %v", flagKey, err)
 	}
 
 	err = d.Set(FALLTHROUGH, fallthroughToResourceData(*environment.Fallthrough))

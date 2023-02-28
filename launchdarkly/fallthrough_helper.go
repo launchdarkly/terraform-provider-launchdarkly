@@ -6,9 +6,10 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 
-	ldapi "github.com/launchdarkly/api-client-go/v10"
+	ldapi "github.com/launchdarkly/api-client-go/v12"
 )
 
+// In the LD model, this corresponds to the VariationOrRollout type
 func fallthroughSchema(forDataSource bool) *schema.Schema {
 	return &schema.Schema{
 		Type:        schema.TypeList,
@@ -23,6 +24,12 @@ func fallthroughSchema(forDataSource bool) *schema.Schema {
 					Type:        schema.TypeString,
 					Optional:    true,
 					Description: "Group percentage rollout by a custom attribute. This argument is only valid if rollout_weights is also specified",
+				},
+				CONTEXT_KIND: {
+					Type:             schema.TypeString,
+					Optional:         true, // the API will set this to "user" by default if it is not set
+					Description:      "The context kind associated with the specified rollout. This argument is only valid if rollout_weights is also specified. If omitted, defaults to 'user'",
+					DiffSuppressFunc: fallthroughContextKindDiffSuppressFunc(),
 				},
 				VARIATION: {
 					Type:             schema.TypeInt,
@@ -77,6 +84,10 @@ func fallthroughFromResourceData(d *schema.ResourceData) (fallthroughModel, erro
 		if bucketBy != "" {
 			rollout.Rollout.BucketBy = &bucketBy
 		}
+		contextKind := fall[CONTEXT_KIND].(string)
+		if contextKind != "" {
+			rollout.Rollout.ContextKind = &contextKind
+		}
 		return rollout, nil
 
 	}
@@ -93,6 +104,9 @@ func fallthroughToResourceData(fallThrough ldapi.VariationOrRolloutRep) interfac
 		if fallThrough.Rollout.BucketBy != nil {
 			rollout[BUCKET_BY] = fallThrough.Rollout.BucketBy
 		}
+		if fallThrough.Rollout.ContextKind != nil {
+			rollout[CONTEXT_KIND] = fallThrough.Rollout.ContextKind
+		}
 		transformed[0] = rollout
 	} else {
 		transformed[0] = map[string]interface{}{
@@ -100,4 +114,13 @@ func fallthroughToResourceData(fallThrough ldapi.VariationOrRolloutRep) interfac
 		}
 	}
 	return transformed
+}
+
+func fallthroughContextKindDiffSuppressFunc() schema.SchemaDiffSuppressFunc {
+	return func(k, oldValue, newValue string, d *schema.ResourceData) bool {
+		if oldValue == "user" && newValue == "" {
+			return true
+		}
+		return false
+	}
 }

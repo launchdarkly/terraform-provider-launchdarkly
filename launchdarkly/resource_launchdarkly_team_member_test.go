@@ -144,39 +144,7 @@ func TestAccTeamMember_UpdateGeneric(t *testing.T) {
 	})
 }
 
-func TestAccTeamMember_CreateWithCustomRole(t *testing.T) {
-	roleKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
-	randomName := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
-	roleResourceName := "launchdarkly_custom_role.test"
-	resourceName := "launchdarkly_team_member.custom_role_test"
-	resource.ParallelTest(t, resource.TestCase{
-		PreCheck: func() {
-			testAccPreCheck(t)
-		},
-		Providers: testAccProviders,
-		Steps: []resource.TestStep{
-			{
-				Config: fmt.Sprintf(testAccTeamMemberCustomRoleCreate, roleKey, roleKey, randomName),
-				Check: resource.ComposeTestCheckFunc(
-					testAccCheckCustomRoleExists(roleResourceName),
-					testAccCheckMemberExists(resourceName),
-					resource.TestCheckResourceAttr(resourceName, EMAIL, fmt.Sprintf("%s+wbteste2e@launchdarkly.com", randomName)),
-					resource.TestCheckResourceAttr(resourceName, FIRST_NAME, "first"),
-					resource.TestCheckResourceAttr(resourceName, LAST_NAME, "last"),
-					resource.TestCheckResourceAttr(resourceName, "custom_roles.#", "1"),
-					resource.TestCheckResourceAttr(resourceName, "custom_roles.0", roleKey),
-				),
-			},
-			{
-				ResourceName:      resourceName,
-				ImportState:       true,
-				ImportStateVerify: true,
-			},
-		},
-	})
-}
-
-func TestAccTeamMember_UpdateWithCustomRole(t *testing.T) {
+func TestAccTeamMember_WithCustomRole(t *testing.T) {
 	roleKey1 := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	roleKey2 := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	randomName := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)

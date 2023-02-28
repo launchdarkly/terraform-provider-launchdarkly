@@ -4,13 +4,15 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	ldapi "github.com/launchdarkly/api-client-go/v10"
+	ldapi "github.com/launchdarkly/api-client-go/v12"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestClauseFromResourceData(t *testing.T) {
 	t.Parallel()
+	userContextKind := "user"
+	otherContextKind := "other"
 	testCases := []struct {
 		name              string
 		clause            map[string]interface{}
@@ -29,58 +31,65 @@ func TestClauseFromResourceData(t *testing.T) {
 				NEGATE: false,
 			},
 			expected: ldapi.Clause{
-				Attribute: "country",
-				Op:        "startsWith",
-				Values:    []interface{}{"en", "gr"},
-				Negate:    false,
+				Attribute:   "country",
+				Op:          "startsWith",
+				Values:      []interface{}{"en", "gr"},
+				Negate:      false,
+				ContextKind: &userContextKind, // should populate by default
 			},
 		},
 		{
 			name: "number clause values",
 			clause: map[string]interface{}{
-				ATTRIBUTE:  "answer",
-				OP:         "greaterThan",
-				VALUES:     []interface{}{"187"},
-				VALUE_TYPE: NUMBER_CLAUSE_VALUE,
-				NEGATE:     false,
+				ATTRIBUTE:    "answer",
+				OP:           "greaterThan",
+				VALUES:       []interface{}{"187"},
+				VALUE_TYPE:   NUMBER_CLAUSE_VALUE,
+				NEGATE:       false,
+				CONTEXT_KIND: userContextKind,
 			},
 			expected: ldapi.Clause{
-				Attribute: "answer",
-				Op:        "greaterThan",
-				Values:    []interface{}{float64(187)},
-				Negate:    false,
+				Attribute:   "answer",
+				Op:          "greaterThan",
+				Values:      []interface{}{float64(187)},
+				Negate:      false,
+				ContextKind: &userContextKind,
 			},
 		},
 		{
 			name: "boolean clause values",
 			clause: map[string]interface{}{
-				ATTRIBUTE:  "is_vip",
-				OP:         "in",
-				VALUES:     []interface{}{"true"},
-				VALUE_TYPE: BOOL_CLAUSE_VALUE,
-				NEGATE:     false,
+				ATTRIBUTE:    "is_vip",
+				OP:           "in",
+				VALUES:       []interface{}{"true"},
+				VALUE_TYPE:   BOOL_CLAUSE_VALUE,
+				NEGATE:       false,
+				CONTEXT_KIND: otherContextKind,
 			},
 			expected: ldapi.Clause{
-				Attribute: "is_vip",
-				Op:        "in",
-				Values:    []interface{}{true},
-				Negate:    false,
+				Attribute:   "is_vip",
+				Op:          "in",
+				Values:      []interface{}{true},
+				Negate:      false,
+				ContextKind: &otherContextKind,
 			},
 		},
 		{
 			name: "string clause values with ambiguous values",
 			clause: map[string]interface{}{
-				ATTRIBUTE:  "test",
-				OP:         "in",
-				VALUES:     []interface{}{"true", "42.8", "wow"},
-				VALUE_TYPE: STRING_CLAUSE_VALUE,
-				NEGATE:     false,
+				ATTRIBUTE:    "test",
+				OP:           "in",
+				VALUES:       []interface{}{"true", "42.8", "wow"},
+				VALUE_TYPE:   STRING_CLAUSE_VALUE,
+				NEGATE:       false,
+				CONTEXT_KIND: userContextKind,
 			},
 			expected: ldapi.Clause{
-				Attribute: "test",
-				Op:        "in",
-				Values:    []interface{}{"true", "42.8", "wow"},
-				Negate:    false,
+				Attribute:   "test",
+				Op:          "in",
+				Values:      []interface{}{"true", "42.8", "wow"},
+				Negate:      false,
+				ContextKind: &userContextKind,
 			},
 		},
 		{
@@ -150,11 +159,12 @@ func TestClausesToResourceData(t *testing.T) {
 			},
 			expected: []interface{}{
 				map[string]interface{}{
-					ATTRIBUTE:  "country",
-					OP:         "in",
-					VALUES:     []interface{}{"en", "gb"},
-					VALUE_TYPE: STRING_CLAUSE_VALUE,
-					NEGATE:     true,
+					ATTRIBUTE:    "country",
+					OP:           "in",
+					VALUES:       []interface{}{"en", "gb"},
+					VALUE_TYPE:   STRING_CLAUSE_VALUE,
+					NEGATE:       true,
+					CONTEXT_KIND: "user",
 				},
 			},
 		},
@@ -170,11 +180,12 @@ func TestClausesToResourceData(t *testing.T) {
 			},
 			expected: []interface{}{
 				map[string]interface{}{
-					ATTRIBUTE:  "is_vip",
-					OP:         "in",
-					VALUES:     []interface{}{"false"},
-					VALUE_TYPE: BOOL_CLAUSE_VALUE,
-					NEGATE:     true,
+					ATTRIBUTE:    "is_vip",
+					OP:           "in",
+					VALUES:       []interface{}{"false"},
+					VALUE_TYPE:   BOOL_CLAUSE_VALUE,
+					NEGATE:       true,
+					CONTEXT_KIND: "user",
 				},
 			},
 		},
@@ -190,11 +201,12 @@ func TestClausesToResourceData(t *testing.T) {
 			},
 			expected: []interface{}{
 				map[string]interface{}{
-					ATTRIBUTE:  "answer",
-					OP:         "in",
-					VALUES:     []interface{}{"42"},
-					VALUE_TYPE: NUMBER_CLAUSE_VALUE,
-					NEGATE:     false,
+					ATTRIBUTE:    "answer",
+					OP:           "in",
+					VALUES:       []interface{}{"42"},
+					VALUE_TYPE:   NUMBER_CLAUSE_VALUE,
+					NEGATE:       false,
+					CONTEXT_KIND: "user",
 				},
 			},
 		},

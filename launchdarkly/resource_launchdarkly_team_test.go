@@ -158,41 +158,7 @@ resource "launchdarkly_team" "test" {
 `
 )
 
-func TestAccTeam_Create(t *testing.T) {
-	randomName := acctest.RandStringFromCharSet(10, acctest.CharSetAlpha)
-	randomRole := acctest.RandStringFromCharSet(10, acctest.CharSetAlpha)
-	randomEmailOne := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
-	randomEmailTwo := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
-	resourceName := fmt.Sprintf("launchdarkly_team.test")
-
-	resource.Test(t, resource.TestCase{
-		PreCheck: func() {
-			testAccPreCheck(t)
-		},
-		Providers: testAccProviders,
-		Steps: []resource.TestStep{
-			{
-				Config: fmt.Sprintf(testAccTeamCreate, randomRole, randomEmailOne, randomEmailTwo, randomName),
-				Check: resource.ComposeTestCheckFunc(
-					testAccCheckTeamExists(resourceName),
-					resource.TestCheckResourceAttr(resourceName, NAME, "waterbear"),
-					resource.TestCheckResourceAttr(resourceName, DESCRIPTION, "The best integrations squad"),
-					resource.TestCheckResourceAttr(resourceName, "member_ids.#", "1"),
-					resource.TestCheckResourceAttr(resourceName, "maintainers.#", "1"),
-					resource.TestCheckResourceAttr(resourceName, "custom_role_keys.#", "1"),
-					resource.TestCheckResourceAttr(resourceName, "custom_role_keys.0", randomRole),
-				),
-			},
-			{
-				ResourceName:      resourceName,
-				ImportState:       true,
-				ImportStateVerify: true,
-			},
-		},
-	})
-}
-
-func TestAccTeam_Update(t *testing.T) {
+func TestAccTeam_CreateAndUpdate(t *testing.T) {
 	randomName := acctest.RandStringFromCharSet(10, acctest.CharSetAlpha)
 	randomRoleOne := acctest.RandStringFromCharSet(10, acctest.CharSetAlpha)
 	randomRoleTwo := acctest.RandStringFromCharSet(10, acctest.CharSetAlpha)
@@ -211,7 +177,19 @@ func TestAccTeam_Update(t *testing.T) {
 				Config: fmt.Sprintf(testAccTeamCreate, randomRoleOne, randomEmailOne, randomEmailTwo, randomName),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckTeamExists(resourceName),
-				)},
+					resource.TestCheckResourceAttr(resourceName, NAME, "waterbear"),
+					resource.TestCheckResourceAttr(resourceName, DESCRIPTION, "The best integrations squad"),
+					resource.TestCheckResourceAttr(resourceName, "member_ids.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "maintainers.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "custom_role_keys.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "custom_role_keys.0", randomRoleOne),
+				),
+			},
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
 			{
 				Config: fmt.Sprintf(testAccTeamUpdateNameDescription, randomRoleOne, randomEmailOne, randomEmailTwo, randomName),
 				Check: resource.ComposeTestCheckFunc(
@@ -223,6 +201,11 @@ func TestAccTeam_Update(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "custom_role_keys.#", "1"),
 					resource.TestCheckResourceAttr(resourceName, "custom_role_keys.0", randomRoleOne),
 				),
+			},
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
 			},
 			{
 				Config: fmt.Sprintf(testAccTeamUpdateRoles, randomRoleOne, randomRoleTwo, randomEmailOne, randomEmailTwo, randomName),
@@ -237,6 +220,11 @@ func TestAccTeam_Update(t *testing.T) {
 				),
 			},
 			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
+			{
 				Config: fmt.Sprintf(testAccTeamUpdateMembersMaintainers, randomRoleTwo, randomEmailOne, randomEmailTwo, randomEmailThree, randomName),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckTeamExists(resourceName),
@@ -248,7 +236,6 @@ func TestAccTeam_Update(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "custom_role_keys.0", randomRoleTwo),
 				),
 			},
-
 			{
 				ResourceName:      resourceName,
 				ImportState:       true,

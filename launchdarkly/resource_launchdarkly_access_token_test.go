@@ -136,7 +136,7 @@ func TestAccAccessToken_Create(t *testing.T) {
 	})
 }
 
-func TestAccAccessToken_CreateWithCustomRole(t *testing.T) {
+func TestAccAccessToken_WithCustomRole(t *testing.T) {
 	name := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	resourceName := "launchdarkly_access_token.test"
 	resource.ParallelTest(t, resource.TestCase{
@@ -156,6 +156,16 @@ func TestAccAccessToken_CreateWithCustomRole(t *testing.T) {
 					resource.TestCheckResourceAttrSet(resourceName, TOKEN),
 					resource.TestCheckNoResourceAttr(resourceName, POLICY),
 					resource.TestCheckNoResourceAttr(resourceName, ROLE),
+				),
+			},
+			{
+				Config: fmt.Sprintf(testAccAccessTokenUpdateCustomRole, name, name, name, name, name),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckAccessTokenExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, NAME, "Updated - "+name),
+					resource.TestCheckResourceAttr(resourceName, "custom_roles.#", "2"),
+					resource.TestCheckResourceAttr(resourceName, "custom_roles.0", name),
+					resource.TestCheckResourceAttr(resourceName, "custom_roles.1", name+"2"),
 				),
 			},
 		},
@@ -276,37 +286,6 @@ func TestAccAccessToken_Update(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "inline_roles.0.resources.#", "1"),
 					resource.TestCheckResourceAttr(resourceName, "inline_roles.0.resources.0", "proj/*:env/production"),
 					resource.TestCheckResourceAttr(resourceName, "inline_roles.0.effect", "deny"),
-				),
-			},
-		},
-	})
-}
-
-func TestAccAccessToken_UpdateCustomRole(t *testing.T) {
-	name := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
-	resourceName := "launchdarkly_access_token.test"
-	resource.ParallelTest(t, resource.TestCase{
-		PreCheck: func() {
-			testAccPreCheck(t)
-		},
-		Providers: testAccProviders,
-		Steps: []resource.TestStep{
-			{
-				Config: fmt.Sprintf(testAccAccessTokenCreateWithCustomRole, name, name, name),
-				Check: resource.ComposeTestCheckFunc(
-					testAccCheckAccessTokenExists(resourceName),
-					resource.TestCheckResourceAttr(resourceName, "custom_roles.#", "1"),
-					resource.TestCheckResourceAttr(resourceName, "custom_roles.0", name),
-				),
-			},
-			{
-				Config: fmt.Sprintf(testAccAccessTokenUpdateCustomRole, name, name, name, name, name),
-				Check: resource.ComposeTestCheckFunc(
-					testAccCheckAccessTokenExists(resourceName),
-					resource.TestCheckResourceAttr(resourceName, NAME, "Updated - "+name),
-					resource.TestCheckResourceAttr(resourceName, "custom_roles.#", "2"),
-					resource.TestCheckResourceAttr(resourceName, "custom_roles.0", name),
-					resource.TestCheckResourceAttr(resourceName, "custom_roles.1", name+"2"),
 				),
 			},
 		},

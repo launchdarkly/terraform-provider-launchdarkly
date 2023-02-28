@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"time"
 
-	ldapi "github.com/launchdarkly/api-client-go/v10"
+	ldapi "github.com/launchdarkly/api-client-go/v12"
 )
 
 var randomRetrySleepSeeded = false

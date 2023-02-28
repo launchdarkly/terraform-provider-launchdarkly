@@ -8,7 +8,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
-	ldapi "github.com/launchdarkly/api-client-go/v10"
+	ldapi "github.com/launchdarkly/api-client-go/v12"
 	"github.com/stretchr/testify/require"
 )
 
@@ -30,7 +30,7 @@ func testAccDataSourceEnvironmentScaffold(client *Client, projectKey string, env
 		Key:          projectKey,
 		Environments: []ldapi.EnvironmentPost{envBody},
 	}
-	project, err := testAccDataSourceProjectCreate(client, projectBody)
+	project, err := testAccProjectScaffoldCreate(client, projectBody)
 	if err != nil {
 		return nil, err
 	}
@@ -54,11 +54,11 @@ func TestAccDataSourceEnvironment_noMatchReturnsError(t *testing.T) {
 		Name: "Terraform Env Test Project",
 		Key:  projectKey,
 	}
-	project, err := testAccDataSourceProjectCreate(client, projectBody)
+	project, err := testAccProjectScaffoldCreate(client, projectBody)
 	require.NoError(t, err)
 
 	defer func() {
-		err := testAccDataSourceProjectDelete(client, projectKey)
+		err := testAccProjectScaffoldDelete(client, projectKey)
 		require.NoError(t, err)
 	}()
 
@@ -104,7 +104,7 @@ func TestAccDataSourceEnv_exists(t *testing.T) {
 	require.NoError(t, err)
 
 	defer func() {
-		err := testAccDataSourceProjectDelete(client, projectKey)
+		err := testAccProjectScaffoldDelete(client, projectKey)
 		require.NoError(t, err)
 	}()
 

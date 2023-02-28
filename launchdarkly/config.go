@@ -11,7 +11,7 @@ import (
 	"time"
 
 	retryablehttp "github.com/hashicorp/go-retryablehttp"
-	ldapi "github.com/launchdarkly/api-client-go/v10"
+	ldapi "github.com/launchdarkly/api-client-go/v12"
 )
 
 //nolint:staticcheck // The version string gets updated at build time using -ldflags
@@ -34,6 +34,14 @@ type Client struct {
 }
 
 func newClient(token string, apiHost string, oauth bool) (*Client, error) {
+	return baseNewClient(token, apiHost, oauth, APIVersion)
+}
+
+func newBetaClient(token string, apiHost string, oauth bool) (*Client, error) {
+	return baseNewClient(token, apiHost, oauth, "beta")
+}
+
+func baseNewClient(token string, apiHost string, oauth bool, apiVersion string) (*Client, error) {
 	if token == "" {
 		return nil, errors.New("token cannot be empty")
 	}
@@ -43,8 +51,7 @@ func newClient(token string, apiHost string, oauth bool) (*Client, error) {
 	cfg.DefaultHeader = make(map[string]string)
 	cfg.UserAgent = fmt.Sprintf("launchdarkly-terraform-provider/%s", version)
 	cfg.HTTPClient = newRetryableClient()
-
-	cfg.AddDefaultHeader("LD-API-Version", APIVersion)
+	cfg.AddDefaultHeader("LD-API-Version", apiVersion)
 
 	ctx := context.WithValue(context.Background(), ldapi.ContextAPIKeys, map[string]ldapi.APIKey{
 		"ApiKey": {

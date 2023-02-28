@@ -9,7 +9,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
-	ldapi "github.com/launchdarkly/api-client-go/v10"
+	ldapi "github.com/launchdarkly/api-client-go/v12"
 )
 
 func resourceDestination() *schema.Resource {
@@ -52,10 +52,11 @@ func resourceDestination() *schema.Resource {
 				ForceNew:         true,
 			},
 			CONFIG: {
-				Type:        schema.TypeMap,
-				Required:    true,
-				Description: "The destination-specific configuration object corresponding to your data export kind - see documentation for required fields for each kind",
-				Elem:        &schema.Schema{Type: schema.TypeString},
+				Type:             schema.TypeMap,
+				Required:         true,
+				Description:      "The destination-specific configuration object corresponding to your data export kind - see documentation for required fields for each kind",
+				Elem:             &schema.Schema{Type: schema.TypeString},
+				DiffSuppressFunc: configDiffSuppressFunc(),
 			},
 			ON: {
 				Type:        schema.TypeBool,
@@ -226,4 +227,18 @@ func destinationImportIDtoKeys(importID string) (projKey, envKey, destinationID 
 	parts := strings.SplitN(importID, "/", 3)
 	projKey, envKey, destinationID = parts[0], parts[1], parts[2]
 	return projKey, envKey, destinationID, nil
+}
+
+func configDiffSuppressFunc() schema.SchemaDiffSuppressFunc {
+	return func(k, old, new string, d *schema.ResourceData) bool {
+		if d.Get(KIND).(string) == "mparticle" {
+			// ignore changes to user_identity if user_identities is set
+			if k == fmt.Sprintf("%s.user_identity", CONFIG) {
+				if _, ok := d.GetOk(fmt.Sprintf("%s.user_identities", CONFIG)); ok {
+					return true
+				}
+			}
+		}
+		return old == new
+	}
 }

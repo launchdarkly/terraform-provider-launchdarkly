@@ -7,7 +7,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	ldapi "github.com/launchdarkly/api-client-go/v10"
+	ldapi "github.com/launchdarkly/api-client-go/v12"
 )
 
 func resourceSegment() *schema.Resource {
@@ -79,7 +79,7 @@ func resourceSegmentCreate(ctx context.Context, d *schema.ResourceData, metaRaw 
 	// https://apidocs.launchdarkly.com/reference#create-segment
 	updateDiags := resourceSegmentUpdate(ctx, d, metaRaw)
 	if updateDiags.HasError() {
-		// TODO: Figure out if we can get the err out of updateDiag (not looking likely) to use in hanldeLdapiErr
+		// TODO: Figure out if we can get the err out of updateDiag (not looking likely) to use in handleLdapiErr
 		return updateDiags
 		// return diag.Errorf("failed to update segment with name %q key %q for projectKey %q: %s",
 		// 	segmentName, key, projectKey, handleLdapiErr(errs))
@@ -103,24 +103,33 @@ func resourceSegmentUpdate(ctx context.Context, d *schema.ResourceData, metaRaw 
 	tags := stringsFromResourceData(d, TAGS)
 	included := d.Get(INCLUDED).([]interface{})
 	excluded := d.Get(EXCLUDED).([]interface{})
+	includedContexts := segmentTargetsFromResourceData(d, segmentTargetOptions{Included: true})
+	excludedContexts := segmentTargetsFromResourceData(d, segmentTargetOptions{Excluded: true})
 	rules, err := segmentRulesFromResourceData(d, RULES)
 	if err != nil {
 		return diag.FromErr(err)
 	}
 	comment := "Terraform"
-	patch := ldapi.PatchWithComment{
-		Comment: &comment,
-		Patch: []ldapi.PatchOperation{
-			patchReplace("/name", name),
-			patchReplace("/description", description),
-			patchReplace("/tags", tags),
-			patchReplace("/temporary", TEMPORARY),
-			patchReplace("/included", included),
-			patchReplace("/excluded", excluded),
-			patchReplace("/rules", rules),
-		}}
+	patchOps := []ldapi.PatchOperation{
+		patchReplace("/name", name),
+		patchReplace("/description", description),
+		patchReplace("/temporary", TEMPORARY),
+		patchReplace("/included", included),
+		patchReplace("/excluded", excluded),
+		patchReplace("/rules", rules),
+		patchReplace("/includedContexts", includedContexts),
+		patchReplace("/excludedContexts", excludedContexts),
+	}
 
-	_, _, err = client.ld.SegmentsApi.PatchSegment(client.ctx, projectKey, envKey, key).PatchWithComment(patch).Execute()
+	tagPatch := patchReplace("/tags", tags)
+	if d.HasChange(TAGS) && len(tags) == 0 {
+		tagPatch = patchRemove("/tags")
+	}
+	patchOps = append(patchOps, tagPatch)
+
+	_, _, err = client.ld.SegmentsApi.PatchSegment(client.ctx, projectKey, envKey, key).PatchWithComment(ldapi.PatchWithComment{
+		Comment: &comment,
+		Patch:   patchOps}).Execute()
 	if err != nil {
 		return diag.Errorf("failed to update segment %q in project %q: %s", key, projectKey, handleLdapiErr(err))
 	}

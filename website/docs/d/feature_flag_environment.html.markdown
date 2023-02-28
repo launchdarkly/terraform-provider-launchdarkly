@@ -38,7 +38,9 @@ In addition to the arguments above, the resource exports the following attribute
 
 - `prerequisites` - List of nested blocks describing prerequisite feature flags rules. To learn more, read [Nested Prequisites Blocks](#nested-prerequisites-blocks).
 
-- `targets` (previously `user_targets`) - Set of nested blocks describing the individual user targets for each variation. To learn more, read [Nested Target Blocks](#nested-targets-blocks).
+- `targets` (previously `user_targets`) - Set of nested blocks describing the individual user targets for each variation. To learn more, read [Nested Targets / Context Targets Blocks](#nested-targets-context-targets-blocks).
+
+- `context_targets` - Set of nested blocks describing the individual targets for non-user context kinds for each variation. To learn more, read [Nested Targets / Context Targets Blocks](#nested-targets-context-targets-blocks).
 
 - `rules` - List of logical targeting rules. To learn more, read [Nested Rules Blocks](#nested-rules-blocks).
 
@@ -52,13 +54,15 @@ Nested `prerequisites` blocks have the following structure:
 
 - `variation` - The index of the prerequisite feature flag's variation targeted.
 
-### Nested Targets Blocks
+### Nested Targets / Context Targets Blocks
 
 Nested `targets` blocks have the following structure:
 
 - `values` - List of `user` strings to target.
 
 - `variation` - The index of the variation to serve is a user target value is matched.
+
+- `context_kind` - The context kind on which the flag should target in this environment.
 
 ### Nested Fallthrough Block
 
@@ -69,6 +73,8 @@ The nested `fallthrough` block has the following structure:
 - `rollout_weights` - List of integer percentage rollout weights applied to each variation when no `prerequisites`, `target`, or `rules` apply.
 
 - `bucket_by` - Group percentage rollout by a custom attribute.
+
+- `context_kind` - The context kind associated with the specified rollout.
 
 ### Nested Rules Blocks
 
@@ -98,8 +104,12 @@ Nested `clauses` blocks have the following structure:
 
 - `negate` - Whether the rule clause is negated.
 
+- `context_kind` - The context kind associated with the specified rollout.
+
 Nested `fallthrough` blocks have the following structure:
 
 - `variation` - The integer variation index served when the rule clauses evaluate to `true`.
 
 - `rollout_weights` - List of integer percentage rollout weights applied to each variation when the rule clauses evaluates to `true`.
+
+- `context_kind` - (Optional) The context kind associated with the specified rollout. This argument is only valid if `rollout_weights` is also specified. If omitted, defaults to `"user"`.

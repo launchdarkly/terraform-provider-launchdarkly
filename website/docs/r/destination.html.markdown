@@ -20,55 +20,58 @@ To learn more about data export, read [Data Export Documentation](https://docs.l
 Currently the following five types of destinations are available: kinesis, google-pubsub, mparticle, azure-event-hubs, and segment. Please note that config fields will vary depending on which destination you are trying to configure / access.
 
 ```hcl
-resource "launchdarkly_destination" "example" {
+resource "launchdarkly_destination" "kinesis_example" {
   project_key = "example-project"
   env_key     = "example-env"
   name        = "example-kinesis-dest"
   kind        = "kinesis"
   config = {
-    "region" : "us-east-1",
-    "role_arn" : "arn:aws:iam::123456789012:role/marketingadmin",
-    "stream_name" : "cat-stream"
+    region = "us-east-1"
+    role_arn = "arn:aws:iam::123456789012:role/marketingadmin"
+    stream_name = "cat-stream"
   }
   on = true
-  tags    = ["terraform"]
+  tags = ["terraform"]
 }
 ```
 
 ```hcl
-resource "launchdarkly_destination" "example" {
+resource "launchdarkly_destination" "pubsub_example" {
   project_key = "example-project"
   env_key     = "example-env"
   name        = "example-pubsub-dest"
   kind        = "google-pubsub"
   config = {
-    "project" : "example-pub-sub-project",
-    "topic" : "example-topic"
+    project = "example-pub-sub-project"
+    topic = "example-topic"
   }
   on = true
-  tags    = ["terraform"]
+  tags = ["terraform"]
 }
 ```
 
 ```hcl
-resource "launchdarkly_destination" "example" {
+resource "launchdarkly_destination" "mparticle_example" {
   project_key = "example-project"
   env_key     = "example-env"
   name        = "example-mparticle-dest"
   kind        = "mparticle"
   config = {
-    "api_key" : "apiKeyfromMParticle"
-    "secret" : "mParticleSecret"
-    "user_identity" : "customer_id"
-    "environment" : "production"
+    api_key = "apiKeyfromMParticle"
+    secret = "mParticleSecret"
+    user_identities = jsonencode([
+      {"ldContextKind":"user","mparticleUserIdentity":"customer_id"},
+      {"ldContextKind":"device","mparticleUserIdentity":"google"}]
+		)
+    environment = "production"
   }
   on = true
-  tags    = ["terraform"]
+  tags = ["terraform"]
 }
 ```
 
 ```hcl
-resource "launchdarkly_destination" "example" {
+resource "launchdarkly_destination" "azure_example" {
 	project_key = "example-project"
 	env_key = "example-env"
 	name    = "example-azure-event-hubs-dest"
@@ -85,13 +88,15 @@ resource "launchdarkly_destination" "example" {
 ```
 
 ```hcl
-resource "launchdarkly_destination" "example" {
+resource "launchdarkly_destination" "segment_example" {
   project_key = "example-project"
   env_key     = "example-env"
   name        = "example-segment-dest"
   kind        = "segment"
   config = {
-    "write_key": "segment-write-key"
+    write_key = "segment-write-key"
+    user_id_context_kind = "user"
+    anonymous_id_context_kind = "anonymousUser"
   }
   on = true
   tags    = ["terraform"]
@@ -136,7 +141,9 @@ Depending on the destination kind, the `config` argument should contain the foll
 
 - `secret` - (Required) - Your mParticle secret.
 
-- `user_identity` - (Required) - Your mParticle user ID.
+- `user_identity` - (Optional) - Your mParticle user ID as a string. If defined, the LaunchDarkly context kind will be implicitly assumed to be "user". At least one of `user_identity` or `user_identities` must be defined.
+
+- `user_identities` - (Optional) - A json-encoded list of objects associating mParticle user identities with LaunchDarkly context kinds. At least one of `user_identity` or `user_identities` must be defined.
 
 - `environment` - (Required) - The mParticle environment. Must be 'production' or 'development'.
 
@@ -153,6 +160,10 @@ Depending on the destination kind, the `config` argument should contain the foll
 ### Segment
 
 - `write_key` - (Required) - Your Segment write key.
+
+- `user_id_context_kind` - (Required) - The context kind you would like to associated with the data exported to segment.
+
+- `anonymous_id_context_kind` - (Required) - The context kind you would like to associated with anonymous user data exported to segment.
 
 ## Attributes Reference
 
