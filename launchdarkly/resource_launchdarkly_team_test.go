@@ -165,7 +165,7 @@ func TestAccTeam_CreateAndUpdate(t *testing.T) {
 	randomEmailOne := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	randomEmailTwo := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	randomEmailThree := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
-	resourceName := fmt.Sprintf("launchdarkly_team.test")
+	resourceName := "launchdarkly_team.test"
 
 	resource.Test(t, resource.TestCase{
 		PreCheck: func() {
