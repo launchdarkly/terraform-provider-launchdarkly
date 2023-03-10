@@ -143,23 +143,25 @@ func resourceMetricCreate(ctx context.Context, d *schema.ResourceData, metaRaw i
 	isActive := d.Get(IS_ACTIVE).(bool)
 	isNumeric := d.Get(IS_NUMERIC).(bool)
 	urls := metricUrlsFromResourceData(d)
+	randomizationUnits := stringsFromResourceData(d, RANDOMIZATION_UNITS)
 	// Required depending on type
 	unit := d.Get(UNIT).(string)
 	selector := d.Get(SELECTOR).(string)
 	eventKey := d.Get(EVENT_KEY).(string)
 
 	metric := ldapi.MetricPost{
-		Name:        &name,
-		Key:         key,
-		Description: &description,
-		Tags:        tags,
-		Kind:        kind,
-		IsActive:    &isActive,
-		IsNumeric:   &isNumeric,
-		Selector:    &selector,
-		Urls:        urls,
-		Unit:        &unit,
-		EventKey:    &eventKey,
+		Name:               &name,
+		Key:                key,
+		Description:        &description,
+		Tags:               tags,
+		Kind:               kind,
+		IsActive:           &isActive,
+		IsNumeric:          &isNumeric,
+		Selector:           &selector,
+		Urls:               urls,
+		RandomizationUnits: randomizationUnits,
+		Unit:               &unit,
+		EventKey:           &eventKey,
 	}
 	// Only add successCriteria if it has a value - empty string causes API errors
 	_, ok := d.GetOk(SUCCESS_CRITERIA)
@@ -253,6 +255,11 @@ func resourceMetricUpdate(ctx context.Context, d *schema.ResourceData, metaRaw i
 	maintainerID, ok := d.GetOk(MAINTAINER_ID)
 	if ok {
 		patch = append(patch, patchReplace("/maintainerId", maintainerID.(string)))
+	}
+
+	// Only update randomization units if it is specified in the schema
+	if _, ok := d.GetOk(RANDOMIZATION_UNITS); ok {
+		patch = append(patch, patchReplace("/randomizationUnits", stringsFromResourceData(d, RANDOMIZATION_UNITS)))
 	}
 
 	_, _, err := client.ld.MetricsApi.PatchMetric(client.ctx, projectKey, key).PatchOperation(patch).Execute()

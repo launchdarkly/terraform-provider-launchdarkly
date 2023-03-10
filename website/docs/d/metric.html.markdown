@@ -42,18 +42,20 @@ In addition to the arguments above, the resource exports the following attribute
 
 - `description` - The description of the metric's purpose.
 
-- `isNumeric` - Whether a `custom` metric is a numeric metric or not.
+- `is_numeric` - Whether a `custom` metric is a numeric metric or not.
 
-- `isActive` - Whether a metric is a active.
+- `is_active` - Whether a metric is a active.
 
-- `maintainerId` - The userId of the user maintaining the metric.
+- `maintainer_id` - The userId of the user maintaining the metric.
 
-- `selector` - The CSS selector for `click` metrics. 
+- `selector` - The CSS selector for `click` metrics.
 
 - `urls` - Which URLs the metric watches.
 
-- `event_key` - The event key to watch for `custom` metrics. 
+- `event_key` - The event key to watch for `custom` metrics.
 
 - `success_criteria` - The success criteria for numeric `custom` metrics.
 
-- `unit` - The unit for numeric `custom` metrics. 
+- `unit` - The unit for numeric `custom` metrics.
+
+- `randomization_units` - A set of one or more context kinds that this metric can measure events from. Metrics can only use context kinds marked as "Available for experiments." For more information, read [Allocating experiment audiences](https://docs.launchdarkly.com/home/creating-experiments/allocation)

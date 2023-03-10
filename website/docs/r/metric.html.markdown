@@ -44,11 +44,11 @@ resource "launchdarkly_metric" "example" {
 
 - `tags` - (Optional) Set of tags for the metric.
 
-- `isNumeric` - (Optional) Whether a `custom` metric is a numeric metric or not.
+- `is_numeric` - (Optional) Whether a `custom` metric is a numeric metric or not.
 
-- `isActive` - (Optional) Whether a metric is a active.
+- `is_active` - (Optional) Whether a metric is a active.
 
-- `maintainerId` - (Optional) The userId of the user maintaining the metric.
+- `maintainer_id` - (Optional) The userId of the user maintaining the metric.
 
 - `selector` - (Required for kind `click`) The CSS selector for `click` metrics.
 
@@ -59,6 +59,8 @@ resource "launchdarkly_metric" "example" {
 - `success_criteria` - (Required for kind `custom`) The success criteria for numeric `custom` metrics.
 
 - `unit` - (Required for kind `custom`) The unit for numeric `custom` metrics.
+
+- `randomization_units` - (Optional) A set of one or more context kinds that this metric can measure events from. Metrics can only use context kinds marked as "Available for experiments." For more information, read [Allocating experiment audiences](https://docs.launchdarkly.com/home/creating-experiments/allocation)
 
 ### Nested Urls Blocks
 
