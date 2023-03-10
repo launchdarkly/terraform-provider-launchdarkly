@@ -1,17 +1,5 @@
-## [2.12.0] - 2023-03-10
-FEATURES:
-
-- Adds the optional `randomization_units` attribute to the `launchdarkly_metric` resource and data source. For more information, read [Allocating experiment audiences](https://docs.launchdarkly.com/home/creating-experiments/allocation). Thanks, @goldfrapp04!
-
-- Bumps golang.org/x/net dependency from 0.1.0 to 0.7.0.
-
-- Bumps Go version to 1.19.
-
-NOTES:
-
-- Fixes incorrect attribute casing in `launchdarkly_metric` resource and data source documentation.
-
 ## [2.11.0] - 2023-02-28
+
 FEATURES:
 
 - Adds a new `context_targets` attribute to `launchdarkly_feature_flag_environment` resource blocks that allow you to target based on context kinds other than `"user"`.
