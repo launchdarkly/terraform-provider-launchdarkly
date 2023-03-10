@@ -18,6 +18,10 @@ resource "launchdarkly_metric" "pageview_example" {
   tags           = [
     "example",
   ]
+  randomization_units = [
+    "user",
+    "request",
+  ]
   urls {
     kind = "substring"
     substring = "foo"
@@ -38,6 +42,10 @@ resource "launchdarkly_metric" "click_example" {
   tags           = [
     "example",
   ]
+  randomization_units = [
+    "user",
+    "request",
+  ]
   urls {
     kind = "exact"
     url = "https://example.com/example/"
@@ -54,6 +62,10 @@ resource "launchdarkly_metric" "custom_example" {
   tags           = [
     "example",
   ]
+  randomization_units = [
+    "user",
+    "request",
+  ]
 }
 
 resource "launchdarkly_metric" "numeric_example" {
@@ -68,5 +80,9 @@ resource "launchdarkly_metric" "numeric_example" {
   event_key        = "foo"
   tags             = [
     "example",
+  ]
+  randomization_units = [
+    "user",
+    "request",
   ]
 }

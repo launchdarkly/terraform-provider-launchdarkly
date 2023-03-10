@@ -97,6 +97,15 @@ func baseMetricSchema(isDataSource bool) map[string]*schema.Schema {
 				Schema: metricUrlSchema(),
 			},
 		},
+		RANDOMIZATION_UNITS: {
+			Type: schema.TypeSet,
+			Elem: &schema.Schema{
+				Type: schema.TypeString,
+			},
+			Optional:    true,
+			Computed:    true,
+			Description: "A set of one or more context kinds that this metric can measure events from.",
+		},
 	}
 }
 
@@ -136,6 +145,7 @@ func metricRead(ctx context.Context, d *schema.ResourceData, metaRaw interface{}
 	_ = d.Set(UNIT, metric.Unit)
 	_ = d.Set(EVENT_KEY, metric.EventKey)
 	_ = d.Set(SUCCESS_CRITERIA, metric.SuccessCriteria)
+	_ = d.Set(RANDOMIZATION_UNITS, metric.RandomizationUnits)
 
 	d.SetId(projectKey + "/" + key)
 
@@ -147,7 +157,7 @@ func metricUrlSchema() map[string]*schema.Schema {
 		KIND: {
 			Type:             schema.TypeString,
 			Required:         true,
-			Description:      "The url type - vailable choices are 'exact', 'canonical', 'substring' and 'regex'",
+			Description:      "The url type - available choices are 'exact', 'canonical', 'substring' and 'regex'",
 			ValidateDiagFunc: validation.ToDiagFunc(validation.StringInSlice([]string{"exact", "canonical", "substring", "regex"}, false)),
 		},
 		URL: {

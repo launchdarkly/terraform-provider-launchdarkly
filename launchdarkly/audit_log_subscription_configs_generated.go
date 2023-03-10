@@ -72,6 +72,14 @@ var SUBSCRIPTION_CONFIGURATION_FIELDS = map[string]IntegrationConfig{
 			IsSecret:      false,
 			Type:          "enum",
 		},
+		"tag": {
+			AllowedValues: []string{},
+			DefaultValue:  "",
+			Description:   "If provided, all feature flag events matching the policy filter will be associated with Dynatrace entities with the same tag.",
+			IsOptional:    true,
+			IsSecret:      false,
+			Type:          "string",
+		},
 		"url": {
 			AllowedValues: []string{},
 			DefaultValue:  nil,

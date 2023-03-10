@@ -2,11 +2,14 @@ package launchdarkly
 
 import (
 	"fmt"
+	"os"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
+	ldapi "github.com/launchdarkly/api-client-go/v12"
+	"github.com/stretchr/testify/require"
 )
 
 const (
@@ -50,7 +53,72 @@ resource "launchdarkly_metric" "basic" {
 	  }
 }
 `
+
+	testAccMetricCustomWithRandomizationUnitsFmt = `
+resource "launchdarkly_metric" "custom" {
+	project_key = "%s"
+	key         = "custom-metric"
+	name        = "Custom Metric"
+	event_key   = "Custom event"
+	kind        = "custom"
+	is_numeric  = false
+
+	randomization_units = [
+		"request",
+		"user"
+	]
+}
+`
+
+	testAccMetricCustomWithRandomizationUnitsUpdateFmt = `
+resource "launchdarkly_metric" "custom" {
+	project_key = "%s"
+	key         = "custom-metric"
+	name        = "Custom Metric"
+	event_key   = "Custom event"
+	kind        = "custom"
+	is_numeric  = false
+
+	randomization_units = [
+		"organization",
+	  "request",
+		"user"
+	]
+}
+`
 )
+
+// We can't update project experimentation settings in Terraform yet because they rely on beta endpoints. For now we will
+// make individual API calls to scaffold the project, contexts, and experimentation settings.
+func scaffoldProjectWithExperimentationSettings(betaClient *Client, projectKey string, randomizationUnits []string) error {
+	projectBody := ldapi.NewProjectPost(projectKey, projectKey)
+	project, _, err := betaClient.ld.ProjectsApi.PostProject(betaClient.ctx).ProjectPost(*projectBody).Execute()
+	if err != nil {
+		return err
+	}
+
+	randomizationUnitsInput := make([]ldapi.RandomizationUnitInput, 0, len(randomizationUnits))
+	for _, randomizationUnit := range randomizationUnits {
+		if randomizationUnit == "user" {
+			randomizationUnitsInput = append(randomizationUnitsInput, *ldapi.NewRandomizationUnitInput(randomizationUnit, true, randomizationUnit))
+			continue
+		}
+		// Add the additional context kinds to the project
+		contextKindPayload := ldapi.UpsertContextKindPayload{Name: randomizationUnit}
+		_, _, err = betaClient.ld.ContextsBetaApi.PutContextKind(betaClient.ctx, project.Key, randomizationUnit).UpsertContextKindPayload(contextKindPayload).Execute()
+		if err != nil {
+			return err
+		}
+		randomizationUnitsInput = append(randomizationUnitsInput, *ldapi.NewRandomizationUnitInput(randomizationUnit, false, randomizationUnit))
+	}
+
+	// Update the project's experimentation settings to make the new context available for experiments
+	expSettings := ldapi.ExperimentationSettingsPut{
+		RandomizationUnits: randomizationUnitsInput,
+	}
+	_, _, err = betaClient.ld.ExperimentsBetaApi.PutExperimentationSettings(betaClient.ctx, projectKey).ExperimentationSettingsPut(expSettings).Execute()
+	return err
+}
 
 func TestAccMetric_Basic(t *testing.T) {
 	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
@@ -122,6 +190,74 @@ func TestAccMetric_Update(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "urls.0.substring", "bar"),
 					resource.TestCheckResourceAttr(resourceName, "urls.1.kind", "regex"),
 					resource.TestCheckResourceAttr(resourceName, "urls.1.pattern", "bar"),
+				),
+			},
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
+		},
+	})
+}
+
+func TestAccMetric_WithRandomizationUnits(t *testing.T) {
+	accTest := os.Getenv("TF_ACC")
+	if accTest == "" {
+		t.SkipNow()
+	}
+	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	resourceName := "launchdarkly_metric.custom"
+
+	// In order to add additional randomization units we need to update the project's context kind and
+	// experimentation settings. Because this can only be done using beta endpoints we can't set this up via Terraform.
+	betaClient, err := newBetaClient(os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN), os.Getenv(LAUNCHDARKLY_API_HOST), false)
+	require.NoError(t, err)
+	err = scaffoldProjectWithExperimentationSettings(betaClient, projectKey, []string{"user", "request", "organization"})
+	require.NoError(t, err)
+
+	defer func() {
+		require.NoError(t, testAccProjectScaffoldDelete(betaClient, projectKey))
+	}()
+
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck: func() {
+			testAccPreCheck(t)
+		},
+		Providers: testAccProviders,
+		Steps: []resource.TestStep{
+			{
+				Config: fmt.Sprintf(testAccMetricCustomWithRandomizationUnitsFmt, projectKey),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckMetricExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, NAME, "Custom Metric"),
+					resource.TestCheckResourceAttr(resourceName, KEY, "custom-metric"),
+					resource.TestCheckResourceAttr(resourceName, PROJECT_KEY, projectKey),
+					resource.TestCheckResourceAttr(resourceName, KIND, "custom"),
+					resource.TestCheckResourceAttr(resourceName, EVENT_KEY, "Custom event"),
+					resource.TestCheckResourceAttr(resourceName, IS_NUMERIC, "false"),
+					resource.TestCheckResourceAttr(resourceName, RANDOMIZATION_UNITS+".0", "request"),
+					resource.TestCheckResourceAttr(resourceName, RANDOMIZATION_UNITS+".1", "user"),
+				),
+			},
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
+			{
+				Config: fmt.Sprintf(testAccMetricCustomWithRandomizationUnitsUpdateFmt, projectKey),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckMetricExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, NAME, "Custom Metric"),
+					resource.TestCheckResourceAttr(resourceName, KEY, "custom-metric"),
+					resource.TestCheckResourceAttr(resourceName, PROJECT_KEY, projectKey),
+					resource.TestCheckResourceAttr(resourceName, KIND, "custom"),
+					resource.TestCheckResourceAttr(resourceName, EVENT_KEY, "Custom event"),
+					resource.TestCheckResourceAttr(resourceName, IS_NUMERIC, "false"),
+					resource.TestCheckResourceAttr(resourceName, RANDOMIZATION_UNITS+".0", "organization"),
+					resource.TestCheckResourceAttr(resourceName, RANDOMIZATION_UNITS+".1", "request"),
+					resource.TestCheckResourceAttr(resourceName, RANDOMIZATION_UNITS+".2", "user"),
 				),
 			},
 			{

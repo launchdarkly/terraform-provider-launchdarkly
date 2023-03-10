@@ -82,6 +82,7 @@ const (
 	PREREQUISITES                    = "prerequisites"
 	PROJECT_KEY                      = "project_key"
 	PROJECT_KEYS                     = "project_keys"
+	RANDOMIZATION_UNITS              = "randomization_units"
 	REQUIRED                         = "required"
 	REQUIRED_APPROVAL_TAGS           = "required_approval_tags"
 	REQUIRE_COMMENTS                 = "require_comments"

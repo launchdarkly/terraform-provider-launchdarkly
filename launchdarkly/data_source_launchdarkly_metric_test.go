@@ -21,12 +21,36 @@ data "launchdarkly_metric" "testing" {
 `
 )
 
-func testAccDataSourceMetricScaffold(client *Client, projectKey string, metricBody ldapi.MetricPost) (*ldapi.MetricRep, error) {
+func testAccDataSourceMetricScaffold(client *Client, betaClient *Client, projectKey string, metricBody ldapi.MetricPost) (*ldapi.MetricRep, error) {
 	projectBody := ldapi.ProjectPost{
 		Name: "Metric Test Project",
 		Key:  projectKey,
 	}
 	project, err := testAccProjectScaffoldCreate(client, projectBody)
+	if err != nil {
+		return nil, err
+	}
+
+	randomizationUnitsInput := make([]ldapi.RandomizationUnitInput, 0, len(metricBody.RandomizationUnits))
+	for _, randomizationUnit := range metricBody.RandomizationUnits {
+		if randomizationUnit == "user" {
+			randomizationUnitsInput = append(randomizationUnitsInput, *ldapi.NewRandomizationUnitInput(randomizationUnit, true, randomizationUnit))
+			continue
+		}
+		// Add the additional context kinds to the project
+		contextKindPayload := ldapi.UpsertContextKindPayload{Name: randomizationUnit}
+		_, _, err = betaClient.ld.ContextsBetaApi.PutContextKind(betaClient.ctx, project.Key, randomizationUnit).UpsertContextKindPayload(contextKindPayload).Execute()
+		if err != nil {
+			return nil, err
+		}
+		randomizationUnitsInput = append(randomizationUnitsInput, *ldapi.NewRandomizationUnitInput(randomizationUnit, false, randomizationUnit))
+	}
+
+	// Update the project's experimentation settings to make the new context available for experiments
+	expSettings := ldapi.ExperimentationSettingsPut{
+		RandomizationUnits: randomizationUnitsInput,
+	}
+	_, _, err = betaClient.ld.ExperimentsBetaApi.PutExperimentationSettings(betaClient.ctx, projectKey).ExperimentationSettingsPut(expSettings).Execute()
 	if err != nil {
 		return nil, err
 	}
@@ -83,6 +107,8 @@ func TestAccDataSourceMetric_exists(t *testing.T) {
 	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	client, err := newClient(os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN), os.Getenv(LAUNCHDARKLY_API_HOST), false)
 	require.NoError(t, err)
+	betaClient, err := newBetaClient(os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN), os.Getenv(LAUNCHDARKLY_API_HOST), false)
+	require.NoError(t, err)
 
 	metricName := "Metric Data Source Test"
 	metricKey := "metric-ds-testing"
@@ -96,9 +122,10 @@ func TestAccDataSourceMetric_exists(t *testing.T) {
 			Kind:      &metricUrlKind,
 			Substring: &metricUrlSubstring,
 		}},
-		Description: ldapi.PtrString("a metric to test the terraform metric data source"),
+		Description:        ldapi.PtrString("a metric to test the terraform metric data source"),
+		RandomizationUnits: []string{"request", "user"},
 	}
-	metric, err := testAccDataSourceMetricScaffold(client, projectKey, metricBody)
+	metric, err := testAccDataSourceMetricScaffold(client, betaClient, projectKey, metricBody)
 	require.NoError(t, err)
 
 	defer func() {
@@ -124,6 +151,8 @@ func TestAccDataSourceMetric_exists(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, DESCRIPTION, *metric.Description),
 					resource.TestCheckResourceAttr(resourceName, ID, projectKey+"/"+metric.Key),
 					resource.TestCheckResourceAttr(resourceName, KIND, metric.Kind),
+					resource.TestCheckResourceAttr(resourceName, RANDOMIZATION_UNITS+".0", metric.RandomizationUnits[0]),
+					resource.TestCheckResourceAttr(resourceName, RANDOMIZATION_UNITS+".1", metric.RandomizationUnits[1]),
 					resource.TestCheckResourceAttr(resourceName, "urls.0.kind", metricUrlKind),
 					resource.TestCheckResourceAttr(resourceName, "urls.0.substring", metricUrlSubstring),
 				),
