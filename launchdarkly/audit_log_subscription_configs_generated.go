@@ -115,6 +115,24 @@ var SUBSCRIPTION_CONFIGURATION_FIELDS = map[string]IntegrationConfig{
 			Type:          "uri",
 		},
 	},
+	"grafana": {
+		"apiKey": {
+			AllowedValues: []string{},
+			DefaultValue:  nil,
+			Description:   "Enter an API key to your Grafana instance. This API key must have editor privileges.",
+			IsOptional:    false,
+			IsSecret:      true,
+			Type:          "string",
+		},
+		"endpointUrl": {
+			AllowedValues: []string{},
+			DefaultValue:  nil,
+			Description:   "Enter your Grafana instance's URL. This instance must be accessible to LaunchDarkly's servers.",
+			IsOptional:    false,
+			IsSecret:      false,
+			Type:          "uri",
+		},
+	},
 	"honeycomb": {
 		"apiKey": {
 			AllowedValues: []string{},
