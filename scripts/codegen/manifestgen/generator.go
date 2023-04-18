@@ -6,9 +6,11 @@ import (
 	"github.com/dave/jennifer/jen"
 )
 
+// These integrations are ommitted because the subscriptions are created and managed by the integrations
 var OMITTED_INTEGRATION_KEYS = []string{
 	"msteams-app",
-	"zapier", // Zapier is omitted because it the integration configuration is managed by Zapier
+	"compass",
+	"zapier",
 }
 
 func isOmitted(integrationKey string) bool {
