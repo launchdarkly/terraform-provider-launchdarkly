@@ -172,7 +172,7 @@ var SUBSCRIPTION_CONFIGURATION_FIELDS = map[string]IntegrationConfig{
 	"msteams": {"url": {
 		AllowedValues: []string{},
 		DefaultValue:  nil,
-		Description:   "Enter your Microsoft Teams [incoming webhook URL](https://docs.launchdarkly.com/integrations/microsoft-teams#setting-up-a-connector-in-microsoft-teams).",
+		Description:   "Enter your Microsoft Teams [incoming webhook URL](https://docs.launchdarkly.com/integrations/microsoft-teams/webhooks#setting-up-a-connector-in-microsoft-teams).",
 		IsOptional:    false,
 		IsSecret:      false,
 		Type:          "uri",
