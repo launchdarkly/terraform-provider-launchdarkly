@@ -49,11 +49,16 @@ type fallthroughModel struct {
 }
 
 func validateFallThroughResourceData(f []interface{}) error {
+	for _, f := range f {
+		if f == nil {
+			return errors.New("feature flag fallthrough block cannot be empty. Please specify at least one of variation or rollout_weights")
+		}
+	}
 	if !isPercentRollout(f) {
 		fall := f[0].(map[string]interface{})
 		if bucketBy, ok := fall[BUCKET_BY]; ok {
 			if bucketBy.(string) != "" {
-				return errors.New("flag_fallthrough: cannot use bucket_by argument with variation, only with rollout_weights")
+				return errors.New("flag fallthrough: cannot use bucket_by argument with variation, only with rollout_weights")
 			}
 		}
 	}
