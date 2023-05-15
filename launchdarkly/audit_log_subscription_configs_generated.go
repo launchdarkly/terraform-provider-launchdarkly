@@ -115,6 +115,24 @@ var SUBSCRIPTION_CONFIGURATION_FIELDS = map[string]IntegrationConfig{
 			Type:          "uri",
 		},
 	},
+	"grafana": {
+		"apiKey": {
+			AllowedValues: []string{},
+			DefaultValue:  nil,
+			Description:   "Enter an API key to your Grafana instance. This API key must have editor privileges.",
+			IsOptional:    false,
+			IsSecret:      true,
+			Type:          "string",
+		},
+		"endpointUrl": {
+			AllowedValues: []string{},
+			DefaultValue:  nil,
+			Description:   "Enter your Grafana instance's URL. This instance must be accessible to LaunchDarkly's servers.",
+			IsOptional:    false,
+			IsSecret:      false,
+			Type:          "uri",
+		},
+	},
 	"honeycomb": {
 		"apiKey": {
 			AllowedValues: []string{},
@@ -154,7 +172,7 @@ var SUBSCRIPTION_CONFIGURATION_FIELDS = map[string]IntegrationConfig{
 	"msteams": {"url": {
 		AllowedValues: []string{},
 		DefaultValue:  nil,
-		Description:   "Enter your Microsoft Teams [incoming webhook URL](https://docs.launchdarkly.com/integrations/microsoft-teams#setting-up-a-connector-in-microsoft-teams).",
+		Description:   "Enter your Microsoft Teams [incoming webhook URL](https://docs.launchdarkly.com/integrations/microsoft-teams/webhooks#setting-up-a-connector-in-microsoft-teams).",
 		IsOptional:    false,
 		IsSecret:      false,
 		Type:          "uri",
