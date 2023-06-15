@@ -1,4 +1,4 @@
-## [2.12.1] - 2023-05-16
+## [2.12.1] - 2023-06-15
 BUG FIXES:
 
 - Fixes [an issue](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/142) in the `launchdarkly_feature_flag_environment` resource where empty `fallthrough` blocks would cause the provider to panic.
