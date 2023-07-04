@@ -119,7 +119,7 @@ var SUBSCRIPTION_CONFIGURATION_FIELDS = map[string]IntegrationConfig{
 		"apiKey": {
 			AllowedValues: []string{},
 			DefaultValue:  nil,
-			Description:   "Enter an API key to your Grafana instance. This API key must have editor privileges.",
+			Description:   "Enter Grafana [service account](https://grafana.com/docs/grafana/latest/administration/service-accounts/) token. The service account must have the \"Annotation writer\" role.",
 			IsOptional:    false,
 			IsSecret:      true,
 			Type:          "string",
@@ -127,7 +127,7 @@ var SUBSCRIPTION_CONFIGURATION_FIELDS = map[string]IntegrationConfig{
 		"endpointUrl": {
 			AllowedValues: []string{},
 			DefaultValue:  nil,
-			Description:   "Enter your Grafana instance's URL. This instance must be accessible to LaunchDarkly's servers.",
+			Description:   "Enter your Grafana instance's URL. This instance must be accessible to LaunchDarkly's servers. Do not include a trailing \"/\".",
 			IsOptional:    false,
 			IsSecret:      false,
 			Type:          "uri",
