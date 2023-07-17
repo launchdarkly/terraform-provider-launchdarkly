@@ -1,15 +1,12 @@
-## [2.13.0] - 2023-07-17
-FEATURES:
-
-- Adds the new `launchdarkly_team_role_mapping` resource to manage the custom roles associated with a LaunchDarkly team. This is useful if the LaunchDarkly team is created and managed externally, such as via [OKTA SCIM](https://docs.launchdarkly.com/home/account-security/okta/#using-okta-to-manage-launchdarkly-teams-with-scim). If you wish to create an manage the team using Terraform, we recommend using the [`launchdarkly_team` resource](https://registry.terraform.io/providers/launchdarkly/launchdarkly/latest/docs/resources/team) instead. [#152](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/152)
-
 ## [2.12.2] - 2023-06-28
+
 BUG FIXES:
 
 - Fixes [an issue](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/142) in the `launchdarkly_feature_flag_environment` resource where empty `fallthrough` blocks would cause the provider to panic.
 - Fixes the release pipeline
 
 ## [2.12.1] - 2023-06-21
+
 BUG FIXES:
 
 - Fixes [an issue](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/142) in the `launchdarkly_feature_flag_environment` resource where empty `fallthrough` blocks would cause the provider to panic.
