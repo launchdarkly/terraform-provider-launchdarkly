@@ -115,7 +115,9 @@ func (p *launchdarklyProvider) DataSources(_ context.Context) []func() datasourc
 
 // Resources defines the resources implemented in the provider.
 func (p *launchdarklyProvider) Resources(_ context.Context) []func() resource.Resource {
-	return nil
+	return []func() resource.Resource{
+		NewTeamRoleMappingResource,
+	}
 }
 
 func NewPluginProvider(version string) func() provider.Provider {
