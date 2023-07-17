@@ -89,6 +89,9 @@ jobs:
           name: Test Team Resource
           command: TESTARGS="-run TestAccTeam_" make testacc-with-retry
       - run:
+          name: Test Team Role Mapping Resource
+          command: TESTARGS="-run TestAccTeamRoleMapping_" make testacc-with-retry
+      - run:
           name: Test Webhook Resource
           command: TESTARGS="-run TestAccWebhook" make testacc-with-retry
       - notify-slack-of-failures
