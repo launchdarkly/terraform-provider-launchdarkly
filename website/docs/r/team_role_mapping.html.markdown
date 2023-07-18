@@ -5,7 +5,7 @@ description: |-
   Manage the custom roles associated with a LaunchDarkly team.
 ---
 
-# launchdarkly_team
+# launchdarkly_team_role_mapping
 
 Provides a LaunchDarkly team to custom role mapping resource.
 
