@@ -10,6 +10,12 @@ apt-get install -y --no-install-recommends \
     gnupg \
 ; \
 
+# Goreleaser does not allow us to sign our binaries with a passphrase so we have to run a dummy
+# command to get GPG to cache the passphrase. By default the cache has a TTL of 10 minutes, which is too short for our
+# builds.
+gpgconf --kill gpg-agent
+gpg-agent --daemon --default-cache-ttl 7200
+
 # Get GPG Key
 echo -e "$(cat "${LD_RELEASE_SECRETS_DIR}/gpg_private_key")" | gpg --import --batch --no-tty
 echo "hello world" > temp.txt
