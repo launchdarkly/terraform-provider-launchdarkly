@@ -1,3 +1,7 @@
+## [2.13.1] - 2023-07-18
+### Fixed:
+- Fixed an incorrect header in the `launchdarkly_team_role_mapping` resource documentation. [#152](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/152)
+
 ## [2.13.0] - 2023-07-18
 FEATURES:
 
