@@ -1,3 +1,7 @@
+## [2.13.2] - 2023-07-19
+### Changed:
+- Improved the `launchdarkly_team_role_mapping` documentation to include a reference to the [team sync with SCIM feature](https://docs.launchdarkly.com/home/account-security/sso/scim#team-sync-with-scim). [#152](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/152)
+
 ## [2.13.1] - 2023-07-18
 ### Fixed:
 - Fixed an incorrect header in the `launchdarkly_team_role_mapping` resource documentation. [#152](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/152)
