@@ -1,3 +1,7 @@
+## [2.13.3] - 2023-07-26
+### Fixed:
+- Fixed a bug in the `launchdarkly_project` resource which prevented importing and managing a project with more than 20 environments. [#154](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/154)
+
 ## [2.13.2] - 2023-07-19
 ### Changed:
 - Improved the `launchdarkly_team_role_mapping` documentation to include a reference to the [team sync with SCIM feature](https://docs.launchdarkly.com/home/account-security/sso/scim#team-sync-with-scim). [#152](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/152)
