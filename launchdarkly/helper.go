@@ -3,6 +3,7 @@ package launchdarkly
 import (
 	"fmt"
 	"math/rand"
+	"net"
 	"net/http"
 	"time"
 
@@ -63,6 +64,11 @@ func handleLdapiErr(err error) error {
 		return fmt.Errorf("%s: %s", swaggerErr.Error(), string(swaggerErr.Body()))
 	}
 	return err
+}
+
+func isTimeoutError(err error) bool {
+	e, ok := err.(net.Error)
+	return ok && e.Timeout()
 }
 
 func isStatusNotFound(response *http.Response) bool {

@@ -151,6 +151,29 @@ resource "launchdarkly_project" "test" {
 	}
 }
 `
+
+	testAccProjectWithManyEnvironments = `
+locals {
+  envs = [for n in range(25) : format("%s", n)]
+}
+
+
+resource "launchdarkly_project" "many_envs" {
+  key  = "%s"
+  name = "Project with many environments"
+
+  dynamic "environments" {
+    for_each = local.envs
+    content {
+      key   = format("env-%s", environments.key)
+      name  = format("Env %s", environments.key)
+      color = "000000"
+    }
+  }
+
+	tags = [ "terraform", "test" ]
+}
+`
 )
 
 func TestAccProject_Create(t *testing.T) {
@@ -409,6 +432,36 @@ func TestAccProject_WithEnvironments(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "environments.0.default_track_events", "false"),
 					resource.TestCheckResourceAttr(resourceName, "environments.0.require_comments", "false"),
 					resource.TestCheckResourceAttr(resourceName, "environments.0.confirm_changes", "false"),
+				),
+			},
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
+		},
+	})
+}
+
+func TestAccProject_ManyEnvironments(t *testing.T) {
+	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	resourceName := "launchdarkly_project.many_envs"
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck: func() {
+			testAccPreCheck(t)
+		},
+		Providers: testAccProviders,
+		Steps: []resource.TestStep{
+			{
+				Config: fmt.Sprintf(testAccProjectWithManyEnvironments, "%d", projectKey, "%s", "%s"),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckProjectExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, KEY, projectKey),
+					resource.TestCheckResourceAttr(resourceName, NAME, "Project with many environments"),
+					resource.TestCheckResourceAttr(resourceName, "environments.#", "25"),
+					resource.TestCheckResourceAttr(resourceName, "tags.#", "2"),
+					resource.TestCheckResourceAttr(resourceName, "tags.0", "terraform"),
+					resource.TestCheckResourceAttr(resourceName, "tags.1", "test"),
 				),
 			},
 			{

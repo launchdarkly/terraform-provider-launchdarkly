@@ -103,5 +103,38 @@ func projectRead(ctx context.Context, d *schema.ResourceData, meta interface{}, 
 }
 
 func getFullProject(client *Client, projectKey string) (*ldapi.Project, *http.Response, error) {
-	return client.ld.ProjectsApi.GetProject(client.ctx, projectKey).Expand("environments").Execute()
+	project, resp, err := client.ld.ProjectsApi.GetProject(client.ctx, projectKey).Execute()
+	if err != nil {
+		return project, resp, err
+	}
+
+	envs, resp, err := getAllEnvironments(client, projectKey)
+	if err != nil {
+		return project, resp, err
+	}
+
+	project.Environments = &envs
+	return project, resp, nil
+}
+
+func getAllEnvironments(client *Client, projectKey string) (ldapi.Environments, *http.Response, error) {
+	envItems := make([]ldapi.Environment, 0)
+	pageLimit := int64(20)
+	allFetched := false
+	for currentPage := int64(0); !allFetched; currentPage++ {
+		envPage, resp, err := client.ld.EnvironmentsApi.GetEnvironmentsByProject(
+			client.ctx, projectKey).Limit(pageLimit).Offset(currentPage * pageLimit).Execute()
+		if err != nil {
+			return *ldapi.NewEnvironments(), resp, err
+		}
+		envItems = append(envItems, envPage.Items...)
+		if len(envItems) >= int(envPage.GetTotalCount()) {
+			allFetched = true
+		}
+	}
+
+	envs := *ldapi.NewEnvironments()
+	envs.SetItems(envItems)
+	envs.SetTotalCount(int32(len(envItems)))
+	return envs, nil, nil
 }

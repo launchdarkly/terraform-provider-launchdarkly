@@ -141,7 +141,10 @@ func resourceProjectCreate(ctx context.Context, d *schema.ResourceData, metaRaw 
 
 	_, _, err := client.ld.ProjectsApi.PostProject(client.ctx).ProjectPost(projectBody).Execute()
 	if err != nil {
-		return diag.Errorf("failed to create project with name %s and projectKey %s: %v", name, projectKey, handleLdapiErr(err))
+		if !isTimeoutError(err) {
+			return diag.Errorf("failed to create project with name %s and projectKey %s: %v", name, projectKey, handleLdapiErr(err))
+		}
+		fmt.Printf("[DEBUG] Network timeout when making the API call to create project %q. This can happen when there are 20+ environments. In most cases the Terraform apply will still succeed.\n", projectKey)
 	}
 
 	// ld's api does not allow tags to be passed in during project creation so we do an update
@@ -276,7 +279,10 @@ func resourceProjectDelete(ctx context.Context, d *schema.ResourceData, metaRaw 
 
 	_, err := client.ld.ProjectsApi.DeleteProject(client.ctx, projectKey).Execute()
 	if err != nil {
-		return diag.Errorf("failed to delete project with key %q: %s", projectKey, handleLdapiErr(err))
+		if !isTimeoutError(err) {
+			return diag.Errorf("failed to delete project with key %q: %s", projectKey, handleLdapiErr(err))
+		}
+		fmt.Printf("[DEBUG] Got a network timeout error when deleting project %q. This can happen when the project has 20+ environments.\n", projectKey)
 	}
 
 	return diags
