@@ -207,7 +207,7 @@ var SUBSCRIPTION_CONFIGURATION_FIELDS = map[string]IntegrationConfig{
 		"accessToken": {
 			AllowedValues: []string{},
 			DefaultValue:  nil,
-			Description:   "Enter your [SignalFx access token](https://docs.signalfx.com/en/latest/admin-guide/tokens.html#working-with-access-tokens).",
+			Description:   "Enter your [Splunk Observability Cloud access token](https://docs.splunk.com/Observability/admin/authentication-tokens/tokens.html#working-with-access-tokens).",
 			IsOptional:    false,
 			IsSecret:      true,
 			Type:          "string",
@@ -215,7 +215,7 @@ var SUBSCRIPTION_CONFIGURATION_FIELDS = map[string]IntegrationConfig{
 		"realm": {
 			AllowedValues: []string{},
 			DefaultValue:  nil,
-			Description:   "Enter your [SignalFx realm](https://developers.signalfx.com/#realms-in-endpoints).",
+			Description:   "Enter your [Splunk Observability Cloud realm](https://dev.splunk.com/observability/docs/realms_in_endpoints/).",
 			IsOptional:    false,
 			IsSecret:      false,
 			Type:          "string",
