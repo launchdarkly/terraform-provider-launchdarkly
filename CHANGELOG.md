@@ -1,3 +1,7 @@
+## [2.13.4] - 2023-08-03
+### Fixed:
+- Fix YAML frontmatter on `launchdarkly_relay_proxy_configuration` documentation. Thanks, @felixlut [#171](https://github.com/launchdarkly/terraform-provider-launchdarkly/pull/171)
+
 ## [2.13.3] - 2023-07-26
 ### Fixed:
 - Fixed a bug in the `launchdarkly_project` resource which prevented importing and managing a project with more than 20 environments. [#154](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/154)
