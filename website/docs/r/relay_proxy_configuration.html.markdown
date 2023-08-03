@@ -1,6 +1,8 @@
 ---
-title: "launchdarkly_relay_proxy_configuration"
-description: "Create and manage Relay Proxy configurations"
+layout: "launchdarkly"
+page_title: "LaunchDarkly: launchdarkly_relay_proxy_configuration"
+description: |-
+  Create and manage Relay Proxy configurations.
 ---
 
 # launchdarkly_relay_proxy_configuration
