@@ -12,7 +12,11 @@ import (
 	ldapi "github.com/launchdarkly/api-client-go/v12"
 )
 
-func baseFeatureFlagSchema() map[string]*schema.Schema {
+type featureFlagSchemaOptions struct {
+	isDataSource bool
+}
+
+func baseFeatureFlagSchema(options featureFlagSchemaOptions) map[string]*schema.Schema {
 	return map[string]*schema.Schema{
 		PROJECT_KEY: {
 			Type:             schema.TypeString,
@@ -76,7 +80,7 @@ func baseFeatureFlagSchema() map[string]*schema.Schema {
 				},
 			},
 		},
-		TAGS:              tagsSchema(),
+		TAGS:              tagsSchema(tagsSchemaOptions(options)),
 		CUSTOM_PROPERTIES: customPropertiesSchema(),
 		DEFAULTS: {
 			Type:        schema.TypeList,

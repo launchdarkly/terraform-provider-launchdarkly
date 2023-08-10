@@ -13,10 +13,15 @@ func dataSourceEnvironment() *schema.Resource {
 		Type:             schema.TypeString,
 		Required:         true,
 		ValidateDiagFunc: validateKey(),
+		Description:      "The environment's project key.",
 	}
 	return &schema.Resource{
 		ReadContext: dataSourceEnvironmentRead,
 		Schema:      envSchema,
+
+		Description: `Provides a LaunchDarkly environment data source.
+
+This data source allows you to retrieve environment information from your LaunchDarkly organization.`,
 	}
 }
 

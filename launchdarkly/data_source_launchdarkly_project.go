@@ -53,7 +53,7 @@ func dataSourceProject() *schema.Resource {
 					},
 				},
 			},
-			TAGS: tagsSchema(),
+			TAGS: tagsSchema(tagsSchemaOptions{isDataSource: true}),
 		},
 	}
 }

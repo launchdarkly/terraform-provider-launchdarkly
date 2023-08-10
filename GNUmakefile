@@ -1,7 +1,6 @@
 
 TEST?=$$(go list ./...)
 GOFMT_FILES?=$$(find . -name '*.go')
-WEBSITE_REPO=github.com/hashicorp/terraform-website
 PKG_NAME=launchdarkly
 REV:=$(shell git rev-parse HEAD | cut -c1-6)
 LDFLAGS:=-ldflags="-X main.version=$(REV) -X github.com/launchdarkly/terraform-provider-launchdarkly/launchdarkly.version=$(REV)"
@@ -32,7 +31,6 @@ vet:
 	fi
 
 fmt:
-	go install github.com/ashanbrown/gofmts/cmd/gofmts@v0.1.4
 	gofmts -w $(GOFMT_FILES)
 	gofmt -w $(GOFMT_FILES)
 
@@ -56,18 +54,4 @@ test-compile:
 	fi
 	go test -c $(TEST) $(TESTARGS)
 
-website:
-ifeq (,$(wildcard $(GOPATH)/src/$(WEBSITE_REPO)))
-	echo "$(WEBSITE_REPO) not found in your GOPATH (necessary for layouts and assets), get-ting..."
-	git clone https://$(WEBSITE_REPO) $(GOPATH)/src/$(WEBSITE_REPO)
-endif
-	@$(MAKE) -C $(GOPATH)/src/$(WEBSITE_REPO) website-provider PROVIDER_PATH=$(shell pwd) PROVIDER_NAME=$(PKG_NAME)
-
-website-test:
-ifeq (,$(wildcard $(GOPATH)/src/$(WEBSITE_REPO)))
-	echo "$(WEBSITE_REPO) not found in your GOPATH (necessary for layouts and assets), get-ting..."
-	git clone https://$(WEBSITE_REPO) $(GOPATH)/src/$(WEBSITE_REPO)
-endif
-	@$(MAKE) -C $(GOPATH)/src/$(WEBSITE_REPO) website-provider-test PROVIDER_PATH=$(shell pwd) PROVIDER_NAME=$(PKG_NAME)
-
-.PHONY: build install apply test testacc testacc-with-retry vet fmt fmtcheck errcheck lint test-compile website website-test
+.PHONY: build install apply test testacc testacc-with-retry vet fmt fmtcheck errcheck lint test-compile

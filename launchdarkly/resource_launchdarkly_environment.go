@@ -11,7 +11,7 @@ import (
 )
 
 func resourceEnvironment() *schema.Resource {
-	envSchema := environmentSchema(false)
+	envSchema := environmentSchema(environmentSchemaOptions{forProject: false, isDataSource: false})
 	envSchema[PROJECT_KEY] = &schema.Schema{
 		Type:             schema.TypeString,
 		Required:         true,
@@ -31,6 +31,8 @@ func resourceEnvironment() *schema.Resource {
 			State: resourceEnvironmentImport,
 		},
 		Schema: envSchema,
+
+		Description: "Provides a LaunchDarkly environment resource.\n\nThis resource allows you to create and manage environments in your LaunchDarkly organization. This resource should _not_ be used if the encapsulated project is also managed via Terraform. In this case, you should _always_ use the nested environments config blocks on your `launchdarkly_project` resource to manage your environments.\n\n-> **Note:** Mixing the use of nested `environments` blocks in the [`launchdarkly_project`] resource and `launchdarkly_environment` resources is not recommended.",
 	}
 }
 

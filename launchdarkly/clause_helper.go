@@ -31,7 +31,7 @@ func clauseSchema() *schema.Schema {
 				OP: {
 					Type:             schema.TypeString,
 					Required:         true,
-					Description:      "The operator associated with the rule clause. Available options are in, endsWith, startsWith, matches, contains, lessThan, lessThanOrEqual, greaterThanOrEqual, before, after, segmentMatch, semVerEqual, semVerLessThan, and semVerGreaterThan",
+					Description:      "The operator associated with the rule clause. Available options are `in`, `endsWith`, `startsWith`, `matches`, `contains`, `lessThan`, `lessThanOrEqual`, `greaterThanOrEqual`, `before`, `after`, `segmentMatch`, `semVerEqual`, `semVerLessThan`, and `semVerGreaterThan`.",
 					ValidateDiagFunc: validateOp(),
 				},
 				VALUES: {
@@ -40,13 +40,13 @@ func clauseSchema() *schema.Schema {
 						Type: schema.TypeString,
 					},
 					Required:    true,
-					Description: "The list of values associated with the rule clause",
+					Description: "The list of values associated with the rule clause.",
 				},
 				VALUE_TYPE: {
 					Type:             schema.TypeString,
 					Default:          STRING_CLAUSE_VALUE,
 					Optional:         true,
-					Description:      "The type for each of the clause's values. Available types are boolean, string, and number. If omitted, value_type defaults to string",
+					Description:      "The type for each of the clause's values. Available types are `boolean`, `string`, and `number`. If omitted, `value_type` defaults to `string`.",
 					DiffSuppressFunc: diffSuppressFunc,
 					ValidateDiagFunc: validation.ToDiagFunc(validation.StringInSlice(
 						[]string{
@@ -61,13 +61,13 @@ func clauseSchema() *schema.Schema {
 					Type:        schema.TypeBool,
 					Optional:    true,
 					Default:     false,
-					Description: "Whether to negate the rule clause",
+					Description: "Whether to negate the rule clause.",
 				},
 				CONTEXT_KIND: {
 					Type:        schema.TypeString,
 					Optional:    true,
 					Default:     "user",
-					Description: "The context kind associated with this rule clause. If omitted, defaults to user",
+					Description: "The context kind associated with this rule clause. This argument is only valid if `rollout_weights` is also specified. If omitted, defaults to `user`.",
 				},
 			},
 		},

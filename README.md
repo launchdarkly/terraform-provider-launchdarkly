@@ -13,7 +13,7 @@
 ## Quick Starts
 
 - [Using the provider](https://registry.terraform.io/providers/launchdarkly/launchdarkly/latest/docs)
-- [Provider development](docs/DEVELOPMENT.md)
+- [Provider development](DEVELOPMENT.md)
 
 ## Documentation
 

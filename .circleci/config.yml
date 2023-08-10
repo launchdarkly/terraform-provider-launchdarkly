@@ -5,6 +5,7 @@ orbs:
   go: circleci/go@1.7.0
   linter: talkiq/linter@3.2.0
   slack: circleci/slack@4.7.1
+  terraform: circleci/terraform@3.2.1
 
 commands:
   notify-slack-of-failures:
@@ -109,6 +110,8 @@ jobs:
           command: |
             sudo apt update
             sudo apt install python3-pip python-is-python3
+      - terraform/install:
+          terraform_version: latest
       - linter/pre-commit
       - notify-slack-of-failures
 

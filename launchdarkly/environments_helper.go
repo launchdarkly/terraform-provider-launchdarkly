@@ -11,69 +11,88 @@ import (
 	ldapi "github.com/launchdarkly/api-client-go/v12"
 )
 
+type environmentSchemaOptions struct {
+	forProject   bool
+	isDataSource bool
+}
+
 // baseEnvironmentSchema covers the overlap between the data source and resource schemas
 // certain attributes are required for the resource that are not for the data source and so those
 // will need to be differentiated
-func baseEnvironmentSchema(forProject bool) map[string]*schema.Schema {
-	return map[string]*schema.Schema{
+func baseEnvironmentSchema(options environmentSchemaOptions) map[string]*schema.Schema {
+	envSchema := map[string]*schema.Schema{
 		KEY: {
 			Type:        schema.TypeString,
 			Required:    true,
-			Description: "A project-unique key for the new environment",
+			Description: "The project-unique key for the environment. A change in this field will force the destruction of the existing resource and the creation of a new one.",
 			// Don't force new if the environment schema will be nested in a project
-			ForceNew:         !forProject,
+			ForceNew:         !options.forProject,
 			ValidateDiagFunc: validateKey(),
 		},
 		API_KEY: {
-			Type:      schema.TypeString,
-			Computed:  true,
-			Sensitive: true,
+			Type:        schema.TypeString,
+			Computed:    true,
+			Sensitive:   true,
+			Description: "The environment's SDK key.",
 		},
 		MOBILE_KEY: {
-			Type:      schema.TypeString,
-			Computed:  true,
-			Sensitive: true,
+			Type:        schema.TypeString,
+			Computed:    true,
+			Sensitive:   true,
+			Description: "The environment's mobile key.",
 		},
 		CLIENT_SIDE_ID: {
-			Type:      schema.TypeString,
-			Computed:  true,
-			Sensitive: true,
+			Type:        schema.TypeString,
+			Computed:    true,
+			Sensitive:   true,
+			Description: "The environment's client-side ID.",
 		},
 		DEFAULT_TTL: {
-			Type:     schema.TypeInt,
-			Optional: true,
-			Default:  0,
-			// Default TTL should be between 0 and 60 minutes: https://docs.launchdarkly.com/home/organize/environments#ttl-settings
-			Description:      "The TTL for the environment. This must be between 0 and 60 minutes. The TTL setting only applies to environments using the PHP SDK",
+			Type:             schema.TypeInt,
+			Optional:         !options.isDataSource,
+			Computed:         options.isDataSource,
+			Default:          0,
 			ValidateDiagFunc: validation.ToDiagFunc(validation.IntBetween(0, 60)),
+			// Default TTL should be between 0 and 60 minutes: https://docs.launchdarkly.com/home/organize/environments#ttl-settings
+			Description: "The TTL for the environment. This must be between 0 and 60 minutes. The TTL setting only applies to environments using the PHP SDK. This field will default to `0` when not set. To learn more, read [TTL settings](https://docs.launchdarkly.com/home/organize/environments#ttl-settings).",
 		},
 		SECURE_MODE: {
 			Default:     false,
 			Type:        schema.TypeBool,
-			Optional:    true,
-			Description: "Whether or not to use secure mode. Secure mode ensures a user of the client-side SDK cannot impersonate another user",
+			Optional:    !options.isDataSource,
+			Computed:    options.isDataSource,
+			Description: "Set to `true` to ensure a user of the client-side SDK cannot impersonate another user. This field will default to `false` when not set.",
 		},
 		DEFAULT_TRACK_EVENTS: {
 			Default:     false,
 			Type:        schema.TypeBool,
-			Optional:    true,
-			Description: "Whether or not to default to sending data export events for flags created in the environment",
+			Optional:    !options.isDataSource,
+			Computed:    options.isDataSource,
+			Description: "Set to `true` to enable data export for every flag created in this environment after you configure this argument. This field will default to `false` when not set. To learn more, read [Data Export](https://docs.launchdarkly.com/home/data-export).",
 		},
 		REQUIRE_COMMENTS: {
 			Default:     false,
 			Type:        schema.TypeBool,
-			Optional:    true,
-			Description: "Whether or not to require comments for flag and segment changes in this environment",
+			Optional:    !options.isDataSource,
+			Computed:    options.isDataSource,
+			Description: "Set to `true` if this environment requires comments for flag and segment changes. This field will default to `false` when not set.",
 		},
 		CONFIRM_CHANGES: {
-			Default:     false,
 			Type:        schema.TypeBool,
-			Optional:    true,
-			Description: "Whether or not to require confirmation for flag and segment changes in this environment",
+			Optional:    !options.isDataSource,
+			Computed:    options.isDataSource,
+			Default:     false,
+			Description: "Set to `true` if this environment requires confirmation for flag and segment changes. This field will default to `false` when not set.",
 		},
-		TAGS:              tagsSchema(),
-		APPROVAL_SETTINGS: approvalSchema(),
+		TAGS:              tagsSchema(tagsSchemaOptions{isDataSource: options.isDataSource}),
+		APPROVAL_SETTINGS: approvalSchema(approvalSchemaOptions{isDataSource: options.isDataSource}),
 	}
+
+	if options.isDataSource {
+		envSchema = removeInvalidFieldsForDataSource(envSchema)
+	}
+
+	return envSchema
 }
 
 func getEnvironmentUpdatePatches(oldConfig, config map[string]interface{}) ([]ldapi.PatchOperation, error) {
@@ -130,23 +149,23 @@ func getEnvironmentUpdatePatches(oldConfig, config map[string]interface{}) ([]ld
 	return patches, nil
 }
 
-func environmentSchema(forProject bool) map[string]*schema.Schema {
-	schemaMap := baseEnvironmentSchema(forProject)
+func environmentSchema(options environmentSchemaOptions) map[string]*schema.Schema {
+	schemaMap := baseEnvironmentSchema(options)
 	schemaMap[NAME] = &schema.Schema{
 		Type:        schema.TypeString,
 		Required:    true,
-		Description: "The name of the new environment",
+		Description: "The name of the environment.",
 	}
 	schemaMap[COLOR] = &schema.Schema{
 		Type:        schema.TypeString,
 		Required:    true,
-		Description: "A color swatch (as an RGB hex value with no leading '#', e.g. C8C8C8)",
+		Description: "The color swatch as an RGB hex value with no leading `#`. For example: `000000`",
 	}
 	return schemaMap
 }
 
 func dataSourceEnvironmentSchema(forProject bool) map[string]*schema.Schema {
-	schemaMap := baseEnvironmentSchema(forProject)
+	schemaMap := baseEnvironmentSchema(environmentSchemaOptions{forProject: true, isDataSource: true})
 	schemaMap[NAME] = &schema.Schema{
 		Type:     schema.TypeString,
 		Computed: true,

@@ -9,7 +9,7 @@ import (
 )
 
 func dataSourceFeatureFlag() *schema.Resource {
-	schemaMap := baseFeatureFlagSchema()
+	schemaMap := baseFeatureFlagSchema(featureFlagSchemaOptions{isDataSource: true})
 	schemaMap[NAME] = &schema.Schema{
 		Type:        schema.TypeString,
 		Computed:    true,

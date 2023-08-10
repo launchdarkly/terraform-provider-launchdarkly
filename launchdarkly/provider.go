@@ -33,17 +33,17 @@ func providerSchema() map[string]*schema.Schema {
 		access_token: {
 			Type:        schema.TypeString,
 			Optional:    true,
-			Description: "The LaunchDarkly API key",
+			Description: "The [personal access token](https://docs.launchdarkly.com/home/account-security/api-access-tokens#personal-tokens) or [service token](https://docs.launchdarkly.com/home/account-security/api-access-tokens#service-tokens) used to authenticate with LaunchDarkly. You can also set this with the `LAUNCHDARKLY_ACCESS_TOKEN` environment variable. You must provide either `access_token` or `oauth_token`.",
 		},
 		oauth_token: {
 			Type:        schema.TypeString,
 			Optional:    true,
-			Description: "The LaunchDarkly OAuth token",
+			Description: "An OAuth V2 token you use to authenticate with LaunchDarkly. You can also set this with the `LAUNCHDARKLY_OAUTH_TOKEN` environment variable. You must provide either `access_token` or `oauth_token`.",
 		},
 		api_host: {
 			Type:        schema.TypeString,
 			Optional:    true,
-			Description: "The LaunchDarkly host address, e.g. https://app.launchdarkly.com",
+			Description: "The LaunchDarkly host address. If this argument is not specified, the default host address is `https://app.launchdarkly.com`",
 		},
 	}
 }

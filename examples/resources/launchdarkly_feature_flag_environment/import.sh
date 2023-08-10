@@ -1,0 +1,2 @@
+# LaunchDarkly feature flag environments can be imported using the resource's ID in the form `project_key/env_key/flag_key`
+terraform import launchdarkly_feature_flag_environment.example example-project/example-env/example-flag-key

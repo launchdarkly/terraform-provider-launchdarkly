@@ -13,7 +13,7 @@ fi
 # Check gofmts
 if ! which gofmts > /dev/null; then
     echo "==> Installing gofmts..."
-    go install github.com/ashanbrown/gofmts/cmd/gofmts@v0.1.4
+    go install github.com/ashanbrown/gofmts/cmd/gofmts@v0.2.0
 fi
 gofmts_files=$(gofmts -l `find . -name '*.go' | grep -v vendor`)
 if [[ -n ${gofmt_files} ]]; then

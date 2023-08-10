@@ -174,6 +174,60 @@ resource "launchdarkly_project" "many_envs" {
 	tags = [ "terraform", "test" ]
 }
 `
+	testAccProjectWithEnvApprovalSettings = `
+resource "launchdarkly_project" "approval_env_test" {
+	key = "%s"
+	name = "test project"
+	environments {
+		key = "approval-env"
+		name = "env with approval settings"
+		color = "AAAAAA"
+		approval_settings {
+      can_review_own_request     = false
+      can_apply_declined_changes = false
+      min_num_approvals          = 2
+      required                   = true
+    }
+	}
+	environments {
+		key = "default-env"
+		name = "env with default approval settings"
+		color = "AAAAAA"
+	}
+}`
+
+	testAccProjectWithEnvApprovalSettingsUpdate = `
+resource "launchdarkly_project" "approval_env_test" {
+	key = "%s"
+	name = "test project"
+	environments {
+		key = "new-env"
+		name = "New env with approval settings"
+		color = "AAAAAA"
+		approval_settings {
+      can_review_own_request     = false
+      can_apply_declined_changes = false
+      min_num_approvals          = 1
+      required                   = false
+    }
+	}
+	environments {
+		key = "approval-env"
+		name = "env with approval settings"
+		color = "AAAAAA"
+		approval_settings {
+      can_review_own_request     = false
+      can_apply_declined_changes = false
+      min_num_approvals          = 2
+      required                   = true
+    }
+	}
+	environments {
+		key = "default-env"
+		name = "env with default approval settings"
+		color = "AAAAAA"
+	}
+}`
 )
 
 func TestAccProject_Create(t *testing.T) {
@@ -432,6 +486,67 @@ func TestAccProject_WithEnvironments(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "environments.0.default_track_events", "false"),
 					resource.TestCheckResourceAttr(resourceName, "environments.0.require_comments", "false"),
 					resource.TestCheckResourceAttr(resourceName, "environments.0.confirm_changes", "false"),
+				),
+			},
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
+		},
+	})
+}
+
+func TestAccProject_EnvApprovalUpdate(t *testing.T) {
+	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	resourceName := "launchdarkly_project.approval_env_test"
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck: func() {
+			testAccPreCheck(t)
+		},
+		Providers: testAccProviders,
+		Steps: []resource.TestStep{
+			{
+				Config: fmt.Sprintf(testAccProjectWithEnvApprovalSettings, projectKey),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckProjectExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, KEY, projectKey),
+					resource.TestCheckResourceAttr(resourceName, NAME, "test project"),
+					resource.TestCheckResourceAttr(resourceName, "environments.#", "2"),
+					resource.TestCheckResourceAttr(resourceName, "environments.0.key", "approval-env"),
+					resource.TestCheckResourceAttr(resourceName, "environments.0.name", "env with approval settings"),
+					resource.TestCheckResourceAttr(resourceName, "environments.0.approval_settings.0.required", "true"),
+					resource.TestCheckResourceAttr(resourceName, "environments.0.approval_settings.0.min_num_approvals", "2"),
+					resource.TestCheckResourceAttr(resourceName, "environments.1.key", "default-env"),
+					resource.TestCheckResourceAttr(resourceName, "environments.1.name", "env with default approval settings"),
+					resource.TestCheckResourceAttr(resourceName, "environments.1.approval_settings.0.required", "false"),
+					resource.TestCheckResourceAttr(resourceName, "environments.1.approval_settings.0.min_num_approvals", "1"),
+				),
+			},
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
+			{
+				Config: fmt.Sprintf(testAccProjectWithEnvApprovalSettingsUpdate, projectKey),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckProjectExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, KEY, projectKey),
+					resource.TestCheckResourceAttr(resourceName, NAME, "test project"),
+					resource.TestCheckResourceAttr(resourceName, "environments.#", "3"),
+					resource.TestCheckResourceAttr(resourceName, "environments.0.key", "new-env"),
+					resource.TestCheckResourceAttr(resourceName, "environments.0.name", "New env with approval settings"),
+					resource.TestCheckResourceAttr(resourceName, "environments.0.approval_settings.0.required", "false"),
+					resource.TestCheckResourceAttr(resourceName, "environments.0.approval_settings.0.min_num_approvals", "1"),
+					resource.TestCheckResourceAttr(resourceName, "environments.1.key", "approval-env"),
+					resource.TestCheckResourceAttr(resourceName, "environments.1.name", "env with approval settings"),
+					resource.TestCheckResourceAttr(resourceName, "environments.1.approval_settings.0.required", "true"),
+					resource.TestCheckResourceAttr(resourceName, "environments.1.approval_settings.0.min_num_approvals", "2"),
+					resource.TestCheckResourceAttr(resourceName, "environments.2.key", "default-env"),
+					resource.TestCheckResourceAttr(resourceName, "environments.2.name", "env with default approval settings"),
+					resource.TestCheckResourceAttr(resourceName, "environments.2.approval_settings.0.required", "false"),
+					resource.TestCheckResourceAttr(resourceName, "environments.2.approval_settings.0.min_num_approvals", "1"),
 				),
 			},
 			{

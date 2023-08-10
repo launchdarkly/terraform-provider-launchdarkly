@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"sort"
 	"strconv"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
@@ -51,33 +52,64 @@ func getSubscriptionConfigurationMap() map[string]IntegrationConfig {
 	return configs
 }
 
+func getValidIntegrationKeys() []string {
+	configMap := getSubscriptionConfigurationMap()
+	integrationKeys := make([]string, 0, len(configMap))
+	for k := range configMap {
+		integrationKeys = append(integrationKeys, k)
+	}
+	sort.Strings(integrationKeys)
+	return integrationKeys
+}
+
+func formatIntegrationKeysForDescription(integrationKeys []string) string {
+	output := ""
+	for idx, key := range integrationKeys {
+		output += fmt.Sprintf("`%s`", key)
+		if idx < len(integrationKeys)-2 {
+			output += ", "
+		} else if idx == len(integrationKeys)-2 {
+			output += ", and "
+		}
+	}
+	return output
+}
+
 func auditLogSubscriptionSchema(isDataSource bool) map[string]*schema.Schema {
 	return map[string]*schema.Schema{
 		INTEGRATION_KEY: {
 			// validated as part of the config validation
-			Type:     schema.TypeString,
-			Required: true,
-			// we are omitting appdynamics for now because it requires oauth
-			ValidateFunc: validation.StringNotInSlice([]string{"appdynamics"}, false),
+			Type:         schema.TypeString,
+			Required:     true,
+			ValidateFunc: validation.StringInSlice(getValidIntegrationKeys(), false),
 			ForceNew:     true,
+			Description:  fmt.Sprintf("The integration key. Supported integration keys are %s. A change in this field will force the destruction of the existing resource and the creation of a new one.", formatIntegrationKeysForDescription(getValidIntegrationKeys())),
 		},
 		NAME: {
-			Type:     schema.TypeString,
-			Required: !isDataSource,
-			Optional: isDataSource,
+			Type:        schema.TypeString,
+			Required:    !isDataSource,
+			Computed:    isDataSource,
+			Description: "A human-friendly name for your audit log subscription viewable from within the LaunchDarkly Integrations page.",
 		},
 		CONFIG: {
-			Type:     schema.TypeMap,
-			Required: !isDataSource,
-			Optional: isDataSource,
+			Type:        schema.TypeMap,
+			Required:    !isDataSource,
+			Computed:    isDataSource,
+			Description: "The set of configuration fields corresponding to the value defined for `integration_key`. Refer to the `formVariables` field in the corresponding `integrations/<integration_key>/manifest.json` file in [this repo](https://github.com/launchdarkly/integration-framework/tree/master/integrations) for a full list of fields for the integration you wish to configure. **IMPORTANT**: Please note that Terraform will only accept these in snake case, regardless of the case shown in the manifest.",
 		},
-		STATEMENTS: policyStatementsSchema(policyStatementSchemaOptions{required: !isDataSource}),
+		STATEMENTS: policyStatementsSchema(policyStatementSchemaOptions{
+			required:    !isDataSource,
+			computed:    isDataSource,
+			description: "A block representing the resources to which you wish to subscribe.",
+		},
+		),
 		ON: {
-			Type:     schema.TypeBool,
-			Required: !isDataSource,
-			Optional: isDataSource,
+			Type:        schema.TypeBool,
+			Required:    !isDataSource,
+			Computed:    isDataSource,
+			Description: "Whether or not you want your subscription enabled, i.e. to actively send events.",
 		},
-		TAGS: tagsSchema(),
+		TAGS: tagsSchema(tagsSchemaOptions{isDataSource: isDataSource}),
 	}
 }
 

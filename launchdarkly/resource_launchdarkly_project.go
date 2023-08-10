@@ -7,6 +7,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 	ldapi "github.com/launchdarkly/api-client-go/v12"
 )
 
@@ -66,11 +67,11 @@ func resourceProject() *schema.Resource {
 
 		Schema: map[string]*schema.Schema{
 			KEY: {
-				Type:         schema.TypeString,
-				Required:     true,
-				Description:  "The project's unique key",
-				ForceNew:     true,
-				ValidateFunc: validateKeyAndLength(1, 20),
+				Type:             schema.TypeString,
+				Required:         true,
+				Description:      "The project's unique key",
+				ForceNew:         true,
+				ValidateDiagFunc: validation.ToDiagFunc(validateKeyAndLength(1, 100)),
 			},
 			NAME: {
 				Type:        schema.TypeString,
@@ -108,14 +109,14 @@ func resourceProject() *schema.Resource {
 					},
 				},
 			},
-			TAGS: tagsSchema(),
+			TAGS: tagsSchema(tagsSchemaOptions{isDataSource: false}),
 			ENVIRONMENTS: {
 				Type:        schema.TypeList,
 				Required:    true,
 				Description: "List of nested `environments` blocks describing LaunchDarkly environments that belong to the project",
 				Computed:    false,
 				Elem: &schema.Resource{
-					Schema: environmentSchema(true),
+					Schema: environmentSchema(environmentSchemaOptions{forProject: true, isDataSource: false}),
 				},
 			},
 		},
@@ -217,12 +218,13 @@ func resourceProjectUpdate(ctx context.Context, d *schema.ResourceData, metaRaw 
 
 	environmentConfigs := newSchemaEnvList.([]interface{})
 	oldEnvironmentConfigs := oldSchemaEnvList.([]interface{})
-	var oldEnvConfigsForCompare = make(map[string]map[string]interface{}, len(oldEnvironmentConfigs))
+	oldEnvConfigsForCompare := make(map[string]map[string]interface{}, len(oldEnvironmentConfigs))
 	for _, env := range oldEnvironmentConfigs {
 		envConfig := env.(map[string]interface{})
 		envKey := envConfig[KEY].(string)
 		oldEnvConfigsForCompare[envKey] = envConfig
 	}
+
 	// save envs in a key:config map so we can more easily figure out which need to be patchRemoved after
 	var envConfigsForCompare = make(map[string]map[string]interface{}, len(environmentConfigs))
 	for _, env := range environmentConfigs {

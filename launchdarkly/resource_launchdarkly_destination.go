@@ -24,46 +24,54 @@ func resourceDestination() *schema.Resource {
 			State: resourceDestinationImport,
 		},
 
+		Description: `Provides a LaunchDarkly Data Export Destination resource.
+
+-> **Note:** Data Export is available to customers on an Enterprise LaunchDarkly plan. To learn more, read about our pricing. To upgrade your plan, [contact LaunchDarkly Sales](https://launchdarkly.com/contact-sales/).
+
+Data Export Destinations are locations that receive exported data. This resource allows you to configure destinations for the export of raw analytics data, including feature flag requests, analytics events, custom events, and more.
+
+To learn more about data export, read [Data Export Documentation](https://docs.launchdarkly.com/integrations/data-export).`,
+
 		Schema: map[string]*schema.Schema{
 			PROJECT_KEY: {
 				Type:             schema.TypeString,
 				Required:         true,
 				ForceNew:         true,
-				Description:      "The LaunchDarkly project key",
+				Description:      "The LaunchDarkly project key. A change in this field will force the destruction of the existing resource and the creation of a new one.",
 				ValidateDiagFunc: validateKey(),
 			},
 			ENV_KEY: {
 				Type:        schema.TypeString,
 				Required:    true,
 				ForceNew:    true,
-				Description: "The LaunchDarkly environment key",
+				Description: "The environment key. A change in this field will force the destruction of the existing resource and the creation of a new one.",
 			},
 			NAME: {
 				Type:        schema.TypeString,
-				Description: "A human-readable name for your data export destination",
+				Description: "A human-readable name for your data export destination.",
 				Required:    true,
 			},
 			// kind can only be one of five types (kinesis, google-pubsub, mparticle, azure-event-hubs, or segment)
 			KIND: {
 				Type:             schema.TypeString,
 				Required:         true,
-				Description:      "The data export destination type. Available choices are 'kinesis', 'google-pubsub', 'segment', 'azure-event-hubs', and 'mparticle'",
+				Description:      "The data export destination type. Available choices are `kinesis`, `google-pubsub`, `mparticle`, `azure-event-hubs`, and `segment`. A change in this field will force the destruction of the existing resource and the creation of a new one.",
 				ValidateDiagFunc: validation.ToDiagFunc(validation.StringInSlice([]string{"kinesis", "google-pubsub", "mparticle", "azure-event-hubs", "segment"}, false)),
 				ForceNew:         true,
 			},
 			CONFIG: {
 				Type:             schema.TypeMap,
 				Required:         true,
-				Description:      "The destination-specific configuration object corresponding to your data export kind - see documentation for required fields for each kind",
+				Description:      "The destination-specific configuration. To learn more, read [Destination-Specific Configs](#destination-specific-configs)",
 				Elem:             &schema.Schema{Type: schema.TypeString},
 				DiffSuppressFunc: configDiffSuppressFunc(),
 			},
 			ON: {
 				Type:        schema.TypeBool,
-				Description: "Whether the data export destination is on or not",
+				Description: "Whether the data export destination is on or not.",
 				Optional:    true,
 			},
-			TAGS: tagsSchema(),
+			TAGS: tagsSchema(tagsSchemaOptions{isDataSource: false}),
 		},
 	}
 }

@@ -8,7 +8,11 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
-func baseWebhookSchema() map[string]*schema.Schema {
+type webhookSchemaOptions struct {
+	isDataSource bool
+}
+
+func baseWebhookSchema(options webhookSchemaOptions) map[string]*schema.Schema {
 	return map[string]*schema.Schema{
 		SECRET: {
 			Type:        schema.TypeString,
@@ -21,8 +25,8 @@ func baseWebhookSchema() map[string]*schema.Schema {
 			Optional:    true,
 			Description: "A human-readable name for your webhook",
 		},
-		STATEMENTS: policyStatementsSchema(policyStatementSchemaOptions{}),
-		TAGS:       tagsSchema(),
+		STATEMENTS: policyStatementsSchema(policyStatementSchemaOptions{optional: !options.isDataSource, computed: options.isDataSource}),
+		TAGS:       tagsSchema(tagsSchemaOptions(options)),
 	}
 }
 
