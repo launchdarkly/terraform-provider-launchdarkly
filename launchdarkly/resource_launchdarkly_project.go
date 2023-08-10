@@ -108,14 +108,14 @@ func resourceProject() *schema.Resource {
 					},
 				},
 			},
-			TAGS: tagsSchema(),
+			TAGS: tagsSchema(tagsSchemaOptions{isDataSource: false}),
 			ENVIRONMENTS: {
 				Type:        schema.TypeList,
 				Required:    true,
 				Description: "List of nested `environments` blocks describing LaunchDarkly environments that belong to the project",
 				Computed:    false,
 				Elem: &schema.Resource{
-					Schema: environmentSchema(true),
+					Schema: environmentSchema(environmentSchemaOptions{forProject: false, isDataSource: false}),
 				},
 			},
 		},

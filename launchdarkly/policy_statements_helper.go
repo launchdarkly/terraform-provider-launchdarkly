@@ -11,19 +11,26 @@ import (
 // policyStatementSchemaOptions is used to help with renaming 'policy_statements' to statements for the launchdarkly_webhook resource.
 // This struct can be removed after we have dropped support for 'policy_statements'
 type policyStatementSchemaOptions struct {
-	// when set, the attribute will be marked as 'deprected'
+	// when set, the attribute will be marked as 'deprecated'
 	deprecated    string
 	description   string
 	conflictsWith []string
 	required      bool
+	optional      bool
+	computed      bool
 }
 
 func policyStatementsSchema(options policyStatementSchemaOptions) *schema.Schema {
+	minItems := 0
+	if !options.computed {
+		minItems = 1
+	}
 	schema := &schema.Schema{
 		Type:          schema.TypeList,
-		Optional:      !options.required,
+		Optional:      options.optional,
 		Required:      options.required,
-		MinItems:      1,
+		Computed:      options.computed,
+		MinItems:      minItems,
 		Description:   options.description,
 		Deprecated:    options.deprecated,
 		ConflictsWith: options.conflictsWith,
@@ -35,7 +42,7 @@ func policyStatementsSchema(options policyStatementSchemaOptions) *schema.Schema
 						Type: schema.TypeString,
 					},
 					Optional:    true,
-					Description: "A list of LaunchDarkly resource specifiers",
+					Description: "The list of resource specifiers defining the resources to which the statement applies.",
 					MinItems:    1,
 				},
 				NOT_RESOURCES: {
@@ -44,7 +51,7 @@ func policyStatementsSchema(options policyStatementSchemaOptions) *schema.Schema
 						Type: schema.TypeString,
 					},
 					Optional:    true,
-					Description: "Targeted resources will be those resources NOT in this list. The 'resources' field must be empty to use this field",
+					Description: "The list of resource specifiers defining the resources to which the statement does not apply.",
 					MinItems:    1,
 				},
 				ACTIONS: {
@@ -53,7 +60,7 @@ func policyStatementsSchema(options policyStatementSchemaOptions) *schema.Schema
 						Type: schema.TypeString,
 					},
 					Optional:    true,
-					Description: "An action to perform on a resource",
+					Description: "The list of action specifiers defining the actions to which the statement applies.\nEither `actions` or `not_actions` must be specified. For a list of available actions read [Actions reference](https://docs.launchdarkly.com/home/account-security/custom-roles/actions#actions-reference).",
 					MinItems:    1,
 				},
 				NOT_ACTIONS: {
@@ -62,13 +69,14 @@ func policyStatementsSchema(options policyStatementSchemaOptions) *schema.Schema
 						Type: schema.TypeString,
 					},
 					Optional:    true,
-					Description: "Targeted actions will be those actions NOT in this list. The 'actions' field must be empty to use this field",
+					Description: "The list of action specifiers defining the actions to which the statement does not apply.",
 					MinItems:    1,
 				},
 				EFFECT: {
 					Type:             schema.TypeString,
 					Required:         true,
 					ValidateDiagFunc: validation.ToDiagFunc(validation.StringInSlice([]string{"allow", "deny"}, false)),
+					Description:      "Either `allow` or `deny`. This argument defines whether the statement allows or denies access to the named resources and actions.",
 				},
 			},
 		},

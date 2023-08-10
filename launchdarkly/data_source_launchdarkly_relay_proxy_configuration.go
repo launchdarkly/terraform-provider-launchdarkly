@@ -22,7 +22,7 @@ func dataSourceRelayProxyConfig() *schema.Resource {
 				Description: "A human-friendly name for the Relay Proxy configuration",
 				Computed:    true,
 			},
-			POLICY: policyStatementsSchema(policyStatementSchemaOptions{required: false}),
+			POLICY: policyStatementsSchema(policyStatementSchemaOptions{required: false, computed: true}),
 			DISPLAY_KEY: {
 				Type:        schema.TypeString,
 				Computed:    true,

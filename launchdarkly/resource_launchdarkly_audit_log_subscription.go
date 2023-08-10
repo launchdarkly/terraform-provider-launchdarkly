@@ -13,6 +13,9 @@ import (
 
 func resourceAuditLogSubscription() *schema.Resource {
 	return &schema.Resource{
+		Description: `Provides a LaunchDarkly audit log subscription resource.
+
+This resource allows you to create and manage LaunchDarkly audit log subscriptions.`,
 		CreateContext: resourceAuditLogSubscriptionCreate,
 		UpdateContext: resourceAuditLogSubscriptionUpdate,
 		DeleteContext: resourceAuditLogSubscriptionDelete,

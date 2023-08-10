@@ -11,7 +11,7 @@ import (
 )
 
 func resourceSegment() *schema.Resource {
-	schemaMap := baseSegmentSchema()
+	schemaMap := baseSegmentSchema(segmentSchemaOptions{isDataSource: false})
 	schemaMap[PROJECT_KEY] = &schema.Schema{
 		Type:             schema.TypeString,
 		Required:         true,

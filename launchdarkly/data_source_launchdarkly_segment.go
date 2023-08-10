@@ -8,7 +8,7 @@ import (
 )
 
 func dataSourceSegment() *schema.Resource {
-	schemaMap := baseSegmentSchema()
+	schemaMap := baseSegmentSchema(segmentSchemaOptions{isDataSource: true})
 	schemaMap[PROJECT_KEY] = &schema.Schema{
 		Type:             schema.TypeString,
 		Required:         true,

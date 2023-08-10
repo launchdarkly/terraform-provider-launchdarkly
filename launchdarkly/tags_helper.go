@@ -4,7 +4,11 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
-func tagsSchema() *schema.Schema {
+type tagsSchemaOptions struct {
+	isDataSource bool
+}
+
+func tagsSchema(options tagsSchemaOptions) *schema.Schema {
 	return &schema.Schema{
 		Type: schema.TypeSet,
 		Set:  schema.HashString,
@@ -14,8 +18,9 @@ func tagsSchema() *schema.Schema {
 			// https://github.com/hashicorp/terraform-plugin-sdk/issues/734
 			ValidateFunc: validateTagsNoDiag(),
 		},
-		Optional:    true,
-		Description: "Tags associated with your resource",
+		Optional:    !options.isDataSource,
+		Computed:    options.isDataSource,
+		Description: "Tags associated with your resource.",
 	}
 }
 

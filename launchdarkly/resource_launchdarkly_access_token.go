@@ -20,13 +20,15 @@ import (
 func resourceAccessToken() *schema.Resource {
 	tokenPolicySchema := policyStatementsSchema(policyStatementSchemaOptions{
 		conflictsWith: []string{ROLE, CUSTOM_ROLES, POLICY_STATEMENTS},
-		description:   "An array of statements represented as config blocks with 3 attributes: effect, resources, actions. May be used in place of a built-in or custom role.",
+		description:   "Define inline custom roles. An array of statements represented as config blocks with three attributes: effect, resources, actions. May be used in place of a built-in or custom role. [Using polices](https://docs.launchdarkly.com/home/members/role-policies). May be specified more than once.",
+		optional:      true,
 	})
 
 	deprecatedTokenPolicySchema := policyStatementsSchema(policyStatementSchemaOptions{
-		description:   "An array of statements represented as config blocks with 3 attributes: effect, resources, actions. May be used in place of a built-in or custom role.",
+		description:   "Define inline custom roles. An array of statements represented as config blocks with three attributes: effect, resources, actions. May be used in place of a built-in or custom role. May be specified more than once. This field argument is **deprecated**. Update your config to use `inline_role` to maintain compatibility with future versions.",
 		deprecated:    "'policy_statements' is deprecated in favor of 'inline_roles'. This field will be removed in the next major release of the LaunchDarkly provider",
 		conflictsWith: []string{ROLE, CUSTOM_ROLES, INLINE_ROLES},
+		optional:      true,
 	})
 	return &schema.Resource{
 		CreateContext: resourceAccessTokenCreate,
@@ -35,22 +37,30 @@ func resourceAccessToken() *schema.Resource {
 		DeleteContext: resourceAccessTokenDelete,
 		Exists:        resourceAccessTokenExists,
 
+		Description: `Provides a LaunchDarkly access token resource.
+
+This resource allows you to create and manage access tokens within your LaunchDarkly organization.
+
+-> **Note:** This resource will store the full plaintext secret for your access token in Terraform state. Be sure your state is configured securely before using this resource. See https://www.terraform.io/docs/state/sensitive-data.html for more details.
+
+The resource must contain either a "role", "custom_role" or an "inline_roles" (previously "policy_statements") block. As of v1.7.0, "policy_statements" has been deprecated in favor of "inline_roles".`,
+
 		Schema: map[string]*schema.Schema{
 			NAME: {
 				Type:        schema.TypeString,
-				Description: "A human-friendly name for the access token",
+				Description: "A human-friendly name for the access token.",
 				Optional:    true,
 			},
 			ROLE: {
 				Type:             schema.TypeString,
-				Description:      `The default built-in role for the token. Available options are "reader", "writer", and "admin"`,
+				Description:      "A built-in LaunchDarkly role. Can be `reader`, `writer`, or `admin`",
 				Optional:         true,
 				ValidateDiagFunc: validation.ToDiagFunc(validation.StringInSlice([]string{"reader", "writer", "admin"}, false)),
 				ConflictsWith:    []string{CUSTOM_ROLES, POLICY_STATEMENTS},
 			},
 			CUSTOM_ROLES: {
 				Type:          schema.TypeSet,
-				Description:   "A list of custom role IDs to use as access limits for the access token",
+				Description:   "A list of custom role IDs to use as access limits for the access token.",
 				Set:           schema.HashString,
 				Elem:          &schema.Schema{Type: schema.TypeString},
 				Optional:      true,
@@ -60,14 +70,14 @@ func resourceAccessToken() *schema.Resource {
 			INLINE_ROLES:      tokenPolicySchema,
 			SERVICE_TOKEN: {
 				Type:        schema.TypeBool,
-				Description: "Whether the token is a service token",
+				Description: "Whether the token will be a [service token](https://docs.launchdarkly.com/home/account-security/api-access-tokens#service-tokens). A change in this field will force the destruction of the existing token and the creation of a new one.",
 				Optional:    true,
 				ForceNew:    true,
 				Default:     false,
 			},
 			DEFAULT_API_VERSION: {
 				Type:             schema.TypeInt,
-				Description:      "The default API version for this token",
+				Description:      "The default API version for this token. Defaults to the latest API version. A change in this field will force the destruction of the existing token in state and the creation of a new one.",
 				Optional:         true,
 				ForceNew:         true,
 				Computed:         true,
@@ -75,14 +85,14 @@ func resourceAccessToken() *schema.Resource {
 			},
 			TOKEN: {
 				Type:        schema.TypeString,
-				Description: "The access token used to authorize usage of the LaunchDarkly API",
+				Description: "The access token used to authorize usage of the LaunchDarkly API.",
 				Computed:    true,
 				Sensitive:   true,
 			},
 			EXPIRE: {
 				Deprecated:       "'expire' is deprecated and will be removed in the next major release of the LaunchDarkly provider",
 				Type:             schema.TypeInt,
-				Description:      "Replace the computed token secret with a new value. The expired secret will no longer be able to authorize usage of the LaunchDarkly API. Should be an expiration time for the current token secret, expressed as a Unix epoch time in milliseconds. Setting this to a negative value will expire the existing token immediately. To reset the token value again, change 'expire' to a new value. Setting this field at resource creation time WILL NOT set an expiration time for the token.",
+				Description:      "An expiration time for the current token secret, expressed as a Unix epoch time. Replace the computed token secret with a new value. The expired secret will no longer be able to authorize usage of the LaunchDarkly API. This field argument is **deprecated**. Please update your config to remove `expire` to maintain compatibility with future versions",
 				Optional:         true,
 				ValidateDiagFunc: validation.ToDiagFunc(validation.NoZeroValues),
 			},

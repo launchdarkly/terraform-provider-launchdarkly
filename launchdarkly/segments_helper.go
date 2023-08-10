@@ -11,14 +11,18 @@ import (
 	ldapi "github.com/launchdarkly/api-client-go/v12"
 )
 
-func baseSegmentSchema() map[string]*schema.Schema {
+type segmentSchemaOptions struct {
+	isDataSource bool
+}
+
+func baseSegmentSchema(options segmentSchemaOptions) map[string]*schema.Schema {
 	return map[string]*schema.Schema{
 		DESCRIPTION: {
 			Type:        schema.TypeString,
 			Optional:    true,
 			Description: "The description of the segment's purpose",
 		},
-		TAGS: tagsSchema(),
+		TAGS: tagsSchema(tagsSchemaOptions(options)),
 		INCLUDED: {
 			Type:        schema.TypeList,
 			Elem:        &schema.Schema{Type: schema.TypeString},

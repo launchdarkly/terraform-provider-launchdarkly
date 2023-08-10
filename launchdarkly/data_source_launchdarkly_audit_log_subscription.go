@@ -17,6 +17,9 @@ func dataSourceAuditLogSubscription() *schema.Resource {
 	return &schema.Resource{
 		ReadContext: dataSourceAuditLogSubscriptionRead,
 		Schema:      schemaMap,
+		Description: `Provides a LaunchDarkly audit log subscription data source.
+
+This data source allows you to retrieve information about LaunchDarkly audit log subscriptions.`,
 	}
 }
 

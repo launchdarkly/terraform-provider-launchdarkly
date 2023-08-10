@@ -8,7 +8,7 @@ import (
 )
 
 func dataSourceWebhook() *schema.Resource {
-	schemaMap := baseWebhookSchema()
+	schemaMap := baseWebhookSchema(webhookSchemaOptions{isDataSource: true})
 	schemaMap[URL] = &schema.Schema{
 		Type:     schema.TypeString,
 		Computed: true,

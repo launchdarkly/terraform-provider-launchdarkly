@@ -55,7 +55,7 @@ func baseMetricSchema(isDataSource bool) map[string]*schema.Schema {
 			Optional:    true,
 			Description: "A short description of what the metric will be used for",
 		},
-		TAGS: tagsSchema(),
+		TAGS: tagsSchema(tagsSchemaOptions{isDataSource: isDataSource}),
 		IS_ACTIVE: {
 			Type:        schema.TypeBool,
 			Optional:    true,
