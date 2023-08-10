@@ -89,7 +89,7 @@ func baseEnvironmentSchema(options environmentSchemaOptions) map[string]*schema.
 	}
 
 	if options.isDataSource {
-		envSchema = removeDefaultsAndValidationFuncsForDataSource(envSchema)
+		envSchema = removeInvalidFieldsForDataSource(envSchema)
 	}
 
 	return envSchema

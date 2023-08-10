@@ -104,13 +104,15 @@ func stringInSlice(a string, list []string) bool {
 	return false
 }
 
-// removeDefaultsAndValidationFuncsForDataSource removes all default and validation functions from the schema map.
+// removeInvalidFieldsForDataSource removes all default and validation functions from the schema map.
 // This is done because Terraform requires defaults and validation functions to be nil for read-only data-source attributes.
-func removeDefaultsAndValidationFuncsForDataSource(schemaMap map[string]*schema.Schema) map[string]*schema.Schema {
+func removeInvalidFieldsForDataSource(schemaMap map[string]*schema.Schema) map[string]*schema.Schema {
 	for k, v := range schemaMap {
 		if v.Computed {
 			v.Default = nil
 			v.ValidateDiagFunc = nil
+			v.DiffSuppressFunc = nil
+			v.MaxItems = 0
 		}
 		schemaMap[k] = v
 	}

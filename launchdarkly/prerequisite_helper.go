@@ -8,24 +8,25 @@ import (
 	ldapi "github.com/launchdarkly/api-client-go/v12"
 )
 
-func prerequisitesSchema() *schema.Schema {
+func prerequisitesSchema(isDataSource bool) *schema.Schema {
 	return &schema.Schema{
 		Type:        schema.TypeList,
-		Optional:    true,
-		Description: "List of nested blocks describing prerequisite feature flags rules",
+		Optional:    !isDataSource,
+		Computed:    isDataSource,
+		Description: "List of nested blocks describing prerequisite feature flags rules.",
 		Elem: &schema.Resource{
 			Schema: map[string]*schema.Schema{
 				FLAG_KEY: {
 					Type:             schema.TypeString,
 					Required:         true,
-					Description:      "The prerequisite feature flag's key",
+					Description:      "The prerequisite feature flag's `key`.",
 					ValidateDiagFunc: validateKey(),
 				},
 				VARIATION: {
 					Type:             schema.TypeInt,
 					Elem:             &schema.Schema{Type: schema.TypeInt},
 					Required:         true,
-					Description:      "The index of the prerequisite feature flag's variation to target",
+					Description:      "The index of the prerequisite feature flag's variation to target.",
 					ValidateDiagFunc: validation.ToDiagFunc(validation.IntAtLeast(0)),
 				},
 			},

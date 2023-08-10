@@ -9,31 +9,32 @@ import (
 	ldapi "github.com/launchdarkly/api-client-go/v12"
 )
 
-func rulesSchema() *schema.Schema {
+func rulesSchema(isDataSource bool) *schema.Schema {
 	return &schema.Schema{
 		Type:        schema.TypeList,
-		Optional:    true,
-		Description: "List of logical targeting rules. You must specify either clauses or rollout weights",
+		Optional:    !isDataSource,
+		Computed:    isDataSource,
+		Description: "List of logical targeting rules.",
 		Elem: &schema.Resource{
 			Schema: map[string]*schema.Schema{
 				DESCRIPTION: {
 					Type:        schema.TypeString,
 					Optional:    true,
-					Description: "A human-readable description of the targeting rule",
+					Description: "A human-readable description of the targeting rule.",
 				},
 				CLAUSES: clauseSchema(),
 				VARIATION: {
 					Type:             schema.TypeInt,
 					Elem:             &schema.Schema{Type: schema.TypeInt},
 					Optional:         true,
-					Description:      "The integer variation index to serve if the rule clauses evaluate to true. This argument is only valid if clauses are also specified",
+					Description:      "The integer variation index to serve if the rule clauses evaluate to `true`. You must specify either `variation` or `rollout_weights`",
 					ValidateDiagFunc: validation.ToDiagFunc(validation.IntAtLeast(0)),
 				},
 				ROLLOUT_WEIGHTS: rolloutSchema(),
 				BUCKET_BY: {
 					Type:        schema.TypeString,
 					Optional:    true,
-					Description: "Group percentage rollout by a custom attribute. This argument is only valid if rollout_weights is also specified",
+					Description: "Group percentage rollout by a custom attribute. This argument is only valid if `rollout_weights` is also specified.",
 				},
 			},
 		},

@@ -58,7 +58,7 @@ func approvalSchema(options approvalSchemaOptions) *schema.Schema {
 	}
 
 	if options.isDataSource {
-		elemSchema = removeDefaultsAndValidationFuncsForDataSource(elemSchema)
+		elemSchema = removeInvalidFieldsForDataSource(elemSchema)
 	}
 
 	return &schema.Schema{

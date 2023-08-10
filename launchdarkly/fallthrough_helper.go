@@ -11,33 +11,42 @@ import (
 
 // In the LD model, this corresponds to the VariationOrRollout type
 func fallthroughSchema(forDataSource bool) *schema.Schema {
+	elemSchema := map[string]*schema.Schema{
+		ROLLOUT_WEIGHTS: rolloutSchema(),
+		BUCKET_BY: {
+			Type:        schema.TypeString,
+			Optional:    !forDataSource,
+			Computed:    forDataSource,
+			Description: "Group percentage rollout by a custom attribute. This argument is only valid if rollout_weights is also specified.",
+		},
+		CONTEXT_KIND: {
+			Type:             schema.TypeString,
+			Optional:         !forDataSource, // the API will set this to "user" by default if it is not set
+			Computed:         forDataSource,
+			Description:      "The context kind associated with the specified rollout. This argument is only valid if rollout_weights is also specified. If omitted, defaults to `user`.",
+			DiffSuppressFunc: fallthroughContextKindDiffSuppressFunc(),
+		},
+		VARIATION: {
+			Type:             schema.TypeInt,
+			Optional:         !forDataSource,
+			Computed:         forDataSource,
+			Description:      "The default integer variation index to serve if no `prerequisites`, `target`, or `rules` apply. You must specify either `variation` or `rollout_weights`.",
+			ValidateDiagFunc: validation.ToDiagFunc(validation.IntAtLeast(0)),
+		},
+	}
+
+	if forDataSource {
+		elemSchema = removeInvalidFieldsForDataSource(elemSchema)
+	}
+
 	return &schema.Schema{
 		Type:        schema.TypeList,
 		Required:    !forDataSource,
-		Optional:    forDataSource,
-		Description: "Nested block describing the default variation to serve if no prerequisites, user_target, or rules apply. You must specify either variation or rollout_weights",
+		Computed:    forDataSource,
+		Description: "Nested block describing the default variation to serve if no `prerequisites`, `target`, or `rules` apply.",
 		MaxItems:    1,
 		Elem: &schema.Resource{
-			Schema: map[string]*schema.Schema{
-				ROLLOUT_WEIGHTS: rolloutSchema(),
-				BUCKET_BY: {
-					Type:        schema.TypeString,
-					Optional:    true,
-					Description: "Group percentage rollout by a custom attribute. This argument is only valid if rollout_weights is also specified",
-				},
-				CONTEXT_KIND: {
-					Type:             schema.TypeString,
-					Optional:         true, // the API will set this to "user" by default if it is not set
-					Description:      "The context kind associated with the specified rollout. This argument is only valid if rollout_weights is also specified. If omitted, defaults to 'user'",
-					DiffSuppressFunc: fallthroughContextKindDiffSuppressFunc(),
-				},
-				VARIATION: {
-					Type:             schema.TypeInt,
-					Optional:         true,
-					Description:      "The integer variation index to serve in case of fallthrough",
-					ValidateDiagFunc: validation.ToDiagFunc(validation.IntAtLeast(0)),
-				},
-			},
+			Schema: elemSchema,
 		},
 	}
 }

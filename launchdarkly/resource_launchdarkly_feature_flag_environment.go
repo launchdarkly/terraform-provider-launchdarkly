@@ -21,7 +21,9 @@ func resourceFeatureFlagEnvironment() *schema.Resource {
 		Importer: &schema.ResourceImporter{
 			State: resourceFeatureFlagEnvironmentImport,
 		},
-		Schema: baseFeatureFlagEnvironmentSchema(false),
+		Schema: baseFeatureFlagEnvironmentSchema(featureFlagEnvSchemaOptions{isDataSource: false}),
+
+		Description: "Provides a LaunchDarkly environment-specific feature flag resource.\n\nThis resource allows you to create and manage environment-specific feature flags attributes within your LaunchDarkly organization.\n\n-> **Note:** If you intend to attach a feature flag to any experiments, we do _not_ recommend configuring environment-specific flag settings using Terraform. Subsequent applies may overwrite the changes made by experiments and break your experiment. An alternate workaround is to use the [lifecycle.ignore_changes](https://developer.hashicorp.com/terraform/language/meta-arguments/lifecycle#ignore_changes) Terraform meta-argument on the `fallthrough` field to prevent potential overwrites.",
 	}
 }
 

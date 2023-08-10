@@ -13,47 +13,57 @@ import (
 	ldapi "github.com/launchdarkly/api-client-go/v12"
 )
 
-func baseFeatureFlagEnvironmentSchema(forDataSource bool) map[string]*schema.Schema {
-	return map[string]*schema.Schema{
+type featureFlagEnvSchemaOptions struct {
+	isDataSource bool
+}
+
+func baseFeatureFlagEnvironmentSchema(options featureFlagEnvSchemaOptions) map[string]*schema.Schema {
+	schemaMap := map[string]*schema.Schema{
 		FLAG_ID: {
 			Type:             schema.TypeString,
 			Required:         true,
-			Description:      "The global feature flag's unique id in the format `<project_key>/<flag_key>`",
+			Description:      "The feature flag's unique `id` in the format `project_key/flag_key`. A change in this field will force the destruction of the existing resource and the creation of a new one.",
 			ForceNew:         true,
 			ValidateDiagFunc: validation.ToDiagFunc(validateFlagID),
 		},
 		ENV_KEY: {
 			Type:             schema.TypeString,
 			Required:         true,
-			Description:      "The LaunchDarkly environment key",
+			Description:      "The environment key. A change in this field will force the destruction of the existing resource and the creation of a new one.",
 			ForceNew:         true,
 			ValidateDiagFunc: validateKey(),
 		},
 		ON: {
 			Type:        schema.TypeBool,
-			Optional:    true,
-			Description: "Whether targeting is enabled",
+			Optional:    !options.isDataSource,
+			Computed:    options.isDataSource,
+			Description: "Whether targeting is enabled. Defaults to `false` if not set.",
 			Default:     false,
 		},
-		TARGETS:         targetsSchema(),
-		CONTEXT_TARGETS: contextTargetsSchema(),
-		RULES:           rulesSchema(),
-		PREREQUISITES:   prerequisitesSchema(),
-		FALLTHROUGH:     fallthroughSchema(forDataSource),
+		TARGETS:         targetsSchema(options.isDataSource),
+		CONTEXT_TARGETS: contextTargetsSchema(options.isDataSource),
+		RULES:           rulesSchema(options.isDataSource),
+		PREREQUISITES:   prerequisitesSchema(options.isDataSource),
+		FALLTHROUGH:     fallthroughSchema(options.isDataSource),
 		TRACK_EVENTS: {
 			Type:        schema.TypeBool,
-			Optional:    true,
-			Description: "Whether to send event data back to LaunchDarkly",
+			Optional:    !options.isDataSource,
+			Computed:    options.isDataSource,
+			Description: "Whether to send event data back to LaunchDarkly. Defaults to `false` if not set.",
 			Default:     false,
 		},
 		OFF_VARIATION: {
 			Type:             schema.TypeInt,
-			Required:         !forDataSource,
-			Optional:         forDataSource,
-			Description:      "The index of the variation to serve if targeting is disabled",
+			Required:         !options.isDataSource,
+			Computed:         options.isDataSource,
+			Description:      "The index of the variation to serve if targeting is disabled.",
 			ValidateDiagFunc: validation.ToDiagFunc(validation.IntAtLeast(0)),
 		},
 	}
+	if options.isDataSource {
+		schemaMap = removeInvalidFieldsForDataSource(schemaMap)
+	}
+	return schemaMap
 }
 
 // get FeatureFlagEnvironment uses a query parameter to get the ldapi.FeatureFlag with only a single environment.

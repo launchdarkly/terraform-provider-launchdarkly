@@ -7,46 +7,52 @@ import (
 	ldapi "github.com/launchdarkly/api-client-go/v12"
 )
 
-func baseTargetsSchema() map[string]*schema.Schema {
+func baseTargetsSchema(isDataSource bool) map[string]*schema.Schema {
 	return map[string]*schema.Schema{
 		VALUES: {
 			Type:        schema.TypeList,
 			Elem:        &schema.Schema{Type: schema.TypeString},
 			Required:    true,
-			Description: "List of user strings to target",
+			Description: "List of `user` strings to target.",
 		},
 		VARIATION: {
 			Type:             schema.TypeInt,
 			Required:         true,
-			Description:      "Index of the variation to serve if a user_target is matched",
+			Description:      "The index of the variation to serve if a user target value is matched.",
 			ValidateDiagFunc: validation.ToDiagFunc(validation.IntAtLeast(0)),
 		},
 	}
 }
 
-func targetsSchema() *schema.Schema {
+func targetsSchema(isDataSource bool) *schema.Schema {
 	return &schema.Schema{
 		Type:        schema.TypeSet,
-		Optional:    true,
+		Optional:    !isDataSource,
+		Computed:    isDataSource,
 		Description: "Set of nested blocks describing the individual user targets for each variation.",
 		Elem: &schema.Resource{
-			Schema: baseTargetsSchema(),
+			Schema: baseTargetsSchema(isDataSource),
 		},
 	}
 }
 
-func contextTargetsSchema() *schema.Schema {
-	schemaMap := baseTargetsSchema()
+func contextTargetsSchema(isDataSource bool) *schema.Schema {
+	schemaMap := baseTargetsSchema(isDataSource)
 	schemaMap[CONTEXT_KIND] = &schema.Schema{
 		Type:             schema.TypeString,
-		Required:         true,
-		Description:      "The context kind on which the flag should target in this environment. If the context_kind has not been previously specified at the project level, it will be automatically created on the project. User targets should be specified as targets attribute blocks.",
+		Required:         !isDataSource,
+		Computed:         isDataSource,
+		Description:      "The context kind on which the flag should target in this environment. User (`user`) targets should be specified as `targets` attribute blocks.",
 		ValidateDiagFunc: validation.ToDiagFunc(validation.StringNotInSlice([]string{"user"}, true)),
+	}
+	if isDataSource {
+		schemaMap = removeInvalidFieldsForDataSource(schemaMap)
 	}
 	return &schema.Schema{
 		Type:        schema.TypeSet,
-		Optional:    true,
-		Description: "Set of nested blocks describing the individual targets for non-user context kinds for each variation.",
+		Optional:    !isDataSource,
+		Computed:    isDataSource,
+		Description: "The set of nested blocks describing the individual targets for non-user context kinds for each variation.",
 		Elem: &schema.Resource{
 			Schema: schemaMap,
 		},
