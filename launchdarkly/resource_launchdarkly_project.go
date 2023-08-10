@@ -115,7 +115,7 @@ func resourceProject() *schema.Resource {
 				Description: "List of nested `environments` blocks describing LaunchDarkly environments that belong to the project",
 				Computed:    false,
 				Elem: &schema.Resource{
-					Schema: environmentSchema(environmentSchemaOptions{forProject: false, isDataSource: false}),
+					Schema: environmentSchema(environmentSchemaOptions{forProject: true, isDataSource: false}),
 				},
 			},
 		},
@@ -217,12 +217,13 @@ func resourceProjectUpdate(ctx context.Context, d *schema.ResourceData, metaRaw 
 
 	environmentConfigs := newSchemaEnvList.([]interface{})
 	oldEnvironmentConfigs := oldSchemaEnvList.([]interface{})
-	var oldEnvConfigsForCompare = make(map[string]map[string]interface{}, len(oldEnvironmentConfigs))
+	oldEnvConfigsForCompare := make(map[string]map[string]interface{}, len(oldEnvironmentConfigs))
 	for _, env := range oldEnvironmentConfigs {
 		envConfig := env.(map[string]interface{})
 		envKey := envConfig[KEY].(string)
 		oldEnvConfigsForCompare[envKey] = envConfig
 	}
+
 	// save envs in a key:config map so we can more easily figure out which need to be patchRemoved after
 	var envConfigsForCompare = make(map[string]map[string]interface{}, len(environmentConfigs))
 	for _, env := range environmentConfigs {
