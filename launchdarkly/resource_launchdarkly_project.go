@@ -7,6 +7,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 	ldapi "github.com/launchdarkly/api-client-go/v12"
 )
 
@@ -66,11 +67,11 @@ func resourceProject() *schema.Resource {
 
 		Schema: map[string]*schema.Schema{
 			KEY: {
-				Type:         schema.TypeString,
-				Required:     true,
-				Description:  "The project's unique key",
-				ForceNew:     true,
-				ValidateFunc: validateKeyAndLength(1, 20),
+				Type:             schema.TypeString,
+				Required:         true,
+				Description:      "The project's unique key",
+				ForceNew:         true,
+				ValidateDiagFunc: validation.ToDiagFunc(validateKeyAndLength(1, 100)),
 			},
 			NAME: {
 				Type:        schema.TypeString,
