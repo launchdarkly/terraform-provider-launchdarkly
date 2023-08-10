@@ -1,3 +1,11 @@
+## [2.14.0] - 2023-08-10
+### Features:
+- Adds the new optional `http_timeout` attribute to the provider config. This attribute allows you to configure the HTTP request timeout when the provider makes API calls to LaunchDarkly. [#174](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/174)
+- Updates some of the public documentation using [terraform-plugin-docs](https://github.com/hashicorp/terraform-plugin-docs).
+
+### Fixed:
+- Increased the `launchdarkly_project` key length validation from 20 characters to 100 characters. [#175](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/175)
+
 ## [2.13.4] - 2023-08-03
 ### Fixed:
 - Fix YAML frontmatter on `launchdarkly_relay_proxy_configuration` documentation. Thanks, @felixlut [#171](https://github.com/launchdarkly/terraform-provider-launchdarkly/pull/171)
