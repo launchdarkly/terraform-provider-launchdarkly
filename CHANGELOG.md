@@ -1,3 +1,10 @@
+## [2.15.0] - 2023-08-11
+### Added:
+- Adds the new optional `http_timeout` attribute to the provider config. This attribute allows you to configure the HTTP request timeout when the provider makes API calls to LaunchDarkly. [#174](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/174)
+
+### Fixed:
+- Minor docs formatting errors.
+
 ## [2.14.0] - 2023-08-10
 ### Features:
 - Adds the new optional `http_timeout` attribute to the provider config. This attribute allows you to configure the HTTP request timeout when the provider makes API calls to LaunchDarkly. [#174](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/174)
