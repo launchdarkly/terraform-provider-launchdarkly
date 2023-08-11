@@ -22,7 +22,6 @@ const (
 	MAX_RETRIES    = 8
 	RETRY_WAIT_MIN = 200 * time.Millisecond
 	RETRY_WAIT_MAX = 2000 * time.Millisecond
-	HTTP_TIMEOUT   = 20 * time.Second
 )
 
 // Client is used by the provider to access the ld API.
@@ -34,15 +33,15 @@ type Client struct {
 	fallbackClient *http.Client
 }
 
-func newClient(token string, apiHost string, oauth bool) (*Client, error) {
-	return baseNewClient(token, apiHost, oauth, APIVersion)
+func newClient(token string, apiHost string, oauth bool, httpTimeoutSeconds int) (*Client, error) {
+	return baseNewClient(token, apiHost, oauth, httpTimeoutSeconds, APIVersion)
 }
 
-func newBetaClient(token string, apiHost string, oauth bool) (*Client, error) {
-	return baseNewClient(token, apiHost, oauth, "beta")
+func newBetaClient(token string, apiHost string, oauth bool, httpTimeoutSeconds int) (*Client, error) {
+	return baseNewClient(token, apiHost, oauth, httpTimeoutSeconds, "beta")
 }
 
-func baseNewClient(token string, apiHost string, oauth bool, apiVersion string) (*Client, error) {
+func baseNewClient(token string, apiHost string, oauth bool, httpTimeoutSeconds int, apiVersion string) (*Client, error) {
 	if token == "" {
 		return nil, errors.New("token cannot be empty")
 	}
@@ -52,7 +51,7 @@ func baseNewClient(token string, apiHost string, oauth bool, apiVersion string) 
 	cfg.DefaultHeader = make(map[string]string)
 	cfg.UserAgent = fmt.Sprintf("launchdarkly-terraform-provider/%s", version)
 	cfg.HTTPClient = newRetryableClient()
-	cfg.HTTPClient.Timeout = HTTP_TIMEOUT
+	cfg.HTTPClient.Timeout = time.Duration(httpTimeoutSeconds) * time.Second
 	cfg.AddDefaultHeader("LD-API-Version", apiVersion)
 
 	ctx := context.WithValue(context.Background(), ldapi.ContextAPIKeys, map[string]ldapi.APIKey{

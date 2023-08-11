@@ -24,7 +24,7 @@ func TestHandleRateLimits(t *testing.T) {
 		defer ts.Close()
 
 		// create a client
-		client, err := newClient("token", ts.URL, false)
+		client, err := newClient("token", ts.URL, false, DEFAULT_HTTP_TIMEOUT_S)
 		require.NoError(t, err)
 
 		res, err := client.ld.GetConfig().HTTPClient.Get(ts.URL)
@@ -46,7 +46,7 @@ func TestHandleRateLimits(t *testing.T) {
 		defer ts.Close()
 
 		// create a client
-		client, err := newClient("token", ts.URL, false)
+		client, err := newClient("token", ts.URL, false, DEFAULT_HTTP_TIMEOUT_S)
 		require.NoError(t, err)
 
 		res, err := client.ld.GetConfig().HTTPClient.Get(ts.URL)
@@ -74,7 +74,7 @@ func TestHandleRateLimits(t *testing.T) {
 		defer ts.Close()
 
 		// create a client
-		client, err := newClient("token", ts.URL, false)
+		client, err := newClient("token", ts.URL, false, 20)
 		require.NoError(t, err)
 
 		res, err := client.ld.GetConfig().HTTPClient.Get(ts.URL)
@@ -102,7 +102,7 @@ func TestHandleRateLimits(t *testing.T) {
 		defer ts.Close()
 
 		// create a client
-		client, err := newClient("token", ts.URL, false)
+		client, err := newClient("token", ts.URL, false, DEFAULT_HTTP_TIMEOUT_S)
 		require.NoError(t, err)
 
 		res, err := client.ld.GetConfig().HTTPClient.Get(ts.URL)
@@ -129,7 +129,7 @@ func TestHandleRateLimits(t *testing.T) {
 		defer ts.Close()
 
 		// create a client
-		client, err := newClient("token", ts.URL, false)
+		client, err := newClient("token", ts.URL, false, DEFAULT_HTTP_TIMEOUT_S)
 		require.NoError(t, err)
 
 		res, err := client.ld.GetConfig().HTTPClient.Get(ts.URL)
@@ -152,7 +152,7 @@ func TestHandleConflicts(t *testing.T) {
 		defer ts.Close()
 
 		// create a client
-		client, err := newClient("token", ts.URL, false)
+		client, err := newClient("token", ts.URL, false, DEFAULT_HTTP_TIMEOUT_S)
 		require.NoError(t, err)
 
 		res, err := client.ld.GetConfig().HTTPClient.Get(ts.URL)
@@ -173,7 +173,7 @@ func TestHandleConflicts(t *testing.T) {
 		defer ts.Close()
 
 		// create a client
-		client, err := newClient("token", ts.URL, false)
+		client, err := newClient("token", ts.URL, false, DEFAULT_HTTP_TIMEOUT_S)
 		require.NoError(t, err)
 
 		res, err := client.ld.GetConfig().HTTPClient.Get(ts.URL)
@@ -200,7 +200,7 @@ func TestHandleConflicts(t *testing.T) {
 		defer ts.Close()
 
 		// create a client
-		client, err := newClient("token", ts.URL, false)
+		client, err := newClient("token", ts.URL, false, DEFAULT_HTTP_TIMEOUT_S)
 		require.NoError(t, err)
 
 		res, err := client.ld.GetConfig().HTTPClient.Get(ts.URL)

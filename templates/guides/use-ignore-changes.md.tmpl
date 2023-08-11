@@ -1,10 +1,10 @@
 ---
-page_title: "LaunchDarkly: Use ignore_changes to create resources with Terraform and update them in the UI"
+page_title: "Using ignore_changes to create resources with Terraform and update them in the UI"
 description: |-
   This guide explains when and how to use the ignore_changes lifecycle meta-argument to avoid having Terraform try to update resources that were modified.
 ---
 
-# Using `ignore_changes`
+# Using `ignore_changes` to create resources with Terraform and update them in the UI
 
 This guide explains when and how to use the [ignore_changes lifecycle meta-argument](https://www.terraform.io/language/meta-arguments/lifecycle#ignore_changes) to avoid having Terraform try to update resources that were modified.
 

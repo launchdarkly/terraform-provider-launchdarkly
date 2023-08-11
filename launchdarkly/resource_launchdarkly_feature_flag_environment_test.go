@@ -922,10 +922,10 @@ func TestAccFeatureFlagEnvironment_ContextTargets(t *testing.T) {
 	// scaffold. we have to do it via API request because we do not yet have the ability to add context_kind resources
 	// to projects via terraform
 	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
-	client, err := newClient(os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN), os.Getenv(LAUNCHDARKLY_API_HOST), false)
+	client, err := newClient(os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN), os.Getenv(LAUNCHDARKLY_API_HOST), false, DEFAULT_HTTP_TIMEOUT_S)
 	require.NoError(t, err)
 	// TODO at some point the context kind API will no longer be in beta and we will want to update/remove this
-	betaClient, err := newBetaClient(os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN), os.Getenv(LAUNCHDARKLY_API_HOST), false)
+	betaClient, err := newBetaClient(os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN), os.Getenv(LAUNCHDARKLY_API_HOST), false, DEFAULT_HTTP_TIMEOUT_S)
 	require.NoError(t, err)
 	accountContextKind := "account"
 	otherContextKind := "other"

@@ -79,7 +79,7 @@ func TestAccDataSourceSegment_noMatchReturnsError(t *testing.T) {
 
 	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	segmentKey := "bad-segment-key"
-	client, err := newClient(os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN), os.Getenv(LAUNCHDARKLY_API_HOST), false)
+	client, err := newClient(os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN), os.Getenv(LAUNCHDARKLY_API_HOST), false, DEFAULT_HTTP_TIMEOUT_S)
 	require.NoError(t, err)
 	_, err = testAccProjectScaffoldCreate(client, ldapi.ProjectPost{Name: "Segment DS No Match Test", Key: projectKey})
 	require.NoError(t, err)
@@ -111,7 +111,7 @@ func TestAccDataSourceSegment_exists(t *testing.T) {
 
 	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	segmentKey := "data-source-test"
-	client, err := newClient(os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN), os.Getenv(LAUNCHDARKLY_API_HOST), false)
+	client, err := newClient(os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN), os.Getenv(LAUNCHDARKLY_API_HOST), false, DEFAULT_HTTP_TIMEOUT_S)
 	require.NoError(t, err)
 
 	weight := int32(30000)
