@@ -45,7 +45,7 @@ func TestAccDataSourceRelayProxyConfig_exists(t *testing.T) {
 	if accTest == "" {
 		t.SkipNow()
 	}
-	client, err := newClient(os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN), os.Getenv(LAUNCHDARKLY_API_HOST), false)
+	client, err := newClient(os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN), os.Getenv(LAUNCHDARKLY_API_HOST), false, DEFAULT_HTTP_TIMEOUT_S)
 	require.NoError(t, err)
 
 	name := "test config"
@@ -92,7 +92,7 @@ func TestAccDataSourceRelayProxyConfig_NotResource(t *testing.T) {
 	if accTest == "" {
 		t.SkipNow()
 	}
-	client, err := newClient(os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN), os.Getenv(LAUNCHDARKLY_API_HOST), false)
+	client, err := newClient(os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN), os.Getenv(LAUNCHDARKLY_API_HOST), false, DEFAULT_HTTP_TIMEOUT_S)
 	require.NoError(t, err)
 
 	name := "test config"

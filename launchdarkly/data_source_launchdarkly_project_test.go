@@ -54,7 +54,7 @@ func TestAccDataSourceProject_exists(t *testing.T) {
 	envKey := "test-environment"
 	envColor := "000000"
 	tag := "test-tag"
-	client, err := newClient(os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN), os.Getenv(LAUNCHDARKLY_API_HOST), false)
+	client, err := newClient(os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN), os.Getenv(LAUNCHDARKLY_API_HOST), false, DEFAULT_HTTP_TIMEOUT_S)
 	require.NoError(t, err)
 
 	projectBody := ldapi.ProjectPost{

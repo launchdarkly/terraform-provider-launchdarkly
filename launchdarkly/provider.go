@@ -12,6 +12,7 @@ import (
 
 const (
 	DEFAULT_LAUNCHDARKLY_HOST = "https://app.launchdarkly.com"
+	DEFAULT_HTTP_TIMEOUT_S    = 20
 )
 
 // Environment Variables
@@ -23,27 +24,33 @@ const (
 
 // Provider keys
 const (
-	access_token = "access_token"
-	oauth_token  = "oauth_token"
-	api_host     = "api_host"
+	ACCESS_TOKEN = "access_token"
+	OAUTH_TOKEN  = "oauth_token"
+	API_HOST     = "api_host"
+	HTTP_TIMEOUT = "http_timeout"
 )
 
 func providerSchema() map[string]*schema.Schema {
 	return map[string]*schema.Schema{
-		access_token: {
+		ACCESS_TOKEN: {
 			Type:        schema.TypeString,
 			Optional:    true,
 			Description: "The [personal access token](https://docs.launchdarkly.com/home/account-security/api-access-tokens#personal-tokens) or [service token](https://docs.launchdarkly.com/home/account-security/api-access-tokens#service-tokens) used to authenticate with LaunchDarkly. You can also set this with the `LAUNCHDARKLY_ACCESS_TOKEN` environment variable. You must provide either `access_token` or `oauth_token`.",
 		},
-		oauth_token: {
+		OAUTH_TOKEN: {
 			Type:        schema.TypeString,
 			Optional:    true,
 			Description: "An OAuth V2 token you use to authenticate with LaunchDarkly. You can also set this with the `LAUNCHDARKLY_OAUTH_TOKEN` environment variable. You must provide either `access_token` or `oauth_token`.",
 		},
-		api_host: {
+		API_HOST: {
 			Type:        schema.TypeString,
 			Optional:    true,
 			Description: "The LaunchDarkly host address. If this argument is not specified, the default host address is `https://app.launchdarkly.com`",
+		},
+		HTTP_TIMEOUT: {
+			Type:        schema.TypeInt,
+			Optional:    true,
+			Description: "The HTTP timeout (in seconds) when making API calls to LaunchDarkly.",
 		},
 	}
 }
@@ -99,7 +106,7 @@ func providerConfigure(ctx context.Context, d *schema.ResourceData) (interface{}
 	if host == "" {
 		host = DEFAULT_LAUNCHDARKLY_HOST
 	}
-	configHost := d.Get(api_host).(string)
+	configHost := d.Get(API_HOST).(string)
 	if configHost != "" {
 		host = configHost
 	}
@@ -111,27 +118,32 @@ func providerConfigure(ctx context.Context, d *schema.ResourceData) (interface{}
 
 	// Check configuration data, which should take precedence over
 	// environment variable data, if found.
-	configAccessToken := d.Get(access_token).(string)
+	configAccessToken := d.Get(ACCESS_TOKEN).(string)
 	if configAccessToken != "" {
 		accessToken = configAccessToken
 	}
-	configOAuthToken := d.Get(oauth_token).(string)
+	configOAuthToken := d.Get(OAUTH_TOKEN).(string)
 	if configOAuthToken != "" {
 		oauthToken = configOAuthToken
 	}
 	if oauthToken == "" && accessToken == "" {
-		return nil, diag.Errorf("either an %q or %q must be specified", access_token, oauth_token)
+		return nil, diag.Errorf("either an %q or %q must be specified", ACCESS_TOKEN, OAUTH_TOKEN)
+	}
+
+	httpTimeoutSeconds := d.Get(HTTP_TIMEOUT).(int)
+	if httpTimeoutSeconds == 0 {
+		httpTimeoutSeconds = DEFAULT_HTTP_TIMEOUT_S
 	}
 
 	if oauthToken != "" {
-		client, err := newClient(oauthToken, host, true)
+		client, err := newClient(oauthToken, host, true, httpTimeoutSeconds)
 		if err != nil {
 			return client, diag.FromErr(err)
 		}
 		return client, diags
 	}
 
-	client, err := newClient(accessToken, host, false)
+	client, err := newClient(accessToken, host, false, httpTimeoutSeconds)
 	if err != nil {
 		return client, diag.FromErr(err)
 	}

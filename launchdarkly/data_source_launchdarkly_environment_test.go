@@ -47,7 +47,7 @@ func TestAccDataSourceEnvironment_noMatchReturnsError(t *testing.T) {
 	if accTest == "" {
 		t.SkipNow()
 	}
-	client, err := newClient(os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN), os.Getenv(LAUNCHDARKLY_API_HOST), false)
+	client, err := newClient(os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN), os.Getenv(LAUNCHDARKLY_API_HOST), false, DEFAULT_HTTP_TIMEOUT_S)
 	require.NoError(t, err)
 	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	projectBody := ldapi.ProjectPost{
@@ -87,7 +87,7 @@ func TestAccDataSourceEnv_exists(t *testing.T) {
 	envName := "Terraform Test Env"
 	envKey := "tf-test-env"
 	envColor := "fff000"
-	client, err := newClient(os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN), os.Getenv(LAUNCHDARKLY_API_HOST), false)
+	client, err := newClient(os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN), os.Getenv(LAUNCHDARKLY_API_HOST), false, DEFAULT_HTTP_TIMEOUT_S)
 	require.NoError(t, err)
 
 	envBody := ldapi.EnvironmentPost{

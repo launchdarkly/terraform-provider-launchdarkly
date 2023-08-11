@@ -26,6 +26,7 @@ type launchdarklyProviderModel struct {
 	AccessToken types.String `tfsdk:"access_token"`
 	OAuthToken  types.String `tfsdk:"oauth_token"`
 	Host        types.String `tfsdk:"api_host"`
+	HttpTimeout types.Int64  `tfsdk:"http_timeout"`
 }
 
 // Metadata returns the provider type name.
@@ -39,17 +40,21 @@ func (p *launchdarklyProvider) Schema(_ context.Context, _ provider.SchemaReques
 	sdkProviderSchema := providerSchema()
 	resp.Schema = schema.Schema{
 		Attributes: map[string]schema.Attribute{
-			access_token: schema.StringAttribute{
+			ACCESS_TOKEN: schema.StringAttribute{
 				Optional:    true,
-				Description: sdkProviderSchema[access_token].Description,
+				Description: sdkProviderSchema[ACCESS_TOKEN].Description,
 			},
-			oauth_token: schema.StringAttribute{
+			OAUTH_TOKEN: schema.StringAttribute{
 				Optional:    true,
-				Description: sdkProviderSchema[oauth_token].Description,
+				Description: sdkProviderSchema[OAUTH_TOKEN].Description,
 			},
-			api_host: schema.StringAttribute{
+			API_HOST: schema.StringAttribute{
 				Optional:    true,
-				Description: sdkProviderSchema[api_host].Description,
+				Description: sdkProviderSchema[API_HOST].Description,
+			},
+			HTTP_TIMEOUT: schema.Int64Attribute{
+				Optional:    true,
+				Description: sdkProviderSchema[HTTP_TIMEOUT].Description,
 			},
 		},
 	}
@@ -85,13 +90,18 @@ func (p *launchdarklyProvider) Configure(ctx context.Context, req provider.Confi
 		host = data.Host.ValueString()
 	}
 
+	httpTimeoutSeconds := int(data.HttpTimeout.ValueInt64())
+	if httpTimeoutSeconds == 0 {
+		httpTimeoutSeconds = DEFAULT_HTTP_TIMEOUT_S
+	}
+
 	if oauthToken == "" && accessToken == "" {
-		resp.Diagnostics.AddError("Missing authentication token", fmt.Sprintf("Either the %q or %q must be specified.", access_token, oauth_token))
+		resp.Diagnostics.AddError("Missing authentication token", fmt.Sprintf("Either the %q or %q must be specified.", ACCESS_TOKEN, OAUTH_TOKEN))
 		return
 	}
 
 	if oauthToken != "" {
-		client, err := newClient(oauthToken, host, true)
+		client, err := newClient(oauthToken, host, true, httpTimeoutSeconds)
 		if err != nil {
 			resp.Diagnostics.AddError("Unable to create LaunchDarkly client", err.Error())
 			return
@@ -100,7 +110,7 @@ func (p *launchdarklyProvider) Configure(ctx context.Context, req provider.Confi
 		return
 	}
 
-	client, err := newClient(accessToken, host, false)
+	client, err := newClient(accessToken, host, false, httpTimeoutSeconds)
 	if err != nil {
 		resp.Diagnostics.AddError("Unable to create LaunchDarkly client", err.Error())
 		return
