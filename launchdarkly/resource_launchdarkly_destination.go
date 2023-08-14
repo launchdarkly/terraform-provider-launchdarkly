@@ -37,14 +37,14 @@ To learn more about data export, read [Data Export Documentation](https://docs.l
 				Type:             schema.TypeString,
 				Required:         true,
 				ForceNew:         true,
-				Description:      "The LaunchDarkly project key. A change in this field will force the destruction of the existing resource and the creation of a new one.",
+				Description:      addForceNewDescription("The LaunchDarkly project key.", true),
 				ValidateDiagFunc: validateKey(),
 			},
 			ENV_KEY: {
 				Type:        schema.TypeString,
 				Required:    true,
 				ForceNew:    true,
-				Description: "The environment key. A change in this field will force the destruction of the existing resource and the creation of a new one.",
+				Description: addForceNewDescription("The environment key.", true),
 			},
 			NAME: {
 				Type:        schema.TypeString,
@@ -55,7 +55,7 @@ To learn more about data export, read [Data Export Documentation](https://docs.l
 			KIND: {
 				Type:             schema.TypeString,
 				Required:         true,
-				Description:      "The data export destination type. Available choices are `kinesis`, `google-pubsub`, `mparticle`, `azure-event-hubs`, and `segment`. A change in this field will force the destruction of the existing resource and the creation of a new one.",
+				Description:      addForceNewDescription("The data export destination type. Available choices are `kinesis`, `google-pubsub`, `mparticle`, `azure-event-hubs`, and `segment`.", true),
 				ValidateDiagFunc: validation.ToDiagFunc(validation.StringInSlice([]string{"kinesis", "google-pubsub", "mparticle", "azure-event-hubs", "segment"}, false)),
 				ForceNew:         true,
 			},

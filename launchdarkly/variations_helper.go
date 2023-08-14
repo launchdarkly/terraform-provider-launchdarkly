@@ -21,19 +21,18 @@ const (
 
 func variationTypeSchema() *schema.Schema {
 	return &schema.Schema{
-		Type:     schema.TypeString,
-		Required: true,
-		ForceNew: true,
-		Description: fmt.Sprintf("The uniform type for all variations. Can be either %q, %q, %q, or %q.",
-			BOOL_VARIATION, STRING_VARIATION, NUMBER_VARIATION, JSON_VARIATION),
+		Type:             schema.TypeString,
+		Required:         true,
+		ForceNew:         true,
+		Description:      "The feature flag's variation type: `boolean`, `string`, `number` or `json`.",
 		ValidateDiagFunc: validation.ToDiagFunc(validateVariationType),
 	}
 }
 
-func variationsSchema() *schema.Schema {
+func variationsSchema(isDataSource bool) *schema.Schema {
 	return &schema.Schema{
 		Type:        schema.TypeList,
-		Optional:    true,
+		Optional:    !isDataSource,
 		Computed:    true,
 		Description: "An array of possible variations for the flag",
 		MinItems:    2,
@@ -42,17 +41,17 @@ func variationsSchema() *schema.Schema {
 				NAME: {
 					Type:        schema.TypeString,
 					Optional:    true,
-					Description: "A name for the variation",
+					Description: "The name of the variation.",
 				},
 				DESCRIPTION: {
 					Type:        schema.TypeString,
 					Optional:    true,
-					Description: "A description for the variation",
+					Description: "The variation's description.",
 				},
 				VALUE: {
 					Type:             schema.TypeString,
 					Required:         true,
-					Description:      "The value of the flag for this variation",
+					Description:      fmt.Sprintf("The variation value. The value's type must correspond to the `variation_type` argument. For example: `variation_type = %q` accepts only `true` or `false`. The `number` variation type accepts both floats and ints, but please note that any trailing zeroes on floats will be trimmed (i.e. `1.1` and `1.100` will both be converted to `1.1`).\n\nIf you wish to define an empty string variation, you must still define the value field on the variations block like so:\n\n```terraform\nvariations {\n  value = %q\n}\n```", "boolean", ""),
 					ValidateDiagFunc: validation.ToDiagFunc(validateVariationValue),
 					StateFunc: func(i interface{}) string {
 						// All values are stored as strings in TF state

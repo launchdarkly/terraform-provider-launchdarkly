@@ -24,7 +24,7 @@ func baseEnvironmentSchema(options environmentSchemaOptions) map[string]*schema.
 		KEY: {
 			Type:        schema.TypeString,
 			Required:    true,
-			Description: "The project-unique key for the environment. A change in this field will force the destruction of the existing resource and the creation of a new one.",
+			Description: addForceNewDescription("The project-unique key for the environment.", !options.isDataSource),
 			// Don't force new if the environment schema will be nested in a project
 			ForceNew:         !options.forProject,
 			ValidateDiagFunc: validateKey(),

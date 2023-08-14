@@ -27,8 +27,8 @@ data "launchdarkly_audit_log_subscription" "test" {
 
 ### Required
 
-- `id` (String) The audit log subscription ID
-- `integration_key` (String) The integration key. Supported integration keys are `cloudtrail`, `datadog`, `dynatrace`, `elastic`, `grafana`, `honeycomb`, `logdna`, `msteams`, `new-relic-apm`, `signalfx`, `slack`, and `splunk`. A change in this field will force the destruction of the existing resource and the creation of a new one.
+- `id` (String) The audit log subscription ID.
+- `integration_key` (String) The integration key. Supported integration keys are `cloudtrail`, `datadog`, `dynatrace`, `elastic`, `grafana`, `honeycomb`, `logdna`, `msteams`, `new-relic-apm`, `signalfx`, `slack`, and `splunk`.
 
 ### Read-Only
 

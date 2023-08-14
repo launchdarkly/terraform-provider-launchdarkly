@@ -27,7 +27,7 @@ data "launchdarkly_environment" "example" {
 
 ### Required
 
-- `key` (String) The project-unique key for the environment. A change in this field will force the destruction of the existing resource and the creation of a new one.
+- `key` (String) The project-unique key for the environment.
 - `project_key` (String) The environment's project key.
 
 ### Read-Only

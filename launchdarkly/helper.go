@@ -104,17 +104,48 @@ func stringInSlice(a string, list []string) bool {
 	return false
 }
 
+func emptyValue[V any](v V) V {
+	var empty V
+	return empty
+}
+
+// emptyValueIfDataSource is a generic function that returns the empty value for the type. For example,
+// it returns 0 for an int, false for a bool and nil for an interface{}
+func emptyValueIfDataSource[V any](v V, isDataSource bool) V {
+	if isDataSource {
+		return emptyValue(v)
+	}
+	return v
+}
+
 // removeInvalidFieldsForDataSource removes all default and validation functions from the schema map.
 // This is done because Terraform requires defaults and validation functions to be nil for read-only data-source attributes.
 func removeInvalidFieldsForDataSource(schemaMap map[string]*schema.Schema) map[string]*schema.Schema {
 	for k, v := range schemaMap {
 		if v.Computed {
-			v.Default = nil
-			v.ValidateDiagFunc = nil
-			v.DiffSuppressFunc = nil
-			v.MaxItems = 0
+			v.Default = emptyValue(v.Default)
+			v.ValidateDiagFunc = emptyValue(v.ValidateDiagFunc)
+			v.DiffSuppressFunc = emptyValue(v.DiffSuppressFunc)
+			v.MinItems = emptyValue(v.MinItems)
+			v.MaxItems = emptyValue(v.MaxItems)
+			v.ConflictsWith = emptyValue(v.ConflictsWith)
+		}
+
+		// Recursively remove invalid fields from nested schema
+		if v.Elem != nil {
+			if elem, ok := v.Elem.(*schema.Resource); ok {
+				elem.Schema = removeInvalidFieldsForDataSource(elem.Schema)
+				v.Elem = elem
+			}
 		}
 		schemaMap[k] = v
 	}
 	return schemaMap
+}
+
+func addForceNewDescription(description string, forceNew bool) string {
+	if forceNew {
+		description += " A change in this field will force the destruction of the existing resource and the creation of a new one."
+	}
+	return description
 }
