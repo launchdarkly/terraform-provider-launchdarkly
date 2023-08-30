@@ -51,7 +51,7 @@ func TestCustomPropertiesRoundTripConversion(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			resourceData := schema.TestResourceDataRaw(t,
-				map[string]*schema.Schema{CUSTOM_PROPERTIES: customPropertiesSchema()},
+				map[string]*schema.Schema{CUSTOM_PROPERTIES: customPropertiesSchema(false)},
 				tc.customProperties,
 			)
 

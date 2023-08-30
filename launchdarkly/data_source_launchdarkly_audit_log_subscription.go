@@ -12,7 +12,7 @@ func dataSourceAuditLogSubscription() *schema.Resource {
 	schemaMap[ID] = &schema.Schema{
 		Type:        schema.TypeString,
 		Required:    true,
-		Description: "The audit log subscription ID",
+		Description: "The audit log subscription ID.",
 	}
 	return &schema.Resource{
 		ReadContext: dataSourceAuditLogSubscriptionRead,

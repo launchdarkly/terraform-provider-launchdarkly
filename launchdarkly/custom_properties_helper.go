@@ -13,28 +13,33 @@ import (
 const CUSTOM_PROPERTY_CHAR_LIMIT = 64
 const CUSTOM_PROPERTY_ITEM_LIMIT = 64
 
-func customPropertiesSchema() *schema.Schema {
+func customPropertiesSchema(isDataSource bool) *schema.Schema {
 	return &schema.Schema{
-		Type:     schema.TypeSet,
-		Optional: true,
-		Set:      customPropertyHash,
-		MaxItems: CUSTOM_PROPERTY_ITEM_LIMIT,
+		Type:        schema.TypeSet,
+		Optional:    !isDataSource,
+		Computed:    isDataSource,
+		Set:         customPropertyHash,
+		MaxItems:    CUSTOM_PROPERTY_ITEM_LIMIT,
+		Description: "List of nested blocks describing the feature flag's [custom properties](https://docs.launchdarkly.com/home/connecting/custom-properties)",
 		Elem: &schema.Resource{
 			Schema: map[string]*schema.Schema{
 				KEY: {
+					Description:      "The unique custom property key.",
 					Type:             schema.TypeString,
 					Required:         true,
 					ValidateDiagFunc: validation.ToDiagFunc(validation.StringLenBetween(1, CUSTOM_PROPERTY_CHAR_LIMIT)),
 				},
 				NAME: {
+					Description:      "The name of the custom property.",
 					Type:             schema.TypeString,
 					Required:         true,
 					ValidateDiagFunc: validation.ToDiagFunc(validation.StringLenBetween(1, CUSTOM_PROPERTY_CHAR_LIMIT)),
 				},
 				VALUE: {
-					Type:     schema.TypeList,
-					Required: true,
-					MaxItems: CUSTOM_PROPERTY_ITEM_LIMIT,
+					Type:        schema.TypeList,
+					Required:    true,
+					MaxItems:    CUSTOM_PROPERTY_ITEM_LIMIT,
+					Description: "The list of custom property value strings.",
 					Elem: &schema.Schema{
 						Type: schema.TypeString,
 						// Can't use validation.ToDiagFunc converted validators on TypeList at the moment

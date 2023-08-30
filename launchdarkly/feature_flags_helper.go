@@ -17,89 +17,95 @@ type featureFlagSchemaOptions struct {
 }
 
 func baseFeatureFlagSchema(options featureFlagSchemaOptions) map[string]*schema.Schema {
-	return map[string]*schema.Schema{
+	schemaMap := map[string]*schema.Schema{
 		PROJECT_KEY: {
 			Type:             schema.TypeString,
 			Required:         true,
-			ForceNew:         true,
-			Description:      "The LaunchDarkly project key",
+			ForceNew:         !options.isDataSource,
+			Description:      addForceNewDescription("The feature flag's project key.", !options.isDataSource),
 			ValidateDiagFunc: validateKey(),
 		},
 		KEY: {
 			Type:             schema.TypeString,
 			Required:         true,
-			ForceNew:         true,
+			ForceNew:         !options.isDataSource,
 			ValidateDiagFunc: validateKey(),
-			Description:      "A unique key that will be used to reference the flag in your code",
+			Description:      addForceNewDescription("The unique feature flag key that references the flag in your application code.", !options.isDataSource),
 		},
 		MAINTAINER_ID: {
 			Type:             schema.TypeString,
-			Optional:         true,
+			Optional:         !options.isDataSource,
 			Computed:         true,
-			Description:      "The LaunchDarkly id of the user who will maintain the flag. If not set, the API will automatically apply the member associated with your Terraform API key or the most recently set maintainer",
+			Description:      "The feature flag maintainer's 24 character alphanumeric team member ID. If not set, it will automatically be or stay set to the member ID associated with the API key used by your LaunchDarkly Terraform provider or the most recently-set maintainer.",
 			ValidateDiagFunc: validateID(),
 		},
 		DESCRIPTION: {
 			Type:        schema.TypeString,
-			Optional:    true,
-			Description: "A short description of what the flag will be used for",
+			Optional:    !options.isDataSource,
+			Computed:    options.isDataSource,
+			Description: "The feature flag's description.",
 		},
-		VARIATIONS: variationsSchema(),
+		VARIATIONS: variationsSchema(options.isDataSource),
 		TEMPORARY: {
 			Type:        schema.TypeBool,
-			Optional:    true,
-			Description: "Whether or not the flag is a temporary flag",
+			Optional:    !options.isDataSource,
+			Computed:    options.isDataSource,
+			Description: "Specifies whether the flag is a temporary flag.",
 			Default:     false,
 		},
 		INCLUDE_IN_SNIPPET: {
 			Type:          schema.TypeBool,
-			Optional:      true,
+			Optional:      !options.isDataSource,
 			Computed:      true,
-			Description:   "Whether or not this flag should be made available to the client-side JavaScript SDK",
+			Description:   "Specifies whether this flag should be made available to the client-side JavaScript SDK using the client-side Id. This value gets its default from your project configuration if not set. `include_in_snippet` is now deprecated. Please migrate to `client_side_availability.using_environment_id` to maintain future compatibility.",
 			Deprecated:    "'include_in_snippet' is now deprecated. Please migrate to 'client_side_availability' to maintain future compatability.",
 			ConflictsWith: []string{CLIENT_SIDE_AVAILABILITY},
 		},
 		// Annoying that we can't define a typemap to have specific keys https://www.terraform.io/docs/extend/schemas/schema-types.html#typemap
 		CLIENT_SIDE_AVAILABILITY: {
 			Type:          schema.TypeList,
-			Optional:      true,
+			Optional:      !options.isDataSource,
 			Computed:      true,
 			ConflictsWith: []string{INCLUDE_IN_SNIPPET},
 			Elem: &schema.Resource{
 				Schema: map[string]*schema.Schema{
 					USING_ENVIRONMENT_ID: {
-						Type:     schema.TypeBool,
-						Optional: true,
-						Computed: true,
+						Type:        schema.TypeBool,
+						Optional:    !options.isDataSource,
+						Computed:    true,
+						Description: "Whether this flag is available to SDKs using the client-side ID.",
 					},
 					USING_MOBILE_KEY: {
-						Type:     schema.TypeBool,
-						Optional: true,
-						Default:  false,
+						Type:        schema.TypeBool,
+						Optional:    !options.isDataSource,
+						Computed:    options.isDataSource,
+						Default:     emptyValueIfDataSource(false, options.isDataSource),
+						Description: "Whether this flag is available to SDKs using a mobile key.",
 					},
 				},
+				Description: "A block describing whether this flag should be made available to the client-side JavaScript SDK using the client-side Id, mobile key, or both. This value gets its default from your project configuration if not set. Once set, if removed, it will retain its last set value.",
 			},
 		},
 		TAGS:              tagsSchema(tagsSchemaOptions(options)),
-		CUSTOM_PROPERTIES: customPropertiesSchema(),
+		CUSTOM_PROPERTIES: customPropertiesSchema(options.isDataSource),
 		DEFAULTS: {
 			Type:        schema.TypeList,
-			Optional:    true,
+			Optional:    !options.isDataSource,
 			Computed:    true,
-			Description: "The default variations used for this flag in new environments. If omitted, the first and last variation will be used",
+			Description: "A block containing the indices of the variations to be used as the default on and off variations in all new environments. Flag configurations in existing environments will not be changed nor updated if the configuration block is removed.",
 			MaxItems:    1,
 			Elem: &schema.Resource{
 				Schema: map[string]*schema.Schema{
 					ON_VARIATION: {
 						Type:             schema.TypeInt,
 						Required:         true,
-						Description:      "The index of the variation served when the flag is on for new environments",
+						Description:      "The index of the variation the flag will default to in all new environments when on.",
 						ValidateDiagFunc: validation.ToDiagFunc(validation.IntAtLeast(0)),
 					},
 					OFF_VARIATION: {
 						Type:             schema.TypeInt,
 						Required:         true,
-						Description:      "The index of the variation served when the flag is off for new environments",
+						Description:      "The index of the variation the flag will default to in all new environments when off.",
 						ValidateDiagFunc: validation.ToDiagFunc(validation.IntAtLeast(0)),
 					},
 				},
@@ -107,11 +113,18 @@ func baseFeatureFlagSchema(options featureFlagSchemaOptions) map[string]*schema.
 		},
 		ARCHIVED: {
 			Type:        schema.TypeBool,
-			Optional:    true,
-			Description: "Whether to archive the flag",
+			Optional:    !options.isDataSource,
+			Computed:    options.isDataSource,
+			Description: "Specifies whether the flag is archived or not. Note that you cannot create a new flag that is archived, but can update a flag to be archived.",
 			Default:     false,
 		},
 	}
+
+	if options.isDataSource {
+		schemaMap = removeInvalidFieldsForDataSource(schemaMap)
+	}
+
+	return schemaMap
 }
 
 func featureFlagRead(ctx context.Context, d *schema.ResourceData, raw interface{}, isDataSource bool) diag.Diagnostics {

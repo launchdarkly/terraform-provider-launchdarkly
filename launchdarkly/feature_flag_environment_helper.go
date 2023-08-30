@@ -22,15 +22,15 @@ func baseFeatureFlagEnvironmentSchema(options featureFlagEnvSchemaOptions) map[s
 		FLAG_ID: {
 			Type:             schema.TypeString,
 			Required:         true,
-			Description:      "The feature flag's unique `id` in the format `project_key/flag_key`. A change in this field will force the destruction of the existing resource and the creation of a new one.",
-			ForceNew:         true,
+			Description:      addForceNewDescription("The feature flag's unique `id` in the format `project_key/flag_key`.", !options.isDataSource),
+			ForceNew:         !options.isDataSource,
 			ValidateDiagFunc: validation.ToDiagFunc(validateFlagID),
 		},
 		ENV_KEY: {
 			Type:             schema.TypeString,
 			Required:         true,
-			Description:      "The environment key. A change in this field will force the destruction of the existing resource and the creation of a new one.",
-			ForceNew:         true,
+			Description:      addForceNewDescription("The environment key.", !options.isDataSource),
+			ForceNew:         !options.isDataSource,
 			ValidateDiagFunc: validateKey(),
 		},
 		ON: {

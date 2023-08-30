@@ -82,8 +82,8 @@ func auditLogSubscriptionSchema(isDataSource bool) map[string]*schema.Schema {
 			Type:         schema.TypeString,
 			Required:     true,
 			ValidateFunc: validation.StringInSlice(getValidIntegrationKeys(), false),
-			ForceNew:     true,
-			Description:  fmt.Sprintf("The integration key. Supported integration keys are %s. A change in this field will force the destruction of the existing resource and the creation of a new one.", formatIntegrationKeysForDescription(getValidIntegrationKeys())),
+			ForceNew:     !isDataSource,
+			Description:  addForceNewDescription(fmt.Sprintf("The integration key. Supported integration keys are %s.", formatIntegrationKeysForDescription(getValidIntegrationKeys())), !isDataSource),
 		},
 		NAME: {
 			Type:        schema.TypeString,

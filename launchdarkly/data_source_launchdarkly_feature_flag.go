@@ -24,6 +24,9 @@ func dataSourceFeatureFlag() *schema.Resource {
 	return &schema.Resource{
 		ReadContext: dataSourceFeatureFlagRead,
 		Schema:      schemaMap,
+		Description: `Provides a LaunchDarkly feature flag data source.
+
+This data source allows you to retrieve feature flag information from your LaunchDarkly organization.`,
 	}
 }
 

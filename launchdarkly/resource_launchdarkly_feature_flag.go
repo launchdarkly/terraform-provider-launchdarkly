@@ -14,7 +14,7 @@ func resourceFeatureFlag() *schema.Resource {
 	schemaMap[NAME] = &schema.Schema{
 		Type:        schema.TypeString,
 		Required:    true,
-		Description: "A human-friendly name for the feature flag",
+		Description: "The human-readable name of the feature flag.",
 	}
 	schemaMap[VARIATION_TYPE] = variationTypeSchema()
 	return &schema.Resource{
@@ -28,6 +28,10 @@ func resourceFeatureFlag() *schema.Resource {
 			State: resourceFeatureFlagImport,
 		},
 		Schema: schemaMap,
+
+		Description: `Provides a LaunchDarkly feature flag resource.
+
+This resource allows you to create and manage feature flags within your LaunchDarkly organization.`,
 	}
 }
 

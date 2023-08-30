@@ -123,7 +123,7 @@ func TestDefaultVariationsFromResourceData(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			resourceData := schema.TestResourceDataRaw(t,
-				map[string]*schema.Schema{VARIATION_TYPE: variationTypeSchema(), VARIATIONS: variationsSchema(),
+				map[string]*schema.Schema{VARIATION_TYPE: variationTypeSchema(), VARIATIONS: variationsSchema(false),
 					DEFAULTS: {
 						Type:     schema.TypeList,
 						Optional: true,
