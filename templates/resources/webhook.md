@@ -15,20 +15,20 @@ This resource allows you to create and manage webhooks within your LaunchDarkly 
 
 ```hcl
 resource "launchdarkly_webhook" "example" {
-  url     = "http://webhooks.com/webhook"
-  name    = "Example Webhook"
-  tags    = ["terraform"]
-  on      = true
+  url  = "http://webhooks.com/webhook"
+  name = "Example Webhook"
+  tags = ["terraform"]
+  on   = true
 
   statements {
-    actions     = ["*"]
-    effect      = "allow"
-    resources   = ["proj/*:env/production:flag/*"]
+    actions   = ["*"]
+    effect    = "allow"
+    resources = ["proj/*:env/production:flag/*"]
   }
   statements {
-    actions     = ["*"]
-    effect      = "allow"
-    resources   = resources = ["proj/test:env/production:segment/*"]
+    actions   = ["*"]
+    effect    = "allow"
+    resources = ["proj/test:env/production:segment/*"]
   }
 }
 ```
