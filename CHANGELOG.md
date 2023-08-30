@@ -1,3 +1,8 @@
+## [2.15.1] - 2023-08-30
+### Fixed:
+- Generate `launchdarkly_feature_flag` documentation from schema.
+- Fix typo in webhook example code. Thanks, @lachlancooper [#180](https://github.com/launchdarkly/terraform-provider-launchdarkly/pull/180)
+
 ## [2.15.0] - 2023-08-11
 ### Added:
 - Adds the new optional `http_timeout` attribute to the provider config. This attribute allows you to configure the HTTP request timeout when the provider makes API calls to LaunchDarkly. [#174](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/174)
