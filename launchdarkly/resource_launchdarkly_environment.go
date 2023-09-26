@@ -98,7 +98,6 @@ func resourceEnvironmentUpdate(ctx context.Context, d *schema.ResourceData, meta
 	key := d.Get(KEY).(string)
 	name := d.Get(NAME)
 	color := d.Get(COLOR)
-	tags := stringsFromResourceData(d, TAGS)
 	requireComments := d.Get(REQUIRE_COMMENTS)
 	confirmChanges := d.Get(CONFIRM_CHANGES)
 
@@ -108,9 +107,13 @@ func resourceEnvironmentUpdate(ctx context.Context, d *schema.ResourceData, meta
 		patchReplace("/defaultTtl", d.Get(DEFAULT_TTL)),
 		patchReplace("/secureMode", d.Get(SECURE_MODE)),
 		patchReplace("/defaultTrackEvents", d.Get(DEFAULT_TRACK_EVENTS)),
-		patchReplace("/tags", &tags),
 		patchReplace("/requireComments", &requireComments),
 		patchReplace("/confirmChanges", &confirmChanges),
+	}
+
+	if d.HasChange(TAGS) {
+		tags := stringsFromResourceData(d, TAGS)
+		patch = append(patch, patchReplace("/tags", &tags))
 	}
 
 	oldApprovalSettings, newApprovalSettings := d.GetChange(APPROVAL_SETTINGS)
