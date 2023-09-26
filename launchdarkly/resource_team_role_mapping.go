@@ -88,7 +88,7 @@ func (r *TeamRoleMappingResource) Create(ctx context.Context, req resource.Creat
 	}
 
 	teamKey := data.TeamKey.ValueString()
-	team, res, err := r.client.ld.TeamsApi.GetTeam(r.client.ctx, teamKey).Expand("roles").Execute()
+	team, res, err := r.client.ld404Retry.TeamsApi.GetTeam(r.client.ctx, teamKey).Expand("roles").Execute()
 	if err != nil {
 		if isStatusNotFound(res) {
 			resp.Diagnostics.AddError("Team not found", fmt.Sprintf("Unable to create the team/role mapping because the team %q does not exist.", teamKey))
@@ -172,7 +172,10 @@ func (r *TeamRoleMappingResource) Read(ctx context.Context, req resource.ReadReq
 	}
 
 	teamKey := data.TeamKey.ValueString()
-	team, res, err := r.client.ld.TeamsApi.GetTeam(r.client.ctx, teamKey).Expand("roles").Execute()
+
+	// we use the ld404Retry API client to fetch the team because users that provision their team via Okta team sync may
+	// see a delay before the team appears in LaunchDarkly. sc-218015
+	team, res, err := r.client.ld404Retry.TeamsApi.GetTeam(r.client.ctx, teamKey).Expand("roles").Execute()
 	if err != nil {
 		if isStatusNotFound(res) {
 			resp.Diagnostics.AddError("Team not found", fmt.Sprintf("Unable to read the team/role mapping because the team %q does not exist.", teamKey))
@@ -207,7 +210,7 @@ func (r *TeamRoleMappingResource) Update(ctx context.Context, req resource.Updat
 	}
 
 	teamKey := data.TeamKey.ValueString()
-	team, res, err := r.client.ld.TeamsApi.GetTeam(r.client.ctx, teamKey).Expand("roles").Execute()
+	team, res, err := r.client.ld404Retry.TeamsApi.GetTeam(r.client.ctx, teamKey).Expand("roles").Execute()
 	if err != nil {
 		if isStatusNotFound(res) {
 			resp.Diagnostics.AddError("Team not found", fmt.Sprintf("Unable to get the team/role mapping because the team %q does not exist.", teamKey))

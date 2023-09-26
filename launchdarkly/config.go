@@ -19,16 +19,21 @@ var version = "unreleased"
 
 const (
 	APIVersion     = "20220603"
-	MAX_RETRIES    = 8
+	MAX_RETRIES    = 12
 	RETRY_WAIT_MIN = 200 * time.Millisecond
 	RETRY_WAIT_MAX = 2000 * time.Millisecond
 )
 
 // Client is used by the provider to access the ld API.
 type Client struct {
-	apiKey         string
-	apiHost        string
-	ld             *ldapi.APIClient
+	apiKey  string
+	apiHost string
+
+	// ld is the standard API client that we use in most cases to interact with LaunchDarkly's APIs.
+	ld *ldapi.APIClient
+
+	// ld404Retry is the same as ld except that it will also retry 404s with an exponential backoff. In most cases `ld` should be used instead. sc-218015
+	ld404Retry     *ldapi.APIClient
 	ctx            context.Context
 	fallbackClient *http.Client
 }
@@ -41,18 +46,24 @@ func newBetaClient(token string, apiHost string, oauth bool, httpTimeoutSeconds 
 	return baseNewClient(token, apiHost, oauth, httpTimeoutSeconds, "beta")
 }
 
+func newLDClientConfig(apiHost string, httpTimeoutSeconds int, apiVersion string, retryPolicy retryablehttp.CheckRetry) *ldapi.Configuration {
+	cfg := ldapi.NewConfiguration()
+	cfg.Host = apiHost
+	cfg.DefaultHeader = make(map[string]string)
+	cfg.UserAgent = fmt.Sprintf("launchdarkly-terraform-provider/%s", version)
+	cfg.HTTPClient = newRetryableClient(retryPolicy)
+	cfg.HTTPClient.Timeout = time.Duration(httpTimeoutSeconds) * time.Second
+	cfg.AddDefaultHeader("LD-API-Version", apiVersion)
+	return cfg
+}
+
 func baseNewClient(token string, apiHost string, oauth bool, httpTimeoutSeconds int, apiVersion string) (*Client, error) {
 	if token == "" {
 		return nil, errors.New("token cannot be empty")
 	}
 
-	cfg := ldapi.NewConfiguration()
-	cfg.Host = apiHost
-	cfg.DefaultHeader = make(map[string]string)
-	cfg.UserAgent = fmt.Sprintf("launchdarkly-terraform-provider/%s", version)
-	cfg.HTTPClient = newRetryableClient()
-	cfg.HTTPClient.Timeout = time.Duration(httpTimeoutSeconds) * time.Second
-	cfg.AddDefaultHeader("LD-API-Version", apiVersion)
+	standardConfig := newLDClientConfig(apiHost, httpTimeoutSeconds, apiVersion, standardRetryPolicy)
+	configWith404Retries := newLDClientConfig(apiHost, httpTimeoutSeconds, apiVersion, retryPolicyWith404Retries)
 
 	ctx := context.WithValue(context.Background(), ldapi.ContextAPIKeys, map[string]ldapi.APIKey{
 		"ApiKey": {
@@ -63,19 +74,20 @@ func baseNewClient(token string, apiHost string, oauth bool, httpTimeoutSeconds 
 	}
 
 	// TODO: remove this once we get the go client reset endpoint fixed
-	fallbackClient := newRetryableClient()
+	fallbackClient := newRetryableClient(standardRetryPolicy)
 	fallbackClient.Timeout = time.Duration(5 * time.Second)
 
 	return &Client{
 		apiKey:         token,
 		apiHost:        apiHost,
-		ld:             ldapi.NewAPIClient(cfg),
+		ld:             ldapi.NewAPIClient(standardConfig),
+		ld404Retry:     ldapi.NewAPIClient(configWith404Retries),
 		ctx:            ctx,
 		fallbackClient: fallbackClient,
 	}, nil
 }
 
-func newRetryableClient() *http.Client {
+func newRetryableClient(retryPolicy retryablehttp.CheckRetry) *http.Client {
 	retryClient := retryablehttp.NewClient()
 	retryClient.RetryWaitMin = RETRY_WAIT_MIN
 	retryClient.RetryWaitMax = RETRY_WAIT_MAX
@@ -113,9 +125,21 @@ func backOff(min, max time.Duration, attemptNum int, resp *http.Response) time.D
 	return sleep
 }
 
-func retryPolicy(ctx context.Context, resp *http.Response, err error) (bool, error) {
+func standardRetryPolicy(ctx context.Context, resp *http.Response, err error) (bool, error) {
 	retry, retryErr := retryablehttp.DefaultRetryPolicy(ctx, resp, err)
 	if !retry && retryErr == nil && err == nil && resp.StatusCode == http.StatusConflict {
+		return true, nil
+	}
+
+	return retry, retryErr
+}
+
+// retryPolicyWith404Retries extends our standard retryPolicy but also retries 404s (with exponential backoff).
+// This should be used sparingly as 404 typically denote the resource has been deleted. sc-218015
+func retryPolicyWith404Retries(ctx context.Context, resp *http.Response, err error) (bool, error) {
+	retry, retryErr := standardRetryPolicy(ctx, resp, err)
+	if !retry && retryErr == nil && err == nil && resp.StatusCode == http.StatusNotFound {
+		log.Println("[DEBUG] received a 404 from LaunchDarkly. Retrying.")
 		return true, nil
 	}
 
