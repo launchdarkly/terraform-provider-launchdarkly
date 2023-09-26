@@ -1,3 +1,8 @@
+## [2.15.2] - 2023-09-26
+### Fixed:
+- Added 404 retries to the `launchdarkly_team_role_mapping` resource. [#179](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/179)
+- Fixed a bug related to how tags are updated in the `launchdarkly_environment` resource.
+
 ## [2.15.1] - 2023-08-30
 ### Fixed:
 - Generate `launchdarkly_feature_flag` documentation from schema.
