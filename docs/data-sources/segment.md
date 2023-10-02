@@ -41,6 +41,10 @@ In addition to the arguments above, the resource exports the following attribute
 
 - `tags` - Set of tags for the segment.
 
+- `unbounded` - Whether to create a standard segment (false) or a BigSegment (true).
+
+- `unbounded_context_kind` - For Big Segments, the targeted context kind.
+
 - `included` - List of user keys included in the segment.
 
 - `excluded` - List of user keys excluded from the segment.
