@@ -147,6 +147,20 @@ resource "launchdarkly_segment" "test" {
 		context_kind = "eanies"
 	}
 }`
+
+	testAccSegmentCreateWithUnbounded = `
+resource "launchdarkly_segment" "test" {
+    key                    = "segmentKey1"
+	project_key            = launchdarkly_project.test.key
+	env_key                = "test"
+  	name                   = "segment name"
+	description            = "segment description"
+	tags                   = ["segmentTag1", "segmentTag2"]
+	included               = ["user1", "user2"]
+	excluded               = ["user3", "user4"]
+	unbounded              = true
+	unbounded_context_kind = "device"
+}`
 )
 
 func TestAccSegment_CreateAndUpdate(t *testing.T) {
@@ -269,6 +283,35 @@ func TestAccSegment_CreateAndUpdate(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "rules.0.clauses.1.values.0", "test2"),
 					resource.TestCheckResourceAttr(resourceName, "rules.0.clauses.1.negate", "true"),
 					resource.TestCheckResourceAttr(resourceName, "rules.0.clauses.1.context_kind", "user"),
+				),
+			},
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
+			{
+				Config: withRandomProject(projectKey, testAccSegmentCreateWithUnbounded),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckProjectExists("launchdarkly_project.test"),
+					testAccCheckSegmentExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, KEY, "segmentKey1"),
+					resource.TestCheckResourceAttr(resourceName, PROJECT_KEY, projectKey),
+					resource.TestCheckResourceAttr(resourceName, ENV_KEY, "test"),
+					resource.TestCheckResourceAttr(resourceName, NAME, "segment name"),
+					resource.TestCheckResourceAttr(resourceName, DESCRIPTION, "segment description"),
+					resource.TestCheckResourceAttr(resourceName, "tags.#", "2"),
+					resource.TestCheckResourceAttr(resourceName, "tags.0", "segmentTag1"),
+					resource.TestCheckResourceAttr(resourceName, "tags.1", "segmentTag2"),
+					resource.TestCheckResourceAttr(resourceName, "included.#", "2"),
+					resource.TestCheckResourceAttr(resourceName, "included.0", "user1"),
+					resource.TestCheckResourceAttr(resourceName, "included.1", "user2"),
+					resource.TestCheckResourceAttr(resourceName, "excluded.#", "2"),
+					resource.TestCheckResourceAttr(resourceName, "excluded.0", "user3"),
+					resource.TestCheckResourceAttr(resourceName, "excluded.1", "user4"),
+					resource.TestCheckResourceAttrSet(resourceName, CREATION_DATE),
+					resource.TestCheckResourceAttr(resourceName, UNBOUNDED, "true"),
+					resource.TestCheckResourceAttr(resourceName, UNBOUNDED_CONTEXT_KIND, "device"),
 				),
 			},
 			{
