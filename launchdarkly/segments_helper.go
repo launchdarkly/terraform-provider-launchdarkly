@@ -24,28 +24,32 @@ func baseSegmentSchema(options segmentSchemaOptions) map[string]*schema.Schema {
 		},
 		TAGS: tagsSchema(tagsSchemaOptions(options)),
 		INCLUDED: {
-			Type:        schema.TypeList,
-			Elem:        &schema.Schema{Type: schema.TypeString},
-			Optional:    true,
-			Description: "List of user keys included in the segment. To target on other context kinds, use the included_contexts block attribute",
+			Type:          schema.TypeList,
+			Elem:          &schema.Schema{Type: schema.TypeString},
+			Optional:      true,
+			Description:   "List of user keys included in the segment. To target on other context kinds, use the included_contexts block attribute. This attribute is not valid when `unbounded` is set to `true`.",
+			ConflictsWith: []string{UNBOUNDED},
 		},
 		EXCLUDED: {
-			Type:        schema.TypeList,
-			Elem:        &schema.Schema{Type: schema.TypeString},
-			Optional:    true,
-			Description: "List of user keys excluded from the segment. To target on other context kinds, use the excluded_contexts block attribute",
+			Type:          schema.TypeList,
+			Elem:          &schema.Schema{Type: schema.TypeString},
+			Optional:      true,
+			Description:   "List of user keys excluded from the segment. To target on other context kinds, use the excluded_contexts block attribute. This attribute is not valid when `unbounded` is set to `true`.",
+			ConflictsWith: []string{UNBOUNDED},
 		},
 		INCLUDED_CONTEXTS: {
-			Type:        schema.TypeList,
-			Elem:        &schema.Resource{Schema: segmentTargetsSchema()},
-			Optional:    true,
-			Description: "List of non-user target objects included in the segment",
+			Type:          schema.TypeList,
+			Elem:          &schema.Resource{Schema: segmentTargetsSchema()},
+			Optional:      true,
+			Description:   "List of non-user target objects included in the segment. This attribute is not valid when `unbounded` is set to `true`.",
+			ConflictsWith: []string{UNBOUNDED},
 		},
 		EXCLUDED_CONTEXTS: {
-			Type:        schema.TypeList,
-			Elem:        &schema.Resource{Schema: segmentTargetsSchema()},
-			Optional:    true,
-			Description: "List of non-user target objects excluded from the segment",
+			Type:          schema.TypeList,
+			Elem:          &schema.Resource{Schema: segmentTargetsSchema()},
+			Optional:      true,
+			Description:   "List of non-user target objects excluded from the segment. This attribute is not valid when `unbounded` is set to `true`.",
+			ConflictsWith: []string{UNBOUNDED},
 		},
 		CREATION_DATE: {
 			Type:        schema.TypeInt,
@@ -53,6 +57,23 @@ func baseSegmentSchema(options segmentSchemaOptions) map[string]*schema.Schema {
 			Description: "The segment's creation date represented as a UNIX epoch timestamp",
 		},
 		RULES: segmentRulesSchema(),
+		UNBOUNDED: {
+			Type:          schema.TypeBool,
+			Required:      false,
+			Optional:      true,
+			Default:       false,
+			Description:   "Whether to create a standard segment (`false`) or a Big Segment (`true`). Standard segments include rule-based and smaller list-based segments. Big Segments include larger list-based segments and synced segments. Only use a Big Segment if you need to add more than 15,000 individual targets.",
+			ForceNew:      !options.isDataSource,
+			ConflictsWith: []string{INCLUDED, EXCLUDED, INCLUDED_CONTEXTS, EXCLUDED_CONTEXTS, RULES},
+		},
+		UNBOUNDED_CONTEXT_KIND: {
+			Type:          schema.TypeString,
+			Computed:      true,
+			Optional:      true,
+			Description:   "For Big Segments, the targeted context kind. If this attribute is not specified it will default to `user`.",
+			ForceNew:      !options.isDataSource,
+			ConflictsWith: []string{INCLUDED, EXCLUDED, INCLUDED_CONTEXTS, EXCLUDED_CONTEXTS, RULES},
+		},
 	}
 }
 
@@ -104,6 +125,16 @@ func segmentRead(ctx context.Context, d *schema.ResourceData, raw interface{}, i
 	err = d.Set(TAGS, segment.Tags)
 	if err != nil {
 		return diag.Errorf("failed to set tags on segment with key %q: %v", segmentKey, err)
+	}
+
+	err = d.Set(UNBOUNDED, segment.Unbounded)
+	if err != nil {
+		return diag.Errorf("failed to set unbounded on segment with key %q: %v", segmentKey, err)
+	}
+
+	err = d.Set(UNBOUNDED_CONTEXT_KIND, segment.UnboundedContextKind)
+	if err != nil {
+		return diag.Errorf("failed to set unboundedContextKind on segment with key %q: %v", segmentKey, err)
 	}
 
 	err = d.Set(INCLUDED, segment.Included)

@@ -23,11 +23,13 @@ data "launchdarkly_segment" "test" {
 )
 
 type testSegmentUpdate struct {
-	Included         []interface{}
-	Excluded         []interface{}
-	IncludedContexts []ldapi.SegmentTarget
-	ExcludedContexts []ldapi.SegmentTarget
-	Rules            []ldapi.UserSegmentRule
+	Included             []interface{}
+	Excluded             []interface{}
+	IncludedContexts     []ldapi.SegmentTarget
+	ExcludedContexts     []ldapi.SegmentTarget
+	Rules                []ldapi.UserSegmentRule
+	Unbounded            bool
+	UnboundedContextKind string
 }
 
 func testAccDataSourceSegmentCreate(client *Client, projectKey, segmentKey string, properties testSegmentUpdate) (*ldapi.UserSegment, error) {
@@ -47,10 +49,18 @@ func testAccDataSourceSegmentCreate(client *Client, projectKey, segmentKey strin
 		Description: ldapi.PtrString("test description"),
 		Tags:        []string{"terraform"},
 	}
-	_, _, err = client.ld.SegmentsApi.PostSegment(client.ctx, project.Key, envKey).SegmentBody(segmentBody).Execute()
 
+	if properties.Unbounded {
+		segmentBody.Unbounded = &properties.Unbounded
+		segmentBody.UnboundedContextKind = &properties.UnboundedContextKind
+	}
+
+	segment, _, err := client.ld.SegmentsApi.PostSegment(client.ctx, project.Key, envKey).SegmentBody(segmentBody).Execute()
 	if err != nil {
 		return nil, fmt.Errorf("failed to create segment %q in project %q: %s", segmentKey, projectKey, handleLdapiErr(err))
+	}
+	if properties.Unbounded {
+		return segment, nil
 	}
 
 	patch := ldapi.PatchWithComment{
@@ -62,7 +72,7 @@ func testAccDataSourceSegmentCreate(client *Client, projectKey, segmentKey strin
 			patchReplace("/rules", properties.Rules),
 		},
 	}
-	segment, _, err := client.ld.SegmentsApi.PatchSegment(client.ctx, projectKey, envKey, segmentKey).PatchWithComment(patch).Execute()
+	segment, _, err = client.ld.SegmentsApi.PatchSegment(client.ctx, projectKey, envKey, segmentKey).PatchWithComment(patch).Execute()
 
 	if err != nil {
 		return nil, fmt.Errorf("failed to update segment %q in project %q: %s", segmentKey, projectKey, handleLdapiErr(err))
@@ -155,7 +165,7 @@ func TestAccDataSourceSegment_exists(t *testing.T) {
 	}()
 
 	resourceName := "data.launchdarkly_segment.test"
-	resource.Test(t, resource.TestCase{
+	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
@@ -170,6 +180,7 @@ func TestAccDataSourceSegment_exists(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, ID, projectKey+"/test/"+segmentKey),
 					resource.TestCheckResourceAttr(resourceName, PROJECT_KEY, projectKey),
 					resource.TestCheckResourceAttr(resourceName, ENV_KEY, "test"),
+					resource.TestCheckResourceAttr(resourceName, UNBOUNDED, "false"),
 					resource.TestCheckResourceAttr(resourceName, "rules.0.clauses.0.attribute", "name"),
 					resource.TestCheckResourceAttr(resourceName, "rules.0.clauses.0.op", "startsWith"),
 					resource.TestCheckResourceAttr(resourceName, "rules.0.clauses.0.values.#", "1"),
@@ -185,6 +196,55 @@ func TestAccDataSourceSegment_exists(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "excluded_contexts.0.values.0", "test1"),
 					resource.TestCheckResourceAttr(resourceName, "excluded_contexts.0.values.1", "test2"),
 					resource.TestCheckResourceAttr(resourceName, "excluded_contexts.0.context_kind", "test-kind"),
+					resource.TestCheckResourceAttr(resourceName, "tags.#", "1"),
+					resource.TestCheckResourceAttrSet(resourceName, CREATION_DATE),
+				),
+			},
+		},
+	})
+}
+
+func TestAccDataSourceSegment_UnboundedExists(t *testing.T) {
+	accTest := os.Getenv("TF_ACC")
+	if accTest == "" {
+		t.SkipNow()
+	}
+
+	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	segmentKey := "big-data-source-test"
+	client, err := newClient(os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN), os.Getenv(LAUNCHDARKLY_API_HOST), false, DEFAULT_HTTP_TIMEOUT_S)
+	require.NoError(t, err)
+
+	properties := testSegmentUpdate{
+		Unbounded:            true,
+		UnboundedContextKind: "account",
+	}
+	segment, err := testAccDataSourceSegmentCreate(client, projectKey, segmentKey, properties)
+	require.NoError(t, err)
+
+	defer func() {
+		err := testAccProjectScaffoldDelete(client, projectKey)
+		require.NoError(t, err)
+	}()
+
+	resourceName := "data.launchdarkly_segment.test"
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck: func() {
+			testAccPreCheck(t)
+		},
+		Providers: testAccProviders,
+		Steps: []resource.TestStep{
+			{
+				Config: fmt.Sprintf(testAccDataSourceSegment, segmentKey, projectKey),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttrSet(resourceName, KEY),
+					resource.TestCheckResourceAttr(resourceName, NAME, segment.Name),
+					resource.TestCheckResourceAttr(resourceName, KEY, segment.Key),
+					resource.TestCheckResourceAttr(resourceName, ID, projectKey+"/test/"+segmentKey),
+					resource.TestCheckResourceAttr(resourceName, PROJECT_KEY, projectKey),
+					resource.TestCheckResourceAttr(resourceName, ENV_KEY, "test"),
+					resource.TestCheckResourceAttr(resourceName, UNBOUNDED, "true"),
+					resource.TestCheckResourceAttr(resourceName, UNBOUNDED_CONTEXT_KIND, "account"),
 					resource.TestCheckResourceAttr(resourceName, "tags.#", "1"),
 					resource.TestCheckResourceAttrSet(resourceName, CREATION_DATE),
 				),

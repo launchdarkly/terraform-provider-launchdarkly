@@ -147,6 +147,30 @@ resource "launchdarkly_segment" "test" {
 		context_kind = "eanies"
 	}
 }`
+
+	testAccSegmentCreateWithUnbounded = `
+resource "launchdarkly_segment" "test" {
+    key                    = "segmentKey1"
+		project_key            = launchdarkly_project.test.key
+		env_key                = "test"
+  	name                   = "segment name"
+		description            = "segment description"
+		tags                   = ["segmentTag1", "segmentTag2"]
+		unbounded              = true
+		unbounded_context_kind = "device"
+}`
+
+	testAccSegmentCreateWithUnboundedUpdate = `
+resource "launchdarkly_segment" "test" {
+    key                    = "segmentKey1"
+		project_key            = launchdarkly_project.test.key
+		env_key                = "test"
+  	name                   = "segment name"
+		description            = "segment description"
+		tags                   = ["segmentTag1", "segmentTag2"]
+		unbounded              = true
+		unbounded_context_kind = "account"
+}`
 )
 
 func TestAccSegment_CreateAndUpdate(t *testing.T) {
@@ -275,6 +299,61 @@ func TestAccSegment_CreateAndUpdate(t *testing.T) {
 				ResourceName:      resourceName,
 				ImportState:       true,
 				ImportStateVerify: true,
+			},
+		},
+	})
+}
+
+func TestAccSegment_Unbounded(t *testing.T) {
+	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	resourceName := "launchdarkly_segment.test"
+
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck: func() {
+			testAccPreCheck(t)
+		},
+		Providers: testAccProviders,
+		Steps: []resource.TestStep{
+			{
+				Config: withRandomProject(projectKey, testAccSegmentCreateWithUnbounded),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckProjectExists("launchdarkly_project.test"),
+					testAccCheckSegmentExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, KEY, "segmentKey1"),
+					resource.TestCheckResourceAttr(resourceName, PROJECT_KEY, projectKey),
+					resource.TestCheckResourceAttr(resourceName, ENV_KEY, "test"),
+					resource.TestCheckResourceAttr(resourceName, NAME, "segment name"),
+					resource.TestCheckResourceAttr(resourceName, DESCRIPTION, "segment description"),
+					resource.TestCheckResourceAttr(resourceName, "tags.#", "2"),
+					resource.TestCheckResourceAttr(resourceName, "tags.0", "segmentTag1"),
+					resource.TestCheckResourceAttr(resourceName, "tags.1", "segmentTag2"),
+					resource.TestCheckResourceAttrSet(resourceName, CREATION_DATE),
+					resource.TestCheckResourceAttr(resourceName, UNBOUNDED, "true"),
+					resource.TestCheckResourceAttr(resourceName, UNBOUNDED_CONTEXT_KIND, "device"),
+				),
+			},
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
+			{
+				Config: withRandomProject(projectKey, testAccSegmentCreateWithUnboundedUpdate),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckProjectExists("launchdarkly_project.test"),
+					testAccCheckSegmentExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, KEY, "segmentKey1"),
+					resource.TestCheckResourceAttr(resourceName, PROJECT_KEY, projectKey),
+					resource.TestCheckResourceAttr(resourceName, ENV_KEY, "test"),
+					resource.TestCheckResourceAttr(resourceName, NAME, "segment name"),
+					resource.TestCheckResourceAttr(resourceName, DESCRIPTION, "segment description"),
+					resource.TestCheckResourceAttr(resourceName, "tags.#", "2"),
+					resource.TestCheckResourceAttr(resourceName, "tags.0", "segmentTag1"),
+					resource.TestCheckResourceAttr(resourceName, "tags.1", "segmentTag2"),
+					resource.TestCheckResourceAttrSet(resourceName, CREATION_DATE),
+					resource.TestCheckResourceAttr(resourceName, UNBOUNDED, "true"),
+					resource.TestCheckResourceAttr(resourceName, UNBOUNDED_CONTEXT_KIND, "account"),
+				),
 			},
 		},
 	})

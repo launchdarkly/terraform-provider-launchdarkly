@@ -106,6 +106,8 @@ const (
 	TOKEN                            = "token"
 	TRACK_EVENTS                     = "track_events"
 	TRIGGER_URL                      = "trigger_url"
+	UNBOUNDED                        = "unbounded"
+	UNBOUNDED_CONTEXT_KIND           = "unbounded_context_kind"
 	UNIT                             = "unit"
 	URL                              = "url"
 	URLS                             = "urls"
