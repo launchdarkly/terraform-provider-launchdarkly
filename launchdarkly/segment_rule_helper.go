@@ -8,8 +8,9 @@ import (
 
 func segmentRulesSchema() *schema.Schema {
 	return &schema.Schema{
-		Type:     schema.TypeList,
-		Optional: true,
+		Type:        schema.TypeList,
+		Optional:    true,
+		Description: "List of nested custom rule blocks to apply to the segment. This attribute is not valid when `unbounded` is set to `true`.",
 		Elem: &schema.Resource{
 			Schema: map[string]*schema.Schema{
 				CLAUSES: clauseSchema(),
