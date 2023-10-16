@@ -62,12 +62,16 @@ func resourceSegmentCreate(ctx context.Context, d *schema.ResourceData, metaRaw 
 	description := d.Get(DESCRIPTION).(string)
 	segmentName := d.Get(NAME).(string)
 	tags := stringsFromResourceData(d, TAGS)
+	unbounded := d.Get(UNBOUNDED).(bool)
+	unboundedContextKind := d.Get(UNBOUNDED_CONTEXT_KIND).(string)
 
 	segment := ldapi.SegmentBody{
-		Name:        segmentName,
-		Key:         key,
-		Description: &description,
-		Tags:        tags,
+		Name:                 segmentName,
+		Key:                  key,
+		Description:          &description,
+		Tags:                 tags,
+		Unbounded:            &unbounded,
+		UnboundedContextKind: &unboundedContextKind,
 	}
 
 	_, _, err := client.ld.SegmentsApi.PostSegment(client.ctx, projectKey, envKey).SegmentBody(segment).Execute()

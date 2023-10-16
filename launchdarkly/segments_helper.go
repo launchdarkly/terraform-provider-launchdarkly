@@ -106,6 +106,16 @@ func segmentRead(ctx context.Context, d *schema.ResourceData, raw interface{}, i
 		return diag.Errorf("failed to set tags on segment with key %q: %v", segmentKey, err)
 	}
 
+	err = d.Set(UNBOUNDED, segment.Unbounded)
+	if err != nil {
+		return diag.Errorf("failed to set unbounded on segment with key %q: %v", segmentKey, err)
+	}
+
+	err = d.Set(UNBOUNDED_CONTEXT_KIND, segment.UnboundedContextKind)
+	if err != nil {
+		return diag.Errorf("failed to set unboundedContextKind on segment with key %q: %v", segmentKey, err)
+	}
+
 	err = d.Set(INCLUDED, segment.Included)
 	if err != nil {
 		return diag.Errorf("failed to set included on segment with key %q: %v", segmentKey, err)
