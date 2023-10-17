@@ -1,3 +1,10 @@
+## [2.16.0] - 2023-10-17
+### Added:
+- Added additional fields related to big segments to the `launchdarkly_segment` resource and data source. Thanks, @christogav! [#187](https://github.com/launchdarkly/terraform-provider-launchdarkly/pull/187)
+
+### Improvements:
+- Generated documentation for the `launchdarkly_segment` data source and resource using [terraform-plugin-docs](https://github.com/hashicorp/terraform-plugin-docs).
+
 ## [2.15.2] - 2023-09-26
 ### Fixed:
 - Added 404 retries to the `launchdarkly_team_role_mapping` resource. [#179](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/179)
