@@ -6,10 +6,15 @@ import (
 	ldapi "github.com/launchdarkly/api-client-go/v12"
 )
 
-func segmentRulesSchema() *schema.Schema {
+type segmentRulesSchemaOptions struct {
+	isDataSource bool
+}
+
+func segmentRulesSchema(options segmentRulesSchemaOptions) *schema.Schema {
 	return &schema.Schema{
 		Type:        schema.TypeList,
-		Optional:    true,
+		Optional:    !options.isDataSource,
+		Computed:    options.isDataSource,
 		Description: "List of nested custom rule blocks to apply to the segment. This attribute is not valid when `unbounded` is set to `true`.",
 		Elem: &schema.Resource{
 			Schema: map[string]*schema.Schema{
