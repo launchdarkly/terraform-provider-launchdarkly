@@ -9,6 +9,7 @@ import (
 
 func dataSourceSegment() *schema.Resource {
 	schemaMap := baseSegmentSchema(segmentSchemaOptions{isDataSource: true})
+	schemaMap = removeInvalidFieldsForDataSource(schemaMap)
 	schemaMap[PROJECT_KEY] = &schema.Schema{
 		Type:             schema.TypeString,
 		Required:         true,
@@ -35,6 +36,10 @@ func dataSourceSegment() *schema.Resource {
 	return &schema.Resource{
 		ReadContext: dataSourceSegmentRead,
 		Schema:      schemaMap,
+
+		Description: `Provides a LaunchDarkly segment data source.
+
+This data source allows you to retrieve segment information from your LaunchDarkly organization.`,
 	}
 }
 

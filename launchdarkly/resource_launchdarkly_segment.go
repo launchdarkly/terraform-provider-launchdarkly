@@ -17,21 +17,21 @@ func resourceSegment() *schema.Resource {
 		Required:         true,
 		ForceNew:         true,
 		ValidateDiagFunc: validateKey(),
-		Description:      "The segment's project key.",
+		Description:      "The segment's project key. A change in this field will force the destruction of the existing resource and the creation of a new one.",
 	}
 	schemaMap[ENV_KEY] = &schema.Schema{
 		Type:             schema.TypeString,
 		Required:         true,
 		ForceNew:         true,
 		ValidateDiagFunc: validateKey(),
-		Description:      "The segment's environment key.",
+		Description:      "The segment's environment key. A change in this field will force the destruction of the existing resource and the creation of a new one.",
 	}
 	schemaMap[KEY] = &schema.Schema{
 		Type:             schema.TypeString,
 		Required:         true,
 		ForceNew:         true,
 		ValidateDiagFunc: validateKey(),
-		Description:      "The unique key that references the segment.",
+		Description:      "The unique key that references the segment. A change in this field will force the destruction of the existing resource and the creation of a new one.",
 	}
 	schemaMap[NAME] = &schema.Schema{
 		Type:        schema.TypeString,
@@ -50,6 +50,9 @@ func resourceSegment() *schema.Resource {
 		},
 
 		Schema: schemaMap,
+		Description: `Provides a LaunchDarkly segment resource.
+
+This resource allows you to create and manage segments within your LaunchDarkly organization.`,
 	}
 }
 
