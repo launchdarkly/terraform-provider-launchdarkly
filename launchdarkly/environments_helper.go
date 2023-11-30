@@ -29,6 +29,11 @@ func baseEnvironmentSchema(options environmentSchemaOptions) map[string]*schema.
 			ForceNew:         !options.forProject,
 			ValidateDiagFunc: validateKey(),
 		},
+		KIND: {
+			Type:        schema.TypeString,
+			Required:    false,
+			Description: "The environment's kind. Either 'critical' or NULL",
+		},
 		API_KEY: {
 			Type:        schema.TypeString,
 			Computed:    true,
@@ -128,6 +133,11 @@ func getEnvironmentUpdatePatches(oldConfig, config map[string]interface{}) ([]ld
 	confirmChanges, ok := config[CONFIRM_CHANGES]
 	if ok {
 		patches = append(patches, patchReplace("/confirmChanges", confirmChanges))
+	}
+
+	kind, ok := config[KIND]
+	if ok {
+		patches = append(patches, patchReplace("/kind", kind))
 	}
 
 	tags, ok := config[TAGS]
@@ -273,6 +283,7 @@ func environmentRead(ctx context.Context, d *schema.ResourceData, meta interface
 	_ = d.Set(DEFAULT_TTL, int(env.DefaultTtl))
 	_ = d.Set(SECURE_MODE, env.SecureMode)
 	_ = d.Set(DEFAULT_TRACK_EVENTS, env.DefaultTrackEvents)
+	_ = d.Set(KIND, env.Kind) // We need to update the LaunchDarkly go api client's version of Environment
 	_ = d.Set(TAGS, env.Tags)
 	_ = d.Set(REQUIRE_COMMENTS, env.RequireComments)
 	_ = d.Set(CONFIRM_CHANGES, env.ConfirmChanges)
