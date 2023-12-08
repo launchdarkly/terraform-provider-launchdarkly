@@ -95,6 +95,8 @@ const (
 	SECRET                           = "secret"
 	SECURE_MODE                      = "secure_mode"
 	SELECTOR                         = "selector"
+	SERVICE_CONFIG                   = "service_config"
+	SERVICE_KIND                     = "service_kind"
 	SERVICE_TOKEN                    = "service_token"
 	STATEMENTS                       = "statements"
 	SUBSTRING                        = "substring"
