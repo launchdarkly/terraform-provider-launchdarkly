@@ -98,21 +98,12 @@ Nested environments `approval_settings` blocks have the following structure:
 
 - `required_approval_tags` - An array of tags used to specify which flags with those tags require approval. You may only set `required_approval_tags` if `required` is not set to `true` and vice versa.
 
-- `service_kind` (String) The kind of service to use when requesting an approval. Use this to switch which system approval requests go to. Valid values are `launchdarkly` and `servicenow`. The default is `launchdarkly`.
--
-- `service_config` (Block List) The config for the approval service. This will differ for different kinds of services. (See [below for nested schema](#nestedblock--approval_settings_service_config))
+- `service_config` (Map of String) The configuration for the service associated with this approval. This is specific to each approval service. For a `service_kind` of `servicenow`, the following fields apply:
 
-<a id="nestedblock--approval_settings_service_config"></a>
-### Nested Schema for `service_config`
+  - `template` (String) The sys_id of the Standard Change Request Template in ServiceNow that LaunchDarkly will use when creating the change request.
+  - `detail_column` (String) The name of the ServiceNow Change Request column LaunchDarkly uses to populate detailed approval request information.
 
-The structure of the `service_config` object will be different for each different service kind.
-
-For a `service_kind` of `servicenow`:
-
-- `detail_column` (String) The name of the column to place the details in when creating the change request in ServiceNow.
-- `template` (String) The sys_id of the Standard Change Request Template in ServiceNow to use when creating the change request.
-
-For a `service_kind` of `launchdarkly`: No properties are required.
+- `service_kind` (String) The kind of service associated with this approval. This determines which platform is used for requesting approval. Valid values are `servicenow`, `launchdarkly`.
 
 ### Nested Client side Availability Block
 

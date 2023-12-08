@@ -56,17 +56,18 @@ func approvalSchema(options approvalSchemaOptions) *schema.Schema {
 			},
 		},
 		SERVICE_KIND: {
-			Type: schema.TypeString,
-			Optional: !options.isDataSource,
-			Computed: options.isDataSource,
-			Description: "The kind of service that is associated with this approval. This is used to determine which platform is used for requesting approval. Valid values are `servicenow`, `launchdarkly`.",
-			Default: "launchdarkly",
+			Type:             schema.TypeString,
+			Optional:         !options.isDataSource,
+			Computed:         options.isDataSource,
+			Description:      "The kind of service associated with this approval. This determines which platform is used for requesting approval. Valid values are `servicenow`, `launchdarkly`.",
+			Default:          "launchdarkly",
+			ValidateDiagFunc: validation.ToDiagFunc(validation.StringInSlice([]string{"servicenow", "launchdarkly"}, false)),
 		},
 		SERVICE_CONFIG: {
-			Type: schema.TypeMap,
-			Optional: !options.isDataSource,
-			Computed: options.isDataSource,
-			Description: "The configuration for the service that is associated with this approval. This will be specific to each approval service.",
+			Type:        schema.TypeMap,
+			Optional:    !options.isDataSource,
+			Computed:    options.isDataSource,
+			Description: "The configuration for the service associated with this approval. This is specific to each approval service. For a `service_kind` of `servicenow`, the following fields apply:\n\n\t - `template` (String) The sys_id of the Standard Change Request Template in ServiceNow that LaunchDarkly will use when creating the change request.\n\t - `detail_column` (String) The name of the ServiceNow Change Request column LaunchDarkly uses to populate detailed approval request information. ",
 		},
 	}
 
@@ -94,8 +95,8 @@ func approvalSettingsFromResourceData(val interface{}) (ldapi.ApprovalSettings, 
 		CanReviewOwnRequest:     approvalSettingsMap[CAN_REVIEW_OWN_REQUEST].(bool),
 		MinNumApprovals:         int32(approvalSettingsMap[MIN_NUM_APPROVALS].(int)),
 		CanApplyDeclinedChanges: approvalSettingsMap[CAN_APPLY_DECLINED_CHANGES].(bool),
-		ServiceKind: approvalSettingsMap[SERVICE_KIND].(string),
-		ServiceConfig: approvalSettingsMap[SERVICE_CONFIG].(map[string]interface{}),
+		ServiceKind:             approvalSettingsMap[SERVICE_KIND].(string),
+		ServiceConfig:           approvalSettingsMap[SERVICE_CONFIG].(map[string]interface{}),
 	}
 	// Required and RequiredApprovalTags should never be defined simultaneously
 	// unfortunately since they default to their null values and are nested we cannot tell if the
