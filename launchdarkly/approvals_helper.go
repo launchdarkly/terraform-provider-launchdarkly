@@ -55,6 +55,19 @@ func approvalSchema(options approvalSchemaOptions) *schema.Schema {
 				ValidateFunc: validateTagsNoDiag(),
 			},
 		},
+		SERVICE_KIND: {
+			Type: schema.TypeString,
+			Optional: !options.isDataSource,
+			Computed: options.isDataSource,
+			Description: "The kind of service that is associated with this approval. This is used to determine which platform is used for requesting approval. Valid values are `servicenow`, `launchdarkly`.",
+			Default: "launchdarkly",
+		},
+		SERVICE_CONFIG: {
+			Type: schema.TypeMap,
+			Optional: !options.isDataSource,
+			Computed: options.isDataSource,
+			Description: "The configuration for the service that is associated with this approval. This will be specific to each approval service.",
+		},
 	}
 
 	if options.isDataSource {
@@ -81,6 +94,8 @@ func approvalSettingsFromResourceData(val interface{}) (ldapi.ApprovalSettings, 
 		CanReviewOwnRequest:     approvalSettingsMap[CAN_REVIEW_OWN_REQUEST].(bool),
 		MinNumApprovals:         int32(approvalSettingsMap[MIN_NUM_APPROVALS].(int)),
 		CanApplyDeclinedChanges: approvalSettingsMap[CAN_APPLY_DECLINED_CHANGES].(bool),
+		ServiceKind: approvalSettingsMap[SERVICE_KIND].(string),
+		ServiceConfig: approvalSettingsMap[SERVICE_CONFIG].(map[string]interface{}),
 	}
 	// Required and RequiredApprovalTags should never be defined simultaneously
 	// unfortunately since they default to their null values and are nested we cannot tell if the
@@ -99,6 +114,9 @@ func approvalSettingsFromResourceData(val interface{}) (ldapi.ApprovalSettings, 
 	} else {
 		settings.Required = required
 	}
+
+	settings.ServiceKind = approvalSettingsMap[SERVICE_KIND].(string)
+	settings.ServiceConfig = approvalSettingsMap[SERVICE_CONFIG].(map[string]interface{})
 	return settings, nil
 }
 
@@ -109,6 +127,8 @@ func approvalSettingsToResourceData(settings ldapi.ApprovalSettings) interface{}
 		CAN_APPLY_DECLINED_CHANGES: settings.CanApplyDeclinedChanges,
 		REQUIRED_APPROVAL_TAGS:     settings.RequiredApprovalTags,
 		REQUIRED:                   settings.Required,
+		SERVICE_KIND:               settings.ServiceKind,
+		SERVICE_CONFIG:             settings.ServiceConfig,
 	}
 	return []map[string]interface{}{transformed}
 }
@@ -135,6 +155,8 @@ func approvalPatchFromSettings(oldApprovalSettings, newApprovalSettings interfac
 		patchReplace("/approvalSettings/minNumApprovals", settings.MinNumApprovals),
 		patchReplace("/approvalSettings/canApplyDeclinedChanges", settings.CanApplyDeclinedChanges),
 		patchReplace("/approvalSettings/requiredApprovalTags", settings.RequiredApprovalTags),
+		patchReplace("/approvalSettings/serviceKind", settings.ServiceKind),
+		patchReplace("/approvalSettings/serviceConfig", settings.ServiceConfig),
 	}
 	return patch, nil
 }

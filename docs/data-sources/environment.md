@@ -56,3 +56,5 @@ Read-Only:
 - `min_num_approvals` (Number)
 - `required` (Boolean)
 - `required_approval_tags` (List of String)
+- `service_kind` (String)
+- `service_config` (Block List)
