@@ -1,3 +1,7 @@
+## [2.17.0] - 2023-12-08
+### Added:
+- Added the `service_kind` and `service_config` attributes the `launchdarkly_environment`'s approval settings. With these settings you can configure the ServiceNow approval system. Thanks, @arhill05 [#191](https://github.com/launchdarkly/terraform-provider-launchdarkly/pull/191)
+
 ## [2.16.0] - 2023-10-17
 ### Added:
 - Added additional fields related to big segments to the `launchdarkly_segment` resource and data source. Thanks, @christogav! [#187](https://github.com/launchdarkly/terraform-provider-launchdarkly/pull/187)
