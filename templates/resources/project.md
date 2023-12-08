@@ -98,6 +98,13 @@ Nested environments `approval_settings` blocks have the following structure:
 
 - `required_approval_tags` - An array of tags used to specify which flags with those tags require approval. You may only set `required_approval_tags` if `required` is not set to `true` and vice versa.
 
+- `service_config` (Map of String) The configuration for the service associated with this approval. This is specific to each approval service. For a `service_kind` of `servicenow`, the following fields apply:
+
+  - `template` (String) The sys_id of the Standard Change Request Template in ServiceNow that LaunchDarkly will use when creating the change request.
+  - `detail_column` (String) The name of the ServiceNow Change Request column LaunchDarkly uses to populate detailed approval request information.
+
+- `service_kind` (String) The kind of service associated with this approval. This determines which platform is used for requesting approval. Valid values are `servicenow`, `launchdarkly`.
+
 ### Nested Client side Availability Block
 
 The nested `default_client_side_availability` block describes which client-side SDKs can use new flags by default. To learn more about this setting, read [Making flags available to client-side and mobile SDKs](https://docs.launchdarkly.com/home/getting-started/feature-flags#making-flags-available-to-client-side-and-mobile-sdks). This block has the following structure:
