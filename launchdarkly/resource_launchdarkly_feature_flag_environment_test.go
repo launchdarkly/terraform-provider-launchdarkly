@@ -9,7 +9,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
-	ldapi "github.com/launchdarkly/api-client-go/v12"
+	ldapi "github.com/launchdarkly/api-client-go/v14"
 	"github.com/stretchr/testify/require"
 )
 
@@ -924,12 +924,9 @@ func TestAccFeatureFlagEnvironment_ContextTargets(t *testing.T) {
 	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	client, err := newClient(os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN), os.Getenv(LAUNCHDARKLY_API_HOST), false, DEFAULT_HTTP_TIMEOUT_S)
 	require.NoError(t, err)
-	// TODO at some point the context kind API will no longer be in beta and we will want to update/remove this
-	betaClient, err := newBetaClient(os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN), os.Getenv(LAUNCHDARKLY_API_HOST), false, DEFAULT_HTTP_TIMEOUT_S)
-	require.NoError(t, err)
 	accountContextKind := "account"
 	otherContextKind := "other"
-	err = testAccProjectWithCustomContextKindScaffold(client, betaClient, projectKey, []string{accountContextKind})
+	err = testAccProjectWithCustomContextKindScaffold(client, projectKey, []string{accountContextKind})
 	require.NoError(t, err)
 	defer func() {
 		err := testAccProjectScaffoldDelete(client, projectKey)
@@ -1099,7 +1096,7 @@ func testAccCheckFeatureFlagEnvironmentExists(resourceName string) resource.Test
 	}
 }
 
-func testAccProjectWithCustomContextKindScaffold(client *Client, betaClient *Client, projectKey string, contextKindKeys []string) error {
+func testAccProjectWithCustomContextKindScaffold(client *Client, projectKey string, contextKindKeys []string) error {
 	projectBody := ldapi.ProjectPost{
 		Name: "Context Kind Test Project",
 		Key:  projectKey,
@@ -1110,7 +1107,7 @@ func testAccProjectWithCustomContextKindScaffold(client *Client, betaClient *Cli
 	}
 
 	for _, key := range contextKindKeys {
-		err := addContextKindToProject(betaClient, projectKey, key)
+		err := addContextKindToProject(client, projectKey, key)
 		if err != nil {
 			return err
 		}

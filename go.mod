@@ -52,7 +52,7 @@ require (
 	github.com/huandu/xstrings v1.3.2 // indirect
 	github.com/imdario/mergo v0.3.13 // indirect
 	github.com/jackc/sqlfmt v0.1.1-0.20191221211249-d576133216e1 // indirect
-	github.com/launchdarkly/api-client-go/v12 v12.0.0
+	github.com/launchdarkly/api-client-go/v14 v14.0.0
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.16 // indirect
 	github.com/mitchellh/cli v1.1.5 // indirect

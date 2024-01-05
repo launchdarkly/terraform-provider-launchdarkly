@@ -88,7 +88,7 @@ func dataSourceTeamRead(ctx context.Context, d *schema.ResourceData, meta interf
 
 	projects := make([]string, len(team.Projects.Items))
 	for i, v := range team.Projects.Items {
-		projects[i] = *v.Key
+		projects[i] = v.Key
 	}
 
 	customRoleKeys := make([]string, len(team.Roles.Items))
