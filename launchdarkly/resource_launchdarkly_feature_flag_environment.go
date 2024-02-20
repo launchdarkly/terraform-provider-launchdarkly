@@ -251,6 +251,10 @@ func resourceFeatureFlagEnvironmentDelete(ctx context.Context, d *schema.Resourc
 
 	// Set off variation to match default with how a rule is created
 	offVariation := len(flag.Variations) - 1
+	if flag.Defaults != nil {
+		// if flag defaults are set we want to make sure it reverts to those
+		offVariation = int(flag.Defaults.OffVariation)
+	}
 
 	comment := "Terraform"
 	patch := ldapi.PatchWithComment{
