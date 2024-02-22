@@ -30,6 +30,11 @@ data "launchdarkly_feature_flag" "example" {
 - `key` (String) The unique feature flag key that references the flag in your application code.
 - `project_key` (String) The feature flag's project key.
 
+### Optional
+
+- `maintainer_id` (String) The feature flag maintainer's 24 character alphanumeric team member ID. `maintainer_team_key` cannot be set if `maintainer_id` is set. If neither is set, it will automatically be or stay set to the member ID associated with the API key used by your LaunchDarkly Terraform provider or the most recently-set maintainer.
+- `maintainer_team_key` (String) The key of the associated team that maintains this feature flag. `maintainer_id` cannot be set if `maintainer_team_key` is set
+
 ### Read-Only
 
 - `archived` (Boolean) Specifies whether the flag is archived or not. Note that you cannot create a new flag that is archived, but can update a flag to be archived.
@@ -39,7 +44,6 @@ data "launchdarkly_feature_flag" "example" {
 - `description` (String) The feature flag's description.
 - `id` (String) The ID of this resource.
 - `include_in_snippet` (Boolean, Deprecated) Specifies whether this flag should be made available to the client-side JavaScript SDK using the client-side Id. This value gets its default from your project configuration if not set. `include_in_snippet` is now deprecated. Please migrate to `client_side_availability.using_environment_id` to maintain future compatibility.
-- `maintainer_id` (String) The feature flag maintainer's 24 character alphanumeric team member ID. If not set, it will automatically be or stay set to the member ID associated with the API key used by your LaunchDarkly Terraform provider or the most recently-set maintainer.
 - `name` (String) The feature flag's human-readable name
 - `tags` (Set of String) Tags associated with your resource.
 - `temporary` (Boolean) Specifies whether the flag is a temporary flag.
