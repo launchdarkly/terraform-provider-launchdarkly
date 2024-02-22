@@ -6,7 +6,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	ldapi "github.com/launchdarkly/api-client-go/v12"
+	ldapi "github.com/launchdarkly/api-client-go/v14"
 )
 
 func resourceFeatureFlag() *schema.Resource {
@@ -109,7 +109,7 @@ func resourceFeatureFlagCreate(ctx context.Context, d *schema.ResourceData, meta
 
 	// ld's api does not allow some fields to be passed in during flag creation so we do an update:
 	// https://apidocs.launchdarkly.com/tag/Feature-flags#operation/postFeatureFlag
-	updateDiags := resourceFeatureFlagUpdate(ctx, d, metaRaw)
+	updateDiags := featureFlagUpdate(ctx, d, metaRaw, true)
 	if updateDiags.HasError() {
 		// if there was a problem in the update state, we need to clean up completely by deleting the flag
 		_, deleteErr := client.ld.FeatureFlagsApi.DeleteFeatureFlag(client.ctx, projectKey, key).Execute()
@@ -131,6 +131,10 @@ func resourceFeatureFlagRead(ctx context.Context, d *schema.ResourceData, metaRa
 }
 
 func resourceFeatureFlagUpdate(ctx context.Context, d *schema.ResourceData, metaRaw interface{}) diag.Diagnostics {
+	return featureFlagUpdate(ctx, d, metaRaw, false)
+}
+
+func featureFlagUpdate(ctx context.Context, d *schema.ResourceData, metaRaw interface{}, isCreate bool) diag.Diagnostics {
 	client := metaRaw.(*Client)
 	key := d.Get(KEY).(string)
 	projectKey := d.Get(PROJECT_KEY).(string)
@@ -191,10 +195,50 @@ func resourceFeatureFlagUpdate(ctx context.Context, d *schema.ResourceData, meta
 		patch.Patch = append(patch.Patch, patchReplace("/defaults", defaults))
 	}
 
-	// Only update the maintainer ID if is specified in the schema
-	maintainerID, ok := d.GetOk(MAINTAINER_ID)
-	if ok {
-		patch.Patch = append(patch.Patch, patchReplace("/maintainerId", maintainerID.(string)))
+	// Only update the maintainer fields if is specified in the schema
+	if d.HasChange(MAINTAINER_ID) || d.HasChange(MAINTAINER_TEAM_KEY) {
+		flag, res, err := client.ld.FeatureFlagsApi.GetFeatureFlag(client.ctx, projectKey, key).Execute()
+		if isStatusNotFound(res) || err != nil {
+			return diag.Errorf("error getting flag %q in project %q for update: %s", key, projectKey, handleLdapiErr(err))
+		}
+		maintainerId, maintainerIdOk := d.GetOk(MAINTAINER_ID)
+		maintainerTeamKey, maintainerTeamKeyOk := d.GetOk(MAINTAINER_TEAM_KEY)
+
+		if maintainerIdOk && maintainerTeamKeyOk {
+			if d.HasChange(MAINTAINER_ID) {
+				if maintainerId != "" {
+					patch.Patch = append(patch.Patch, patchReplace("/maintainerId", maintainerId.(string)))
+					if flag.MaintainerTeamKey != nil {
+						patch.Patch = append(patch.Patch, patchRemove("/maintainerTeamKey"))
+					}
+				} else if flag.MaintainerId != nil {
+					patch.Patch = append(patch.Patch, patchRemove("/maintainerId"))
+				}
+			}
+			if d.HasChange(MAINTAINER_TEAM_KEY) {
+				if maintainerTeamKey != "" {
+					patch.Patch = append(patch.Patch, patchReplace("/maintainerTeamKey", maintainerTeamKey.(string)))
+					if flag.MaintainerId != nil {
+						patch.Patch = append(patch.Patch, patchRemove("/maintainerId"))
+					}
+				} else if flag.MaintainerTeamKey != nil {
+					patch.Patch = append(patch.Patch, patchRemove("/maintainerTeamKey"))
+				}
+			}
+			if d.HasChange(MAINTAINER_ID) && d.HasChange(MAINTAINER_TEAM_KEY) {
+				fmt.Println("BOTH HAVE CHANGE SOMETHING IS WRONG")
+			}
+		} else if maintainerIdOk {
+			patch.Patch = append(patch.Patch, patchReplace("/maintainerId", maintainerId.(string)))
+			if flag.MaintainerTeamKey != nil {
+				patch.Patch = append(patch.Patch, patchRemove("/maintainerTeamKey"))
+			}
+		} else if maintainerTeamKeyOk {
+			patch.Patch = append(patch.Patch, patchReplace("/maintainerTeamKey", maintainerTeamKey.(string)))
+			if flag.MaintainerId != nil {
+				patch.Patch = append(patch.Patch, patchRemove("/maintainerId"))
+			}
+		}
 	}
 
 	_, _, err = client.ld.FeatureFlagsApi.PatchFeatureFlag(client.ctx, projectKey, key).PatchWithComment(patch).Execute()

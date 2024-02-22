@@ -3,7 +3,7 @@ package launchdarkly
 import (
 	"testing"
 
-	ldapi "github.com/launchdarkly/api-client-go/v12"
+	ldapi "github.com/launchdarkly/api-client-go/v14"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -79,6 +79,8 @@ func TestEnvironmentToResourceData(t *testing.T) {
 					CanApplyDeclinedChanges: true,
 					RequiredApprovalTags:    []string{"approval"},
 					CanReviewOwnRequest:     true,
+					ServiceKind:             "launchdarkly",
+					ServiceConfig:           map[string]interface{}(nil),
 				},
 			},
 			expected: envResourceData{
@@ -101,6 +103,8 @@ func TestEnvironmentToResourceData(t *testing.T) {
 						CAN_APPLY_DECLINED_CHANGES: true,
 						REQUIRED_APPROVAL_TAGS:     []string{"approval"},
 						REQUIRED:                   true,
+						SERVICE_KIND:               "launchdarkly",
+						SERVICE_CONFIG:             map[string]interface{}(nil),
 					},
 				},
 			},

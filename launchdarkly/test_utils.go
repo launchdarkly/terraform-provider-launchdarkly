@@ -3,7 +3,7 @@ package launchdarkly
 import (
 	"fmt"
 
-	ldapi "github.com/launchdarkly/api-client-go/v12"
+	ldapi "github.com/launchdarkly/api-client-go/v14"
 )
 
 // testAccProjectScaffoldCreate creates a project with the given project parameters
@@ -46,14 +46,12 @@ func testAccFeatureFlagScaffold(client *Client, projectKey string, flagBody ldap
 
 }
 
-// since this API is still in beta, we need to make sure we always pass a beta client
-// you can do this by calling newBetaClient() instead of newClient()
-func addContextKindToProject(betaClient *Client, projectKey string, contextKind string) error {
+func addContextKindToProject(client *Client, projectKey string, contextKind string) error {
 	hideInTargeting := false
 	contextKindBody := *ldapi.NewUpsertContextKindPayload(contextKind)
 	contextKindBody.HideInTargeting = &hideInTargeting
 
-	_, _, err := betaClient.ld.ContextsBetaApi.PutContextKind(betaClient.ctx, projectKey, contextKind).UpsertContextKindPayload(contextKindBody).Execute()
+	_, _, err := client.ld.ContextsApi.PutContextKind(client.ctx, projectKey, contextKind).UpsertContextKindPayload(contextKindBody).Execute()
 	if err != nil {
 		return fmt.Errorf("failed to create context kind %s on project %s for test scaffolding: %s", contextKind, projectKey, err.Error())
 	}

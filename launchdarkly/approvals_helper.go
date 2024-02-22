@@ -5,7 +5,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
-	ldapi "github.com/launchdarkly/api-client-go/v12"
+	ldapi "github.com/launchdarkly/api-client-go/v14"
 )
 
 type approvalSchemaOptions struct {
@@ -55,6 +55,20 @@ func approvalSchema(options approvalSchemaOptions) *schema.Schema {
 				ValidateFunc: validateTagsNoDiag(),
 			},
 		},
+		SERVICE_KIND: {
+			Type:             schema.TypeString,
+			Optional:         !options.isDataSource,
+			Computed:         options.isDataSource,
+			Description:      "The kind of service associated with this approval. This determines which platform is used for requesting approval. Valid values are `servicenow`, `launchdarkly`.",
+			Default:          "launchdarkly",
+			ValidateDiagFunc: validation.ToDiagFunc(validation.StringInSlice([]string{"servicenow", "launchdarkly"}, false)),
+		},
+		SERVICE_CONFIG: {
+			Type:        schema.TypeMap,
+			Optional:    !options.isDataSource,
+			Computed:    options.isDataSource,
+			Description: "The configuration for the service associated with this approval. This is specific to each approval service. For a `service_kind` of `servicenow`, the following fields apply:\n\n\t - `template` (String) The sys_id of the Standard Change Request Template in ServiceNow that LaunchDarkly will use when creating the change request.\n\t - `detail_column` (String) The name of the ServiceNow Change Request column LaunchDarkly uses to populate detailed approval request information. ",
+		},
 	}
 
 	if options.isDataSource {
@@ -81,6 +95,8 @@ func approvalSettingsFromResourceData(val interface{}) (ldapi.ApprovalSettings, 
 		CanReviewOwnRequest:     approvalSettingsMap[CAN_REVIEW_OWN_REQUEST].(bool),
 		MinNumApprovals:         int32(approvalSettingsMap[MIN_NUM_APPROVALS].(int)),
 		CanApplyDeclinedChanges: approvalSettingsMap[CAN_APPLY_DECLINED_CHANGES].(bool),
+		ServiceKind:             approvalSettingsMap[SERVICE_KIND].(string),
+		ServiceConfig:           approvalSettingsMap[SERVICE_CONFIG].(map[string]interface{}),
 	}
 	// Required and RequiredApprovalTags should never be defined simultaneously
 	// unfortunately since they default to their null values and are nested we cannot tell if the
@@ -99,6 +115,9 @@ func approvalSettingsFromResourceData(val interface{}) (ldapi.ApprovalSettings, 
 	} else {
 		settings.Required = required
 	}
+
+	settings.ServiceKind = approvalSettingsMap[SERVICE_KIND].(string)
+	settings.ServiceConfig = approvalSettingsMap[SERVICE_CONFIG].(map[string]interface{})
 	return settings, nil
 }
 
@@ -109,6 +128,8 @@ func approvalSettingsToResourceData(settings ldapi.ApprovalSettings) interface{}
 		CAN_APPLY_DECLINED_CHANGES: settings.CanApplyDeclinedChanges,
 		REQUIRED_APPROVAL_TAGS:     settings.RequiredApprovalTags,
 		REQUIRED:                   settings.Required,
+		SERVICE_KIND:               settings.ServiceKind,
+		SERVICE_CONFIG:             settings.ServiceConfig,
 	}
 	return []map[string]interface{}{transformed}
 }
@@ -135,6 +156,8 @@ func approvalPatchFromSettings(oldApprovalSettings, newApprovalSettings interfac
 		patchReplace("/approvalSettings/minNumApprovals", settings.MinNumApprovals),
 		patchReplace("/approvalSettings/canApplyDeclinedChanges", settings.CanApplyDeclinedChanges),
 		patchReplace("/approvalSettings/requiredApprovalTags", settings.RequiredApprovalTags),
+		patchReplace("/approvalSettings/serviceKind", settings.ServiceKind),
+		patchReplace("/approvalSettings/serviceConfig", settings.ServiceConfig),
 	}
 	return patch, nil
 }

@@ -9,7 +9,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
-	ldapi "github.com/launchdarkly/api-client-go/v12"
+	ldapi "github.com/launchdarkly/api-client-go/v14"
 )
 
 type featureFlagSchemaOptions struct {
@@ -34,10 +34,19 @@ func baseFeatureFlagSchema(options featureFlagSchemaOptions) map[string]*schema.
 		},
 		MAINTAINER_ID: {
 			Type:             schema.TypeString,
-			Optional:         !options.isDataSource,
+			Optional:         true,
 			Computed:         true,
-			Description:      "The feature flag maintainer's 24 character alphanumeric team member ID. If not set, it will automatically be or stay set to the member ID associated with the API key used by your LaunchDarkly Terraform provider or the most recently-set maintainer.",
+			Description:      "The feature flag maintainer's 24 character alphanumeric team member ID. `maintainer_team_key` cannot be set if `maintainer_id` is set. If neither is set, it will automatically be or stay set to the member ID associated with the API key used by your LaunchDarkly Terraform provider or the most recently-set maintainer.",
 			ValidateDiagFunc: validateID(),
+			ConflictsWith:    []string{MAINTAINER_TEAM_KEY},
+		},
+		MAINTAINER_TEAM_KEY: {
+			Type:             schema.TypeString,
+			Optional:         true,
+			Computed:         true,
+			Description:      "The key of the associated team that maintains this feature flag. `maintainer_id` cannot be set if `maintainer_team_key` is set",
+			ValidateDiagFunc: validateKeyAndLength(int(1), int(256)),
+			ConflictsWith:    []string{MAINTAINER_ID},
 		},
 		DESCRIPTION: {
 			Type:        schema.TypeString,
@@ -166,9 +175,11 @@ func featureFlagRead(ctx context.Context, d *schema.ResourceData, raw interface{
 	_ = d.Set(CLIENT_SIDE_AVAILABILITY, clientSideAvailability)
 	_ = d.Set(INCLUDE_IN_SNIPPET, CSA.UsingEnvironmentId)
 
-	// Only set the maintainer ID if is specified in the schema
-	_, ok := d.GetOk(MAINTAINER_ID)
-	if ok {
+	// Only set the maintainer if is specified in the schema
+	_, maintainerIdOk := d.GetOk(MAINTAINER_ID)
+	_, maintainerTeamKeyOk := d.GetOk(MAINTAINER_TEAM_KEY)
+	if maintainerIdOk || maintainerTeamKeyOk {
+		_ = d.Set(MAINTAINER_TEAM_KEY, flag.MaintainerTeamKey)
 		_ = d.Set(MAINTAINER_ID, flag.MaintainerId)
 	}
 

@@ -8,7 +8,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
-	ldapi "github.com/launchdarkly/api-client-go/v12"
+	ldapi "github.com/launchdarkly/api-client-go/v14"
 	"github.com/stretchr/testify/require"
 )
 
@@ -90,7 +90,7 @@ resource "launchdarkly_metric" "custom" {
 
 // We can't update project experimentation settings in Terraform yet because they rely on beta endpoints. For now we will
 // make individual API calls to scaffold the project, contexts, and experimentation settings.
-func scaffoldProjectWithExperimentationSettings(betaClient *Client, projectKey string, randomizationUnits []string) error {
+func scaffoldProjectWithExperimentationSettings(client *Client, betaClient *Client, projectKey string, randomizationUnits []string) error {
 	projectBody := ldapi.NewProjectPost(projectKey, projectKey)
 	project, _, err := betaClient.ld.ProjectsApi.PostProject(betaClient.ctx).ProjectPost(*projectBody).Execute()
 	if err != nil {
@@ -105,7 +105,7 @@ func scaffoldProjectWithExperimentationSettings(betaClient *Client, projectKey s
 		}
 		// Add the additional context kinds to the project
 		contextKindPayload := ldapi.UpsertContextKindPayload{Name: randomizationUnit}
-		_, _, err = betaClient.ld.ContextsBetaApi.PutContextKind(betaClient.ctx, project.Key, randomizationUnit).UpsertContextKindPayload(contextKindPayload).Execute()
+		_, _, err = client.ld.ContextsApi.PutContextKind(betaClient.ctx, project.Key, randomizationUnit).UpsertContextKindPayload(contextKindPayload).Execute()
 		if err != nil {
 			return err
 		}
@@ -209,11 +209,13 @@ func TestAccMetric_WithRandomizationUnits(t *testing.T) {
 	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	resourceName := "launchdarkly_metric.custom"
 
+	client, err := newClient(os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN), os.Getenv(LAUNCHDARKLY_API_HOST), false, DEFAULT_HTTP_TIMEOUT_S)
+	require.NoError(t, err)
 	// In order to add additional randomization units we need to update the project's context kind and
 	// experimentation settings. Because this can only be done using beta endpoints we can't set this up via Terraform.
 	betaClient, err := newBetaClient(os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN), os.Getenv(LAUNCHDARKLY_API_HOST), false, DEFAULT_HTTP_TIMEOUT_S)
 	require.NoError(t, err)
-	err = scaffoldProjectWithExperimentationSettings(betaClient, projectKey, []string{"user", "request", "organization"})
+	err = scaffoldProjectWithExperimentationSettings(client, betaClient, projectKey, []string{"user", "request", "organization"})
 	require.NoError(t, err)
 
 	defer func() {

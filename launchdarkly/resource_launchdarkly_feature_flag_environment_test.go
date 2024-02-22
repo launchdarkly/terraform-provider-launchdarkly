@@ -9,7 +9,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
-	ldapi "github.com/launchdarkly/api-client-go/v12"
+	ldapi "github.com/launchdarkly/api-client-go/v14"
 	"github.com/stretchr/testify/require"
 )
 
@@ -569,6 +569,74 @@ resource "launchdarkly_feature_flag_environment" "rules_custom_context" {
 	}
 }
 `
+
+	testAccDefaultOffVariation = `
+	resource "launchdarkly_feature_flag" "off_variation_test" {
+		project_key    = launchdarkly_project.test.key
+		key            = "off-variation-test-flag"
+		name           = "off variation test"
+		variation_type = "boolean"
+	
+		variations {
+			value = false
+		}
+	
+		variations {
+			value = true
+		}
+	
+		defaults {
+			off_variation = 0
+			on_variation  = 1
+		}
+	
+		client_side_availability {
+			using_environment_id = true
+		}
+	}
+`
+
+	testAccDefaultOffVariationOnDelete = `
+resource "launchdarkly_feature_flag" "off_variation_test" {
+	project_key    = launchdarkly_project.test.key
+	key            = "off-variation-test-flag"
+	name           = "off variation test"
+	variation_type = "boolean"
+
+	variations {
+		value = false
+	}
+
+	variations {
+		value = true
+	}
+
+	defaults {
+		off_variation = 0
+		on_variation  = 1
+	}
+
+	client_side_availability {
+		using_environment_id = true
+	}
+}
+
+resource "launchdarkly_feature_flag_environment" "off_variation_test_configuration" {
+	flag_id       = launchdarkly_feature_flag.off_variation_test.id
+	env_key       = "test"
+	on            = true
+	off_variation = 0
+
+	targets {
+		values    = ["context-value"]
+		variation = 1
+	}
+
+	fallthrough {
+		variation = 0
+	}
+}
+`
 )
 
 func TestAccFeatureFlagEnvironment_Empty(t *testing.T) {
@@ -924,12 +992,9 @@ func TestAccFeatureFlagEnvironment_ContextTargets(t *testing.T) {
 	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	client, err := newClient(os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN), os.Getenv(LAUNCHDARKLY_API_HOST), false, DEFAULT_HTTP_TIMEOUT_S)
 	require.NoError(t, err)
-	// TODO at some point the context kind API will no longer be in beta and we will want to update/remove this
-	betaClient, err := newBetaClient(os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN), os.Getenv(LAUNCHDARKLY_API_HOST), false, DEFAULT_HTTP_TIMEOUT_S)
-	require.NoError(t, err)
 	accountContextKind := "account"
 	otherContextKind := "other"
-	err = testAccProjectWithCustomContextKindScaffold(client, betaClient, projectKey, []string{accountContextKind})
+	err = testAccProjectWithCustomContextKindScaffold(client, projectKey, []string{accountContextKind})
 	require.NoError(t, err)
 	defer func() {
 		err := testAccProjectScaffoldDelete(client, projectKey)
@@ -1072,6 +1137,52 @@ func TestAccFeatureFlagEnvironment_ContextTargets(t *testing.T) {
 	})
 }
 
+func TestAccFeatureFlagEnvironment_OffVariationResetsToCorrectDefaultOnDelete(t *testing.T) {
+	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	globalFlagResourceName := "launchdarkly_feature_flag.off_variation_test"
+	resourceName := "launchdarkly_feature_flag_environment.off_variation_test_configuration"
+	flagKey := "off-variation-test-flag"
+
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck: func() {
+			testAccPreCheck(t)
+		},
+		Providers: testAccProviders,
+		Steps: []resource.TestStep{
+			{
+				Config: withRandomProject(projectKey, testAccDefaultOffVariationOnDelete),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckFeatureFlagEnvironmentExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, ON, "true"),
+					resource.TestCheckResourceAttr(resourceName, OFF_VARIATION, "0"),
+					resource.TestCheckResourceAttr(resourceName, "fallthrough.0.variation", "0"),
+					resource.TestCheckResourceAttr(resourceName, TRACK_EVENTS, "false"),
+					resource.TestCheckResourceAttr(globalFlagResourceName, "defaults.0.off_variation", "0"),
+					resource.TestCheckResourceAttr(globalFlagResourceName, "defaults.0.on_variation", "1"),
+				),
+			},
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
+			{
+				Config: withRandomProject(projectKey, testAccDefaultOffVariation),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(globalFlagResourceName, "defaults.0.off_variation", "0"),
+					resource.TestCheckResourceAttr(globalFlagResourceName, "defaults.0.on_variation", "1"),
+					testAccCheckFeatureFlagEnvironmentDefaults(t, projectKey, flagKey),
+				),
+			},
+			{
+				ResourceName:      globalFlagResourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
+		},
+	})
+}
+
 func testAccCheckFeatureFlagEnvironmentExists(resourceName string) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
 		rs, ok := s.RootModule().Resources[resourceName]
@@ -1099,7 +1210,21 @@ func testAccCheckFeatureFlagEnvironmentExists(resourceName string) resource.Test
 	}
 }
 
-func testAccProjectWithCustomContextKindScaffold(client *Client, betaClient *Client, projectKey string, contextKindKeys []string) error {
+// this is a bespoke helper function to check that the env config's off variation
+// has defaulted to the expected global config variation (in this case 0)
+func testAccCheckFeatureFlagEnvironmentDefaults(t *testing.T, projectKey, flagKey string) resource.TestCheckFunc {
+	return func(s *terraform.State) error {
+		client, err := newClient(os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN), os.Getenv(LAUNCHDARKLY_API_HOST), false, DEFAULT_HTTP_TIMEOUT_S)
+		require.NoError(t, err)
+		flag, _, err := client.ld.FeatureFlagsApi.GetFeatureFlag(client.ctx, projectKey, flagKey).Execute()
+		require.NoError(t, err)
+		envConfig := flag.Environments["test"]
+		require.Equal(t, int32(0), *envConfig.OffVariation)
+		return nil
+	}
+}
+
+func testAccProjectWithCustomContextKindScaffold(client *Client, projectKey string, contextKindKeys []string) error {
 	projectBody := ldapi.ProjectPost{
 		Name: "Context Kind Test Project",
 		Key:  projectKey,
@@ -1110,7 +1235,7 @@ func testAccProjectWithCustomContextKindScaffold(client *Client, betaClient *Cli
 	}
 
 	for _, key := range contextKindKeys {
-		err := addContextKindToProject(betaClient, projectKey, key)
+		err := addContextKindToProject(client, projectKey, key)
 		if err != nil {
 			return err
 		}

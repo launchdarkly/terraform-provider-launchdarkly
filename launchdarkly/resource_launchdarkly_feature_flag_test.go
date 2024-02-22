@@ -137,6 +137,32 @@ resource "launchdarkly_feature_flag" "json" {
   }
 `
 
+	testAccFeatureFlagWithTeamMaintainer = `
+	resource "launchdarkly_team_member" "test" {
+		email = "%s+wbteste2e@launchdarkly.com"
+		first_name = "first"
+		last_name = "last"
+		role = "admin"
+		custom_roles = []
+	}
+
+	resource "launchdarkly_team" "test_team" {
+		key                   = "%s"
+		name                  = "test team"
+		description           = "Team to manage team project"
+		member_ids            = [launchdarkly_team_member.test.id]
+		custom_role_keys      = []
+	}
+
+	resource "launchdarkly_feature_flag" "maintained" {
+		project_key = launchdarkly_project.test.key
+		key = "maintained-flag"
+		name = "Maintained feature flag"
+		variation_type = "boolean"
+		maintainer_team_key = launchdarkly_team.test_team.key
+	}
+	`
+
 	// The email must be set with a random name using fmt.Sprintf for this test to work since LD does
 	// not support creating members with the same email address more than once.
 	testAccFeatureFlagWithMaintainer = `
@@ -822,6 +848,20 @@ func TestAccFeatureFlag_WithMaintainer(t *testing.T) {
 		Providers: testAccProviders,
 		Steps: []resource.TestStep{
 			{
+				Config: withRandomProject(projectKey, fmt.Sprintf(testAccFeatureFlagWithTeamMaintainer, randomName, randomName)),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckProjectExists("launchdarkly_project.test"),
+					testAccCheckMemberExists("launchdarkly_team_member.test"),
+					testAccCheckFeatureFlagExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, NAME, "Maintained feature flag"),
+					resource.TestCheckResourceAttr(resourceName, KEY, "maintained-flag"),
+					resource.TestCheckResourceAttr(resourceName, PROJECT_KEY, projectKey),
+					resource.TestCheckResourceAttr(resourceName, MAINTAINER_ID, ""),
+					resource.TestCheckResourceAttrPair(resourceName, MAINTAINER_TEAM_KEY, "launchdarkly_team.test_team", "id"),
+					resource.TestCheckResourceAttrPair(resourceName, MAINTAINER_TEAM_KEY, "launchdarkly_team.test_team", "key"),
+				),
+			},
+			{
 				Config: withRandomProject(projectKey, fmt.Sprintf(testAccFeatureFlagWithMaintainer, randomName)),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckProjectExists("launchdarkly_project.test"),
@@ -831,6 +871,7 @@ func TestAccFeatureFlag_WithMaintainer(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, KEY, "maintained-flag"),
 					resource.TestCheckResourceAttr(resourceName, PROJECT_KEY, projectKey),
 					resource.TestCheckResourceAttrPair(resourceName, MAINTAINER_ID, "launchdarkly_team_member.test", "id"),
+					resource.TestCheckResourceAttr(resourceName, MAINTAINER_TEAM_KEY, ""),
 				),
 			},
 			{

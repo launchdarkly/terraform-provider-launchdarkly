@@ -3,6 +3,24 @@
 package launchdarkly
 
 var SUBSCRIPTION_CONFIGURATION_FIELDS = map[string]IntegrationConfig{
+	"chronosphere": {
+		"receiverURL": {
+			AllowedValues: []string{},
+			DefaultValue:  nil,
+			Description:   "Your Chronosphere receiver URL. Should look like https://{MY_COMPANY}.chronosphere.io/api/v1/data/events/receiver/launchdarkly",
+			IsOptional:    false,
+			IsSecret:      false,
+			Type:          "string",
+		},
+		"secretToken": {
+			AllowedValues: []string{},
+			DefaultValue:  nil,
+			Description:   "Enter your Chronosphere secret token.",
+			IsOptional:    false,
+			IsSecret:      true,
+			Type:          "string",
+		},
+	},
 	"cloudtrail": {
 		"accountId": {
 			AllowedValues: []string{},

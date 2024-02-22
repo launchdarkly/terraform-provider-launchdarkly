@@ -1,3 +1,14 @@
+## [2.18.0] - (Unreleased)
+### Fixed:
+- Fixed a bug surfaced by [issue #198](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/198) where feature flag configuration off variations were being reverted to an incorrect default value when a `launchdarkly_feature_flag_environment` was removed.
+
+### Improvements:
+- Added previously missing support for team maintainers on the `launchdarkly_feature_flag` resource and data source with the new `team_maintainer_key` attribute field.
+
+## [2.17.0] - 2023-12-08
+### Added:
+- Added the `service_kind` and `service_config` attributes the `launchdarkly_environment`'s approval settings. With these settings you can configure the ServiceNow approval system. Thanks, @arhill05 [#191](https://github.com/launchdarkly/terraform-provider-launchdarkly/pull/191)
+
 ## [2.16.0] - 2023-10-17
 ### Added:
 - Added additional fields related to big segments to the `launchdarkly_segment` resource and data source. Thanks, @christogav! [#187](https://github.com/launchdarkly/terraform-provider-launchdarkly/pull/187)
