@@ -11,7 +11,7 @@ This directory contains an example of how one might configure multiple projects,
   - a "Terraform Production Environment" with key `tf-production`
   - a boolean "Basic feature flag" with key "basic-flag"
     - a `tf-test`-specific flag configuration attached to the "Basic feature flag"
-- a "Terraform Example Project 2" with thte key `tf-project-2` containing:
+- a "Terraform Example Project 2" with the key `tf-project-2` containing:
   - an "Example Environment A" with key `tf-example-env-a`
   - an "Example Environment B" with key `tf-example-env-b`
   - (automatically-created "Test" and "Production" environments will also be created since this example does not use nested environments in the `launchdarkly_project` resource)
