@@ -8,7 +8,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
-	ldapi "github.com/launchdarkly/api-client-go/v12"
+	ldapi "github.com/launchdarkly/api-client-go/v14"
 	"github.com/stretchr/testify/require"
 )
 
@@ -39,7 +39,7 @@ func testAccDataSourceMetricScaffold(client *Client, betaClient *Client, project
 		}
 		// Add the additional context kinds to the project
 		contextKindPayload := ldapi.UpsertContextKindPayload{Name: randomizationUnit}
-		_, _, err = betaClient.ld.ContextsBetaApi.PutContextKind(betaClient.ctx, project.Key, randomizationUnit).UpsertContextKindPayload(contextKindPayload).Execute()
+		_, _, err = client.ld.ContextsApi.PutContextKind(client.ctx, project.Key, randomizationUnit).UpsertContextKindPayload(contextKindPayload).Execute()
 		if err != nil {
 			return nil, err
 		}

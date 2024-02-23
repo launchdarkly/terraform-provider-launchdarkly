@@ -65,6 +65,7 @@ const (
 	LAST_NAME                        = "last_name"
 	MAINTAINERS                      = "maintainers"
 	MAINTAINER_ID                    = "maintainer_id"
+	MAINTAINER_TEAM_KEY              = "maintainer_team_key"
 	MEMBER_IDS                       = "member_ids"
 	MIN_NUM_APPROVALS                = "min_num_approvals"
 	MOBILE_KEY                       = "mobile_key"

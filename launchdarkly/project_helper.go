@@ -8,7 +8,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	ldapi "github.com/launchdarkly/api-client-go/v12"
+	ldapi "github.com/launchdarkly/api-client-go/v14"
 )
 
 func projectRead(ctx context.Context, d *schema.ResourceData, meta interface{}, isDataSource bool) diag.Diagnostics {
@@ -125,7 +125,7 @@ func getAllEnvironments(client *Client, projectKey string) (ldapi.Environments, 
 		envPage, resp, err := client.ld.EnvironmentsApi.GetEnvironmentsByProject(
 			client.ctx, projectKey).Limit(pageLimit).Offset(currentPage * pageLimit).Execute()
 		if err != nil {
-			return *ldapi.NewEnvironments(), resp, err
+			return *ldapi.NewEnvironments(envItems), resp, err
 		}
 		envItems = append(envItems, envPage.Items...)
 		if len(envItems) >= int(envPage.GetTotalCount()) {
@@ -133,8 +133,7 @@ func getAllEnvironments(client *Client, projectKey string) (ldapi.Environments, 
 		}
 	}
 
-	envs := *ldapi.NewEnvironments()
-	envs.SetItems(envItems)
+	envs := *ldapi.NewEnvironments(envItems)
 	envs.SetTotalCount(int32(len(envItems)))
 	return envs, nil, nil
 }

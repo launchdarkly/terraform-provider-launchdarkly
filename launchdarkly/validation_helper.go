@@ -29,14 +29,14 @@ func validateKey() schema.SchemaValidateDiagFunc {
 // https://github.com/hashicorp/terraform-plugin-sdk/issues/734
 //
 //nolint:staticcheck // SA1019 TODO: return SchemaValidateDiagFunc type
-func validateKeyAndLength(minLength, maxLength int) schema.SchemaValidateFunc {
-	return validation.All(
+func validateKeyAndLength(minLength, maxLength int) schema.SchemaValidateDiagFunc {
+	return validation.ToDiagFunc(validation.All(
 		validation.StringMatch(
 			regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9_.-]*$`),
 			"Must contain only letters, numbers, '.', '-', or '_' and must start with an alphanumeric",
 		),
 		validation.StringLenBetween(minLength, maxLength),
-	)
+	))
 }
 
 func validateID() schema.SchemaValidateDiagFunc {

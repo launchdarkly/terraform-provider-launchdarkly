@@ -7,8 +7,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
-	ldapi "github.com/launchdarkly/api-client-go/v12"
+	ldapi "github.com/launchdarkly/api-client-go/v14"
 )
 
 // We assign a custom diff in cases where the customer has not assigned a default for CSA or IIS in config
@@ -71,7 +70,7 @@ func resourceProject() *schema.Resource {
 				Required:         true,
 				Description:      "The project's unique key",
 				ForceNew:         true,
-				ValidateDiagFunc: validation.ToDiagFunc(validateKeyAndLength(1, 100)),
+				ValidateDiagFunc: validateKeyAndLength(1, 100),
 			},
 			NAME: {
 				Type:        schema.TypeString,
