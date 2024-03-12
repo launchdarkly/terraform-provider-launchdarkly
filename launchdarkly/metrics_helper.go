@@ -88,6 +88,8 @@ func baseMetricSchema(isDataSource bool) map[string]*schema.Schema {
 			Optional:         true,
 			Description:      "The success criteria for your metric (if numeric metric)",
 			ValidateDiagFunc: validation.ToDiagFunc(validation.StringInSlice([]string{"HigherThanBaseline", "LowerThanBaseline"}, false)),
+			Computed:         true,
+			ComputedWhen:     []string{KIND},
 		},
 		URLS: {
 			Type:        schema.TypeList,
