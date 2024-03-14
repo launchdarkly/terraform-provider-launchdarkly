@@ -1,3 +1,8 @@
+## [2.18.1] - 2024-03-14
+### Fixed:
+- Fixed the "Default off variation must be a valid index in the variations list" error for cases where the default variations were defined when creating a `launchdarkly_feature_flag` but no variations were explicitly defined (in the case of a default boolean flag, for example). 
+- Adds a default value "HigherThanBaseline" to the `launchdarkly_metric.success_criteria` field to correspond to the same change in the API.
+
 ## [2.18.0] - 2024-02-23
 ### Fixed:
 - Fixed a bug surfaced by [issue #198](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/198) where feature flag configuration off variations were being reverted to an incorrect default value when a `launchdarkly_feature_flag_environment` was removed.
