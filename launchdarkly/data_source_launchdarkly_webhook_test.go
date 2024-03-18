@@ -22,7 +22,7 @@ data "launchdarkly_webhook" "test" {
 
 func testAccDataSourceWebhookCreate(client *Client, webhookName string) (*ldapi.Webhook, error) {
 	statementResources := []string{"proj/*"}
-	statementActions := []string{"turnFlagOn"}
+	statementActions := []string{"updateOn"}
 	webhookBody := ldapi.WebhookPost{
 		Url:  "https://www.example.com",
 		Sign: false,
@@ -110,7 +110,7 @@ func TestAccDataSourceWebhook_exists(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "tags.#", "1"),
 					resource.TestCheckResourceAttr(resourceName, "statements.#", "1"),
 					resource.TestCheckResourceAttr(resourceName, "statements.0.resources.0", "proj/*"),
-					resource.TestCheckResourceAttr(resourceName, "statements.0.actions.0", "turnFlagOn"),
+					resource.TestCheckResourceAttr(resourceName, "statements.0.actions.0", "updateOn"),
 					resource.TestCheckResourceAttr(resourceName, "statements.0.effect", "allow"),
 					resource.TestCheckResourceAttr(resourceName, SECRET, ""), // since we set Sign to false
 
