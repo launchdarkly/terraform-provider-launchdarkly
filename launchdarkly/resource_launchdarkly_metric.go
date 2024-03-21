@@ -7,8 +7,10 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 
-	ldapi "github.com/launchdarkly/api-client-go/v14"
+	ldapi "github.com/launchdarkly/api-client-go/v15"
 )
+
+const CUSTOM_METRIC_DEFAULT_SUCCESS_CRITERIA = "HigherThanBaseline"
 
 // Our required fields for metrics depend on the value of the 'kind' enum.
 // As of now, TF does not support validating multiple attributes at once, so our only options are
@@ -53,12 +55,19 @@ func customizeMetricDiff(ctx context.Context, diff *schema.ResourceDiff, v inter
 			return fmt.Errorf("click metrics do not accept 'event_key'")
 		}
 	case "custom":
+		// enum validation is done in validateFunction against attribute
+		if successCriteriaInConfig.IsNull() {
+			err := diff.SetNew(SUCCESS_CRITERIA, CUSTOM_METRIC_DEFAULT_SUCCESS_CRITERIA)
+			if err != nil {
+				return err
+			}
+		}
 		isNumericInConfig := config.GetAttr(IS_NUMERIC)
 		// numeric custom metrics have extra required fields
 		if isNumericInConfig.True() {
-			// enum validation is done in validateFunction against attribute
 			if successCriteriaInConfig.IsNull() {
 				return fmt.Errorf("numeric custom metrics require 'success_criteria' to be set")
+
 			}
 			if unitInConfig.IsNull() {
 				return fmt.Errorf("numeric custom metrics require 'unit' to be set")
@@ -168,6 +177,11 @@ func resourceMetricCreate(ctx context.Context, d *schema.ResourceData, metaRaw i
 	if ok {
 		successCriteria := d.Get(SUCCESS_CRITERIA).(string)
 		metric.SuccessCriteria = &successCriteria
+	} else {
+		if kind == "custom" {
+			successCriteria := CUSTOM_METRIC_DEFAULT_SUCCESS_CRITERIA
+			metric.SuccessCriteria = &successCriteria
+		}
 	}
 
 	_, _, err := client.ld.MetricsApi.PostMetric(client.ctx, projectKey).MetricPost(metric).Execute()
@@ -249,6 +263,10 @@ func resourceMetricUpdate(ctx context.Context, d *schema.ResourceData, metaRaw i
 	successCriteria, ok := d.GetOk(SUCCESS_CRITERIA)
 	if ok {
 		patch = append(patch, patchReplace("/successCriteria", successCriteria.(string)))
+	} else {
+		if kind == "custom" {
+			patch = append(patch, patchReplace("/successCriteria", CUSTOM_METRIC_DEFAULT_SUCCESS_CRITERIA))
+		}
 	}
 
 	// Only update the maintainer ID if is specified in the schema

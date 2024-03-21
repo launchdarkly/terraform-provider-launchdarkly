@@ -10,7 +10,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 
-	ldapi "github.com/launchdarkly/api-client-go/v14"
+	ldapi "github.com/launchdarkly/api-client-go/v15"
 )
 
 func baseMetricSchema(isDataSource bool) map[string]*schema.Schema {
@@ -88,6 +88,8 @@ func baseMetricSchema(isDataSource bool) map[string]*schema.Schema {
 			Optional:         true,
 			Description:      "The success criteria for your metric (if numeric metric)",
 			ValidateDiagFunc: validation.ToDiagFunc(validation.StringInSlice([]string{"HigherThanBaseline", "LowerThanBaseline"}, false)),
+			Computed:         true,
+			ComputedWhen:     []string{KIND},
 		},
 		URLS: {
 			Type:        schema.TypeList,

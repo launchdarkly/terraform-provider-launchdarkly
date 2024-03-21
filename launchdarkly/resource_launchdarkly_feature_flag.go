@@ -6,7 +6,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	ldapi "github.com/launchdarkly/api-client-go/v14"
+	ldapi "github.com/launchdarkly/api-client-go/v15"
 )
 
 func resourceFeatureFlag() *schema.Resource {
@@ -70,6 +70,13 @@ func resourceFeatureFlagCreate(ctx context.Context, d *schema.ResourceData, meta
 	defaults, err := defaultVariationsFromResourceData(d)
 	if err != nil {
 		return diag.Errorf("invalid default variations: %v", err)
+	}
+	variationType := d.Get(VARIATION_TYPE).(string)
+	if variationType == BOOL_VARIATION && len(variations) == 0 {
+		// explicitly define default boolean variations.
+		// this prevents the "Default off variation must be a valid index in the variations list"
+		// error that we see when we define defaults but no variations
+		variations = []ldapi.Variation{{Value: true}, {Value: false}}
 	}
 
 	flag := ldapi.FeatureFlagBody{
