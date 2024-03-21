@@ -8,7 +8,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
-	ldapi "github.com/launchdarkly/api-client-go/v14"
+	ldapi "github.com/launchdarkly/api-client-go/v15"
 	"github.com/stretchr/testify/require"
 )
 
@@ -47,10 +47,10 @@ func testAccDataSourceMetricScaffold(client *Client, betaClient *Client, project
 	}
 
 	// Update the project's experimentation settings to make the new context available for experiments
-	expSettings := ldapi.ExperimentationSettingsPut{
+	expSettings := ldapi.RandomizationSettingsPut{
 		RandomizationUnits: randomizationUnitsInput,
 	}
-	_, _, err = betaClient.ld.ExperimentsBetaApi.PutExperimentationSettings(betaClient.ctx, projectKey).ExperimentationSettingsPut(expSettings).Execute()
+	_, _, err = betaClient.ld.ExperimentsBetaApi.PutExperimentationSettings(betaClient.ctx, projectKey).RandomizationSettingsPut(expSettings).Execute()
 	if err != nil {
 		return nil, err
 	}
