@@ -19,7 +19,7 @@ This resource allows you to create and manage environment-specific feature flags
 ## Example Usage
 
 ```terraform
-resource "launchdarkly_feature_flag_environment" "number_env" {
+resource "launchdarkly_feature_flag_environment" "number_ff_env" {
   flag_id = launchdarkly_feature_flag.number.id
   env_key = launchdarkly_environment.staging.key
 
