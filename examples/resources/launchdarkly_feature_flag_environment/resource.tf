@@ -1,4 +1,4 @@
-resource "launchdarkly_feature_flag_environment" "number_env" {
+resource "launchdarkly_feature_flag_environment" "number_ff_env" {
   flag_id = launchdarkly_feature_flag.number.id
   env_key = launchdarkly_environment.staging.key
 
