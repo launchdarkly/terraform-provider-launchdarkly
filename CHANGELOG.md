@@ -1,3 +1,8 @@
+## [2.18.2] - 2024-03-25
+### Improvements:
+- Updated the resource name in our `launchdarkly_feature_flag_environment` docs example to make it more clear that it's a feature flag environment, not an environment.
+- Updated the LD API client from v14 to v15.
+
 ## [2.18.1] - 2024-03-14
 ### Fixed:
 - Fixed the "Default off variation must be a valid index in the variations list" error for cases where the default variations were defined when creating a `launchdarkly_feature_flag` but no variations were explicitly defined (in the case of a default boolean flag, for example). 
