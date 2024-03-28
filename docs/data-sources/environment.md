@@ -30,6 +30,10 @@ data "launchdarkly_environment" "example" {
 - `key` (String) The project-unique key for the environment.
 - `project_key` (String) The environment's project key.
 
+### Optional
+
+- `critical` (Boolean) Denotes whether the environment is critical.
+
 ### Read-Only
 
 - `api_key` (String, Sensitive) The environment's SDK key.
