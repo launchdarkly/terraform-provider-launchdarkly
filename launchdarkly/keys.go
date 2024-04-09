@@ -23,6 +23,7 @@ const (
 	CONTEXT_KIND                     = "context_kind"
 	CONTEXT_TARGETS                  = "context_targets"
 	CREATION_DATE                    = "creation_date"
+	CRITICAL                         = "critical"
 	CUSTOM_PROPERTIES                = "custom_properties"
 	CUSTOM_ROLES                     = "custom_roles"
 	CUSTOM_ROLE_KEYS                 = "custom_role_keys"
