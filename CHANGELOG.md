@@ -1,3 +1,10 @@
+## [2.18.3] - 2024-05-16
+### Added:
+- `critical` field on `launchdarkly_environment`.
+
+### Changed:
+- Updated examples to show use of all clause property
+
 ## [2.18.2] - 2024-03-25
 ### Improvements:
 - Updated the resource name in our `launchdarkly_feature_flag_environment` docs example to make it more clear that it's a feature flag environment, not an environment.
