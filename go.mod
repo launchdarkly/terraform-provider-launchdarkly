@@ -15,6 +15,8 @@ require (
 	github.com/stretchr/testify v1.7.2
 )
 
+require github.com/launchdarkly/api-client-go/v16 v16.1.1
+
 require (
 	github.com/Masterminds/goutils v1.1.1 // indirect
 	github.com/Masterminds/semver/v3 v3.1.1 // indirect
@@ -52,7 +54,6 @@ require (
 	github.com/huandu/xstrings v1.3.2 // indirect
 	github.com/imdario/mergo v0.3.13 // indirect
 	github.com/jackc/sqlfmt v0.1.1-0.20191221211249-d576133216e1 // indirect
-	github.com/launchdarkly/api-client-go/v15 v15.0.0
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.16 // indirect
 	github.com/mitchellh/cli v1.1.5 // indirect

@@ -3,7 +3,7 @@ package launchdarkly
 import (
 	"testing"
 
-	ldapi "github.com/launchdarkly/api-client-go/v15"
+	ldapi "github.com/launchdarkly/api-client-go/v16"
 	"github.com/stretchr/testify/assert"
 )
 
