@@ -29,6 +29,12 @@ func baseEnvironmentSchema(options environmentSchemaOptions) map[string]*schema.
 			ForceNew:         !options.forProject,
 			ValidateDiagFunc: validateKey(),
 		},
+		CRITICAL: {
+			Type:        schema.TypeBool,
+			Optional:    true,
+			Default:     false,
+			Description: "Denotes whether the environment is critical.",
+		},
 		API_KEY: {
 			Type:        schema.TypeString,
 			Computed:    true,
@@ -130,10 +136,20 @@ func getEnvironmentUpdatePatches(oldConfig, config map[string]interface{}) ([]ld
 		patches = append(patches, patchReplace("/confirmChanges", confirmChanges))
 	}
 
+	kind, ok := config[KIND]
+	if ok {
+		patches = append(patches, patchReplace("/kind", kind))
+	}
+
 	tags, ok := config[TAGS]
 	if ok {
 		envTags := stringsFromSchemaSet(tags.(*schema.Set))
 		patches = append(patches, patchReplace("/tags", &envTags))
+	}
+
+	critical, ok := config[CRITICAL]
+	if ok {
+		patches = append(patches, patchReplace("/critical", critical))
 	}
 
 	var oldApprovalSettings []interface{}
@@ -225,6 +241,7 @@ func environmentToResourceData(env ldapi.Environment) envResourceData {
 		REQUIRE_COMMENTS:     env.RequireComments,
 		CONFIRM_CHANGES:      env.ConfirmChanges,
 		TAGS:                 env.Tags,
+		CRITICAL:             env.Critical,
 	}
 	if env.ApprovalSettings != nil {
 		envData[APPROVAL_SETTINGS] = approvalSettingsToResourceData(*env.ApprovalSettings)
@@ -273,6 +290,7 @@ func environmentRead(ctx context.Context, d *schema.ResourceData, meta interface
 	_ = d.Set(DEFAULT_TTL, int(env.DefaultTtl))
 	_ = d.Set(SECURE_MODE, env.SecureMode)
 	_ = d.Set(DEFAULT_TRACK_EVENTS, env.DefaultTrackEvents)
+	_ = d.Set(CRITICAL, env.Critical) // We need to update the LaunchDarkly go api client's version of Environment
 	_ = d.Set(TAGS, env.Tags)
 	_ = d.Set(REQUIRE_COMMENTS, env.RequireComments)
 	_ = d.Set(CONFIRM_CHANGES, env.ConfirmChanges)
