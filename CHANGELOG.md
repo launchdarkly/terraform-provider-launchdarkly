@@ -1,3 +1,10 @@
+## [2.18.4] - 2024-05-28
+### Fixed:
+- Do not retry 409s from LaunchDarkly.
+
+### Updated:
+- Update LaunchDarkly API client dependency to v16.
+
 ## [2.18.3] - 2024-05-16
 ### Added:
 - `critical` field on `launchdarkly_environment`.
