@@ -515,8 +515,8 @@ github.com/kunwardeep/paralleltest v1.0.3/go.mod h1:vLydzomDFpk7yu5UX02RmP0H8QfR
 github.com/kylelemons/godebug v1.1.0 h1:RPNrshWIDI6G2gRW9EHilWtl7Z6Sb1BR0xunSBf0SNc=
 github.com/kylelemons/godebug v1.1.0/go.mod h1:9/0rRGxNHcop5bhtWyNeEfOS8JIWk580+fNqagV/RAw=
 github.com/kyoh86/exportloopref v0.1.8/go.mod h1:1tUcJeiioIs7VWe5gcOObrux3lb66+sBqGZrRkMwPgg=
-github.com/launchdarkly/api-client-go/v15 v15.0.0 h1:tA1oYCrId9L9vE8nFtAtlqkYkjPtnlXeXFMqvuezDtA=
-github.com/launchdarkly/api-client-go/v15 v15.0.0/go.mod h1:7dpsX/epfhhRbCv5sEIxKng0xxYbzRYXlp0oJB3+XrQ=
+github.com/launchdarkly/api-client-go/v16 v16.1.1 h1:YkGeHD0Syls1NL+ta6FJOXxkACfT58LPB0itaG29mNk=
+github.com/launchdarkly/api-client-go/v16 v16.1.1/go.mod h1:LTKQebyewnd5lsscGIAjaJEG9TTRD6qglalv+1bixME=
 github.com/ldez/gomoddirectives v0.2.2/go.mod h1:cpgBogWITnCfRq2qGoDkKMEVSaarhdBr6g8G04uz6d0=
 github.com/ldez/tagliatelle v0.3.0/go.mod h1:8s6WJQwEYHbKZDsp/LjArytKOG8qaMrKQQ3mFukHs88=
 github.com/leonklingele/grouper v1.1.0/go.mod h1:uk3I3uDfi9B6PeUjsCKi6ndcf63Uy7snXgR4yDYQVDY=

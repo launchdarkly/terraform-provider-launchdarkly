@@ -7,7 +7,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	ldapi "github.com/launchdarkly/api-client-go/v15"
+	ldapi "github.com/launchdarkly/api-client-go/v16"
 )
 
 // We assign a custom diff in cases where the customer has not assigned a default for CSA or IIS in config
