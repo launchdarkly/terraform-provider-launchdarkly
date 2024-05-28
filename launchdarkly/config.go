@@ -126,12 +126,7 @@ func backOff(min, max time.Duration, attemptNum int, resp *http.Response) time.D
 }
 
 func standardRetryPolicy(ctx context.Context, resp *http.Response, err error) (bool, error) {
-	retry, retryErr := retryablehttp.DefaultRetryPolicy(ctx, resp, err)
-	if !retry && retryErr == nil && err == nil && resp.StatusCode == http.StatusConflict {
-		return true, nil
-	}
-
-	return retry, retryErr
+	return retryablehttp.DefaultRetryPolicy(ctx, resp, err)
 }
 
 // retryPolicyWith404Retries extends our standard retryPolicy but also retries 404s (with exponential backoff).
