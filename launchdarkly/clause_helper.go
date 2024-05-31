@@ -67,7 +67,7 @@ func clauseSchema() *schema.Schema {
 					Type:        schema.TypeString,
 					Optional:    true,
 					Default:     "user",
-					Description: "The context kind associated with this rule clause. This argument is only valid if `rollout_weights` is also specified. If omitted, defaults to `user`.",
+					Description: "The context kind associated with this rule clause. If omitted, defaults to `user`.",
 				},
 			},
 		},
