@@ -64,25 +64,29 @@ func resourceProject() *schema.Resource {
 			StateContext: resourceProjectImport,
 		},
 
+		Description: `Provides a LaunchDarkly project resource.
+
+This resource allows you to create and manage projects within your LaunchDarkly organization.`,
+
 		Schema: map[string]*schema.Schema{
 			KEY: {
 				Type:             schema.TypeString,
 				Required:         true,
-				Description:      "The project's unique key",
+				Description:      "The project's unique key. A change in this field will force the destruction of the existing resource and the creation of a new one.",
 				ForceNew:         true,
 				ValidateDiagFunc: validateKeyAndLength(1, 100),
 			},
 			NAME: {
 				Type:        schema.TypeString,
 				Required:    true,
-				Description: "A human-readable name for your project",
+				Description: "The project's name.",
 			},
 			INCLUDE_IN_SNIPPET: {
 				Type:          schema.TypeBool,
 				Optional:      true,
-				Description:   "Whether feature flags created under the project should be available to client-side SDKs by default",
+				Description:   "Whether feature flags created under the project should be available to client-side SDKs by default. Please migrate to `default_client_side_availability` to maintain future compatibility.",
 				Computed:      true,
-				Deprecated:    "'include_in_snippet' is now deprecated. Please migrate to 'default_client_side_availability' to maintain future compatability.",
+				Deprecated:    "'include_in_snippet' is now deprecated. Please migrate to 'default_client_side_availability' to maintain future compatibility.",
 				ConflictsWith: []string{DEFAULT_CLIENT_SIDE_AVAILABILITY},
 			},
 			DEFAULT_CLIENT_SIDE_AVAILABILITY: {
@@ -93,7 +97,7 @@ func resourceProject() *schema.Resource {
 				// As the plan output suggests the values will be changed to -> null, when we actually have LD set defaults of false and true respectively
 				// Sorting that by using Computed for now
 				Computed:      true,
-				Description:   "List determining which SDKs have access to new flags created under the project by default",
+				Description:   "A block describing which client-side SDKs can use new flags by default.",
 				ConflictsWith: []string{INCLUDE_IN_SNIPPET},
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
@@ -112,7 +116,7 @@ func resourceProject() *schema.Resource {
 			ENVIRONMENTS: {
 				Type:        schema.TypeList,
 				Required:    true,
-				Description: "List of nested `environments` blocks describing LaunchDarkly environments that belong to the project",
+				Description: "List of nested `environments` blocks describing LaunchDarkly environments that belong to the project. When managing LaunchDarkly projects in Terraform, you should always manage your environments as nested project resources.\n\n-> **Note:** Mixing the use of nested `environments` blocks and [`launchdarkly_environment`](/docs/providers/launchdarkly/r/environment.html) resources is not recommended. `launchdarkly_environment` resources should only be used when the encapsulating project is not managed in Terraform.",
 				Computed:    false,
 				Elem: &schema.Resource{
 					Schema: environmentSchema(environmentSchemaOptions{forProject: true, isDataSource: false}),

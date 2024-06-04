@@ -1,0 +1,39 @@
+---
+page_title: "{{.Name}} {{.Type}} - {{.ProviderName}}"
+subcategory: ""
+description: |-
+{{ .Description | plainmarkdown | trimspace | prefixlines "  " }}
+---
+
+# {{.Name}} ({{.Type}})
+
+{{ .Description | trimspace }}
+
+## Example Usage
+
+{{ tffile (printf "examples/resources/%s/resource.tf" .Name)}}
+
+{{ .SchemaMarkdown | trimspace }}
+
+## Import
+
+Import is supported using the following syntax:
+
+{{ codefile "sh" .ImportFile | trimspace }}
+
+**IMPORTANT:** Please note that, regardless of how many `environments` blocks you include on your import, _all_ of the project's environments will be saved to the Terraform state and will update with subsequent applies. This means that any environments not included in your import configuration will be torn down with any subsequent apply. If you wish to manage project properties with Terraform but not nested environments consider using Terraform's [ignore changes](https://www.terraform.io/docs/language/meta-arguments/lifecycle.html#ignore_changes) lifecycle meta-argument; see below for example.
+
+```terraform
+resource "launchdarkly_project" "example" {
+  lifecycle {
+    ignore_changes = [environments]
+  }
+  name = "testProject"
+  key = "%s"
+  # environments not included on this configuration will not be affected by subsequent applies
+}
+```
+
+**Note:** Following an import, the first apply may show a diff in the order of your environments as Terraform realigns its state with the order of configurations in your project configuration. This will not change your environments or their SDK keys.
+
+**Managing environment resources with Terraform should always be done on the project unless the project is not also managed with Terraform.**
