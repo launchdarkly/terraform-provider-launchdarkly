@@ -28,7 +28,7 @@ jobs:
   test:
     executor:
       name: go/default
-      tag: &go_version "1.19.3"
+      tag: &go_version "1.21.3"
 
     environment:
       # sc-146360 - overrides the default timeout of 3000ms when reaching checkpoint-api.hashicorp.com
@@ -112,7 +112,8 @@ jobs:
             sudo apt install python3-pip python-is-python3
       - terraform/install:
           terraform_version: latest
-      - linter/pre-commit
+      - linter/pre-commit:
+          cache_prefix: v1
       - notify-slack-of-failures
 
 workflows:

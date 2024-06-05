@@ -11,13 +11,8 @@ import (
 	ldapi "github.com/launchdarkly/api-client-go/v16"
 )
 
-var randomRetrySleepSeeded = false
-
 // getRandomSleepDuration returns a duration between [0, maxDuration)
 func getRandomSleepDuration(maxDuration time.Duration) time.Duration {
-	if !randomRetrySleepSeeded {
-		rand.Seed(time.Now().UnixNano())
-	}
 	n := rand.Int63n(int64(maxDuration))
 	return time.Duration(n)
 }
