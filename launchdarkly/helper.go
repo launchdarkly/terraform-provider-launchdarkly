@@ -144,3 +144,16 @@ func addForceNewDescription(description string, forceNew bool) string {
 	}
 	return description
 }
+
+func oxfordCommaJoin(str []string) string {
+	output := ""
+	for idx, key := range str {
+		output += fmt.Sprintf("`%s`", key)
+		if idx < len(str)-2 {
+			output += ", "
+		} else if idx == len(str)-2 {
+			output += ", and "
+		}
+	}
+	return output
+}
