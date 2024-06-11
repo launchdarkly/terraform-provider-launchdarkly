@@ -4,7 +4,7 @@ page_title: "launchdarkly_flag_trigger Data Source - launchdarkly"
 subcategory: ""
 description: |-
   Provides a LaunchDarkly flag trigger data source.
-  -> Note: Flag triggers are available to customers on an Enterprise LaunchDarkly plan. To learn more, read about our pricing. To upgrade your plan, contact LaunchDarkly Sales https://launchdarkly.com/contact-sales/.
+  -> Note: Flag triggers are available to customers on an Enterprise LaunchDarkly plan. To learn more, read about our pricing https://launchdarkly.com/pricing/. To upgrade your plan, contact LaunchDarkly Sales https://launchdarkly.com/contact-sales/.
   This data source allows you to retrieve information about flag triggers from your LaunchDarkly organization.
 ---
 
@@ -12,7 +12,7 @@ description: |-
 
 Provides a LaunchDarkly flag trigger data source.
 
--> **Note:** Flag triggers are available to customers on an Enterprise LaunchDarkly plan. To learn more, read about our pricing. To upgrade your plan, [contact LaunchDarkly Sales](https://launchdarkly.com/contact-sales/).
+-> **Note:** Flag triggers are available to customers on an Enterprise LaunchDarkly plan. To learn more, [read about our pricing](https://launchdarkly.com/pricing/). To upgrade your plan, [contact LaunchDarkly Sales](https://launchdarkly.com/contact-sales/).
 
 This data source allows you to retrieve information about flag triggers from your LaunchDarkly organization.
 

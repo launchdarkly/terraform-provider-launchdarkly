@@ -25,7 +25,7 @@ func resourceFlagTrigger() *schema.Resource {
 
 		Description: `Provides a LaunchDarkly flag trigger resource.
 
--> **Note:** Flag triggers are available to customers on an Enterprise LaunchDarkly plan. To learn more, read about our pricing. To upgrade your plan, [contact LaunchDarkly Sales](https://launchdarkly.com/contact-sales/).
+-> **Note:** Flag triggers are available to customers on an Enterprise LaunchDarkly plan. To learn more, [read about our pricing](https://launchdarkly.com/pricing/). To upgrade your plan, [contact LaunchDarkly Sales](https://launchdarkly.com/contact-sales/).
 
 This resource allows you to create and manage flag triggers within your LaunchDarkly organization.
 

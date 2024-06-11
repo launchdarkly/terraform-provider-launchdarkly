@@ -3,7 +3,7 @@ page_title: "launchdarkly_destination Resource - launchdarkly"
 subcategory: ""
 description: |-
   Provides a LaunchDarkly Data Export Destination resource.
-  -> Note: Data Export is available to customers on an Enterprise LaunchDarkly plan. To learn more, read about our pricing. To upgrade your plan, contact LaunchDarkly Sales https://launchdarkly.com/contact-sales/.
+  -> Note: Data Export is available to customers on an Enterprise LaunchDarkly plan. To learn more, read about our pricing https://launchdarkly.com/pricing/. To upgrade your plan, contact LaunchDarkly Sales https://launchdarkly.com/contact-sales/.
   Data Export Destinations are locations that receive exported data. This resource allows you to configure destinations for the export of raw analytics data, including feature flag requests, analytics events, custom events, and more.
   To learn more about data export, read Data Export Documentation https://docs.launchdarkly.com/integrations/data-export.
 ---
@@ -12,7 +12,7 @@ description: |-
 
 Provides a LaunchDarkly Data Export Destination resource.
 
--> **Note:** Data Export is available to customers on an Enterprise LaunchDarkly plan. To learn more, read about our pricing. To upgrade your plan, [contact LaunchDarkly Sales](https://launchdarkly.com/contact-sales/).
+-> **Note:** Data Export is available to customers on an Enterprise LaunchDarkly plan. To learn more, [read about our pricing](https://launchdarkly.com/pricing/). To upgrade your plan, [contact LaunchDarkly Sales](https://launchdarkly.com/contact-sales/).
 
 Data Export Destinations are locations that receive exported data. This resource allows you to configure destinations for the export of raw analytics data, including feature flag requests, analytics events, custom events, and more.
 

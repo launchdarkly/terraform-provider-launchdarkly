@@ -35,4 +35,4 @@ In addition to the arguments above, the resource exports the following attribute
 
 - `role` - The role associated with team member. Possible roles are `owner`, `reader`, `writer`, or `admin`.
 
-- `custom_role` - (Optional) The list of custom roles keys associated with the team member. Custom roles are only available to customers on enterprise plans. To learn more about enterprise plans, contact sales@launchdarkly.com.
+- `custom_role` - (Optional) The list of custom roles keys associated with the team member. Custom roles are only available to customers on an Enterprise plan. To learn more, [read about our pricing](https://launchdarkly.com/pricing/). To upgrade your plan, [contact LaunchDarkly Sales](https://launchdarkly.com/contact-sales/).

@@ -22,7 +22,7 @@ func resourceCustomRole() *schema.Resource {
 
 		Description: `Provides a LaunchDarkly custom role resource.
 
--> **Note:** Custom roles are available to customers on an Enterprise LaunchDarkly plan. To learn more, read about our pricing. To upgrade your plan, [contact LaunchDarkly Sales](https://launchdarkly.com/contact-sales/).
+-> **Note:** Custom roles are available to customers on an Enterprise LaunchDarkly plan. To learn more, [read about our pricing](https://launchdarkly.com/pricing/). To upgrade your plan, [contact LaunchDarkly Sales](https://launchdarkly.com/contact-sales/).
 
 This resource allows you to create and manage custom roles within your LaunchDarkly organization.`,
 

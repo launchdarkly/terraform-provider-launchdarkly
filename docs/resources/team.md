@@ -11,7 +11,7 @@ Provides a LaunchDarkly team resource.
 
 This resource allows you to create and manage a team within your LaunchDarkly organization.
 
--> **Note:** Teams are available to customers on an Enterprise LaunchDarkly plan. To learn more, read about our pricing. To upgrade your plan, [contact LaunchDarkly Sales](https://launchdarkly.com/contact-sales/).
+-> **Note:** Teams are available to customers on an Enterprise LaunchDarkly plan. To learn more, [read about our pricing](https://launchdarkly.com/pricing/). To upgrade your plan, [contact LaunchDarkly Sales](https://launchdarkly.com/contact-sales/).
 
 ## Example Usage
 
@@ -39,7 +39,6 @@ resource "launchdarkly_team" "platform_team" {
 - `maintainers` - (Optional) List of member IDs for users who maintain the team.
 
 - `custom_role_keys` - (Optional) List of custom role keys the team will access. The referenced custom roles must already exist in LaunchDarkly. If they don't, the provider may behave unexpectedly.
-
 
 ## Import
 
