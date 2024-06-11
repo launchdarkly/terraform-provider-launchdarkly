@@ -13,8 +13,6 @@ import (
 	strcase "github.com/stoewer/go-strcase"
 )
 
-//go:generate codegen -o audit_log_subscription_configs_generated.go
-
 var KEBAB_CASE_INTEGRATIONS = []string{"splunk"}
 
 type IntegrationConfig map[string]FormVariable

@@ -10,8 +10,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 )
 
-var validTriggerIntegrations = []string{"generic-trigger", "datadog", "dynatrace", "honeycomb", "new-relic-apm", "signalfx"}
-
 func baseFlagTriggerSchema(isDataSource bool) map[string]*schema.Schema {
 	return map[string]*schema.Schema{
 		PROJECT_KEY: {
@@ -39,9 +37,9 @@ func baseFlagTriggerSchema(isDataSource bool) map[string]*schema.Schema {
 			Required: !isDataSource,
 			Computed: isDataSource,
 			Description: addForceNewDescription(
-				fmt.Sprintf("The unique identifier of the integration you intend to set your trigger up with. Currently supported are %s. `generic-trigger` should be used for integrations not explicitly supported.", oxfordCommaJoin(validTriggerIntegrations)), !isDataSource),
+				fmt.Sprintf("The unique identifier of the integration you intend to set your trigger up with. Currently supported are %s. `generic-trigger` should be used for integrations not explicitly supported.", oxfordCommaJoin(VALID_TRIGGER_INTEGRATIONS)), !isDataSource),
 			ForceNew:         true,
-			ValidateDiagFunc: validation.ToDiagFunc(validation.StringInSlice(validTriggerIntegrations, false)),
+			ValidateDiagFunc: validation.ToDiagFunc(validation.StringInSlice(VALID_TRIGGER_INTEGRATIONS, false)),
 		},
 		INSTRUCTIONS: {
 			Type:        schema.TypeList,
