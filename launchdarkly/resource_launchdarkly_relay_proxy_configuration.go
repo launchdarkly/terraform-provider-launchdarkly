@@ -23,21 +23,31 @@ func resourceRelayProxyConfig() *schema.Resource {
 			NAME: {
 				Type:        schema.TypeString,
 				Required:    true,
-				Description: "A human-friendly name for the Relay Proxy configuration",
+				Description: "The human-readable name for your Relay Proxy configuration.",
 			},
-			POLICY: policyStatementsSchema(policyStatementSchemaOptions{required: true}),
+			POLICY: policyStatementsSchema(policyStatementSchemaOptions{
+				required:    true,
+				description: "The Relay Proxy configuration's rule policy block. This determines what content the Relay Proxy receives. To learn more, read [Understanding policies](https://docs.launchdarkly.com/home/members/role-policies#understanding-policies).",
+			}),
 			FULL_KEY: {
 				Type:        schema.TypeString,
 				Sensitive:   true,
 				Computed:    true,
-				Description: "The unique key assigned to the Relay Proxy configuration during creation.",
+				Description: "The Relay Proxy configuration's unique key. Because the `full_key` is only exposed upon creation, it will not be available if the resource is imported.",
 			},
 			DISPLAY_KEY: {
 				Type:        schema.TypeString,
 				Computed:    true,
-				Description: "The last four characters of the full_key.",
+				Description: "The last 4 characters of the Relay Proxy configuration's unique key.",
 			},
 		},
+		Description: `Provides a LaunchDarkly Relay Proxy configuration resource for use with the Relay Proxy's [automatic configuration feature](https://docs.launchdarkly.com/home/relay-proxy/automatic-configuration).
+
+-> **Note:** Relay Proxy automatic configuration is available to customers on an Enterprise LaunchDarkly plan. To learn more, [read about our pricing](https://launchdarkly.com/pricing/). To upgrade your plan, [contact LaunchDarkly Sales](https://launchdarkly.com/contact-sales/).
+
+This resource allows you to create and manage Relay Proxy configurations within your LaunchDarkly organization.
+
+-> **Note:** This resource will store the full plaintext secret for your Relay Proxy configuration's unique key in Terraform state. Be sure your state is configured securely before using this resource. See https://www.terraform.io/docs/state/sensitive-data.html for more details.`,
 	}
 }
 
