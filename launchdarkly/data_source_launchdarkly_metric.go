@@ -12,6 +12,9 @@ func dataSourceMetric() *schema.Resource {
 	return &schema.Resource{
 		ReadContext: dataSourceMetricRead,
 		Schema:      schemaMap,
+		Description: `Provides a LaunchDarkly metric data source.
+
+This data source allows you to retrieve metric information from your LaunchDarkly organization.`,
 	}
 }
 
