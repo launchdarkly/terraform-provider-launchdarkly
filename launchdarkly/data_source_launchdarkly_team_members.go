@@ -22,11 +22,13 @@ func dataSourceTeamMembers() *schema.Resource {
 				Elem: &schema.Schema{
 					Type: schema.TypeString,
 				},
+				Description: "An array of unique email addresses associated with the team members.",
 			},
 			IGNORE_MISSING: {
-				Type:     schema.TypeBool,
-				Optional: true,
-				Default:  false,
+				Type:        schema.TypeBool,
+				Optional:    true,
+				Default:     false,
+				Description: "A boolean to determine whether to ignore members that weren't found.",
 			},
 			TEAM_MEMBERS: {
 				Type:     schema.TypeList,
@@ -34,8 +36,12 @@ func dataSourceTeamMembers() *schema.Resource {
 				Elem: &schema.Resource{
 					Schema: memberSchema(),
 				},
+				Description: "The members that were found. The following attributes are available for each member:\n\n- `id` - The 24 character alphanumeric ID of the team member.\n\n- `first_name` - The team member's given name.\n\n- `last_name` - The team member's family name.\n\n- `role` - The role associated with team member. Possible roles are `owner`, `reader`, `writer`, or `admin`.\n\n- `custom_roles` - (Optional) The list of custom roles keys associated with the team member. Custom roles are only available to customers on an Enterprise plan. To learn more, [read about our pricing](https://launchdarkly.com/pricing/). To upgrade your plan, [contact LaunchDarkly Sales](https://launchdarkly.com/contact-sales/).\n",
 			},
 		},
+		Description: `Provides a LaunchDarkly team members data source.
+
+This data source allows you to retrieve team member information from your LaunchDarkly organization on multiple team members.`,
 	}
 }
 
