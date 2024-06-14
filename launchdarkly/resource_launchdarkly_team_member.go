@@ -25,27 +25,32 @@ func resourceTeamMember() *schema.Resource {
 		},
 
 		Schema: map[string]*schema.Schema{
+			ID: {
+				Type:        schema.TypeString,
+				Computed:    true,
+				Description: "The 24 character alphanumeric ID of the team member.",
+			},
 			EMAIL: {
 				Type:        schema.TypeString,
 				Required:    true,
 				ForceNew:    true,
-				Description: "The team member's email address",
+				Description: addForceNewDescription("The unique email address associated with the team member.", true),
 			},
 			FIRST_NAME: {
 				Type:        schema.TypeString,
 				Optional:    true,
-				Description: "The team member's first name",
+				Description: "The team member's given name. Once created, this cannot be updated except by the team member.",
 			},
 			LAST_NAME: {
 				Type:        schema.TypeString,
 				Optional:    true,
-				Description: "The team member's last name",
+				Description: "TThe team member's family name. Once created, this cannot be updated except by the team member.",
 			},
 			ROLE: {
 				Type:             schema.TypeString,
 				Optional:         true,
 				Computed:         true,
-				Description:      "The team member's role. This must be reader, writer, admin, or no_access. Team members must have either a role or custom role",
+				Description:      "The role associated with team member. Supported roles are `reader`, `writer`, `no_access`, or `admin`. If you don't specify a role, `reader` is assigned by default.",
 				ValidateDiagFunc: validation.ToDiagFunc(validation.StringInSlice([]string{"reader", "writer", "admin", "no_access"}, false)),
 				AtLeastOneOf:     []string{ROLE, CUSTOM_ROLES},
 			},
@@ -54,10 +59,16 @@ func resourceTeamMember() *schema.Resource {
 				Set:          schema.HashString,
 				Elem:         &schema.Schema{Type: schema.TypeString},
 				Optional:     true,
-				Description:  "IDs or keys of custom roles. Team members must have either a role or custom role",
+				Description:  "The list of custom roles keys associated with the team member. Custom roles are only available to customers on an Enterprise plan. To learn more, [read about our pricing](https://launchdarkly.com/pricing/). To upgrade your plan, [contact LaunchDarkly Sales](https://launchdarkly.com/contact-sales/).\n\n-> **Note:** each `launchdarkly_team_member` must have either a `role` or `custom_roles` argument.",
 				AtLeastOneOf: []string{ROLE, CUSTOM_ROLES},
 			},
 		},
+
+		Description: `Provides a LaunchDarkly team member resource.
+
+This resource allows you to create and manage team members within your LaunchDarkly organization.
+
+-> **Note:** You can only manage team members with "admin" level personal access tokens. To learn more, read [Managing Teams](https://docs.launchdarkly.com/home/teams/managing).`,
 	}
 }
 

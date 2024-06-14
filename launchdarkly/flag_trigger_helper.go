@@ -15,7 +15,7 @@ func baseFlagTriggerSchema(isDataSource bool) map[string]*schema.Schema {
 		PROJECT_KEY: {
 			Type:             schema.TypeString,
 			Required:         true,
-			Description:      "The LaunchDarkly project key",
+			Description:      addForceNewDescription("The unique key of the project encompassing the associated flag.", !isDataSource),
 			ForceNew:         true,
 			ValidateDiagFunc: validateKey(),
 		},
@@ -23,35 +23,36 @@ func baseFlagTriggerSchema(isDataSource bool) map[string]*schema.Schema {
 			Type:        schema.TypeString,
 			Required:    true,
 			ForceNew:    true,
-			Description: "The LaunchDarkly environment key",
+			Description: addForceNewDescription("The unique key of the environment the flag trigger will work in.", !isDataSource),
 		},
 		FLAG_KEY: {
 			Type:             schema.TypeString,
 			Required:         true,
-			Description:      "The key of the feature flag the trigger acts upon",
+			Description:      addForceNewDescription("The unique key of the associated flag.", !isDataSource),
 			ForceNew:         true,
 			ValidateDiagFunc: validateKey(),
 		},
 		INTEGRATION_KEY: {
-			Type:             schema.TypeString,
-			Required:         !isDataSource,
-			Optional:         isDataSource,
-			Description:      "The unique identifier of the integration you intend to set your trigger up with. \"generic-trigger\" should be used for integrations not explicitly supported.",
+			Type:     schema.TypeString,
+			Required: !isDataSource,
+			Computed: isDataSource,
+			Description: addForceNewDescription(
+				fmt.Sprintf("The unique identifier of the integration you intend to set your trigger up with. Currently supported are %s. `generic-trigger` should be used for integrations not explicitly supported.", oxfordCommaJoin(VALID_TRIGGER_INTEGRATIONS)), !isDataSource),
 			ForceNew:         true,
-			ValidateDiagFunc: validation.ToDiagFunc(validation.StringInSlice([]string{"generic-trigger", "datadog", "dynatrace", "honeycomb", "new-relic-apm", "signalfx"}, false)),
+			ValidateDiagFunc: validation.ToDiagFunc(validation.StringInSlice(VALID_TRIGGER_INTEGRATIONS, false)),
 		},
 		INSTRUCTIONS: {
 			Type:        schema.TypeList,
 			Required:    !isDataSource,
-			Optional:    isDataSource,
-			Description: "Instructions containing the action to perform when triggering. Currently supported flag actions are \"turnFlagOn\" and \"turnFlagOff\".",
+			Computed:    isDataSource,
+			Description: "Instructions containing the action to perform when invoking the trigger. Currently supported flag actions are `turnFlagOn` and `turnFlagOff`. This must be passed as the key-value pair `{ kind = \"<flag_action>\" }`.",
 			MaxItems:    1,
 			Elem: &schema.Resource{
 				Schema: map[string]*schema.Schema{
 					KIND: {
 						Type:             schema.TypeString,
 						Required:         true,
-						Description:      "The action to perform when triggering. Currently supported flag actions are \"turnFlagOn\" and \"turnFlagOff\".",
+						Description:      "The action to perform when triggering. Currently supported flag actions are `turnFlagOn` and `turnFlagOff`.",
 						ValidateDiagFunc: validation.ToDiagFunc(validation.StringInSlice([]string{"turnFlagOn", "turnFlagOff"}, false)),
 					},
 				},
@@ -60,19 +61,19 @@ func baseFlagTriggerSchema(isDataSource bool) map[string]*schema.Schema {
 		TRIGGER_URL: {
 			Type:        schema.TypeString,
 			Computed:    true,
-			Description: "The unique trigger URL",
+			Description: "The unique URL used to invoke the trigger.",
 			Sensitive:   true,
 		},
 		MAINTAINER_ID: {
 			Type:        schema.TypeString,
 			Computed:    true,
-			Description: "The LaunchDarkly ID of the member who maintains the trigger. The API will automatically apply the member associated with your Terraform API key or the most recently-set maintainer",
+			Description: "The ID of the member responsible for maintaining the flag trigger. If created via Terraform, this value will be the ID of the member associated with the API key used for your provider configuration.",
 		},
 		ENABLED: {
 			Type:        schema.TypeBool,
 			Required:    !isDataSource,
-			Optional:    isDataSource,
-			Description: "Whether the trigger is currently active or not. This property defaults to true upon creation",
+			Computed:    isDataSource,
+			Description: "Whether the trigger is currently active or not.",
 		},
 	}
 }

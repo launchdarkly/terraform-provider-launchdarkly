@@ -16,9 +16,9 @@ test: fmtcheck
 		xargs -t -n4 go test $(TESTARGS) -timeout=90s -parallel=4
 
 testacc: fmtcheck
-	TF_ACC=1 go test $(TEST) -v $(TESTARGS) -timeout 120m
+	TF_ACC=1 go test $(TEST) -v $(TESTARGS) -timeout 120m -parallel=4
 
-testacc-with-retry: fmtcheck
+testacc-with-retry:
 	make testacc || make testacc
 
 vet:

@@ -6,7 +6,7 @@ description: |-
   Provides a LaunchDarkly access token resource.
   This resource allows you to create and manage access tokens within your LaunchDarkly organization.
   -> Note: This resource will store the full plaintext secret for your access token in Terraform state. Be sure your state is configured securely before using this resource. See https://www.terraform.io/docs/state/sensitive-data.html for more details.
-  The resource must contain either a "role", "customrole" or an "inlineroles" (previously "policystatements") block. As of v1.7.0, "policystatements" has been deprecated in favor of "inline_roles".
+  The resource must contain either a "role", "custom_role" or an "inline_roles" (previously "policy_statements") block. As of v1.7.0, "policy_statements" has been deprecated in favor of "inline_roles".
 ---
 
 # launchdarkly_access_token (Resource)

@@ -13,8 +13,6 @@ import (
 	strcase "github.com/stoewer/go-strcase"
 )
 
-//go:generate codegen -o audit_log_subscription_configs_generated.go
-
 var KEBAB_CASE_INTEGRATIONS = []string{"splunk"}
 
 type IntegrationConfig map[string]FormVariable
@@ -62,19 +60,6 @@ func getValidIntegrationKeys() []string {
 	return integrationKeys
 }
 
-func formatIntegrationKeysForDescription(integrationKeys []string) string {
-	output := ""
-	for idx, key := range integrationKeys {
-		output += fmt.Sprintf("`%s`", key)
-		if idx < len(integrationKeys)-2 {
-			output += ", "
-		} else if idx == len(integrationKeys)-2 {
-			output += ", and "
-		}
-	}
-	return output
-}
-
 func auditLogSubscriptionSchema(isDataSource bool) map[string]*schema.Schema {
 	return map[string]*schema.Schema{
 		INTEGRATION_KEY: {
@@ -83,7 +68,7 @@ func auditLogSubscriptionSchema(isDataSource bool) map[string]*schema.Schema {
 			Required:     true,
 			ValidateFunc: validation.StringInSlice(getValidIntegrationKeys(), false),
 			ForceNew:     !isDataSource,
-			Description:  addForceNewDescription(fmt.Sprintf("The integration key. Supported integration keys are %s.", formatIntegrationKeysForDescription(getValidIntegrationKeys())), !isDataSource),
+			Description:  addForceNewDescription(fmt.Sprintf("The integration key. Supported integration keys are %s.", oxfordCommaJoin(getValidIntegrationKeys())), !isDataSource),
 		},
 		NAME: {
 			Type:        schema.TypeString,

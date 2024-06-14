@@ -13,31 +13,36 @@ import (
 func memberSchema() map[string]*schema.Schema {
 	return map[string]*schema.Schema{
 		EMAIL: {
-			Type:     schema.TypeString,
-			Required: true,
+			Type:        schema.TypeString,
+			Required:    true,
+			Description: "The unique email address associated with the team member.",
 		},
 		ID: {
-			Type:     schema.TypeString,
-			Computed: true,
-			Optional: true,
+			Type:        schema.TypeString,
+			Computed:    true,
+			Description: "The 24 character alphanumeric ID of the team member.",
 		},
 		FIRST_NAME: {
-			Type:     schema.TypeString,
-			Computed: true,
+			Type:        schema.TypeString,
+			Computed:    true,
+			Description: "The team member's given name.",
 		},
 		LAST_NAME: {
-			Type:     schema.TypeString,
-			Computed: true,
+			Type:        schema.TypeString,
+			Computed:    true,
+			Description: "The team member's family name.",
 		},
 		ROLE: {
-			Type:     schema.TypeString,
-			Computed: true,
+			Type:        schema.TypeString,
+			Computed:    true,
+			Description: "The role associated with team member. Possible roles are `owner`, `reader`, `writer`, or `admin`.",
 		},
 		CUSTOM_ROLES: {
-			Type:     schema.TypeSet,
-			Set:      schema.HashString,
-			Elem:     &schema.Schema{Type: schema.TypeString},
-			Computed: true,
+			Type:        schema.TypeSet,
+			Set:         schema.HashString,
+			Elem:        &schema.Schema{Type: schema.TypeString},
+			Computed:    true,
+			Description: `The list of custom roles keys associated with the team member. Custom roles are only available to customers on an Enterprise plan. To learn more, [read about our pricing](https://launchdarkly.com/pricing/). To upgrade your plan, [contact LaunchDarkly Sales](https://launchdarkly.com/contact-sales/).`,
 		},
 	}
 }
@@ -46,6 +51,10 @@ func dataSourceTeamMember() *schema.Resource {
 	return &schema.Resource{
 		ReadContext: dataSourceTeamMemberRead,
 		Schema:      memberSchema(),
+
+		Description: `Provides a LaunchDarkly team member data source.
+
+This data source allows you to retrieve team member information from your LaunchDarkly organization.`,
 	}
 }
 

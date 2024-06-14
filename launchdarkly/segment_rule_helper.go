@@ -28,12 +28,12 @@ func segmentRulesSchema(options segmentRulesSchemaOptions) *schema.Schema {
 				BUCKET_BY: {
 					Type:        schema.TypeString,
 					Optional:    true,
-					Description: "The attribute by which to group users together.",
+					Description: "The attribute by which to group contexts together.",
 				},
 				ROLLOUT_CONTEXT_KIND: {
 					Type:             schema.TypeString,
 					Optional:         true,
-					Description:      "The context kind associated with this segment rule. This argument is only valid if weight is also specified. If omitted, defaults to 'user'",
+					Description:      "The context kind associated with this segment rule. This argument is only valid if `weight` is also specified. If omitted, defaults to `user`.",
 					DiffSuppressFunc: rolloutContextKindDiffSuppressFunc(),
 				},
 			},

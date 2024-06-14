@@ -126,6 +126,12 @@ func resourceMetric() *schema.Resource {
 		Importer: &schema.ResourceImporter{
 			State: resourceMetricImport,
 		},
+
+		Description: `Provides a LaunchDarkly metric resource.
+
+This resource allows you to create and manage metrics within your LaunchDarkly organization.
+
+To learn more about metrics and experimentation, read [Experimentation Documentation](https://docs.launchdarkly.com/home/experimentation).`,
 	}
 }
 

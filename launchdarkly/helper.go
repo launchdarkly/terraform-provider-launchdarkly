@@ -11,13 +11,8 @@ import (
 	ldapi "github.com/launchdarkly/api-client-go/v16"
 )
 
-var randomRetrySleepSeeded = false
-
 // getRandomSleepDuration returns a duration between [0, maxDuration)
 func getRandomSleepDuration(maxDuration time.Duration) time.Duration {
-	if !randomRetrySleepSeeded {
-		rand.Seed(time.Now().UnixNano())
-	}
 	n := rand.Int63n(int64(maxDuration))
 	return time.Duration(n)
 }
@@ -148,4 +143,17 @@ func addForceNewDescription(description string, forceNew bool) string {
 		description += " A change in this field will force the destruction of the existing resource and the creation of a new one."
 	}
 	return description
+}
+
+func oxfordCommaJoin(str []string) string {
+	output := ""
+	for idx, key := range str {
+		output += fmt.Sprintf("`%s`", key)
+		if idx < len(str)-2 {
+			output += ", "
+		} else if idx == len(str)-2 {
+			output += ", and "
+		}
+	}
+	return output
 }

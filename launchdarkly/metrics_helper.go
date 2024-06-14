@@ -14,12 +14,12 @@ import (
 )
 
 func baseMetricSchema(isDataSource bool) map[string]*schema.Schema {
-	return map[string]*schema.Schema{
+	schemaMap := map[string]*schema.Schema{
 		PROJECT_KEY: {
 			Type:             schema.TypeString,
 			Required:         true,
 			ForceNew:         true,
-			Description:      "The LaunchDarkly project key",
+			Description:      addForceNewDescription("The metrics's project key. A change in this field will force the destruction of the existing resource and the creation of a new one.", !isDataSource),
 			ValidateDiagFunc: validateKey(),
 		},
 		KEY: {
@@ -27,65 +27,71 @@ func baseMetricSchema(isDataSource bool) map[string]*schema.Schema {
 			Required:         true,
 			ForceNew:         true,
 			ValidateDiagFunc: validateKey(),
-			Description:      "A unique key that will be used to reference the metric in your code",
+			Description:      addForceNewDescription("The unique key that references the metric. A change in this field will force the destruction of the existing resource and the creation of a new one.", !isDataSource),
 		},
 		NAME: {
 			Type:        schema.TypeString,
 			Required:    !isDataSource,
-			Optional:    isDataSource,
-			Description: "A human-readable name for your metric",
+			Computed:    isDataSource,
+			Description: "The human-friendly name for the metric.",
 		},
 		KIND: {
 			Type:             schema.TypeString,
 			Required:         !isDataSource,
-			Optional:         isDataSource,
-			Description:      "The metric type -available choices are 'pageview', 'click', and 'custom'",
+			Computed:         isDataSource,
+			Description:      addForceNewDescription("The metric type. Available choices are `click`, `custom`, and `pageview`.", !isDataSource),
 			ValidateDiagFunc: validation.ToDiagFunc(validation.StringInSlice([]string{"pageview", "click", "custom"}, false)),
 			ForceNew:         true,
 		},
 		MAINTAINER_ID: {
 			Type:             schema.TypeString,
-			Optional:         true,
+			Optional:         !isDataSource,
 			Computed:         true,
-			Description:      "The LaunchDarkly ID of the user who will maintain the metric. If not set, the API will automatically apply the member associated with your Terraform API key or the most recently-set maintainer",
+			Description:      "The LaunchDarkly member ID of the member who will maintain the metric. If not set, the API will automatically apply the member associated with your Terraform API key or the most recently-set maintainer",
 			ValidateDiagFunc: validateID(),
 		},
 		DESCRIPTION: {
 			Type:        schema.TypeString,
-			Optional:    true,
-			Description: "A short description of what the metric will be used for",
+			Optional:    !isDataSource,
+			Computed:    isDataSource,
+			Description: "The description of the metric's purpose.",
 		},
 		TAGS: tagsSchema(tagsSchemaOptions{isDataSource: isDataSource}),
 		IS_ACTIVE: {
 			Type:        schema.TypeBool,
-			Optional:    true,
-			Description: "Whether the metric is active",
+			Optional:    !isDataSource,
+			Computed:    isDataSource,
+			Description: "Whether a metric is a active.",
 			Default:     false,
 		},
 		IS_NUMERIC: {
 			Type:        schema.TypeBool,
-			Optional:    true,
-			Description: "Whether the metric is numeric",
+			Optional:    !isDataSource,
+			Computed:    isDataSource,
+			Description: "Whether a `custom` metric is a numeric metric or not.",
 			Default:     false,
 		},
 		UNIT: {
 			Type:        schema.TypeString,
-			Optional:    true,
-			Description: "The unit for your metric (if numeric metric)",
+			Optional:    !isDataSource,
+			Computed:    isDataSource,
+			Description: "(Required for kind `custom`) The unit for numeric `custom` metrics.",
 		},
 		SELECTOR: {
 			Type:        schema.TypeString,
-			Optional:    true,
+			Optional:    !isDataSource,
+			Computed:    isDataSource,
 			Description: "The CSS selector for your metric (if click metric)",
 		},
 		EVENT_KEY: {
 			Type:        schema.TypeString,
-			Optional:    true,
+			Optional:    !isDataSource,
+			Computed:    isDataSource,
 			Description: "The event key for your metric (if custom metric)",
 		},
 		SUCCESS_CRITERIA: {
 			Type:             schema.TypeString,
-			Optional:         true,
+			Optional:         !isDataSource,
 			Description:      "The success criteria for your metric (if numeric metric)",
 			ValidateDiagFunc: validation.ToDiagFunc(validation.StringInSlice([]string{"HigherThanBaseline", "LowerThanBaseline"}, false)),
 			Computed:         true,
@@ -93,8 +99,9 @@ func baseMetricSchema(isDataSource bool) map[string]*schema.Schema {
 		},
 		URLS: {
 			Type:        schema.TypeList,
-			Optional:    true,
-			Description: "List of nested `url` blocks describing URLs that you want to track the metric on",
+			Optional:    !isDataSource,
+			Computed:    isDataSource,
+			Description: "List of nested `url` blocks describing URLs that you want to associate with the metric.",
 			Elem: &schema.Resource{
 				Schema: metricUrlSchema(),
 			},
@@ -104,11 +111,17 @@ func baseMetricSchema(isDataSource bool) map[string]*schema.Schema {
 			Elem: &schema.Schema{
 				Type: schema.TypeString,
 			},
-			Optional:    true,
+			Optional:    !isDataSource,
 			Computed:    true,
-			Description: "A set of one or more context kinds that this metric can measure events from.",
+			Description: `A set of one or more context kinds that this metric can measure events from. Metrics can only use context kinds marked as "Available for experiments." For more information, read [Allocating experiment audiences](https://docs.launchdarkly.com/home/creating-experiments/allocation).`,
 		},
 	}
+
+	if isDataSource {
+		return removeInvalidFieldsForDataSource(schemaMap)
+	}
+
+	return schemaMap
 }
 
 func metricRead(ctx context.Context, d *schema.ResourceData, metaRaw interface{}, isDataSource bool) diag.Diagnostics {
@@ -159,23 +172,23 @@ func metricUrlSchema() map[string]*schema.Schema {
 		KIND: {
 			Type:             schema.TypeString,
 			Required:         true,
-			Description:      "The url type - available choices are 'exact', 'canonical', 'substring' and 'regex'",
+			Description:      "The URL type. Available choices are `exact`, `canonical`, `substring` and `regex`.",
 			ValidateDiagFunc: validation.ToDiagFunc(validation.StringInSlice([]string{"exact", "canonical", "substring", "regex"}, false)),
 		},
 		URL: {
 			Type:        schema.TypeString,
 			Optional:    true,
-			Description: "The exact or canonical URL",
+			Description: "(Required for kind `exact` and `canonical`) The exact or canonical URL.",
 		},
 		SUBSTRING: {
 			Type:        schema.TypeString,
 			Optional:    true,
-			Description: "The URL substring",
+			Description: "(Required for kind `substring`) The URL substring to match by.",
 		},
 		PATTERN: {
 			Type:        schema.TypeString,
 			Optional:    true,
-			Description: "The URL-matching regex",
+			Description: "(Required for kind `regex`) The regex pattern to match by.",
 		},
 	}
 }

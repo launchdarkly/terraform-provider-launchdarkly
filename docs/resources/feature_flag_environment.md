@@ -255,7 +255,7 @@ Required:
 
 Optional:
 
-- `context_kind` (String) The context kind associated with this rule clause. This argument is only valid if `rollout_weights` is also specified. If omitted, defaults to `user`.
+- `context_kind` (String) The context kind associated with this rule clause. If omitted, defaults to `user`.
 - `negate` (Boolean) Whether to negate the rule clause.
 - `value_type` (String) The type for each of the clause's values. Available types are `boolean`, `string`, and `number`. If omitted, `value_type` defaults to `string`.
 

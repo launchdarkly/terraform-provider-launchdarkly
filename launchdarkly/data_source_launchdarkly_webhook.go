@@ -10,21 +10,27 @@ import (
 func dataSourceWebhook() *schema.Resource {
 	schemaMap := baseWebhookSchema(webhookSchemaOptions{isDataSource: true})
 	schemaMap[URL] = &schema.Schema{
-		Type:     schema.TypeString,
-		Computed: true,
+		Type:        schema.TypeString,
+		Computed:    true,
+		Description: "The URL of the remote webhook.",
 	}
 	schemaMap[ON] = &schema.Schema{
-		Type:     schema.TypeBool,
-		Computed: true,
+		Type:        schema.TypeBool,
+		Computed:    true,
+		Description: "Whether the webhook is enabled.",
 	}
 	schemaMap[ID] = &schema.Schema{
 		Type:        schema.TypeString,
 		Required:    true,
-		Description: "The ID of the webhook",
+		Description: "The unique webhook ID.",
 	}
 	return &schema.Resource{
 		ReadContext: dataSourceWebhookRead,
 		Schema:      schemaMap,
+
+		Description: `Provides a LaunchDarkly webhook data source.
+
+This data source allows you to retrieve webhook information from your LaunchDarkly organization.`,
 	}
 }
 

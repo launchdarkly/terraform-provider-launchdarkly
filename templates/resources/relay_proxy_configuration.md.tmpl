@@ -1,0 +1,28 @@
+---
+page_title: "{{.Name}} {{.Type}} - {{.ProviderName}}"
+subcategory: ""
+description: |-
+{{ .Description | plainmarkdown | trimspace | prefixlines "  " }}
+---
+
+# {{.Name}} ({{.Type}})
+
+{{ .Description | trimspace }}
+
+## Example Usage
+
+{{ tffile (printf "examples/resources/%s/resource.tf" .Name)}}
+
+{{ .SchemaMarkdown | trimspace }}
+
+## Import
+
+Relay Proxy configurations can be imported using the configuration's unique 24 character ID, e.g.
+
+{{ codefile "sh" .ImportFile | trimspace }}
+
+The unique relay proxy ID can be found in the relay proxy edit page URL, which you can locate by clicking the three dot menu on your relay proxy item in the UI and selecting 'Edit configuration':
+
+```
+https://app.launchdarkly.com/settings/relay/THIS_IS_YOUR_RELAY_PROXY_ID/edit
+```

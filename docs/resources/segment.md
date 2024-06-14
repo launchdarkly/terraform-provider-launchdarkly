@@ -194,9 +194,9 @@ Required:
 
 Optional:
 
-- `bucket_by` (String) The attribute by which to group users together.
+- `bucket_by` (String) The attribute by which to group contexts together.
 - `clauses` (Block List) List of nested blocks specifying the logical clauses to evaluate (see [below for nested schema](#nestedblock--rules--clauses))
-- `rollout_context_kind` (String) The context kind associated with this segment rule. This argument is only valid if weight is also specified. If omitted, defaults to 'user'
+- `rollout_context_kind` (String) The context kind associated with this segment rule. This argument is only valid if `weight` is also specified. If omitted, defaults to `user`.
 - `weight` (Number) The integer weight of the rule (between 1 and 100000).
 
 <a id="nestedblock--rules--clauses"></a>
@@ -210,7 +210,7 @@ Required:
 
 Optional:
 
-- `context_kind` (String) The context kind associated with this rule clause. This argument is only valid if `rollout_weights` is also specified. If omitted, defaults to `user`.
+- `context_kind` (String) The context kind associated with this rule clause. If omitted, defaults to `user`.
 - `negate` (Boolean) Whether to negate the rule clause.
 - `value_type` (String) The type for each of the clause's values. Available types are `boolean`, `string`, and `number`. If omitted, `value_type` defaults to `string`.
 

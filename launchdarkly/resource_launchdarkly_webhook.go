@@ -14,11 +14,11 @@ func resourceWebhook() *schema.Resource {
 	schemaMap[URL] = &schema.Schema{
 		Type:        schema.TypeString,
 		Required:    true,
-		Description: "The URL of the remote webhook",
+		Description: "The URL of the remote webhook.",
 	}
 	schemaMap[ON] = &schema.Schema{
 		Type:        schema.TypeBool,
-		Description: "Whether this webhook is enabled or not",
+		Description: "Specifies whether the webhook is enabled.",
 		Optional:    true,
 		Default:     false,
 	}
@@ -34,6 +34,10 @@ func resourceWebhook() *schema.Resource {
 		},
 
 		Schema: schemaMap,
+
+		Description: `Provides a LaunchDarkly webhook resource.
+
+This resource allows you to create and manage webhooks within your LaunchDarkly organization.`,
 	}
 }
 

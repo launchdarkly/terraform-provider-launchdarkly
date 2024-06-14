@@ -2,6 +2,7 @@
 
 package launchdarkly
 
+// SUBSCRIPTION_CONFIGURATION_FIELDS is a map of integration keys to their configuration fields. This map is generated from the LaunchDarkly integration manifest API.
 var SUBSCRIPTION_CONFIGURATION_FIELDS = map[string]IntegrationConfig{
 	"chronosphere": {
 		"receiverURL": {
@@ -266,3 +267,6 @@ var SUBSCRIPTION_CONFIGURATION_FIELDS = map[string]IntegrationConfig{
 		},
 	},
 }
+
+// VALID_TRIGGER_INTEGRATIONS is a list of valid trigger integrations. This list is generated from the LaunchDarkly integration manifest API.
+var VALID_TRIGGER_INTEGRATIONS = []string{"generic-trigger", "datadog", "dynatrace", "dynatrace-cloud-automation", "honeycomb", "new-relic-apm", "signalfx"}

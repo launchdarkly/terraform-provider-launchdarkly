@@ -10,6 +10,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
+//go:generate codegen -o integration_configs_generated.go
+
 const (
 	DEFAULT_LAUNCHDARKLY_HOST = "https://app.launchdarkly.com"
 	DEFAULT_HTTP_TIMEOUT_S    = 20
