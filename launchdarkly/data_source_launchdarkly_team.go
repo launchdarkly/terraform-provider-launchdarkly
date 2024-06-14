@@ -12,17 +12,17 @@ func teamSchema() map[string]*schema.Schema {
 		KEY: {
 			Type:        schema.TypeString,
 			Required:    true,
-			Description: "The team's unique key",
+			Description: "The team key.",
 		},
 		DESCRIPTION: {
 			Type:        schema.TypeString,
-			Optional:    true,
-			Description: "The team's description",
+			Computed:    true,
+			Description: "The team description.",
 		},
 		NAME: {
 			Type:        schema.TypeString,
-			Optional:    true,
-			Description: "The team's human-readable name",
+			Computed:    true,
+			Description: "Human-readable name for the team.",
 		},
 		MAINTAINERS: {
 			Type:     schema.TypeSet,
@@ -52,19 +52,19 @@ func teamSchema() map[string]*schema.Schema {
 					},
 				},
 			},
-			Description: "A list of maintainers as 'member' objects",
+			Description: "The list of team maintainers as [team member objects](/providers/launchdarkly/launchdarkly/latest/docs/data-sources/team_member).",
 		},
 		PROJECT_KEYS: {
 			Type:        schema.TypeSet,
 			Computed:    true,
 			Elem:        &schema.Schema{Type: schema.TypeString},
-			Description: "A list of keys of projects that this team owns",
+			Description: "The list of keys of the projects that the team has any write access to.",
 		},
 		CUSTOM_ROLE_KEYS: {
 			Type:        schema.TypeSet,
-			Optional:    true,
+			Computed:    true,
 			Elem:        &schema.Schema{Type: schema.TypeString},
-			Description: "A list of keys for custom roles the team has",
+			Description: "The list of the keys of the custom roles that you have assigned to the team.",
 		},
 	}
 }
@@ -73,6 +73,12 @@ func dataSourceTeam() *schema.Resource {
 	return &schema.Resource{
 		ReadContext: dataSourceTeamRead,
 		Schema:      teamSchema(),
+
+		Description: `Provides a LaunchDarkly team data source.
+
+This data source allows you to retrieve team information from your LaunchDarkly organization.
+
+-> **Note:** Teams are available to customers on an Enterprise LaunchDarkly plan. To learn more, [read about our pricing](https://launchdarkly.com/pricing/). To upgrade your plan, [contact LaunchDarkly Sales](https://launchdarkly.com/contact-sales/).`,
 	}
 }
 

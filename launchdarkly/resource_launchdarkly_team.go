@@ -27,37 +27,42 @@ func resourceTeam() *schema.Resource {
 			KEY: {
 				Type:        schema.TypeString,
 				Required:    true,
-				Description: "The team's unique key",
+				Description: "The team key.",
 			},
 			DESCRIPTION: {
 				Type:        schema.TypeString,
 				Optional:    true,
-				Description: "The team's description",
+				Description: "The team description.",
 			},
 			NAME: {
 				Type:        schema.TypeString,
 				Required:    true,
-				Description: "The team's human-readable name",
+				Description: "A human-friendly name for the team.",
 			},
 			MEMBER_IDS: {
 				Type:        schema.TypeSet,
 				Optional:    true,
 				Elem:        &schema.Schema{Type: schema.TypeString},
-				Description: "A list of team member IDs as strings",
+				Description: "List of member IDs who belong to the team.",
 			},
 			MAINTAINERS: {
 				Type:        schema.TypeSet,
 				Optional:    true,
 				Elem:        &schema.Schema{Type: schema.TypeString},
-				Description: "A list of team maintainer IDs as strings",
+				Description: "List of member IDs for users who maintain the team.",
 			},
 			CUSTOM_ROLE_KEYS: {
 				Type:        schema.TypeSet,
 				Optional:    true,
 				Elem:        &schema.Schema{Type: schema.TypeString},
-				Description: "A list of custom role keys for the team",
+				Description: "List of custom role keys the team will access. The referenced custom roles must already exist in LaunchDarkly. If they don't, the provider may behave unexpectedly.",
 			},
 		},
+		Description: `Provides a LaunchDarkly team resource.
+
+This resource allows you to create and manage a team within your LaunchDarkly organization.
+
+-> **Note:** Teams are available to customers on an Enterprise LaunchDarkly plan. To learn more, [read about our pricing](https://launchdarkly.com/pricing/). To upgrade your plan, [contact LaunchDarkly Sales](https://launchdarkly.com/contact-sales/).`,
 	}
 }
 
