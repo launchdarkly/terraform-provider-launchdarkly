@@ -1,3 +1,11 @@
+## [2.19.0] - 2024-06-14
+### Added:
+- Added support for the `dynatrace-cloud-automation` `integration_key` on the `launchdarkly_flag_trigger` resource. 
+
+### Updated:
+- Documentation for all resources and data sources is now generated from the underlying schema using [tf-plugin-docs](https://github.com/hashicorp/terraform-plugin-docs). 
+- Updated various dependencies.
+
 ## [2.18.4] - 2024-05-28
 ### Fixed:
 - Do not retry 409s from LaunchDarkly.
