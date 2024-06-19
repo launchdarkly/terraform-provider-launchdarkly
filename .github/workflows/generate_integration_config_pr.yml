@@ -31,5 +31,10 @@ jobs:
           commit-message: "[bot] Regenerate integration configs"
           title: "[bot] Regenerate integration configs"
           body: |
-            This PR regenerates `launchdarkly/audit_log_subscription_configs_generated.go` based on recent changes to the [integrations manifest endpoint](https://app.launchdarkly.com/api/v2/integration-manifests).
+            This PR regenerates `launchdarkly/integration_configs_generated.go` based on recent changes to the [integrations manifest endpoint](https://app.launchdarkly.com/api/v2/integration-manifests).
+
+            The changes were made by running:
+            ```sh
+            make generate
+            ```
           labels: bot
