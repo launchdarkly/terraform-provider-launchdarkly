@@ -170,6 +170,32 @@ var SUBSCRIPTION_CONFIGURATION_FIELDS = map[string]IntegrationConfig{
 			Type:          "string",
 		},
 	},
+	"last9": {
+		"apiToken": {
+			AllowedValues: []string{},
+			DefaultValue:  nil,
+			Description:   "Enter Last9 API token. This token must have the `write` access to the Last9 API.",
+			IsOptional:    false,
+			IsSecret:      true,
+			Type:          "string",
+		},
+		"endpointUrl": {
+			AllowedValues: []string{},
+			DefaultValue:  nil,
+			Description:   "Enter your Last9 api base url. Do not include a trailing \"/\".",
+			IsOptional:    false,
+			IsSecret:      false,
+			Type:          "uri",
+		},
+		"last9": {
+			AllowedValues: []string{},
+			DefaultValue:  "",
+			Description:   "If provided, all feature flag events matching the policy filter will be associated with Last9 entities with the same tag.",
+			IsOptional:    true,
+			IsSecret:      false,
+			Type:          "string",
+		},
+	},
 	"logdna": {
 		"ingestionKey": {
 			AllowedValues: []string{},

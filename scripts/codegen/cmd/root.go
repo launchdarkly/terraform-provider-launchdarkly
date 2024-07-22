@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"bytes"
+	"fmt"
 	"os"
 
 	"github.com/pkg/errors"
@@ -25,6 +26,7 @@ var rootCmd = &cobra.Command{
 	 `,
 
 	RunE: func(cmd *cobra.Command, args []string) error {
+		fmt.Println("Generating LaunchDarkly integration code from manifests API...")
 		if ACCESS_TOKEN == "" {
 			return errors.New("LAUNCHDARKLY_ACCESS_TOKEN not set")
 		}
@@ -41,7 +43,9 @@ var rootCmd = &cobra.Command{
 		if err != nil {
 			panic(err)
 		}
-		return err
+
+		fmt.Println("Done generating code.")
+		return nil
 	},
 }
 
