@@ -1,3 +1,7 @@
+## [2.20.0] - 2024-07-22
+### Added:
+- Updated `launchdarkly_audit_log_subscription` resource and data source to support the [Last9 integration](https://docs.launchdarkly.com/integrations/last9/).
+
 ## [2.19.0] - 2024-06-14
 ### Added:
 - Added support for the `dynatrace-cloud-automation` `integration_key` on the `launchdarkly_flag_trigger` resource. 
