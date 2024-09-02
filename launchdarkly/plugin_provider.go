@@ -70,11 +70,6 @@ func (p *launchdarklyProvider) Configure(ctx context.Context, req provider.Confi
 		host = DEFAULT_LAUNCHDARKLY_HOST
 	}
 
-	if strings.HasPrefix(host, "http") {
-		u, _ := url.Parse(host)
-		host = u.Host
-	}
-
 	var data launchdarklyProviderModel
 
 	// Read configuration into data model
@@ -88,6 +83,11 @@ func (p *launchdarklyProvider) Configure(ctx context.Context, req provider.Confi
 	}
 	if data.Host.ValueString() != "" {
 		host = data.Host.ValueString()
+	}
+
+	if strings.HasPrefix(host, "http") {
+		u, _ := url.Parse(host)
+		host = u.Host
 	}
 
 	httpTimeoutSeconds := int(data.HttpTimeout.ValueInt64())

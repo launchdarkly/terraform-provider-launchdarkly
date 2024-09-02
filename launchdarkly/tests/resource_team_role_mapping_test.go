@@ -101,8 +101,8 @@ func testAccBasicTeamRoleMappingConfigEmpty(uniqueRole0, uniqueRole1, teamKey st
 func TestAccTeamRoleMapping_basic(t *testing.T) {
 	t.Parallel()
 	resourceName := "launchdarkly_team_role_mapping.basic"
-	role0 := "role-0-" + acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
-	role1 := "role-1-" + acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	role0 := "dummy-role-0-" + acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	role1 := "dummy-role-1-" + acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	teamKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 
 	resource.Test(t, resource.TestCase{
@@ -134,6 +134,32 @@ func TestAccTeamRoleMapping_basic(t *testing.T) {
 				ImportState:       true,
 				ImportStateVerify: true,
 			},
+			{
+				Config: testAccBasicTeamRoleMappingConfigEmpty(role0, role1, teamKey),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(resourceName, "team_key", teamKey),
+					resource.TestCheckResourceAttr(resourceName, "custom_role_keys.#", "0"),
+				),
+			},
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
+		},
+	})
+}
+
+func TestAccTeamRoleMapping_empty(t *testing.T) {
+	resourceName := "launchdarkly_team_role_mapping.basic"
+	role0 := "role-0-" + acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	role1 := "role-1-" + acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	teamKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+
+	resource.Test(t, resource.TestCase{
+		ProtoV5ProviderFactories: testAccFrameworkMuxProviders(context.Background(), t),
+		PreCheck:                 func() { testAccPreCheck(t) },
+		Steps: []resource.TestStep{
 			{
 				Config: testAccBasicTeamRoleMappingConfigEmpty(role0, role1, teamKey),
 				Check: resource.ComposeTestCheckFunc(
