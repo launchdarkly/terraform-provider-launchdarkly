@@ -99,6 +99,9 @@ func (r *TeamRoleMappingResource) Create(ctx context.Context, req resource.Creat
 		return
 	}
 
+	data.TeamKey = types.StringValue(*team.Key)
+	data.ID = types.StringValue(*team.Key)
+
 	if team.Roles != nil && len(team.Roles.Items) > 0 {
 		resp.Diagnostics.AddError("The team already has custom roles assigned.", fmt.Sprintf("The team %q already has custom roles assigned.", teamKey))
 	}
@@ -139,9 +142,6 @@ func (r *TeamRoleMappingResource) Create(ctx context.Context, req resource.Creat
 			resp.Diagnostics.AddError("Unable to get team", fmt.Sprintf("Received an error when fetching the team %q: %s", teamKey, handleLdapiErr((err))))
 			return
 		}
-
-		data.TeamKey = types.StringValue(*team.Key)
-		data.ID = types.StringValue(*team.Key)
 
 		returnedRoleKeys := make([]string, 0, len(team.Roles.Items))
 		for _, role := range team.Roles.Items {
