@@ -1,3 +1,8 @@
+## [2.20.1] - 2024-09-02
+### Fixed:
+- Fixed a bug that prevented `api_host` from being respected when using the `launchdarkly_team_role_mapping` resource.
+- Fixed a bug in the `launchdarkly_team_role_mapping` resource that prevented creating the resource with an empty `custom_role_keys` array.
+
 ## [2.20.0] - 2024-07-22
 ### Added:
 - Updated `launchdarkly_audit_log_subscription` resource and data source to support the [Last9 integration](https://docs.launchdarkly.com/integrations/last9/).
