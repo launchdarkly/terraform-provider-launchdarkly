@@ -27,7 +27,8 @@ func resourceTeam() *schema.Resource {
 			KEY: {
 				Type:        schema.TypeString,
 				Required:    true,
-				Description: "The team key.",
+				Description: addForceNewDescription("The team key.", true),
+				ForceNew:    true,
 			},
 			DESCRIPTION: {
 				Type:        schema.TypeString,

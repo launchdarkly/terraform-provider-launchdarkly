@@ -17,21 +17,21 @@ func resourceSegment() *schema.Resource {
 		Required:         true,
 		ForceNew:         true,
 		ValidateDiagFunc: validateKey(),
-		Description:      "The segment's project key. A change in this field will force the destruction of the existing resource and the creation of a new one.",
+		Description:      addForceNewDescription("The segment's project key.", true),
 	}
 	schemaMap[ENV_KEY] = &schema.Schema{
 		Type:             schema.TypeString,
 		Required:         true,
 		ForceNew:         true,
 		ValidateDiagFunc: validateKey(),
-		Description:      "The segment's environment key. A change in this field will force the destruction of the existing resource and the creation of a new one.",
+		Description:      addForceNewDescription("The segment's environment key.", true),
 	}
 	schemaMap[KEY] = &schema.Schema{
 		Type:             schema.TypeString,
 		Required:         true,
 		ForceNew:         true,
 		ValidateDiagFunc: validateKey(),
-		Description:      "The unique key that references the segment. A change in this field will force the destruction of the existing resource and the creation of a new one.",
+		Description:      addForceNewDescription("The unique key that references the segment.", true),
 	}
 	schemaMap[NAME] = &schema.Schema{
 		Type:        schema.TypeString,

@@ -163,8 +163,8 @@ resource "launchdarkly_segment" "segment_with_all_clause_operators" {
 - `included_contexts` (Block List) List of non-user target objects included in the segment. This attribute is not valid when `unbounded` is set to `true`. (see [below for nested schema](#nestedblock--included_contexts))
 - `rules` (Block List) List of nested custom rule blocks to apply to the segment. This attribute is not valid when `unbounded` is set to `true`. (see [below for nested schema](#nestedblock--rules))
 - `tags` (Set of String) Tags associated with your resource.
-- `unbounded` (Boolean) Whether to create a standard segment (`false`) or a Big Segment (`true`). Standard segments include rule-based and smaller list-based segments. Big Segments include larger list-based segments and synced segments. Only use a Big Segment if you need to add more than 15,000 individual targets. It is not possible to manage the list of targeted contexts for Big Segments with Terraform.
-- `unbounded_context_kind` (String) For Big Segments, the targeted context kind. If this attribute is not specified it will default to `user`.
+- `unbounded` (Boolean) Whether to create a standard segment (`false`) or a Big Segment (`true`). Standard segments include rule-based and smaller list-based segments. Big Segments include larger list-based segments and synced segments. Only use a Big Segment if you need to add more than 15,000 individual targets. It is not possible to manage the list of targeted contexts for Big Segments with Terraform. A change in this field will force the destruction of the existing resource and the creation of a new one.
+- `unbounded_context_kind` (String) For Big Segments, the targeted context kind. If this attribute is not specified it will default to `user`. A change in this field will force the destruction of the existing resource and the creation of a new one.
 
 ### Read-Only
 

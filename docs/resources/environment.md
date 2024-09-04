@@ -53,7 +53,7 @@ resource "launchdarkly_environment" "approvals_example" {
 - `color` (String) The color swatch as an RGB hex value with no leading `#`. For example: `000000`
 - `key` (String) The project-unique key for the environment. A change in this field will force the destruction of the existing resource and the creation of a new one.
 - `name` (String) The name of the environment.
-- `project_key` (String) The LaunchDarkly project key
+- `project_key` (String) The LaunchDarkly project key. A change in this field will force the destruction of the existing resource and the creation of a new one.
 
 ### Optional
 

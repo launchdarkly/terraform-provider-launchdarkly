@@ -34,7 +34,7 @@ resource "launchdarkly_team" "platform_team" {
 
 ### Required
 
-- `key` (String) The team key.
+- `key` (String) The team key. A change in this field will force the destruction of the existing resource and the creation of a new one.
 - `name` (String) A human-friendly name for the team.
 
 ### Optional
