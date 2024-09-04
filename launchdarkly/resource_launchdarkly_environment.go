@@ -15,7 +15,7 @@ func resourceEnvironment() *schema.Resource {
 	envSchema[PROJECT_KEY] = &schema.Schema{
 		Type:             schema.TypeString,
 		Required:         true,
-		Description:      "The LaunchDarkly project key",
+		Description:      addForceNewDescription("The LaunchDarkly project key.", true),
 		ForceNew:         true,
 		ValidateDiagFunc: validateKey(),
 	}

@@ -87,7 +87,7 @@ resource "launchdarkly_feature_flag" "json_example" {
 - `key` (String) The unique feature flag key that references the flag in your application code. A change in this field will force the destruction of the existing resource and the creation of a new one.
 - `name` (String) The human-readable name of the feature flag.
 - `project_key` (String) The feature flag's project key. A change in this field will force the destruction of the existing resource and the creation of a new one.
-- `variation_type` (String) The feature flag's variation type: `boolean`, `string`, `number` or `json`.
+- `variation_type` (String) The feature flag's variation type: `boolean`, `string`, `number` or `json`. A change in this field will force the destruction of the existing resource and the creation of a new one.
 
 ### Optional
 

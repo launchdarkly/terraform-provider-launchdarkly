@@ -34,7 +34,7 @@ This resource allows you to create and manage custom roles within your LaunchDar
 			KEY: {
 				Type:             schema.TypeString,
 				Required:         true,
-				Description:      "A unique key that will be used to reference the custom role in your code",
+				Description:      addForceNewDescription("A unique key that will be used to reference the custom role in your code.", true),
 				ForceNew:         true,
 				ValidateDiagFunc: validateKey(),
 			},

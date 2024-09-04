@@ -72,7 +72,7 @@ This resource allows you to create and manage projects within your LaunchDarkly 
 			KEY: {
 				Type:             schema.TypeString,
 				Required:         true,
-				Description:      "The project's unique key. A change in this field will force the destruction of the existing resource and the creation of a new one.",
+				Description:      addForceNewDescription("The project's unique key.", true),
 				ForceNew:         true,
 				ValidateDiagFunc: validateKeyAndLength(1, 100),
 			},

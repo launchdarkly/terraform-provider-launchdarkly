@@ -159,7 +159,8 @@ resource "launchdarkly_team" "test" {
 )
 
 func TestAccTeam_CreateAndUpdate(t *testing.T) {
-	randomName := acctest.RandStringFromCharSet(10, acctest.CharSetAlpha)
+	randomTeamKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlpha)
+	randomNewTeamKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlpha)
 	randomRoleOne := acctest.RandStringFromCharSet(10, acctest.CharSetAlpha)
 	randomRoleTwo := acctest.RandStringFromCharSet(10, acctest.CharSetAlpha)
 	randomEmailOne := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
@@ -174,10 +175,11 @@ func TestAccTeam_CreateAndUpdate(t *testing.T) {
 		Providers: testAccProviders,
 		Steps: []resource.TestStep{
 			{
-				Config: fmt.Sprintf(testAccTeamCreate, randomRoleOne, randomEmailOne, randomEmailTwo, randomName),
+				Config: fmt.Sprintf(testAccTeamCreate, randomRoleOne, randomEmailOne, randomEmailTwo, randomTeamKey),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckTeamExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, NAME, "waterbear"),
+					resource.TestCheckResourceAttr(resourceName, KEY, randomTeamKey),
 					resource.TestCheckResourceAttr(resourceName, DESCRIPTION, "The best integrations squad"),
 					resource.TestCheckResourceAttr(resourceName, "member_ids.#", "1"),
 					resource.TestCheckResourceAttr(resourceName, "maintainers.#", "1"),
@@ -190,11 +192,13 @@ func TestAccTeam_CreateAndUpdate(t *testing.T) {
 				ImportState:       true,
 				ImportStateVerify: true,
 			},
+
 			{
-				Config: fmt.Sprintf(testAccTeamUpdateNameDescription, randomRoleOne, randomEmailOne, randomEmailTwo, randomName),
+				Config: fmt.Sprintf(testAccTeamUpdateNameDescription, randomRoleOne, randomEmailOne, randomEmailTwo, randomTeamKey),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckTeamExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, NAME, "Integrations"),
+					resource.TestCheckResourceAttr(resourceName, KEY, randomTeamKey),
 					resource.TestCheckResourceAttr(resourceName, DESCRIPTION, "The BEST integrations squad"),
 					resource.TestCheckResourceAttr(resourceName, "member_ids.#", "1"),
 					resource.TestCheckResourceAttr(resourceName, "maintainers.#", "1"),
@@ -208,10 +212,11 @@ func TestAccTeam_CreateAndUpdate(t *testing.T) {
 				ImportStateVerify: true,
 			},
 			{
-				Config: fmt.Sprintf(testAccTeamUpdateRoles, randomRoleOne, randomRoleTwo, randomEmailOne, randomEmailTwo, randomName),
+				Config: fmt.Sprintf(testAccTeamUpdateRoles, randomRoleOne, randomRoleTwo, randomEmailOne, randomEmailTwo, randomTeamKey),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckTeamExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, NAME, "Integrations"),
+					resource.TestCheckResourceAttr(resourceName, KEY, randomTeamKey),
 					resource.TestCheckResourceAttr(resourceName, DESCRIPTION, "The BEST integrations squad"),
 					resource.TestCheckResourceAttr(resourceName, "member_ids.#", "1"),
 					resource.TestCheckResourceAttr(resourceName, "maintainers.#", "1"),
@@ -225,10 +230,30 @@ func TestAccTeam_CreateAndUpdate(t *testing.T) {
 				ImportStateVerify: true,
 			},
 			{
-				Config: fmt.Sprintf(testAccTeamUpdateMembersMaintainers, randomRoleTwo, randomEmailOne, randomEmailTwo, randomEmailThree, randomName),
+				Config: fmt.Sprintf(testAccTeamUpdateMembersMaintainers, randomRoleTwo, randomEmailOne, randomEmailTwo, randomEmailThree, randomTeamKey),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckTeamExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, NAME, "Integrations"),
+					resource.TestCheckResourceAttr(resourceName, KEY, randomTeamKey),
+					resource.TestCheckResourceAttr(resourceName, DESCRIPTION, "The BEST integrations squad"),
+					resource.TestCheckResourceAttr(resourceName, "member_ids.#", "2"),
+					resource.TestCheckResourceAttr(resourceName, "maintainers.#", "2"),
+					resource.TestCheckResourceAttr(resourceName, "custom_role_keys.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "custom_role_keys.0", randomRoleTwo),
+				),
+			},
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
+			// Check the team key can be updated (with force new)
+			{
+				Config: fmt.Sprintf(testAccTeamUpdateMembersMaintainers, randomRoleTwo, randomEmailOne, randomEmailTwo, randomEmailThree, randomNewTeamKey),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckTeamExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, NAME, "Integrations"),
+					resource.TestCheckResourceAttr(resourceName, KEY, randomNewTeamKey),
 					resource.TestCheckResourceAttr(resourceName, DESCRIPTION, "The BEST integrations squad"),
 					resource.TestCheckResourceAttr(resourceName, "member_ids.#", "2"),
 					resource.TestCheckResourceAttr(resourceName, "maintainers.#", "2"),

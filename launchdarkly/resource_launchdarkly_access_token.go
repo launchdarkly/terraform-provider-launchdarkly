@@ -70,14 +70,14 @@ The resource must contain either a "role", "custom_role" or an "inline_roles" (p
 			INLINE_ROLES:      tokenPolicySchema,
 			SERVICE_TOKEN: {
 				Type:        schema.TypeBool,
-				Description: "Whether the token will be a [service token](https://docs.launchdarkly.com/home/account-security/api-access-tokens#service-tokens). A change in this field will force the destruction of the existing token and the creation of a new one.",
+				Description: addForceNewDescription("Whether the token will be a [service token](https://docs.launchdarkly.com/home/account-security/api-access-tokens#service-tokens).", true),
 				Optional:    true,
 				ForceNew:    true,
 				Default:     false,
 			},
 			DEFAULT_API_VERSION: {
 				Type:             schema.TypeInt,
-				Description:      "The default API version for this token. Defaults to the latest API version. A change in this field will force the destruction of the existing token in state and the creation of a new one.",
+				Description:      addForceNewDescription("The default API version for this token. Defaults to the latest API version.", true),
 				Optional:         true,
 				ForceNew:         true,
 				Computed:         true,

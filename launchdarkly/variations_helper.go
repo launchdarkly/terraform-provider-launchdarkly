@@ -24,7 +24,7 @@ func variationTypeSchema() *schema.Schema {
 		Type:             schema.TypeString,
 		Required:         true,
 		ForceNew:         true,
-		Description:      "The feature flag's variation type: `boolean`, `string`, `number` or `json`.",
+		Description:      addForceNewDescription("The feature flag's variation type: `boolean`, `string`, `number` or `json`.", true),
 		ValidateDiagFunc: validation.ToDiagFunc(validateVariationType),
 	}
 }

@@ -51,13 +51,13 @@ resource "launchdarkly_access_token" "token_with_policy_statements" {
 ### Optional
 
 - `custom_roles` (Set of String) A list of custom role IDs to use as access limits for the access token.
-- `default_api_version` (Number) The default API version for this token. Defaults to the latest API version. A change in this field will force the destruction of the existing token in state and the creation of a new one.
+- `default_api_version` (Number) The default API version for this token. Defaults to the latest API version. A change in this field will force the destruction of the existing resource and the creation of a new one.
 - `expire` (Number, Deprecated) An expiration time for the current token secret, expressed as a Unix epoch time. Replace the computed token secret with a new value. The expired secret will no longer be able to authorize usage of the LaunchDarkly API. This field argument is **deprecated**. Please update your config to remove `expire` to maintain compatibility with future versions
 - `inline_roles` (Block List) Define inline custom roles. An array of statements represented as config blocks with three attributes: effect, resources, actions. May be used in place of a built-in or custom role. [Using polices](https://docs.launchdarkly.com/home/members/role-policies). May be specified more than once. (see [below for nested schema](#nestedblock--inline_roles))
 - `name` (String) A human-friendly name for the access token.
 - `policy_statements` (Block List, Deprecated) Define inline custom roles. An array of statements represented as config blocks with three attributes: effect, resources, actions. May be used in place of a built-in or custom role. May be specified more than once. This field argument is **deprecated**. Update your config to use `inline_role` to maintain compatibility with future versions. (see [below for nested schema](#nestedblock--policy_statements))
 - `role` (String) A built-in LaunchDarkly role. Can be `reader`, `writer`, or `admin`
-- `service_token` (Boolean) Whether the token will be a [service token](https://docs.launchdarkly.com/home/account-security/api-access-tokens#service-tokens). A change in this field will force the destruction of the existing token and the creation of a new one.
+- `service_token` (Boolean) Whether the token will be a [service token](https://docs.launchdarkly.com/home/account-security/api-access-tokens#service-tokens). A change in this field will force the destruction of the existing resource and the creation of a new one.
 
 ### Read-Only
 
