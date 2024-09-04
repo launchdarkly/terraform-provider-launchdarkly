@@ -1,3 +1,8 @@
+## [2.20.2] - 2024-09-04
+### Fixed:
+- Fixed a bug in the `launchdarkly_team` resource that prevented changes to the `key` from requiring the resource to be destroyed and recreated.
+- Bump google.golang.org/grpc from 1.64.0 to 1.64.1 to address [CVE-2023-45288](https://nvd.nist.gov/vuln/detail/CVE-2023-45288).
+
 ## [2.20.1] - 2024-09-02
 ### Fixed:
 - Fixed a bug that prevented `api_host` from being respected when using the `launchdarkly_team_role_mapping` resource.
