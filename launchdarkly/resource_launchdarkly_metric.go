@@ -305,7 +305,7 @@ func resourceMetricUpdate(ctx context.Context, d *schema.ResourceData, metaRaw i
 	if ok {
 		patch = append(patch, patchReplace("/percentileValue", int32(percentileValueData.(int))))
 	} else {
-		patch = append(patch, patchRemove("/percentileValue"))
+		patch = append(patch, patchReplace("/percentileValue", nil))
 	}
 
 	// Only update successCriteria if it is specified in the schema (enum values)
