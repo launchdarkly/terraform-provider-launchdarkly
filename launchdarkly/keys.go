@@ -6,6 +6,7 @@ const (
 	//gofmts:sort
 	ACTIONS                          = "actions"
 	ACTION_SET                       = "action_set"
+	ANALYSIS_TYPE                    = "analysis_type"
 	API_KEY                          = "api_key"
 	APPROVAL_SETTINGS                = "approval_settings"
 	ARCHIVED                         = "archived"
@@ -56,6 +57,7 @@ const (
 	INCLUDED                         = "included"
 	INCLUDED_CONTEXTS                = "included_contexts"
 	INCLUDE_IN_SNIPPET               = "include_in_snippet"
+	INCLUDE_UNITS_WITHOUT_EVENTS     = "include_units_without_events"
 	INLINE_ROLES                     = "inline_roles"
 	INSTRUCTIONS                     = "instructions"
 	INTEGRATION_KEY                  = "integration_key"
@@ -79,6 +81,7 @@ const (
 	ON_VARIATION                     = "on_variation"
 	OP                               = "op"
 	PATTERN                          = "pattern"
+	PERCENTILE_VALUE                 = "percentile_value"
 	POLICY                           = "policy"
 	POLICY_STATEMENTS                = "policy_statements"
 	PREREQUISITES                    = "prerequisites"
@@ -113,6 +116,7 @@ const (
 	UNBOUNDED                        = "unbounded"
 	UNBOUNDED_CONTEXT_KIND           = "unbounded_context_kind"
 	UNIT                             = "unit"
+	UNIT_AGGREGATION_TYPE            = "unit_aggregation_type"
 	URL                              = "url"
 	URLS                             = "urls"
 	USING_ENVIRONMENT_ID             = "using_environment_id"
@@ -123,5 +127,6 @@ const (
 	VARIATION                        = "variation"
 	VARIATIONS                       = "variations"
 	VARIATION_TYPE                   = "variation_type"
+	VERSION                          = "version"
 	WEIGHT                           = "weight"
 )

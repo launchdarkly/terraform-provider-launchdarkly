@@ -3,6 +3,7 @@ package launchdarkly
 import (
 	"fmt"
 	"os"
+	"regexp"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/acctest"
@@ -232,6 +233,274 @@ func TestAccMetric_WithRandomizationUnits(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, RANDOMIZATION_UNITS+".0", "organization"),
 					resource.TestCheckResourceAttr(resourceName, RANDOMIZATION_UNITS+".1", "request"),
 					resource.TestCheckResourceAttr(resourceName, RANDOMIZATION_UNITS+".2", "user"),
+				),
+			},
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
+		},
+	})
+}
+
+func TestAccMetric_MetricAnalysisFields(t *testing.T) {
+	// Testing new analysis fields: INCLUDE_UNITS_WITHOUT_EVENTS, UNIT_AGGREGATION_TYPE, ANALYSIS_TYPE, PERCENTILE_VALUE
+
+	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	resourceName := "launchdarkly_metric.analysis_fields"
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck: func() {
+			testAccPreCheck(t)
+		},
+		Providers: testAccProviders,
+		Steps: []resource.TestStep{
+			// 1. Set none of the analysis fields, verify the metric is created with default values
+			{
+				Config: withRandomProject(projectKey, `resource "launchdarkly_metric" "analysis_fields" {
+	project_key = launchdarkly_project.test.key
+	key = "test-analysis-fields"
+	name = "Test Analysis Fields"
+	description = "description."
+	kind = "custom"
+	event_key = "event key"
+	is_numeric = true
+	success_criteria = "HigherThanBaseline"
+	unit = "things"
+}`),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckMetricExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, INCLUDE_UNITS_WITHOUT_EVENTS, "true"),
+					resource.TestCheckResourceAttr(resourceName, UNIT_AGGREGATION_TYPE, "average"),
+					resource.TestCheckResourceAttr(resourceName, ANALYSIS_TYPE, "mean"),
+					resource.TestCheckResourceAttr(resourceName, PERCENTILE_VALUE, "0"),
+					resource.TestCheckResourceAttr(resourceName, VERSION, "1"),
+				),
+			},
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
+
+			// 2. Run again with same config, verify version does not increment
+			{
+				Config: withRandomProject(projectKey, `resource "launchdarkly_metric" "analysis_fields" {
+	project_key = launchdarkly_project.test.key
+	key = "test-analysis-fields"
+	name = "Test Analysis Fields"
+	description = "description."
+	kind = "custom"
+	event_key = "event key"
+	is_numeric = true
+	success_criteria = "HigherThanBaseline"
+	unit = "things"
+}`),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckMetricExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, INCLUDE_UNITS_WITHOUT_EVENTS, "true"),
+					resource.TestCheckResourceAttr(resourceName, UNIT_AGGREGATION_TYPE, "average"),
+					resource.TestCheckResourceAttr(resourceName, ANALYSIS_TYPE, "mean"),
+					resource.TestCheckResourceAttr(resourceName, PERCENTILE_VALUE, "0"),
+					resource.TestCheckResourceAttr(resourceName, VERSION, "1"),
+				),
+			},
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
+
+			// 3. Set all analysis fields to their default values, verify version is still 1 (no update happened)
+			{
+				Config: withRandomProject(projectKey, `resource "launchdarkly_metric" "analysis_fields" {
+	project_key = launchdarkly_project.test.key
+	key = "test-analysis-fields"
+	name = "Test Analysis Fields"
+	description = "description."
+	kind = "custom"
+	event_key = "event key"
+	is_numeric = true
+	success_criteria = "HigherThanBaseline"
+	unit = "things"
+	include_units_without_events = true
+	unit_aggregation_type = "average"
+	analysis_type = "mean"
+	percentile_value = null
+}`),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckMetricExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, INCLUDE_UNITS_WITHOUT_EVENTS, "true"),
+					resource.TestCheckResourceAttr(resourceName, UNIT_AGGREGATION_TYPE, "average"),
+					resource.TestCheckResourceAttr(resourceName, ANALYSIS_TYPE, "mean"),
+					resource.TestCheckResourceAttr(resourceName, PERCENTILE_VALUE, "0"),
+					resource.TestCheckResourceAttr(resourceName, VERSION, "1"),
+				),
+			},
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
+			// 4. Set analysis_type to percentile and leave percentile blank. verify error.
+			{
+				Config: withRandomProject(projectKey, `resource "launchdarkly_metric" "analysis_fields" {
+	project_key = launchdarkly_project.test.key
+	key = "test-analysis-fields"
+	name = "Test Analysis Fields"
+	description = "description."
+	kind = "custom"
+	event_key = "event key"
+	is_numeric = true
+	success_criteria = "HigherThanBaseline"
+	unit = "things"
+	include_units_without_events = false
+	unit_aggregation_type = "sum"
+	analysis_type = "percentile"
+	percentile_value = null
+}`),
+				ExpectError: regexp.MustCompile("percentile_value is required when analysis_type is percentile"),
+			},
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
+			// 5. Set percentile_value, verify metric is updated. (version is now 2)
+			{
+				Config: withRandomProject(projectKey, `resource "launchdarkly_metric" "analysis_fields" {
+	project_key = launchdarkly_project.test.key
+	key = "test-analysis-fields"
+	name = "Test Analysis Fields"
+	description = "description."
+	kind = "custom"
+	event_key = "event key"
+	is_numeric = true
+	success_criteria = "HigherThanBaseline"
+	unit = "things"
+	include_units_without_events = false
+	unit_aggregation_type = "sum"
+	analysis_type = "percentile"
+	percentile_value = 42
+}`),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckMetricExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, INCLUDE_UNITS_WITHOUT_EVENTS, "false"),
+					resource.TestCheckResourceAttr(resourceName, UNIT_AGGREGATION_TYPE, "sum"),
+					resource.TestCheckResourceAttr(resourceName, ANALYSIS_TYPE, "percentile"),
+					resource.TestCheckResourceAttr(resourceName, PERCENTILE_VALUE, "42"),
+					resource.TestCheckResourceAttr(resourceName, VERSION, "2"),
+				),
+			},
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
+			// 6. Change percentile_value (version is now 3)
+			{
+				Config: withRandomProject(projectKey, `resource "launchdarkly_metric" "analysis_fields" {
+	project_key = launchdarkly_project.test.key
+	key = "test-analysis-fields"
+	name = "Test Analysis Fields"
+	description = "description."
+	kind = "custom"
+	event_key = "event key"
+	is_numeric = true
+	success_criteria = "HigherThanBaseline"
+	unit = "things"
+	include_units_without_events = false
+	unit_aggregation_type = "sum"
+	analysis_type = "percentile"
+	percentile_value = 99
+}`),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckMetricExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, INCLUDE_UNITS_WITHOUT_EVENTS, "false"),
+					resource.TestCheckResourceAttr(resourceName, UNIT_AGGREGATION_TYPE, "sum"),
+					resource.TestCheckResourceAttr(resourceName, ANALYSIS_TYPE, "percentile"),
+					resource.TestCheckResourceAttr(resourceName, PERCENTILE_VALUE, "99"),
+					resource.TestCheckResourceAttr(resourceName, VERSION, "3"),
+				),
+			},
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
+			// 7. Change key, verify old metric is deleted, new one is created, fields all correct. (version is now 1)
+			{
+				Config: withRandomProject(projectKey, `resource "launchdarkly_metric" "analysis_fields" {
+	project_key = launchdarkly_project.test.key
+	key = "test-analysis-fields2"
+	name = "Test Analysis Fields"
+	description = "description."
+	kind = "custom"
+	event_key = "event key"
+	is_numeric = true
+	success_criteria = "HigherThanBaseline"
+	unit = "things"
+	include_units_without_events = false
+	unit_aggregation_type = "sum"
+	analysis_type = "percentile"
+	percentile_value = 99
+}`),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckMetricExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, INCLUDE_UNITS_WITHOUT_EVENTS, "false"),
+					resource.TestCheckResourceAttr(resourceName, UNIT_AGGREGATION_TYPE, "sum"),
+					resource.TestCheckResourceAttr(resourceName, ANALYSIS_TYPE, "percentile"),
+					resource.TestCheckResourceAttr(resourceName, PERCENTILE_VALUE, "99"),
+					resource.TestCheckResourceAttr(resourceName, VERSION, "1"),
+				),
+			},
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
+			// 8. Change analysis type, verify error
+			{
+				Config: withRandomProject(projectKey, `resource "launchdarkly_metric" "analysis_fields" {
+	project_key = launchdarkly_project.test.key
+	key = "test-analysis-fields2"
+	name = "Test Analysis Fields"
+	description = "description."
+	kind = "custom"
+	event_key = "event key"
+	is_numeric = true
+	success_criteria = "HigherThanBaseline"
+	unit = "things"
+	include_units_without_events = false
+	unit_aggregation_type = "sum"
+	analysis_type = "mean"
+	percentile_value = 99
+}`),
+				ExpectError: regexp.MustCompile("mean type metrics can not have percentile values"),
+			},
+			// 9. Remove percentile, verify metric is updated. (version is now 2)
+			{
+				Config: withRandomProject(projectKey, `resource "launchdarkly_metric" "analysis_fields" {
+	project_key = launchdarkly_project.test.key
+	key = "test-analysis-fields2"
+	name = "Test Analysis Fields"
+	description = "description."
+	kind = "custom"
+	event_key = "event key"
+	is_numeric = true
+	success_criteria = "HigherThanBaseline"
+	unit = "things"
+	include_units_without_events = false
+	unit_aggregation_type = "sum"
+	analysis_type = "mean"
+}`),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckMetricExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, INCLUDE_UNITS_WITHOUT_EVENTS, "false"),
+					resource.TestCheckResourceAttr(resourceName, UNIT_AGGREGATION_TYPE, "sum"),
+					resource.TestCheckResourceAttr(resourceName, ANALYSIS_TYPE, "mean"),
+					resource.TestCheckResourceAttr(resourceName, PERCENTILE_VALUE, "0"),
+					resource.TestCheckResourceAttr(resourceName, VERSION, "2"),
 				),
 			},
 			{

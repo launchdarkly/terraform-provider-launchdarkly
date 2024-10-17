@@ -61,8 +61,9 @@ func baseMetricSchema(isDataSource bool) map[string]*schema.Schema {
 			Type:        schema.TypeBool,
 			Optional:    !isDataSource,
 			Computed:    isDataSource,
-			Description: "Whether a metric is a active.",
+			Description: "Ignored. All metrics are considered active.",
 			Default:     false,
+			Deprecated:  "No longer in use. This field will be removed in a future major release of the LaunchDarkly provider.",
 		},
 		IS_NUMERIC: {
 			Type:        schema.TypeBool,
@@ -115,6 +116,42 @@ func baseMetricSchema(isDataSource bool) map[string]*schema.Schema {
 			Computed:    true,
 			Description: `A set of one or more context kinds that this metric can measure events from. Metrics can only use context kinds marked as "Available for experiments." For more information, read [Allocating experiment audiences](https://docs.launchdarkly.com/home/creating-experiments/allocation).`,
 		},
+		INCLUDE_UNITS_WITHOUT_EVENTS: {
+			Type:        schema.TypeBool,
+			Optional:    !isDataSource,
+			Computed:    isDataSource,
+			Description: "Include units that did not send any events and set their value to 0.",
+			Default:     true,
+		},
+		UNIT_AGGREGATION_TYPE: {
+			Type:             schema.TypeString,
+			Optional:         !isDataSource,
+			Computed:         isDataSource,
+			Description:      "The method by which multiple unit event values are aggregated.",
+			ValidateDiagFunc: validation.ToDiagFunc(validation.StringInSlice([]string{"average", "sum"}, false)),
+			Default:          "average",
+		},
+		ANALYSIS_TYPE: {
+			Type:             schema.TypeString,
+			Optional:         !isDataSource,
+			Computed:         isDataSource,
+			Description:      "The method for analyzing metric events.",
+			ValidateDiagFunc: validation.ToDiagFunc(validation.StringInSlice([]string{"mean", "percentile"}, false)),
+			Default:          "mean",
+		},
+		PERCENTILE_VALUE: {
+			Type:             schema.TypeInt,
+			Optional:         !isDataSource,
+			Computed:         isDataSource,
+			Description:      "The percentile for the analysis method. An integer denoting the target percentile between 0 and 100. Required when analysis_type is percentile.",
+			ValidateDiagFunc: validation.ToDiagFunc(validation.IntBetween(1, 99)),
+			Default:          nil,
+		},
+		VERSION: {
+			Type:        schema.TypeInt,
+			Computed:    true,
+			Description: "Version of the metric",
+		},
 	}
 
 	if isDataSource {
@@ -161,6 +198,13 @@ func metricRead(ctx context.Context, d *schema.ResourceData, metaRaw interface{}
 	_ = d.Set(EVENT_KEY, metric.EventKey)
 	_ = d.Set(SUCCESS_CRITERIA, metric.SuccessCriteria)
 	_ = d.Set(RANDOMIZATION_UNITS, metric.RandomizationUnits)
+	if metric.EventDefault != nil && metric.EventDefault.Disabled != nil {
+		_ = d.Set(INCLUDE_UNITS_WITHOUT_EVENTS, !*metric.EventDefault.Disabled)
+	}
+	_ = d.Set(UNIT_AGGREGATION_TYPE, metric.UnitAggregationType)
+	_ = d.Set(ANALYSIS_TYPE, metric.AnalysisType)
+	_ = d.Set(PERCENTILE_VALUE, metric.PercentileValue)
+	_ = d.Set(VERSION, metric.Version)
 
 	d.SetId(projectKey + "/" + key)
 

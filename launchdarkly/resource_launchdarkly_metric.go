@@ -27,6 +27,8 @@ func customizeMetricDiff(ctx context.Context, diff *schema.ResourceDiff, v inter
 	successCriteriaInConfig := config.GetAttr(SUCCESS_CRITERIA)
 	unitInConfig := config.GetAttr(UNIT)
 	eventKeyInConfig := config.GetAttr(EVENT_KEY)
+	analysisTypeInConfig := diff.Get(ANALYSIS_TYPE).(string)
+	percentileValueInConfig := config.GetAttr(PERCENTILE_VALUE)
 
 	// Different validation logic depending on which kind of metric we are creating
 	switch kindInConfig {
@@ -112,6 +114,22 @@ func customizeMetricDiff(ctx context.Context, diff *schema.ResourceDiff, v inter
 		}
 	}
 
+	if analysisTypeInConfig == "percentile" {
+		if percentileValueInConfig.IsNull() {
+			return fmt.Errorf("percentile_value is required when analysis_type is percentile")
+		}
+	} else if !percentileValueInConfig.IsNull() {
+		return fmt.Errorf("%s type metrics can not have percentile values", analysisTypeInConfig)
+	}
+
+	// If anything is changed at all, expect a new value will be computed for "version"
+	if len(diff.GetChangedKeysPrefix("")) > 0 {
+		err := diff.SetNewComputed(VERSION)
+		if err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
@@ -163,20 +181,32 @@ func resourceMetricCreate(ctx context.Context, d *schema.ResourceData, metaRaw i
 	unit := d.Get(UNIT).(string)
 	selector := d.Get(SELECTOR).(string)
 	eventKey := d.Get(EVENT_KEY).(string)
+	unitAggregationType := d.Get(UNIT_AGGREGATION_TYPE).(string)
+	analysisType := d.Get(ANALYSIS_TYPE).(string)
+	includeUnitsWithoutEvents := d.Get(INCLUDE_UNITS_WITHOUT_EVENTS).(bool)
+	eventDefaultDisabled := !includeUnitsWithoutEvents
 
 	metric := ldapi.MetricPost{
-		Name:               &name,
-		Key:                key,
-		Description:        &description,
-		Tags:               tags,
-		Kind:               kind,
-		IsActive:           &isActive,
-		IsNumeric:          &isNumeric,
-		Selector:           &selector,
-		Urls:               urls,
-		RandomizationUnits: randomizationUnits,
-		Unit:               &unit,
-		EventKey:           &eventKey,
+		Name:                &name,
+		Key:                 key,
+		Description:         &description,
+		Tags:                tags,
+		Kind:                kind,
+		IsActive:            &isActive,
+		IsNumeric:           &isNumeric,
+		Selector:            &selector,
+		Urls:                urls,
+		RandomizationUnits:  randomizationUnits,
+		Unit:                &unit,
+		EventKey:            &eventKey,
+		UnitAggregationType: &unitAggregationType,
+		AnalysisType:        &analysisType,
+		EventDefault:        &ldapi.MetricEventDefaultRep{Disabled: &eventDefaultDisabled},
+	}
+	percentileValueData, hasPercentile := d.GetOk(PERCENTILE_VALUE)
+	if hasPercentile {
+		percentileValue := int32(percentileValueData.(int))
+		metric.PercentileValue = &percentileValue
 	}
 	// Only add successCriteria if it has a value - empty string causes API errors
 	_, ok := d.GetOk(SUCCESS_CRITERIA)
@@ -251,6 +281,9 @@ func resourceMetricUpdate(ctx context.Context, d *schema.ResourceData, metaRaw i
 	unit := d.Get(UNIT).(string)
 	selector := d.Get(SELECTOR).(string)
 	eventKey := d.Get(EVENT_KEY).(string)
+	unitAggregationType := d.Get(UNIT_AGGREGATION_TYPE).(string)
+	analysisType := d.Get(ANALYSIS_TYPE).(string)
+	includeUnitsWithoutEvents := d.Get(INCLUDE_UNITS_WITHOUT_EVENTS).(bool)
 
 	patch := []ldapi.PatchOperation{
 		patchReplace("/name", name),
@@ -263,6 +296,16 @@ func resourceMetricUpdate(ctx context.Context, d *schema.ResourceData, metaRaw i
 		patchReplace("/unit", unit),
 		patchReplace("/selector", selector),
 		patchReplace("/eventKey", eventKey),
+		patchReplace("/unitAggregationType", unitAggregationType),
+		patchReplace("/analysisType", analysisType),
+		patchReplace("/eventDefault/disabled", !includeUnitsWithoutEvents),
+	}
+
+	percentileValueData, ok := d.GetOk(PERCENTILE_VALUE)
+	if ok {
+		patch = append(patch, patchReplace("/percentileValue", int32(percentileValueData.(int))))
+	} else {
+		patch = append(patch, patchRemove("/percentileValue"))
 	}
 
 	// Only update successCriteria if it is specified in the schema (enum values)
