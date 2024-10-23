@@ -119,9 +119,8 @@ func baseMetricSchema(isDataSource bool) map[string]*schema.Schema {
 		INCLUDE_UNITS_WITHOUT_EVENTS: {
 			Type:        schema.TypeBool,
 			Optional:    !isDataSource,
-			Computed:    isDataSource,
+			Computed:    true,
 			Description: "Include units that did not send any events and set their value to 0.",
-			Default:     true,
 		},
 		UNIT_AGGREGATION_TYPE: {
 			Type:             schema.TypeString,

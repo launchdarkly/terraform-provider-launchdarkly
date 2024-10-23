@@ -29,6 +29,7 @@ func customizeMetricDiff(ctx context.Context, diff *schema.ResourceDiff, v inter
 	eventKeyInConfig := config.GetAttr(EVENT_KEY)
 	analysisTypeInConfig := diff.Get(ANALYSIS_TYPE).(string)
 	percentileValueInConfig := config.GetAttr(PERCENTILE_VALUE)
+	includeUnitsWithoutEventsInConfig := config.GetAttr(INCLUDE_UNITS_WITHOUT_EVENTS)
 
 	// Different validation logic depending on which kind of metric we are creating
 	switch kindInConfig {
@@ -118,6 +119,9 @@ func customizeMetricDiff(ctx context.Context, diff *schema.ResourceDiff, v inter
 		if percentileValueInConfig.IsNull() {
 			return fmt.Errorf("percentile_value is required when analysis_type is percentile")
 		}
+		if includeUnitsWithoutEventsInConfig.True() {
+			return fmt.Errorf("include_units_without_events is not supported for percentile metrics")
+		}
 	} else if !percentileValueInConfig.IsNull() {
 		return fmt.Errorf("%s type metrics can not have percentile values", analysisTypeInConfig)
 	}
@@ -127,6 +131,20 @@ func customizeMetricDiff(ctx context.Context, diff *schema.ResourceDiff, v inter
 		err := diff.SetNewComputed(VERSION)
 		if err != nil {
 			return err
+		}
+	}
+
+	if includeUnitsWithoutEventsInConfig.IsNull() {
+		if analysisTypeInConfig == "percentile" {
+			err := diff.SetNew(INCLUDE_UNITS_WITHOUT_EVENTS, false)
+			if err != nil {
+				return err
+			}
+		} else {
+			err := diff.SetNew(INCLUDE_UNITS_WITHOUT_EVENTS, true)
+			if err != nil {
+				return err
+			}
 		}
 	}
 

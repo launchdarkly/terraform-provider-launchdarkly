@@ -512,6 +512,119 @@ func TestAccMetric_MetricAnalysisFields(t *testing.T) {
 	})
 }
 
+func TestAccMetric_IncludeUnitsWithoutEvents(t *testing.T) {
+	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	resourceName := "launchdarkly_metric.analysis_fields"
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck: func() {
+			testAccPreCheck(t)
+		},
+		Providers: testAccProviders,
+		Steps: []resource.TestStep{
+			// Default value is "true" when "analysis_type" is "mean"
+			{
+				Config: withRandomProject(projectKey, `resource "launchdarkly_metric" "analysis_fields" {
+	project_key = launchdarkly_project.test.key
+	key = "test-analysis-fields"
+	name = "Test Analysis Fields"
+	description = "description."
+	kind = "custom"
+	event_key = "event key"
+	is_numeric = true
+	success_criteria = "HigherThanBaseline"
+	unit = "things"
+	analysis_type = "mean"
+}`),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckMetricExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, INCLUDE_UNITS_WITHOUT_EVENTS, "true"),
+					resource.TestCheckResourceAttr(resourceName, VERSION, "1"),
+				),
+			},
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
+			// Default value is "false" when "analysis_type" is "percentile"
+			{
+				Config: withRandomProject(projectKey, `resource "launchdarkly_metric" "analysis_fields" {
+	project_key = launchdarkly_project.test.key
+	key = "test-analysis-fields"
+	name = "Test Analysis Fields"
+	description = "description."
+	kind = "custom"
+	event_key = "event key"
+	is_numeric = true
+	success_criteria = "HigherThanBaseline"
+	unit = "things"
+	analysis_type = "percentile"
+	percentile_value = 99
+}`),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckMetricExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, INCLUDE_UNITS_WITHOUT_EVENTS, "false"),
+					resource.TestCheckResourceAttr(resourceName, VERSION, "2"),
+				),
+			},
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
+			// "false" is also allowed when "analysis_type" is "mean"
+			{
+				Config: withRandomProject(projectKey, `resource "launchdarkly_metric" "analysis_fields" {
+	project_key = launchdarkly_project.test.key
+	key = "test-analysis-fields"
+	name = "Test Analysis Fields"
+	description = "description."
+	kind = "custom"
+	event_key = "event key"
+	is_numeric = true
+	success_criteria = "HigherThanBaseline"
+	unit = "things"
+	analysis_type = "mean"
+	include_units_without_events = false
+}`),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckMetricExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, INCLUDE_UNITS_WITHOUT_EVENTS, "false"),
+					resource.TestCheckResourceAttr(resourceName, VERSION, "3"),
+				),
+			},
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
+			// "true" is not allowed when "analysis_type" is "percentile"
+			{
+				Config: withRandomProject(projectKey, `resource "launchdarkly_metric" "analysis_fields" {
+	project_key = launchdarkly_project.test.key
+	key = "test-analysis-fields"
+	name = "Test Analysis Fields"
+	description = "description."
+	kind = "custom"
+	event_key = "event key"
+	is_numeric = true
+	success_criteria = "HigherThanBaseline"
+	unit = "things"
+	analysis_type = "percentile"
+	percentile_value = 99
+	include_units_without_events = true
+}`),
+				ExpectError: regexp.MustCompile("include_units_without_events is not supported for percentile metrics"),
+			},
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
+		},
+	})
+}
+
 func testAccCheckMetricExists(resourceName string) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
 		rs, ok := s.RootModule().Resources[resourceName]
