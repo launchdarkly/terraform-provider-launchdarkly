@@ -32,20 +32,25 @@ data "launchdarkly_metric" "example" {
 
 ### Read-Only
 
+- `analysis_type` (String) The method for analyzing metric events. Available choices are `mean` and `percentile`.
 - `description` (String) The description of the metric's purpose.
 - `event_key` (String) The event key for your metric (if custom metric)
 - `id` (String) The ID of this resource.
-- `is_active` (Boolean) Whether a metric is a active.
+- `include_units_without_events` (Boolean) Include units that did not send any events and set their value to 0.
+- `is_active` (Boolean, Deprecated) Ignored. All metrics are considered active.
 - `is_numeric` (Boolean) Whether a `custom` metric is a numeric metric or not.
 - `kind` (String) The metric type. Available choices are `click`, `custom`, and `pageview`.
 - `maintainer_id` (String) The LaunchDarkly member ID of the member who will maintain the metric. If not set, the API will automatically apply the member associated with your Terraform API key or the most recently-set maintainer
 - `name` (String) The human-friendly name for the metric.
+- `percentile_value` (Number) The percentile for the analysis method. An integer denoting the target percentile between 0 and 100. Required when analysis_type is percentile.
 - `randomization_units` (Set of String) A set of one or more context kinds that this metric can measure events from. Metrics can only use context kinds marked as "Available for experiments." For more information, read [Allocating experiment audiences](https://docs.launchdarkly.com/home/creating-experiments/allocation).
 - `selector` (String) The CSS selector for your metric (if click metric)
-- `success_criteria` (String) The success criteria for your metric (if numeric metric)
+- `success_criteria` (String) The success criteria for your metric (if numeric metric). Available choices are `HigherThanBaseline` and `LowerThanBaseline`.
 - `tags` (Set of String) Tags associated with your resource.
 - `unit` (String) (Required for kind `custom`) The unit for numeric `custom` metrics.
+- `unit_aggregation_type` (String) The method by which multiple unit event values are aggregated. Available choices are `average` and `sum`.
 - `urls` (List of Object) List of nested `url` blocks describing URLs that you want to associate with the metric. (see [below for nested schema](#nestedatt--urls))
+- `version` (Number) Version of the metric
 
 <a id="nestedatt--urls"></a>
 ### Nested Schema for `urls`
