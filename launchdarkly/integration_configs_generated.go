@@ -170,6 +170,24 @@ var SUBSCRIPTION_CONFIGURATION_FIELDS = map[string]IntegrationConfig{
 			Type:          "string",
 		},
 	},
+	"kosli": {
+		"secret": {
+			AllowedValues: []string{},
+			DefaultValue:  nil,
+			Description:   "Enter your Kosli secret",
+			IsOptional:    false,
+			IsSecret:      true,
+			Type:          "string",
+		},
+		"webhookUrl": {
+			AllowedValues: []string{},
+			DefaultValue:  nil,
+			Description:   "Enter your Kosli webhook URL",
+			IsOptional:    false,
+			IsSecret:      false,
+			Type:          "string",
+		},
+	},
 	"last9": {
 		"apiToken": {
 			AllowedValues: []string{},
