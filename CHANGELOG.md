@@ -1,3 +1,12 @@
+## [2.21.0] - 2024-10-24
+### Added:
+- Added support for managing the [Kosli integration](https://docs.launchdarkly.com/integrations/kosli/) with the `launchdarkly_audit_log_subscription` resource and data source.
+- Add missing fields `analysis_type`, `include_units_without_events`, `percentile_value`, and `unit_aggregation_type` to the `launchdarkly_metric` resource and data provider.
+- Added the computed `version` attribute to `launchdarkly_metric`.
+
+### Deprecated:
+- Deprecated the `launchdarkly_metric`'s `is_active` attribute. This attribute is no longer used by LaunchDarkly and is safe to remove from Terraform configs.
+
 ## [2.20.2] - 2024-09-04
 ### Fixed:
 - Fixed a bug in the `launchdarkly_team` resource that prevented changes to the `key` from requiring the resource to be destroyed and recreated.
