@@ -31,7 +31,9 @@ func resourceFeatureFlag() *schema.Resource {
 
 		Description: `Provides a LaunchDarkly feature flag resource.
 
-This resource allows you to create and manage feature flags within your LaunchDarkly organization.`,
+This resource allows you to create and manage feature flags within your LaunchDarkly organization.
+
+-> **Note:** This resource is for global-level feature flag configuration. Unexpected behavior may result if your environment-level configurations are not also managed from Terraform.`,
 	}
 }
 

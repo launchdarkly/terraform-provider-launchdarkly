@@ -5,6 +5,7 @@ subcategory: ""
 description: |-
   Provides a LaunchDarkly feature flag resource.
   This resource allows you to create and manage feature flags within your LaunchDarkly organization.
+  -> Note: This resource is for global-level feature flag configuration. Unexpected behavior may result if your environment-level configurations are not also managed from Terraform.
 ---
 
 # launchdarkly_feature_flag (Resource)
@@ -12,6 +13,8 @@ description: |-
 Provides a LaunchDarkly feature flag resource.
 
 This resource allows you to create and manage feature flags within your LaunchDarkly organization.
+
+-> **Note:** This resource is for global-level feature flag configuration. Unexpected behavior may result if your environment-level configurations are not also managed from Terraform.
 
 ## Example Usage
 
@@ -149,6 +152,8 @@ variations {
   value = ""
 }
 ```
+
+-> **Note:** Terraform manages `variations` as an ordered array and identifies them by index. This means that if you change the order of your `variations` block, you may end up destroying and recreating those variations. Additionally, if you delete variations that have targets that have been attached outside of Terraform, those targets may be incorrectly reassigned to a different variation.
 
 Optional:
 
