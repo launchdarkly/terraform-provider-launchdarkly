@@ -19,6 +19,7 @@ This data source allows you to retrieve environment information from your Launch
 data "launchdarkly_environment" "example" {
   key         = "example-env"
   project_key = "example-project"
+  color       = "ff00ff"
 }
 ```
 
