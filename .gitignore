@@ -44,5 +44,3 @@ website/build
 website/node_modules
 
 .vscode/
-
-dist/
