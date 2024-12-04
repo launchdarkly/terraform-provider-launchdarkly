@@ -31,6 +31,7 @@ jobs:
 
   generate:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       - uses: actions/setup-go@41dfa10bad2bb2ae585af6ee5bb4d7d973ad74ed # v5.1.0
@@ -50,33 +51,37 @@ jobs:
   # Run acceptance tests in a matrix with Terraform CLI versions
   test:
     runs-on: ubuntu-latest
-    env:
-      # sc-146360 - overrides the default timeout of 3000ms when reaching checkpoint-api.hashicorp.com
-      CHECKPOINT_TIMEOUT: 15000
+    timeout-minutes: 30
+    strategy:
+      matrix:
+        test_case:
+          - TestAccDataSource
+          - TestAccAccessToken
+          - TestAccAuditLogSubscription
+          - TestAccCustomRole
+          - TestAccDestination
+          - TestAccEnvironment
+          - TestAccFeatureFlag_
+          - TestAccFeatureFlagEnvironment
+          - TestAccFlagTrigger
+          - TestAccMetric
+          - TestAccProject
+          - TestAccRelayProxy
+          - TestAccSegment
+          - TestAccTeamMember_CreateGeneric
+          - TestAccTeamMember_UpdateGeneric
+          - TestAccTeamMember_CreateWithCustomRole
+          - TestAccTeamMember_UpdateWithCustomRole
+          - TestAccTeam_
+          - TestAccTeamRoleMapping_
+          - TestAccWebhook
     steps:
-      - uses: actions/checkout@v4.2.2
-      - uses: actions/setup-go@v5.1.0
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
         with:
           go-version: "1.21.3"
       - run: go mod download
-      - run: TESTARGS="-v" make test
-      - run: TESTARGS="-run TestAccDataSource" make testacc-with-retry
-      - run: TESTARGS="-run TestAccAccessToken" make testacc-with-retry
-      - run: TESTARGS="-run TestAccAuditLogSubscription" make testacc-with-retry
-      - run: TESTARGS="-run TestAccCustomRole" make testacc-with-retry
-      - run: TESTARGS="-run TestAccDestination" make testacc-with-retry
-      - run: TESTARGS="-run TestAccEnvironment" make testacc-with-retry
-      - run: TESTARGS="-run TestAccFeatureFlag_" make testacc-with-retry
-      - run: TESTARGS="-run TestAccFeatureFlagEnvironment" make testacc-with-retry
-      - run: TESTARGS="-run TestAccFlagTrigger" make testacc-with-retry
-      - run: TESTARGS="-run TestAccMetric" make testacc-with-retry
-      - run: TESTARGS="-run TestAccProject" make testacc-with-retry
-      - run: TESTARGS="-run TestAccRelayProxy" make testacc-with-retry
-      - run: TESTARGS="-run TestAccSegment" make testacc-with-retry
-      - run: TESTARGS="-run TestAccTeamMember_CreateGeneric" make testacc-with-retry
-      - run: TESTARGS="-run TestAccTeamMember_UpdateGeneric" make testacc-with-retry
-      - run: TESTARGS="-run TestAccTeamMember_CreateWithCustomRole" make testacc-with-retry
-      - run: TESTARGS="-run TestAccTeamMember_UpdateWithCustomRole" make testacc-with-retry
-      - run: TESTARGS="-run TestAccTeam_" make testacc-with-retry
-      - run: TESTARGS="-run TestAccTeamRoleMapping_" make testacc-with-retry
-      - run: TESTARGS="-run TestAccWebhook" make testacc-with-retry
+      - name: Run Test
+        run: |
+          echo "Running test case: ${{ matrix.test_case }}"
+          TESTARGS="-run ${{ matrix.test_case }}" make testacc-with-retry
