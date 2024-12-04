@@ -53,6 +53,7 @@ jobs:
     env:
       # sc-146360 - overrides the default timeout of 3000ms when reaching checkpoint-api.hashicorp.com
       CHECKPOINT_TIMEOUT: 15000
+      LAUNCHDARKLY_ACCESS_TOKEN: ${{ secrets.LAUNCHDARKLY_ACCESS_TOKEN }}
     steps:
       - uses: actions/checkout@v4.2.2
       - uses: actions/setup-go@v5.1.0
