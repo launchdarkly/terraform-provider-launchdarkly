@@ -1,10 +1,12 @@
 # Terraform Provider testing workflow.
-name: Tests
+name: Test
 
 on:
   pull_request:
     paths-ignore:
       - 'README.md'
+  push:
+    branches: [main]
 
 # Testing only needs permissions to read the repository contents.
 permissions:
@@ -27,7 +29,7 @@ jobs:
       - name: Run linters
         uses: golangci/golangci-lint-action@971e284b6050e8a5849b72094c50ab08da042db8 # v6.1.1
         with:
-          version: latest
+          version: v6.1.1
 
   generate:
     runs-on: ubuntu-latest
