@@ -1,5 +1,5 @@
 # Terraform Provider testing workflow.
-name: "Tests"
+name: Tests
 
 on:
   pull_request:
@@ -52,6 +52,7 @@ jobs:
 
   # Run acceptance tests in a matrix with Terraform CLI versions
   test:
+    name: Acceptance Tests
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env: 
