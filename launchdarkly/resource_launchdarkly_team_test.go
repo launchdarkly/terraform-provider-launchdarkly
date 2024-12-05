@@ -168,6 +168,7 @@ func TestAccTeam_CreateAndUpdate(t *testing.T) {
 	randomEmailThree := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	resourceName := "launchdarkly_team.test"
 
+	// custom role names must also be unique
 	resource.Test(t, resource.TestCase{
 		PreCheck: func() {
 			testAccPreCheck(t)

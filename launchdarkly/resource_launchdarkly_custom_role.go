@@ -41,7 +41,7 @@ This resource allows you to create and manage custom roles within your LaunchDar
 			NAME: {
 				Type:        schema.TypeString,
 				Required:    true,
-				Description: "A name for the custom role",
+				Description: "A name for the custom role. This must be unique within your organization.",
 			},
 			DESCRIPTION: {
 				Type:        schema.TypeString,
