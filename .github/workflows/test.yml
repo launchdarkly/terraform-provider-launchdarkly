@@ -5,6 +5,8 @@ on:
   pull_request:
   push:
     branches: [main]
+  schedule: # runs tests once a day on the main branch
+    - cron: "0 0 * * *"
 
 # Testing only needs permissions to read the repository contents.
 permissions:
