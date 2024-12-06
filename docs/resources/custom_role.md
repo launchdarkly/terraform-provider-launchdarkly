@@ -43,7 +43,7 @@ resource "launchdarkly_custom_role" "example" {
 ### Required
 
 - `key` (String) A unique key that will be used to reference the custom role in your code. A change in this field will force the destruction of the existing resource and the creation of a new one.
-- `name` (String) A name for the custom role
+- `name` (String) A name for the custom role. This must be unique within your organization.
 
 ### Optional
 

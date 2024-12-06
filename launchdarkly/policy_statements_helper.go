@@ -151,16 +151,16 @@ func policyStatementsToResourceData(statements []ldapi.Statement) []interface{} 
 		t := map[string]interface{}{
 			EFFECT: s.Effect,
 		}
-		if s.Resources != nil && len(s.Resources) > 0 {
+		if len(s.Resources) > 0 {
 			t[RESOURCES] = stringSliceToInterfaceSlice(s.Resources)
 		}
-		if s.NotResources != nil && len(s.NotResources) > 0 {
+		if len(s.NotResources) > 0 {
 			t[NOT_RESOURCES] = stringSliceToInterfaceSlice(s.NotResources)
 		}
-		if s.Actions != nil && len(s.Actions) > 0 {
+		if len(s.Actions) > 0 {
 			t[ACTIONS] = stringSliceToInterfaceSlice(s.Actions)
 		}
-		if s.NotActions != nil && len(s.NotActions) > 0 {
+		if len(s.NotActions) > 0 {
 			t[NOT_ACTIONS] = stringSliceToInterfaceSlice(s.NotActions)
 		}
 		transformed = append(transformed, t)

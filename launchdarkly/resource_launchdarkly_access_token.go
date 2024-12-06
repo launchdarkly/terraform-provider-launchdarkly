@@ -204,7 +204,7 @@ func resourceAccessTokenRead(ctx context.Context, d *schema.ResourceData, metaRa
 	if accessToken.Role != nil {
 		_ = d.Set(ROLE, *accessToken.Role)
 	}
-	if accessToken.CustomRoleIds != nil && len(accessToken.CustomRoleIds) > 0 {
+	if len(accessToken.CustomRoleIds) > 0 {
 		customRoleKeys, err := customRoleIDsToKeys(client, accessToken.CustomRoleIds)
 		if err != nil {
 			return diag.FromErr(err)
