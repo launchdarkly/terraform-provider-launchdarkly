@@ -1,13 +1,14 @@
-## [2.21.2] - 2024-12-06
-### Fixed:
-- Fixed and issue with our release process. This release does not contain any code changes to the provider.
-
 ## [2.21.3](https://github.com/launchdarkly/terraform-provider-launchdarkly/compare/v2.21.2...v2.21.3) (2024-12-06)
 
 
 ### Bug Fixes
 
 * Add missing changelog entry ([#236](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/236)) ([171d3d6](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/171d3d60b42560a23e3033a324efc07de0016046))
+
+
+## [2.21.2] - 2024-12-06
+### Fixed:
+- Fixed and issue with our release process. This release does not contain any code changes to the provider.
 
 ## [2.21.1] - 2024-12-06
 ### Updated:
