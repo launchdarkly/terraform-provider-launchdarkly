@@ -110,7 +110,7 @@ jobs:
 
   notify-slack-on-failure:
     name: Notify Slack on Failures
-    if: failure()
+    if: failure() && github.ref == 'refs/heads/main'
     needs:
       - build
       - generate
