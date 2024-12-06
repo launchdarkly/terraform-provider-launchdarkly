@@ -1,3 +1,7 @@
+## [2.21.2] - 2024-12-06
+### Fixed:
+- Fixed and issue with our release process. This release does not contain any code changes to the provider.
+
 ## [2.21.1] - 2024-12-06
 ### Updated:
 - Added a note to global `launchdarkly_feature_flag` documentation about managing variations for env-level flag configurations outside of Terraform.
