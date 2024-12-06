@@ -28,6 +28,7 @@ jobs:
       - run: go build -v .
       - name: Run linters
         uses: golangci/golangci-lint-action@971e284b6050e8a5849b72094c50ab08da042db8 # v6.1.1
+      - run: exit 1
 
   generate:
     runs-on: ubuntu-latest
@@ -109,8 +110,12 @@ jobs:
           fi
 
   notify-slack-on-failure:
-    name: Notify Slack on Failure
-    if: always()
+    name: Notify Slack on Failures
+    if: failure()
+    needs:
+      - build
+      - generate
+      - test
     runs-on: ubuntu-latest
     steps:
       - name: Send GitHub trigger payload to Slack Workflow Builder
