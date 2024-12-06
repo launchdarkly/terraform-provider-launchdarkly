@@ -1,3 +1,7 @@
+## [2.21.1] - 2024-12-06
+### Updated:
+- Added a note to global `launchdarkly_feature_flag` documentation about managing variations for env-level flag configurations outside of Terraform.
+
 ## [2.21.0] - 2024-10-24
 ### Added:
 - Added support for managing the [Kosli integration](https://docs.launchdarkly.com/integrations/kosli/) with the `launchdarkly_audit_log_subscription` resource and data source.
