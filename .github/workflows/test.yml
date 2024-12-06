@@ -107,3 +107,20 @@ jobs:
             printf "Tests failed or workflow cancelled:\n\n${{ toJSON(needs) }}"
             exit 1
           fi
+
+  notify-slack-on-failure:
+    name: Notify Slack on Failures
+    if: failure() && github.ref == 'refs/heads/main'
+    needs:
+      - build
+      - generate
+      - test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send GitHub trigger payload to Slack Workflow Builder
+        id: slack
+        uses: slackapi/slack-github-action@485a9d42d3a73031f12ec201c457e2162c45d02d # v2.0.0
+        with:
+          payload-delimiter: "_"
+          webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
+          webhook-type: webhook-trigger
