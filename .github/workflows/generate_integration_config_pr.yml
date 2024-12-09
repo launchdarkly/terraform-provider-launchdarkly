@@ -3,9 +3,7 @@ on:
   schedule:
     # Run every 30 minutes
     - cron: "5,35 * * * *"
-  push:
-    branches:
-      - hbarrow/REL-4675/clean-up-actions
+
 jobs:
   generate-manifest:
     runs-on: ubuntu-latest
@@ -37,4 +35,6 @@ jobs:
             ```sh
             make generate
             ```
+
+            Please update the PR title and body to reflect the changes to the integration configurations.
           labels: bot
