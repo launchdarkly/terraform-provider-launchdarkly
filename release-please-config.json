@@ -9,5 +9,6 @@
         "skip-github-release": true
       }
     },
-    "commit-search-depth": 100
+    "commit-search-depth": 100,
+    "release-search-depth": 20
   }
