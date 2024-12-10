@@ -150,27 +150,46 @@ resource "launchdarkly_segment" "test" {
 
 	testAccSegmentCreateWithUnbounded = `
 resource "launchdarkly_segment" "test" {
-    key                    = "segmentKey1"
-		project_key            = launchdarkly_project.test.key
-		env_key                = "test"
-  	name                   = "segment name"
-		description            = "segment description"
-		tags                   = ["segmentTag1", "segmentTag2"]
-		unbounded              = true
-		unbounded_context_kind = "device"
+	key                    = "segmentKey1"
+	project_key            = launchdarkly_project.test.key
+	env_key                = "test"
+	name                   = "segment name"
+	description            = "segment description"
+	tags                   = ["segmentTag1", "segmentTag2"]
+	unbounded              = true
+	unbounded_context_kind = "device"
 }`
 
 	testAccSegmentCreateWithUnboundedUpdate = `
 resource "launchdarkly_segment" "test" {
-    key                    = "segmentKey1"
-		project_key            = launchdarkly_project.test.key
-		env_key                = "test"
-  	name                   = "segment name"
-		description            = "segment description"
-		tags                   = ["segmentTag1", "segmentTag2"]
-		unbounded              = true
-		unbounded_context_kind = "account"
+	key                    = "segmentKey1"
+	project_key            = launchdarkly_project.test.key
+	env_key                = "test"
+	name                   = "segment name"
+	description            = "segment description"
+	tags                   = ["segmentTag1", "segmentTag2"]
+	unbounded              = true
+	unbounded_context_kind = "account"
 }`
+
+	testAccSegmentWithAnonymousUser = `
+resource "launchdarkly_segment" "anon" {
+	key 					= "anonymousSegment"
+	project_key            	= launchdarkly_project.test.key
+	env_key                	= "test"
+	name 					= "anonymous segment"
+	rules {
+		clauses {
+			attribute  = "anonymous"
+			op         = "in"
+			negate     = false
+			values = [
+				true
+			]
+		}
+	}
+}
+`
 )
 
 func TestAccSegment_CreateAndUpdate(t *testing.T) {
@@ -354,6 +373,41 @@ func TestAccSegment_Unbounded(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, UNBOUNDED, "true"),
 					resource.TestCheckResourceAttr(resourceName, UNBOUNDED_CONTEXT_KIND, "account"),
 				),
+			},
+		},
+	})
+}
+
+func TestAccSegment_WithAnonymousClause(t *testing.T) {
+	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	resourceName := "launchdarkly_segment.anon"
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck: func() {
+			testAccPreCheck(t)
+		},
+		Providers: testAccProviders,
+		Steps: []resource.TestStep{
+			{
+				Config: withRandomProject(projectKey, testAccSegmentWithAnonymousUser),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckProjectExists("launchdarkly_project.test"),
+					testAccCheckSegmentExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, KEY, "anonymousSegment"),
+					resource.TestCheckResourceAttr(resourceName, PROJECT_KEY, projectKey),
+					resource.TestCheckResourceAttr(resourceName, ENV_KEY, "test"),
+					resource.TestCheckResourceAttr(resourceName, NAME, "anonymous segment"),
+					resource.TestCheckResourceAttr(resourceName, "rules.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "rules.0.clauses.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "rules.0.clauses.0.attribute", "anonymous"),
+					resource.TestCheckResourceAttr(resourceName, "rules.0.clauses.0.op", "in"),
+					resource.TestCheckResourceAttr(resourceName, "rules.0.clauses.0.negate", "false"),
+					resource.TestCheckResourceAttr(resourceName, "rules.0.clauses.0.values.0", "true"),
+				),
+			},
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
 			},
 		},
 	})
