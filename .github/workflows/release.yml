@@ -19,13 +19,15 @@ jobs:
     needs: [ release-please ]
     permissions:
       contents: write
-    if: ${{ needs.release-please.outputs.upload-tag-name != ''}}
+    if: ${{ needs.release-please.outputs.release_created == 'true' && needs.release-please.outputs.upload-tag-name != ''}}
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        name: Checkout
         with:
           # Allow goreleaser to access older tag information.
           fetch-depth: 0
       - uses: actions/setup-go@41dfa10bad2bb2ae585af6ee5bb4d7d973ad74ed # v5.1.0
+        name: Setup Go
         with:
           go-version-file: 'go.mod'
           cache: true
