@@ -1,6 +1,6 @@
 {
     "packages": {
-      ".": {
+      ".": { 
         "release-type": "go",
         "versioning": "default",
         "include-v-in-tag": true,
@@ -10,5 +10,6 @@
       }
     },
     "commit-search-depth": 100,
-    "release-search-depth": 20
+    "release-search-depth": 20,
+    "bootstrap-sha": "1e6fabf0a167f8ef6fc6f9e2c8aaa33b737fa439"
   }
