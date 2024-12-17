@@ -5,7 +5,8 @@
         "versioning": "default",
         "include-v-in-tag": true,
         "extra-files": [],
-        "include-component-in-tag": false
+        "include-component-in-tag": false,
+        "draft": true
       }
     },
     "commit-search-depth": 100,
