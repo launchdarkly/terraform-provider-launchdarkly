@@ -16,7 +16,7 @@ jobs:
           cache-dependency-path: |
             scripts/codegen/go.sum
             go.sum
-
+      - uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3.1.2
       - run: make generate
         env:
           LAUNCHDARKLY_ACCESS_TOKEN: ${{secrets.LAUNCHDARKLY_ACCESS_TOKEN}}
