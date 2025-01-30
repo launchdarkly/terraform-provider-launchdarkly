@@ -14,7 +14,7 @@ func testAccTeamRoleMappingSetup(uniqueRole0, uniqueRole1, teamKey string) strin
 	return fmt.Sprintf(`
 	resource "launchdarkly_custom_role" "role_0" {
 		key              = "%s"
-		name             = "Custom Role 1"
+		name             = "Custom Role 1 %s"
 		base_permissions = "no_access"
 		policy {
 			actions = ["*"]	
@@ -25,7 +25,7 @@ func testAccTeamRoleMappingSetup(uniqueRole0, uniqueRole1, teamKey string) strin
 
 	resource "launchdarkly_custom_role" "role_1" {
 		key              = "%s"
-		name             = "Custom Role 2"
+		name             = "Custom Role 2 %s"
 		base_permissions = "no_access"
 		policy {
 			actions = ["*"]	
@@ -54,7 +54,7 @@ func testAccTeamRoleMappingSetup(uniqueRole0, uniqueRole1, teamKey string) strin
 		# prevents deleting custom roles that are still in use by teams.
 		depends_on = [launchdarkly_custom_role.role_0, launchdarkly_custom_role.role_1]
 	}
-	`, uniqueRole0, uniqueRole1, teamKey)
+	`, uniqueRole0, uniqueRole0, uniqueRole1, uniqueRole1, teamKey)
 }
 
 func testAccBasicTeamRoleMappingConfig(uniqueRole0, uniqueRole1, teamKey string) string {
