@@ -89,7 +89,7 @@ resource "launchdarkly_custom_role" "terraform_team_test" {
 
 resource "launchdarkly_custom_role" "other_team_test" {
   key = "%s"
-  name = "Other Terraform Teams test role"
+  name = "Other test role %s"
   base_permissions = "no_access"
   policy {
     actions = ["*"]
@@ -121,7 +121,7 @@ resource "launchdarkly_team" "test" {
 	testAccTeamUpdateMembersMaintainers = `
 resource "launchdarkly_custom_role" "other_team_test" {
   key = "%s"
-  name = "Other Terraform Teams test role"
+  name = "Other test role %s"
   base_permissions = "no_access"
   policy {
     actions = ["*"]
@@ -213,7 +213,7 @@ func TestAccTeam_CreateAndUpdate(t *testing.T) {
 				ImportStateVerify: true,
 			},
 			{
-				Config: fmt.Sprintf(testAccTeamUpdateRoles, randomRoleOne, randomRoleTwo, randomEmailOne, randomEmailTwo, randomTeamKey),
+				Config: fmt.Sprintf(testAccTeamUpdateRoles, randomRoleOne, randomRoleTwo, randomRoleTwo, randomEmailOne, randomEmailTwo, randomTeamKey),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckTeamExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, NAME, "Integrations"),
@@ -231,7 +231,7 @@ func TestAccTeam_CreateAndUpdate(t *testing.T) {
 				ImportStateVerify: true,
 			},
 			{
-				Config: fmt.Sprintf(testAccTeamUpdateMembersMaintainers, randomRoleTwo, randomEmailOne, randomEmailTwo, randomEmailThree, randomTeamKey),
+				Config: fmt.Sprintf(testAccTeamUpdateMembersMaintainers, randomRoleTwo, randomRoleTwo, randomEmailOne, randomEmailTwo, randomEmailThree, randomTeamKey),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckTeamExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, NAME, "Integrations"),
@@ -250,7 +250,7 @@ func TestAccTeam_CreateAndUpdate(t *testing.T) {
 			},
 			// Check the team key can be updated (with force new)
 			{
-				Config: fmt.Sprintf(testAccTeamUpdateMembersMaintainers, randomRoleTwo, randomEmailOne, randomEmailTwo, randomEmailThree, randomNewTeamKey),
+				Config: fmt.Sprintf(testAccTeamUpdateMembersMaintainers, randomRoleTwo, randomRoleTwo, randomEmailOne, randomEmailTwo, randomEmailThree, randomNewTeamKey),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckTeamExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, NAME, "Integrations"),
