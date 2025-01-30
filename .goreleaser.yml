@@ -54,7 +54,6 @@ signs:
       - "--detach-sign"
       - "${artifact}"
 release:
-  draft: true
   use_existing_draft: true # use existing draft releases
   mode: keep-existing # what to do with the release notes if a release already exists
   extra_files:
