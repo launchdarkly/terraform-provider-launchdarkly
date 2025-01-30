@@ -2,6 +2,14 @@
 
 All notable changes to the LaunchDarkly Terraform Provider will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org).
 
+## [2.21.5](https://github.com/launchdarkly/terraform-provider-launchdarkly/compare/v2.21.4...v2.21.5) (2025-01-30)
+
+
+### Bug Fixes
+
+* Bump golang.org/x/crypto from 0.24.0 to 0.31.0 ([#254](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/254)) ([eaea627](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/eaea6272d3ffa93eddbd5c8c1ac34ba94a00e85c))
+* Bump golang.org/x/net from 0.26.0 to 0.33.0 ([#267](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/267)) ([505712e](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/505712e0bedeb2f6e5a8171403d83f130358d785))
+
 ## [2.21.4](https://github.com/launchdarkly/terraform-provider-launchdarkly/compare/v2.21.3...v2.21.4) (2025-01-30)
 
 
