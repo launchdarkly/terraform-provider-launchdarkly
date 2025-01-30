@@ -1,14 +1,14 @@
 {
-    "packages": {
-      ".": {
-        "release-type": "go",
-        "versioning": "default",
-        "include-v-in-tag": true,
-        "extra-files": [],
-        "include-component-in-tag": false,
-        "skip-github-release": true
-      }
-    },
-    "commit-search-depth": 100,
-    "release-search-depth": 20
-  }
+  "packages": {
+    ".": {
+      "release-type": "go",
+      "versioning": "default",
+      "include-v-in-tag": true,
+      "extra-files": [],
+      "include-component-in-tag": false,
+      "draft": true 
+    }
+  },
+  "release-search-depth": 100,
+  "commit-search-depth": 100
+}

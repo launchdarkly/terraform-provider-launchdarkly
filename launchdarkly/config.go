@@ -18,7 +18,7 @@ import (
 var version = "unreleased"
 
 const (
-	APIVersion     = "20220603"
+	APIVersion     = "20240415"
 	MAX_RETRIES    = 12
 	RETRY_WAIT_MIN = 200 * time.Millisecond
 	RETRY_WAIT_MAX = 2000 * time.Millisecond
