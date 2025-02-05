@@ -101,7 +101,7 @@ func scaffoldProjectWithExperimentationSettings(client *Client, betaClient *Clie
 	randomizationUnitsInput := make([]ldapi.RandomizationUnitInput, 0, len(randomizationUnits))
 	for _, randomizationUnit := range randomizationUnits {
 		if randomizationUnit == "user" {
-			randomizationUnitsInput = append(randomizationUnitsInput, *ldapi.NewRandomizationUnitInput(randomizationUnit, true, randomizationUnit))
+			randomizationUnitsInput = append(randomizationUnitsInput, *ldapi.NewRandomizationUnitInput(randomizationUnit, randomizationUnit))
 			continue
 		}
 		// Add the additional context kinds to the project
@@ -110,14 +110,14 @@ func scaffoldProjectWithExperimentationSettings(client *Client, betaClient *Clie
 		if err != nil {
 			return err
 		}
-		randomizationUnitsInput = append(randomizationUnitsInput, *ldapi.NewRandomizationUnitInput(randomizationUnit, false, randomizationUnit))
+		randomizationUnitsInput = append(randomizationUnitsInput, *ldapi.NewRandomizationUnitInput(randomizationUnit, randomizationUnit))
 	}
 
 	// Update the project's experimentation settings to make the new context available for experiments
 	expSettings := ldapi.RandomizationSettingsPut{
 		RandomizationUnits: randomizationUnitsInput,
 	}
-	_, _, err = betaClient.ld.ExperimentsBetaApi.PutExperimentationSettings(betaClient.ctx, projectKey).RandomizationSettingsPut(expSettings).Execute()
+	_, _, err = betaClient.ld.ExperimentsApi.PutExperimentationSettings(betaClient.ctx, projectKey).RandomizationSettingsPut(expSettings).Execute()
 	return err
 }
 
