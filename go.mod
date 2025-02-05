@@ -1,9 +1,6 @@
 module github.com/launchdarkly/terraform-provider-launchdarkly
 
 go 1.22.9
-
-toolchain go1.22.12
-
 require (
 	github.com/ashanbrown/gofmts v0.2.0
 	github.com/hashicorp/go-cty v1.4.1-0.20200414143053-d3edf31b6320
