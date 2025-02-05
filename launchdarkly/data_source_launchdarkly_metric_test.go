@@ -34,7 +34,10 @@ func testAccDataSourceMetricScaffold(client *Client, betaClient *Client, project
 	randomizationUnitsInput := make([]ldapi.RandomizationUnitInput, 0, len(metricBody.RandomizationUnits))
 	for _, randomizationUnit := range metricBody.RandomizationUnits {
 		if randomizationUnit == "user" {
-			randomizationUnitsInput = append(randomizationUnitsInput, *ldapi.NewRandomizationUnitInput(randomizationUnit, randomizationUnit))
+			defaultTrue := true
+			defaultRandomizationUnit := *ldapi.NewRandomizationUnitInput(randomizationUnit, randomizationUnit)
+			defaultRandomizationUnit.Default = &defaultTrue
+			randomizationUnitsInput = append(randomizationUnitsInput, defaultRandomizationUnit)
 			continue
 		}
 		// Add the additional context kinds to the project
