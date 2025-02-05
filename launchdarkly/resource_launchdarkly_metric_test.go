@@ -10,7 +10,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 	ldapi "github.com/launchdarkly/api-client-go/v17"
-	"github.com/launchdarkly/foundation/lang"
 	"github.com/stretchr/testify/require"
 )
 
@@ -102,8 +101,9 @@ func scaffoldProjectWithExperimentationSettings(client *Client, betaClient *Clie
 	randomizationUnitsInput := make([]ldapi.RandomizationUnitInput, 0, len(randomizationUnits))
 	for _, randomizationUnit := range randomizationUnits {
 		if randomizationUnit == "user" {
+			defaultTrue := true
 			defaultRandomizationUnit := *ldapi.NewRandomizationUnitInput(randomizationUnit, randomizationUnit)
-			defaultRandomizationUnit.Default = lang.Ptr(true)
+			defaultRandomizationUnit.Default = &defaultTrue
 			randomizationUnitsInput = append(randomizationUnitsInput, defaultRandomizationUnit)
 			continue
 		}

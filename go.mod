@@ -17,16 +17,14 @@ require (
 	github.com/stretchr/testify v1.9.0
 )
 
-require (
-	github.com/launchdarkly/api-client-go/v17 v17.1.0
-	github.com/launchdarkly/foundation v0.0.0-20250205023942-dcccd3b0fea2
-)
+require github.com/launchdarkly/api-client-go/v17 v17.1.0
 
 require (
 	github.com/BurntSushi/toml v1.2.1 // indirect
 	github.com/Kunde21/markdownfmt/v3 v3.1.0 // indirect
 	github.com/apparentlymart/go-textseg/v15 v15.0.0 // indirect
 	github.com/bmatcuk/doublestar/v4 v4.6.1 // indirect
+	github.com/dave/jennifer v1.7.0 // indirect
 	github.com/hashicorp/cli v1.1.6 // indirect
 	github.com/mattn/go-runewidth v0.0.15 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
