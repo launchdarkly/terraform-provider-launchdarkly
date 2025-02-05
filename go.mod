@@ -15,7 +15,7 @@ require (
 	github.com/stretchr/testify v1.9.0
 )
 
-require github.com/launchdarkly/api-client-go/v16 v16.1.1
+require github.com/launchdarkly/api-client-go/v17 v17.1.0
 
 require (
 	github.com/BurntSushi/toml v1.2.1 // indirect
