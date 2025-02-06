@@ -23,6 +23,8 @@ const (
 		}
 	}
 `
+	// IMPORTANT TO NOTE that the $ character must be escaped in terraform by using a double $$
+	// otherwas ${} will be interpreted as a terraform variable and throw an error
 	testAccCustomRoleUpdate = `
 resource "launchdarkly_custom_role" "test" {
 	key = "%s"
@@ -30,7 +32,7 @@ resource "launchdarkly_custom_role" "test" {
 	policy {
 		actions = ["*"]	
 		effect = "allow"
-		resources = ["proj/*:env/staging"]
+		resources = ["proj/*:env/$${roleAttribute/devEnvironments}"]
 	}
 }
 `
@@ -42,19 +44,7 @@ resource "launchdarkly_custom_role" "test" {
 	policy_statements {
 		actions = ["*"]	
 		effect = "allow"
-		resources = ["proj/*:env/staging"]
-	}
-}
-`
-	testAccCustomRoleCreateWithNotStatements = `
-resource "launchdarkly_custom_role" "test" {
-	key = "%s"
-	name = "Custom role - %s"
-	description = "Don't allow all actions on non-staging environments"
-	policy_statements {
-		not_actions = ["*"]	
-		effect = "allow"
-		not_resources = ["proj/*:env/staging"]
+		resources = ["proj/$${roleAttribute/devProjects}:env/staging"]
 	}
 }
 `
@@ -67,6 +57,18 @@ resource "launchdarkly_custom_role" "test" {
 		actions = ["*"]	
 		effect = "deny"
 		resources = ["proj/*:env/production"]
+	}
+}
+`
+	testAccCustomRoleCreateWithNotStatements = `
+resource "launchdarkly_custom_role" "test" {
+	key = "%s"
+	name = "Custom role - %s"
+	description = "Don't allow all actions on non-staging environments"
+	policy_statements {
+		not_actions = ["*"]	
+		effect = "allow"
+		not_resources = ["proj/*:env/staging"]
 	}
 }
 `
@@ -122,7 +124,7 @@ func TestAccCustomRole_CreateAndUpdate(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "policy.0.actions.#", "1"),
 					resource.TestCheckResourceAttr(resourceName, "policy.0.actions.0", "*"),
 					resource.TestCheckResourceAttr(resourceName, "policy.0.resources.#", "1"),
-					resource.TestCheckResourceAttr(resourceName, "policy.0.resources.0", "proj/*:env/staging"),
+					resource.TestCheckResourceAttr(resourceName, "policy.0.resources.0", "proj/*:env/${roleAttribute/devEnvironments}"),
 					resource.TestCheckResourceAttr(resourceName, "policy.0.effect", "allow"),
 				),
 			},
@@ -152,7 +154,7 @@ func TestAccCustomRole_CreateAndUpdateWithStatements(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "policy_statements.0.actions.#", "1"),
 					resource.TestCheckResourceAttr(resourceName, "policy_statements.0.actions.0", "*"),
 					resource.TestCheckResourceAttr(resourceName, "policy_statements.0.resources.#", "1"),
-					resource.TestCheckResourceAttr(resourceName, "policy_statements.0.resources.0", "proj/*:env/staging"),
+					resource.TestCheckResourceAttr(resourceName, "policy_statements.0.resources.0", "proj/${roleAttribute/devProjects}:env/staging"),
 					resource.TestCheckResourceAttr(resourceName, "policy_statements.0.effect", "allow"),
 				),
 			},
