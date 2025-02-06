@@ -112,7 +112,7 @@ func dataSourceTeamMemberRead(ctx context.Context, d *schema.ResourceData, meta 
 	if err != nil {
 		return diag.Errorf("failed to set custom roles on team member with email %q: %v", member.Email, err)
 	}
-	err = d.Set(ROLE_ATTRIBUTES, roleAttributesToResourceData(d.Get(ROLE_ATTRIBUTES).(*schema.Set).List(), member.RoleAttributes))
+	err = d.Set(ROLE_ATTRIBUTES, roleAttributesToResourceData(member.RoleAttributes))
 	if err != nil {
 		return diag.Errorf("failed to set role attributes on team member with id %q: %v", member.Id, err)
 	}
