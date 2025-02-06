@@ -56,7 +56,7 @@ This resource allows you to create and manage custom roles within your LaunchDar
 				Default:          "reader",
 			},
 			POLICY:            policyArraySchema(),
-			POLICY_STATEMENTS: policyStatementsSchema(policyStatementSchemaOptions{optional: true}),
+			POLICY_STATEMENTS: policyStatementsSchema(policyStatementSchemaOptions{optional: true, conflictsWith: []string{POLICY}}),
 		},
 	}
 }
