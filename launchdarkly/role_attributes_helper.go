@@ -89,7 +89,7 @@ func getRoleAttributePatches(d *schema.ResourceData) []ldapi.PatchOperation {
 						}
 					}
 				}
-				for k, _ := range *old {
+				for k := range *old {
 					if _, ok := (*new)[k]; !ok {
 						patch = append(patch, patchRemove(fmt.Sprintf("/roleAttributes/%s", k)))
 					}
