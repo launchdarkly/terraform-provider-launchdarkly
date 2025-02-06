@@ -6,9 +6,10 @@
       "include-v-in-tag": true,
       "extra-files": [],
       "include-component-in-tag": false,
-      "draft": true 
+      "draft": true
     }
   },
+  "draft-pull-request": true,
   "release-search-depth": 100,
   "commit-search-depth": 100
 }
