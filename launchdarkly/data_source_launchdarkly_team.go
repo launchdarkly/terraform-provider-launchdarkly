@@ -125,7 +125,7 @@ func dataSourceTeamRead(ctx context.Context, d *schema.ResourceData, meta interf
 	_ = d.Set(MAINTAINERS, maintainers)
 	_ = d.Set(PROJECT_KEYS, projects)
 	_ = d.Set(CUSTOM_ROLE_KEYS, customRoleKeys)
-	err = d.Set(ROLE_ATTRIBUTES, roleAttributesToResourceData(d.Get(ROLE_ATTRIBUTES).(*schema.Set).List(), team.RoleAttributes))
+	err = d.Set(ROLE_ATTRIBUTES, roleAttributesToResourceData(team.RoleAttributes))
 	if err != nil {
 		return diag.Errorf("failed to set role attributes on team %q: %v", teamKey, err)
 	}

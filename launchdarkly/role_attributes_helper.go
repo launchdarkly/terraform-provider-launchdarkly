@@ -51,7 +51,7 @@ func roleAttributesFromResourceData(rawRoleAttributes []interface{}) *map[string
 	return &roleAttributes
 }
 
-func roleAttributesToResourceData(existingRoleAttributes []interface{}, roleAttributes *map[string][]string) *[]interface{} {
+func roleAttributesToResourceData(roleAttributes *map[string][]string) *[]interface{} {
 	if roleAttributes == nil {
 		return nil
 	}
