@@ -120,7 +120,7 @@ func scaffoldProjectWithExperimentationSettings(client *Client, betaClient *Clie
 	expSettings := ldapi.RandomizationSettingsPut{
 		RandomizationUnits: randomizationUnitsInput,
 	}
-	_, _, err = betaClient.ld.ExperimentsApi.PutExperimentationSettings(betaClient.ctx, projectKey).RandomizationSettingsPut(expSettings).Execute()
+	_, _, err = client.ld.ExperimentsApi.PutExperimentationSettings(betaClient.ctx, projectKey).RandomizationSettingsPut(expSettings).Execute()
 	return err
 }
 
