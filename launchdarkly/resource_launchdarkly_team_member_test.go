@@ -80,7 +80,7 @@ resource "launchdarkly_team_member" "custom_role_test" {
 `
 )
 
-func TestAccTeamMember_CreateGeneric(t *testing.T) {
+func TestAccTeamMember_CreateAndUpdateGeneric(t *testing.T) {
 	randomName := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	resourceName := "launchdarkly_team_member.test"
 	resource.ParallelTest(t, resource.TestCase{
@@ -105,30 +105,6 @@ func TestAccTeamMember_CreateGeneric(t *testing.T) {
 				ImportState:       true,
 				ImportStateVerify: true,
 			},
-		},
-	})
-}
-
-func TestAccTeamMember_UpdateGeneric(t *testing.T) {
-	randomName := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
-	resourceName := "launchdarkly_team_member.test"
-	resource.ParallelTest(t, resource.TestCase{
-		PreCheck: func() {
-			testAccPreCheck(t)
-		},
-		Providers: testAccProviders,
-		Steps: []resource.TestStep{
-			{
-				Config: fmt.Sprintf(testAccTeamMemberCreate, randomName),
-				Check: resource.ComposeTestCheckFunc(
-					testAccCheckMemberExists(resourceName),
-					resource.TestCheckResourceAttr(resourceName, EMAIL, fmt.Sprintf("%s+wbteste2e@launchdarkly.com", randomName)),
-					resource.TestCheckResourceAttr(resourceName, FIRST_NAME, "first"),
-					resource.TestCheckResourceAttr(resourceName, LAST_NAME, "last"),
-					resource.TestCheckResourceAttr(resourceName, ROLE, "admin"),
-					resource.TestCheckResourceAttr(resourceName, "custom_roles.#", "0"),
-				),
-			},
 			{
 				Config: fmt.Sprintf(testAccTeamMemberUpdate, randomName),
 				Check: resource.ComposeTestCheckFunc(
@@ -139,6 +115,11 @@ func TestAccTeamMember_UpdateGeneric(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, ROLE, "no_access"),
 					resource.TestCheckResourceAttr(resourceName, "custom_roles.#", "0"),
 				),
+			},
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
 			},
 		},
 	})
