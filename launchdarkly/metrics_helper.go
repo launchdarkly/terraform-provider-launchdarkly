@@ -59,10 +59,9 @@ func baseMetricSchema(isDataSource bool) map[string]*schema.Schema {
 		TAGS: tagsSchema(tagsSchemaOptions{isDataSource: isDataSource}),
 		IS_ACTIVE: {
 			Type:        schema.TypeBool,
-			Optional:    !isDataSource,
-			Computed:    isDataSource,
+			Optional:    true,
+			Computed:    true,
 			Description: "Ignored. All metrics are considered active.",
-			Default:     false,
 			Deprecated:  "No longer in use. This field will be removed in a future major release of the LaunchDarkly provider.",
 		},
 		IS_NUMERIC: {
