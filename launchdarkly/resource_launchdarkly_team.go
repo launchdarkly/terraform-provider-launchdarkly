@@ -196,7 +196,7 @@ func resourceTeamRead(ctx context.Context, d *schema.ResourceData, metaRaw inter
 	filter := fmt.Sprintf("team:%s", teamKey)
 
 	for next != nil {
-		memberResponse, res, err := client.ld.AccountMembersApi.GetMembers(client.ctx).Limit(50).Offset(i * 50).Filter(filter).Expand("roleAttributes").Execute()
+		memberResponse, res, err := client.ld.AccountMembersApi.GetMembers(client.ctx).Limit(50).Offset(i * 50).Filter(filter).Execute()
 		if isStatusNotFound(res) {
 			log.Printf("[WARN] failed to find members for team %q, removing from state", teamKey)
 			diags = append(diags, diag.Diagnostic{
@@ -278,8 +278,6 @@ func resourceTeamUpdate(ctx context.Context, d *schema.ResourceData, metaRaw int
 
 		remove, add := makeAddAndRemoveArrays(oldArr, updateArr)
 
-		fmt.Printf("Old members array: %v, New members array: %v", oldArr, updateArr)
-
 		if len(remove) > 0 {
 			instruction := make(map[string]interface{})
 			instruction["kind"] = "removeMembers"
@@ -338,6 +336,14 @@ func resourceTeamUpdate(ctx context.Context, d *schema.ResourceData, metaRaw int
 			instruction["values"] = add
 			instructions = append(instructions, instruction)
 		}
+	}
+
+	if d.HasChange(ROLE_ATTRIBUTES) {
+		replaceRoleAttributesInstruction := map[string]interface{}{
+			"kind":  "replaceRoleAttributes",
+			"value": roleAttributesFromResourceData(d.Get(ROLE_ATTRIBUTES).(*schema.Set).List()),
+		}
+		instructions = append(instructions, replaceRoleAttributesInstruction)
 	}
 
 	if len(instructions) > 0 {

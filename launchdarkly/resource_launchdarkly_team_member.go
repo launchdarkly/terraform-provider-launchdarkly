@@ -80,7 +80,6 @@ func resourceTeamMemberCreate(ctx context.Context, d *schema.ResourceData, metaR
 	lastName := d.Get(LAST_NAME).(string)
 	memberRole := d.Get(ROLE).(string)
 	customRolesRaw := d.Get(CUSTOM_ROLES).(*schema.Set).List()
-	// roleAttributes := roleAttributesFromResourceData(d.Get(ROLE_ATTRIBUTES).(*schema.Set).List())
 	roleAttributes := roleAttributesFromResourceData(d.Get(ROLE_ATTRIBUTES).(*schema.Set).List())
 
 	customRoles := make([]string, len(customRolesRaw))
