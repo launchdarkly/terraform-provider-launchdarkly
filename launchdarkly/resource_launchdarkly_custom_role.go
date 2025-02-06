@@ -46,12 +46,12 @@ This resource allows you to create and manage custom roles within your LaunchDar
 			DESCRIPTION: {
 				Type:        schema.TypeString,
 				Optional:    true,
-				Description: "Description of the custom role",
+				Description: "Description of the custom role.",
 			},
 			BASE_PERMISSIONS: {
 				Type:             schema.TypeString,
 				Optional:         true,
-				Description:      "The base permission level - either reader or no_access. Defaults to reader",
+				Description:      "The base permission level - either reader or no_access. Defaults to reader.",
 				ValidateDiagFunc: validation.ToDiagFunc(validation.StringInSlice([]string{"reader", "no_access"}, false)),
 				Default:          "reader",
 			},
@@ -60,7 +60,7 @@ This resource allows you to create and manage custom roles within your LaunchDar
 				policyStatementSchemaOptions{
 					optional:      true,
 					conflictsWith: []string{POLICY},
-					description:   "An array of the policy statements that define the permissions for the custom role. This field accepts role attributes. Role attribute syntax is `$${roleAttribute/<YOUR_ROLE_ATTRIBUTE>}`.",
+					description:   "An array of the policy statements that define the permissions for the custom role. This field accepts [role attributes](https://docs.launchdarkly.com/home/getting-started/vocabulary#role-attribute). To use role attributes, use the syntax `$${roleAttribute/<YOUR_ROLE_ATTRIBUTE>}` in lieu of your usual resource keys.",
 				}),
 		},
 	}
