@@ -28,6 +28,10 @@ data "launchdarkly_team_member" "example" {
 
 - `email` (String) The unique email address associated with the team member.
 
+### Optional
+
+- `role_attributes` (Map of String) A map of role attributes. The key is the role attribute key and the value is a string array of resource keys that apply.
+
 ### Read-Only
 
 - `custom_roles` (Set of String) The list of custom roles keys associated with the team member. Custom roles are only available to customers on an Enterprise plan. To learn more, [read about our pricing](https://launchdarkly.com/pricing/). To upgrade your plan, [contact LaunchDarkly Sales](https://launchdarkly.com/contact-sales/).

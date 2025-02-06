@@ -62,6 +62,7 @@ func resourceTeamMember() *schema.Resource {
 				Description:  "The list of custom roles keys associated with the team member. Custom roles are only available to customers on an Enterprise plan. To learn more, [read about our pricing](https://launchdarkly.com/pricing/). To upgrade your plan, [contact LaunchDarkly Sales](https://launchdarkly.com/contact-sales/).\n\n-> **Note:** each `launchdarkly_team_member` must have either a `role` or `custom_roles` argument.",
 				AtLeastOneOf: []string{ROLE, CUSTOM_ROLES},
 			},
+			ROLE_ATTRIBUTES: roleAttributesSchema(false),
 		},
 
 		Description: `Provides a LaunchDarkly team member resource.

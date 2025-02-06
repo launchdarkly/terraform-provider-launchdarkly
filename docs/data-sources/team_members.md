@@ -58,3 +58,4 @@ Read-Only:
 - `id` (String)
 - `last_name` (String)
 - `role` (String)
+- `role_attributes` (Map of String)

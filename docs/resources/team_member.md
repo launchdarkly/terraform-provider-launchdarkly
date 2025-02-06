@@ -42,6 +42,7 @@ resource "launchdarkly_team_member" "example" {
 - `first_name` (String) The team member's given name. Once created, this cannot be updated except by the team member.
 - `last_name` (String) TThe team member's family name. Once created, this cannot be updated except by the team member.
 - `role` (String) The role associated with team member. Supported roles are `reader`, `writer`, `no_access`, or `admin`. If you don't specify a role, `reader` is assigned by default.
+- `role_attributes` (Map of String) A map of role attributes. The key is the role attribute key and the value is a string array of resource keys that apply.
 
 ### Read-Only
 
