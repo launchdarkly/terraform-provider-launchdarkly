@@ -14,7 +14,7 @@ const (
 	testAccTeamCreate = `
 resource "launchdarkly_custom_role" "terraform_team_test" {
   key = "%s"
-  name = "Terraform Teams test role"
+  name = "%s"
   base_permissions = "no_access"
   policy {
     actions = ["*"]
@@ -58,7 +58,7 @@ resource "launchdarkly_team" "test" {
 	testAccTeamUpdateNameDescriptionRoleAttributes = `
 resource "launchdarkly_custom_role" "terraform_team_test" {
   key = "%s"
-  name = "Terraform Teams test role"
+  name = "%s"
   base_permissions = "no_access"
   policy {
     actions = ["*"]
@@ -98,7 +98,7 @@ resource "launchdarkly_team" "test" {
 	testAccTeamUpdateRoles = `
 resource "launchdarkly_custom_role" "terraform_team_test" {
   key = "%s"
-  name = "Terraform Teams test role"
+  name = "%s"
   base_permissions = "no_access"
   policy {
     actions = ["*"]
@@ -200,7 +200,7 @@ func TestAccTeam_CreateAndUpdate(t *testing.T) {
 		Providers: testAccProviders,
 		Steps: []resource.TestStep{
 			{
-				Config: fmt.Sprintf(testAccTeamCreate, randomRoleOne, randomEmailOne, randomEmailTwo, randomTeamKey),
+				Config: fmt.Sprintf(testAccTeamCreate, randomRoleOne, randomRoleOne, randomEmailOne, randomEmailTwo, randomTeamKey),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckTeamExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, NAME, "waterbear"),
@@ -230,7 +230,7 @@ func TestAccTeam_CreateAndUpdate(t *testing.T) {
 			},
 
 			{
-				Config: fmt.Sprintf(testAccTeamUpdateNameDescriptionRoleAttributes, randomRoleOne, randomEmailOne, randomEmailTwo, randomTeamKey),
+				Config: fmt.Sprintf(testAccTeamUpdateNameDescriptionRoleAttributes, randomRoleOne, randomRoleOne, randomEmailOne, randomEmailTwo, randomTeamKey),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckTeamExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, NAME, "Integrations"),
@@ -256,7 +256,7 @@ func TestAccTeam_CreateAndUpdate(t *testing.T) {
 				ImportStateVerify: true,
 			},
 			{
-				Config: fmt.Sprintf(testAccTeamUpdateRoles, randomRoleOne, randomRoleTwo, randomRoleTwo, randomEmailOne, randomEmailTwo, randomTeamKey),
+				Config: fmt.Sprintf(testAccTeamUpdateRoles, randomRoleOne, randomRoleOne, randomRoleTwo, randomRoleTwo, randomEmailOne, randomEmailTwo, randomTeamKey),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckTeamExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, NAME, "Integrations"),
