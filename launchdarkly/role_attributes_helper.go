@@ -1,9 +1,6 @@
 package launchdarkly
 
 import (
-	"fmt"
-	"slices"
-
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	ldapi "github.com/launchdarkly/api-client-go/v17"
 )
@@ -72,35 +69,11 @@ func roleAttributesToResourceData(roleAttributes *map[string][]string) *[]interf
 func getRoleAttributePatches(d *schema.ResourceData) []ldapi.PatchOperation {
 	var patch []ldapi.PatchOperation
 	if o, n := d.GetChange(ROLE_ATTRIBUTES); o != n {
-		old := roleAttributesFromResourceData(o.(*schema.Set).List())
 		new := roleAttributesFromResourceData(d.Get(ROLE_ATTRIBUTES).(*schema.Set).List())
 		if new != nil {
-			if old == nil {
-				patch = append(patch, patchAdd("/roleAttributes", new))
-			} else {
-				for k, v := range *new {
-					if _, ok := (*old)[k]; !ok {
-						patch = append(patch, patchAdd(fmt.Sprintf("/roleAttributes/%s", k), &v))
-					} else {
-						if oldV := (*old)[k]; slices.Compare(oldV, v) == 0 {
-							continue
-						} else {
-							patch = append(patch, patchReplace(fmt.Sprintf("/roleAttributes/%s", k), &v))
-						}
-					}
-				}
-				for k := range *old {
-					if _, ok := (*new)[k]; !ok {
-						patch = append(patch, patchRemove(fmt.Sprintf("/roleAttributes/%s", k)))
-					}
-				}
-			}
+			patch = append(patch, patchReplace("/roleAttributes", new))
 		} else {
-			if old != nil {
-				for k := range *old {
-					patch = append(patch, patchRemove(fmt.Sprintf("/roleAttributes/%s", k)))
-				}
-			}
+			patch = append(patch, patchReplace("/roleAttributes", make(map[string][]string)))
 		}
 	}
 	return patch
