@@ -271,6 +271,11 @@ func TestAccTeamMember_WithCustomRole(t *testing.T) {
 				),
 			},
 			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
+			{
 				// remove the nonexistentAttribute block, reorder testAttribute block and add a newAttribute block,
 				// and remove the production value from the testAttribute block
 				Config: fmt.Sprintf(testAccTeamMemberCustomRoleWithRoleAttributesUpdate, roleKey1, roleKey1, randomName),
@@ -294,6 +299,11 @@ func TestAccTeamMember_WithCustomRole(t *testing.T) {
 				),
 			},
 			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
+			{
 				// remove role attributes from the team member
 				Config: fmt.Sprintf(testAccTeamMemberCustomRoleWithRoleAttributesRemove, roleKey1, roleKey1, randomName),
 				Check: resource.ComposeTestCheckFunc(
@@ -306,6 +316,11 @@ func TestAccTeamMember_WithCustomRole(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "custom_roles.0", roleKey1),
 					resource.TestCheckResourceAttr(resourceName, "role_attributes.#", "0"),
 				),
+			},
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
 			},
 		},
 	})
