@@ -58,6 +58,7 @@ func resourceTeam() *schema.Resource {
 				Elem:        &schema.Schema{Type: schema.TypeString},
 				Description: "List of custom role keys the team will access. The referenced custom roles must already exist in LaunchDarkly. If they don't, the provider may behave unexpectedly.",
 			},
+			ROLE_ATTRIBUTES: roleAttributesSchema(false),
 		},
 		Description: `Provides a LaunchDarkly team resource.
 

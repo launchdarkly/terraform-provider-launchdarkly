@@ -66,6 +66,7 @@ func teamSchema() map[string]*schema.Schema {
 			Elem:        &schema.Schema{Type: schema.TypeString},
 			Description: "The list of the keys of the custom roles that you have assigned to the team.",
 		},
+		ROLE_ATTRIBUTES: roleAttributesSchema(true),
 	}
 }
 
