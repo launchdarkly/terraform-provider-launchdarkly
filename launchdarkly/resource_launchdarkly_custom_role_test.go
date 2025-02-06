@@ -84,7 +84,7 @@ resource "launchdarkly_custom_role" "test" {
 `
 )
 
-func TestAccCustomRole_Create(t *testing.T) {
+func TestAccCustomRole_CreateAndUpdate(t *testing.T) {
 	key := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	name := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	resourceName := "launchdarkly_custom_role.test"
@@ -110,11 +110,27 @@ func TestAccCustomRole_Create(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "policy.0.effect", "deny"),
 				),
 			},
+			{
+				Config: fmt.Sprintf(testAccCustomRoleUpdate, key, name),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckCustomRoleExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, KEY, key),
+					resource.TestCheckResourceAttr(resourceName, NAME, "Updated - "+name),
+					resource.TestCheckResourceAttr(resourceName, DESCRIPTION, ""), // should be empty after removal
+					resource.TestCheckResourceAttr(resourceName, BASE_PERMISSIONS, "reader"),
+					resource.TestCheckResourceAttr(resourceName, "policy.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "policy.0.actions.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "policy.0.actions.0", "*"),
+					resource.TestCheckResourceAttr(resourceName, "policy.0.resources.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "policy.0.resources.0", "proj/*:env/staging"),
+					resource.TestCheckResourceAttr(resourceName, "policy.0.effect", "allow"),
+				),
+			},
 		},
 	})
 }
 
-func TestAccCustomRole_CreateWithStatements(t *testing.T) {
+func TestAccCustomRole_CreateAndUpdateWithStatements(t *testing.T) {
 	key := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	name := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	resourceName := "launchdarkly_custom_role.test"
@@ -145,11 +161,32 @@ func TestAccCustomRole_CreateWithStatements(t *testing.T) {
 				ImportState:       true,
 				ImportStateVerify: true,
 			},
+			{
+				Config: fmt.Sprintf(testAccCustomRoleUpdateWithStatements, key, name),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckCustomRoleExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, KEY, key),
+					resource.TestCheckResourceAttr(resourceName, NAME, "Updated role - "+name),
+					resource.TestCheckResourceAttr(resourceName, DESCRIPTION, "Deny all actions on production environments"),
+					resource.TestCheckResourceAttr(resourceName, "policy.#", "0"),
+					resource.TestCheckResourceAttr(resourceName, "policy_statements.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "policy_statements.0.actions.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "policy_statements.0.actions.0", "*"),
+					resource.TestCheckResourceAttr(resourceName, "policy_statements.0.resources.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "policy_statements.0.resources.0", "proj/*:env/production"),
+					resource.TestCheckResourceAttr(resourceName, "policy_statements.0.effect", "deny"),
+				),
+			},
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
 		},
 	})
 }
 
-func TestAccCustomRole_CreateWithNotStatements(t *testing.T) {
+func TestAccCustomRole_CreateAndUpdateWithNotStatements(t *testing.T) {
 	key := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	name := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	resourceName := "launchdarkly_custom_role.test"
@@ -181,98 +218,6 @@ func TestAccCustomRole_CreateWithNotStatements(t *testing.T) {
 				ImportState:       true,
 				ImportStateVerify: true,
 			},
-		},
-	})
-}
-
-func TestAccCustomRole_Update(t *testing.T) {
-	key := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
-	name := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
-	resourceName := "launchdarkly_custom_role.test"
-	resource.ParallelTest(t, resource.TestCase{
-		PreCheck: func() {
-			testAccPreCheck(t)
-		},
-		Providers: testAccProviders,
-		Steps: []resource.TestStep{
-			{
-				Config: fmt.Sprintf(testAccCustomRoleCreate, key, name),
-				Check: resource.ComposeTestCheckFunc(
-					testAccCheckCustomRoleExists(resourceName),
-				),
-			},
-			{
-				Config: fmt.Sprintf(testAccCustomRoleUpdate, key, name),
-				Check: resource.ComposeTestCheckFunc(
-					testAccCheckCustomRoleExists(resourceName),
-					resource.TestCheckResourceAttr(resourceName, KEY, key),
-					resource.TestCheckResourceAttr(resourceName, NAME, "Updated - "+name),
-					resource.TestCheckResourceAttr(resourceName, DESCRIPTION, ""), // should be empty after removal
-					resource.TestCheckResourceAttr(resourceName, BASE_PERMISSIONS, "reader"),
-					resource.TestCheckResourceAttr(resourceName, "policy.#", "1"),
-					resource.TestCheckResourceAttr(resourceName, "policy.0.actions.#", "1"),
-					resource.TestCheckResourceAttr(resourceName, "policy.0.actions.0", "*"),
-					resource.TestCheckResourceAttr(resourceName, "policy.0.resources.#", "1"),
-					resource.TestCheckResourceAttr(resourceName, "policy.0.resources.0", "proj/*:env/staging"),
-					resource.TestCheckResourceAttr(resourceName, "policy.0.effect", "allow"),
-				),
-			},
-		},
-	})
-}
-
-func TestAccCustomRole_UpdateWithStatements(t *testing.T) {
-	key := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
-	name := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
-	resourceName := "launchdarkly_custom_role.test"
-	resource.ParallelTest(t, resource.TestCase{
-		PreCheck: func() {
-			testAccPreCheck(t)
-		},
-		Providers: testAccProviders,
-		Steps: []resource.TestStep{
-			{
-				Config: fmt.Sprintf(testAccCustomRoleCreate, key, name),
-				Check: resource.ComposeTestCheckFunc(
-					testAccCheckCustomRoleExists(resourceName),
-				),
-			},
-			{
-				Config: fmt.Sprintf(testAccCustomRoleUpdateWithStatements, key, name),
-				Check: resource.ComposeTestCheckFunc(
-					testAccCheckCustomRoleExists(resourceName),
-					resource.TestCheckResourceAttr(resourceName, KEY, key),
-					resource.TestCheckResourceAttr(resourceName, NAME, "Updated role - "+name),
-					resource.TestCheckResourceAttr(resourceName, DESCRIPTION, "Deny all actions on production environments"),
-					resource.TestCheckResourceAttr(resourceName, "policy.#", "0"),
-					resource.TestCheckResourceAttr(resourceName, "policy_statements.#", "1"),
-					resource.TestCheckResourceAttr(resourceName, "policy_statements.0.actions.#", "1"),
-					resource.TestCheckResourceAttr(resourceName, "policy_statements.0.actions.0", "*"),
-					resource.TestCheckResourceAttr(resourceName, "policy_statements.0.resources.#", "1"),
-					resource.TestCheckResourceAttr(resourceName, "policy_statements.0.resources.0", "proj/*:env/production"),
-					resource.TestCheckResourceAttr(resourceName, "policy_statements.0.effect", "deny"),
-				),
-			},
-		},
-	})
-}
-
-func TestAccCustomRole_UpdateWithNotStatements(t *testing.T) {
-	key := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
-	name := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
-	resourceName := "launchdarkly_custom_role.test"
-	resource.ParallelTest(t, resource.TestCase{
-		PreCheck: func() {
-			testAccPreCheck(t)
-		},
-		Providers: testAccProviders,
-		Steps: []resource.TestStep{
-			{
-				Config: fmt.Sprintf(testAccCustomRoleCreateWithStatements, key, name),
-				Check: resource.ComposeTestCheckFunc(
-					testAccCheckCustomRoleExists(resourceName),
-				),
-			},
 			{
 				Config: fmt.Sprintf(testAccCustomRoleUpdateWithNotStatements, key, name),
 				Check: resource.ComposeTestCheckFunc(
@@ -288,6 +233,11 @@ func TestAccCustomRole_UpdateWithNotStatements(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "policy_statements.0.not_resources.0", "proj/*:env/production"),
 					resource.TestCheckResourceAttr(resourceName, "policy_statements.0.effect", "deny"),
 				),
+			},
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
 			},
 		},
 	})
