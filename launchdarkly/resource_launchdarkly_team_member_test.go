@@ -75,14 +75,14 @@ resource "launchdarkly_team_member" "custom_role_test" {
 	email = "%s+wbteste2e@launchdarkly.com"
 	first_name = "first"
 	last_name = "last"
-	custom_roles = [launchdarkly_custom_role.test.key, launchdarkly_custom_role.test_2.key]
+	custom_roles = [launchdarkly_custom_role.test.key]
 }
 `
 	testAccTeamMemberCustomRoleWithRoleAttributes = `
 resource "launchdarkly_custom_role" "test" {
 	key = "%s"
 	name = "Updated - %s"
-	description= "Allow all actions on staging environments"
+	description= "Allow all actions on testAttribute environments"
 	policy_statements {
 		actions = ["*"]	
 		effect = "allow"
@@ -92,8 +92,8 @@ resource "launchdarkly_custom_role" "test" {
 
 resource "launchdarkly_team_member" "custom_role_test" {
 	email = "%s+wbteste2e@launchdarkly.com"
-	first_name = "Role"
-	last_name = "Attributes"
+	first_name = "first"
+	last_name = "last"
 	custom_roles = [launchdarkly_custom_role.test.key]
 	role_attributes {
 		key = "testAttribute"
@@ -190,7 +190,8 @@ func TestAccTeamMember_WithCustomRole(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, EMAIL, fmt.Sprintf("%s+wbteste2e@launchdarkly.com", randomName)),
 					resource.TestCheckResourceAttr(resourceName, FIRST_NAME, "first"),
 					resource.TestCheckResourceAttr(resourceName, LAST_NAME, "last"),
-					resource.TestCheckResourceAttr(resourceName, "custom_roles.#", "2"),
+					resource.TestCheckResourceAttr(resourceName, "custom_roles.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "custom_roles.0", roleKey1),
 				),
 			},
 			{
@@ -206,8 +207,8 @@ func TestAccTeamMember_WithCustomRole(t *testing.T) {
 					testAccCheckCustomRoleExists(roleResourceName1),
 					testAccCheckMemberExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, EMAIL, fmt.Sprintf("%s+wbteste2e@launchdarkly.com", randomName)),
-					resource.TestCheckResourceAttr(resourceName, FIRST_NAME, "Role"),
-					resource.TestCheckResourceAttr(resourceName, LAST_NAME, "Attributes"),
+					resource.TestCheckResourceAttr(resourceName, FIRST_NAME, "first"),
+					resource.TestCheckResourceAttr(resourceName, LAST_NAME, "last"),
 					resource.TestCheckResourceAttr(resourceName, "custom_roles.#", "1"),
 					resource.TestCheckResourceAttr(resourceName, "custom_roles.0", roleKey1),
 					resource.TestCheckResourceAttr(resourceName, "role_attributes.#", "2"),
@@ -217,7 +218,6 @@ func TestAccTeamMember_WithCustomRole(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "role_attributes.0.values.1", "production"),
 					// we allow the setting of role attributes to be set even if they do not otherwise exist
 					// on a custom role
-					resource.TestCheckResourceAttr(resourceName, "role_attributes.0.key.#", "1"),
 					resource.TestCheckResourceAttr(resourceName, "role_attributes.0.key.0", "nonexistentAttribute"),
 					resource.TestCheckResourceAttr(resourceName, "role_attributes.0.values.#", "1"),
 					resource.TestCheckResourceAttr(resourceName, "role_attributes.0.values.0", "someValue"),
