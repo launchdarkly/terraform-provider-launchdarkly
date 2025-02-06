@@ -53,7 +53,7 @@ func testAccDataSourceMetricScaffold(client *Client, betaClient *Client, project
 	expSettings := ldapi.RandomizationSettingsPut{
 		RandomizationUnits: randomizationUnitsInput,
 	}
-	_, _, err = betaClient.ld.ExperimentsApi.PutExperimentationSettings(betaClient.ctx, projectKey).RandomizationSettingsPut(expSettings).Execute()
+	_, _, err = client.ld.ExperimentsApi.PutExperimentationSettings(betaClient.ctx, projectKey).RandomizationSettingsPut(expSettings).Execute()
 	if err != nil {
 		return nil, err
 	}

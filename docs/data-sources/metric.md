@@ -30,6 +30,10 @@ data "launchdarkly_metric" "example" {
 - `key` (String) The unique key that references the metric. A change in this field will force the destruction of the existing resource and the creation of a new one.
 - `project_key` (String) The metrics's project key. A change in this field will force the destruction of the existing resource and the creation of a new one.
 
+### Optional
+
+- `is_active` (Boolean, Deprecated) Ignored. All metrics are considered active.
+
 ### Read-Only
 
 - `analysis_type` (String) The method for analyzing metric events. Available choices are `mean` and `percentile`.
@@ -37,7 +41,6 @@ data "launchdarkly_metric" "example" {
 - `event_key` (String) The event key for your metric (if custom metric)
 - `id` (String) The ID of this resource.
 - `include_units_without_events` (Boolean) Include units that did not send any events and set their value to 0.
-- `is_active` (Boolean, Deprecated) Ignored. All metrics are considered active.
 - `is_numeric` (Boolean) Whether a `custom` metric is a numeric metric or not.
 - `kind` (String) The metric type. Available choices are `click`, `custom`, and `pageview`.
 - `maintainer_id` (String) The LaunchDarkly member ID of the member who will maintain the metric. If not set, the API will automatically apply the member associated with your Terraform API key or the most recently-set maintainer
