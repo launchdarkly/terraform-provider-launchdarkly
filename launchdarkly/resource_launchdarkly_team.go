@@ -121,6 +121,7 @@ func resourceTeamCreate(ctx context.Context, d *schema.ResourceData, metaRaw int
 	memberIDs := d.Get(MEMBER_IDS).(*schema.Set).List()
 	maintainers := d.Get(MAINTAINERS).(*schema.Set).List()
 	customRoleKeys := d.Get(CUSTOM_ROLE_KEYS).(*schema.Set).List()
+	roleAttributes := roleAttributesFromResourceData(d.Get(ROLE_ATTRIBUTES).(*schema.Set).List())
 
 	stringMemberIDs := make([]string, len(memberIDs))
 	for i := range memberIDs {
@@ -154,6 +155,7 @@ func resourceTeamCreate(ctx context.Context, d *schema.ResourceData, metaRaw int
 		MemberIDs:        stringMemberIDs,
 		Name:             name,
 		PermissionGrants: permissionGrantArray,
+		RoleAttributes:   roleAttributes,
 	}
 
 	_, _, err := client.ld.TeamsApi.PostTeam(client.ctx).TeamPostInput(teamBody).Execute()
@@ -172,7 +174,7 @@ func resourceTeamRead(ctx context.Context, d *schema.ResourceData, metaRaw inter
 	client := metaRaw.(*Client)
 	teamKey := d.Id()
 
-	team, res, err := client.ld.TeamsApi.GetTeam(client.ctx, teamKey).Expand("roles,projects,maintainers").Execute()
+	team, res, err := client.ld.TeamsApi.GetTeam(client.ctx, teamKey).Expand("roles,projects,maintainers,roleAttributes").Execute()
 	if isStatusNotFound(res) {
 		log.Printf("[WARN] failed to find team %q, removing from state", teamKey)
 		diags = append(diags, diag.Diagnostic{
@@ -194,7 +196,7 @@ func resourceTeamRead(ctx context.Context, d *schema.ResourceData, metaRaw inter
 	filter := fmt.Sprintf("team:%s", teamKey)
 
 	for next != nil {
-		memberResponse, res, err := client.ld.AccountMembersApi.GetMembers(client.ctx).Limit(50).Offset(i * 50).Filter(filter).Execute()
+		memberResponse, res, err := client.ld.AccountMembersApi.GetMembers(client.ctx).Limit(50).Offset(i * 50).Filter(filter).Expand("roleAttributes").Execute()
 		if isStatusNotFound(res) {
 			log.Printf("[WARN] failed to find members for team %q, removing from state", teamKey)
 			diags = append(diags, diag.Diagnostic{
@@ -240,6 +242,10 @@ func resourceTeamRead(ctx context.Context, d *schema.ResourceData, metaRaw inter
 	_ = d.Set(MEMBER_IDS, member_ids)
 	_ = d.Set(MAINTAINERS, maintainers)
 	_ = d.Set(CUSTOM_ROLE_KEYS, customRoleKeys)
+	err = d.Set(ROLE_ATTRIBUTES, roleAttributesToResourceData(d.Get(ROLE_ATTRIBUTES).(*schema.Set).List(), team.RoleAttributes))
+	if err != nil {
+		return diag.Errorf("failed to set role attributes on team %q: %v", teamKey, err)
+	}
 
 	return diags
 }

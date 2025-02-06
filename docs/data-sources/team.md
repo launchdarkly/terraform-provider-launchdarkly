@@ -31,6 +31,10 @@ data "launchdarkly_team" "platform_team" {
 
 - `key` (String) The team key.
 
+### Optional
+
+- `role_attributes` (Block Set) A role attributes block. One block must be defined per role attribute. The key is the role attribute key and the value is a string array of resource keys that apply. (see [below for nested schema](#nestedblock--role_attributes))
+
 ### Read-Only
 
 - `custom_role_keys` (Set of String) The list of the keys of the custom roles that you have assigned to the team.
@@ -39,6 +43,15 @@ data "launchdarkly_team" "platform_team" {
 - `maintainers` (Set of Object) The list of team maintainers as [team member objects](/providers/launchdarkly/launchdarkly/latest/docs/data-sources/team_member). (see [below for nested schema](#nestedatt--maintainers))
 - `name` (String) Human-readable name for the team.
 - `project_keys` (Set of String) The list of keys of the projects that the team has any write access to.
+
+<a id="nestedblock--role_attributes"></a>
+### Nested Schema for `role_attributes`
+
+Required:
+
+- `key` (String) The key / name of your role attribute. In the example `$${roleAttribute/testAttribute}`, the key is `testAttribute`.
+- `values` (List of String) A list of values for your role attribute. For example, if your policy statement defines the resource `"proj/$${roleAttribute/testAttribute}"`, the values would be the keys of the projects you wanted to assign access to.
+
 
 <a id="nestedatt--maintainers"></a>
 ### Nested Schema for `maintainers`
