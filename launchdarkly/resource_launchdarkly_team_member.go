@@ -80,7 +80,8 @@ func resourceTeamMemberCreate(ctx context.Context, d *schema.ResourceData, metaR
 	lastName := d.Get(LAST_NAME).(string)
 	memberRole := d.Get(ROLE).(string)
 	customRolesRaw := d.Get(CUSTOM_ROLES).(*schema.Set).List()
-	roleAttributes := roleAttributesFromResourceData(d.Get(ROLE_ATTRIBUTES).([]interface{}))
+	// roleAttributes := roleAttributesFromResourceData(d.Get(ROLE_ATTRIBUTES).(*schema.Set).List())
+	roleAttributes := roleAttributesFromResourceData(d.Get(ROLE_ATTRIBUTES).(*schema.Set).List())
 
 	customRoles := make([]string, len(customRolesRaw))
 	for i, cr := range customRolesRaw {
@@ -140,7 +141,7 @@ func resourceTeamMemberRead(ctx context.Context, d *schema.ResourceData, metaRaw
 	if err != nil {
 		return diag.Errorf("failed to set custom roles on team member with id %q: %v", member.Id, err)
 	}
-	err = d.Set(ROLE_ATTRIBUTES, roleAttributesToResourceData(member.RoleAttributes))
+	err = d.Set(ROLE_ATTRIBUTES, roleAttributesToResourceData(d.Get(ROLE_ATTRIBUTES).(*schema.Set).List(), member.RoleAttributes))
 	if err != nil {
 		return diag.Errorf("failed to set role attributes on team member with id %q: %v", member.Id, err)
 	}
@@ -152,7 +153,6 @@ func resourceTeamMemberUpdate(ctx context.Context, d *schema.ResourceData, metaR
 	memberID := d.Id()
 	memberRole := d.Get(ROLE).(string)
 	customRolesRaw := d.Get(CUSTOM_ROLES).(*schema.Set).List()
-	roleAttributes := roleAttributesFromResourceData(d.Get(ROLE_ATTRIBUTES).([]interface{}))
 
 	customRoleKeys := make([]string, len(customRolesRaw))
 	for i, cr := range customRolesRaw {
@@ -168,9 +168,7 @@ func resourceTeamMemberUpdate(ctx context.Context, d *schema.ResourceData, metaR
 		patchReplace("/role", &memberRole),
 		patchReplace("/customRoles", &customRoleIds),
 	}
-	if roleAttributes != nil {
-		patch = append(patch, patchReplace("/roleAttributes", &roleAttributes))
-	}
+	patch = append(patch, getRoleAttributePatches(d)...)
 
 	_, _, err = client.ld.AccountMembersApi.PatchMember(client.ctx, memberID).PatchOperation(patch).Execute()
 	if err != nil {

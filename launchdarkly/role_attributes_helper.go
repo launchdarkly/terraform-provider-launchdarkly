@@ -1,10 +1,16 @@
 package launchdarkly
 
-import "github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+import (
+	"fmt"
+	"slices"
+
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	ldapi "github.com/launchdarkly/api-client-go/v17"
+)
 
 func roleAttributesSchema(isDataSource bool) *schema.Schema {
 	return &schema.Schema{
-		Type: schema.TypeList,
+		Type: schema.TypeSet,
 		Elem: &schema.Resource{
 			Schema: map[string]*schema.Schema{
 				KEY: {
@@ -45,7 +51,7 @@ func roleAttributesFromResourceData(rawRoleAttributes []interface{}) *map[string
 	return &roleAttributes
 }
 
-func roleAttributesToResourceData(roleAttributes *map[string][]string) *[]interface{} {
+func roleAttributesToResourceData(existingRoleAttributes []interface{}, roleAttributes *map[string][]string) *[]interface{} {
 	if roleAttributes == nil {
 		return nil
 	}
@@ -61,4 +67,39 @@ func roleAttributesToResourceData(roleAttributes *map[string][]string) *[]interf
 		})
 	}
 	return &resourceData
+}
+
+func getRoleAttributePatches(d *schema.ResourceData) []ldapi.PatchOperation {
+	var patch []ldapi.PatchOperation
+	if o, n := d.GetChange(ROLE_ATTRIBUTES); o != n {
+		old := roleAttributesFromResourceData(o.(*schema.Set).List())
+		new := roleAttributesFromResourceData(d.Get(ROLE_ATTRIBUTES).(*schema.Set).List())
+		if new != nil {
+			if old == nil {
+				patch = append(patch, patchAdd("/roleAttributes", new))
+			} else {
+				for k, v := range *new {
+					if _, ok := (*old)[k]; !ok {
+						patch = append(patch, patchAdd(fmt.Sprintf("/roleAttributes/%s", k), &v))
+					} else {
+						if oldV := (*old)[k]; slices.Compare(oldV, v) == 0 {
+							continue
+						} else {
+							patch = append(patch, patchReplace(fmt.Sprintf("/roleAttributes/%s", k), &v))
+						}
+					}
+				}
+				for k, _ := range *old {
+					if _, ok := (*new)[k]; !ok {
+						patch = append(patch, patchRemove(fmt.Sprintf("/roleAttributes/%s", k)))
+					}
+				}
+			}
+		} else {
+			for k, _ := range *old {
+				patch = append(patch, patchRemove(fmt.Sprintf("/roleAttributes/%s", k)))
+			}
+		}
+	}
+	return patch
 }
