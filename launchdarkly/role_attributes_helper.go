@@ -27,3 +27,38 @@ func roleAttributesSchema(isDataSource bool) *schema.Schema {
 		Description: "A role attributes block. One block must be defined per role attribute. The key is the role attribute key and the value is a string array of resource keys that apply.",
 	}
 }
+
+func roleAttributesFromResourceData(rawRoleAttributes []interface{}) *map[string][]string {
+	if len(rawRoleAttributes) == 0 {
+		return nil
+	}
+	roleAttributes := make(map[string][]string)
+	for _, attribute := range rawRoleAttributes {
+		roleAttribute := attribute.(map[string]interface{})
+		key := roleAttribute[KEY].(string)
+		rawValues := roleAttribute[VALUES].([]interface{})
+		roleAttributes[key] = make([]string, 0, len(rawValues))
+		for _, v := range rawValues {
+			roleAttributes[key] = append(roleAttributes[key], v.(string))
+		}
+	}
+	return &roleAttributes
+}
+
+func roleAttributesToResourceData(roleAttributes *map[string][]string) *[]interface{} {
+	if roleAttributes == nil {
+		return nil
+	}
+	resourceData := make([]interface{}, 0, len(*roleAttributes))
+	for key, values := range *roleAttributes {
+		rawValues := make([]interface{}, 0, len(values))
+		for _, v := range values {
+			rawValues = append(rawValues, v)
+		}
+		resourceData = append(resourceData, map[string]interface{}{
+			KEY:    key,
+			VALUES: rawValues,
+		})
+	}
+	return &resourceData
+}
