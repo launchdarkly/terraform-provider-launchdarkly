@@ -87,7 +87,7 @@ func dataSourceTeamRead(ctx context.Context, d *schema.ResourceData, meta interf
 	var diags diag.Diagnostics
 	client := meta.(*Client)
 	teamKey := d.Get(KEY).(string)
-	team, _, err := client.ld.TeamsApi.GetTeam(client.ctx, teamKey).Expand("roles,projects,maintainers").Execute()
+	team, _, err := client.ld.TeamsApi.GetTeam(client.ctx, teamKey).Expand("roles,projects,maintainers,roleAttributes").Execute()
 
 	if err != nil {
 		return diag.Errorf("Error when calling `TeamsApi.GetTeam`: %v\n\n request: %v", err, team)
@@ -125,6 +125,10 @@ func dataSourceTeamRead(ctx context.Context, d *schema.ResourceData, meta interf
 	_ = d.Set(MAINTAINERS, maintainers)
 	_ = d.Set(PROJECT_KEYS, projects)
 	_ = d.Set(CUSTOM_ROLE_KEYS, customRoleKeys)
+	err = d.Set(ROLE_ATTRIBUTES, roleAttributesToResourceData(d.Get(ROLE_ATTRIBUTES).(*schema.Set).List(), team.RoleAttributes))
+	if err != nil {
+		return diag.Errorf("failed to set role attributes on team %q: %v", teamKey, err)
+	}
 
 	return diags
 }
