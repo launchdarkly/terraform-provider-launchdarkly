@@ -62,6 +62,7 @@ func resourceTeamMember() *schema.Resource {
 				Description:  "The list of custom roles keys associated with the team member. Custom roles are only available to customers on an Enterprise plan. To learn more, [read about our pricing](https://launchdarkly.com/pricing/). To upgrade your plan, [contact LaunchDarkly Sales](https://launchdarkly.com/contact-sales/).\n\n-> **Note:** each `launchdarkly_team_member` must have either a `role` or `custom_roles` argument.",
 				AtLeastOneOf: []string{ROLE, CUSTOM_ROLES},
 			},
+			ROLE_ATTRIBUTES: roleAttributesSchema(false),
 		},
 
 		Description: `Provides a LaunchDarkly team member resource.
@@ -79,6 +80,7 @@ func resourceTeamMemberCreate(ctx context.Context, d *schema.ResourceData, metaR
 	lastName := d.Get(LAST_NAME).(string)
 	memberRole := d.Get(ROLE).(string)
 	customRolesRaw := d.Get(CUSTOM_ROLES).(*schema.Set).List()
+	roleAttributes := roleAttributesFromResourceData(d.Get(ROLE_ATTRIBUTES).(*schema.Set).List())
 
 	customRoles := make([]string, len(customRolesRaw))
 	for i, cr := range customRolesRaw {
@@ -86,13 +88,15 @@ func resourceTeamMemberCreate(ctx context.Context, d *schema.ResourceData, metaR
 	}
 
 	membersBody := ldapi.NewMemberForm{
-		Email:       memberEmail,
-		FirstName:   &firstName,
-		LastName:    &lastName,
-		Role:        &memberRole,
-		CustomRoles: customRoles,
+		Email:          memberEmail,
+		FirstName:      &firstName,
+		LastName:       &lastName,
+		Role:           &memberRole,
+		CustomRoles:    customRoles,
+		RoleAttributes: roleAttributes,
 	}
 
+	// role attributes will not come back here because we have to set an expand query param
 	members, _, err := client.ld.AccountMembersApi.PostMembers(client.ctx).NewMemberForm([]ldapi.NewMemberForm{membersBody}).Execute()
 	if err != nil {
 		return diag.Errorf("failed to create team member with email: %s: %v", memberEmail, handleLdapiErr(err))
@@ -108,7 +112,7 @@ func resourceTeamMemberRead(ctx context.Context, d *schema.ResourceData, metaRaw
 	client := metaRaw.(*Client)
 	memberID := d.Id()
 
-	member, res, err := client.ld.AccountMembersApi.GetMember(client.ctx, memberID).Execute()
+	member, res, err := client.ld.AccountMembersApi.GetMember(client.ctx, memberID).Expand("roleAttributes").Execute()
 	if isStatusNotFound(res) {
 		log.Printf("[WARN] failed to find member with id %q, removing from state", memberID)
 		diags = append(diags, diag.Diagnostic{
@@ -136,6 +140,10 @@ func resourceTeamMemberRead(ctx context.Context, d *schema.ResourceData, metaRaw
 	if err != nil {
 		return diag.Errorf("failed to set custom roles on team member with id %q: %v", member.Id, err)
 	}
+	err = d.Set(ROLE_ATTRIBUTES, roleAttributesToResourceData(member.RoleAttributes))
+	if err != nil {
+		return diag.Errorf("failed to set role attributes on team member with id %q: %v", member.Id, err)
+	}
 	return diags
 }
 
@@ -159,6 +167,7 @@ func resourceTeamMemberUpdate(ctx context.Context, d *schema.ResourceData, metaR
 		patchReplace("/role", &memberRole),
 		patchReplace("/customRoles", &customRoleIds),
 	}
+	patch = append(patch, getRoleAttributePatches(d)...)
 
 	_, _, err = client.ld.AccountMembersApi.PatchMember(client.ctx, memberID).PatchOperation(patch).Execute()
 	if err != nil {

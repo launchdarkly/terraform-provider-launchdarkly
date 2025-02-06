@@ -44,6 +44,7 @@ func memberSchema() map[string]*schema.Schema {
 			Computed:    true,
 			Description: `The list of custom roles keys associated with the team member. Custom roles are only available to customers on an Enterprise plan. To learn more, [read about our pricing](https://launchdarkly.com/pricing/). To upgrade your plan, [contact LaunchDarkly Sales](https://launchdarkly.com/contact-sales/).`,
 		},
+		ROLE_ATTRIBUTES: roleAttributesSchema(true),
 	}
 }
 
@@ -63,7 +64,7 @@ func getTeamMemberByEmail(client *Client, memberEmail string) (*ldapi.Member, er
 	teamMemberLimit := int64(1000)
 
 	// After changing this to query by member email, we shouldn't need the limit and recursion on requests, but leaving it in just to be extra safe
-	members, _, err := client.ld.AccountMembersApi.GetMembers(client.ctx).Filter(fmt.Sprintf("query:%s", url.QueryEscape(memberEmail))).Execute()
+	members, _, err := client.ld.AccountMembersApi.GetMembers(client.ctx).Filter(fmt.Sprintf("query:%s", url.QueryEscape(memberEmail))).Expand("roleAttributes").Execute()
 
 	if err != nil {
 		return nil, fmt.Errorf("failed to read team member with email: %s: %v", memberEmail, handleLdapiErr(err))
@@ -110,6 +111,10 @@ func dataSourceTeamMemberRead(ctx context.Context, d *schema.ResourceData, meta 
 	err = d.Set(CUSTOM_ROLES, member.CustomRoles)
 	if err != nil {
 		return diag.Errorf("failed to set custom roles on team member with email %q: %v", member.Email, err)
+	}
+	err = d.Set(ROLE_ATTRIBUTES, roleAttributesToResourceData(member.RoleAttributes))
+	if err != nil {
+		return diag.Errorf("failed to set role attributes on team member with id %q: %v", member.Id, err)
 	}
 
 	return diags

@@ -58,3 +58,12 @@ Read-Only:
 - `id` (String)
 - `last_name` (String)
 - `role` (String)
+- `role_attributes` (Set of Object) (see [below for nested schema](#nestedobjatt--team_members--role_attributes))
+
+<a id="nestedobjatt--team_members--role_attributes"></a>
+### Nested Schema for `team_members.role_attributes`
+
+Read-Only:
+
+- `key` (String)
+- `values` (List of String)
