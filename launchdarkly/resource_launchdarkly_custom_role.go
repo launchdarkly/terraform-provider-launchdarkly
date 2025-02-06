@@ -55,8 +55,13 @@ This resource allows you to create and manage custom roles within your LaunchDar
 				ValidateDiagFunc: validation.ToDiagFunc(validation.StringInSlice([]string{"reader", "no_access"}, false)),
 				Default:          "reader",
 			},
-			POLICY:            policyArraySchema(),
-			POLICY_STATEMENTS: policyStatementsSchema(policyStatementSchemaOptions{optional: true, conflictsWith: []string{POLICY}}),
+			POLICY: policyArraySchema(),
+			POLICY_STATEMENTS: policyStatementsSchema(
+				policyStatementSchemaOptions{
+					optional:      true,
+					conflictsWith: []string{POLICY},
+					description:   "An array of the policy statements that define the permissions for the custom role. This field accepts role attributes.",
+				}),
 		},
 	}
 }
