@@ -24,6 +24,6 @@ func roleAttributesSchema(isDataSource bool) *schema.Schema {
 		},
 		Optional:    true,
 		Computed:    isDataSource,
-		Description: "A map of role attributes. The key is the role attribute key and the value is a string array of resource keys that apply.",
+		Description: "A role attributes block. One block must be defined per role attribute. The key is the role attribute key and the value is a string array of resource keys that apply.",
 	}
 }
