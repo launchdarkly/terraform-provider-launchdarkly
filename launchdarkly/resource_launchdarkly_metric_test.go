@@ -9,7 +9,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
-	ldapi "github.com/launchdarkly/api-client-go/v16"
+	ldapi "github.com/launchdarkly/api-client-go/v17"
 	"github.com/stretchr/testify/require"
 )
 
@@ -101,7 +101,10 @@ func scaffoldProjectWithExperimentationSettings(client *Client, betaClient *Clie
 	randomizationUnitsInput := make([]ldapi.RandomizationUnitInput, 0, len(randomizationUnits))
 	for _, randomizationUnit := range randomizationUnits {
 		if randomizationUnit == "user" {
-			randomizationUnitsInput = append(randomizationUnitsInput, *ldapi.NewRandomizationUnitInput(randomizationUnit, true, randomizationUnit))
+			defaultTrue := true
+			defaultRandomizationUnit := *ldapi.NewRandomizationUnitInput(randomizationUnit, randomizationUnit)
+			defaultRandomizationUnit.Default = &defaultTrue
+			randomizationUnitsInput = append(randomizationUnitsInput, defaultRandomizationUnit)
 			continue
 		}
 		// Add the additional context kinds to the project
@@ -110,14 +113,14 @@ func scaffoldProjectWithExperimentationSettings(client *Client, betaClient *Clie
 		if err != nil {
 			return err
 		}
-		randomizationUnitsInput = append(randomizationUnitsInput, *ldapi.NewRandomizationUnitInput(randomizationUnit, false, randomizationUnit))
+		randomizationUnitsInput = append(randomizationUnitsInput, *ldapi.NewRandomizationUnitInput(randomizationUnit, randomizationUnit))
 	}
 
 	// Update the project's experimentation settings to make the new context available for experiments
 	expSettings := ldapi.RandomizationSettingsPut{
 		RandomizationUnits: randomizationUnitsInput,
 	}
-	_, _, err = betaClient.ld.ExperimentsBetaApi.PutExperimentationSettings(betaClient.ctx, projectKey).RandomizationSettingsPut(expSettings).Execute()
+	_, _, err = client.ld.ExperimentsApi.PutExperimentationSettings(betaClient.ctx, projectKey).RandomizationSettingsPut(expSettings).Execute()
 	return err
 }
 
