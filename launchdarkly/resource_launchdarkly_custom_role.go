@@ -60,7 +60,7 @@ This resource allows you to create and manage custom roles within your LaunchDar
 				policyStatementSchemaOptions{
 					optional:      true,
 					conflictsWith: []string{POLICY},
-					description:   "An array of the policy statements that define the permissions for the custom role. This field accepts role attributes.",
+					description:   "An array of the policy statements that define the permissions for the custom role. This field accepts role attributes. Role attribute syntax is `$${roleAttribute/<YOUR_ROLE_ATTRIBUTE>}`.",
 				}),
 		},
 	}
