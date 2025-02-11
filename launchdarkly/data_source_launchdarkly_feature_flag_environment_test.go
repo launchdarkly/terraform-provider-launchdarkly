@@ -103,6 +103,24 @@ func TestAccDataSourceFeatureFlagEnvironment_exists(t *testing.T) {
 				},
 			},
 		},
+		{
+			Description: strPtr("test rule with rollout"),
+			Clauses: []ldapi.Clause{
+				{
+					Attribute: "thing",
+					Op:        "contains",
+					Values:    []interface{}{"test-2"},
+				},
+			},
+			Rollout: &ldapi.Rollout{
+				Variations: []ldapi.WeightedVariation{
+					{Variation: int32(0), Weight: int32(20000)},
+					{Variation: int32(1), Weight: int32(80000)},
+				},
+				BucketBy:    strPtr("country"),
+				ContextKind: strPtr("account"),
+			},
+		},
 	}
 	prerequisites := []ldapi.Prerequisite{
 		{
@@ -161,6 +179,10 @@ func TestAccDataSourceFeatureFlagEnvironment_exists(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "rules.0.clauses.0.attribute", thisConfig.Rules[0].Clauses[0].Attribute),
 					resource.TestCheckResourceAttr(resourceName, "rules.0.clauses.0.op", thisConfig.Rules[0].Clauses[0].Op),
 					resource.TestCheckResourceAttr(resourceName, "rules.0.clauses.0.values.0", fmt.Sprint(thisConfig.Rules[0].Clauses[0].Values[0])),
+					resource.TestCheckResourceAttr(resourceName, "rules.1.description", *thisConfig.Rules[1].Description),
+					resource.TestCheckResourceAttr(resourceName, "rules.1.rollout_weights.#", "2"),
+					resource.TestCheckResourceAttr(resourceName, "rules.1.bucket_by", *thisConfig.Rules[1].Rollout.BucketBy),
+					resource.TestCheckResourceAttr(resourceName, "rules.1.context_kind", *thisConfig.Rules[1].Rollout.ContextKind),
 					resource.TestCheckResourceAttr(resourceName, "prerequisites.0.flag_key", thisConfig.Prerequisites[0].Key),
 					resource.TestCheckResourceAttr(resourceName, "prerequisites.0.variation", fmt.Sprint(thisConfig.Prerequisites[0].Variation)),
 					resource.TestCheckResourceAttr(resourceName, OFF_VARIATION, fmt.Sprint(*thisConfig.OffVariation)),
