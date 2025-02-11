@@ -2,6 +2,13 @@
 
 All notable changes to the LaunchDarkly Terraform Provider will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org).
 
+## [2.23.0](https://github.com/launchdarkly/terraform-provider-launchdarkly/compare/v2.22.0...v2.23.0) (2025-02-11)
+
+
+### Features
+
+* add context_kind to targeting rules with percentage rollouts ([#293](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/293)) ([a41f969](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/a41f96963b8cf66b3045e8571e391630895e3b47))
+
 ## [2.22.0](https://github.com/launchdarkly/terraform-provider-launchdarkly/compare/v2.21.5...v2.22.0) (2025-02-06)
 
 
