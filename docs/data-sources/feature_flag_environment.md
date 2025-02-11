@@ -79,6 +79,7 @@ Read-Only:
 
 - `bucket_by` (String)
 - `clauses` (List of Object) (see [below for nested schema](#nestedobjatt--rules--clauses))
+- `context_kind` (String)
 - `description` (String)
 - `rollout_weights` (List of Number)
 - `variation` (Number)

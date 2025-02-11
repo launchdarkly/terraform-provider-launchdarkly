@@ -149,7 +149,9 @@ resource "launchdarkly_feature_flag_environment" "big_flag_environment" {
       op        = "segmentMatch" // Maps to 'Context is in' in the UI
       values    = ["test-segment"]
     }
-    variation = 0
+    rollout_weights = [40000, 60000]
+    bucket_by       = "country"
+    context_kind    = "account"
   }
 
   fallthrough {

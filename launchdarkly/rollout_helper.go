@@ -23,10 +23,9 @@ func rolloutSchema() *schema.Schema {
 	}
 }
 
-func rolloutFromResourceData(val interface{}) *ldapi.Rollout {
-	rolloutList := val.([]interface{})
-	variations := []ldapi.WeightedVariation{}
-	for idx, k := range rolloutList {
+func rolloutFromResourceData(rolloutWeights []interface{}) *ldapi.Rollout {
+	variations := make([]ldapi.WeightedVariation, 0, len(rolloutWeights))
+	for idx, k := range rolloutWeights {
 		weight := k.(int)
 		variations = append(variations,
 			ldapi.WeightedVariation{
@@ -43,11 +42,11 @@ func rolloutFromResourceData(val interface{}) *ldapi.Rollout {
 	return &r
 }
 
-func rolloutsToResourceData(rollouts *ldapi.Rollout) interface{} {
-	transformed := make([]interface{}, len(rollouts.Variations))
+func rolloutsToResourceData(rollouts *ldapi.Rollout) []interface{} {
+	transformed := make([]interface{}, 0, len(rollouts.Variations))
 
 	for _, r := range rollouts.Variations {
-		transformed[r.Variation] = r.Weight
+		transformed = append(transformed, r.Weight)
 	}
 	return transformed
 }

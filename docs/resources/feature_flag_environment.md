@@ -170,7 +170,9 @@ resource "launchdarkly_feature_flag_environment" "big_flag_environment" {
       op        = "segmentMatch" // Maps to 'Context is in' in the UI
       values    = ["test-segment"]
     }
-    variation = 0
+    rollout_weights = [40000, 60000]
+    bucket_by       = "country"
+    context_kind    = "account"
   }
 
   fallthrough {
@@ -240,6 +242,7 @@ Optional:
 
 - `bucket_by` (String) Group percentage rollout by a custom attribute. This argument is only valid if `rollout_weights` is also specified.
 - `clauses` (Block List) List of nested blocks specifying the logical clauses to evaluate (see [below for nested schema](#nestedblock--rules--clauses))
+- `context_kind` (String) The context kind associated with the specified rollout. This argument is only valid if `rollout_weights` is also specified. Defaults to `user` if omitted.
 - `description` (String) A human-readable description of the targeting rule.
 - `rollout_weights` (List of Number) List of integer percentage rollout weights (in thousandths of a percent) to apply to each variation if the rule clauses evaluates to `true`. The sum of the `rollout_weights` must equal 100000 and the number of rollout weights specified in the array must match the number of flag variations. You must specify either `variation` or `rollout_weights`.
 - `variation` (Number) The integer variation index to serve if the rule clauses evaluate to `true`. You must specify either `variation` or `rollout_weights`

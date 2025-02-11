@@ -93,7 +93,7 @@ func fallthroughFromResourceData(d *schema.ResourceData) (fallthroughModel, erro
 
 	fall := f[0].(map[string]interface{})
 	if isPercentRollout(f) {
-		rollout := fallthroughModel{Rollout: rolloutFromResourceData(fall[ROLLOUT_WEIGHTS])}
+		rollout := fallthroughModel{Rollout: rolloutFromResourceData(fall[ROLLOUT_WEIGHTS].([]interface{}))}
 		bucketBy := fall[BUCKET_BY].(string)
 		if bucketBy != "" {
 			rollout.Rollout.BucketBy = &bucketBy

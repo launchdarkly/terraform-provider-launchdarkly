@@ -118,6 +118,7 @@ resource "launchdarkly_feature_flag_environment" "basic" {
 		}
 		rollout_weights = [90000, 10000, 0]
 		bucket_by = "email"
+		context_kind = "account"
 	}
 
 	fallthrough {
@@ -737,6 +738,7 @@ func TestAccFeatureFlagEnvironment_Update(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "rules.1.rollout_weights.1", "10000"),
 					resource.TestCheckResourceAttr(resourceName, "rules.1.rollout_weights.2", "0"),
 					resource.TestCheckResourceAttr(resourceName, "rules.1.bucket_by", "email"),
+					resource.TestCheckResourceAttr(resourceName, "rules.1.context_kind", "account"),
 					resource.TestCheckResourceAttr(resourceName, "rules.1.clauses.0.attribute", "name"),
 					resource.TestCheckResourceAttr(resourceName, "rules.1.clauses.0.op", "startsWith"),
 					resource.TestCheckResourceAttr(resourceName, "rules.1.clauses.0.values.#", "1"),

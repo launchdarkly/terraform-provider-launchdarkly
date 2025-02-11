@@ -36,6 +36,12 @@ func rulesSchema(isDataSource bool) *schema.Schema {
 					Optional:    true,
 					Description: "Group percentage rollout by a custom attribute. This argument is only valid if `rollout_weights` is also specified.",
 				},
+				CONTEXT_KIND: {
+					Type:             schema.TypeString,
+					Optional:         true,
+					Description:      "The context kind associated with the specified rollout. This argument is only valid if `rollout_weights` is also specified. Defaults to `user` if omitted.",
+					DiffSuppressFunc: ruleContextKindDiffSuppressFunc(),
+				},
 			},
 		},
 	}
@@ -62,8 +68,28 @@ func rulesFromResourceData(d *schema.ResourceData) ([]rule, error) {
 	return rules, nil
 }
 
+func ruleHasPercentageRollout(ruleMap map[string]interface{}) bool {
+	return len(ruleMap[ROLLOUT_WEIGHTS].([]interface{})) > 0
+}
+
+func validateRuleResourceData(ruleMap map[string]interface{}) error {
+	if !ruleHasPercentageRollout(ruleMap) {
+		if ruleMap[BUCKET_BY].(string) != "" {
+			return errors.New("rules: cannot use bucket_by argument with variation, only with rollout_weights")
+		}
+		if ruleMap[CONTEXT_KIND].(string) != "" {
+			return errors.New("rules: cannot use context_kind argument with variation, only with rollout_weights")
+		}
+	}
+	return nil
+}
+
 func ruleFromResourceData(val interface{}) (rule, error) {
 	ruleMap := val.(map[string]interface{})
+	err := validateRuleResourceData(ruleMap)
+	if err != nil {
+		return rule{}, err
+	}
 	var r rule
 	for _, c := range ruleMap[CLAUSES].([]interface{}) {
 		clause, err := clauseFromResourceData(c)
@@ -73,16 +99,17 @@ func ruleFromResourceData(val interface{}) (rule, error) {
 		r.Clauses = append(r.Clauses, clause)
 	}
 	bucketBy := ruleMap[BUCKET_BY].(string)
-	bucketByFound := bucketBy != ""
-	if len(rolloutFromResourceData(ruleMap[ROLLOUT_WEIGHTS]).Variations) > 0 {
-		r.Rollout = rolloutFromResourceData(ruleMap[ROLLOUT_WEIGHTS])
-		if bucketByFound {
+	contextKind := ruleMap[CONTEXT_KIND].(string)
+	rollout := rolloutFromResourceData(ruleMap[ROLLOUT_WEIGHTS].([]interface{}))
+	if len(rollout.Variations) > 0 {
+		r.Rollout = rollout
+		if bucketBy != "" {
 			r.Rollout.BucketBy = &bucketBy
 		}
-	} else {
-		if bucketByFound && bucketBy != "" {
-			return r, errors.New("rules: cannot use bucket_by argument with variation, only with rollout_weights")
+		if contextKind != "" {
+			r.Rollout.ContextKind = &contextKind
 		}
+	} else {
 		r.Variation = intPtr(ruleMap[VARIATION].(int))
 	}
 	description := ruleMap[DESCRIPTION].(string)
@@ -106,6 +133,7 @@ func rulesToResourceData(rules []ldapi.Rule) (interface{}, error) {
 		if r.Rollout != nil {
 			ruleMap[ROLLOUT_WEIGHTS] = rolloutsToResourceData(r.Rollout)
 			ruleMap[BUCKET_BY] = r.Rollout.BucketBy
+			ruleMap[CONTEXT_KIND] = r.Rollout.ContextKind
 		} else {
 			ruleMap[VARIATION] = r.Variation
 		}
@@ -115,4 +143,13 @@ func rulesToResourceData(rules []ldapi.Rule) (interface{}, error) {
 		transformed = append(transformed, ruleMap)
 	}
 	return transformed, nil
+}
+
+func ruleContextKindDiffSuppressFunc() schema.SchemaDiffSuppressFunc {
+	return func(k, oldValue, newValue string, d *schema.ResourceData) bool {
+		if oldValue == "user" && newValue == "" {
+			return true
+		}
+		return false
+	}
 }
