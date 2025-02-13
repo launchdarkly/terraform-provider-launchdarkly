@@ -99,6 +99,22 @@ resource "launchdarkly_environment" "approvals_test" {
 	project_key = launchdarkly_project.test.key
 }
 `
+
+	testAccEnvironmentWithApprovalsServiceNowAutoApply = `
+resource "launchdarkly_environment" "approvals_test" {
+	name = "Approvals Test"
+	key = "approvals-test"
+	color = "ababab"
+	project_key = launchdarkly_project.test.key
+	approval_settings {
+		service_kind = "servicenow"
+		can_review_own_request = false
+		min_num_approvals = 1
+		required_approval_tags = ["approvals_required", "auto_apply"]
+		auto_apply_approved_changes = true
+	}
+}
+`
 )
 
 func TestAccEnvironment_Create(t *testing.T) {
@@ -318,6 +334,56 @@ func TestAccEnvironmentWithApprovals(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, PROJECT_KEY, projectKey),
 					resource.TestCheckNoResourceAttr(resourceName, fmt.Sprintf("%s.%%", APPROVAL_SETTINGS)),
 				),
+			},
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
+			{ // reset back to original state
+				Config: withRandomProject(projectKey, testAccEnvironmentWithApprovals),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckProjectExists("launchdarkly_project.test"),
+					testAccCheckEnvironmentExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, NAME, "Approvals Test"),
+					resource.TestCheckResourceAttr(resourceName, KEY, "approvals-test"),
+					resource.TestCheckResourceAttr(resourceName, COLOR, "ababab"),
+					resource.TestCheckResourceAttr(resourceName, PROJECT_KEY, projectKey),
+					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.service_kind", "launchdarkly"),
+					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.can_review_own_request", "false"),
+					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.can_apply_declined_changes", "true"), // should default to true
+					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.min_num_approvals", "2"),
+					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.required_approval_tags.0", "approvals_required"),
+					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.auto_apply_approved_changes", "false"),
+				),
+			},
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
+			{ // now change service kind and add auto apply
+				Config: withRandomProject(projectKey, testAccEnvironmentWithApprovalsServiceNowAutoApply),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckProjectExists("launchdarkly_project.test"),
+					testAccCheckEnvironmentExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, NAME, "Approvals Test 2.0"),
+					resource.TestCheckResourceAttr(resourceName, KEY, "approvals-test"),
+					resource.TestCheckResourceAttr(resourceName, COLOR, "bababa"),
+					resource.TestCheckResourceAttr(resourceName, PROJECT_KEY, projectKey),
+					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.service_kind", "servicenow"),
+					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.required", "true"),
+					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.can_review_own_request", "false"),
+					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.can_apply_declined_changes", "true"),
+					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.min_num_approvals", "1"),
+					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.required_approval_tags.#", "2"),
+					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.auto_apply_approved_changes", "true"),
+				),
+			},
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
 			},
 		},
 	})

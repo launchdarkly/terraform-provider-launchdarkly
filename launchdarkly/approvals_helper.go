@@ -69,6 +69,12 @@ func approvalSchema(options approvalSchemaOptions) *schema.Schema {
 			Computed:    options.isDataSource,
 			Description: "The configuration for the service associated with this approval. This is specific to each approval service. For a `service_kind` of `servicenow`, the following fields apply:\n\n\t - `template` (String) The sys_id of the Standard Change Request Template in ServiceNow that LaunchDarkly will use when creating the change request.\n\t - `detail_column` (String) The name of the ServiceNow Change Request column LaunchDarkly uses to populate detailed approval request information. ",
 		},
+		AUTO_APPLY_APPROVED_CHANGES: {
+			Type:        schema.TypeBool,
+			Optional:    true,
+			Description: "Automatically apply changes that have been approved by all reviewers. This field is only applicable for approval service kinds other than `launchdarkly`.",
+			Default:     false,
+		},
 	}
 
 	if options.isDataSource {
@@ -91,12 +97,14 @@ func approvalSettingsFromResourceData(val interface{}) (ldapi.ApprovalSettings, 
 		return ldapi.ApprovalSettings{}, nil
 	}
 	approvalSettingsMap := raw[0].(map[string]interface{})
+	autoApply := approvalSettingsMap[AUTO_APPLY_APPROVED_CHANGES].(bool)
 	settings := ldapi.ApprovalSettings{
-		CanReviewOwnRequest:     approvalSettingsMap[CAN_REVIEW_OWN_REQUEST].(bool),
-		MinNumApprovals:         int32(approvalSettingsMap[MIN_NUM_APPROVALS].(int)),
-		CanApplyDeclinedChanges: approvalSettingsMap[CAN_APPLY_DECLINED_CHANGES].(bool),
-		ServiceKind:             approvalSettingsMap[SERVICE_KIND].(string),
-		ServiceConfig:           approvalSettingsMap[SERVICE_CONFIG].(map[string]interface{}),
+		CanReviewOwnRequest:      approvalSettingsMap[CAN_REVIEW_OWN_REQUEST].(bool),
+		MinNumApprovals:          int32(approvalSettingsMap[MIN_NUM_APPROVALS].(int)),
+		CanApplyDeclinedChanges:  approvalSettingsMap[CAN_APPLY_DECLINED_CHANGES].(bool),
+		ServiceKind:              approvalSettingsMap[SERVICE_KIND].(string),
+		ServiceConfig:            approvalSettingsMap[SERVICE_CONFIG].(map[string]interface{}),
+		AutoApplyApprovedChanges: &autoApply,
 	}
 	// Required and RequiredApprovalTags should never be defined simultaneously
 	// unfortunately since they default to their null values and are nested we cannot tell if the
@@ -118,18 +126,22 @@ func approvalSettingsFromResourceData(val interface{}) (ldapi.ApprovalSettings, 
 
 	settings.ServiceKind = approvalSettingsMap[SERVICE_KIND].(string)
 	settings.ServiceConfig = approvalSettingsMap[SERVICE_CONFIG].(map[string]interface{})
+	if settings.ServiceKind == "launchdarkly" && settings.AutoApplyApprovedChanges != nil && *settings.AutoApplyApprovedChanges {
+		return ldapi.ApprovalSettings{}, fmt.Errorf("invalid approval_settings config: auto_apply_approved_changes cannot be set to true for service_kind of launchdarkly")
+	}
 	return settings, nil
 }
 
 func approvalSettingsToResourceData(settings ldapi.ApprovalSettings) interface{} {
 	transformed := map[string]interface{}{
-		CAN_REVIEW_OWN_REQUEST:     settings.CanReviewOwnRequest,
-		MIN_NUM_APPROVALS:          settings.MinNumApprovals,
-		CAN_APPLY_DECLINED_CHANGES: settings.CanApplyDeclinedChanges,
-		REQUIRED_APPROVAL_TAGS:     settings.RequiredApprovalTags,
-		REQUIRED:                   settings.Required,
-		SERVICE_KIND:               settings.ServiceKind,
-		SERVICE_CONFIG:             settings.ServiceConfig,
+		CAN_REVIEW_OWN_REQUEST:      settings.CanReviewOwnRequest,
+		MIN_NUM_APPROVALS:           settings.MinNumApprovals,
+		CAN_APPLY_DECLINED_CHANGES:  settings.CanApplyDeclinedChanges,
+		REQUIRED_APPROVAL_TAGS:      settings.RequiredApprovalTags,
+		REQUIRED:                    settings.Required,
+		SERVICE_KIND:                settings.ServiceKind,
+		SERVICE_CONFIG:              settings.ServiceConfig,
+		AUTO_APPLY_APPROVED_CHANGES: settings.AutoApplyApprovedChanges,
 	}
 	return []map[string]interface{}{transformed}
 }
@@ -158,6 +170,9 @@ func approvalPatchFromSettings(oldApprovalSettings, newApprovalSettings interfac
 		patchReplace("/approvalSettings/requiredApprovalTags", settings.RequiredApprovalTags),
 		patchReplace("/approvalSettings/serviceKind", settings.ServiceKind),
 		patchReplace("/approvalSettings/serviceConfig", settings.ServiceConfig),
+	}
+	if settings.AutoApplyApprovedChanges != nil {
+		patch = append(patch, patchReplace("/approvalSettings/autoApplyApprovedChanges", *settings.AutoApplyApprovedChanges))
 	}
 	return patch, nil
 }
