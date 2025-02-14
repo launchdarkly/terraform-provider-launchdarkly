@@ -256,7 +256,7 @@ func resourceProjectUpdate(ctx context.Context, d *schema.ResourceData, metaRaw 
 		}
 		_, _, err = client.ld.EnvironmentsApi.PatchEnvironment(client.ctx, projectKey, envKey).PatchOperation(patch).Execute()
 		if err != nil {
-			return diag.Errorf("failed to update environment with key %q for project: %q: %+v", envKey, projectKey, handleLdapiErr(err))
+			return diag.Errorf("failed to update project environment with key %q for project: %q: %+v", envKey, projectKey, handleLdapiErr(err))
 		}
 	}
 	// we also want to delete environments that were previously tracked in state and have been removed from the config

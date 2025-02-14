@@ -100,10 +100,10 @@ resource "launchdarkly_environment" "approvals_test" {
 }
 `
 
-	testAccEnvironmentWithApprovalsServiceNowAutoApply = `
-resource "launchdarkly_environment" "approvals_test" {
-	name = "Approvals Test"
-	key = "approvals-test"
+	testAccEnvironmentWithApprovalsAutoApply = `
+resource "launchdarkly_environment" "auto_apply_test" {
+	name = "Auto Apply Test"
+	key = "auto-apply-test"
 	color = "ababab"
 	project_key = launchdarkly_project.test.key
 	approval_settings {
@@ -273,7 +273,7 @@ func TestAccEnvironment_Invalid(t *testing.T) {
 	})
 }
 
-func TestAccEnvironmentWithApprovals(t *testing.T) {
+func TestAccEnvironment_WithApprovals(t *testing.T) {
 	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	resourceName := "launchdarkly_environment.approvals_test"
 	resource.ParallelTest(t, resource.TestCase{
@@ -362,14 +362,27 @@ func TestAccEnvironmentWithApprovals(t *testing.T) {
 				ImportState:       true,
 				ImportStateVerify: true,
 			},
-			{ // now change service kind and add auto apply
-				Config: withRandomProject(projectKey, testAccEnvironmentWithApprovalsServiceNowAutoApply),
+		},
+	})
+}
+
+func TestAccEnvironment_WithApprovalIntegrations(t *testing.T) {
+	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	resourceName := "launchdarkly_environment.auto_apply_test"
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck: func() {
+			testAccPreCheck(t)
+		},
+		Providers: testAccProviders,
+		Steps: []resource.TestStep{
+			{
+				Config: withRandomProject(projectKey, testAccEnvironmentWithApprovalsAutoApply),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckProjectExists("launchdarkly_project.test"),
 					testAccCheckEnvironmentExists(resourceName),
-					resource.TestCheckResourceAttr(resourceName, NAME, "Approvals Test 2.0"),
-					resource.TestCheckResourceAttr(resourceName, KEY, "approvals-test"),
-					resource.TestCheckResourceAttr(resourceName, COLOR, "bababa"),
+					resource.TestCheckResourceAttr(resourceName, NAME, "Auto Apply Test"),
+					resource.TestCheckResourceAttr(resourceName, KEY, "auto-apply-test"),
+					resource.TestCheckResourceAttr(resourceName, COLOR, "ababab"),
 					resource.TestCheckResourceAttr(resourceName, PROJECT_KEY, projectKey),
 					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.service_kind", "servicenow"),
 					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.required", "true"),
