@@ -8,7 +8,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
-	ldapi "github.com/launchdarkly/api-client-go/v16"
+	ldapi "github.com/launchdarkly/api-client-go/v17"
 	"github.com/stretchr/testify/require"
 )
 
@@ -25,6 +25,9 @@ func testAccDataSourceTeamMemberCreate(client *Client, email string) (*ldapi.Mem
 		Email:     email,
 		FirstName: ldapi.PtrString("Test"),
 		LastName:  ldapi.PtrString("Account"),
+		RoleAttributes: &map[string][]string{
+			"testAttribute": []string{"testValue"},
+		},
 	}}
 	members, _, err := client.ld.AccountMembersApi.PostMembers(client.ctx).NewMemberForm(membersBody).Execute()
 	if err != nil {
@@ -92,6 +95,7 @@ func TestAccDataSourceTeamMember_exists(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, FIRST_NAME, *testMember.FirstName),
 					resource.TestCheckResourceAttr(resourceName, LAST_NAME, *testMember.LastName),
 					resource.TestCheckResourceAttr(resourceName, ID, testMember.Id),
+					resource.TestCheckResourceAttr(resourceName, "role_attributes.#", "1"),
 				),
 			},
 		},

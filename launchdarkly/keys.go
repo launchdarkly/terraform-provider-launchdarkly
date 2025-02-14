@@ -94,6 +94,7 @@ const (
 	RESOURCE                         = "resource"
 	RESOURCES                        = "resources"
 	ROLE                             = "role"
+	ROLE_ATTRIBUTES                  = "role_attributes"
 	ROLLOUT_CONTEXT_KIND             = "rollout_context_kind"
 	ROLLOUT_WEIGHTS                  = "rollout_weights"
 	RULES                            = "rules"

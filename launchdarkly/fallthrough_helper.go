@@ -6,7 +6,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 
-	ldapi "github.com/launchdarkly/api-client-go/v16"
+	ldapi "github.com/launchdarkly/api-client-go/v17"
 )
 
 // In the LD model, this corresponds to the VariationOrRollout type
@@ -93,7 +93,7 @@ func fallthroughFromResourceData(d *schema.ResourceData) (fallthroughModel, erro
 
 	fall := f[0].(map[string]interface{})
 	if isPercentRollout(f) {
-		rollout := fallthroughModel{Rollout: rolloutFromResourceData(fall[ROLLOUT_WEIGHTS])}
+		rollout := fallthroughModel{Rollout: rolloutFromResourceData(fall[ROLLOUT_WEIGHTS].([]interface{}))}
 		bucketBy := fall[BUCKET_BY].(string)
 		if bucketBy != "" {
 			rollout.Rollout.BucketBy = &bucketBy

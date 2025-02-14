@@ -8,7 +8,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 
-	ldapi "github.com/launchdarkly/api-client-go/v16"
+	ldapi "github.com/launchdarkly/api-client-go/v17"
 )
 
 func resourceTeam() *schema.Resource {
@@ -58,6 +58,7 @@ func resourceTeam() *schema.Resource {
 				Elem:        &schema.Schema{Type: schema.TypeString},
 				Description: "List of custom role keys the team will access. The referenced custom roles must already exist in LaunchDarkly. If they don't, the provider may behave unexpectedly.",
 			},
+			ROLE_ATTRIBUTES: roleAttributesSchema(false),
 		},
 		Description: `Provides a LaunchDarkly team resource.
 
@@ -120,6 +121,7 @@ func resourceTeamCreate(ctx context.Context, d *schema.ResourceData, metaRaw int
 	memberIDs := d.Get(MEMBER_IDS).(*schema.Set).List()
 	maintainers := d.Get(MAINTAINERS).(*schema.Set).List()
 	customRoleKeys := d.Get(CUSTOM_ROLE_KEYS).(*schema.Set).List()
+	roleAttributes := roleAttributesFromResourceData(d.Get(ROLE_ATTRIBUTES).(*schema.Set).List())
 
 	stringMemberIDs := make([]string, len(memberIDs))
 	for i := range memberIDs {
@@ -153,6 +155,7 @@ func resourceTeamCreate(ctx context.Context, d *schema.ResourceData, metaRaw int
 		MemberIDs:        stringMemberIDs,
 		Name:             name,
 		PermissionGrants: permissionGrantArray,
+		RoleAttributes:   roleAttributes,
 	}
 
 	_, _, err := client.ld.TeamsApi.PostTeam(client.ctx).TeamPostInput(teamBody).Execute()
@@ -171,7 +174,7 @@ func resourceTeamRead(ctx context.Context, d *schema.ResourceData, metaRaw inter
 	client := metaRaw.(*Client)
 	teamKey := d.Id()
 
-	team, res, err := client.ld.TeamsApi.GetTeam(client.ctx, teamKey).Expand("roles,projects,maintainers").Execute()
+	team, res, err := client.ld.TeamsApi.GetTeam(client.ctx, teamKey).Expand("roles,projects,maintainers,roleAttributes").Execute()
 	if isStatusNotFound(res) {
 		log.Printf("[WARN] failed to find team %q, removing from state", teamKey)
 		diags = append(diags, diag.Diagnostic{
@@ -239,6 +242,10 @@ func resourceTeamRead(ctx context.Context, d *schema.ResourceData, metaRaw inter
 	_ = d.Set(MEMBER_IDS, member_ids)
 	_ = d.Set(MAINTAINERS, maintainers)
 	_ = d.Set(CUSTOM_ROLE_KEYS, customRoleKeys)
+	err = d.Set(ROLE_ATTRIBUTES, roleAttributesToResourceData(team.RoleAttributes))
+	if err != nil {
+		return diag.Errorf("failed to set role attributes on team %q: %v", teamKey, err)
+	}
 
 	return diags
 }
@@ -270,8 +277,6 @@ func resourceTeamUpdate(ctx context.Context, d *schema.ResourceData, metaRaw int
 		updateArr := interfaceToArr(update)
 
 		remove, add := makeAddAndRemoveArrays(oldArr, updateArr)
-
-		fmt.Printf("Old members array: %v, New members array: %v", oldArr, updateArr)
 
 		if len(remove) > 0 {
 			instruction := make(map[string]interface{})
@@ -331,6 +336,14 @@ func resourceTeamUpdate(ctx context.Context, d *schema.ResourceData, metaRaw int
 			instruction["values"] = add
 			instructions = append(instructions, instruction)
 		}
+	}
+
+	if d.HasChange(ROLE_ATTRIBUTES) {
+		replaceRoleAttributesInstruction := map[string]interface{}{
+			"kind":  "replaceRoleAttributes",
+			"value": roleAttributesFromResourceData(d.Get(ROLE_ATTRIBUTES).(*schema.Set).List()),
+		}
+		instructions = append(instructions, replaceRoleAttributesInstruction)
 	}
 
 	if len(instructions) > 0 {

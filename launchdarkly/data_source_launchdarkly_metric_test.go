@@ -8,7 +8,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
-	ldapi "github.com/launchdarkly/api-client-go/v16"
+	ldapi "github.com/launchdarkly/api-client-go/v17"
 	"github.com/stretchr/testify/require"
 )
 
@@ -34,7 +34,10 @@ func testAccDataSourceMetricScaffold(client *Client, betaClient *Client, project
 	randomizationUnitsInput := make([]ldapi.RandomizationUnitInput, 0, len(metricBody.RandomizationUnits))
 	for _, randomizationUnit := range metricBody.RandomizationUnits {
 		if randomizationUnit == "user" {
-			randomizationUnitsInput = append(randomizationUnitsInput, *ldapi.NewRandomizationUnitInput(randomizationUnit, true, randomizationUnit))
+			defaultTrue := true
+			defaultRandomizationUnit := *ldapi.NewRandomizationUnitInput(randomizationUnit, randomizationUnit)
+			defaultRandomizationUnit.Default = &defaultTrue
+			randomizationUnitsInput = append(randomizationUnitsInput, defaultRandomizationUnit)
 			continue
 		}
 		// Add the additional context kinds to the project
@@ -43,14 +46,14 @@ func testAccDataSourceMetricScaffold(client *Client, betaClient *Client, project
 		if err != nil {
 			return nil, err
 		}
-		randomizationUnitsInput = append(randomizationUnitsInput, *ldapi.NewRandomizationUnitInput(randomizationUnit, false, randomizationUnit))
+		randomizationUnitsInput = append(randomizationUnitsInput, *ldapi.NewRandomizationUnitInput(randomizationUnit, randomizationUnit))
 	}
 
 	// Update the project's experimentation settings to make the new context available for experiments
 	expSettings := ldapi.RandomizationSettingsPut{
 		RandomizationUnits: randomizationUnitsInput,
 	}
-	_, _, err = betaClient.ld.ExperimentsBetaApi.PutExperimentationSettings(betaClient.ctx, projectKey).RandomizationSettingsPut(expSettings).Execute()
+	_, _, err = client.ld.ExperimentsApi.PutExperimentationSettings(betaClient.ctx, projectKey).RandomizationSettingsPut(expSettings).Execute()
 	if err != nil {
 		return nil, err
 	}

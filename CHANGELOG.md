@@ -2,6 +2,35 @@
 
 All notable changes to the LaunchDarkly Terraform Provider will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org).
 
+## [2.23.0](https://github.com/launchdarkly/terraform-provider-launchdarkly/compare/v2.22.0...v2.23.0) (2025-02-11)
+
+
+### Features
+
+* add context_kind to targeting rules with percentage rollouts ([#293](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/293)) ([a41f969](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/a41f96963b8cf66b3045e8571e391630895e3b47))
+
+## [2.22.0](https://github.com/launchdarkly/terraform-provider-launchdarkly/compare/v2.21.5...v2.22.0) (2025-02-06)
+
+
+### Features
+
+* add role attributes to `launchdarkly_team_member` ([#289](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/289)) ([bc24609](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/bc2460932a50bb81c39dd8ebe11024644e4a3e58))
+* add role attributes to custom roles ([#286](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/286)) ([5160b78](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/5160b7885ddeb98421efa93625076275a233e33e))
+* add role_attributes to `launchdarkly_team` ([#290](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/290)) ([10ac131](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/10ac13184d8f04a02c98d1f69a1629760e16ed19))
+
+
+### Bug Fixes
+
+* make deprecated metric is_active field optional and computed ([#285](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/285)) ([afcbdc3](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/afcbdc359552f588a91a609996a313f57db6f2dd))
+
+## [2.21.5](https://github.com/launchdarkly/terraform-provider-launchdarkly/compare/v2.21.4...v2.21.5) (2025-01-30)
+
+
+### Bug Fixes
+
+* Bump golang.org/x/crypto from 0.24.0 to 0.31.0 ([#254](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/254)) ([eaea627](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/eaea6272d3ffa93eddbd5c8c1ac34ba94a00e85c))
+* Bump golang.org/x/net from 0.26.0 to 0.33.0 ([#267](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/267)) ([505712e](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/505712e0bedeb2f6e5a8171403d83f130358d785))
+
 ## [2.21.4](https://github.com/launchdarkly/terraform-provider-launchdarkly/compare/v2.21.3...v2.21.4) (2025-01-30)
 
 

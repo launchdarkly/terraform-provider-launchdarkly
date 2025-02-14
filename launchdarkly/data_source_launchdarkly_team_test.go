@@ -9,7 +9,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
-	ldapi "github.com/launchdarkly/api-client-go/v16"
+	ldapi "github.com/launchdarkly/api-client-go/v17"
 	"github.com/stretchr/testify/require"
 )
 
@@ -25,6 +25,9 @@ func testAccDataSourceTeamCreate(client *Client, teamKey string) (*ldapi.Team, e
 	teamPostInput := ldapi.TeamPostInput{
 		Key:  teamKey,
 		Name: teamKey,
+		RoleAttributes: &map[string][]string{
+			"adminPermissions": []string{"production", "everything"},
+		},
 	}
 	team, resp, err := client.ld.TeamsApi.PostTeam(client.ctx).TeamPostInput(teamPostInput).Execute()
 	if err != nil {
@@ -86,6 +89,11 @@ func TestAccDataSourceTeam_exists(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, NAME, *team.Name),
 					resource.TestCheckResourceAttr(resourceName, DESCRIPTION, *team.Description),
 					resource.TestCheckResourceAttr(resourceName, ID, *team.Key),
+					resource.TestCheckResourceAttr(resourceName, "role_attributes.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "role_attributes.0.key", "adminPermissions"),
+					resource.TestCheckResourceAttr(resourceName, "role_attributes.0.values.#", "2"),
+					resource.TestCheckResourceAttr(resourceName, "role_attributes.0.values.0", "production"),
+					resource.TestCheckResourceAttr(resourceName, "role_attributes.0.values.1", "everything"),
 				),
 			},
 		},

@@ -5,15 +5,16 @@ import (
 	"sort"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	ldapi "github.com/launchdarkly/api-client-go/v16"
+	ldapi "github.com/launchdarkly/api-client-go/v17"
 )
 
 func policyArraySchema() *schema.Schema {
 	return &schema.Schema{
-		Type:       schema.TypeSet,
-		Set:        policyHash,
-		Optional:   true,
-		Deprecated: "'policy' is now deprecated. Please migrate to 'policy_statements' to maintain future compatability.",
+		Type:          schema.TypeSet,
+		Set:           policyHash,
+		Optional:      true,
+		Deprecated:    "'policy' is now deprecated. Please migrate to 'policy_statements' to maintain future compatability.",
+		ConflictsWith: []string{POLICY_STATEMENTS},
 		Elem: &schema.Resource{
 			Schema: map[string]*schema.Schema{
 				RESOURCES: {
