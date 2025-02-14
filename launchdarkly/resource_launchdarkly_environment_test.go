@@ -100,7 +100,9 @@ resource "launchdarkly_environment" "approvals_test" {
 }
 `
 
-	testAccEnvironmentWithApprovalsAutoApply = `
+	// the template is hardcoded against the servicenow connection
+	// that is set up in our Terraform test account
+	testAccEnvironmentWithServiceNowApprovals = `
 resource "launchdarkly_environment" "auto_apply_test" {
 	name = "Auto Apply Test"
 	key = "auto-apply-test"
@@ -108,6 +110,10 @@ resource "launchdarkly_environment" "auto_apply_test" {
 	project_key = launchdarkly_project.test.key
 	approval_settings {
 		service_kind = "servicenow"
+		service_config = {
+			template = "b1c8d15147810200e90d87e8dee490f7"
+			detail_column = "justification"
+		}
 		can_review_own_request = false
 		min_num_approvals = 1
 		required_approval_tags = ["approvals_required", "auto_apply"]
@@ -376,7 +382,7 @@ func TestAccEnvironment_WithApprovalIntegrations(t *testing.T) {
 		Providers: testAccProviders,
 		Steps: []resource.TestStep{
 			{
-				Config: withRandomProject(projectKey, testAccEnvironmentWithApprovalsAutoApply),
+				Config: withRandomProject(projectKey, testAccEnvironmentWithServiceNowApprovals),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckProjectExists("launchdarkly_project.test"),
 					testAccCheckEnvironmentExists(resourceName),
@@ -385,7 +391,7 @@ func TestAccEnvironment_WithApprovalIntegrations(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, COLOR, "ababab"),
 					resource.TestCheckResourceAttr(resourceName, PROJECT_KEY, projectKey),
 					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.service_kind", "servicenow"),
-					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.required", "true"),
+					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.required", "false"),
 					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.can_review_own_request", "false"),
 					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.can_apply_declined_changes", "true"),
 					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.min_num_approvals", "1"),

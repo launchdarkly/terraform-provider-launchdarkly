@@ -67,7 +67,7 @@ func approvalSchema(options approvalSchemaOptions) *schema.Schema {
 			Type:        schema.TypeMap,
 			Optional:    !options.isDataSource,
 			Computed:    options.isDataSource,
-			Description: "The configuration for the service associated with this approval. This is specific to each approval service. For a `service_kind` of `servicenow`, the following fields apply:\n\n\t - `template` (String) The sys_id of the Standard Change Request Template in ServiceNow that LaunchDarkly will use when creating the change request.\n\t - `detail_column` (String) The name of the ServiceNow Change Request column LaunchDarkly uses to populate detailed approval request information. ",
+			Description: "The configuration for the service associated with this approval. This is specific to each approval service. For a `service_kind` of `servicenow`, the following fields apply:\n\n\t - `template` (String) The sys_id of the Standard Change Request Template in ServiceNow that LaunchDarkly will use when creating the change request.\n\t - `detail_column` (String) The name of the ServiceNow Change Request column LaunchDarkly uses to populate detailed approval request information. This is most commonly \"justification\".",
 		},
 		AUTO_APPLY_APPROVED_CHANGES: {
 			Type:        schema.TypeBool,
