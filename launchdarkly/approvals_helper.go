@@ -59,7 +59,7 @@ func approvalSchema(options approvalSchemaOptions) *schema.Schema {
 			Type:             schema.TypeString,
 			Optional:         !options.isDataSource,
 			Computed:         options.isDataSource,
-			Description:      "The kind of service associated with this approval. This determines which platform is used for requesting approval. Valid values are `servicenow`, `launchdarkly`.",
+			Description:      "The kind of service associated with this approval. This determines which platform is used for requesting approval. Valid values are `servicenow`, `launchdarkly`. If you use a value other than `launchdarkly`, you must have already configured the integration in the LaunchDarkly UI or your apply will fail.",
 			Default:          "launchdarkly",
 			ValidateDiagFunc: validation.ToDiagFunc(validation.StringInSlice([]string{"servicenow", "launchdarkly"}, false)),
 		},
