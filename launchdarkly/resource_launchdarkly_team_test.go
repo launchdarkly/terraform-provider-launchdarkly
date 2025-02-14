@@ -14,7 +14,7 @@ const (
 	testAccTeamCreate = `
 resource "launchdarkly_custom_role" "terraform_team_test" {
   key = "%s"
-  name = "%s"
+  name = "Teams test role %s"
   base_permissions = "no_access"
   policy {
     actions = ["*"]
@@ -58,7 +58,7 @@ resource "launchdarkly_team" "test" {
 	testAccTeamUpdateNameDescriptionRoleAttributes = `
 resource "launchdarkly_custom_role" "terraform_team_test" {
   key = "%s"
-  name = "%s"
+  name = "Teams test role %s"
   base_permissions = "no_access"
   policy {
     actions = ["*"]
@@ -98,7 +98,7 @@ resource "launchdarkly_team" "test" {
 	testAccTeamUpdateRoles = `
 resource "launchdarkly_custom_role" "terraform_team_test" {
   key = "%s"
-  name = "%s"
+  name = "Teams test role %s"
   base_permissions = "no_access"
   policy {
     actions = ["*"]
