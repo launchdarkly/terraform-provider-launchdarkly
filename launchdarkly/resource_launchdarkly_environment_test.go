@@ -115,9 +115,30 @@ resource "launchdarkly_environment" "auto_apply_test" {
 			detail_column = "justification"
 		}
 		can_review_own_request = false
+		can_apply_declined_changes = false
 		min_num_approvals = 1
 		required_approval_tags = ["approvals_required", "auto_apply"]
 		auto_apply_approved_changes = true
+	}
+}
+`
+
+	testAccEnvironmentWithServiceNowApprovalsUpdate = `
+resource "launchdarkly_environment" "auto_apply_test" {
+	name = "Auto Apply Test 2.0"
+	key = "auto-apply-test"
+	color = "bababa"
+	project_key = launchdarkly_project.test.key
+	approval_settings {
+		service_kind = "servicenow"
+		service_config = {
+			template = "508e02ec47410200e90d87e8dee49058"
+			detail_column = "justification"
+		}
+		required = true
+		can_review_own_request = true
+		min_num_approvals = 2
+		auto_apply_approved_changes = false
 	}
 }
 `
@@ -391,12 +412,41 @@ func TestAccEnvironment_WithApprovalIntegrations(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, COLOR, "ababab"),
 					resource.TestCheckResourceAttr(resourceName, PROJECT_KEY, projectKey),
 					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.service_kind", "servicenow"),
+					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.service_config.template", "b1c8d15147810200e90d87e8dee490f7"),
+					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.service_config.detail_column", "justification"),
 					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.required", "false"),
 					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.can_review_own_request", "false"),
-					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.can_apply_declined_changes", "true"),
+					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.can_apply_declined_changes", "false"),
 					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.min_num_approvals", "1"),
 					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.required_approval_tags.#", "2"),
+					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.required_approval_tags.0", "approvals_required"),
+					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.required_approval_tags.1", "auto_apply"),
 					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.auto_apply_approved_changes", "true"),
+				),
+			},
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
+			{
+				Config: withRandomProject(projectKey, testAccEnvironmentWithServiceNowApprovalsUpdate),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckProjectExists("launchdarkly_project.test"),
+					testAccCheckEnvironmentExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, NAME, "Auto Apply Test 2.0"),
+					resource.TestCheckResourceAttr(resourceName, KEY, "auto-apply-test"),
+					resource.TestCheckResourceAttr(resourceName, COLOR, "bababa"),
+					resource.TestCheckResourceAttr(resourceName, PROJECT_KEY, projectKey),
+					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.service_kind", "servicenow"),
+					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.service_config.template", "508e02ec47410200e90d87e8dee49058"),
+					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.service_config.detail_column", "justification"),
+					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.required", "true"),
+					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.can_review_own_request", "false"),
+					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.can_apply_declined_changes", "true"),
+					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.min_num_approvals", "2"),
+					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.required_approval_tags.#", "0"),
+					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.auto_apply_approved_changes", "false"),
 				),
 			},
 			{

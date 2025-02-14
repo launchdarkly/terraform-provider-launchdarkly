@@ -47,7 +47,7 @@ func approvalSchema(options approvalSchemaOptions) *schema.Schema {
 			Type:        schema.TypeList,
 			Optional:    !options.isDataSource,
 			Computed:    options.isDataSource,
-			Description: "An array of tags used to specify which flags with those tags require approval. You may only set `required_approval_tags` if `required` is not set to `true` and vice versa.",
+			Description: "An array of tags used to specify which flags with those tags require approval. You may only set `required_approval_tags` if `required` is set to `false` and vice versa.",
 			Elem: &schema.Schema{
 				Type: schema.TypeString,
 				// Can't use validation.ToDiagFunc converted validators on TypeList at the moment
