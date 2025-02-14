@@ -97,6 +97,7 @@ Read-Only:
 
 Optional:
 
+- `auto_apply_approved_changes` (Boolean) Automatically apply changes that have been approved by all reviewers. This field is only applicable for approval service kinds other than `launchdarkly`.
 - `can_apply_declined_changes` (Boolean) Set to `true` if changes can be applied as long as the `min_num_approvals` is met, regardless of whether any reviewers have declined a request. Defaults to `true`.
 - `can_review_own_request` (Boolean) Set to `true` if requesters can approve or decline their own request. They may always comment. Defaults to `false`.
 - `min_num_approvals` (Number) The number of approvals required before an approval request can be applied. This number must be between 1 and 5. Defaults to 1.
