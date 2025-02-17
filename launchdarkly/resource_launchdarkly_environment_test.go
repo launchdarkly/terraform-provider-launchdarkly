@@ -99,6 +99,36 @@ resource "launchdarkly_environment" "approvals_test" {
 	project_key = launchdarkly_project.test.key
 }
 `
+
+	testAccEnvironmentCritical = `
+resource "launchdarkly_environment" "critical_env" {
+  name  = "Critical Approvals Env"
+  key   = "critical-approvals-env"
+  color = "ff00ff"
+  tags  = ["terraform", "staging"]
+  critical = true
+  project_key = launchdarkly_project.test.key
+
+
+}
+`
+	testAccEnvironmentCriticalUpdate = `
+resource "launchdarkly_environment" "critical_env" {
+  name  = "Critical Approvals Env"
+  key   = "critical-approvals-env"
+  color = "ff00ff"
+  tags  = ["terraform", "staging"]
+  critical = false
+  project_key = launchdarkly_project.test.key
+
+  approval_settings {
+		required = true
+		can_review_own_request = false
+		min_num_approvals = 3
+		can_apply_declined_changes = true
+	}
+}
+`
 )
 
 func TestAccEnvironment_Create(t *testing.T) {
@@ -318,6 +348,88 @@ func TestAccEnvironmentWithApprovals(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, PROJECT_KEY, projectKey),
 					resource.TestCheckNoResourceAttr(resourceName, fmt.Sprintf("%s.%%", APPROVAL_SETTINGS)),
 				),
+			},
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
+		},
+	})
+}
+
+func TestAccEnvironment_Critical(t *testing.T) {
+	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	resourceName := "launchdarkly_environment.critical_env"
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck: func() {
+			testAccPreCheck(t)
+		},
+		Providers: testAccProviders,
+		Steps: []resource.TestStep{
+			{
+				Config: withRandomProject(projectKey, testAccEnvironmentCritical),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckProjectExists("launchdarkly_project.test"),
+					testAccCheckEnvironmentExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, NAME, "Critical Approvals Env"),
+					resource.TestCheckResourceAttr(resourceName, KEY, "critical-approvals-env"),
+					resource.TestCheckResourceAttr(resourceName, COLOR, "ff00ff"),
+					resource.TestCheckResourceAttr(resourceName, PROJECT_KEY, projectKey),
+					resource.TestCheckResourceAttr(resourceName, CRITICAL, "true"),
+					resource.TestCheckResourceAttr(resourceName, "tags.#", "2"),
+					resource.TestCheckResourceAttr(resourceName, "tags.1", "terraform"),
+					resource.TestCheckResourceAttr(resourceName, "tags.0", "staging"),
+				),
+			},
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
+			{
+				Config: withRandomProject(projectKey, testAccEnvironmentCriticalUpdate),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckProjectExists("launchdarkly_project.test"),
+					testAccCheckEnvironmentExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, NAME, "Critical Approvals Env"),
+					resource.TestCheckResourceAttr(resourceName, KEY, "critical-approvals-env"),
+					resource.TestCheckResourceAttr(resourceName, COLOR, "ff00ff"),
+					resource.TestCheckResourceAttr(resourceName, PROJECT_KEY, projectKey),
+					resource.TestCheckResourceAttr(resourceName, CRITICAL, "false"),
+					resource.TestCheckResourceAttr(resourceName, "tags.#", "2"),
+					resource.TestCheckResourceAttr(resourceName, "tags.1", "terraform"),
+					resource.TestCheckResourceAttr(resourceName, "tags.0", "staging"),
+					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.required", "true"),
+					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.can_review_own_request", "false"),
+					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.min_num_approvals", "3"),
+					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.can_apply_declined_changes", "true"),
+				),
+			},
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
+			{
+				Config: withRandomProject(projectKey, testAccEnvironmentCritical),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckProjectExists("launchdarkly_project.test"),
+					testAccCheckEnvironmentExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, NAME, "Critical Approvals Env"),
+					resource.TestCheckResourceAttr(resourceName, KEY, "critical-approvals-env"),
+					resource.TestCheckResourceAttr(resourceName, COLOR, "ff00ff"),
+					resource.TestCheckResourceAttr(resourceName, PROJECT_KEY, projectKey),
+					resource.TestCheckResourceAttr(resourceName, CRITICAL, "true"),
+					resource.TestCheckResourceAttr(resourceName, "tags.#", "2"),
+					resource.TestCheckResourceAttr(resourceName, "tags.1", "terraform"),
+					resource.TestCheckResourceAttr(resourceName, "tags.0", "staging"),
+				),
+			},
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
 			},
 		},
 	})
