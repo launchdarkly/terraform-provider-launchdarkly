@@ -48,6 +48,7 @@ func resourceEnvironmentCreate(ctx context.Context, d *schema.ResourceData, meta
 	tags := stringsFromSchemaSet(d.Get(TAGS).(*schema.Set))
 	requireComments := d.Get(REQUIRE_COMMENTS).(bool)
 	confirmChanges := d.Get(CONFIRM_CHANGES).(bool)
+	critical := d.Get(CRITICAL).(bool)
 
 	envPost := ldapi.EnvironmentPost{
 		Name:               name,
@@ -59,6 +60,7 @@ func resourceEnvironmentCreate(ctx context.Context, d *schema.ResourceData, meta
 		Tags:               tags,
 		RequireComments:    &requireComments,
 		ConfirmChanges:     &confirmChanges,
+		Critical:           &critical,
 	}
 
 	_, _, err := client.ld.EnvironmentsApi.PostEnvironment(client.ctx, projectKey).EnvironmentPost(envPost).Execute()
@@ -99,6 +101,7 @@ func resourceEnvironmentUpdate(ctx context.Context, d *schema.ResourceData, meta
 	color := d.Get(COLOR)
 	requireComments := d.Get(REQUIRE_COMMENTS)
 	confirmChanges := d.Get(CONFIRM_CHANGES)
+	critical := d.Get(CRITICAL)
 
 	patch := []ldapi.PatchOperation{
 		patchReplace("/name", &name),
@@ -108,6 +111,7 @@ func resourceEnvironmentUpdate(ctx context.Context, d *schema.ResourceData, meta
 		patchReplace("/defaultTrackEvents", d.Get(DEFAULT_TRACK_EVENTS)),
 		patchReplace("/requireComments", &requireComments),
 		patchReplace("/confirmChanges", &confirmChanges),
+		patchReplace("/critical", &critical),
 	}
 
 	if d.HasChange(TAGS) {

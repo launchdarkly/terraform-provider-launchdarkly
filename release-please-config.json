@@ -9,7 +9,8 @@
       "draft": true
     }
   },
-  "draft-pull-request": true,
+  "draft-pull-request": false,
+  "pull-request-footer": "**LaunchDarkly Employees:** you must close and reopen this PR to trigger the tests.\n\n---\nThis PR was generated with [Release Please](https://github.com/googleapis/release-please). See [documentation](https://github.com/googleapis/release-please#release-please).",
   "release-search-depth": 100,
   "commit-search-depth": 100
 }

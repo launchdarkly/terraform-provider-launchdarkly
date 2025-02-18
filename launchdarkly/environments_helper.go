@@ -290,7 +290,7 @@ func environmentRead(ctx context.Context, d *schema.ResourceData, meta interface
 	_ = d.Set(DEFAULT_TTL, int(env.DefaultTtl))
 	_ = d.Set(SECURE_MODE, env.SecureMode)
 	_ = d.Set(DEFAULT_TRACK_EVENTS, env.DefaultTrackEvents)
-	_ = d.Set(CRITICAL, env.Critical) // We need to update the LaunchDarkly go api client's version of Environment
+	_ = d.Set(CRITICAL, env.Critical)
 	_ = d.Set(TAGS, env.Tags)
 	_ = d.Set(REQUIRE_COMMENTS, env.RequireComments)
 	_ = d.Set(CONFIRM_CHANGES, env.ConfirmChanges)
