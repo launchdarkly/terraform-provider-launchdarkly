@@ -11,6 +11,7 @@ const (
 	APPROVAL_SETTINGS                = "approval_settings"
 	ARCHIVED                         = "archived"
 	ATTRIBUTE                        = "attribute"
+	AUTO_APPLY_APPROVED_CHANGES      = "auto_apply_approved_changes"
 	BASE_PERMISSIONS                 = "base_permissions"
 	BUCKET_BY                        = "bucket_by"
 	CAN_APPLY_DECLINED_CHANGES       = "can_apply_declined_changes"

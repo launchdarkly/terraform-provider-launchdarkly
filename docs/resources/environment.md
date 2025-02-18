@@ -78,16 +78,17 @@ resource "launchdarkly_environment" "approvals_example" {
 
 Optional:
 
+- `auto_apply_approved_changes` (Boolean) Automatically apply changes that have been approved by all reviewers. This field is only applicable for approval service kinds other than `launchdarkly`.
 - `can_apply_declined_changes` (Boolean) Set to `true` if changes can be applied as long as the `min_num_approvals` is met, regardless of whether any reviewers have declined a request. Defaults to `true`.
 - `can_review_own_request` (Boolean) Set to `true` if requesters can approve or decline their own request. They may always comment. Defaults to `false`.
 - `min_num_approvals` (Number) The number of approvals required before an approval request can be applied. This number must be between 1 and 5. Defaults to 1.
 - `required` (Boolean) Set to `true` for changes to flags in this environment to require approval. You may only set `required` to true if `required_approval_tags` is not set and vice versa. Defaults to `false`.
-- `required_approval_tags` (List of String) An array of tags used to specify which flags with those tags require approval. You may only set `required_approval_tags` if `required` is not set to `true` and vice versa.
+- `required_approval_tags` (List of String) An array of tags used to specify which flags with those tags require approval. You may only set `required_approval_tags` if `required` is set to `false` and vice versa.
 - `service_config` (Map of String) The configuration for the service associated with this approval. This is specific to each approval service. For a `service_kind` of `servicenow`, the following fields apply:
 
 	 - `template` (String) The sys_id of the Standard Change Request Template in ServiceNow that LaunchDarkly will use when creating the change request.
-	 - `detail_column` (String) The name of the ServiceNow Change Request column LaunchDarkly uses to populate detailed approval request information.
-- `service_kind` (String) The kind of service associated with this approval. This determines which platform is used for requesting approval. Valid values are `servicenow`, `launchdarkly`.
+	 - `detail_column` (String) The name of the ServiceNow Change Request column LaunchDarkly uses to populate detailed approval request information. This is most commonly "justification".
+- `service_kind` (String) The kind of service associated with this approval. This determines which platform is used for requesting approval. Valid values are `servicenow`, `launchdarkly`. If you use a value other than `launchdarkly`, you must have already configured the integration in the LaunchDarkly UI or your apply will fail.
 
 ## Import
 
