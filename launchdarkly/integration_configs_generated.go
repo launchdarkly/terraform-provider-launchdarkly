@@ -34,7 +34,7 @@ var SUBSCRIPTION_CONFIGURATION_FIELDS = map[string]IntegrationConfig{
 		"externalId": {
 			AllowedValues: []string{},
 			DefaultValue:  nil,
-			Description:   "Use this [external id](https://docs.launchdarkly.com/integrations/cloudtrail) for your resource policy when setting up the integration in the AWS Console.",
+			Description:   "Use this [external id](https://launchdarkly.com/docs/integrations/cloudtrail) for your resource policy when setting up the integration in the AWS Console.",
 			IsOptional:    false,
 			IsSecret:      false,
 			Type:          "generated",
@@ -235,7 +235,7 @@ var SUBSCRIPTION_CONFIGURATION_FIELDS = map[string]IntegrationConfig{
 	"msteams": {"url": {
 		AllowedValues: []string{},
 		DefaultValue:  nil,
-		Description:   "Enter your Microsoft Teams [incoming webhook URL](https://docs.launchdarkly.com/integrations/microsoft-teams/webhooks#setting-up-a-connector-in-microsoft-teams).",
+		Description:   "Enter your Microsoft Teams [incoming webhook URL](https://launchdarkly.com/docs/integrations/microsoft-teams/webhooks#set-up-a-workflow-in-microsoft-teams).",
 		IsOptional:    false,
 		IsSecret:      false,
 		Type:          "uri",
