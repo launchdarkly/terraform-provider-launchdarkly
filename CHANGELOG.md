@@ -2,6 +2,13 @@
 
 All notable changes to the LaunchDarkly Terraform Provider will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org).
 
+## [2.24.0](https://github.com/launchdarkly/terraform-provider-launchdarkly/compare/v2.23.1...v2.24.0) (2025-03-04)
+
+
+### Features
+
+* add auto apply to env approvals ([#295](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/295)) ([c546fbe](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/c546fbee93d58964472c2723ad14bbb3ce07a1b3))
+
 ## [2.23.1](https://github.com/launchdarkly/terraform-provider-launchdarkly/compare/v2.23.0...v2.23.1) (2025-02-17)
 
 
