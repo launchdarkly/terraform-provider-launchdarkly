@@ -471,7 +471,7 @@ func TestAccEnvironment_WithApprovalIntegrations(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.service_config.template", "508e02ec47410200e90d87e8dee49058"),
 					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.service_config.detail_column", "justification"),
 					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.required", "true"),
-					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.can_review_own_request", "false"),
+					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.can_review_own_request", "true"),
 					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.can_apply_declined_changes", "true"),
 					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.min_num_approvals", "2"),
 					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.required_approval_tags.#", "0"),
