@@ -55,6 +55,7 @@ data "launchdarkly_environment" "example" {
 
 Read-Only:
 
+- `auto_apply_approved_changes` (Boolean)
 - `can_apply_declined_changes` (Boolean)
 - `can_review_own_request` (Boolean)
 - `min_num_approvals` (Number)

@@ -77,9 +77,8 @@ func resourceEnvironmentCreate(ctx context.Context, d *schema.ResourceData, meta
 			// TODO: Figure out if we can get the err out of updateDiag (not looking likely) to use in hanldeLdapiErr
 			if deleteErr != nil {
 				return updateDiags
-				// return diag.Errorf("failed to clean up environment %q from project %q: %s", key, projectKey, handleLdapiErr(errs))
 			}
-			return diag.Errorf("failed to update environment with name %q key %q for projectKey %q: %s",
+			return diag.Errorf("failed to create environment with name %q key %q for projectKey %q: %s",
 				name, key, projectKey, handleLdapiErr(err))
 		}
 	}
