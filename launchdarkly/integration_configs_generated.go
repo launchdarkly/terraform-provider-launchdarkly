@@ -266,6 +266,14 @@ var SUBSCRIPTION_CONFIGURATION_FIELDS = map[string]IntegrationConfig{
 			Type:          "enum",
 		},
 	},
+	"pagerduty": {"integrationKey": {
+		AllowedValues: []string{},
+		DefaultValue:  nil,
+		Description:   "Enter your [PagerDuty integration key](https://support.pagerduty.com/main/docs/services-and-integrations#add-integrations-to-an-existing-service).",
+		IsOptional:    false,
+		IsSecret:      false,
+		Type:          "string",
+	}},
 	"signalfx": {
 		"accessToken": {
 			AllowedValues: []string{},
