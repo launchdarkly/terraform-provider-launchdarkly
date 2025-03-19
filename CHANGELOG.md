@@ -2,6 +2,13 @@
 
 All notable changes to the LaunchDarkly Terraform Provider will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org).
 
+## [2.25.0](https://github.com/launchdarkly/terraform-provider-launchdarkly/compare/v2.24.0...v2.25.0) (2025-03-19)
+
+
+### Features
+
+* Add support for PagerDuty Events integration ([#305](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/305)) ([15dfb9d](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/15dfb9df42aa048bf78171cde520f885c59f029c))
+
 ## [2.24.0](https://github.com/launchdarkly/terraform-provider-launchdarkly/compare/v2.23.1...v2.24.0) (2025-03-04)
 
 
