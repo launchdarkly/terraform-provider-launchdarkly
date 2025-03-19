@@ -26,8 +26,8 @@ jobs:
         with:
           branch: regenerate-integration-configs/patch
           delete-branch: true
-          commit-message: "[bot] Regenerate integration configs"
-          title: "[bot] Regenerate integration configs"
+          commit-message: "feat: [bot] Regenerate integration configs"
+          title: "feat: [bot] Regenerate integration configs"
           body: |
             This PR regenerates `launchdarkly/integration_configs_generated.go` based on recent changes to the [integrations manifest endpoint](https://app.launchdarkly.com/api/v2/integration-manifests).
 
