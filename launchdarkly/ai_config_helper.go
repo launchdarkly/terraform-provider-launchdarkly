@@ -1,38 +1,47 @@
 package launchdarkly
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
-	"math/rand"
+	"io/ioutil"
 	"net/http"
-	"strings"
-	"time"
 
 	ldapi "github.com/launchdarkly/api-client-go/v17"
 )
 
 func (c *Client) postAIConfig(projectKey string, aiConfig AIConfig) (*http.Response, *AIConfig, error) {
-	url := fmt.Sprintf("/api/v2/projects/%s/ai-configs", projectKey)
+	url := fmt.Sprintf("%s/api/v2/projects/%s/ai-configs", c.apiHost, projectKey)
 	body, err := json.Marshal(aiConfig)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to marshal AI Config: %s", err)
 	}
 
-	req, err := c.ld.GetConfig().APIClient.PreparePost(c.ld.GetConfig().BasePath + url)
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer(body))
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to prepare request: %s", err)
 	}
 
 	req.Header.Add("Content-Type", "application/json")
-	req.Body = body
+	req.Header.Add("Authorization", c.apiKey)
 
-	resp, err := c.ld.GetConfig().APIClient.CallAPI(req)
+	resp, err := c.fallbackClient.Do(req)
 	if err != nil {
 		return resp, nil, handleLdapiErr(err)
 	}
+	defer resp.Body.Close()
+
+	respBody, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return resp, nil, fmt.Errorf("failed to read response body: %s", err)
+	}
+
+	if resp.StatusCode >= 400 {
+		return resp, nil, fmt.Errorf("API request failed with status %d: %s", resp.StatusCode, string(respBody))
+	}
 
 	var result AIConfig
-	if err = json.Unmarshal(resp.Body, &result); err != nil {
+	if err = json.Unmarshal(respBody, &result); err != nil {
 		return resp, nil, fmt.Errorf("failed to unmarshal response: %s", err)
 	}
 
@@ -40,20 +49,36 @@ func (c *Client) postAIConfig(projectKey string, aiConfig AIConfig) (*http.Respo
 }
 
 func (c *Client) getAIConfig(projectKey, configKey string) (*AIConfig, *http.Response, error) {
-	url := fmt.Sprintf("/api/v2/projects/%s/ai-configs/%s", projectKey, configKey)
+	url := fmt.Sprintf("%s/api/v2/projects/%s/ai-configs/%s", c.apiHost, projectKey, configKey)
 
-	req, err := c.ld.GetConfig().APIClient.PrepareGet(c.ld.GetConfig().BasePath + url)
+	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to prepare request: %s", err)
 	}
 
-	resp, err := c.ld.GetConfig().APIClient.CallAPI(req)
+	req.Header.Add("Authorization", c.apiKey)
+
+	resp, err := c.fallbackClient.Do(req)
 	if err != nil {
 		return nil, resp, handleLdapiErr(err)
 	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusNotFound {
+		return nil, resp, nil
+	}
+
+	respBody, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, resp, fmt.Errorf("failed to read response body: %s", err)
+	}
+
+	if resp.StatusCode >= 400 {
+		return nil, resp, fmt.Errorf("API request failed with status %d: %s", resp.StatusCode, string(respBody))
+	}
 
 	var result AIConfig
-	if err = json.Unmarshal(resp.Body, &result); err != nil {
+	if err = json.Unmarshal(respBody, &result); err != nil {
 		return nil, resp, fmt.Errorf("failed to unmarshal response: %s", err)
 	}
 
@@ -61,7 +86,7 @@ func (c *Client) getAIConfig(projectKey, configKey string) (*AIConfig, *http.Res
 }
 
 func (c *Client) patchAIConfig(projectKey, configKey string, patch []ldapi.PatchOperation) (*http.Response, error) {
-	url := fmt.Sprintf("/api/v2/projects/%s/ai-configs/%s", projectKey, configKey)
+	url := fmt.Sprintf("%s/api/v2/projects/%s/ai-configs/%s", c.apiHost, projectKey, configKey)
 	patchWithComment := ldapi.PatchWithComment{
 		Patch: patch,
 	}
@@ -71,41 +96,48 @@ func (c *Client) patchAIConfig(projectKey, configKey string, patch []ldapi.Patch
 		return nil, fmt.Errorf("failed to marshal patch: %s", err)
 	}
 
-	req, err := c.ld.GetConfig().APIClient.PreparePatch(c.ld.GetConfig().BasePath + url)
+	req, err := http.NewRequest("PATCH", url, bytes.NewBuffer(body))
 	if err != nil {
 		return nil, fmt.Errorf("failed to prepare request: %s", err)
 	}
 
 	req.Header.Add("Content-Type", "application/json")
-	req.Body = body
+	req.Header.Add("Authorization", c.apiKey)
 
-	resp, err := c.ld.GetConfig().APIClient.CallAPI(req)
+	resp, err := c.fallbackClient.Do(req)
 	if err != nil {
 		return resp, handleLdapiErr(err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 400 {
+		respBody, _ := ioutil.ReadAll(resp.Body)
+		return resp, fmt.Errorf("API request failed with status %d: %s", resp.StatusCode, string(respBody))
 	}
 
 	return resp, nil
 }
 
 func (c *Client) deleteAIConfig(projectKey, configKey string) (*http.Response, error) {
-	url := fmt.Sprintf("/api/v2/projects/%s/ai-configs/%s", projectKey, configKey)
+	url := fmt.Sprintf("%s/api/v2/projects/%s/ai-configs/%s", c.apiHost, projectKey, configKey)
 
-	req, err := c.ld.GetConfig().APIClient.PrepareDelete(c.ld.GetConfig().BasePath + url)
+	req, err := http.NewRequest("DELETE", url, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to prepare request: %s", err)
 	}
 
-	resp, err := c.ld.GetConfig().APIClient.CallAPI(req)
+	req.Header.Add("Authorization", c.apiKey)
+
+	resp, err := c.fallbackClient.Do(req)
 	if err != nil {
 		return resp, handleLdapiErr(err)
 	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 400 && resp.StatusCode != http.StatusNotFound {
+		respBody, _ := ioutil.ReadAll(resp.Body)
+		return resp, fmt.Errorf("API request failed with status %d: %s", resp.StatusCode, string(respBody))
+	}
 
 	return resp, nil
-}
-
-func getRandomSleepDuration(duration time.Duration) time.Duration {
-	if duration <= 0 {
-		return 0
-	}
-	return time.Duration(rand.Int63n(int64(duration)))
 }

@@ -8,7 +8,6 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 
 	ldapi "github.com/launchdarkly/api-client-go/v17"
 )
@@ -22,10 +21,10 @@ type AIConfigVariation struct {
 }
 
 type AIConfig struct {
-	Key         string             `json:"key"`
-	Name        string             `json:"name"`
-	Description string             `json:"description,omitempty"`
-	Tags        []string           `json:"tags,omitempty"`
+	Key         string              `json:"key"`
+	Name        string              `json:"name"`
+	Description string              `json:"description,omitempty"`
+	Tags        []string            `json:"tags,omitempty"`
 	Variations  []AIConfigVariation `json:"variations"`
 }
 
@@ -200,7 +199,7 @@ func resourceAIConfigRead(ctx context.Context, d *schema.ResourceData, metaRaw i
 		}
 		variations[i] = variation
 	}
-	
+
 	err = d.Set("variations", variations)
 	if err != nil {
 		return diag.Errorf("failed to set variations on AI Config with key %q: %v", configKey, err)

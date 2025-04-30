@@ -164,7 +164,7 @@ func testAccCheckAIConfigExists(resourceName string) resource.TestCheckFunc {
 			return err
 		}
 
-		_, _, err = client.ld.AIConfigsApi.GetAIConfig(client.ctx, projectKey, configKey).Execute()
+		_, _, err = client.getAIConfig(projectKey, configKey)
 		if err != nil {
 			return fmt.Errorf("received an error retrieving ai config %q: %s", rs.Primary.ID, err)
 		}
