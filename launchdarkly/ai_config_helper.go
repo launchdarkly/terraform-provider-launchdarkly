@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io"
+	"io/ioutil"
 	"net/http"
 
 	ldapi "github.com/launchdarkly/api-client-go/v17"
@@ -31,7 +31,7 @@ func (c *Client) postAIConfig(projectKey string, aiConfig AIConfig) (*http.Respo
 	}
 	defer resp.Body.Close()
 
-	respBody, err := io.ReadAll(resp.Body)
+	respBody, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return resp, nil, fmt.Errorf("failed to read response body: %s", err)
 	}
@@ -68,7 +68,7 @@ func (c *Client) getAIConfig(projectKey, configKey string) (*AIConfig, *http.Res
 		return nil, resp, nil
 	}
 
-	respBody, err := io.ReadAll(resp.Body)
+	respBody, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return nil, resp, fmt.Errorf("failed to read response body: %s", err)
 	}
@@ -111,7 +111,7 @@ func (c *Client) patchAIConfig(projectKey, configKey string, patch []ldapi.Patch
 	defer resp.Body.Close()
 
 	if resp.StatusCode >= 400 {
-		respBody, _ := io.ReadAll(resp.Body)
+		respBody, _ := ioutil.ReadAll(resp.Body)
 		return resp, fmt.Errorf("API request failed with status %d: %s", resp.StatusCode, string(respBody))
 	}
 
@@ -135,7 +135,7 @@ func (c *Client) deleteAIConfig(projectKey, configKey string) (*http.Response, e
 	defer resp.Body.Close()
 
 	if resp.StatusCode >= 400 && resp.StatusCode != http.StatusNotFound {
-		respBody, _ := io.ReadAll(resp.Body)
+		respBody, _ := ioutil.ReadAll(resp.Body)
 		return resp, fmt.Errorf("API request failed with status %d: %s", resp.StatusCode, string(respBody))
 	}
 

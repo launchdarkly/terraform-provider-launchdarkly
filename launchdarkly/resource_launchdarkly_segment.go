@@ -3,6 +3,7 @@ package launchdarkly
 import (
 	"context"
 	"fmt"
+	"io"
 	"strings"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"

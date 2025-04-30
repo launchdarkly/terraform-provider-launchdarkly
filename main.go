@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"flag"
+	"io"
 	"log"
 
 	"github.com/hashicorp/terraform-plugin-framework/providerserver"
