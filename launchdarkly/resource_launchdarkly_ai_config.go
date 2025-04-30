@@ -13,6 +13,22 @@ import (
 	ldapi "github.com/launchdarkly/api-client-go/v17"
 )
 
+type AIConfigVariation struct {
+	Key         string            `json:"key"`
+	Name        string            `json:"name"`
+	Description string            `json:"description,omitempty"`
+	Model       string            `json:"model"`
+	Parameters  map[string]string `json:"parameters,omitempty"`
+}
+
+type AIConfig struct {
+	Key         string             `json:"key"`
+	Name        string             `json:"name"`
+	Description string             `json:"description,omitempty"`
+	Tags        []string           `json:"tags,omitempty"`
+	Variations  []AIConfigVariation `json:"variations"`
+}
+
 func resourceAIConfig() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: resourceAIConfigCreate,
@@ -127,18 +143,17 @@ func resourceAIConfigCreate(ctx context.Context, d *schema.ResourceData, metaRaw
 	tags := stringsFromResourceData(d, TAGS)
 	variations := aiConfigVariationsFromResourceData(d)
 
-	aiConfigBody := ldapi.AIConfigPost{
+	aiConfig := AIConfig{
 		Key:         key,
 		Name:        name,
-		Description: ldapi.PtrString(description),
+		Description: description,
 		Tags:        tags,
 		Variations:  variations,
 	}
 
-	_, _, err := client.ld.AIConfigsApi.PostAIConfig(client.ctx, projectKey).AIConfigPost(aiConfigBody).Execute()
-
+	_, _, err := client.postAIConfig(projectKey, aiConfig)
 	if err != nil {
-		return diag.Errorf("failed to create AI Config with name %q: %s", name, handleLdapiErr(err))
+		return diag.Errorf("failed to create AI Config with name %q: %s", name, err)
 	}
 
 	d.SetId(projectKey + "/" + key)
@@ -154,8 +169,7 @@ func resourceAIConfigRead(ctx context.Context, d *schema.ResourceData, metaRaw i
 		return diag.FromErr(err)
 	}
 
-	aiConfig, res, err := client.ld.AIConfigsApi.GetAIConfig(client.ctx, projectKey, configKey).Execute()
-
+	aiConfig, res, err := client.getAIConfig(projectKey, configKey)
 	if isStatusNotFound(res) {
 		log.Printf("[WARN] failed to find AI Config with id %q, removing from state", d.Id())
 		diags = append(diags, diag.Diagnostic{
@@ -166,7 +180,7 @@ func resourceAIConfigRead(ctx context.Context, d *schema.ResourceData, metaRaw i
 		return diags
 	}
 	if err != nil {
-		return diag.Errorf("failed to get AI Config with id %q: %s", d.Id(), handleLdapiErr(err))
+		return diag.Errorf("failed to get AI Config with id %q: %s", d.Id(), err)
 	}
 
 	_ = d.Set(KEY, aiConfig.Key)
@@ -175,10 +189,18 @@ func resourceAIConfigRead(ctx context.Context, d *schema.ResourceData, metaRaw i
 	_ = d.Set(PROJECT_KEY, projectKey)
 	_ = d.Set(TAGS, aiConfig.Tags)
 
-	variations, err := aiConfigVariationsToResourceData(aiConfig.Variations)
-	if err != nil {
-		return diag.Errorf("failed to transform AI Config variations: %v", err)
+	variations := make([]interface{}, len(aiConfig.Variations))
+	for i, v := range aiConfig.Variations {
+		variation := map[string]interface{}{
+			KEY:          v.Key,
+			NAME:         v.Name,
+			DESCRIPTION:  v.Description,
+			"model":      v.Model,
+			"parameters": v.Parameters,
+		}
+		variations[i] = variation
 	}
+	
 	err = d.Set("variations", variations)
 	if err != nil {
 		return diag.Errorf("failed to set variations on AI Config with key %q: %v", configKey, err)
@@ -199,18 +221,16 @@ func resourceAIConfigUpdate(ctx context.Context, d *schema.ResourceData, metaRaw
 	tags := stringsFromResourceData(d, TAGS)
 	variations := aiConfigVariationsFromResourceData(d)
 
-	patch := ldapi.PatchWithComment{
-		Patch: []ldapi.PatchOperation{
-			patchReplace("/name", &name),
-			patchReplace("/description", &description),
-			patchReplace("/tags", &tags),
-			patchReplace("/variations", &variations),
-		},
+	patch := []ldapi.PatchOperation{
+		patchReplace("/name", name),
+		patchReplace("/description", description),
+		patchReplace("/tags", tags),
+		patchReplace("/variations", variations),
 	}
 
-	_, _, err = client.ld.AIConfigsApi.PatchAIConfig(client.ctx, projectKey, configKey).PatchWithComment(patch).Execute()
+	_, err = client.patchAIConfig(projectKey, configKey, patch)
 	if err != nil {
-		return diag.Errorf("failed to update AI Config with key %q: %s", configKey, handleLdapiErr(err))
+		return diag.Errorf("failed to update AI Config with key %q: %s", configKey, err)
 	}
 
 	return resourceAIConfigRead(ctx, d, metaRaw)
@@ -225,10 +245,9 @@ func resourceAIConfigDelete(ctx context.Context, d *schema.ResourceData, metaRaw
 		return diag.FromErr(err)
 	}
 
-	_, err = client.ld.AIConfigsApi.DeleteAIConfig(client.ctx, projectKey, configKey).Execute()
-
+	_, err = client.deleteAIConfig(projectKey, configKey)
 	if err != nil {
-		return diag.Errorf("failed to delete AI Config with key %q: %s", configKey, handleLdapiErr(err))
+		return diag.Errorf("failed to delete AI Config with key %q: %s", configKey, err)
 	}
 
 	return diags
@@ -243,12 +262,12 @@ func resourceAIConfigExists(d *schema.ResourceData, metaRaw interface{}) (bool, 
 }
 
 func aiConfigExists(projectKey, configKey string, meta *Client) (bool, error) {
-	_, res, err := meta.ld.AIConfigsApi.GetAIConfig(meta.ctx, projectKey, configKey).Execute()
+	_, res, err := meta.getAIConfig(projectKey, configKey)
 	if isStatusNotFound(res) {
 		return false, nil
 	}
 	if err != nil {
-		return false, fmt.Errorf("failed to get AI Config with key %q: %s", configKey, handleLdapiErr(err))
+		return false, fmt.Errorf("failed to get AI Config with key %q: %s", configKey, err)
 	}
 
 	return true, nil
@@ -275,9 +294,9 @@ func aiConfigIdToKeys(id string) (projectKey string, configKey string, err error
 	return projectKey, configKey, nil
 }
 
-func aiConfigVariationsFromResourceData(d *schema.ResourceData) []ldapi.AIConfigVariationPost {
+func aiConfigVariationsFromResourceData(d *schema.ResourceData) []AIConfigVariation {
 	schemaVariations := d.Get("variations").([]interface{})
-	variations := make([]ldapi.AIConfigVariationPost, len(schemaVariations))
+	variations := make([]AIConfigVariation, len(schemaVariations))
 
 	for i, variation := range schemaVariations {
 		v := variation.(map[string]interface{})
@@ -285,38 +304,21 @@ func aiConfigVariationsFromResourceData(d *schema.ResourceData) []ldapi.AIConfig
 		name := v[NAME].(string)
 		description := v[DESCRIPTION].(string)
 		model := v["model"].(string)
-		
+
 		parametersRaw := v["parameters"].(map[string]interface{})
 		parameters := make(map[string]string)
 		for k, v := range parametersRaw {
 			parameters[k] = v.(string)
 		}
 
-		variations[i] = ldapi.AIConfigVariationPost{
+		variations[i] = AIConfigVariation{
 			Key:         key,
 			Name:        name,
-			Description: ldapi.PtrString(description),
+			Description: description,
 			Model:       model,
 			Parameters:  parameters,
 		}
 	}
 
 	return variations
-}
-
-func aiConfigVariationsToResourceData(variations []ldapi.AIConfigVariation) ([]interface{}, error) {
-	result := make([]interface{}, len(variations))
-
-	for i, v := range variations {
-		variation := map[string]interface{}{
-			KEY:         v.Key,
-			NAME:        v.Name,
-			DESCRIPTION: v.Description,
-			"model":     v.Model,
-			"parameters": v.Parameters,
-		}
-		result[i] = variation
-	}
-
-	return result, nil
 }
