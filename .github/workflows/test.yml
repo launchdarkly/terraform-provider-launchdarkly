@@ -40,7 +40,7 @@ jobs:
     steps:
       - uses: aws-actions/configure-aws-credentials@f24d7193d98baebaeacc7e2227925dd47cc267f5 # v4.2.0
         with:
-          audience: http://github.com/launchdarkly/terraform-provider-launchdarkly
+          audience: https://github.com/launchdarkly
           aws-region: us-east-1
           role-to-assume: arn:aws:iam::061661829416:role/github-actions-terraform-provider-launchdarkly
       - id: get-launchdarkly-access-token
