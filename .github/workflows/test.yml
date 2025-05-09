@@ -32,6 +32,9 @@ jobs:
   configure-aws-credentials:
     name: Configure AWS Credentials
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
     outputs:
       LAUNCHDARKLY_ACCESS_TOKEN: ${{ steps.get-launchdarkly-access-token.outputs.LAUNCHDARKLY_ACCESS_TOKEN }}
     steps:
