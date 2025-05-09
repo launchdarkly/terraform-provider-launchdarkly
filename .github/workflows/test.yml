@@ -29,6 +29,20 @@ jobs:
       - name: Run linters
         uses: golangci/golangci-lint-action@971e284b6050e8a5849b72094c50ab08da042db8 # v6.1.1
 
+  configure-aws-credentials:
+    name: Configure AWS Credentials
+    runs-on: ubuntu-latest
+    steps:
+      - uses: aws-actions/configure-aws-credentials@f24d7193d98baebaeacc7e2227925dd47cc267f5 # v4.2.0
+        with:
+          audience: http://github.com/launchdarkly
+          aws-region: us-east-1
+          role-to-assume: arn:aws:iam::061661829416:role/github-actions-terraform-provider-launchdarkly
+      - uses: dkershner6/aws-ssm-getparameters-action@4fcb4872421f387a6c43058473acc1b22443fe13 # v2.0.3
+        with:
+          parameterPairs: |
+            /global/services/github/terraform-provider/launchdarkly-access-token = secrets.LAUNCHDARKLY_ACCESS_TOKEN
+            
   generate:
     runs-on: ubuntu-latest
     timeout-minutes: 5
