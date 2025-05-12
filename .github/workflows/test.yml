@@ -42,6 +42,7 @@ jobs:
           audience: https://github.com/launchdarkly
           aws-region: us-east-1
           role-to-assume: arn:aws:iam::061661829416:role/github-actions-terraform-provider-launchdarkly
+          role-session-name: GitHubActionsGenerate/${{ github.run_id }}
       - id: get-launchdarkly-access-token
         uses: dkershner6/aws-ssm-getparameters-action@4fcb4872421f387a6c43058473acc1b22443fe13 # v2.0.3
         with:
@@ -101,6 +102,7 @@ jobs:
           audience: https://github.com/launchdarkly
           aws-region: us-east-1
           role-to-assume: arn:aws:iam::061661829416:role/github-actions-terraform-provider-launchdarkly
+          role-session-name: GitHubActionsTest/${{ github.run_id }}
       - id: get-launchdarkly-access-token
         uses: dkershner6/aws-ssm-getparameters-action@4fcb4872421f387a6c43058473acc1b22443fe13 # v2.0.3
         with:
