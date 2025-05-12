@@ -111,8 +111,6 @@ jobs:
           go-version: "1.22.9"
       - run: go mod download
       - name: Run Test
-        env:
-          LAUNCHDARKLY_ACCESS_TOKEN: ${{ steps.get-launchdarkly-access-token.outputs.LAUNCHDARKLY_ACCESS_TOKEN }}
         run: |
           echo "Running test case: ${{ matrix.test_case }}"
           TESTARGS="-run ${{ matrix.test_case }}" make testacc-with-retry
