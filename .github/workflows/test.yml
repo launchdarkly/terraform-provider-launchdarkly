@@ -28,14 +28,25 @@ jobs:
       - run: go build -v .
       - name: Run linters
         uses: golangci/golangci-lint-action@971e284b6050e8a5849b72094c50ab08da042db8 # v6.1.1
-
+  
   generate:
     runs-on: ubuntu-latest
     timeout-minutes: 5
-    env:
-      LAUNCHDARKLY_ACCESS_TOKEN: ${{ secrets.LAUNCHDARKLY_ACCESS_TOKEN }}
+    permissions:
+      id-token: write
+      contents: read
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: aws-actions/configure-aws-credentials@f24d7193d98baebaeacc7e2227925dd47cc267f5 # v4.2.0
+        with:
+          audience: https://github.com/launchdarkly
+          aws-region: us-east-1
+          role-to-assume: arn:aws:iam::061661829416:role/github-actions-terraform-provider-launchdarkly
+      - id: get-launchdarkly-access-token
+        uses: dkershner6/aws-ssm-getparameters-action@4fcb4872421f387a6c43058473acc1b22443fe13 # v2.0.3
+        with:
+          parameterPairs: |
+            /global/services/github/terraform-provider/launchdarkly-access-token = LAUNCHDARKLY_ACCESS_TOKEN
       - uses: actions/setup-go@41dfa10bad2bb2ae585af6ee5bb4d7d973ad74ed # v5.1.0
         with:
           go-version-file: "go.mod"
@@ -55,9 +66,11 @@ jobs:
     name: Acceptance Tests
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    permissions:
+      id-token: write
+      contents: read
     env:
       TF_ACC: "1"
-      LAUNCHDARKLY_ACCESS_TOKEN: ${{ secrets.LAUNCHDARKLY_ACCESS_TOKEN }}
     strategy:
       matrix:
         test_case:
@@ -83,6 +96,16 @@ jobs:
           - TestAccWebhook
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: aws-actions/configure-aws-credentials@f24d7193d98baebaeacc7e2227925dd47cc267f5 # v4.2.0
+        with:
+          audience: https://github.com/launchdarkly
+          aws-region: us-east-1
+          role-to-assume: arn:aws:iam::061661829416:role/github-actions-terraform-provider-launchdarkly
+      - id: get-launchdarkly-access-token
+        uses: dkershner6/aws-ssm-getparameters-action@4fcb4872421f387a6c43058473acc1b22443fe13 # v2.0.3
+        with:
+          parameterPairs: |
+            /global/services/github/terraform-provider/launchdarkly-access-token = LAUNCHDARKLY_ACCESS_TOKEN
       - uses: actions/setup-go@41dfa10bad2bb2ae585af6ee5bb4d7d973ad74ed # v5.1.0
         with:
           go-version: "1.22.9"
