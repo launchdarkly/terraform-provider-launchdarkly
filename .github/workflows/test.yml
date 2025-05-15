@@ -3,7 +3,6 @@ name: Test
 
 on:
   pull_request_target: # this is for external contributions/forks. we have a check in place to ensure an LD user explicitly allows the tests to run for forks.
-  pull_request:
   push:
     branches: [main]
   schedule: # runs tests once a day on the main branch
