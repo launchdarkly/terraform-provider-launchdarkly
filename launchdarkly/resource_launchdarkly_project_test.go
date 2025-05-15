@@ -244,7 +244,7 @@ func TestAccProject_Create(t *testing.T) {
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckProjectExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, KEY, projectKey),
-					resource.TestCheckResourceAttr(resourceName, NAME, "test project"),
+					resource.TestCheckResourceAttr(resourceName, NAME, "THIS WILL MAKE IT FAIL"),
 					resource.TestCheckResourceAttr(resourceName, "tags.#", "2"),
 					resource.TestCheckResourceAttr(resourceName, "tags.0", "terraform"),
 					resource.TestCheckResourceAttr(resourceName, "tags.1", "test"),
