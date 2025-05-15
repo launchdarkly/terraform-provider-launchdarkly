@@ -16,4 +16,4 @@ For any changes you make, please ensure your acceptance test conform to the foll
 - each test step for a configuration is followed by a test step where `ImportState` and `ImportStateVerify` are set to true. `ImportStateVerifyIgnore` can be used if we explicitly _expect_ a value to be different when imported, such as in the case of obfuscated values like API keys
 
 ## LaunchDarkly Employees
-For more information on how to build, test, and release, see the [internal README on Confluence](https://launchdarkly.atlassian.net/wiki/spaces/ENG/pages/457379492).
+For more information on how to build, test, and release, see the [internal provider runbook](https://launchdarkly.atlassian.net/wiki/spaces/PD/pages/3825598468/LaunchDarkly+Terraform+Provider+Runbook).
