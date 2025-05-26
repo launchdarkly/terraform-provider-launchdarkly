@@ -125,10 +125,8 @@ func resourceFeatureFlagCreate(ctx context.Context, d *schema.ResourceData, meta
 		if deleteErr != nil {
 			return diag.Errorf("failed to delete flag %q from project %q: %s", key, projectKey, handleLdapiErr(deleteErr))
 		}
-		// TODO: Figure out if we can get the err out of updateDiag (not looking likely) to use in hanldeLdapiErr
-		return updateDiags
-		// return diag.Errorf("failed to update flag with name %q key %q for projectKey %q: %s",
-		// 	flagName, key, projectKey, handleLdapiErr(errs))
+		return diag.Errorf("failed to update flag with name %q key %q for projectKey %q: %s",
+			flagName, key, projectKey, updateDiags[0].Summary)
 	}
 
 	d.SetId(projectKey + "/" + key)
