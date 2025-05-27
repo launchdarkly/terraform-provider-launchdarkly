@@ -79,7 +79,7 @@ func resourceEnvironmentCreate(ctx context.Context, d *schema.ResourceData, meta
 				return updateDiags
 			}
 			return diag.Errorf("failed to create environment with name %q key %q for projectKey %q: %s",
-				name, key, projectKey, handleLdapiErr(err))
+				name, key, projectKey, updateDiags[0].Summary)
 		}
 	}
 
