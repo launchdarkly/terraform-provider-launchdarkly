@@ -25,9 +25,9 @@ jobs:
       - uses: actions/setup-go@41dfa10bad2bb2ae585af6ee5bb4d7d973ad74ed # v5.1.0
         with:
           go-version-file: "go.mod"
-          cache: false
-      - run: go mod download
-      - run: go build -v .
+          cache: true
+      - run: go mod download -x
+      - run: go build -v -x .
       - name: Run linters
         uses: golangci/golangci-lint-action@971e284b6050e8a5849b72094c50ab08da042db8 # v6.1.1
   
@@ -116,7 +116,7 @@ jobs:
             /global/services/github/terraform-provider/launchdarkly-access-token = LAUNCHDARKLY_ACCESS_TOKEN
       - uses: actions/setup-go@41dfa10bad2bb2ae585af6ee5bb4d7d973ad74ed # v5.1.0
         with:
-          go-version: "1.22.9"
+          go-version: "1.23.0"
       - run: go mod download
       - name: Run Test
         run: |
