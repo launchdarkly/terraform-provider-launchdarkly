@@ -2,6 +2,13 @@
 
 All notable changes to the LaunchDarkly Terraform Provider will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org).
 
+## [2.25.2](https://github.com/launchdarkly/terraform-provider-launchdarkly/compare/v2.25.1...v2.25.2) (2025-07-01)
+
+
+### Bug Fixes
+
+* [REL-8490] remove ConflictsWith for unbounded and rules, included, excluded ([#324](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/324)) ([14a1980](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/14a1980deeffb1e9124c859ed80e9f082a89a279))
+
 ## [2.25.1](https://github.com/launchdarkly/terraform-provider-launchdarkly/compare/v2.25.0...v2.25.1) (2025-05-27)
 
 
