@@ -99,6 +99,7 @@ resource "launchdarkly_segment" "test" {
 	tags        = ["segmentTag1", "segmentTag2"]
 	included    = ["user1", "user2"]
 	excluded    = ["user3", "user4"]
+	unbounded = false
 	rules {
 		clauses {
 			attribute = "test_att"
@@ -432,6 +433,7 @@ func TestAccSegment_WithRules(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, ENV_KEY, "test"),
 					resource.TestCheckResourceAttr(resourceName, NAME, "segment name"),
 					resource.TestCheckResourceAttr(resourceName, DESCRIPTION, "segment description"),
+					resource.TestCheckResourceAttr(resourceName, UNBOUNDED, "false"),
 					resource.TestCheckResourceAttr(resourceName, "rules.#", "2"),
 					resource.TestCheckResourceAttr(resourceName, "rules.0.clauses.#", "1"),
 					resource.TestCheckResourceAttr(resourceName, "rules.0.clauses.0.attribute", "test_att"),
@@ -475,6 +477,7 @@ func TestAccSegment_WithRules(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, ENV_KEY, "test"),
 					resource.TestCheckResourceAttr(resourceName, NAME, "segment name"),
 					resource.TestCheckResourceAttr(resourceName, DESCRIPTION, "segment description"),
+					resource.TestCheckResourceAttr(resourceName, UNBOUNDED, "false"),
 					resource.TestCheckResourceAttr(resourceName, "tags.#", "2"),
 					resource.TestCheckResourceAttr(resourceName, "tags.0", "segmentTag1"),
 					resource.TestCheckResourceAttr(resourceName, "tags.1", "segmentTag2"),
