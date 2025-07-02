@@ -18,17 +18,17 @@ output "flag_details" {
 locals {
   accessible_to_frontend = contains(data.launchdarkly_feature_flag.example.views, "frontend-team")
   accessible_to_mobile   = contains(data.launchdarkly_feature_flag.example.views, "mobile-team")
-  is_shared_flag        = length(data.launchdarkly_feature_flag.example.views) > 1
+  is_shared_flag         = length(data.launchdarkly_feature_flag.example.views) > 1
 }
 
 # Example: Conditional resource creation based on view membership
 resource "launchdarkly_feature_flag_environment" "prod_config" {
   # Only create production config if flag is assigned to production view
   count = contains(data.launchdarkly_feature_flag.example.views, "production-ready") ? 1 : 0
-  
-  flag_id      = data.launchdarkly_feature_flag.example.id
-  env_key      = "production"
-  on           = true
+
+  flag_id = data.launchdarkly_feature_flag.example.id
+  env_key = "production"
+  on      = true
 }
 
 # Example: Generate team notifications based on flag view assignments

@@ -32,8 +32,8 @@ data "launchdarkly_view" "team_view" {
 output "team_flag_access" {
   description = "Flags accessible to the frontend team"
   value = {
-    view_name = data.launchdarkly_view.team_view.name
+    view_name  = data.launchdarkly_view.team_view.name
     flag_count = length(data.launchdarkly_view.team_view.linked_flags)
-    flags = data.launchdarkly_view.team_view.linked_flags
+    flags      = data.launchdarkly_view.team_view.linked_flags
   }
 }
