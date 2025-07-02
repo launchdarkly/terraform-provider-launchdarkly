@@ -59,6 +59,8 @@ func TestAccDataSourceView_exists(t *testing.T) {
 
 	client, err := newClient(os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN), os.Getenv(LAUNCHDARKLY_API_HOST), false, DEFAULT_HTTP_TIMEOUT_S)
 	require.NoError(t, err)
+	betaClient, err := newBetaClient(os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN), os.Getenv(LAUNCHDARKLY_API_HOST), false, DEFAULT_HTTP_TIMEOUT_S)
+	require.NoError(t, err)
 
 	projectBody := ldapi.ProjectPost{
 		Name: "Terraform Test Project",
@@ -84,11 +86,11 @@ func TestAccDataSourceView_exists(t *testing.T) {
 		"tags":        []string{tag},
 	}
 
-	view, err := createView(client, projectKey, viewBody)
+	view, err := createView(betaClient, projectKey, viewBody)
 	require.NoError(t, err)
 
 	defer func() {
-		err := deleteView(client, projectKey, viewKey)
+		err := deleteView(betaClient, projectKey, viewKey)
 		require.NoError(t, err)
 	}()
 

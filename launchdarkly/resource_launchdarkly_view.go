@@ -81,6 +81,10 @@ This resource allows you to create and manage views within your LaunchDarkly pro
 
 func resourceViewCreate(ctx context.Context, d *schema.ResourceData, metaRaw interface{}) diag.Diagnostics {
 	client := metaRaw.(*Client)
+	betaClient, err := newBetaClient(client.apiKey, client.apiHost, false, DEFAULT_HTTP_TIMEOUT_S)
+	if err != nil {
+		return diag.FromErr(err)
+	}
 	projectKey := d.Get(PROJECT_KEY).(string)
 	viewKey := d.Get(KEY).(string)
 
@@ -109,7 +113,7 @@ func resourceViewCreate(ctx context.Context, d *schema.ResourceData, metaRaw int
 		viewPost["tags"] = interfaceSliceToStringSlice(tags.(*schema.Set).List())
 	}
 
-	_, err := createView(client, projectKey, viewPost)
+	_, err = createView(betaClient, projectKey, viewPost)
 	if err != nil {
 		return diag.Errorf("failed to create view with key %q in project %q: %s", viewKey, projectKey, handleLdapiErr(err))
 	}
@@ -125,6 +129,10 @@ func resourceViewRead(ctx context.Context, d *schema.ResourceData, metaRaw inter
 
 func resourceViewUpdate(ctx context.Context, d *schema.ResourceData, metaRaw interface{}) diag.Diagnostics {
 	client := metaRaw.(*Client)
+	betaClient, err := newBetaClient(client.apiKey, client.apiHost, false, DEFAULT_HTTP_TIMEOUT_S)
+	if err != nil {
+		return diag.FromErr(err)
+	}
 	projectKey := d.Get(PROJECT_KEY).(string)
 	viewKey := d.Get(KEY).(string)
 
@@ -167,7 +175,7 @@ func resourceViewUpdate(ctx context.Context, d *schema.ResourceData, metaRaw int
 	}
 
 	if len(patch) > 0 {
-		err := patchView(client, projectKey, viewKey, patch)
+		err = patchView(betaClient, projectKey, viewKey, patch)
 		if err != nil {
 			return diag.Errorf("failed to update view with key %q in project %q: %s", viewKey, projectKey, handleLdapiErr(err))
 		}
@@ -180,10 +188,14 @@ func resourceViewDelete(ctx context.Context, d *schema.ResourceData, metaRaw int
 	var diags diag.Diagnostics
 
 	client := metaRaw.(*Client)
+	betaClient, err := newBetaClient(client.apiKey, client.apiHost, false, DEFAULT_HTTP_TIMEOUT_S)
+	if err != nil {
+		return diag.FromErr(err)
+	}
 	projectKey := d.Get(PROJECT_KEY).(string)
 	viewKey := d.Get(KEY).(string)
 
-	err := deleteView(client, projectKey, viewKey)
+	err = deleteView(betaClient, projectKey, viewKey)
 	if err != nil {
 		return diag.Errorf("failed to delete view with key %q in project %q: %s", viewKey, projectKey, handleLdapiErr(err))
 	}
@@ -196,7 +208,11 @@ func resourceViewExists(d *schema.ResourceData, metaRaw interface{}) (bool, erro
 }
 
 func viewExists(projectKey, viewKey string, client *Client) (bool, error) {
-	_, res, err := getViewRaw(client, projectKey, viewKey)
+	betaClient, err := newBetaClient(client.apiKey, client.apiHost, false, DEFAULT_HTTP_TIMEOUT_S)
+	if err != nil {
+		return false, err
+	}
+	_, res, err := getViewRaw(betaClient, projectKey, viewKey)
 	if isStatusNotFound(res) {
 		return false, nil
 	}

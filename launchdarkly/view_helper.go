@@ -16,10 +16,14 @@ import (
 func viewRead(ctx context.Context, d *schema.ResourceData, meta interface{}, isDataSource bool) diag.Diagnostics {
 	var diags diag.Diagnostics
 	client := meta.(*Client)
+	betaClient, err := newBetaClient(client.apiKey, client.apiHost, false, DEFAULT_HTTP_TIMEOUT_S)
+	if err != nil {
+		return diag.FromErr(err)
+	}
 	projectKey := d.Get(PROJECT_KEY).(string)
 	viewKey := d.Get(KEY).(string)
 
-	view, res, err := getView(client, projectKey, viewKey)
+	view, res, err := getView(betaClient, projectKey, viewKey)
 
 	if isStatusNotFound(res) && !isDataSource {
 		log.Printf("[WARN] failed to find view with key %q in project %q, removing from state if present", viewKey, projectKey)
@@ -108,6 +112,7 @@ func getViewRaw(client *Client, projectKey, viewKey string) (*View, *http.Respon
 
 	req.Header.Set("Authorization", client.apiKey)
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("LD-API-Version", "beta")
 
 	resp, err := client.fallbackClient.Do(req)
 	if err != nil {
@@ -146,6 +151,7 @@ func createView(client *Client, projectKey string, viewPost map[string]interface
 
 	req.Header.Set("Authorization", client.apiKey)
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("LD-API-Version", "beta")
 
 	resp, err := client.fallbackClient.Do(req)
 	if err != nil {
@@ -184,6 +190,7 @@ func patchView(client *Client, projectKey, viewKey string, patch []ldapi.PatchOp
 
 	req.Header.Set("Authorization", client.apiKey)
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("LD-API-Version", "beta")
 
 	resp, err := client.fallbackClient.Do(req)
 	if err != nil {
@@ -211,6 +218,7 @@ func deleteView(client *Client, projectKey, viewKey string) error {
 
 	req.Header.Set("Authorization", client.apiKey)
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("LD-API-Version", "beta")
 
 	resp, err := client.fallbackClient.Do(req)
 	if err != nil {
