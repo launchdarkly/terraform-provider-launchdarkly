@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"strings"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -97,10 +96,11 @@ func getView(client *Client, projectKey, viewKey string) (*View, *http.Response,
 }
 
 func getViewRaw(client *Client, projectKey, viewKey string) (*View, *http.Response, error) {
-	endpoint := fmt.Sprintf("%s/api/v2/projects/%s/views/%s", client.apiHost, projectKey, viewKey)
-	if !strings.HasPrefix(endpoint, "http") {
-		endpoint = "https://" + endpoint
+	host := client.apiHost
+	if host == "" {
+		host = "app.launchdarkly.com"
 	}
+	endpoint := fmt.Sprintf("https://%s/api/v2/projects/%s/views/%s", host, projectKey, viewKey)
 	req, err := http.NewRequestWithContext(client.ctx, "GET", endpoint, nil)
 	if err != nil {
 		return nil, nil, err
@@ -129,10 +129,11 @@ func getViewRaw(client *Client, projectKey, viewKey string) (*View, *http.Respon
 }
 
 func createView(client *Client, projectKey string, viewPost map[string]interface{}) (*View, error) {
-	endpoint := fmt.Sprintf("%s/api/v2/projects/%s/views", client.apiHost, projectKey)
-	if !strings.HasPrefix(endpoint, "http") {
-		endpoint = "https://" + endpoint
+	host := client.apiHost
+	if host == "" {
+		host = "app.launchdarkly.com"
 	}
+	endpoint := fmt.Sprintf("https://%s/api/v2/projects/%s/views", host, projectKey)
 	jsonData, err := json.Marshal(viewPost)
 	if err != nil {
 		return nil, err
@@ -166,10 +167,11 @@ func createView(client *Client, projectKey string, viewPost map[string]interface
 }
 
 func patchView(client *Client, projectKey, viewKey string, patch []ldapi.PatchOperation) error {
-	endpoint := fmt.Sprintf("%s/api/v2/projects/%s/views/%s", client.apiHost, projectKey, viewKey)
-	if !strings.HasPrefix(endpoint, "http") {
-		endpoint = "https://" + endpoint
+	host := client.apiHost
+	if host == "" {
+		host = "app.launchdarkly.com"
 	}
+	endpoint := fmt.Sprintf("https://%s/api/v2/projects/%s/views/%s", host, projectKey, viewKey)
 	jsonData, err := json.Marshal(patch)
 	if err != nil {
 		return err
@@ -197,10 +199,11 @@ func patchView(client *Client, projectKey, viewKey string, patch []ldapi.PatchOp
 }
 
 func deleteView(client *Client, projectKey, viewKey string) error {
-	endpoint := fmt.Sprintf("%s/api/v2/projects/%s/views/%s", client.apiHost, projectKey, viewKey)
-	if !strings.HasPrefix(endpoint, "http") {
-		endpoint = "https://" + endpoint
+	host := client.apiHost
+	if host == "" {
+		host = "app.launchdarkly.com"
 	}
+	endpoint := fmt.Sprintf("https://%s/api/v2/projects/%s/views/%s", host, projectKey, viewKey)
 	req, err := http.NewRequestWithContext(client.ctx, "DELETE", endpoint, nil)
 	if err != nil {
 		return err
