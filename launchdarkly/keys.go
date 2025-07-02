@@ -131,5 +131,6 @@ const (
 	VARIATIONS                       = "variations"
 	VARIATION_TYPE                   = "variation_type"
 	VERSION                          = "version"
+	VIEW_KEY                         = "view_key"
 	WEIGHT                           = "weight"
 )

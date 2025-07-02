@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strings"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -227,4 +228,153 @@ func deleteView(client *Client, projectKey, viewKey string) error {
 	}
 
 	return nil
+}
+
+// ViewLinkedResource represents a linked resource in a view
+type ViewLinkedResource struct {
+	ResourceKey  string `json:"resourceKey"`
+	ResourceType string `json:"resourceType"`
+	LinkedAt     int64  `json:"linkedAt"`
+}
+
+// ViewLinkedResources represents the response from getting linked resources
+type ViewLinkedResources struct {
+	Items []ViewLinkedResource `json:"items"`
+}
+
+// ViewLinkRequest represents the request body for linking resources
+type ViewLinkRequest struct {
+	Keys    []string `json:"keys"`
+	Comment string   `json:"comment,omitempty"`
+}
+
+// linkResourcesToView links resources to a view
+func linkResourcesToView(client *Client, projectKey, viewKey, resourceType string, resourceKeys []string, comment string) error {
+	url := buildViewLinkURL(client, projectKey, viewKey, resourceType)
+
+	linkRequest := ViewLinkRequest{
+		Keys:    resourceKeys,
+		Comment: comment,
+	}
+
+	jsonData, err := json.Marshal(linkRequest)
+	if err != nil {
+		return err
+	}
+
+	req, err := http.NewRequestWithContext(client.ctx, "POST", url, bytes.NewBuffer(jsonData))
+	if err != nil {
+		return err
+	}
+
+	req.Header.Set("Authorization", client.apiKey)
+	req.Header.Set("Content-Type", "application/json")
+	// LD-API-Version header is automatically set by beta client
+
+	resp, err := client.ld.GetConfig().HTTPClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 400 {
+		return fmt.Errorf("HTTP %d: %s", resp.StatusCode, resp.Status)
+	}
+
+	return nil
+}
+
+// unlinkResourcesFromView unlinks resources from a view
+func unlinkResourcesFromView(client *Client, projectKey, viewKey, resourceType string, resourceKeys []string, comment string) error {
+	url := buildViewLinkURL(client, projectKey, viewKey, resourceType)
+
+	linkRequest := ViewLinkRequest{
+		Keys:    resourceKeys,
+		Comment: comment,
+	}
+
+	jsonData, err := json.Marshal(linkRequest)
+	if err != nil {
+		return err
+	}
+
+	req, err := http.NewRequestWithContext(client.ctx, "DELETE", url, bytes.NewBuffer(jsonData))
+	if err != nil {
+		return err
+	}
+
+	req.Header.Set("Authorization", client.apiKey)
+	req.Header.Set("Content-Type", "application/json")
+	// LD-API-Version header is automatically set by beta client
+
+	resp, err := client.ld.GetConfig().HTTPClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 400 {
+		return fmt.Errorf("HTTP %d: %s", resp.StatusCode, resp.Status)
+	}
+
+	return nil
+}
+
+// getLinkedResources gets all linked resources of a specific type for a view
+func getLinkedResources(client *Client, projectKey, viewKey, resourceType string) ([]ViewLinkedResource, error) {
+	url := buildViewLinkedResourcesURL(client, projectKey, viewKey, resourceType)
+
+	req, err := http.NewRequestWithContext(client.ctx, "GET", url, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Set("Authorization", client.apiKey)
+	req.Header.Set("Content-Type", "application/json")
+	// LD-API-Version header is automatically set by beta client
+
+	resp, err := client.ld.GetConfig().HTTPClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 400 {
+		return nil, fmt.Errorf("HTTP %d: %s", resp.StatusCode, resp.Status)
+	}
+
+	var linkedResources ViewLinkedResources
+	err = json.NewDecoder(resp.Body).Decode(&linkedResources)
+	if err != nil {
+		return nil, err
+	}
+
+	return linkedResources.Items, nil
+}
+
+// buildViewLinkURL builds the URL for linking/unlinking resources to/from a view
+func buildViewLinkURL(client *Client, projectKey, viewKey, resourceType string) string {
+	host := client.apiHost
+	if host == "" {
+		host = "app.launchdarkly.com"
+	}
+	return fmt.Sprintf("https://%s/api/v2/projects/%s/views/%s/link/%s", host, projectKey, viewKey, resourceType)
+}
+
+// buildViewLinkedResourcesURL builds the URL for getting linked resources from a view
+func buildViewLinkedResourcesURL(client *Client, projectKey, viewKey, resourceType string) string {
+	host := client.apiHost
+	if host == "" {
+		host = "app.launchdarkly.com"
+	}
+	return fmt.Sprintf("https://%s/api/v2/projects/%s/views/%s/linked/%s", host, projectKey, viewKey, resourceType)
+}
+
+// viewIdToKeys splits a view ID into project key and view key
+func viewIdToKeys(id string) (projectKey string, viewKey string, err error) {
+	if strings.Count(id, "/") != 1 {
+		return "", "", fmt.Errorf("found unexpected view ID format: %s. expected format: 'project_key/view_key'", id)
+	}
+	parts := strings.Split(id, "/")
+	return parts[0], parts[1], nil
 }
