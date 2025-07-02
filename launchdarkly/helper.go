@@ -5,6 +5,7 @@ import (
 	"math/rand"
 	"net"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -156,4 +157,12 @@ func oxfordCommaJoin(str []string) string {
 		}
 	}
 	return output
+}
+
+func splitID(id string, expectedParts int) []string {
+	parts := strings.Split(id, "/")
+	if len(parts) != expectedParts {
+		return nil
+	}
+	return parts
 }

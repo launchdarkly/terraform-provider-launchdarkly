@@ -1,0 +1,235 @@
+package launchdarkly
+
+import (
+	"fmt"
+	"os"
+	"regexp"
+	"testing"
+
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/acctest"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
+	ldapi "github.com/launchdarkly/api-client-go/v17"
+	"github.com/stretchr/testify/require"
+)
+
+const (
+	testAccViewCreate = `
+resource "launchdarkly_project" "test" {
+	key  = "%s"
+	name = "Test project"
+}
+
+resource "launchdarkly_view" "test" {
+	project_key = launchdarkly_project.test.key
+	key         = "%s"
+	name        = "%s"
+	description = "%s"
+	tags        = ["test"]
+}
+`
+
+	testAccViewUpdate = `
+resource "launchdarkly_project" "test" {
+	key  = "%s"
+	name = "Test project"
+}
+
+resource "launchdarkly_view" "test" {
+	project_key       = launchdarkly_project.test.key
+	key               = "%s"
+	name              = "%s"
+	description       = "%s"
+	generate_sdk_keys = true
+	tags              = ["test", "updated"]
+}
+`
+
+	testAccViewWithMaintainer = `
+resource "launchdarkly_project" "test" {
+	key  = "%s"
+	name = "Test project"
+}
+
+resource "launchdarkly_view" "test" {
+	project_key   = launchdarkly_project.test.key
+	key           = "%s"
+	name          = "%s"
+	description   = "%s"
+	maintainer_id = "%s"
+	tags          = ["test"]
+}
+`
+)
+
+func TestAccView_Create(t *testing.T) {
+	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	viewKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	viewName := "Test View"
+	viewDescription := "Test view description"
+	resourceName := "launchdarkly_view.test"
+
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck: func() {
+			testAccPreCheck(t)
+		},
+		Providers:    testAccProviders,
+		CheckDestroy: testAccCheckViewDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config: fmt.Sprintf(testAccViewCreate, projectKey, viewKey, viewName, viewDescription),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckViewExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, PROJECT_KEY, projectKey),
+					resource.TestCheckResourceAttr(resourceName, KEY, viewKey),
+					resource.TestCheckResourceAttr(resourceName, NAME, viewName),
+					resource.TestCheckResourceAttr(resourceName, DESCRIPTION, viewDescription),
+					resource.TestCheckResourceAttr(resourceName, GENERATE_SDK_KEYS, "false"),
+					resource.TestCheckResourceAttr(resourceName, ARCHIVED, "false"),
+					resource.TestCheckResourceAttr(resourceName, "tags.#", "1"),
+				),
+			},
+		},
+	})
+}
+
+func TestAccView_Update(t *testing.T) {
+	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	viewKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	viewName := "Test View"
+	viewDescription := "Test view description"
+	updatedViewName := "Updated Test View"
+	updatedViewDescription := "Updated test view description"
+	resourceName := "launchdarkly_view.test"
+
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck: func() {
+			testAccPreCheck(t)
+		},
+		Providers:    testAccProviders,
+		CheckDestroy: testAccCheckViewDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config: fmt.Sprintf(testAccViewCreate, projectKey, viewKey, viewName, viewDescription),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckViewExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, NAME, viewName),
+					resource.TestCheckResourceAttr(resourceName, DESCRIPTION, viewDescription),
+					resource.TestCheckResourceAttr(resourceName, GENERATE_SDK_KEYS, "false"),
+					resource.TestCheckResourceAttr(resourceName, "tags.#", "1"),
+				),
+			},
+			{
+				Config: fmt.Sprintf(testAccViewUpdate, projectKey, viewKey, updatedViewName, updatedViewDescription),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckViewExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, NAME, updatedViewName),
+					resource.TestCheckResourceAttr(resourceName, DESCRIPTION, updatedViewDescription),
+					resource.TestCheckResourceAttr(resourceName, GENERATE_SDK_KEYS, "true"),
+					resource.TestCheckResourceAttr(resourceName, "tags.#", "2"),
+				),
+			},
+		},
+	})
+}
+
+func TestAccView_WithMaintainer(t *testing.T) {
+	accTest := os.Getenv("TF_ACC")
+	if accTest == "" {
+		t.SkipNow()
+	}
+
+	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	viewKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	viewName := "Test View"
+	viewDescription := "Test view description"
+	resourceName := "launchdarkly_view.test"
+
+	client, err := newClient(os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN), os.Getenv(LAUNCHDARKLY_API_HOST), false, DEFAULT_HTTP_TIMEOUT_S)
+	require.NoError(t, err)
+
+	members, _, err := client.ld.AccountMembersApi.GetMembers(client.ctx).Execute()
+	require.NoError(t, err)
+	require.True(t, len(members.Items) > 0, "This test requires at least one member in the account")
+
+	maintainerId := members.Items[0].Id
+
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck: func() {
+			testAccPreCheck(t)
+		},
+		Providers:    testAccProviders,
+		CheckDestroy: testAccCheckViewDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config: fmt.Sprintf(testAccViewWithMaintainer, projectKey, viewKey, viewName, viewDescription, maintainerId),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckViewExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, MAINTAINER_ID, maintainerId),
+				),
+			},
+		},
+	})
+}
+
+func TestAccView_InvalidKey(t *testing.T) {
+	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	invalidViewKey := "invalid key with spaces"
+	viewName := "Test View"
+	viewDescription := "Test view description"
+
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck: func() {
+			testAccPreCheck(t)
+		},
+		Providers: testAccProviders,
+		Steps: []resource.TestStep{
+			{
+				Config:      fmt.Sprintf(testAccViewCreate, projectKey, invalidViewKey, viewName, viewDescription),
+				ExpectError: regexp.MustCompile("must only contain letters, numbers, periods, hyphens, and underscores"),
+			},
+		},
+	})
+}
+
+func testAccCheckViewExists(resourceName string) resource.TestCheckFunc {
+	return func(s *terraform.State) error {
+		rs, ok := s.RootModule().Resources[resourceName]
+		if !ok {
+			return fmt.Errorf("not found: %s", resourceName)
+		}
+		if rs.Primary.ID == "" {
+			return fmt.Errorf("view ID is not set")
+		}
+		projectKey := rs.Primary.Attributes[PROJECT_KEY]
+		viewKey := rs.Primary.Attributes[KEY]
+
+		client := testAccProvider.Meta().(*Client)
+		_, _, err := getView(client, projectKey, viewKey)
+		if err != nil {
+			return fmt.Errorf("received an error getting view. %s", err)
+		}
+		return nil
+	}
+}
+
+func testAccCheckViewDestroy(s *terraform.State) error {
+	client := testAccProvider.Meta().(*Client)
+	for _, rs := range s.RootModule().Resources {
+		if rs.Type != "launchdarkly_view" {
+			continue
+		}
+		projectKey := rs.Primary.Attributes[PROJECT_KEY]
+		viewKey := rs.Primary.Attributes[KEY]
+
+		_, res, err := getView(client, projectKey, viewKey)
+		if isStatusNotFound(res) {
+			continue
+		}
+		if err != nil {
+			return err
+		}
+		return fmt.Errorf("view still exists")
+	}
+	return nil
+}

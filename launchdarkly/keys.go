@@ -53,6 +53,7 @@ const (
 	FLAG_ID                          = "flag_id"
 	FLAG_KEY                         = "flag_key"
 	FULL_KEY                         = "full_key"
+	GENERATE_SDK_KEYS                = "generate_sdk_keys"
 	ID                               = "id"
 	IGNORE_MISSING                   = "ignore_missing"
 	INCLUDED                         = "included"
