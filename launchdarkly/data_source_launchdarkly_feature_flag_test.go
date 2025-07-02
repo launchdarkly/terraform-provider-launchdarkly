@@ -119,3 +119,70 @@ func TestAccDataSourceFeatureFlag_exists(t *testing.T) {
 		},
 	})
 }
+
+func TestAccDataSourceFeatureFlag_withViews(t *testing.T) {
+	resourceName := "data.launchdarkly_feature_flag.test"
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck: func() {
+			testAccPreCheck(t)
+		},
+		Providers: testAccProviders,
+		Steps: []resource.TestStep{
+			{
+				Config: `
+resource "launchdarkly_project" "test" {
+	name = "flag-discovery-test"
+	key  = "flag-discovery-test"
+}
+
+resource "launchdarkly_view" "test1" {
+	project_key = launchdarkly_project.test.key
+	key         = "test-view-1"
+	name        = "Test View 1"
+}
+
+resource "launchdarkly_view" "test2" {
+	project_key = launchdarkly_project.test.key
+	key         = "test-view-2"
+	name        = "Test View 2"
+}
+
+resource "launchdarkly_feature_flag" "test" {
+	project_key = launchdarkly_project.test.key
+	key         = "test-flag"
+	name        = "Test Flag"
+	variation_type = "boolean"
+}
+
+resource "launchdarkly_view_links" "test1" {
+	project_key = launchdarkly_project.test.key
+	view_key    = launchdarkly_view.test1.key
+	
+	flags = [launchdarkly_feature_flag.test.key]
+}
+
+resource "launchdarkly_view_links" "test2" {
+	project_key = launchdarkly_project.test.key
+	view_key    = launchdarkly_view.test2.key
+	
+	flags = [launchdarkly_feature_flag.test.key]
+}
+
+data "launchdarkly_feature_flag" "test" {
+	project_key = launchdarkly_project.test.key
+	key         = launchdarkly_feature_flag.test.key
+	depends_on  = [launchdarkly_view_links.test1, launchdarkly_view_links.test2]
+}
+`,
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(resourceName, "project_key", "flag-discovery-test"),
+					resource.TestCheckResourceAttr(resourceName, "key", "test-flag"),
+					resource.TestCheckResourceAttr(resourceName, "name", "Test Flag"),
+					resource.TestCheckResourceAttr(resourceName, "views.#", "2"),
+					resource.TestCheckTypeSetElemAttr(resourceName, "views.*", "test-view-1"),
+					resource.TestCheckTypeSetElemAttr(resourceName, "views.*", "test-view-2"),
+				),
+			},
+		},
+	})
+}

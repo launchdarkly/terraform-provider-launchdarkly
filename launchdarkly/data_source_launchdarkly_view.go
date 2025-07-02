@@ -55,6 +55,14 @@ func dataSourceView() *schema.Resource {
 				Computed:    true,
 				Description: "Whether the view is archived.",
 			},
+			LINKED_FLAGS: {
+				Type:        schema.TypeList,
+				Computed:    true,
+				Description: "A list of feature flag keys that are linked to this view.",
+				Elem: &schema.Schema{
+					Type: schema.TypeString,
+				},
+			},
 		},
 	}
 }

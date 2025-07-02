@@ -68,6 +68,7 @@ const (
 	KEY                              = "key"
 	KIND                             = "kind"
 	LAST_NAME                        = "last_name"
+	LINKED_FLAGS                     = "linked_flags"
 	MAINTAINERS                      = "maintainers"
 	MAINTAINER_ID                    = "maintainer_id"
 	MAINTAINER_TEAM_KEY              = "maintainer_team_key"
@@ -132,5 +133,6 @@ const (
 	VARIATION_TYPE                   = "variation_type"
 	VERSION                          = "version"
 	VIEW_KEY                         = "view_key"
+	VIEWS                            = "views"
 	WEIGHT                           = "weight"
 )

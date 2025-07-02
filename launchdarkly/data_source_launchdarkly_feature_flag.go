@@ -21,6 +21,14 @@ func dataSourceFeatureFlag() *schema.Resource {
 		Description: fmt.Sprintf("The uniform type for all variations. Can be either %q, %q, %q, or %q.",
 			BOOL_VARIATION, STRING_VARIATION, NUMBER_VARIATION, JSON_VARIATION),
 	}
+	schemaMap[VIEWS] = &schema.Schema{
+		Type:        schema.TypeList,
+		Computed:    true,
+		Description: "A list of view keys that this feature flag is linked to.",
+		Elem: &schema.Schema{
+			Type: schema.TypeString,
+		},
+	}
 	return &schema.Resource{
 		ReadContext: dataSourceFeatureFlagRead,
 		Schema:      schemaMap,

@@ -120,3 +120,68 @@ func TestAccDataSourceView_exists(t *testing.T) {
 		},
 	})
 }
+
+func TestAccDataSourceView_withLinkedFlags(t *testing.T) {
+	resourceName := "data.launchdarkly_view.test"
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck: func() {
+			testAccPreCheck(t)
+		},
+		Providers: testAccProviders,
+		Steps: []resource.TestStep{
+			{
+				Config: `
+resource "launchdarkly_project" "test" {
+	name = "view-discovery-test"
+	key  = "view-discovery-test"
+}
+
+resource "launchdarkly_view" "test" {
+	project_key = launchdarkly_project.test.key
+	key         = "test-view"
+	name        = "Test View"
+	description = "Test view for discovery testing"
+}
+
+resource "launchdarkly_feature_flag" "test1" {
+	project_key = launchdarkly_project.test.key
+	key         = "test-flag-1"
+	name        = "Test Flag 1"
+	variation_type = "boolean"
+}
+
+resource "launchdarkly_feature_flag" "test2" {
+	project_key = launchdarkly_project.test.key
+	key         = "test-flag-2"
+	name        = "Test Flag 2"
+	variation_type = "boolean"
+}
+
+resource "launchdarkly_view_links" "test" {
+	project_key = launchdarkly_project.test.key
+	view_key    = launchdarkly_view.test.key
+	
+	flags = [
+		launchdarkly_feature_flag.test1.key,
+		launchdarkly_feature_flag.test2.key
+	]
+}
+
+data "launchdarkly_view" "test" {
+	project_key = launchdarkly_project.test.key
+	key         = launchdarkly_view.test.key
+	depends_on  = [launchdarkly_view_links.test]
+}
+`,
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(resourceName, "project_key", "view-discovery-test"),
+					resource.TestCheckResourceAttr(resourceName, "key", "test-view"),
+					resource.TestCheckResourceAttr(resourceName, "name", "Test View"),
+					resource.TestCheckResourceAttr(resourceName, "linked_flags.#", "2"),
+					resource.TestCheckResourceAttr(resourceName, "linked_flags.0", "test-flag-1"),
+					resource.TestCheckResourceAttr(resourceName, "linked_flags.1", "test-flag-2"),
+				),
+			},
+		},
+	})
+}
