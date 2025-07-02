@@ -114,7 +114,7 @@ func getViewRaw(client *Client, projectKey, viewKey string) (*View, *http.Respon
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("LD-API-Version", "beta")
 
-	resp, err := client.fallbackClient.Do(req)
+	resp, err := client.ld.GetConfig().HTTPClient.Do(req)
 	if err != nil {
 		return nil, resp, err
 	}
@@ -153,7 +153,7 @@ func createView(client *Client, projectKey string, viewPost map[string]interface
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("LD-API-Version", "beta")
 
-	resp, err := client.fallbackClient.Do(req)
+	resp, err := client.ld.GetConfig().HTTPClient.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -192,7 +192,7 @@ func patchView(client *Client, projectKey, viewKey string, patch []ldapi.PatchOp
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("LD-API-Version", "beta")
 
-	resp, err := client.fallbackClient.Do(req)
+	resp, err := client.ld.GetConfig().HTTPClient.Do(req)
 	if err != nil {
 		return err
 	}
@@ -220,7 +220,7 @@ func deleteView(client *Client, projectKey, viewKey string) error {
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("LD-API-Version", "beta")
 
-	resp, err := client.fallbackClient.Do(req)
+	resp, err := client.ld.GetConfig().HTTPClient.Do(req)
 	if err != nil {
 		return err
 	}
