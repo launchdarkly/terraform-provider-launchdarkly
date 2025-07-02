@@ -101,7 +101,6 @@ func getViewRaw(client *Client, projectKey, viewKey string) (*View, *http.Respon
 	if !strings.HasPrefix(url, "http") {
 		url = "https://" + url
 	}
-	log.Printf("[DEBUG] GET %s", url)
 	req, err := http.NewRequestWithContext(client.ctx, "GET", url, nil)
 	if err != nil {
 		return nil, nil, err
@@ -134,8 +133,6 @@ func createView(client *Client, projectKey string, viewPost map[string]interface
 	if !strings.HasPrefix(url, "http") {
 		url = "https://" + url
 	}
-	log.Printf("[DEBUG] POST %s", url)
-
 	jsonData, err := json.Marshal(viewPost)
 	if err != nil {
 		return nil, err
@@ -173,8 +170,6 @@ func patchView(client *Client, projectKey, viewKey string, patch []ldapi.PatchOp
 	if !strings.HasPrefix(url, "http") {
 		url = "https://" + url
 	}
-	log.Printf("[DEBUG] PATCH %s", url)
-
 	jsonData, err := json.Marshal(patch)
 	if err != nil {
 		return err
@@ -206,8 +201,6 @@ func deleteView(client *Client, projectKey, viewKey string) error {
 	if !strings.HasPrefix(url, "http") {
 		url = "https://" + url
 	}
-	log.Printf("[DEBUG] DELETE %s", url)
-
 	req, err := http.NewRequestWithContext(client.ctx, "DELETE", url, nil)
 	if err != nil {
 		return err
