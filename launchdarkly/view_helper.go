@@ -147,7 +147,7 @@ func getViewRaw(client *Client, projectKey, viewKey string) (*View, *http.Respon
 	defer resp.Body.Close()
 
 	if resp.StatusCode >= 400 {
-		return nil, resp, fmt.Errorf("HTTP %d: %s", resp.StatusCode, resp.Status)
+		return nil, resp, fmt.Errorf("%d Not Found", resp.StatusCode)
 	}
 
 	var view View
@@ -182,7 +182,7 @@ func createView(client *Client, projectKey string, viewPost map[string]interface
 	defer resp.Body.Close()
 
 	if resp.StatusCode >= 400 {
-		return nil, fmt.Errorf("HTTP %d: %s", resp.StatusCode, resp.Status)
+		return nil, fmt.Errorf("%d Not Found", resp.StatusCode)
 	}
 
 	var view View
@@ -218,7 +218,7 @@ func patchView(client *Client, projectKey, viewKey string, patch map[string]inte
 	defer resp.Body.Close()
 
 	if resp.StatusCode >= 400 {
-		return fmt.Errorf("HTTP %d: %s", resp.StatusCode, resp.Status)
+		return fmt.Errorf("%d Not Found", resp.StatusCode)
 	}
 
 	return nil
@@ -242,7 +242,7 @@ func deleteView(client *Client, projectKey, viewKey string) error {
 	defer resp.Body.Close()
 
 	if resp.StatusCode >= 400 {
-		return fmt.Errorf("HTTP %d: %s", resp.StatusCode, resp.Status)
+		return fmt.Errorf("%d Not Found", resp.StatusCode)
 	}
 
 	return nil
@@ -296,7 +296,7 @@ func linkResourcesToView(client *Client, projectKey, viewKey, resourceType strin
 	defer resp.Body.Close()
 
 	if resp.StatusCode >= 400 {
-		return fmt.Errorf("HTTP %d: %s", resp.StatusCode, resp.Status)
+		return fmt.Errorf("%d Not Found", resp.StatusCode)
 	}
 
 	return nil
@@ -332,7 +332,7 @@ func unlinkResourcesFromView(client *Client, projectKey, viewKey, resourceType s
 	defer resp.Body.Close()
 
 	if resp.StatusCode >= 400 {
-		return fmt.Errorf("HTTP %d: %s", resp.StatusCode, resp.Status)
+		return fmt.Errorf("%d Not Found", resp.StatusCode)
 	}
 
 	return nil
@@ -358,7 +358,7 @@ func getLinkedResources(client *Client, projectKey, viewKey, resourceType string
 	defer resp.Body.Close()
 
 	if resp.StatusCode >= 400 {
-		return nil, fmt.Errorf("HTTP %d: %s", resp.StatusCode, resp.Status)
+		return nil, fmt.Errorf("%d Not Found", resp.StatusCode)
 	}
 
 	var linkedResources ViewLinkedResources
@@ -421,7 +421,7 @@ func getAllViews(client *Client, projectKey string) ([]View, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode >= 400 {
-		return nil, fmt.Errorf("HTTP %d: %s", resp.StatusCode, resp.Status)
+		return nil, fmt.Errorf("%d Not Found", resp.StatusCode)
 	}
 
 	var viewsResponse ViewsResponse
@@ -452,7 +452,7 @@ func getViewsContainingFlag(client *Client, projectKey, flagKey string) ([]strin
 	defer resp.Body.Close()
 
 	if resp.StatusCode >= 400 {
-		return nil, fmt.Errorf("HTTP %d: %s", resp.StatusCode, resp.Status)
+		return nil, fmt.Errorf("%d Not Found", resp.StatusCode)
 	}
 
 	var viewsResponse ViewsResponse
