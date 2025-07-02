@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strings"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -97,6 +98,9 @@ func getView(client *Client, projectKey, viewKey string) (*View, *http.Response,
 
 func getViewRaw(client *Client, projectKey, viewKey string) (*View, *http.Response, error) {
 	url := fmt.Sprintf("%s/api/v2/projects/%s/views/%s", client.apiHost, projectKey, viewKey)
+	if !strings.HasPrefix(url, "http") {
+		url = "https://" + url
+	}
 	req, err := http.NewRequestWithContext(client.ctx, "GET", url, nil)
 	if err != nil {
 		return nil, nil, err
@@ -126,7 +130,10 @@ func getViewRaw(client *Client, projectKey, viewKey string) (*View, *http.Respon
 
 func createView(client *Client, projectKey string, viewPost map[string]interface{}) (*View, error) {
 	url := fmt.Sprintf("%s/api/v2/projects/%s/views", client.apiHost, projectKey)
-
+	if !strings.HasPrefix(url, "http") {
+		url = "https://" + url
+	}
+	
 	jsonData, err := json.Marshal(viewPost)
 	if err != nil {
 		return nil, err
@@ -161,7 +168,10 @@ func createView(client *Client, projectKey string, viewPost map[string]interface
 
 func patchView(client *Client, projectKey, viewKey string, patch []ldapi.PatchOperation) error {
 	url := fmt.Sprintf("%s/api/v2/projects/%s/views/%s", client.apiHost, projectKey, viewKey)
-
+	if !strings.HasPrefix(url, "http") {
+		url = "https://" + url
+	}
+	
 	jsonData, err := json.Marshal(patch)
 	if err != nil {
 		return err
@@ -190,7 +200,10 @@ func patchView(client *Client, projectKey, viewKey string, patch []ldapi.PatchOp
 
 func deleteView(client *Client, projectKey, viewKey string) error {
 	url := fmt.Sprintf("%s/api/v2/projects/%s/views/%s", client.apiHost, projectKey, viewKey)
-
+	if !strings.HasPrefix(url, "http") {
+		url = "https://" + url
+	}
+	
 	req, err := http.NewRequestWithContext(client.ctx, "DELETE", url, nil)
 	if err != nil {
 		return err
