@@ -134,6 +134,12 @@ func TestAccDataSourceView_withLinkedFlags(t *testing.T) {
 resource "launchdarkly_project" "test" {
 	name = "view-discovery-test"
 	key  = "view-discovery-test"
+	
+	environments {
+		key   = "test"
+		name  = "Test Environment"
+		color = "000000"
+	}
 }
 
 resource "launchdarkly_view" "test" {
