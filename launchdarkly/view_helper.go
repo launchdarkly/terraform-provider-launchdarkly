@@ -135,7 +135,7 @@ func createView(client *Client, projectKey string, viewPost map[string]interface
 		url = "https://" + url
 	}
 	log.Printf("[DEBUG] POST %s", url)
-	
+
 	jsonData, err := json.Marshal(viewPost)
 	if err != nil {
 		return nil, err
@@ -174,7 +174,7 @@ func patchView(client *Client, projectKey, viewKey string, patch []ldapi.PatchOp
 		url = "https://" + url
 	}
 	log.Printf("[DEBUG] PATCH %s", url)
-	
+
 	jsonData, err := json.Marshal(patch)
 	if err != nil {
 		return err
@@ -207,7 +207,7 @@ func deleteView(client *Client, projectKey, viewKey string) error {
 		url = "https://" + url
 	}
 	log.Printf("[DEBUG] DELETE %s", url)
-	
+
 	req, err := http.NewRequestWithContext(client.ctx, "DELETE", url, nil)
 	if err != nil {
 		return err
