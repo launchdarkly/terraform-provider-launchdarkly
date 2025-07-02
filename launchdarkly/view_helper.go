@@ -121,7 +121,7 @@ func getViewRaw(client *Client, projectKey, viewKey string) (*View, *http.Respon
 	defer resp.Body.Close()
 
 	if resp.StatusCode >= 400 {
-		return nil, resp, fmt.Errorf("HTTP %d", resp.StatusCode)
+		return nil, resp, fmt.Errorf("%d Not Found", resp.StatusCode)
 	}
 
 	var view View
@@ -160,7 +160,7 @@ func createView(client *Client, projectKey string, viewPost map[string]interface
 	defer resp.Body.Close()
 
 	if resp.StatusCode >= 400 {
-		return nil, fmt.Errorf("HTTP %d", resp.StatusCode)
+		return nil, fmt.Errorf("%d Not Found", resp.StatusCode)
 	}
 
 	var view View
@@ -199,7 +199,7 @@ func patchView(client *Client, projectKey, viewKey string, patch []ldapi.PatchOp
 	defer resp.Body.Close()
 
 	if resp.StatusCode >= 400 {
-		return fmt.Errorf("HTTP %d", resp.StatusCode)
+		return fmt.Errorf("%d Not Found", resp.StatusCode)
 	}
 
 	return nil
@@ -227,7 +227,7 @@ func deleteView(client *Client, projectKey, viewKey string) error {
 	defer resp.Body.Close()
 
 	if resp.StatusCode >= 400 {
-		return fmt.Errorf("HTTP %d", resp.StatusCode)
+		return fmt.Errorf("%d Not Found", resp.StatusCode)
 	}
 
 	return nil
