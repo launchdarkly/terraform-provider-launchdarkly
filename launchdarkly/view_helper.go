@@ -10,7 +10,6 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	ldapi "github.com/launchdarkly/api-client-go/v17"
 )
 
 func viewRead(ctx context.Context, d *schema.ResourceData, meta interface{}, isDataSource bool) diag.Diagnostics {
@@ -20,6 +19,7 @@ func viewRead(ctx context.Context, d *schema.ResourceData, meta interface{}, isD
 	if err != nil {
 		return diag.FromErr(err)
 	}
+
 	projectKey := d.Get(PROJECT_KEY).(string)
 	viewKey := d.Get(KEY).(string)
 
@@ -99,20 +99,27 @@ func getView(client *Client, projectKey, viewKey string) (*View, *http.Response,
 	return getViewRaw(client, projectKey, viewKey)
 }
 
-func getViewRaw(client *Client, projectKey, viewKey string) (*View, *http.Response, error) {
+func buildViewURL(client *Client, projectKey, viewKey string) string {
 	host := client.apiHost
 	if host == "" {
 		host = "app.launchdarkly.com"
 	}
-	endpoint := fmt.Sprintf("https://%s/api/v2/projects/%s/views/%s", host, projectKey, viewKey)
-	req, err := http.NewRequestWithContext(client.ctx, "GET", endpoint, nil)
+	if viewKey == "" {
+		return fmt.Sprintf("https://%s/api/v2/projects/%s/views", host, projectKey)
+	}
+	return fmt.Sprintf("https://%s/api/v2/projects/%s/views/%s", host, projectKey, viewKey)
+}
+
+func getViewRaw(client *Client, projectKey, viewKey string) (*View, *http.Response, error) {
+	url := buildViewURL(client, projectKey, viewKey)
+	req, err := http.NewRequestWithContext(client.ctx, "GET", url, nil)
 	if err != nil {
 		return nil, nil, err
 	}
 
 	req.Header.Set("Authorization", client.apiKey)
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("LD-API-Version", "beta")
+	// LD-API-Version header is automatically set by beta client
 
 	resp, err := client.ld.GetConfig().HTTPClient.Do(req)
 	if err != nil {
@@ -121,7 +128,7 @@ func getViewRaw(client *Client, projectKey, viewKey string) (*View, *http.Respon
 	defer resp.Body.Close()
 
 	if resp.StatusCode >= 400 {
-		return nil, resp, fmt.Errorf("%d Not Found", resp.StatusCode)
+		return nil, resp, fmt.Errorf("HTTP %d: %s", resp.StatusCode, resp.Status)
 	}
 
 	var view View
@@ -134,24 +141,20 @@ func getViewRaw(client *Client, projectKey, viewKey string) (*View, *http.Respon
 }
 
 func createView(client *Client, projectKey string, viewPost map[string]interface{}) (*View, error) {
-	host := client.apiHost
-	if host == "" {
-		host = "app.launchdarkly.com"
-	}
-	endpoint := fmt.Sprintf("https://%s/api/v2/projects/%s/views", host, projectKey)
+	url := buildViewURL(client, projectKey, "")
 	jsonData, err := json.Marshal(viewPost)
 	if err != nil {
 		return nil, err
 	}
 
-	req, err := http.NewRequestWithContext(client.ctx, "POST", endpoint, bytes.NewBuffer(jsonData))
+	req, err := http.NewRequestWithContext(client.ctx, "POST", url, bytes.NewBuffer(jsonData))
 	if err != nil {
 		return nil, err
 	}
 
 	req.Header.Set("Authorization", client.apiKey)
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("LD-API-Version", "beta")
+	// LD-API-Version header is automatically set by beta client
 
 	resp, err := client.ld.GetConfig().HTTPClient.Do(req)
 	if err != nil {
@@ -160,7 +163,7 @@ func createView(client *Client, projectKey string, viewPost map[string]interface
 	defer resp.Body.Close()
 
 	if resp.StatusCode >= 400 {
-		return nil, fmt.Errorf("%d Not Found", resp.StatusCode)
+		return nil, fmt.Errorf("HTTP %d: %s", resp.StatusCode, resp.Status)
 	}
 
 	var view View
@@ -172,25 +175,22 @@ func createView(client *Client, projectKey string, viewPost map[string]interface
 	return &view, nil
 }
 
-func patchView(client *Client, projectKey, viewKey string, patch []ldapi.PatchOperation) error {
-	host := client.apiHost
-	if host == "" {
-		host = "app.launchdarkly.com"
-	}
-	endpoint := fmt.Sprintf("https://%s/api/v2/projects/%s/views/%s", host, projectKey, viewKey)
+func patchView(client *Client, projectKey, viewKey string, patch map[string]interface{}) error {
+	url := buildViewURL(client, projectKey, viewKey)
+
 	jsonData, err := json.Marshal(patch)
 	if err != nil {
 		return err
 	}
 
-	req, err := http.NewRequestWithContext(client.ctx, "PATCH", endpoint, bytes.NewBuffer(jsonData))
+	req, err := http.NewRequestWithContext(client.ctx, "PATCH", url, bytes.NewBuffer(jsonData))
 	if err != nil {
 		return err
 	}
 
 	req.Header.Set("Authorization", client.apiKey)
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("LD-API-Version", "beta")
+	// LD-API-Version header is automatically set by beta client
 
 	resp, err := client.ld.GetConfig().HTTPClient.Do(req)
 	if err != nil {
@@ -199,26 +199,22 @@ func patchView(client *Client, projectKey, viewKey string, patch []ldapi.PatchOp
 	defer resp.Body.Close()
 
 	if resp.StatusCode >= 400 {
-		return fmt.Errorf("%d Not Found", resp.StatusCode)
+		return fmt.Errorf("HTTP %d: %s", resp.StatusCode, resp.Status)
 	}
 
 	return nil
 }
 
 func deleteView(client *Client, projectKey, viewKey string) error {
-	host := client.apiHost
-	if host == "" {
-		host = "app.launchdarkly.com"
-	}
-	endpoint := fmt.Sprintf("https://%s/api/v2/projects/%s/views/%s", host, projectKey, viewKey)
-	req, err := http.NewRequestWithContext(client.ctx, "DELETE", endpoint, nil)
+	url := buildViewURL(client, projectKey, viewKey)
+	req, err := http.NewRequestWithContext(client.ctx, "DELETE", url, nil)
 	if err != nil {
 		return err
 	}
 
 	req.Header.Set("Authorization", client.apiKey)
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("LD-API-Version", "beta")
+	// LD-API-Version header is automatically set by beta client
 
 	resp, err := client.ld.GetConfig().HTTPClient.Do(req)
 	if err != nil {
@@ -227,7 +223,7 @@ func deleteView(client *Client, projectKey, viewKey string) error {
 	defer resp.Body.Close()
 
 	if resp.StatusCode >= 400 {
-		return fmt.Errorf("%d Not Found", resp.StatusCode)
+		return fmt.Errorf("HTTP %d: %s", resp.StatusCode, resp.Status)
 	}
 
 	return nil

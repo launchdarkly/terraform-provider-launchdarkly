@@ -6,7 +6,6 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	ldapi "github.com/launchdarkly/api-client-go/v17"
 )
 
 func resourceView() *schema.Resource {
@@ -85,6 +84,7 @@ func resourceViewCreate(ctx context.Context, d *schema.ResourceData, metaRaw int
 	if err != nil {
 		return diag.FromErr(err)
 	}
+
 	projectKey := d.Get(PROJECT_KEY).(string)
 	viewKey := d.Get(KEY).(string)
 
@@ -133,45 +133,46 @@ func resourceViewUpdate(ctx context.Context, d *schema.ResourceData, metaRaw int
 	if err != nil {
 		return diag.FromErr(err)
 	}
+
 	projectKey := d.Get(PROJECT_KEY).(string)
 	viewKey := d.Get(KEY).(string)
 
-	patch := []ldapi.PatchOperation{}
+	patch := make(map[string]interface{})
 
 	if d.HasChange(NAME) {
-		patch = append(patch, patchReplace("/name", d.Get(NAME).(string)))
+		patch["name"] = d.Get(NAME).(string)
 	}
 
 	if d.HasChange(DESCRIPTION) {
-		patch = append(patch, patchReplace("/description", d.Get(DESCRIPTION).(string)))
+		patch["description"] = d.Get(DESCRIPTION).(string)
 	}
 
 	if d.HasChange(GENERATE_SDK_KEYS) {
-		patch = append(patch, patchReplace("/generateSdkKeys", d.Get(GENERATE_SDK_KEYS).(bool)))
+		patch["generateSdkKeys"] = d.Get(GENERATE_SDK_KEYS).(bool)
 	}
 
 	if d.HasChange(MAINTAINER_ID) {
 		if maintainerId, ok := d.GetOk(MAINTAINER_ID); ok {
-			patch = append(patch, patchReplace("/maintainerId", maintainerId.(string)))
+			patch["maintainerId"] = maintainerId.(string)
 		} else {
-			patch = append(patch, patchRemove("/maintainerId"))
+			patch["maintainerId"] = nil
 		}
 	}
 
 	if d.HasChange(MAINTAINER_TEAM_KEY) {
 		if maintainerTeamKey, ok := d.GetOk(MAINTAINER_TEAM_KEY); ok {
-			patch = append(patch, patchReplace("/maintainerTeamKey", maintainerTeamKey.(string)))
+			patch["maintainerTeamKey"] = maintainerTeamKey.(string)
 		} else {
-			patch = append(patch, patchRemove("/maintainerTeamKey"))
+			patch["maintainerTeamKey"] = nil
 		}
 	}
 
 	if d.HasChange(TAGS) {
-		patch = append(patch, patchReplace("/tags", interfaceSliceToStringSlice(d.Get(TAGS).(*schema.Set).List())))
+		patch["tags"] = interfaceSliceToStringSlice(d.Get(TAGS).(*schema.Set).List())
 	}
 
 	if d.HasChange(ARCHIVED) {
-		patch = append(patch, patchReplace("/archived", d.Get(ARCHIVED).(bool)))
+		patch["archived"] = d.Get(ARCHIVED).(bool)
 	}
 
 	if len(patch) > 0 {
@@ -192,6 +193,7 @@ func resourceViewDelete(ctx context.Context, d *schema.ResourceData, metaRaw int
 	if err != nil {
 		return diag.FromErr(err)
 	}
+
 	projectKey := d.Get(PROJECT_KEY).(string)
 	viewKey := d.Get(KEY).(string)
 
@@ -204,15 +206,16 @@ func resourceViewDelete(ctx context.Context, d *schema.ResourceData, metaRaw int
 }
 
 func resourceViewExists(d *schema.ResourceData, metaRaw interface{}) (bool, error) {
-	return viewExists(d.Get(PROJECT_KEY).(string), d.Get(KEY).(string), metaRaw.(*Client))
-}
-
-func viewExists(projectKey, viewKey string, client *Client) (bool, error) {
+	client := metaRaw.(*Client)
 	betaClient, err := newBetaClient(client.apiKey, client.apiHost, false, DEFAULT_HTTP_TIMEOUT_S)
 	if err != nil {
 		return false, err
 	}
-	_, res, err := getViewRaw(betaClient, projectKey, viewKey)
+	return viewExists(d.Get(PROJECT_KEY).(string), d.Get(KEY).(string), betaClient)
+}
+
+func viewExists(projectKey, viewKey string, client *Client) (bool, error) {
+	_, res, err := getViewRaw(client, projectKey, viewKey)
 	if isStatusNotFound(res) {
 		return false, nil
 	}
