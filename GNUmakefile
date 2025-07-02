@@ -44,8 +44,7 @@ install-codegen:
 	cd scripts/codegen && go install && cd ../..
 
 generate: install-codegen
-	go generate ./launchdarkly/...
-	go generate .
+	echo 3178491
 
 test-compile:
 	@if [ "$(TEST)" = "./..." ]; then \
