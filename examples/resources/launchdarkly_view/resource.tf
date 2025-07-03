@@ -20,7 +20,7 @@ resource "launchdarkly_view" "team_maintained" {
   name                = "Team Maintained View"
   description         = "A view maintained by a team"
   maintainer_team_key = "platform-team"
-  
+
   tags = ["team-managed"]
 }
 

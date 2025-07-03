@@ -3,59 +3,96 @@
 page_title: "launchdarkly_view_links Resource - launchdarkly"
 subcategory: ""
 description: |-
-  Provides a LaunchDarkly view links resource.
-  This resource allows you to create and manage links between views and feature flags within your LaunchDarkly organization.
+  Provides a LaunchDarkly view links resource for managing bulk resource linkage to views.
+  This resource allows you to efficiently link multiple flags (and in the future, segments and metrics) to a specific view. This is particularly useful for administrators organizing resources by team or deployment unit.
+  -> Note: This resource manages ALL links for the specified resource types within a view. Adding or removing items from the configuration will link or unlink those resources accordingly.
 ---
 
 # launchdarkly_view_links (Resource)
 
-Provides a LaunchDarkly view links resource.
+Provides a LaunchDarkly view links resource for managing bulk resource linkage to views.
 
-This resource allows you to create and manage links between views and feature flags within your LaunchDarkly organization. Views are used to organize and group related feature flags, making it easier for teams to manage flags by business context or deployment unit.
+This resource allows you to efficiently link multiple flags (and in the future, segments and metrics) to a specific view. This is particularly useful for administrators organizing resources by team or deployment unit.
 
--> **Note:** This resource manages the linkage between views and flags. The view itself must be created separately using the `launchdarkly_view` resource.
+-> **Note:** This resource manages ALL links for the specified resource types within a view. Adding or removing items from the configuration will link or unlink those resources accordingly.
 
 ## Example Usage
 
 ```terraform
-# Create a view first
-resource "launchdarkly_view" "frontend_team" {
-  project_key = "example-project"
-  key         = "frontend-team"
-  name        = "Frontend Team View"
-  description = "View for frontend team feature flags"
-}
+# Example: Frontend team view with bulk flag assignments
+resource "launchdarkly_view_links" "frontend_team" {
+  project_key = "my-project"
+  view_key    = "frontend-team"
 
-# Link multiple flags to the view
-resource "launchdarkly_view_links" "frontend_flags" {
-  project_key = "example-project"
-  view_key    = launchdarkly_view.frontend_team.key
-  
+  # Bulk link multiple flags efficiently - supports 100s of flags
   flags = [
-    "header-redesign",
-    "new-checkout-flow",
-    "mobile-optimization"
+    "feature-login",
+    "feature-dashboard",
+    "feature-payments",
+    "feature-checkout",
+    "feature-profile",
+    "feature-notifications",
+    "feature-search",
+    "feature-filters",
+    "feature-analytics",
+    "feature-dark-mode",
+    # ... can easily scale to 100+ flags
   ]
-  
-  comment = "Linking frontend team flags to their view"
+
+  comment = "Frontend team flag assignments managed by Terraform"
 }
 
-# Example with data source to dynamically get flag keys
-data "launchdarkly_feature_flag" "checkout_flags" {
-  for_each = toset(["checkout-v1", "checkout-v2", "payment-gateway"])
-  
-  project_key = "example-project"
-  key         = each.key
+# Example: Mobile team view with different flags
+resource "launchdarkly_view_links" "mobile_team" {
+  project_key = "my-project"
+  view_key    = "mobile-team"
+
+  flags = [
+    "feature-mobile-login",
+    "feature-push-notifications",
+    "feature-offline-mode",
+    "feature-biometric-auth",
+    "feature-mobile-payments",
+    "feature-app-rating",
+  ]
+
+  comment = "Mobile team specific features"
 }
 
-resource "launchdarkly_view_links" "checkout_view" {
-  project_key = "example-project"
-  view_key    = "checkout-view"
-  
-  flags = [for flag in data.launchdarkly_feature_flag.checkout_flags : flag.key]
-  
-  comment = "Managed by Terraform - Checkout team flags"
+# Example: Shared features across teams
+resource "launchdarkly_view_links" "shared_features" {
+  project_key = "my-project"
+  view_key    = "shared-features"
+
+  flags = [
+    "feature-maintenance-mode",
+    "feature-emergency-banner",
+    "feature-api-throttling",
+    "feature-logging-level",
+  ]
+
+  comment = "Cross-team shared feature flags"
 }
+
+# Demonstrating updates - adding/removing flags from a view
+resource "launchdarkly_view_links" "backend_team" {
+  project_key = "my-project"
+  view_key    = "backend-team"
+
+  flags = [
+    "feature-database-migration",
+    "feature-cache-optimization",
+    "feature-api-versioning",
+    # To add a new flag, simply add it to this list
+    # To remove a flag, remove it from this list
+    # Terraform will handle the link/unlink operations automatically
+  ]
+
+  comment = "Backend infrastructure and API flags"
+}
+
+# To import an existing view's flag links into Terraform:
+# terraform import launchdarkly_view_links.frontend_team my-project/frontend-team
 ```
 
 <!-- schema generated by tfplugindocs -->
@@ -64,71 +101,13 @@ resource "launchdarkly_view_links" "checkout_view" {
 ### Required
 
 - `project_key` (String) The project key. A change in this field will force the destruction of the existing resource and the creation of a new one.
-- `view_key` (String) The view key. A change in this field will force the destruction of the existing resource and the creation of a new one.
+- `view_key` (String) The view key to link resources to. A change in this field will force the destruction of the existing resource and the creation of a new one.
 
 ### Optional
 
-- `comment` (String) Optional comment for the link operations. Defaults to "Managed by Terraform".
+- `comment` (String) Optional comment for the link operations.
 - `flags` (Set of String) A set of feature flag keys to link to the view.
 
 ### Read-Only
 
 - `id` (String) The ID of this resource.
-
-## Import
-
-Import is supported using the following syntax:
-
-```shell
-# Import view links using the format `project_key/view_key`.
-terraform import launchdarkly_view_links.frontend_flags example-project/frontend-team
-```
-
-## Usage Notes
-
-### Bulk Operations
-This resource is designed for efficient bulk operations when linking many flags to a view. It's particularly useful for:
-
-- **Team organization**: Link all flags managed by a specific team to their view
-- **Feature grouping**: Group related flags for a feature or product area
-- **Deployment coordination**: Organize flags by deployment unit or service
-
-### State Management
-The resource manages the complete set of flag links for a view. When you update the `flags` set:
-- **Additions**: New flags are linked to the view
-- **Removals**: Flags no longer in the set are unlinked from the view
-- **Replacements**: The resource efficiently calculates the diff and makes minimal API calls
-
-### Integration with Data Sources
-You can use this resource with the discovery fields available in data sources:
-
-```terraform
-# Get a view and see what flags are linked to it
-data "launchdarkly_view" "team_view" {
-  project_key = "example-project"
-  key         = "team-view"
-}
-
-# The linked_flags field shows currently linked flags
-output "current_flags" {
-  value = data.launchdarkly_view.team_view.linked_flags
-}
-
-# Get a flag and see what views contain it
-data "launchdarkly_feature_flag" "my_flag" {
-  project_key = "example-project"
-  key         = "my-flag"
-}
-
-# The views field shows which views contain this flag
-output "flag_views" {
-  value = data.launchdarkly_feature_flag.my_flag.views
-}
-```
-
-### Best Practices
-
-1. **Use descriptive comments**: Add meaningful comments to track why flags are linked
-2. **Organize by team/context**: Group flags by logical business units or teams
-3. **Leverage data sources**: Use flag and view data sources for dynamic linking
-4. **Import existing links**: Use terraform import to manage existing flag-view relationships 

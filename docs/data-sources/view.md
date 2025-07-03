@@ -4,48 +4,56 @@ page_title: "launchdarkly_view Data Source - launchdarkly"
 subcategory: ""
 description: |-
   Provides a LaunchDarkly view data source.
-  This data source allows you to retrieve view information from your LaunchDarkly organization.
+  This data source allows you to retrieve view information from your LaunchDarkly project.
 ---
 
 # launchdarkly_view (Data Source)
 
 Provides a LaunchDarkly view data source.
 
-This data source allows you to retrieve view information from your LaunchDarkly organization. Views are used to organize and group related feature flags, making it easier for teams to manage flags by business context or deployment unit.
+This data source allows you to retrieve view information from your LaunchDarkly project.
 
 ## Example Usage
 
 ```terraform
-# Basic view data source usage
-data "launchdarkly_view" "team_view" {
+# Example: Get view information including linked flags
+data "launchdarkly_view" "example" {
   project_key = "example-project"
+  key         = "example-view"
+}
+
+# The view data source now includes discovery of linked flags
+output "view_details" {
+  value = {
+    name         = data.launchdarkly_view.example.name
+    description  = data.launchdarkly_view.example.description
+    linked_flags = data.launchdarkly_view.example.linked_flags
+    maintainer   = data.launchdarkly_view.example.maintainer_id
+  }
+}
+
+# Example: Use linked flags in conditional logic
+locals {
+  frontend_flags = contains(data.launchdarkly_view.example.linked_flags, "feature-frontend-redesign")
+  has_experimental_flags = length([
+    for flag in data.launchdarkly_view.example.linked_flags : flag
+    if can(regex("^experimental-", flag))
+  ]) > 0
+}
+
+# Example: Discover view membership for team access
+data "launchdarkly_view" "team_view" {
+  project_key = "my-project"
   key         = "frontend-team"
 }
 
-# Use the view information in other resources
-resource "launchdarkly_view_links" "additional_flags" {
-  project_key = data.launchdarkly_view.team_view.project_key
-  view_key    = data.launchdarkly_view.team_view.key
-  
-  flags = [
-    "new-feature-flag",
-    "experimental-ui"
-  ]
-}
-
-# Output the flags linked to this view
-output "linked_flags" {
-  description = "Feature flags linked to the team view"
-  value       = data.launchdarkly_view.team_view.linked_flags
-}
-
-# Example using the view data for conditional logic
-locals {
-  has_linked_flags = length(data.launchdarkly_view.team_view.linked_flags) > 0
-}
-
-output "view_status" {
-  value = local.has_linked_flags ? "View has linked flags" : "View is empty"
+output "team_flag_access" {
+  description = "Flags accessible to the frontend team"
+  value = {
+    view_name  = data.launchdarkly_view.team_view.name
+    flag_count = length(data.launchdarkly_view.team_view.linked_flags)
+    flags      = data.launchdarkly_view.team_view.linked_flags
+  }
 }
 ```
 
@@ -54,63 +62,17 @@ output "view_status" {
 
 ### Required
 
-- `key` (String) The unique view key.
-- `project_key` (String) The view's project key.
+- `key` (String) The view's unique key.
+- `project_key` (String) The project key.
 
 ### Read-Only
 
 - `archived` (Boolean) Whether the view is archived.
 - `description` (String) The view's description.
+- `generate_sdk_keys` (Boolean) Whether SDK keys are generated for this view.
 - `id` (String) The ID of this resource.
 - `linked_flags` (List of String) A list of feature flag keys that are linked to this view.
-- `name` (String) The view's human-readable name.
-- `tags` (Set of String) Tags associated with the view.
-
-## Usage Notes
-
-### Discovery with Linked Flags
-The `linked_flags` field provides discovery functionality, allowing you to:
-
-- **Audit view contents**: See which flags are currently associated with a view
-- **Conditional logic**: Make decisions based on whether a view has linked flags
-- **Dynamic linking**: Use the current flag list to make incremental changes
-
-### Integration Examples
-
-```terraform
-# Check if specific flags are in a view
-data "launchdarkly_view" "deployment_view" {
-  project_key = "example-project"
-  key         = "deployment-flags"
-}
-
-locals {
-  required_flags = ["feature-toggle", "rollback-switch"]
-  missing_flags = setsubtract(
-    toset(local.required_flags),
-    toset(data.launchdarkly_view.deployment_view.linked_flags)
-  )
-}
-
-# Add missing flags to the view
-resource "launchdarkly_view_links" "ensure_deployment_flags" {
-  count = length(local.missing_flags) > 0 ? 1 : 0
-  
-  project_key = "example-project"
-  view_key    = "deployment-flags"
-  
-  flags = concat(
-    data.launchdarkly_view.deployment_view.linked_flags,
-    local.missing_flags
-  )
-  
-  comment = "Ensuring required deployment flags are present"
-}
-```
-
-### Best Practices
-
-1. **Use for auditing**: Leverage `linked_flags` to understand view contents
-2. **Conditional resources**: Create resources based on view state
-3. **Documentation**: Use view data in outputs for team visibility
-4. **Integration**: Combine with other data sources for comprehensive flag management 
+- `maintainer_id` (String) The member ID of the maintainer for this view.
+- `maintainer_team_key` (String) The team key of the maintainer team for this view.
+- `name` (String) The view's name.
+- `tags` (Set of String) Tags associated with your resource.

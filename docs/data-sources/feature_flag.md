@@ -16,45 +16,49 @@ This data source allows you to retrieve feature flag information from your Launc
 ## Example Usage
 
 ```terraform
-# Basic feature flag data source usage
+# Example: Get feature flag information including view memberships
 data "launchdarkly_feature_flag" "example" {
+  project_key = "example-project"
   key         = "example-flag"
-  project_key = "example-project"
 }
 
-# Use the views field for discovery and integration
-data "launchdarkly_feature_flag" "checkout_flag" {
-  key         = "checkout-redesign"
-  project_key = "example-project"
+# The feature flag data source now includes discovery of view memberships
+output "flag_details" {
+  value = {
+    name        = data.launchdarkly_feature_flag.example.name
+    description = data.launchdarkly_feature_flag.example.description
+    views       = data.launchdarkly_feature_flag.example.views
+    archived    = data.launchdarkly_feature_flag.example.archived
+  }
 }
 
-# Output which views contain this flag
-output "flag_views" {
-  description = "Views that contain the checkout flag"
-  value       = data.launchdarkly_feature_flag.checkout_flag.views
-}
-
-# Conditional logic based on view membership
+# Example: Check if flag is accessible to specific teams
 locals {
-  is_in_production_view = contains(
-    data.launchdarkly_feature_flag.checkout_flag.views,
-    "production-ready-flags"
-  )
+  accessible_to_frontend = contains(data.launchdarkly_feature_flag.example.views, "frontend-team")
+  accessible_to_mobile   = contains(data.launchdarkly_feature_flag.example.views, "mobile-team")
+  is_shared_flag         = length(data.launchdarkly_feature_flag.example.views) > 1
 }
 
-# Example: Add flag to a view if it's not already there
-resource "launchdarkly_view_links" "ensure_flag_in_view" {
-  count = local.is_in_production_view ? 0 : 1
-  
-  project_key = "example-project"
-  view_key    = "production-ready-flags"
-  
-  flags = concat(
-    # Get existing flags in the view (would require separate data source)
-    ["checkout-redesign"],  # Add our flag
-  )
-  
-  comment = "Adding checkout flag to production view"
+# Example: Conditional resource creation based on view membership
+resource "launchdarkly_feature_flag_environment" "prod_config" {
+  # Only create production config if flag is assigned to production view
+  count = contains(data.launchdarkly_feature_flag.example.views, "production-ready") ? 1 : 0
+
+  flag_id = data.launchdarkly_feature_flag.example.id
+  env_key = "production"
+  on      = true
+}
+
+# Example: Generate team notifications based on flag view assignments
+output "team_notifications" {
+  description = "Teams that should be notified about this flag"
+  value = {
+    flag_name = data.launchdarkly_feature_flag.example.name
+    teams = [
+      for view in data.launchdarkly_feature_flag.example.views : view
+      if can(regex("-team$", view))
+    ]
+  }
 }
 ```
 
@@ -123,54 +127,3 @@ Read-Only:
 - `description` (String)
 - `name` (String)
 - `value` (String)
-
-## Usage Notes
-
-### Discovery with Views
-The `views` field provides discovery functionality, allowing you to:
-
-- **Audit flag placement**: See which views currently contain a specific flag
-- **Conditional logic**: Make decisions based on flag view membership
-- **Integration patterns**: Use view membership for organizational workflows
-
-### Integration Examples
-
-```terraform
-# Get flag information including view membership
-data "launchdarkly_feature_flag" "critical_flag" {
-  project_key = "example-project"
-  key         = "payment-processing"
-}
-
-# Check if flag is in critical views
-locals {
-  critical_views = ["production-ready", "security-reviewed", "compliance-approved"]
-  flag_views = toset(data.launchdarkly_feature_flag.critical_flag.views)
-  missing_from_critical = setsubtract(toset(local.critical_views), local.flag_views)
-}
-
-# Alert if critical flag is missing from important views
-output "compliance_check" {
-  value = length(local.missing_from_critical) == 0 ? 
-    "✅ Flag is in all critical views" : 
-    "⚠️  Flag missing from: ${join(", ", local.missing_from_critical)}"
-}
-
-# Automatically add flag to required views
-resource "launchdarkly_view_links" "ensure_critical_compliance" {
-  for_each = local.missing_from_critical
-  
-  project_key = "example-project"
-  view_key    = each.key
-  
-  flags = [data.launchdarkly_feature_flag.critical_flag.key]
-  comment = "Auto-compliance: Adding critical flag to required view"
-}
-```
-
-### Best Practices
-
-1. **Audit flag organization**: Use `views` to understand flag categorization
-2. **Governance automation**: Implement rules based on view membership
-3. **Team workflows**: Integrate view membership into CI/CD processes
-4. **Documentation**: Output view membership for team visibility

@@ -2,11 +2,11 @@
 resource "launchdarkly_view_links" "frontend_team" {
   project_key = "my-project"
   view_key    = "frontend-team"
-  
+
   # Bulk link multiple flags efficiently - supports 100s of flags
   flags = [
     "feature-login",
-    "feature-dashboard", 
+    "feature-dashboard",
     "feature-payments",
     "feature-checkout",
     "feature-profile",
@@ -17,7 +17,7 @@ resource "launchdarkly_view_links" "frontend_team" {
     "feature-dark-mode",
     # ... can easily scale to 100+ flags
   ]
-  
+
   comment = "Frontend team flag assignments managed by Terraform"
 }
 
@@ -25,7 +25,7 @@ resource "launchdarkly_view_links" "frontend_team" {
 resource "launchdarkly_view_links" "mobile_team" {
   project_key = "my-project"
   view_key    = "mobile-team"
-  
+
   flags = [
     "feature-mobile-login",
     "feature-push-notifications",
@@ -34,7 +34,7 @@ resource "launchdarkly_view_links" "mobile_team" {
     "feature-mobile-payments",
     "feature-app-rating",
   ]
-  
+
   comment = "Mobile team specific features"
 }
 
@@ -42,14 +42,14 @@ resource "launchdarkly_view_links" "mobile_team" {
 resource "launchdarkly_view_links" "shared_features" {
   project_key = "my-project"
   view_key    = "shared-features"
-  
+
   flags = [
     "feature-maintenance-mode",
     "feature-emergency-banner",
     "feature-api-throttling",
     "feature-logging-level",
   ]
-  
+
   comment = "Cross-team shared feature flags"
 }
 
@@ -57,7 +57,7 @@ resource "launchdarkly_view_links" "shared_features" {
 resource "launchdarkly_view_links" "backend_team" {
   project_key = "my-project"
   view_key    = "backend-team"
-  
+
   flags = [
     "feature-database-migration",
     "feature-cache-optimization",
@@ -66,7 +66,7 @@ resource "launchdarkly_view_links" "backend_team" {
     # To remove a flag, remove it from this list
     # Terraform will handle the link/unlink operations automatically
   ]
-  
+
   comment = "Backend infrastructure and API flags"
 }
 
