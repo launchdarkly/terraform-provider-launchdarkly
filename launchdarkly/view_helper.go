@@ -402,37 +402,6 @@ type ViewsResponse struct {
 	Items []View `json:"items"`
 }
 
-// getAllViews gets all views in a project
-func getAllViews(client *Client, projectKey string) ([]View, error) {
-	url := buildViewURL(client, projectKey, "")
-	req, err := http.NewRequestWithContext(client.ctx, "GET", url, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	req.Header.Set("Authorization", client.apiKey)
-	req.Header.Set("Content-Type", "application/json")
-	// LD-API-Version header is automatically set by beta client
-
-	resp, err := client.ld.GetConfig().HTTPClient.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode >= 400 {
-		return nil, fmt.Errorf("HTTP %d: %s", resp.StatusCode, resp.Status)
-	}
-
-	var viewsResponse ViewsResponse
-	err = json.NewDecoder(resp.Body).Decode(&viewsResponse)
-	if err != nil {
-		return nil, err
-	}
-
-	return viewsResponse.Items, nil
-}
-
 // getViewsContainingFlag finds all views that contain a specific flag using the view-associations endpoint
 func getViewsContainingFlag(client *Client, projectKey, flagKey string) ([]string, error) {
 	url := buildViewAssociationsURL(client, projectKey, "flags", flagKey)
