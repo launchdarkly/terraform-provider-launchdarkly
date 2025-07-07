@@ -42,7 +42,7 @@ This resource allows you to efficiently link multiple flags (and in the future, 
 				Description:      addForceNewDescription("The view key to link resources to.", true),
 				ValidateDiagFunc: validateKey(),
 			},
-			"flags": {
+			FLAGS: {
 				Type:        schema.TypeSet,
 				Optional:    true,
 				Description: "A set of feature flag keys to link to the view.",
@@ -100,10 +100,10 @@ func resourceViewLinksCreate(ctx context.Context, d *schema.ResourceData, metaRa
 	}
 
 	// Link flags if specified
-	if flagsRaw, ok := d.GetOk("flags"); ok {
+	if flagsRaw, ok := d.GetOk(FLAGS); ok {
 		flags := interfaceSliceToStringSlice(flagsRaw.(*schema.Set).List())
 		if len(flags) > 0 {
-			err = linkResourcesToView(betaClient, projectKey, viewKey, "flags", flags, comment)
+			err = linkResourcesToView(betaClient, projectKey, viewKey, FLAGS, flags, comment)
 			if err != nil {
 				return diag.Errorf("failed to link flags to view %q in project %q: %s", viewKey, projectKey, err)
 			}
@@ -136,7 +136,7 @@ func resourceViewLinksRead(ctx context.Context, d *schema.ResourceData, metaRaw 
 	}
 
 	// Get currently linked flags
-	linkedFlags, err := getLinkedResources(betaClient, projectKey, viewKey, "flags")
+	linkedFlags, err := getLinkedResources(betaClient, projectKey, viewKey, FLAGS)
 	if err != nil {
 		return diag.Errorf("failed to get linked flags for view %q in project %q: %s", viewKey, projectKey, err)
 	}
@@ -146,7 +146,7 @@ func resourceViewLinksRead(ctx context.Context, d *schema.ResourceData, metaRaw 
 		flagKeys[i] = flag.ResourceKey
 	}
 
-	err = d.Set("flags", flagKeys)
+	err = d.Set(FLAGS, flagKeys)
 	if err != nil {
 		return diag.Errorf("failed to set flags for view %q in project %q: %s", viewKey, projectKey, err)
 	}
@@ -165,8 +165,8 @@ func resourceViewLinksUpdate(ctx context.Context, d *schema.ResourceData, metaRa
 	viewKey := d.Get(VIEW_KEY).(string)
 	comment := d.Get("comment").(string)
 
-	if d.HasChange("flags") {
-		oldFlagsRaw, newFlagsRaw := d.GetChange("flags")
+	if d.HasChange(FLAGS) {
+		oldFlagsRaw, newFlagsRaw := d.GetChange(FLAGS)
 		oldFlags := interfaceSliceToStringSlice(oldFlagsRaw.(*schema.Set).List())
 		newFlags := interfaceSliceToStringSlice(newFlagsRaw.(*schema.Set).List())
 
@@ -176,7 +176,7 @@ func resourceViewLinksUpdate(ctx context.Context, d *schema.ResourceData, metaRa
 
 		// Remove flags that are no longer in the list
 		if len(flagsToRemove) > 0 {
-			err = unlinkResourcesFromView(betaClient, projectKey, viewKey, "flags", flagsToRemove, comment)
+			err = unlinkResourcesFromView(betaClient, projectKey, viewKey, FLAGS, flagsToRemove, comment)
 			if err != nil {
 				return diag.Errorf("failed to unlink flags from view %q in project %q: %s", viewKey, projectKey, err)
 			}
@@ -184,7 +184,7 @@ func resourceViewLinksUpdate(ctx context.Context, d *schema.ResourceData, metaRa
 
 		// Add new flags
 		if len(flagsToAdd) > 0 {
-			err = linkResourcesToView(betaClient, projectKey, viewKey, "flags", flagsToAdd, comment)
+			err = linkResourcesToView(betaClient, projectKey, viewKey, FLAGS, flagsToAdd, comment)
 			if err != nil {
 				return diag.Errorf("failed to link flags to view %q in project %q: %s", viewKey, projectKey, err)
 			}
@@ -207,10 +207,10 @@ func resourceViewLinksDelete(ctx context.Context, d *schema.ResourceData, metaRa
 	comment := d.Get("comment").(string)
 
 	// Unlink all flags
-	if flagsRaw, ok := d.GetOk("flags"); ok {
+	if flagsRaw, ok := d.GetOk(FLAGS); ok {
 		flags := interfaceSliceToStringSlice(flagsRaw.(*schema.Set).List())
 		if len(flags) > 0 {
-			err = unlinkResourcesFromView(betaClient, projectKey, viewKey, "flags", flags, comment)
+			err = unlinkResourcesFromView(betaClient, projectKey, viewKey, FLAGS, flags, comment)
 			if err != nil {
 				return diag.Errorf("failed to unlink flags from view %q in project %q: %s", viewKey, projectKey, err)
 			}

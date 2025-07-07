@@ -52,6 +52,7 @@ const (
 	FIRST_NAME                       = "first_name"
 	FLAG_ID                          = "flag_id"
 	FLAG_KEY                         = "flag_key"
+	FLAGS                            = "flags"
 	FULL_KEY                         = "full_key"
 	GENERATE_SDK_KEYS                = "generate_sdk_keys"
 	ID                               = "id"

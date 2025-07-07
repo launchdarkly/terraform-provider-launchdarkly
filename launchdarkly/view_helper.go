@@ -70,7 +70,7 @@ func viewRead(ctx context.Context, d *schema.ResourceData, meta interface{}, isD
 
 	// For data sources, also fetch and set linked flags for discovery
 	if isDataSource {
-		linkedFlags, err := getLinkedResources(betaClient, projectKey, viewKey, "flags")
+		linkedFlags, err := getLinkedResources(betaClient, projectKey, viewKey, FLAGS)
 		if err != nil {
 			// Log warning but don't fail the read for discovery data
 			log.Printf("[WARN] failed to get linked flags for view %q in project %q: %v", viewKey, projectKey, err)
@@ -430,7 +430,7 @@ type ViewsResponse struct {
 
 // getViewsContainingFlag finds all views that contain a specific flag using the view-associations endpoint
 func getViewsContainingFlag(client *Client, projectKey, flagKey string) ([]string, error) {
-	url := buildViewAssociationsURL(client, projectKey, "flags", flagKey)
+	url := buildViewAssociationsURL(client, projectKey, FLAGS, flagKey)
 	req, err := http.NewRequestWithContext(client.ctx, "GET", url, nil)
 	if err != nil {
 		return nil, err
