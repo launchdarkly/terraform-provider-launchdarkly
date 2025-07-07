@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"strings"
@@ -123,14 +124,18 @@ func buildViewURL(client *Client, projectKey, viewKey string) string {
 	if host == "" {
 		host = "app.launchdarkly.com"
 	}
+	var url string
 	if viewKey == "" {
-		return fmt.Sprintf("https://%s/api/v2/projects/%s/views", host, projectKey)
+		url = fmt.Sprintf("https://%s/api/v2/projects/%s/views", host, projectKey)
+	} else {
+		url = fmt.Sprintf("https://%s/api/v2/projects/%s/views/%s", host, projectKey, viewKey)
 	}
-	return fmt.Sprintf("https://%s/api/v2/projects/%s/views/%s", host, projectKey, viewKey)
+	return url
 }
 
 func getViewRaw(client *Client, projectKey, viewKey string) (*View, *http.Response, error) {
 	url := buildViewURL(client, projectKey, viewKey)
+
 	req, err := http.NewRequestWithContext(client.ctx, "GET", url, nil)
 	if err != nil {
 		return nil, nil, err
@@ -138,7 +143,7 @@ func getViewRaw(client *Client, projectKey, viewKey string) (*View, *http.Respon
 
 	req.Header.Set("Authorization", client.apiKey)
 	req.Header.Set("Content-Type", "application/json")
-	// LD-API-Version header is automatically set by beta client
+	req.Header.Set("LD-API-Version", "beta")
 
 	resp, err := client.ld.GetConfig().HTTPClient.Do(req)
 	if err != nil {
@@ -146,13 +151,17 @@ func getViewRaw(client *Client, projectKey, viewKey string) (*View, *http.Respon
 	}
 	defer resp.Body.Close()
 
+	body, readErr := io.ReadAll(resp.Body)
+	if readErr != nil {
+		return nil, resp, readErr
+	}
+
 	if resp.StatusCode >= 400 {
-		return nil, resp, fmt.Errorf("HTTP %d: %s", resp.StatusCode, resp.Status)
+		return nil, resp, fmt.Errorf("LaunchDarkly API error - Status: %d, Response: %s", resp.StatusCode, string(body))
 	}
 
 	var view View
-	err = json.NewDecoder(resp.Body).Decode(&view)
-	if err != nil {
+	if err := json.Unmarshal(body, &view); err != nil {
 		return nil, resp, err
 	}
 
@@ -173,7 +182,7 @@ func createView(client *Client, projectKey string, viewPost map[string]interface
 
 	req.Header.Set("Authorization", client.apiKey)
 	req.Header.Set("Content-Type", "application/json")
-	// LD-API-Version header is automatically set by beta client
+	req.Header.Set("LD-API-Version", "beta")
 
 	resp, err := client.ld.GetConfig().HTTPClient.Do(req)
 	if err != nil {
@@ -181,13 +190,17 @@ func createView(client *Client, projectKey string, viewPost map[string]interface
 	}
 	defer resp.Body.Close()
 
+	body, readErr := io.ReadAll(resp.Body)
+	if readErr != nil {
+		return nil, readErr
+	}
+
 	if resp.StatusCode >= 400 {
-		return nil, fmt.Errorf("HTTP %d: %s", resp.StatusCode, resp.Status)
+		return nil, fmt.Errorf("LaunchDarkly API error - Status: %d, Response: %s", resp.StatusCode, string(body))
 	}
 
 	var view View
-	err = json.NewDecoder(resp.Body).Decode(&view)
-	if err != nil {
+	if err := json.Unmarshal(body, &view); err != nil {
 		return nil, err
 	}
 
@@ -196,7 +209,6 @@ func createView(client *Client, projectKey string, viewPost map[string]interface
 
 func patchView(client *Client, projectKey, viewKey string, patch map[string]interface{}) error {
 	url := buildViewURL(client, projectKey, viewKey)
-
 	jsonData, err := json.Marshal(patch)
 	if err != nil {
 		return err
@@ -209,7 +221,7 @@ func patchView(client *Client, projectKey, viewKey string, patch map[string]inte
 
 	req.Header.Set("Authorization", client.apiKey)
 	req.Header.Set("Content-Type", "application/json")
-	// LD-API-Version header is automatically set by beta client
+	req.Header.Set("LD-API-Version", "beta")
 
 	resp, err := client.ld.GetConfig().HTTPClient.Do(req)
 	if err != nil {
@@ -217,8 +229,13 @@ func patchView(client *Client, projectKey, viewKey string, patch map[string]inte
 	}
 	defer resp.Body.Close()
 
+	body, readErr := io.ReadAll(resp.Body)
+	if readErr != nil {
+		return readErr
+	}
+
 	if resp.StatusCode >= 400 {
-		return fmt.Errorf("HTTP %d: %s", resp.StatusCode, resp.Status)
+		return fmt.Errorf("LaunchDarkly API error - Status: %d, Response: %s", resp.StatusCode, string(body))
 	}
 
 	return nil
@@ -226,6 +243,7 @@ func patchView(client *Client, projectKey, viewKey string, patch map[string]inte
 
 func deleteView(client *Client, projectKey, viewKey string) error {
 	url := buildViewURL(client, projectKey, viewKey)
+
 	req, err := http.NewRequestWithContext(client.ctx, "DELETE", url, nil)
 	if err != nil {
 		return err
@@ -233,7 +251,7 @@ func deleteView(client *Client, projectKey, viewKey string) error {
 
 	req.Header.Set("Authorization", client.apiKey)
 	req.Header.Set("Content-Type", "application/json")
-	// LD-API-Version header is automatically set by beta client
+	req.Header.Set("LD-API-Version", "beta")
 
 	resp, err := client.ld.GetConfig().HTTPClient.Do(req)
 	if err != nil {
@@ -241,8 +259,13 @@ func deleteView(client *Client, projectKey, viewKey string) error {
 	}
 	defer resp.Body.Close()
 
+	body, readErr := io.ReadAll(resp.Body)
+	if readErr != nil {
+		return readErr
+	}
+
 	if resp.StatusCode >= 400 {
-		return fmt.Errorf("HTTP %d: %s", resp.StatusCode, resp.Status)
+		return fmt.Errorf("LaunchDarkly API error - Status: %d, Response: %s", resp.StatusCode, string(body))
 	}
 
 	return nil
@@ -287,7 +310,7 @@ func linkResourcesToView(client *Client, projectKey, viewKey, resourceType strin
 
 	req.Header.Set("Authorization", client.apiKey)
 	req.Header.Set("Content-Type", "application/json")
-	// LD-API-Version header is automatically set by beta client
+	req.Header.Set("LD-API-Version", "beta")
 
 	resp, err := client.ld.GetConfig().HTTPClient.Do(req)
 	if err != nil {
@@ -296,7 +319,8 @@ func linkResourcesToView(client *Client, projectKey, viewKey, resourceType strin
 	defer resp.Body.Close()
 
 	if resp.StatusCode >= 400 {
-		return fmt.Errorf("HTTP %d: %s", resp.StatusCode, resp.Status)
+		body, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("HTTP %d: %s", resp.StatusCode, string(body))
 	}
 
 	return nil
@@ -323,7 +347,7 @@ func unlinkResourcesFromView(client *Client, projectKey, viewKey, resourceType s
 
 	req.Header.Set("Authorization", client.apiKey)
 	req.Header.Set("Content-Type", "application/json")
-	// LD-API-Version header is automatically set by beta client
+	req.Header.Set("LD-API-Version", "beta")
 
 	resp, err := client.ld.GetConfig().HTTPClient.Do(req)
 	if err != nil {
@@ -332,7 +356,8 @@ func unlinkResourcesFromView(client *Client, projectKey, viewKey, resourceType s
 	defer resp.Body.Close()
 
 	if resp.StatusCode >= 400 {
-		return fmt.Errorf("HTTP %d: %s", resp.StatusCode, resp.Status)
+		body, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("HTTP %d: %s", resp.StatusCode, string(body))
 	}
 
 	return nil
@@ -349,7 +374,7 @@ func getLinkedResources(client *Client, projectKey, viewKey, resourceType string
 
 	req.Header.Set("Authorization", client.apiKey)
 	req.Header.Set("Content-Type", "application/json")
-	// LD-API-Version header is automatically set by beta client
+	req.Header.Set("LD-API-Version", "beta")
 
 	resp, err := client.ld.GetConfig().HTTPClient.Do(req)
 	if err != nil {
@@ -358,7 +383,8 @@ func getLinkedResources(client *Client, projectKey, viewKey, resourceType string
 	defer resp.Body.Close()
 
 	if resp.StatusCode >= 400 {
-		return nil, fmt.Errorf("HTTP %d: %s", resp.StatusCode, resp.Status)
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("HTTP %d: %s", resp.StatusCode, string(body))
 	}
 
 	var linkedResources ViewLinkedResources
@@ -412,7 +438,7 @@ func getViewsContainingFlag(client *Client, projectKey, flagKey string) ([]strin
 
 	req.Header.Set("Authorization", client.apiKey)
 	req.Header.Set("Content-Type", "application/json")
-	// LD-API-Version header is automatically set by beta client
+	req.Header.Set("LD-API-Version", "beta")
 
 	resp, err := client.ld.GetConfig().HTTPClient.Do(req)
 	if err != nil {
@@ -421,7 +447,8 @@ func getViewsContainingFlag(client *Client, projectKey, flagKey string) ([]strin
 	defer resp.Body.Close()
 
 	if resp.StatusCode >= 400 {
-		return nil, fmt.Errorf("HTTP %d: %s", resp.StatusCode, resp.Status)
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("HTTP %d: %s", resp.StatusCode, string(body))
 	}
 
 	var viewsResponse ViewsResponse
