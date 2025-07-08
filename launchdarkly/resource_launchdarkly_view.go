@@ -154,17 +154,17 @@ func resourceViewUpdate(ctx context.Context, d *schema.ResourceData, metaRaw int
 	if d.HasChange(MAINTAINER_ID) {
 		if maintainerId, ok := d.GetOk(MAINTAINER_ID); ok {
 			patch["maintainerId"] = maintainerId.(string)
-		} else {
-			patch["maintainerId"] = nil
 		}
+		// Note: We don't set maintainerId to nil when removed, as the API doesn't accept null values
+		// The field will be omitted from the patch, which is the correct behavior
 	}
 
 	if d.HasChange(MAINTAINER_TEAM_KEY) {
 		if maintainerTeamKey, ok := d.GetOk(MAINTAINER_TEAM_KEY); ok {
 			patch["maintainerTeamKey"] = maintainerTeamKey.(string)
-		} else {
-			patch["maintainerTeamKey"] = nil
 		}
+		// Note: We don't set maintainerTeamKey to nil when removed, as the API doesn't accept null values
+		// The field will be omitted from the patch, which is the correct behavior
 	}
 
 	if d.HasChange(TAGS) {

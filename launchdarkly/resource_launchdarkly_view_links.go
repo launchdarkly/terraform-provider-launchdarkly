@@ -44,6 +44,7 @@ This resource allows you to efficiently link multiple flags (and in the future, 
 			},
 			FLAGS: {
 				Type:        schema.TypeSet,
+				Set:         schema.HashString,
 				Optional:    true,
 				Description: "A set of feature flag keys to link to the view.",
 				Elem: &schema.Schema{

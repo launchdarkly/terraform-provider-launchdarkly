@@ -339,7 +339,7 @@ func chunkStringSlice(slice []string, chunkSize int) [][]string {
 // The API supports a maximum of 20 keys per request, so we chunk the keys accordingly
 func linkResourcesToView(client *Client, projectKey, viewKey, resourceType string, resourceKeys []string, comment string) error {
 	// Flagged on the BE, can't read flag here
-	const maxKeysPerRequest = 20
+	const maxKeysPerRequest = 10
 
 	// Handle empty slice
 	if len(resourceKeys) == 0 {
@@ -410,7 +410,7 @@ func linkResourceChunkToView(client *Client, projectKey, viewKey, resourceType s
 // unlinkResourcesFromView unlinks resources from a view
 func unlinkResourcesFromView(client *Client, projectKey, viewKey, resourceType string, resourceKeys []string, comment string) error {
 	// Flagged on the BE, can't read flag here
-	const maxKeysPerRequest = 20
+	const maxKeysPerRequest = 10
 
 	// Handle empty slice
 	if len(resourceKeys) == 0 {
