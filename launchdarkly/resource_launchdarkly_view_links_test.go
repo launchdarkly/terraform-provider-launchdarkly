@@ -112,6 +112,7 @@ func TestAccViewLinks_Create(t *testing.T) {
 	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	projectName := "view-links-test-" + projectKey
 	resourceName := "launchdarkly_view_links.test"
+
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
 			testAccPreCheck(t)
