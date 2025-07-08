@@ -50,17 +50,50 @@ func viewRead(ctx context.Context, d *schema.ResourceData, meta interface{}, isD
 	_ = d.Set(GENERATE_SDK_KEYS, view.GenerateSdkKeys)
 	_ = d.Set(ARCHIVED, view.Archived)
 
+	// Handle maintainer assignment more intelligently
+	// Only set maintainer fields in state if they were explicitly configured by the user
+	// This prevents auto-assigned maintainer IDs from causing plan drift
+	var maintainerIDExplicitlySet, maintainerTeamKeyExplicitlySet bool
+
+	rawConfig := d.GetRawConfig()
+	if !rawConfig.IsNull() {
+		configMaintainerID := rawConfig.GetAttr("maintainer_id")
+		configMaintainerTeamKey := rawConfig.GetAttr("maintainer_team_key")
+
+		maintainerIDExplicitlySet = !configMaintainerID.IsNull()
+		maintainerTeamKeyExplicitlySet = !configMaintainerTeamKey.IsNull()
+	} else {
+		// Fallback: check if values are already set in state (for backwards compatibility)
+		_, maintainerIDExplicitlySet = d.GetOk(MAINTAINER_ID)
+		_, maintainerTeamKeyExplicitlySet = d.GetOk(MAINTAINER_TEAM_KEY)
+	}
+
 	if view.Maintainer != nil {
 		if view.Maintainer.Kind == "member" && view.Maintainer.MaintainerMember != nil {
-			_ = d.Set(MAINTAINER_ID, view.Maintainer.MaintainerMember.Id)
-			_ = d.Set(MAINTAINER_TEAM_KEY, "")
+			// Only set maintainer_id in state if it was explicitly configured
+			if maintainerIDExplicitlySet {
+				_ = d.Set(MAINTAINER_ID, view.Maintainer.MaintainerMember.Id)
+			}
+			if maintainerTeamKeyExplicitlySet {
+				_ = d.Set(MAINTAINER_TEAM_KEY, "")
+			}
 		} else if view.Maintainer.Kind == "team" && view.Maintainer.MaintainerTeam != nil {
-			_ = d.Set(MAINTAINER_TEAM_KEY, view.Maintainer.MaintainerTeam.Key)
-			_ = d.Set(MAINTAINER_ID, "")
+			// Only set maintainer_team_key in state if it was explicitly configured
+			if maintainerTeamKeyExplicitlySet {
+				_ = d.Set(MAINTAINER_TEAM_KEY, view.Maintainer.MaintainerTeam.Key)
+			}
+			if maintainerIDExplicitlySet {
+				_ = d.Set(MAINTAINER_ID, "")
+			}
 		}
 	} else {
-		_ = d.Set(MAINTAINER_ID, "")
-		_ = d.Set(MAINTAINER_TEAM_KEY, "")
+		// Only clear maintainer fields if they were explicitly configured
+		if maintainerIDExplicitlySet {
+			_ = d.Set(MAINTAINER_ID, "")
+		}
+		if maintainerTeamKeyExplicitlySet {
+			_ = d.Set(MAINTAINER_TEAM_KEY, "")
+		}
 	}
 
 	err = d.Set(TAGS, view.Tags)
