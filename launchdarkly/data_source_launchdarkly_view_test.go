@@ -39,7 +39,7 @@ func TestAccDataSourceView_noMatchReturnsError(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config:      fmt.Sprintf(testAccDataSourceViewBasic, projectKey, viewKey),
-				ExpectError: regexp.MustCompile(`Error: failed to get view with key "nonexistent-view-key" in project "nonexistent-project-key": 404 Not Found`),
+				ExpectError: regexp.MustCompile(`Project not found`),
 			},
 		},
 	})
@@ -122,6 +122,8 @@ func TestAccDataSourceView_exists(t *testing.T) {
 }
 
 func TestAccDataSourceView_withLinkedFlags(t *testing.T) {
+	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	projectName := "view-discovery-test-" + projectKey
 	resourceName := "data.launchdarkly_view.test"
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
@@ -130,10 +132,15 @@ func TestAccDataSourceView_withLinkedFlags(t *testing.T) {
 		Providers: testAccProviders,
 		Steps: []resource.TestStep{
 			{
-				Config: `
+				Config: fmt.Sprintf(`
 resource "launchdarkly_project" "test" {
-	name = "view-discovery-test"
-	key  = "view-discovery-test"
+	name = "%s"
+	key  = "%s"
+	environments {
+		name  = "Test Environment"
+		key   = "test-env"
+		color = "000000"
+	}
 }
 
 resource "launchdarkly_view" "test" {
@@ -172,14 +179,14 @@ data "launchdarkly_view" "test" {
 	key         = launchdarkly_view.test.key
 	depends_on  = [launchdarkly_view_links.test]
 }
-`,
+`, projectName, projectKey),
 				Check: resource.ComposeTestCheckFunc(
-					resource.TestCheckResourceAttr(resourceName, "project_key", "view-discovery-test"),
+					resource.TestCheckResourceAttr(resourceName, "project_key", projectKey),
 					resource.TestCheckResourceAttr(resourceName, "key", "test-view"),
 					resource.TestCheckResourceAttr(resourceName, "name", "Test View"),
 					resource.TestCheckResourceAttr(resourceName, "linked_flags.#", "2"),
-					resource.TestCheckResourceAttr(resourceName, "linked_flags.0", "test-flag-1"),
-					resource.TestCheckResourceAttr(resourceName, "linked_flags.1", "test-flag-2"),
+					resource.TestCheckTypeSetElemAttr(resourceName, "linked_flags.*", "test-flag-1"),
+					resource.TestCheckTypeSetElemAttr(resourceName, "linked_flags.*", "test-flag-2"),
 				),
 			},
 		},

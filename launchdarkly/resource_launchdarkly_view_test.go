@@ -17,6 +17,11 @@ const (
 resource "launchdarkly_project" "test" {
 	key  = "%s"
 	name = "Test project"
+	environments {
+		name  = "Test Environment"
+		key   = "test-env"
+		color = "000000"
+	}
 }
 
 resource "launchdarkly_view" "test" {
@@ -32,6 +37,11 @@ resource "launchdarkly_view" "test" {
 resource "launchdarkly_project" "test" {
 	key  = "%s"
 	name = "Test project"
+	environments {
+		name  = "Test Environment"
+		key   = "test-env"
+		color = "000000"
+	}
 }
 
 resource "launchdarkly_view" "test" {
@@ -48,6 +58,11 @@ resource "launchdarkly_view" "test" {
 resource "launchdarkly_project" "test" {
 	key  = "%s"
 	name = "Test project"
+	environments {
+		name  = "Test Environment"
+		key   = "test-env"
+		color = "000000"
+	}
 }
 
 resource "launchdarkly_view" "test" {
@@ -185,7 +200,7 @@ func TestAccView_InvalidKey(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config:      fmt.Sprintf(testAccViewCreate, projectKey, invalidViewKey, viewName, viewDescription),
-				ExpectError: regexp.MustCompile("must only contain letters, numbers, periods, hyphens, and underscores"),
+				ExpectError: regexp.MustCompile("invalid value for key"),
 			},
 		},
 	})

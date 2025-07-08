@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 )
@@ -11,8 +12,13 @@ import (
 const (
 	testAccViewLinksCreate = `
 resource "launchdarkly_project" "test" {
-	name = "view-links-test"
-	key  = "view-links-test"
+	name = "%s"
+	key  = "%s"
+	environments {
+		name  = "Test Environment"
+		key   = "test-env"
+		color = "000000"
+	}
 }
 
 resource "launchdarkly_view" "test" {
@@ -51,8 +57,13 @@ resource "launchdarkly_view_links" "test" {
 
 	testAccViewLinksUpdate = `
 resource "launchdarkly_project" "test" {
-	name = "view-links-test"
-	key  = "view-links-test"
+	name = "%s"
+	key  = "%s"
+	environments {
+		name  = "Test Environment"
+		key   = "test-env"
+		color = "000000"
+	}
 }
 
 resource "launchdarkly_view" "test" {
@@ -98,6 +109,8 @@ resource "launchdarkly_view_links" "test" {
 )
 
 func TestAccViewLinks_Create(t *testing.T) {
+	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	projectName := "view-links-test-" + projectKey
 	resourceName := "launchdarkly_view_links.test"
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
@@ -106,10 +119,10 @@ func TestAccViewLinks_Create(t *testing.T) {
 		Providers: testAccProviders,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccViewLinksCreate,
+				Config: fmt.Sprintf(testAccViewLinksCreate, projectName, projectKey),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckViewLinksExists(resourceName),
-					resource.TestCheckResourceAttr(resourceName, "project_key", "view-links-test"),
+					resource.TestCheckResourceAttr(resourceName, "project_key", projectKey),
 					resource.TestCheckResourceAttr(resourceName, "view_key", "test-view"),
 					resource.TestCheckResourceAttr(resourceName, "flags.#", "2"),
 					resource.TestCheckTypeSetElemAttr(resourceName, "flags.*", "test-flag-1"),
@@ -122,6 +135,8 @@ func TestAccViewLinks_Create(t *testing.T) {
 }
 
 func TestAccViewLinks_Update(t *testing.T) {
+	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	projectName := "view-links-test-" + projectKey
 	resourceName := "launchdarkly_view_links.test"
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
@@ -130,7 +145,7 @@ func TestAccViewLinks_Update(t *testing.T) {
 		Providers: testAccProviders,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccViewLinksCreate,
+				Config: fmt.Sprintf(testAccViewLinksCreate, projectName, projectKey),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckViewLinksExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, "flags.#", "2"),
@@ -139,7 +154,7 @@ func TestAccViewLinks_Update(t *testing.T) {
 				),
 			},
 			{
-				Config: testAccViewLinksUpdate,
+				Config: fmt.Sprintf(testAccViewLinksUpdate, projectName, projectKey),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckViewLinksExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, "flags.#", "2"),
@@ -153,6 +168,8 @@ func TestAccViewLinks_Update(t *testing.T) {
 }
 
 func TestAccViewLinks_Import(t *testing.T) {
+	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	projectName := "view-links-test-" + projectKey
 	resourceName := "launchdarkly_view_links.test"
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
@@ -161,7 +178,7 @@ func TestAccViewLinks_Import(t *testing.T) {
 		Providers: testAccProviders,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccViewLinksCreate,
+				Config: fmt.Sprintf(testAccViewLinksCreate, projectName, projectKey),
 			},
 			{
 				ResourceName:            resourceName,

@@ -121,91 +121,75 @@ func TestAccDataSourceFeatureFlag_exists(t *testing.T) {
 }
 
 func TestAccDataSourceFeatureFlag_withViews(t *testing.T) {
-	accTest := os.Getenv("TF_ACC")
-	if accTest == "" {
-		t.SkipNow()
-	}
-
 	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	flagKey := "test-flag-views"
 
 	testAccDataSourceFeatureFlagWithViews := `
+resource "launchdarkly_project" "test" {
+	key  = "%s"
+	name = "Terraform Flag Views Test Project"
+	environments {
+		name  = "Test Environment"
+		key   = "test-env"
+		color = "000000"
+	}
+}
+
+resource "launchdarkly_feature_flag" "test" {
+	project_key    = launchdarkly_project.test.key
+	key            = "%s"
+	name           = "Test Flag with Views"
+	description    = "a flag to test views in the terraform flag data source"
+	variation_type = "boolean"
+	temporary      = false
+}
+
 resource "launchdarkly_view" "test1" {
-	project_key = "%s"
+	project_key = launchdarkly_project.test.key
 	key         = "test-view-1"
 	name        = "Test View 1"
 }
 
 resource "launchdarkly_view" "test2" {
-	project_key = "%s"
+	project_key = launchdarkly_project.test.key
 	key         = "test-view-2"
 	name        = "Test View 2"
 }
 
 resource "launchdarkly_view_links" "test1" {
-	project_key = "%s"
+	project_key = launchdarkly_project.test.key
 	view_key    = launchdarkly_view.test1.key
 	
-	flags = ["%s"]
+	flags = [launchdarkly_feature_flag.test.key]
 }
 
 resource "launchdarkly_view_links" "test2" {
-	project_key = "%s"
+	project_key = launchdarkly_project.test.key
 	view_key    = launchdarkly_view.test2.key
 	
-	flags = ["%s"]
+	flags = [launchdarkly_feature_flag.test.key]
 }
 
 data "launchdarkly_feature_flag" "test" {
-	project_key = "%s"
-	key         = "%s"
+	project_key = launchdarkly_project.test.key
+	key         = launchdarkly_feature_flag.test.key
 	depends_on  = [launchdarkly_view_links.test1, launchdarkly_view_links.test2]
 }
 `
 
-	client, err := newClient(os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN), os.Getenv(LAUNCHDARKLY_API_HOST), false, DEFAULT_HTTP_TIMEOUT_S)
-	require.NoError(t, err)
-
-	projectBody := ldapi.ProjectPost{
-		Name: "Terraform Flag Views Test Project",
-		Key:  projectKey,
-	}
-	_, err = testAccProjectScaffoldCreate(client, projectBody)
-	require.NoError(t, err)
-
-	flagName := "Test Flag with Views"
-	flagBody := ldapi.FeatureFlagBody{
-		Name: flagName,
-		Key:  flagKey,
-		Variations: []ldapi.Variation{
-			{Value: intfPtr(true)},
-			{Value: intfPtr(false)},
-		},
-		Description: ldapi.PtrString("a flag to test views in the terraform flag data source"),
-		Temporary:   ldapi.PtrBool(false),
-	}
-	flag, err := testAccFeatureFlagScaffold(client, projectKey, flagBody)
-	require.NoError(t, err)
-
-	defer func() {
-		err := testAccProjectScaffoldDelete(client, projectKey)
-		require.NoError(t, err)
-	}()
-
 	resourceName := "data.launchdarkly_feature_flag.test"
-	resource.Test(t, resource.TestCase{
+	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
 		Providers: testAccProviders,
 		Steps: []resource.TestStep{
 			{
-				Config: fmt.Sprintf(testAccDataSourceFeatureFlagWithViews,
-					projectKey, projectKey, projectKey, flagKey, projectKey, flagKey, projectKey, flagKey),
+				Config: fmt.Sprintf(testAccDataSourceFeatureFlagWithViews, projectKey, flagKey),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr(resourceName, "project_key", projectKey),
-					resource.TestCheckResourceAttr(resourceName, "key", flag.Key),
-					resource.TestCheckResourceAttr(resourceName, "name", flag.Name),
+					resource.TestCheckResourceAttr(resourceName, "key", flagKey),
+					resource.TestCheckResourceAttr(resourceName, "name", "Test Flag with Views"),
 					resource.TestCheckResourceAttr(resourceName, "views.#", "2"),
 					resource.TestCheckTypeSetElemAttr(resourceName, "views.*", "test-view-1"),
 					resource.TestCheckTypeSetElemAttr(resourceName, "views.*", "test-view-2"),
