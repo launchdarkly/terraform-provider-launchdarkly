@@ -2,11 +2,13 @@ package launchdarkly
 
 import (
 	"fmt"
+	"os"
 	"regexp"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/stretchr/testify/require"
 )
 
 const (
@@ -36,12 +38,26 @@ func TestAccDataSourceView_noMatchReturnsError(t *testing.T) {
 }
 
 func TestAccDataSourceView_exists(t *testing.T) {
+	accTest := os.Getenv("TF_ACC")
+	if accTest == "" {
+		t.SkipNow()
+	}
+
 	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	projectName := "view-data-source-test-" + projectKey
 	viewKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	viewName := "Terraform Test View"
 	viewDescription := "Test view description"
 	tag := "test-tag"
+
+	client, err := newClient(os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN), os.Getenv(LAUNCHDARKLY_API_HOST), false, DEFAULT_HTTP_TIMEOUT_S)
+	require.NoError(t, err)
+
+	members, _, err := client.ld.AccountMembersApi.GetMembers(client.ctx).Execute()
+	require.NoError(t, err)
+	require.True(t, len(members.Items) > 0, "This test requires at least one member in the account")
+
+	maintainerId := members.Items[0].Id
 
 	resourceName := "data.launchdarkly_view.test"
 	resource.ParallelTest(t, resource.TestCase{
@@ -63,18 +79,19 @@ resource "launchdarkly_project" "test" {
 }
 
 resource "launchdarkly_view" "test" {
-	project_key = launchdarkly_project.test.key
-	key         = "%s"
-	name        = "%s"
-	description = "%s"
-	tags        = ["%s"]
+	project_key   = launchdarkly_project.test.key
+	key           = "%s"
+	name          = "%s"
+	description   = "%s"
+	maintainer_id = "%s"
+	tags          = ["%s"]
 }
 
 data "launchdarkly_view" "test" {
 	project_key = launchdarkly_project.test.key
 	key         = launchdarkly_view.test.key
 }
-`, projectName, projectKey, viewKey, viewName, viewDescription, tag),
+`, projectName, projectKey, viewKey, viewName, viewDescription, maintainerId, tag),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttrSet(resourceName, PROJECT_KEY),
 					resource.TestCheckResourceAttrSet(resourceName, KEY),
@@ -94,9 +111,24 @@ data "launchdarkly_view" "test" {
 }
 
 func TestAccDataSourceView_withLinkedFlags(t *testing.T) {
+	accTest := os.Getenv("TF_ACC")
+	if accTest == "" {
+		t.SkipNow()
+	}
+
 	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	projectName := "view-discovery-test-" + projectKey
 	resourceName := "data.launchdarkly_view.test"
+
+	client, err := newClient(os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN), os.Getenv(LAUNCHDARKLY_API_HOST), false, DEFAULT_HTTP_TIMEOUT_S)
+	require.NoError(t, err)
+
+	members, _, err := client.ld.AccountMembersApi.GetMembers(client.ctx).Execute()
+	require.NoError(t, err)
+	require.True(t, len(members.Items) > 0, "This test requires at least one member in the account")
+
+	maintainerId := members.Items[0].Id
+
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
 			testAccPreCheck(t)
@@ -116,10 +148,11 @@ resource "launchdarkly_project" "test" {
 }
 
 resource "launchdarkly_view" "test" {
-	project_key = launchdarkly_project.test.key
-	key         = "test-view"
-	name        = "Test View"
-	description = "Test view for discovery testing"
+	project_key   = launchdarkly_project.test.key
+	key           = "test-view"
+	name          = "Test View"
+	description   = "Test view for discovery testing"
+	maintainer_id = "%s"
 }
 
 resource "launchdarkly_feature_flag" "test1" {
@@ -151,7 +184,7 @@ data "launchdarkly_view" "test" {
 	key         = launchdarkly_view.test.key
 	depends_on  = [launchdarkly_view_links.test]
 }
-`, projectName, projectKey),
+`, projectName, projectKey, maintainerId),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr(resourceName, "project_key", projectKey),
 					resource.TestCheckResourceAttr(resourceName, "key", "test-view"),

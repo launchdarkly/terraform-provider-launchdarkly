@@ -121,8 +121,22 @@ func TestAccDataSourceFeatureFlag_exists(t *testing.T) {
 }
 
 func TestAccDataSourceFeatureFlag_withViews(t *testing.T) {
+	accTest := os.Getenv("TF_ACC")
+	if accTest == "" {
+		t.SkipNow()
+	}
+
 	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	flagKey := "test-flag-views"
+
+	client, err := newClient(os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN), os.Getenv(LAUNCHDARKLY_API_HOST), false, DEFAULT_HTTP_TIMEOUT_S)
+	require.NoError(t, err)
+
+	members, _, err := client.ld.AccountMembersApi.GetMembers(client.ctx).Execute()
+	require.NoError(t, err)
+	require.True(t, len(members.Items) > 0, "This test requires at least one member in the account")
+
+	maintainerId := members.Items[0].Id
 
 	testAccDataSourceFeatureFlagWithViews := `
 resource "launchdarkly_project" "test" {
@@ -145,15 +159,17 @@ resource "launchdarkly_feature_flag" "test" {
 }
 
 resource "launchdarkly_view" "test1" {
-	project_key = launchdarkly_project.test.key
-	key         = "test-view-1"
-	name        = "Test View 1"
+	project_key   = launchdarkly_project.test.key
+	key           = "test-view-1"
+	name          = "Test View 1"
+	maintainer_id = "%s"
 }
 
 resource "launchdarkly_view" "test2" {
-	project_key = launchdarkly_project.test.key
-	key         = "test-view-2"
-	name        = "Test View 2"
+	project_key   = launchdarkly_project.test.key
+	key           = "test-view-2"
+	name          = "Test View 2"
+	maintainer_id = "%s"
 }
 
 resource "launchdarkly_view_links" "test1" {
@@ -185,7 +201,7 @@ data "launchdarkly_feature_flag" "test" {
 		Providers: testAccProviders,
 		Steps: []resource.TestStep{
 			{
-				Config: fmt.Sprintf(testAccDataSourceFeatureFlagWithViews, projectKey, flagKey),
+				Config: fmt.Sprintf(testAccDataSourceFeatureFlagWithViews, projectKey, flagKey, maintainerId, maintainerId),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr(resourceName, "project_key", projectKey),
 					resource.TestCheckResourceAttr(resourceName, "key", flagKey),

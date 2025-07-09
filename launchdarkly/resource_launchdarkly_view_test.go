@@ -30,6 +30,7 @@ resource "launchdarkly_view" "test" {
 	name        = "%s"
 	description = "%s"
 	tags        = ["test"]
+	maintainer_id = "%s"
 }
 `
 
@@ -76,7 +77,6 @@ resource "launchdarkly_view" "test" {
 `
 )
 
-
 func TestAccView_Update(t *testing.T) {
 	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	viewKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
@@ -86,6 +86,15 @@ func TestAccView_Update(t *testing.T) {
 	updatedViewDescription := "Updated test view description"
 	resourceName := "launchdarkly_view.test"
 
+	client, err := newClient(os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN), os.Getenv(LAUNCHDARKLY_API_HOST), false, DEFAULT_HTTP_TIMEOUT_S)
+	require.NoError(t, err)
+
+	members, _, err := client.ld.AccountMembersApi.GetMembers(client.ctx).Execute()
+	require.NoError(t, err)
+	require.True(t, len(members.Items) > 0, "This test requires at least one member in the account")
+
+	maintainerId := members.Items[0].Id
+
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
 			testAccPreCheck(t)
@@ -94,7 +103,7 @@ func TestAccView_Update(t *testing.T) {
 		CheckDestroy: testAccCheckViewDestroy,
 		Steps: []resource.TestStep{
 			{
-				Config: fmt.Sprintf(testAccViewCreate, projectKey, viewKey, viewName, viewDescription),
+				Config: fmt.Sprintf(testAccViewCreate, projectKey, viewKey, viewName, viewDescription, maintainerId),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckViewExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, PROJECT_KEY, projectKey),
@@ -160,10 +169,24 @@ func TestAccView_WithMaintainer(t *testing.T) {
 }
 
 func TestAccView_InvalidKey(t *testing.T) {
+	accTest := os.Getenv("TF_ACC")
+	if accTest == "" {
+		t.SkipNow()
+	}
+
 	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	invalidViewKey := "invalid key with spaces"
 	viewName := "Test View"
 	viewDescription := "Test view description"
+
+	client, err := newClient(os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN), os.Getenv(LAUNCHDARKLY_API_HOST), false, DEFAULT_HTTP_TIMEOUT_S)
+	require.NoError(t, err)
+
+	members, _, err := client.ld.AccountMembersApi.GetMembers(client.ctx).Execute()
+	require.NoError(t, err)
+	require.True(t, len(members.Items) > 0, "This test requires at least one member in the account")
+
+	maintainerId := members.Items[0].Id
 
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
@@ -172,7 +195,7 @@ func TestAccView_InvalidKey(t *testing.T) {
 		Providers: testAccProviders,
 		Steps: []resource.TestStep{
 			{
-				Config:      fmt.Sprintf(testAccViewCreate, projectKey, invalidViewKey, viewName, viewDescription),
+				Config:      fmt.Sprintf(testAccViewCreate, projectKey, invalidViewKey, viewName, viewDescription, maintainerId),
 				ExpectError: regexp.MustCompile("invalid value for key"),
 			},
 		},

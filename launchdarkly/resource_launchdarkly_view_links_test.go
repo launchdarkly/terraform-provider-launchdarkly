@@ -2,11 +2,13 @@ package launchdarkly
 
 import (
 	"fmt"
+	"os"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
+	"github.com/stretchr/testify/require"
 )
 
 const (
@@ -26,6 +28,7 @@ resource "launchdarkly_view" "test" {
 	key         = "test-view"
 	name        = "Test View"
 	description = "Test view for link testing"
+	maintainer_id = "%s"
 }
 
 resource "launchdarkly_feature_flag" "test1" {
@@ -71,6 +74,7 @@ resource "launchdarkly_view" "test" {
 	key         = "test-view"
 	name        = "Test View"
 	description = "Test view for link testing"
+	maintainer_id = "%s"
 }
 
 resource "launchdarkly_feature_flag" "test1" {
@@ -109,9 +113,23 @@ resource "launchdarkly_view_links" "test" {
 )
 
 func TestAccViewLinks_Create(t *testing.T) {
+	accTest := os.Getenv("TF_ACC")
+	if accTest == "" {
+		t.SkipNow()
+	}
+
 	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	projectName := "view-links-test-" + projectKey
 	resourceName := "launchdarkly_view_links.test"
+
+	client, err := newClient(os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN), os.Getenv(LAUNCHDARKLY_API_HOST), false, DEFAULT_HTTP_TIMEOUT_S)
+	require.NoError(t, err)
+
+	members, _, err := client.ld.AccountMembersApi.GetMembers(client.ctx).Execute()
+	require.NoError(t, err)
+	require.True(t, len(members.Items) > 0, "This test requires at least one member in the account")
+
+	maintainerId := members.Items[0].Id
 
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
@@ -120,7 +138,7 @@ func TestAccViewLinks_Create(t *testing.T) {
 		Providers: testAccProviders,
 		Steps: []resource.TestStep{
 			{
-				Config: fmt.Sprintf(testAccViewLinksCreate, projectName, projectKey),
+				Config: fmt.Sprintf(testAccViewLinksCreate, projectName, projectKey, maintainerId),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckViewLinksExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, "project_key", projectKey),
@@ -136,9 +154,24 @@ func TestAccViewLinks_Create(t *testing.T) {
 }
 
 func TestAccViewLinks_Update(t *testing.T) {
+	accTest := os.Getenv("TF_ACC")
+	if accTest == "" {
+		t.SkipNow()
+	}
+
 	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	projectName := "view-links-test-" + projectKey
 	resourceName := "launchdarkly_view_links.test"
+
+	client, err := newClient(os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN), os.Getenv(LAUNCHDARKLY_API_HOST), false, DEFAULT_HTTP_TIMEOUT_S)
+	require.NoError(t, err)
+
+	members, _, err := client.ld.AccountMembersApi.GetMembers(client.ctx).Execute()
+	require.NoError(t, err)
+	require.True(t, len(members.Items) > 0, "This test requires at least one member in the account")
+
+	maintainerId := members.Items[0].Id
+
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
 			testAccPreCheck(t)
@@ -146,7 +179,7 @@ func TestAccViewLinks_Update(t *testing.T) {
 		Providers: testAccProviders,
 		Steps: []resource.TestStep{
 			{
-				Config: fmt.Sprintf(testAccViewLinksCreate, projectName, projectKey),
+				Config: fmt.Sprintf(testAccViewLinksCreate, projectName, projectKey, maintainerId),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckViewLinksExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, "flags.#", "2"),
@@ -155,7 +188,7 @@ func TestAccViewLinks_Update(t *testing.T) {
 				),
 			},
 			{
-				Config: fmt.Sprintf(testAccViewLinksUpdate, projectName, projectKey),
+				Config: fmt.Sprintf(testAccViewLinksUpdate, projectName, projectKey, maintainerId),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckViewLinksExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, "flags.#", "2"),
@@ -169,9 +202,24 @@ func TestAccViewLinks_Update(t *testing.T) {
 }
 
 func TestAccViewLinks_Import(t *testing.T) {
+	accTest := os.Getenv("TF_ACC")
+	if accTest == "" {
+		t.SkipNow()
+	}
+
 	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	projectName := "view-links-test-" + projectKey
 	resourceName := "launchdarkly_view_links.test"
+
+	client, err := newClient(os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN), os.Getenv(LAUNCHDARKLY_API_HOST), false, DEFAULT_HTTP_TIMEOUT_S)
+	require.NoError(t, err)
+
+	members, _, err := client.ld.AccountMembersApi.GetMembers(client.ctx).Execute()
+	require.NoError(t, err)
+	require.True(t, len(members.Items) > 0, "This test requires at least one member in the account")
+
+	maintainerId := members.Items[0].Id
+
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
 			testAccPreCheck(t)
@@ -179,7 +227,7 @@ func TestAccViewLinks_Import(t *testing.T) {
 		Providers: testAccProviders,
 		Steps: []resource.TestStep{
 			{
-				Config: fmt.Sprintf(testAccViewLinksCreate, projectName, projectKey),
+				Config: fmt.Sprintf(testAccViewLinksCreate, projectName, projectKey, maintainerId),
 			},
 			{
 				ResourceName:            resourceName,
