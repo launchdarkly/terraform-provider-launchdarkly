@@ -152,6 +152,11 @@ func TestAccView_Update(t *testing.T) {
 				),
 			},
 			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
+			{
 				Config: fmt.Sprintf(testAccViewUpdate, projectKey, viewKey, updatedViewName, updatedViewDescription, maintainerId),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckViewExists(resourceName),
@@ -160,6 +165,11 @@ func TestAccView_Update(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, GENERATE_SDK_KEYS, "true"),
 					resource.TestCheckResourceAttr(resourceName, "tags.#", "2"),
 				),
+			},
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
 			},
 			{
 				Config: fmt.Sprintf(testAccViewCreate, projectKey, viewKey, viewName, viewDescription, maintainerId),
@@ -173,6 +183,11 @@ func TestAccView_Update(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, ARCHIVED, "false"),
 					resource.TestCheckResourceAttr(resourceName, "tags.#", "1"),
 				),
+			},
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
 			},
 		},
 	})
@@ -216,6 +231,11 @@ func TestAccView_WithMaintainer(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, MAINTAINER_ID, ""),
 				),
 			},
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
 			// Set the view to be maintained by an individual - but keep the team in our TF config because it would otherwise be deleted before being removed as a maintainer
 			{
 				Config: fmt.Sprintf(testAccViewWithMaintainer, projectKey, teamKey, viewKey, viewName, viewDescription, maintainerId),
@@ -225,6 +245,11 @@ func TestAccView_WithMaintainer(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, MAINTAINER_TEAM_KEY, ""),
 				),
 			},
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
 			// Set the view to be maintained by a team
 			{
 				Config: fmt.Sprintf(testAccViewWithTeamMaintainer, projectKey, teamKey, viewKey, viewName, viewDescription),
@@ -233,6 +258,11 @@ func TestAccView_WithMaintainer(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, MAINTAINER_TEAM_KEY, teamKey),
 					resource.TestCheckResourceAttr(resourceName, MAINTAINER_ID, ""),
 				),
+			},
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
 			},
 		},
 	})

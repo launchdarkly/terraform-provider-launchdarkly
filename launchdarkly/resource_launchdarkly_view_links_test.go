@@ -187,6 +187,11 @@ func TestAccViewLinks_Update(t *testing.T) {
 				),
 			},
 			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
+			{
 				Config: fmt.Sprintf(testAccViewLinksUpdate, projectName, projectKey, maintainerId),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckViewForLinksExists(resourceName),
@@ -195,6 +200,11 @@ func TestAccViewLinks_Update(t *testing.T) {
 					resource.TestCheckTypeSetElemAttr(resourceName, "flags.*", "test-flag-3"),
 					testAccCheckViewLinksAPIState(projectKey, "test-view", []string{"test-flag-1", "test-flag-3"}),
 				),
+			},
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
 			},
 			{
 				Config: fmt.Sprintf(testAccViewLinksDelete, projectName, projectKey, maintainerId),
