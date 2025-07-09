@@ -52,6 +52,7 @@ resource "launchdarkly_view" "test" {
 	description       = "%s"
 	generate_sdk_keys = true
 	tags              = ["test", "updated"]
+	maintainer_id     = "%s"
 }
 `
 
@@ -64,6 +65,13 @@ resource "launchdarkly_project" "test" {
 		key   = "test-env"
 		color = "000000"
 	}
+}
+
+resource "launchdarkly_team" "test_team" {
+	key         = "%s"
+	name        = "Test Team"
+	description = "Team to maintain views"
+	custom_role_keys = []
 }
 
 resource "launchdarkly_view" "test" {
@@ -101,26 +109,6 @@ resource "launchdarkly_view" "test" {
 	description         = "%s"
 	maintainer_team_key = launchdarkly_team.test_team.key
 	tags                = ["test"]
-}
-`
-
-	testAccViewWithoutMaintainer = `
-resource "launchdarkly_project" "test" {
-	key  = "%s"
-	name = "Test project"
-	environments {
-		name  = "Test Environment"
-		key   = "test-env"
-		color = "000000"
-	}
-}
-
-resource "launchdarkly_view" "test" {
-	project_key = launchdarkly_project.test.key
-	key         = "%s"
-	name        = "%s"
-	description = "%s"
-	tags        = ["test"]
 }
 `
 )
@@ -164,7 +152,7 @@ func TestAccView_Update(t *testing.T) {
 				),
 			},
 			{
-				Config: fmt.Sprintf(testAccViewUpdate, projectKey, viewKey, updatedViewName, updatedViewDescription),
+				Config: fmt.Sprintf(testAccViewUpdate, projectKey, viewKey, updatedViewName, updatedViewDescription, maintainerId),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckViewExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, NAME, updatedViewName),
@@ -219,6 +207,7 @@ func TestAccView_WithMaintainer(t *testing.T) {
 		Providers:    testAccProviders,
 		CheckDestroy: testAccCheckViewDestroy,
 		Steps: []resource.TestStep{
+			// Set the view to be maintained by a team
 			{
 				Config: fmt.Sprintf(testAccViewWithTeamMaintainer, projectKey, teamKey, viewKey, viewName, viewDescription),
 				Check: resource.ComposeTestCheckFunc(
@@ -227,31 +216,22 @@ func TestAccView_WithMaintainer(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, MAINTAINER_ID, ""),
 				),
 			},
+			// Set the view to be maintained by an individual - but keep the team in our TF config because it would otherwise be deleted before being removed as a maintainer
 			{
-				Config: fmt.Sprintf(testAccViewWithMaintainer, projectKey, viewKey, viewName, viewDescription, maintainerId),
+				Config: fmt.Sprintf(testAccViewWithMaintainer, projectKey, teamKey, viewKey, viewName, viewDescription, maintainerId),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckViewExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, MAINTAINER_ID, maintainerId),
 					resource.TestCheckResourceAttr(resourceName, MAINTAINER_TEAM_KEY, ""),
 				),
 			},
+			// Set the view to be maintained by a team
 			{
 				Config: fmt.Sprintf(testAccViewWithTeamMaintainer, projectKey, teamKey, viewKey, viewName, viewDescription),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckViewExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, MAINTAINER_TEAM_KEY, teamKey),
 					resource.TestCheckResourceAttr(resourceName, MAINTAINER_ID, ""),
-				),
-			},
-			{
-				Config: fmt.Sprintf(testAccViewWithoutMaintainer, projectKey, viewKey, viewName, viewDescription),
-				Check: resource.ComposeTestCheckFunc(
-					testAccCheckViewExists(resourceName),
-					// When no maintainer is set, it should default to the API key owner or most recently set maintainer
-					// The exact behavior may vary based on implementation, so we just check that the view exists
-					// and one of the maintainer fields is set (but not both)
-					resource.TestCheckResourceAttrSet(resourceName, MAINTAINER_ID),
-					resource.TestCheckResourceAttr(resourceName, MAINTAINER_TEAM_KEY, ""),
 				),
 			},
 		},
