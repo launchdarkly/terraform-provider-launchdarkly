@@ -58,13 +58,13 @@ This resource allows you to create and manage views within your LaunchDarkly pro
 			MAINTAINER_ID: {
 				Type:          schema.TypeString,
 				Optional:      true,
-				Description:   "The member ID of the maintainer for this view.",
+				Description:   "The member ID of the maintainer for this view. One of `maintainer_id` and `maintainer_team_key` must be set.",
 				ConflictsWith: []string{MAINTAINER_TEAM_KEY},
 			},
 			MAINTAINER_TEAM_KEY: {
 				Type:          schema.TypeString,
 				Optional:      true,
-				Description:   "The team key of the maintainer team for this view.",
+				Description:   "The team key of the maintainer team for this view. One of `maintainer_id` and `maintainer_team_key` must be set.",
 				ConflictsWith: []string{MAINTAINER_ID},
 			},
 			TAGS: tagsSchema(tagsSchemaOptions{isDataSource: false}),

@@ -76,36 +76,6 @@ resource "launchdarkly_view" "test" {
 `
 )
 
-func TestAccView_Create(t *testing.T) {
-	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
-	viewKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
-	viewName := "Test View"
-	viewDescription := "Test view description"
-	resourceName := "launchdarkly_view.test"
-
-	resource.ParallelTest(t, resource.TestCase{
-		PreCheck: func() {
-			testAccPreCheck(t)
-		},
-		Providers:    testAccProviders,
-		CheckDestroy: testAccCheckViewDestroy,
-		Steps: []resource.TestStep{
-			{
-				Config: fmt.Sprintf(testAccViewCreate, projectKey, viewKey, viewName, viewDescription),
-				Check: resource.ComposeTestCheckFunc(
-					testAccCheckViewExists(resourceName),
-					resource.TestCheckResourceAttr(resourceName, PROJECT_KEY, projectKey),
-					resource.TestCheckResourceAttr(resourceName, KEY, viewKey),
-					resource.TestCheckResourceAttr(resourceName, NAME, viewName),
-					resource.TestCheckResourceAttr(resourceName, DESCRIPTION, viewDescription),
-					resource.TestCheckResourceAttr(resourceName, GENERATE_SDK_KEYS, "false"),
-					resource.TestCheckResourceAttr(resourceName, ARCHIVED, "false"),
-					resource.TestCheckResourceAttr(resourceName, "tags.#", "1"),
-				),
-			},
-		},
-	})
-}
 
 func TestAccView_Update(t *testing.T) {
 	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
@@ -127,9 +97,12 @@ func TestAccView_Update(t *testing.T) {
 				Config: fmt.Sprintf(testAccViewCreate, projectKey, viewKey, viewName, viewDescription),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckViewExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, PROJECT_KEY, projectKey),
+					resource.TestCheckResourceAttr(resourceName, KEY, viewKey),
 					resource.TestCheckResourceAttr(resourceName, NAME, viewName),
 					resource.TestCheckResourceAttr(resourceName, DESCRIPTION, viewDescription),
 					resource.TestCheckResourceAttr(resourceName, GENERATE_SDK_KEYS, "false"),
+					resource.TestCheckResourceAttr(resourceName, ARCHIVED, "false"),
 					resource.TestCheckResourceAttr(resourceName, "tags.#", "1"),
 				),
 			},
