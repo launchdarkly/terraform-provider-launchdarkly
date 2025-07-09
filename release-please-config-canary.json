@@ -1,0 +1,17 @@
+{
+  "packages": {
+    ".": {
+      "release-type": "go",
+      "versioning": "prerelease",
+      "include-v-in-tag": true,
+      "prerelease": true,
+      "prerelease-type": "beta",
+      "extra-files": [],
+      "include-component-in-tag": false,
+      "draft": false
+    }
+  },
+  "draft-pull-request": false,
+  "release-search-depth": 100,
+  "commit-search-depth": 100
+} 
