@@ -8,7 +8,7 @@
       "prerelease-type": "beta",
       "extra-files": [],
       "include-component-in-tag": false,
-      "draft": false
+      "draft": true
     }
   },
   "draft-pull-request": false,
