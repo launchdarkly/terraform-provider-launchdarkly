@@ -66,7 +66,6 @@ func resourceViewLinksCreate(ctx context.Context, d *schema.ResourceData, metaRa
 
 	projectKey := d.Get(PROJECT_KEY).(string)
 	viewKey := d.Get(VIEW_KEY).(string)
-	comment := d.Get("comment").(string)
 
 	// Check if view exists
 	if exists, err := viewExists(projectKey, viewKey, betaClient); !exists {
@@ -79,7 +78,7 @@ func resourceViewLinksCreate(ctx context.Context, d *schema.ResourceData, metaRa
 	// Link flags if specified
 	if flagsRaw, ok := d.GetOk(FLAGS); ok {
 		flags := interfaceSliceToStringSlice(flagsRaw.(*schema.Set).List())
-		err = linkResourcesToView(betaClient, projectKey, viewKey, FLAGS, flags, comment)
+		err = linkResourcesToView(betaClient, projectKey, viewKey, FLAGS, flags)
 		if err != nil {
 			return diag.Errorf("failed to link flags to view %q in project %q: %s", viewKey, projectKey, err)
 		}
@@ -138,7 +137,6 @@ func resourceViewLinksUpdate(ctx context.Context, d *schema.ResourceData, metaRa
 
 	projectKey := d.Get(PROJECT_KEY).(string)
 	viewKey := d.Get(VIEW_KEY).(string)
-	comment := d.Get("comment").(string)
 
 	if d.HasChange(FLAGS) {
 		oldFlagsRaw, newFlagsRaw := d.GetChange(FLAGS)
@@ -151,7 +149,7 @@ func resourceViewLinksUpdate(ctx context.Context, d *schema.ResourceData, metaRa
 
 		// Remove flags that are no longer in the list
 		if len(flagsToRemove) > 0 {
-			err = unlinkResourcesFromView(betaClient, projectKey, viewKey, FLAGS, flagsToRemove, comment)
+			err = unlinkResourcesFromView(betaClient, projectKey, viewKey, FLAGS, flagsToRemove)
 			if err != nil {
 				return diag.Errorf("failed to unlink flags from view %q in project %q: %s", viewKey, projectKey, err)
 			}
@@ -159,7 +157,7 @@ func resourceViewLinksUpdate(ctx context.Context, d *schema.ResourceData, metaRa
 
 		// Add new flags
 		if len(flagsToAdd) > 0 {
-			err = linkResourcesToView(betaClient, projectKey, viewKey, FLAGS, flagsToAdd, comment)
+			err = linkResourcesToView(betaClient, projectKey, viewKey, FLAGS, flagsToAdd)
 			if err != nil {
 				return diag.Errorf("failed to link flags to view %q in project %q: %s", viewKey, projectKey, err)
 			}
@@ -184,7 +182,7 @@ func resourceViewLinksDelete(ctx context.Context, d *schema.ResourceData, metaRa
 	if flagsRaw, ok := d.GetOk(FLAGS); ok {
 		flags := interfaceSliceToStringSlice(flagsRaw.(*schema.Set).List())
 		if len(flags) > 0 {
-			err = unlinkResourcesFromView(betaClient, projectKey, viewKey, FLAGS, flags, "")
+			err = unlinkResourcesFromView(betaClient, projectKey, viewKey, FLAGS, flags)
 			if err != nil {
 				return diag.Errorf("failed to unlink flags from view %q in project %q: %s", viewKey, projectKey, err)
 			}

@@ -304,7 +304,7 @@ func chunkStringSlice(slice []string, chunkSize int) [][]string {
 
 // linkResourcesToView links resources to a view
 // The API supports a maximum of 20 keys per request, so we chunk the keys accordingly
-func linkResourcesToView(client *Client, projectKey, viewKey, resourceType string, resourceKeys []string, comment string) error {
+func linkResourcesToView(client *Client, projectKey, viewKey, resourceType string, resourceKeys []string) error {
 	// Flagged on the BE, can't read flag here
 	const maxKeysPerRequest = 10
 
@@ -319,7 +319,7 @@ func linkResourcesToView(client *Client, projectKey, viewKey, resourceType strin
 	var errors []string
 
 	for i, chunk := range keyChunks {
-		err := linkResourceChunkToView(client, projectKey, viewKey, resourceType, chunk, comment)
+		err := linkResourceChunkToView(client, projectKey, viewKey, resourceType, chunk)
 		if err != nil {
 			errors = append(errors, fmt.Sprintf("chunk %d/%d: %v", i+1, len(keyChunks), err))
 		}
@@ -333,12 +333,11 @@ func linkResourcesToView(client *Client, projectKey, viewKey, resourceType strin
 }
 
 // performViewLinkOperation performs the actual HTTP request for linking/unlinking resources
-func performViewLinkOperation(client *Client, projectKey, viewKey, resourceType string, resourceKeys []string, comment, method string) error {
+func performViewLinkOperation(client *Client, projectKey, viewKey, resourceType string, resourceKeys []string, method string) error {
 	url := buildViewLinkURL(client, projectKey, viewKey, resourceType)
 
 	linkRequest := ViewLinkRequest{
-		Keys:    resourceKeys,
-		Comment: comment,
+		Keys: resourceKeys,
 	}
 
 	jsonData, err := json.Marshal(linkRequest)
@@ -370,12 +369,12 @@ func performViewLinkOperation(client *Client, projectKey, viewKey, resourceType 
 }
 
 // linkResourceChunkToView links a single chunk of resources to a view
-func linkResourceChunkToView(client *Client, projectKey, viewKey, resourceType string, resourceKeys []string, comment string) error {
-	return performViewLinkOperation(client, projectKey, viewKey, resourceType, resourceKeys, comment, "POST")
+func linkResourceChunkToView(client *Client, projectKey, viewKey, resourceType string, resourceKeys []string) error {
+	return performViewLinkOperation(client, projectKey, viewKey, resourceType, resourceKeys, "POST")
 }
 
 // unlinkResourcesFromView unlinks resources from a view
-func unlinkResourcesFromView(client *Client, projectKey, viewKey, resourceType string, resourceKeys []string, comment string) error {
+func unlinkResourcesFromView(client *Client, projectKey, viewKey, resourceType string, resourceKeys []string) error {
 	// Flagged on the BE, can't read flag here
 	const maxKeysPerRequest = 10
 
@@ -390,7 +389,7 @@ func unlinkResourcesFromView(client *Client, projectKey, viewKey, resourceType s
 	var errors []string
 
 	for i, chunk := range keyChunks {
-		err := unlinkResourceChunkFromView(client, projectKey, viewKey, resourceType, chunk, comment)
+		err := unlinkResourceChunkFromView(client, projectKey, viewKey, resourceType, chunk)
 		if err != nil {
 			errors = append(errors, fmt.Sprintf("chunk %d/%d: %v", i+1, len(keyChunks), err))
 		}
@@ -404,8 +403,8 @@ func unlinkResourcesFromView(client *Client, projectKey, viewKey, resourceType s
 }
 
 // unlinkResourceChunkFromView unlinks a single chunk of resources from a view
-func unlinkResourceChunkFromView(client *Client, projectKey, viewKey, resourceType string, resourceKeys []string, comment string) error {
-	return performViewLinkOperation(client, projectKey, viewKey, resourceType, resourceKeys, comment, "DELETE")
+func unlinkResourceChunkFromView(client *Client, projectKey, viewKey, resourceType string, resourceKeys []string) error {
+	return performViewLinkOperation(client, projectKey, viewKey, resourceType, resourceKeys, "DELETE")
 }
 
 // getLinkedResources gets all linked resources of a specific type for a view
