@@ -75,6 +75,54 @@ resource "launchdarkly_view" "test" {
 	tags          = ["test"]
 }
 `
+
+	testAccViewWithTeamMaintainer = `
+resource "launchdarkly_project" "test" {
+	key  = "%s"
+	name = "Test project"
+	environments {
+		name  = "Test Environment"
+		key   = "test-env"
+		color = "000000"
+	}
+}
+
+resource "launchdarkly_team" "test_team" {
+	key         = "%s"
+	name        = "Test Team"
+	description = "Team to maintain views"
+	custom_role_keys = []
+}
+
+resource "launchdarkly_view" "test" {
+	project_key         = launchdarkly_project.test.key
+	key                 = "%s"
+	name                = "%s"
+	description         = "%s"
+	maintainer_team_key = launchdarkly_team.test_team.key
+	tags                = ["test"]
+}
+`
+
+	testAccViewWithoutMaintainer = `
+resource "launchdarkly_project" "test" {
+	key  = "%s"
+	name = "Test project"
+	environments {
+		name  = "Test Environment"
+		key   = "test-env"
+		color = "000000"
+	}
+}
+
+resource "launchdarkly_view" "test" {
+	project_key = launchdarkly_project.test.key
+	key         = "%s"
+	name        = "%s"
+	description = "%s"
+	tags        = ["test"]
+}
+`
 )
 
 func TestAccView_Update(t *testing.T) {
@@ -125,6 +173,19 @@ func TestAccView_Update(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "tags.#", "2"),
 				),
 			},
+			{
+				Config: fmt.Sprintf(testAccViewCreate, projectKey, viewKey, viewName, viewDescription, maintainerId),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckViewExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, PROJECT_KEY, projectKey),
+					resource.TestCheckResourceAttr(resourceName, KEY, viewKey),
+					resource.TestCheckResourceAttr(resourceName, NAME, viewName),
+					resource.TestCheckResourceAttr(resourceName, DESCRIPTION, viewDescription),
+					resource.TestCheckResourceAttr(resourceName, GENERATE_SDK_KEYS, "false"),
+					resource.TestCheckResourceAttr(resourceName, ARCHIVED, "false"),
+					resource.TestCheckResourceAttr(resourceName, "tags.#", "1"),
+				),
+			},
 		},
 	})
 }
@@ -137,6 +198,7 @@ func TestAccView_WithMaintainer(t *testing.T) {
 
 	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	viewKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	teamKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	viewName := "Test View"
 	viewDescription := "Test view description"
 	resourceName := "launchdarkly_view.test"
@@ -158,10 +220,38 @@ func TestAccView_WithMaintainer(t *testing.T) {
 		CheckDestroy: testAccCheckViewDestroy,
 		Steps: []resource.TestStep{
 			{
+				Config: fmt.Sprintf(testAccViewWithTeamMaintainer, projectKey, teamKey, viewKey, viewName, viewDescription),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckViewExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, MAINTAINER_TEAM_KEY, teamKey),
+					resource.TestCheckResourceAttr(resourceName, MAINTAINER_ID, ""),
+				),
+			},
+			{
 				Config: fmt.Sprintf(testAccViewWithMaintainer, projectKey, viewKey, viewName, viewDescription, maintainerId),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckViewExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, MAINTAINER_ID, maintainerId),
+					resource.TestCheckResourceAttr(resourceName, MAINTAINER_TEAM_KEY, ""),
+				),
+			},
+			{
+				Config: fmt.Sprintf(testAccViewWithTeamMaintainer, projectKey, teamKey, viewKey, viewName, viewDescription),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckViewExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, MAINTAINER_TEAM_KEY, teamKey),
+					resource.TestCheckResourceAttr(resourceName, MAINTAINER_ID, ""),
+				),
+			},
+			{
+				Config: fmt.Sprintf(testAccViewWithoutMaintainer, projectKey, viewKey, viewName, viewDescription),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckViewExists(resourceName),
+					// When no maintainer is set, it should default to the API key owner or most recently set maintainer
+					// The exact behavior may vary based on implementation, so we just check that the view exists
+					// and one of the maintainer fields is set (but not both)
+					resource.TestCheckResourceAttrSet(resourceName, MAINTAINER_ID),
+					resource.TestCheckResourceAttr(resourceName, MAINTAINER_TEAM_KEY, ""),
 				),
 			},
 		},
