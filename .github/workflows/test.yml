@@ -4,7 +4,7 @@ name: Test
 on:
   pull_request_target: # this is for external contributions/forks. we have a check in place to ensure an LD user explicitly allows the tests to run for forks.
   push:
-    branches: [main]
+    branches: [main, preview]
   schedule: # runs tests once a day on the main branch
     - cron: "0 0 * * *"
 
@@ -142,7 +142,7 @@ jobs:
 
   notify-slack-on-failure:
     name: Notify Slack on Failures
-    if: failure() && github.ref == 'refs/heads/main'
+    if: failure() && github.ref == 'refs/heads/main' || github.ref == 'refs/heads/preview'
     needs:
       - build
       - generate
