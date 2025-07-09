@@ -106,6 +106,49 @@ resource "launchdarkly_view_links" "test" {
 	]
 }
 `
+
+	testAccViewLinksDelete = `
+resource "launchdarkly_project" "test" {
+	name = "%s"
+	key  = "%s"
+	environments {
+		name  = "Test Environment"
+		key   = "test-env"
+		color = "000000"
+	}
+}
+
+resource "launchdarkly_view" "test" {
+	project_key = launchdarkly_project.test.key
+	key         = "test-view"
+	name        = "Test View"
+	description = "Test view for link testing"
+	maintainer_id = "%s"
+}
+
+resource "launchdarkly_feature_flag" "test1" {
+	project_key = launchdarkly_project.test.key
+	key         = "test-flag-1"
+	name        = "Test Flag 1"
+	variation_type = "boolean"
+}
+
+resource "launchdarkly_feature_flag" "test2" {
+	project_key = launchdarkly_project.test.key
+	key         = "test-flag-2"
+	name        = "Test Flag 2"
+	variation_type = "boolean"
+}
+
+resource "launchdarkly_feature_flag" "test3" {
+	project_key = launchdarkly_project.test.key
+	key         = "test-flag-3"
+	name        = "Test Flag 3"
+	variation_type = "boolean"
+}
+
+// Note: No launchdarkly_view_links resource - this should unlink all flags
+`
 )
 
 func TestAccViewLinks_Update(t *testing.T) {
@@ -151,6 +194,14 @@ func TestAccViewLinks_Update(t *testing.T) {
 					resource.TestCheckTypeSetElemAttr(resourceName, "flags.*", "test-flag-1"),
 					resource.TestCheckTypeSetElemAttr(resourceName, "flags.*", "test-flag-3"),
 					testAccCheckViewLinksAPIState(projectKey, "test-view", []string{"test-flag-1", "test-flag-3"}),
+				),
+			},
+			{
+				Config: fmt.Sprintf(testAccViewLinksDelete, projectName, projectKey, maintainerId),
+				Check: resource.ComposeTestCheckFunc(
+					// Verify that the view still exists but has no linked flags
+					testAccCheckViewExistsViaAPI(projectKey, "test-view"),
+					testAccCheckViewLinksAPIState(projectKey, "test-view", []string{}),
 				),
 			},
 		},
@@ -216,6 +267,27 @@ func testAccCheckViewForLinksExists(resourceName string) resource.TestCheckFunc 
 		exists, err := viewExists(projectKey, viewKey, betaClient)
 		if err != nil {
 			return err
+		}
+		if !exists {
+			return fmt.Errorf("view %s/%s does not exist", projectKey, viewKey)
+		}
+
+		return nil
+	}
+}
+
+// testAccCheckViewExistsViaAPI verifies that a view exists via direct API call
+func testAccCheckViewExistsViaAPI(projectKey, viewKey string) resource.TestCheckFunc {
+	return func(s *terraform.State) error {
+		client := testAccProvider.Meta().(*Client)
+		betaClient, err := newBetaClient(client.apiKey, client.apiHost, false, DEFAULT_HTTP_TIMEOUT_S)
+		if err != nil {
+			return fmt.Errorf("failed to create beta client: %v", err)
+		}
+
+		exists, err := viewExists(projectKey, viewKey, betaClient)
+		if err != nil {
+			return fmt.Errorf("error checking if view exists: %v", err)
 		}
 		if !exists {
 			return fmt.Errorf("view %s/%s does not exist", projectKey, viewKey)
