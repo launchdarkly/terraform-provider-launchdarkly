@@ -45,37 +45,13 @@ This resource allows you to efficiently link multiple flags to a specific view. 
 			FLAGS: {
 				Type:        schema.TypeSet,
 				Set:         schema.HashString,
-				Optional:    true,
+				Required:    true,
+				MinItems:    1,
 				Description: "A set of feature flag keys to link to the view.",
 				Elem: &schema.Schema{
 					Type:             schema.TypeString,
 					ValidateDiagFunc: validateKey(),
 				},
-			},
-			// Future extensibility - commented out for now
-			// "segments": {
-			// 	Type:        schema.TypeSet,
-			// 	Optional:    true,
-			// 	Description: "A set of segment keys to link to the view.",
-			// 	Elem: &schema.Schema{
-			// 		Type:             schema.TypeString,
-			// 		ValidateDiagFunc: validateKey(),
-			// 	},
-			// },
-			// "metrics": {
-			// 	Type:        schema.TypeSet,
-			// 	Optional:    true,
-			// 	Description: "A set of metric keys to link to the view.",
-			// 	Elem: &schema.Schema{
-			// 		Type:             schema.TypeString,
-			// 		ValidateDiagFunc: validateKey(),
-			// 	},
-			// },
-			"comment": {
-				Type:        schema.TypeString,
-				Optional:    true,
-				Description: "Optional comment for the link operations.",
-				Default:     "Managed by Terraform",
 			},
 		},
 	}
@@ -103,11 +79,9 @@ func resourceViewLinksCreate(ctx context.Context, d *schema.ResourceData, metaRa
 	// Link flags if specified
 	if flagsRaw, ok := d.GetOk(FLAGS); ok {
 		flags := interfaceSliceToStringSlice(flagsRaw.(*schema.Set).List())
-		if len(flags) > 0 {
-			err = linkResourcesToView(betaClient, projectKey, viewKey, FLAGS, flags, comment)
-			if err != nil {
-				return diag.Errorf("failed to link flags to view %q in project %q: %s", viewKey, projectKey, err)
-			}
+		err = linkResourcesToView(betaClient, projectKey, viewKey, FLAGS, flags, comment)
+		if err != nil {
+			return diag.Errorf("failed to link flags to view %q in project %q: %s", viewKey, projectKey, err)
 		}
 	}
 
@@ -205,13 +179,12 @@ func resourceViewLinksDelete(ctx context.Context, d *schema.ResourceData, metaRa
 
 	projectKey := d.Get(PROJECT_KEY).(string)
 	viewKey := d.Get(VIEW_KEY).(string)
-	comment := d.Get("comment").(string)
 
 	// Unlink all flags
 	if flagsRaw, ok := d.GetOk(FLAGS); ok {
 		flags := interfaceSliceToStringSlice(flagsRaw.(*schema.Set).List())
 		if len(flags) > 0 {
-			err = unlinkResourcesFromView(betaClient, projectKey, viewKey, FLAGS, flags, comment)
+			err = unlinkResourcesFromView(betaClient, projectKey, viewKey, FLAGS, flags, "")
 			if err != nil {
 				return diag.Errorf("failed to unlink flags from view %q in project %q: %s", viewKey, projectKey, err)
 			}
