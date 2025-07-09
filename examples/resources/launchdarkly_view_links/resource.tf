@@ -62,13 +62,10 @@ resource "launchdarkly_view_links" "backend_team" {
     "feature-database-migration",
     "feature-cache-optimization",
     "feature-api-versioning",
-    # To add a new flag, simply add it to this list
+    # To add a new flag, add it to this list
     # To remove a flag, remove it from this list
     # Terraform will handle the link/unlink operations automatically
   ]
 
   comment = "Backend infrastructure and API flags"
 }
-
-# To import an existing view's flag links into Terraform:
-# terraform import launchdarkly_view_links.frontend_team my-project/frontend-team 

@@ -23,7 +23,7 @@ func resourceViewLinks() *schema.Resource {
 
 		Description: `Provides a LaunchDarkly view links resource for managing bulk resource linkage to views.
 
-This resource allows you to efficiently link multiple flags (and in the future, segments and metrics) to a specific view. This is particularly useful for administrators organizing resources by team or deployment unit.
+This resource allows you to efficiently link multiple flags to a specific view. This is particularly useful for administrators organizing resources by team or deployment unit.
 
 -> **Note:** This resource manages ALL links for the specified resource types within a view. Adding or removing items from the configuration will link or unlink those resources accordingly.`,
 
