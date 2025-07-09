@@ -225,6 +225,25 @@ func featureFlagRead(ctx context.Context, d *schema.ResourceData, raw interface{
 	}
 	_ = d.Set(DEFAULTS, defaults)
 
+	// For data sources, also fetch and set linked views for discovery
+	if isDataSource {
+		betaClient, err := newBetaClient(client.apiKey, client.apiHost, false, DEFAULT_HTTP_TIMEOUT_S)
+		if err != nil {
+			log.Printf("[WARN] failed to create beta client for views lookup: %v", err)
+		} else {
+			viewsWithFlag, err := getViewsContainingFlag(betaClient, projectKey, key)
+			if err != nil {
+				// Log warning but don't fail the read for discovery data
+				log.Printf("[WARN] failed to get views for flag %q in project %q: %v", key, projectKey, err)
+			} else {
+				err = d.Set(VIEWS, viewsWithFlag)
+				if err != nil {
+					return diag.Errorf("could not set views on flag with key %q: %v", key, err)
+				}
+			}
+		}
+	}
+
 	d.SetId(projectKey + "/" + key)
 	return diags
 }
