@@ -60,8 +60,8 @@ resource "launchdarkly_view" "team_maintained" {
 - `archived` (Boolean) Whether the view is archived.
 - `description` (String) The view's description.
 - `generate_sdk_keys` (Boolean) Whether to generate SDK keys for this view.
-- `maintainer_id` (String) The member ID of the maintainer for this view.
-- `maintainer_team_key` (String) The team key of the maintainer team for this view.
+- `maintainer_id` (String) The member ID of the maintainer for this view. Exactly one of `maintainer_id` and `maintainer_team_key` must be set.
+- `maintainer_team_key` (String) The team key of the maintainer team for this view. Exactly one of `maintainer_id` and `maintainer_team_key` must be set.
 - `tags` (Set of String) Tags associated with your resource.
 
 ### Read-Only

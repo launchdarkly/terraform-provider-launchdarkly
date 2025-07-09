@@ -97,13 +97,9 @@ resource "launchdarkly_view_links" "backend_team" {
 
 ### Required
 
+- `flags` (Set of String) A set of feature flag keys to link to the view.
 - `project_key` (String) The project key. A change in this field will force the destruction of the existing resource and the creation of a new one.
 - `view_key` (String) The view key to link resources to. A change in this field will force the destruction of the existing resource and the creation of a new one.
-
-### Optional
-
-- `comment` (String) Optional comment for the link operations.
-- `flags` (Set of String) A set of feature flag keys to link to the view.
 
 ### Read-Only
 
