@@ -1,10 +1,14 @@
 package launchdarkly
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
+	"strings"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -357,59 +361,48 @@ func accessTokenExists(accessTokenID string, meta *Client) (bool, error) {
 }
 
 func resetAccessToken(client *Client, accessTokenID string, expiry int) (ldapi.Token, error) {
-	var token *ldapi.Token
-	var err error
-	// Terraform validation will ensure we do not get a zero value
+	var token ldapi.Token
+	// the client ResetToken function is broken due to failure to add the Content-Type header so we have to make a raw request (as of 2025-07-16)
+	// using the fallbackClient, which is just an actual http.Client type unlike our bespoke Client type
+	endpoint := fmt.Sprintf("%s/api/v2/tokens/%s/reset", client.apiHost, accessTokenID)
+	if !strings.HasPrefix(endpoint, "http") {
+		endpoint = "https://" + endpoint
+	}
+	var body io.Reader
 	if expiry > 0 {
-		err = client.withConcurrency(client.ctx, func() error {
-			token, _, err = client.ld.AccessTokensApi.ResetToken(client.ctx, accessTokenID).Expiry(int64(expiry)).Execute()
-			return err
+		rawBody, err := json.Marshal(map[string]int{
+			"expiry": expiry,
 		})
-	} else if expiry < 0 {
-		err = client.withConcurrency(client.ctx, func() error {
-			token, _, err = client.ld.AccessTokensApi.ResetToken(client.ctx, accessTokenID).Execute()
-			return err
-		})
+		if err != nil {
+			return token, err
+		}
+		body = bytes.NewBuffer(rawBody)
 	}
-	if err != nil || token == nil {
-		return ldapi.Token{}, fmt.Errorf("failed to reset access token with id %q: %s", accessTokenID, handleLdapiErr(err))
+	req, err := http.NewRequest("POST", endpoint, body)
+	if err != nil {
+		return token, err
 	}
-	return *token, nil
-	// endpoint := fmt.Sprintf("%s/api/v2/tokens/%s/reset", client.apiHost, accessTokenID)
-	// if !strings.HasPrefix(endpoint, "http") {
-	// 	endpoint = "https://" + endpoint
-	// }
-	// var body io.Reader
-	// if expiry > 0 {
-	// 	rawBody, err := json.Marshal(map[string]int{
-	// 		"expiry": expiry,
-	// 	})
-	// 	if err != nil {
-	// 		return token, err
-	// 	}
-	// 	body = bytes.NewBuffer(rawBody)
-	// }
-	// req, err := http.NewRequest("POST", endpoint, body)
-	// if err != nil {
-	// 	return token, err
-	// }
-	// req.Header.Set("Content-Type", "application/json")
-	// req.Header.Set("Authorization", client.apiKey)
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", client.apiKey)
 
-	// resp, err := client.fallbackClient.Do(req)
-	// if err != nil {
-	// 	return token, err
-	// }
+	var resp *http.Response
+	err = client.withConcurrency(client.ctx, func() error {
+		resp, err = client.fallbackClient.Do(req)
+		return err
+	})
+	if err != nil {
+		return token, err
+	}
 
-	// rawBody, err := io.ReadAll(resp.Body)
-	// if err != nil {
-	// 	return token, err
-	// }
+	rawBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return token, err
+	}
 
-	// err = json.Unmarshal(rawBody, &token)
-	// if err != nil {
-	// 	return token, err
-	// }
+	err = json.Unmarshal(rawBody, &token)
+	if err != nil {
+		return token, err
+	}
 
-	// return token, nil
+	return token, nil
 }
