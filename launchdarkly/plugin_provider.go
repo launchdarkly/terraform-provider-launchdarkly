@@ -23,11 +23,10 @@ type launchdarklyProvider struct {
 }
 
 type launchdarklyProviderModel struct {
-	AccessToken           types.String `tfsdk:"access_token"`
-	OAuthToken            types.String `tfsdk:"oauth_token"`
-	Host                  types.String `tfsdk:"api_host"`
-	HttpTimeout           types.Int64  `tfsdk:"http_timeout"`
-	MaxConcurrentRequests types.Int64  `tfsdk:"max_concurrent_requests"`
+	AccessToken types.String `tfsdk:"access_token"`
+	OAuthToken  types.String `tfsdk:"oauth_token"`
+	Host        types.String `tfsdk:"api_host"`
+	HttpTimeout types.Int64  `tfsdk:"http_timeout"`
 }
 
 // Metadata returns the provider type name.
@@ -56,10 +55,6 @@ func (p *launchdarklyProvider) Schema(_ context.Context, _ provider.SchemaReques
 			HTTP_TIMEOUT: schema.Int64Attribute{
 				Optional:    true,
 				Description: sdkProviderSchema[HTTP_TIMEOUT].Description,
-			},
-			MAX_CONCURRENT_REQUESTS: schema.Int64Attribute{
-				Optional:    true,
-				Description: sdkProviderSchema[MAX_CONCURRENT_REQUESTS].Description,
 			},
 		},
 	}
@@ -105,16 +100,8 @@ func (p *launchdarklyProvider) Configure(ctx context.Context, req provider.Confi
 		return
 	}
 
-	maxConcurrent := int(data.MaxConcurrentRequests.ValueInt64())
-	if maxConcurrent == 0 {
-		maxConcurrent = DEFAULT_MAX_CONCURRENCY
-	}
-	if maxConcurrent < 0 {
-		resp.Diagnostics.AddError("Invalid parallelism", "parallelism must be a positive integer")
-	}
-
 	if oauthToken != "" {
-		client, err := newClient(oauthToken, host, true, httpTimeoutSeconds, maxConcurrent)
+		client, err := newClient(oauthToken, host, true, httpTimeoutSeconds, DEFAULT_MAX_CONCURRENCY)
 		if err != nil {
 			resp.Diagnostics.AddError("Unable to create LaunchDarkly client", err.Error())
 			return
@@ -123,7 +110,7 @@ func (p *launchdarklyProvider) Configure(ctx context.Context, req provider.Confi
 		return
 	}
 
-	client, err := newClient(accessToken, host, false, httpTimeoutSeconds, maxConcurrent)
+	client, err := newClient(accessToken, host, false, httpTimeoutSeconds, DEFAULT_MAX_CONCURRENCY)
 	if err != nil {
 		resp.Diagnostics.AddError("Unable to create LaunchDarkly client", err.Error())
 		return
