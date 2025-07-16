@@ -24,7 +24,7 @@ const (
 	MAX_RETRIES             = 12
 	RETRY_WAIT_MIN          = 200 * time.Millisecond
 	RETRY_WAIT_MAX          = 10000 * time.Millisecond
-	DEFAULT_MAX_CONCURRENCY = 10 // provider-specific parallelism
+	DEFAULT_MAX_CONCURRENCY = 1 // provider-specific parallelism to avoid hitting rate limits / timeouts
 )
 
 // Client is used by the provider to access the ld API.
@@ -53,6 +53,7 @@ func (c *Client) withConcurrency(ctx context.Context, fn func() error) error {
 	return fn()
 }
 
+// we pass maxConcurrent through here so that we can set it differently for tests
 func newClient(token string, apiHost string, oauth bool, httpTimeoutSeconds, maxConcurrent int) (*Client, error) {
 	return baseNewClient(token, apiHost, oauth, httpTimeoutSeconds, APIVersion, maxConcurrent)
 }
