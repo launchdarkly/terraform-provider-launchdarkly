@@ -68,7 +68,14 @@ func baseFeatureFlagEnvironmentSchema(options featureFlagEnvSchemaOptions) map[s
 
 // get FeatureFlagEnvironment uses a query parameter to get the ldapi.FeatureFlag with only a single environment.
 func getFeatureFlagEnvironment(client *Client, projectKey, flagKey, environmentKey string) (*ldapi.FeatureFlag, *http.Response, error) {
-	return client.ld.FeatureFlagsApi.GetFeatureFlag(client.ctx, projectKey, flagKey).Env(environmentKey).Execute()
+	var flag *ldapi.FeatureFlag
+	var res *http.Response
+	var err error
+	err = client.withConcurrency(client.ctx, func() error {
+		flag, res, err = client.ld.FeatureFlagsApi.GetFeatureFlag(client.ctx, projectKey, flagKey).Env(environmentKey).Execute()
+		return err
+	})
+	return flag, res, err
 }
 
 func featureFlagEnvironmentRead(ctx context.Context, d *schema.ResourceData, raw interface{}, isDataSource bool) diag.Diagnostics {

@@ -64,7 +64,12 @@ func getTeamMemberByEmail(client *Client, memberEmail string) (*ldapi.Member, er
 	teamMemberLimit := int64(1000)
 
 	// After changing this to query by member email, we shouldn't need the limit and recursion on requests, but leaving it in just to be extra safe
-	members, _, err := client.ld.AccountMembersApi.GetMembers(client.ctx).Filter(fmt.Sprintf("query:%s", url.QueryEscape(memberEmail))).Expand("roleAttributes").Execute()
+	var members *ldapi.Members
+	var err error
+	err = client.withConcurrency(client.ctx, func() error {
+		members, _, err = client.ld.AccountMembersApi.GetMembers(client.ctx).Filter(fmt.Sprintf("query:%s", url.QueryEscape(memberEmail))).Expand("roleAttributes").Execute()
+		return err
+	})
 
 	if err != nil {
 		return nil, fmt.Errorf("failed to read team member with email: %s: %v", memberEmail, handleLdapiErr(err))
@@ -76,7 +81,11 @@ func getTeamMemberByEmail(client *Client, memberEmail string) (*ldapi.Member, er
 	membersPulled := len(memberItems)
 	for membersPulled < totalMemberCount {
 		offset := int64(membersPulled)
-		newMembers, _, err := client.ld.AccountMembersApi.GetMembers(client.ctx).Limit(teamMemberLimit).Offset(offset).Filter(fmt.Sprintf("query:%s", url.QueryEscape(memberEmail))).Execute()
+		var newMembers *ldapi.Members
+		err = client.withConcurrency(client.ctx, func() error {
+			newMembers, _, err = client.ld.AccountMembersApi.GetMembers(client.ctx).Limit(teamMemberLimit).Offset(offset).Filter(fmt.Sprintf("query:%s", url.QueryEscape(memberEmail))).Execute()
+			return err
+		})
 
 		if err != nil {
 			return nil, fmt.Errorf("failed to read team member with email: %s: %v", memberEmail, handleLdapiErr(err))

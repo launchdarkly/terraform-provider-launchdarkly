@@ -68,7 +68,7 @@ func TestAccDataSourceTeamMember_exists(t *testing.T) {
 
 	// Populate account with dummy team members to ensure pagination is working
 	teamMemberCount := 15
-	client, err := newClient(os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN), os.Getenv(LAUNCHDARKLY_API_HOST), false, DEFAULT_HTTP_TIMEOUT_S)
+	client, err := newClient(os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN), os.Getenv(LAUNCHDARKLY_API_HOST), false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
 	require.NoError(t, err)
 
 	teamMembers := make([]ldapi.Member, 0, teamMemberCount)

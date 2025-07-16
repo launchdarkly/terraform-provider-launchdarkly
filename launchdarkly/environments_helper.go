@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"net/http"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -265,7 +266,13 @@ func environmentRead(ctx context.Context, d *schema.ResourceData, meta interface
 	projectKey := d.Get(PROJECT_KEY).(string)
 	key := d.Get(KEY).(string)
 
-	env, res, err := client.ld.EnvironmentsApi.GetEnvironment(client.ctx, projectKey, key).Execute()
+	var env *ldapi.Environment
+	var res *http.Response
+	var err error
+	err = client.withConcurrency(client.ctx, func() error {
+		env, res, err = client.ld.EnvironmentsApi.GetEnvironment(client.ctx, projectKey, key).Execute()
+		return err
+	})
 
 	if isStatusNotFound(res) && !isDataSource {
 		log.Printf("[WARN] failed to find environment with key %q in project %q, removing from state", key, projectKey)

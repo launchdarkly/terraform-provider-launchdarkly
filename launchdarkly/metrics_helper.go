@@ -3,6 +3,7 @@ package launchdarkly
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"strings"
 
 	"github.com/hashicorp/go-cty/cty"
@@ -168,7 +169,13 @@ func metricRead(ctx context.Context, d *schema.ResourceData, metaRaw interface{}
 	projectKey := d.Get(PROJECT_KEY).(string)
 	key := d.Get(KEY).(string)
 
-	metric, res, err := client.ld.MetricsApi.GetMetric(client.ctx, projectKey, key).Execute()
+	var metric *ldapi.MetricRep
+	var res *http.Response
+	var err error
+	err = client.withConcurrency(client.ctx, func() error {
+		metric, res, err = client.ld.MetricsApi.GetMetric(client.ctx, projectKey, key).Execute()
+		return err
+	})
 
 	if isStatusNotFound(res) && !isDataSource {
 		diags = append(diags, diag.Diagnostic{

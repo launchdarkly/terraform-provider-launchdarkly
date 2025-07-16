@@ -103,7 +103,13 @@ func projectRead(ctx context.Context, d *schema.ResourceData, meta interface{}, 
 }
 
 func getFullProject(client *Client, projectKey string) (*ldapi.Project, *http.Response, error) {
-	project, resp, err := client.ld.ProjectsApi.GetProject(client.ctx, projectKey).Execute()
+	var project *ldapi.Project
+	var resp *http.Response
+	var err error
+	err = client.withConcurrency(client.ctx, func() error {
+		project, resp, err = client.ld.ProjectsApi.GetProject(client.ctx, projectKey).Execute()
+		return err
+	})
 	if err != nil {
 		return project, resp, err
 	}
@@ -122,8 +128,14 @@ func getAllEnvironments(client *Client, projectKey string) (ldapi.Environments, 
 	pageLimit := int64(20)
 	allFetched := false
 	for currentPage := int64(0); !allFetched; currentPage++ {
-		envPage, resp, err := client.ld.EnvironmentsApi.GetEnvironmentsByProject(
-			client.ctx, projectKey).Limit(pageLimit).Offset(currentPage * pageLimit).Execute()
+		var envPage *ldapi.Environments
+		var resp *http.Response
+		var err error
+		err = client.withConcurrency(client.ctx, func() error {
+			envPage, resp, err = client.ld.EnvironmentsApi.GetEnvironmentsByProject(
+				client.ctx, projectKey).Limit(pageLimit).Offset(currentPage * pageLimit).Execute()
+			return err
+		})
 		if err != nil {
 			return *ldapi.NewEnvironments(envItems), resp, err
 		}

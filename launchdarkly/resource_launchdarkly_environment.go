@@ -63,7 +63,11 @@ func resourceEnvironmentCreate(ctx context.Context, d *schema.ResourceData, meta
 		Critical:           &critical,
 	}
 
-	_, _, err := client.ld.EnvironmentsApi.PostEnvironment(client.ctx, projectKey).EnvironmentPost(envPost).Execute()
+	var err error
+	err = client.withConcurrency(client.ctx, func() error {
+		_, _, err = client.ld.EnvironmentsApi.PostEnvironment(client.ctx, projectKey).EnvironmentPost(envPost).Execute()
+		return err
+	})
 	if err != nil {
 		return diag.Errorf("failed to create environment: [%+v] for project key: %s: %s", envPost, projectKey, handleLdapiErr(err))
 	}
@@ -73,7 +77,11 @@ func resourceEnvironmentCreate(ctx context.Context, d *schema.ResourceData, meta
 		updateDiags := resourceEnvironmentUpdate(ctx, d, metaRaw)
 		if updateDiags.HasError() {
 			// if there was a problem in the update state, we need to clean up completely by deleting the env
-			_, deleteErr := client.ld.EnvironmentsApi.DeleteEnvironment(client.ctx, projectKey, key).Execute()
+			var deleteErr error
+			deleteErr = client.withConcurrency(client.ctx, func() error {
+				_, deleteErr = client.ld.EnvironmentsApi.DeleteEnvironment(client.ctx, projectKey, key).Execute()
+				return deleteErr
+			})
 			// TODO: Figure out if we can get the err out of updateDiag (not looking likely) to use in hanldeLdapiErr
 			if deleteErr != nil {
 				return updateDiags
@@ -125,7 +133,10 @@ func resourceEnvironmentUpdate(ctx context.Context, d *schema.ResourceData, meta
 		return diag.FromErr(err)
 	}
 	patch = append(patch, approvalPatch...)
-	_, _, err = client.ld.EnvironmentsApi.PatchEnvironment(client.ctx, projectKey, key).PatchOperation(patch).Execute()
+	err = client.withConcurrency(client.ctx, func() error {
+		_, _, err = client.ld.EnvironmentsApi.PatchEnvironment(client.ctx, projectKey, key).PatchOperation(patch).Execute()
+		return err
+	})
 	if err != nil {
 		return diag.Errorf("failed to update environment with key %q for project: %q: %s", key, projectKey, handleLdapiErr(err))
 	}
@@ -140,7 +151,11 @@ func resourceEnvironmentDelete(ctx context.Context, d *schema.ResourceData, meta
 	projectKey := d.Get(PROJECT_KEY).(string)
 	key := d.Get(KEY).(string)
 
-	_, err := client.ld.EnvironmentsApi.DeleteEnvironment(client.ctx, projectKey, key).Execute()
+	var err error
+	err = client.withConcurrency(client.ctx, func() error {
+		_, err = client.ld.EnvironmentsApi.DeleteEnvironment(client.ctx, projectKey, key).Execute()
+		return err
+	})
 	if err != nil {
 		return diag.Errorf("failed to delete project with key %q for project %q: %s", key, projectKey, handleLdapiErr(err))
 	}

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"net/http"
 	"strings"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
@@ -54,7 +55,11 @@ func resourceAuditLogSubscriptionCreate(ctx context.Context, d *schema.ResourceD
 		Statements: statements,
 	}
 
-	sub, _, err := client.ld.IntegrationAuditLogSubscriptionsApi.CreateSubscription(client.ctx, integrationKey).SubscriptionPost(subscriptionBody).Execute()
+	var sub *ldapi.Integration
+	err = client.withConcurrency(client.ctx, func() error {
+		sub, _, err = client.ld.IntegrationAuditLogSubscriptionsApi.CreateSubscription(client.ctx, integrationKey).SubscriptionPost(subscriptionBody).Execute()
+		return err
+	})
 
 	if err != nil {
 		return diag.Errorf("failed to create %s integration with name %s: %v", integrationKey, name, handleLdapiErr(err))
@@ -88,7 +93,10 @@ func resourceAuditLogSubscriptionUpdate(ctx context.Context, d *schema.ResourceD
 		patchReplace("/statements", &statements),
 	}
 
-	_, _, err = client.ld.IntegrationAuditLogSubscriptionsApi.UpdateSubscription(client.ctx, integrationKey, id).PatchOperation(patch).Execute()
+	err = client.withConcurrency(client.ctx, func() error {
+		_, _, err = client.ld.IntegrationAuditLogSubscriptionsApi.UpdateSubscription(client.ctx, integrationKey, id).PatchOperation(patch).Execute()
+		return err
+	})
 	if err != nil {
 		return diag.Errorf("failed to update %q integration with name %q and ID %q: %s", integrationKey, name, id, handleLdapiErr(err))
 	}
@@ -100,7 +108,11 @@ func resourceAuditLogSubscriptionDelete(ctx context.Context, d *schema.ResourceD
 	id := d.Id()
 	integrationKey := d.Get(INTEGRATION_KEY).(string)
 
-	_, err := client.ld.IntegrationAuditLogSubscriptionsApi.DeleteSubscription(client.ctx, integrationKey, id).Execute()
+	var err error
+	err = client.withConcurrency(client.ctx, func() error {
+		_, err = client.ld.IntegrationAuditLogSubscriptionsApi.DeleteSubscription(client.ctx, integrationKey, id).Execute()
+		return err
+	})
 
 	if err != nil {
 		return diag.Errorf("failed to delete integration with ID %q: %s", id, handleLdapiErr(err))
@@ -117,7 +129,12 @@ func resourceAuditLogSubscriptionExists(d *schema.ResourceData, metaRaw interfac
 	id := d.Id()
 	integrationKey := d.Get(INTEGRATION_KEY).(string)
 
-	_, res, err := client.ld.IntegrationAuditLogSubscriptionsApi.GetSubscriptionByID(client.ctx, integrationKey, id).Execute()
+	var res *http.Response
+	var err error
+	err = client.withConcurrency(client.ctx, func() error {
+		_, res, err = client.ld.IntegrationAuditLogSubscriptionsApi.GetSubscriptionByID(client.ctx, integrationKey, id).Execute()
+		return err
+	})
 	if isStatusNotFound(res) {
 		log.Println("got 404 when getting integration. returning false.")
 		return false, nil

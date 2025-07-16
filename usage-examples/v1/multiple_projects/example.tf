@@ -70,10 +70,10 @@ resource "launchdarkly_feature_flag_environment" "basic_variation" {
     }
     variation = 0
   }
-
-  flag_fallthrough {
+  fallthrough {
     variation = 0
   }
+  off_variation = 0
 }
 
 # ----------------------------------------------------------------------------------- #

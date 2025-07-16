@@ -3,9 +3,11 @@ package launchdarkly
 import (
 	"context"
 	"log"
+	"net/http"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	ldapi "github.com/launchdarkly/api-client-go/v17"
 )
 
 type webhookSchemaOptions struct {
@@ -46,7 +48,13 @@ func webhookRead(ctx context.Context, d *schema.ResourceData, meta interface{}, 
 		webhookID = d.Id()
 	}
 
-	webhook, res, err := client.ld.WebhooksApi.GetWebhook(client.ctx, webhookID).Execute()
+	var webhook *ldapi.Webhook
+	var res *http.Response
+	var err error
+	err = client.withConcurrency(client.ctx, func() error {
+		webhook, res, err = client.ld.WebhooksApi.GetWebhook(client.ctx, webhookID).Execute()
+		return err
+	})
 	if isStatusNotFound(res) && !isDataSource {
 		log.Printf("[WARN] failed to find webhook with id %q, removing from state", webhookID)
 		d.SetId("")

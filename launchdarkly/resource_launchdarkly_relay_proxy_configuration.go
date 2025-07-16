@@ -3,6 +3,7 @@ package launchdarkly
 import (
 	"context"
 	"log"
+	"net/http"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -64,7 +65,11 @@ func relayProxyConfigCreate(ctx context.Context, d *schema.ResourceData, m inter
 		Policy: statementPostsToStatementReps(policy),
 	}
 
-	proxyConfig, _, err := client.ld.RelayProxyConfigurationsApi.PostRelayAutoConfig(client.ctx).RelayAutoConfigPost(post).Execute()
+	var proxyConfig *ldapi.RelayAutoConfigRep
+	err = client.withConcurrency(client.ctx, func() error {
+		proxyConfig, _, err = client.ld.RelayProxyConfigurationsApi.PostRelayAutoConfig(client.ctx).RelayAutoConfigPost(post).Execute()
+		return err
+	})
 	if err != nil {
 		return diag.Errorf("failed to create Relay Proxy configuration with name %q: %s", name, handleLdapiErr(err))
 	}
@@ -89,7 +94,13 @@ func relayProxyConfigRead(ctx context.Context, d *schema.ResourceData, m interfa
 	client := m.(*Client)
 
 	id := d.Id()
-	proxyConfig, res, err := client.ld.RelayProxyConfigurationsApi.GetRelayProxyConfig(client.ctx, id).Execute()
+	var proxyConfig *ldapi.RelayAutoConfigRep
+	var res *http.Response
+	var err error
+	err = client.withConcurrency(client.ctx, func() error {
+		proxyConfig, res, err = client.ld.RelayProxyConfigurationsApi.GetRelayProxyConfig(client.ctx, id).Execute()
+		return err
+	})
 	if isStatusNotFound(res) {
 		if isDataSource {
 			return diag.Errorf("Relay Proxy configuration with id %q not found.", id)
@@ -142,7 +153,10 @@ func relayProxyConfigUpdate(ctx context.Context, d *schema.ResourceData, m inter
 		Comment: ldapi.PtrString("Terraform"),
 	}
 
-	_, _, err = client.ld.RelayProxyConfigurationsApi.PatchRelayAutoConfig(client.ctx, id).PatchWithComment(patchWithComment).Execute()
+	err = client.withConcurrency(client.ctx, func() error {
+		_, _, err = client.ld.RelayProxyConfigurationsApi.PatchRelayAutoConfig(client.ctx, id).PatchWithComment(patchWithComment).Execute()
+		return err
+	})
 	if err != nil {
 		return diag.Errorf("failed to update relay proxy configuration with id: %q: %s", id, handleLdapiErr(err))
 	}
@@ -155,7 +169,11 @@ func relayProxyConfigDelete(ctx context.Context, d *schema.ResourceData, m inter
 	client := m.(*Client)
 
 	id := d.Id()
-	_, err := client.ld.RelayProxyConfigurationsApi.DeleteRelayAutoConfig(client.ctx, id).Execute()
+	var err error
+	err = client.withConcurrency(client.ctx, func() error {
+		_, err = client.ld.RelayProxyConfigurationsApi.DeleteRelayAutoConfig(client.ctx, id).Execute()
+		return err
+	})
 	if err != nil {
 		return diag.Errorf("failed to delete relay proxy configuration with id: %q: %s", id, handleLdapiErr(err))
 	}

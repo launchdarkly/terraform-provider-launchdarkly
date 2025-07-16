@@ -4,12 +4,14 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"net/http"
 	"sort"
 	"strconv"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
+	ldapi "github.com/launchdarkly/api-client-go/v17"
 	strcase "github.com/stoewer/go-strcase"
 )
 
@@ -210,7 +212,13 @@ func auditLogSubscriptionRead(ctx context.Context, d *schema.ResourceData, metaR
 	}
 	integrationKey := d.Get(INTEGRATION_KEY).(string)
 
-	sub, res, err := client.ld.IntegrationAuditLogSubscriptionsApi.GetSubscriptionByID(client.ctx, integrationKey, id).Execute()
+	var sub *ldapi.Integration
+	var res *http.Response
+	var err error
+	err = client.withConcurrency(client.ctx, func() error {
+		sub, res, err = client.ld.IntegrationAuditLogSubscriptionsApi.GetSubscriptionByID(client.ctx, integrationKey, id).Execute()
+		return err
+	})
 
 	if isStatusNotFound(res) && !isDataSource {
 		log.Printf("[WARN] failed to find integration with ID %q, removing from state if present", id)
