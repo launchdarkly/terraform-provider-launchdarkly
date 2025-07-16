@@ -30,6 +30,7 @@ const (
 	OAUTH_TOKEN  = "oauth_token"
 	API_HOST     = "api_host"
 	HTTP_TIMEOUT = "http_timeout"
+	PARALLELISM  = "paralellism" // max concurrent requests
 )
 
 func providerSchema() map[string]*schema.Schema {
@@ -52,7 +53,12 @@ func providerSchema() map[string]*schema.Schema {
 		HTTP_TIMEOUT: {
 			Type:        schema.TypeInt,
 			Optional:    true,
-			Description: "The HTTP timeout (in seconds) when making API calls to LaunchDarkly.",
+			Description: "The HTTP timeout (in seconds) when making API calls to LaunchDarkly. Defaults to 20 seconds.",
+		},
+		PARALLELISM: {
+			Type:        schema.TypeInt,
+			Optional:    true,
+			Description: "The maximum number of concurrent requests to the LaunchDarkly API. Use this if you are hitting timeouts or 429s. Defaults to 10.",
 		},
 	}
 }
@@ -137,15 +143,23 @@ func providerConfigure(ctx context.Context, d *schema.ResourceData) (interface{}
 		httpTimeoutSeconds = DEFAULT_HTTP_TIMEOUT_S
 	}
 
+	maxConcurrent := d.Get(PARALLELISM).(int)
+	if maxConcurrent == 0 {
+		maxConcurrent = DEFAULT_MAX_CONCURRENCY
+	}
+	if maxConcurrent < 0 {
+		return nil, diag.Errorf("paralellism must be a positive integer")
+	}
+
 	if oauthToken != "" {
-		client, err := newClient(oauthToken, host, true, httpTimeoutSeconds)
+		client, err := newClient(oauthToken, host, true, httpTimeoutSeconds, maxConcurrent)
 		if err != nil {
 			return client, diag.FromErr(err)
 		}
 		return client, diags
 	}
 
-	client, err := newClient(accessToken, host, false, httpTimeoutSeconds)
+	client, err := newClient(accessToken, host, false, httpTimeoutSeconds, maxConcurrent)
 	if err != nil {
 		return client, diag.FromErr(err)
 	}

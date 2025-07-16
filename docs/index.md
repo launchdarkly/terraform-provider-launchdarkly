@@ -44,5 +44,6 @@ resource "launchdarkly_feature_flag" "terraform" {
 
 - `access_token` (String) The [personal access token](https://docs.launchdarkly.com/home/account-security/api-access-tokens#personal-tokens) or [service token](https://docs.launchdarkly.com/home/account-security/api-access-tokens#service-tokens) used to authenticate with LaunchDarkly. You can also set this with the `LAUNCHDARKLY_ACCESS_TOKEN` environment variable. You must provide either `access_token` or `oauth_token`.
 - `api_host` (String) The LaunchDarkly host address. If this argument is not specified, the default host address is `https://app.launchdarkly.com`
-- `http_timeout` (Number) The HTTP timeout (in seconds) when making API calls to LaunchDarkly.
+- `http_timeout` (Number) The HTTP timeout (in seconds) when making API calls to LaunchDarkly. Defaults to 20 seconds.
 - `oauth_token` (String) An OAuth V2 token you use to authenticate with LaunchDarkly. You can also set this with the `LAUNCHDARKLY_OAUTH_TOKEN` environment variable. You must provide either `access_token` or `oauth_token`.
+- `paralellism` (Number) The maximum number of concurrent requests to the LaunchDarkly API. Use this if you are hitting timeouts or 429s. Defaults to 10.

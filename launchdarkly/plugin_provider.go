@@ -23,10 +23,11 @@ type launchdarklyProvider struct {
 }
 
 type launchdarklyProviderModel struct {
-	AccessToken types.String `tfsdk:"access_token"`
-	OAuthToken  types.String `tfsdk:"oauth_token"`
-	Host        types.String `tfsdk:"api_host"`
-	HttpTimeout types.Int64  `tfsdk:"http_timeout"`
+	AccessToken   types.String `tfsdk:"access_token"`
+	OAuthToken    types.String `tfsdk:"oauth_token"`
+	Host          types.String `tfsdk:"api_host"`
+	HttpTimeout   types.Int64  `tfsdk:"http_timeout"`
+	MaxConcurrent types.Int64  `tfsdk:"parallelism"`
 }
 
 // Metadata returns the provider type name.
@@ -55,6 +56,10 @@ func (p *launchdarklyProvider) Schema(_ context.Context, _ provider.SchemaReques
 			HTTP_TIMEOUT: schema.Int64Attribute{
 				Optional:    true,
 				Description: sdkProviderSchema[HTTP_TIMEOUT].Description,
+			},
+			PARALLELISM: schema.Int64Attribute{
+				Optional:    true,
+				Description: sdkProviderSchema[PARALLELISM].Description,
 			},
 		},
 	}
@@ -100,8 +105,16 @@ func (p *launchdarklyProvider) Configure(ctx context.Context, req provider.Confi
 		return
 	}
 
+	maxConcurrent := int(data.MaxConcurrent.ValueInt64())
+	if maxConcurrent == 0 {
+		maxConcurrent = DEFAULT_MAX_CONCURRENCY
+	}
+	if maxConcurrent < 0 {
+		resp.Diagnostics.AddError("Invalid parallelism", "parallelism must be a positive integer")
+	}
+
 	if oauthToken != "" {
-		client, err := newClient(oauthToken, host, true, httpTimeoutSeconds)
+		client, err := newClient(oauthToken, host, true, httpTimeoutSeconds, maxConcurrent)
 		if err != nil {
 			resp.Diagnostics.AddError("Unable to create LaunchDarkly client", err.Error())
 			return
@@ -110,7 +123,7 @@ func (p *launchdarklyProvider) Configure(ctx context.Context, req provider.Confi
 		return
 	}
 
-	client, err := newClient(accessToken, host, false, httpTimeoutSeconds)
+	client, err := newClient(accessToken, host, false, httpTimeoutSeconds, maxConcurrent)
 	if err != nil {
 		resp.Diagnostics.AddError("Unable to create LaunchDarkly client", err.Error())
 		return

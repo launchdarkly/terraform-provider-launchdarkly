@@ -10,6 +10,8 @@ import (
 	"strconv"
 	"time"
 
+	"golang.org/x/sync/semaphore"
+
 	retryablehttp "github.com/hashicorp/go-retryablehttp"
 	ldapi "github.com/launchdarkly/api-client-go/v17"
 )
@@ -18,10 +20,11 @@ import (
 var version = "unreleased"
 
 const (
-	APIVersion     = "20240415"
-	MAX_RETRIES    = 12
-	RETRY_WAIT_MIN = 200 * time.Millisecond
-	RETRY_WAIT_MAX = 2000 * time.Millisecond
+	APIVersion              = "20240415"
+	MAX_RETRIES             = 12
+	RETRY_WAIT_MIN          = 200 * time.Millisecond
+	RETRY_WAIT_MAX          = 10000 * time.Millisecond
+	DEFAULT_MAX_CONCURRENCY = 10 // provider-specific parallelism
 )
 
 // Client is used by the provider to access the ld API.
@@ -36,14 +39,26 @@ type Client struct {
 	ld404Retry     *ldapi.APIClient
 	ctx            context.Context
 	fallbackClient *http.Client
+
+	semaphore *semaphore.Weighted
 }
 
-func newClient(token string, apiHost string, oauth bool, httpTimeoutSeconds int) (*Client, error) {
-	return baseNewClient(token, apiHost, oauth, httpTimeoutSeconds, APIVersion)
+func (c *Client) withConcurrency(ctx context.Context, fn func() error) error {
+	// this will block if the semaphore has reached its maxConcurrent requests
+	if err := c.semaphore.Acquire(ctx, 1); err != nil {
+		return fmt.Errorf("failed to acquire semaphore: %w", err)
+	}
+	defer c.semaphore.Release(1)
+
+	return fn()
 }
 
-func newBetaClient(token string, apiHost string, oauth bool, httpTimeoutSeconds int) (*Client, error) {
-	return baseNewClient(token, apiHost, oauth, httpTimeoutSeconds, "beta")
+func newClient(token string, apiHost string, oauth bool, httpTimeoutSeconds, maxConcurrent int) (*Client, error) {
+	return baseNewClient(token, apiHost, oauth, httpTimeoutSeconds, APIVersion, maxConcurrent)
+}
+
+func newBetaClient(token string, apiHost string, oauth bool, httpTimeoutSeconds, maxConcurrent int) (*Client, error) {
+	return baseNewClient(token, apiHost, oauth, httpTimeoutSeconds, "beta", maxConcurrent)
 }
 
 func newLDClientConfig(apiHost string, httpTimeoutSeconds int, apiVersion string, retryPolicy retryablehttp.CheckRetry) *ldapi.Configuration {
@@ -57,7 +72,7 @@ func newLDClientConfig(apiHost string, httpTimeoutSeconds int, apiVersion string
 	return cfg
 }
 
-func baseNewClient(token string, apiHost string, oauth bool, httpTimeoutSeconds int, apiVersion string) (*Client, error) {
+func baseNewClient(token string, apiHost string, oauth bool, httpTimeoutSeconds int, apiVersion string, maxConcurrent int) (*Client, error) {
 	if token == "" {
 		return nil, errors.New("token cannot be empty")
 	}
@@ -84,6 +99,7 @@ func baseNewClient(token string, apiHost string, oauth bool, httpTimeoutSeconds 
 		ld404Retry:     ldapi.NewAPIClient(configWith404Retries),
 		ctx:            ctx,
 		fallbackClient: fallbackClient,
+		semaphore:      semaphore.NewWeighted(int64(maxConcurrent)),
 	}, nil
 }
 
