@@ -51,7 +51,7 @@ This resource allows you to create and manage custom roles within your LaunchDar
 			BASE_PERMISSIONS: {
 				Type:             schema.TypeString,
 				Optional:         true,
-				Description:      "The base permission level - either reader or no_access. Defaults to reader.",
+				Description:      "The base permission level - either `reader` or `no_access`. While newer API versions default to `no_access`, this field defaults to `reader` in keeping with previous API versions.",
 				ValidateDiagFunc: validation.ToDiagFunc(validation.StringInSlice([]string{"reader", "no_access"}, false)),
 				Default:          "reader",
 			},

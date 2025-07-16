@@ -47,7 +47,7 @@ resource "launchdarkly_custom_role" "example" {
 
 ### Optional
 
-- `base_permissions` (String) The base permission level - either reader or no_access. Defaults to reader.
+- `base_permissions` (String) The base permission level - either `reader` or `no_access`. While newer API versions default to `no_access`, this field defaults to `reader` in keeping with previous API versions.
 - `description` (String) Description of the custom role.
 - `policy` (Block Set, Deprecated) (see [below for nested schema](#nestedblock--policy))
 - `policy_statements` (Block List) An array of the policy statements that define the permissions for the custom role. This field accepts [role attributes](https://docs.launchdarkly.com/home/getting-started/vocabulary#role-attribute). To use role attributes, use the syntax `$${roleAttribute/<YOUR_ROLE_ATTRIBUTE>}` in lieu of your usual resource keys. (see [below for nested schema](#nestedblock--policy_statements))
