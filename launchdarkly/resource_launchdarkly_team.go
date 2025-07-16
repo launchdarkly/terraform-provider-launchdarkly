@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"net/http"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -158,7 +159,11 @@ func resourceTeamCreate(ctx context.Context, d *schema.ResourceData, metaRaw int
 		RoleAttributes:   roleAttributes,
 	}
 
-	_, _, err := client.ld.TeamsApi.PostTeam(client.ctx).TeamPostInput(teamBody).Execute()
+	var err error
+	err = client.withConcurrency(client.ctx, func() error {
+		_, _, err = client.ld.TeamsApi.PostTeam(client.ctx).TeamPostInput(teamBody).Execute()
+		return err
+	})
 
 	if err != nil {
 		return diag.Errorf("Error when creating team %q: %s\n", key, handleLdapiErr(err))
@@ -174,7 +179,13 @@ func resourceTeamRead(ctx context.Context, d *schema.ResourceData, metaRaw inter
 	client := metaRaw.(*Client)
 	teamKey := d.Id()
 
-	team, res, err := client.ld.TeamsApi.GetTeam(client.ctx, teamKey).Expand("roles,projects,maintainers,roleAttributes").Execute()
+	var team *ldapi.Team
+	var res *http.Response
+	var err error
+	err = client.withConcurrency(client.ctx, func() error {
+		team, res, err = client.ld.TeamsApi.GetTeam(client.ctx, teamKey).Expand("roles,projects,maintainers,roleAttributes").Execute()
+		return err
+	})
 	if isStatusNotFound(res) {
 		log.Printf("[WARN] failed to find team %q, removing from state", teamKey)
 		diags = append(diags, diag.Diagnostic{
@@ -196,7 +207,13 @@ func resourceTeamRead(ctx context.Context, d *schema.ResourceData, metaRaw inter
 	filter := fmt.Sprintf("team:%s", teamKey)
 
 	for next != nil {
-		memberResponse, res, err := client.ld.AccountMembersApi.GetMembers(client.ctx).Limit(50).Offset(i * 50).Filter(filter).Execute()
+		var memberResponse *ldapi.Members
+		var res *http.Response
+		var err error
+		err = client.withConcurrency(client.ctx, func() error {
+			memberResponse, res, err = client.ld.AccountMembersApi.GetMembers(client.ctx).Limit(50).Offset(i * 50).Filter(filter).Execute()
+			return err
+		})
 		if isStatusNotFound(res) {
 			log.Printf("[WARN] failed to find members for team %q, removing from state", teamKey)
 			diags = append(diags, diag.Diagnostic{
@@ -353,7 +370,11 @@ func resourceTeamUpdate(ctx context.Context, d *schema.ResourceData, metaRaw int
 		}
 
 		teamKey := d.Get(KEY).(string)
-		_, _, err := client.ld.TeamsApi.PatchTeam(client.ctx, teamKey).TeamPatchInput(patch).Execute()
+		var err error
+		err = client.withConcurrency(client.ctx, func() error {
+			_, _, err = client.ld.TeamsApi.PatchTeam(client.ctx, teamKey).TeamPatchInput(patch).Execute()
+			return err
+		})
 
 		if err != nil {
 			return diag.Errorf("failed to update team member with id %q: %s", teamKey, handleLdapiErr(err))
@@ -368,7 +389,11 @@ func resourceTeamDelete(ctx context.Context, d *schema.ResourceData, metaRaw int
 
 	client := metaRaw.(*Client)
 
-	_, err := client.ld.TeamsApi.DeleteTeam(client.ctx, d.Id()).Execute()
+	var err error
+	err = client.withConcurrency(client.ctx, func() error {
+		_, err = client.ld.TeamsApi.DeleteTeam(client.ctx, d.Id()).Execute()
+		return err
+	})
 	if err != nil {
 		return diag.Errorf("failed to delete team with key: %q: %s", d.Id(), handleLdapiErr(err))
 	}

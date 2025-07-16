@@ -70,7 +70,12 @@ func resourceWebhookCreate(ctx context.Context, d *schema.ResourceData, metaRaw 
 		webhookBody.Sign = true
 	}
 
-	webhook, _, err := client.ld.WebhooksApi.PostWebhook(client.ctx).WebhookPost(webhookBody).Execute()
+	var webhook *ldapi.Webhook
+	var err error
+	err = client.withConcurrency(client.ctx, func() error {
+		webhook, _, err = client.ld.WebhooksApi.PostWebhook(client.ctx).WebhookPost(webhookBody).Execute()
+		return err
+	})
 	if err != nil {
 		return diag.Errorf("failed to create webhook with name %q: %s", webhookName, handleLdapiErr(err))
 	}
@@ -124,7 +129,10 @@ func resourceWebhookUpdate(ctx context.Context, d *schema.ResourceData, metaRaw 
 		}
 	}
 
-	_, _, err = client.ld.WebhooksApi.PatchWebhook(client.ctx, webhookID).PatchOperation(patch).Execute()
+	err = client.withConcurrency(client.ctx, func() error {
+		_, _, err = client.ld.WebhooksApi.PatchWebhook(client.ctx, webhookID).PatchOperation(patch).Execute()
+		return err
+	})
 	if err != nil {
 		return diag.Errorf("failed to update webhook with id %q: %s", webhookID, handleLdapiErr(err))
 	}
@@ -138,7 +146,11 @@ func resourceWebhookDelete(ctx context.Context, d *schema.ResourceData, metaRaw 
 	client := metaRaw.(*Client)
 	webhookID := d.Id()
 
-	_, err := client.ld.WebhooksApi.DeleteWebhook(client.ctx, webhookID).Execute()
+	var err error
+	err = client.withConcurrency(client.ctx, func() error {
+		_, err = client.ld.WebhooksApi.DeleteWebhook(client.ctx, webhookID).Execute()
+		return err
+	})
 	if err != nil {
 		return diag.Errorf("failed to delete webhook with id %q: %s", webhookID, handleLdapiErr(err))
 	}

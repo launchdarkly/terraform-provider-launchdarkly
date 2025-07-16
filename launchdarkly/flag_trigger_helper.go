@@ -4,10 +4,12 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"net/http"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
+	ldapi "github.com/launchdarkly/api-client-go/v17"
 )
 
 func baseFlagTriggerSchema(isDataSource bool) map[string]*schema.Schema {
@@ -93,7 +95,13 @@ func flagTriggerRead(ctx context.Context, d *schema.ResourceData, metaRaw interf
 		triggerId = d.Id()
 	}
 
-	trigger, res, err := client.ld.FlagTriggersApi.GetTriggerWorkflowById(client.ctx, projectKey, flagKey, envKey, triggerId).Execute()
+	var trigger *ldapi.TriggerWorkflowRep
+	var res *http.Response
+	var err error
+	err = client.withConcurrency(client.ctx, func() error {
+		trigger, res, err = client.ld.FlagTriggersApi.GetTriggerWorkflowById(client.ctx, projectKey, flagKey, envKey, triggerId).Execute()
+		return err
+	})
 	// if the trigger does not exist it simply return an empty trigger object
 	if (isStatusNotFound(res) || trigger.Id == nil) && !isDataSource {
 		log.Printf("[WARN] failed to find %s trigger with ID %s, removing from state if present", integrationKey, triggerId)

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"net/http"
 	"strings"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
@@ -142,7 +143,13 @@ func featureFlagRead(ctx context.Context, d *schema.ResourceData, raw interface{
 	projectKey := d.Get(PROJECT_KEY).(string)
 	key := d.Get(KEY).(string)
 
-	flag, res, err := client.ld.FeatureFlagsApi.GetFeatureFlag(client.ctx, projectKey, key).Execute()
+	var flag *ldapi.FeatureFlag
+	var res *http.Response
+	var err error
+	err = client.withConcurrency(client.ctx, func() error {
+		flag, res, err = client.ld.FeatureFlagsApi.GetFeatureFlag(client.ctx, projectKey, key).Execute()
+		return err
+	})
 
 	if isStatusNotFound(res) && !isDataSource {
 		// TODO: Can probably get rid of all of these WARN logs?
@@ -239,7 +246,12 @@ func flagIdToKeys(id string) (projectKey string, flagKey string, err error) {
 }
 
 func getProjectDefaultCSAandIncludeInSnippet(client *Client, projectKey string) (ldapi.ClientSideAvailability, bool, error) {
-	project, _, err := client.ld.ProjectsApi.GetProject(client.ctx, projectKey).Execute()
+	var project *ldapi.Project
+	var err error
+	err = client.withConcurrency(client.ctx, func() error {
+		project, _, err = client.ld.ProjectsApi.GetProject(client.ctx, projectKey).Execute()
+		return err
+	})
 	if err != nil {
 		return ldapi.ClientSideAvailability{}, false, err
 	}

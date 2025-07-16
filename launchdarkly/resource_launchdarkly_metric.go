@@ -238,7 +238,11 @@ func resourceMetricCreate(ctx context.Context, d *schema.ResourceData, metaRaw i
 		}
 	}
 
-	_, _, err := client.ld.MetricsApi.PostMetric(client.ctx, projectKey).MetricPost(metric).Execute()
+	var err error
+	err = client.withConcurrency(client.ctx, func() error {
+		_, _, err = client.ld.MetricsApi.PostMetric(client.ctx, projectKey).MetricPost(metric).Execute()
+		return err
+	})
 
 	if err != nil {
 		diags = append(diags, diag.Diagnostic{
@@ -257,7 +261,11 @@ func resourceMetricCreate(ctx context.Context, d *schema.ResourceData, metaRaw i
 		diags = resourceMetricUpdate(ctx, d, metaRaw)
 		if diags.HasError() {
 			// if there was a problem in the update state, we need to clean up completely by deleting the flag
-			_, deleteErr := client.ld.MetricsApi.DeleteMetric(client.ctx, projectKey, key).Execute()
+			var deleteErr error
+			deleteErr = client.withConcurrency(client.ctx, func() error {
+				_, deleteErr = client.ld.MetricsApi.DeleteMetric(client.ctx, projectKey, key).Execute()
+				return deleteErr
+			})
 			if deleteErr != nil {
 				diags = append(diags, diag.Diagnostic{
 					Severity: diag.Error,
@@ -347,7 +355,11 @@ func resourceMetricUpdate(ctx context.Context, d *schema.ResourceData, metaRaw i
 		patch = append(patch, patchReplace("/randomizationUnits", stringsFromResourceData(d, RANDOMIZATION_UNITS)))
 	}
 
-	_, _, err := client.ld.MetricsApi.PatchMetric(client.ctx, projectKey, key).PatchOperation(patch).Execute()
+	var err error
+	err = client.withConcurrency(client.ctx, func() error {
+		_, _, err = client.ld.MetricsApi.PatchMetric(client.ctx, projectKey, key).PatchOperation(patch).Execute()
+		return err
+	})
 
 	if err != nil {
 		diags = append(diags, diag.Diagnostic{
@@ -368,7 +380,11 @@ func resourceMetricDelete(ctx context.Context, d *schema.ResourceData, metaRaw i
 	projectKey := d.Get(PROJECT_KEY).(string)
 	key := d.Get(KEY).(string)
 
-	_, err := client.ld.MetricsApi.DeleteMetric(client.ctx, projectKey, key).Execute()
+	var err error
+	err = client.withConcurrency(client.ctx, func() error {
+		_, err = client.ld.MetricsApi.DeleteMetric(client.ctx, projectKey, key).Execute()
+		return err
+	})
 	if err != nil {
 		diags = append(diags, diag.Diagnostic{
 			Severity: diag.Error,

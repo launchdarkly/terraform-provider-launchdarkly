@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"net/http"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -102,7 +103,13 @@ func segmentRead(ctx context.Context, d *schema.ResourceData, raw interface{}, i
 	envKey := d.Get(ENV_KEY).(string)
 	segmentKey := d.Get(KEY).(string)
 
-	segment, res, err := client.ld.SegmentsApi.GetSegment(client.ctx, projectKey, envKey, segmentKey).Execute()
+	var segment *ldapi.UserSegment
+	var res *http.Response
+	var err error
+	err = client.withConcurrency(client.ctx, func() error {
+		segment, res, err = client.ld.SegmentsApi.GetSegment(client.ctx, projectKey, envKey, segmentKey).Execute()
+		return err
+	})
 	if isStatusNotFound(res) && !isDataSource {
 		log.Printf("[WARN] failed to find segment %q in project %q, environment %q, removing from state", segmentKey, projectKey, envKey)
 		diags = append(diags, diag.Diagnostic{

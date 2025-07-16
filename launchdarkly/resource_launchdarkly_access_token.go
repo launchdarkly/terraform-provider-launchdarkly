@@ -1,14 +1,10 @@
 package launchdarkly
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
-	"io"
 	"log"
 	"net/http"
-	"strings"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -168,7 +164,11 @@ func resourceAccessTokenCreate(ctx context.Context, d *schema.ResourceData, meta
 		accessTokenBody.Role = ldapi.PtrString(accessTokenRole.(string))
 	}
 
-	token, _, err := client.ld.AccessTokensApi.PostToken(client.ctx).AccessTokenPost(accessTokenBody).Execute()
+	var token *ldapi.Token
+	err = client.withConcurrency(client.ctx, func() error {
+		token, _, err = client.ld.AccessTokensApi.PostToken(client.ctx).AccessTokenPost(accessTokenBody).Execute()
+		return err
+	})
 
 	if err != nil {
 		return diag.Errorf("failed to create access token with name %q: %s", accessTokenName, handleLdapiErr(err))
@@ -185,7 +185,13 @@ func resourceAccessTokenRead(ctx context.Context, d *schema.ResourceData, metaRa
 	client := metaRaw.(*Client)
 	accessTokenID := d.Id()
 
-	accessToken, res, err := client.ld.AccessTokensApi.GetToken(client.ctx, accessTokenID).Execute()
+	var accessToken *ldapi.Token
+	var res *http.Response
+	var err error
+	err = client.withConcurrency(client.ctx, func() error {
+		accessToken, res, err = client.ld.AccessTokensApi.GetToken(client.ctx, accessTokenID).Execute()
+		return err
+	})
 
 	if isStatusNotFound(res) {
 		log.Printf("[WARN] failed to find access token with id %q, removing from state", accessTokenID)
@@ -289,7 +295,10 @@ func resourceAccessTokenUpdate(ctx context.Context, d *schema.ResourceData, meta
 		patch = append(patch, op)
 	}
 
-	_, _, err = client.ld.AccessTokensApi.PatchToken(client.ctx, accessTokenID).PatchOperation(patch).Execute()
+	err = client.withConcurrency(client.ctx, func() error {
+		_, _, err = client.ld.AccessTokensApi.PatchToken(client.ctx, accessTokenID).PatchOperation(patch).Execute()
+		return err
+	})
 	if err != nil {
 		return diag.Errorf("failed to update access token with id %q: %s", accessTokenID, handleLdapiErr(err))
 	}
@@ -318,7 +327,11 @@ func resourceAccessTokenDelete(ctx context.Context, d *schema.ResourceData, meta
 	client := metaRaw.(*Client)
 	accessTokenID := d.Id()
 
-	_, err := client.ld.AccessTokensApi.DeleteToken(client.ctx, accessTokenID).Execute()
+	var err error
+	err = client.withConcurrency(client.ctx, func() error {
+		_, err = client.ld.AccessTokensApi.DeleteToken(client.ctx, accessTokenID).Execute()
+		return err
+	})
 
 	if err != nil {
 		return diag.Errorf("failed to delete access token with id %q: %s", accessTokenID, handleLdapiErr(err))
@@ -344,53 +357,59 @@ func accessTokenExists(accessTokenID string, meta *Client) (bool, error) {
 }
 
 func resetAccessToken(client *Client, accessTokenID string, expiry int) (ldapi.Token, error) {
-	var token ldapi.Token
-	// var err error
-	// // Terraform validation will ensure we do not get a zero value
-	// if expiry > 0 {
-	// 	token, _, err = client.ld.AccessTokensApi.ResetToken(client.ctx, accessTokenID).Expiry(int64(expiry)).Execute()
-	// } else if expiry < 0 {
-	// 	token, _, err = client.ld.AccessTokensApi.ResetToken(client.ctx, accessTokenID).Execute()
-	// }
-	// if err != nil {
-	// 	return token, fmt.Errorf("failed to reset access token with id %q: %s", accessTokenID, handleLdapiErr(err))
-	// }
-	// return token, nil
-	endpoint := fmt.Sprintf("%s/api/v2/tokens/%s/reset", client.apiHost, accessTokenID)
-	if !strings.HasPrefix(endpoint, "http") {
-		endpoint = "https://" + endpoint
-	}
-	var body io.Reader
+	var token *ldapi.Token
+	var err error
+	// Terraform validation will ensure we do not get a zero value
 	if expiry > 0 {
-		rawBody, err := json.Marshal(map[string]int{
-			"expiry": expiry,
+		err = client.withConcurrency(client.ctx, func() error {
+			token, _, err = client.ld.AccessTokensApi.ResetToken(client.ctx, accessTokenID).Expiry(int64(expiry)).Execute()
+			return err
 		})
-		if err != nil {
-			return token, err
-		}
-		body = bytes.NewBuffer(rawBody)
+	} else if expiry < 0 {
+		err = client.withConcurrency(client.ctx, func() error {
+			token, _, err = client.ld.AccessTokensApi.ResetToken(client.ctx, accessTokenID).Execute()
+			return err
+		})
 	}
-	req, err := http.NewRequest("POST", endpoint, body)
-	if err != nil {
-		return token, err
+	if err != nil || token == nil {
+		return ldapi.Token{}, fmt.Errorf("failed to reset access token with id %q: %s", accessTokenID, handleLdapiErr(err))
 	}
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", client.apiKey)
+	return *token, nil
+	// endpoint := fmt.Sprintf("%s/api/v2/tokens/%s/reset", client.apiHost, accessTokenID)
+	// if !strings.HasPrefix(endpoint, "http") {
+	// 	endpoint = "https://" + endpoint
+	// }
+	// var body io.Reader
+	// if expiry > 0 {
+	// 	rawBody, err := json.Marshal(map[string]int{
+	// 		"expiry": expiry,
+	// 	})
+	// 	if err != nil {
+	// 		return token, err
+	// 	}
+	// 	body = bytes.NewBuffer(rawBody)
+	// }
+	// req, err := http.NewRequest("POST", endpoint, body)
+	// if err != nil {
+	// 	return token, err
+	// }
+	// req.Header.Set("Content-Type", "application/json")
+	// req.Header.Set("Authorization", client.apiKey)
 
-	resp, err := client.fallbackClient.Do(req)
-	if err != nil {
-		return token, err
-	}
+	// resp, err := client.fallbackClient.Do(req)
+	// if err != nil {
+	// 	return token, err
+	// }
 
-	rawBody, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return token, err
-	}
+	// rawBody, err := io.ReadAll(resp.Body)
+	// if err != nil {
+	// 	return token, err
+	// }
 
-	err = json.Unmarshal(rawBody, &token)
-	if err != nil {
-		return token, err
-	}
+	// err = json.Unmarshal(rawBody, &token)
+	// if err != nil {
+	// 	return token, err
+	// }
 
-	return token, nil
+	// return token, nil
 }

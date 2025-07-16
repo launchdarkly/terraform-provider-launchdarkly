@@ -121,7 +121,10 @@ func resourceFeatureFlagEnvironmentCreate(ctx context.Context, d *schema.Resourc
 		}
 		log.Printf("[DEBUG] %+v\n", patch)
 
-		_, _, err = client.ld.FeatureFlagsApi.PatchFeatureFlag(client.ctx, projectKey, flagKey).PatchWithComment(patch).Execute()
+		err = client.withConcurrency(client.ctx, func() error {
+			_, _, err = client.ld.FeatureFlagsApi.PatchFeatureFlag(client.ctx, projectKey, flagKey).PatchWithComment(patch).Execute()
+			return err
+		})
 		if err != nil {
 			return diag.Errorf("failed to update flag %q in project %q: %s", flagKey, projectKey, handleLdapiErr(err))
 		}
@@ -210,7 +213,10 @@ func resourceFeatureFlagEnvironmentUpdate(ctx context.Context, d *schema.Resourc
 	log.Printf("[DEBUG] %+v\n", patch)
 
 	if len(patchOperations) > 0 {
-		_, _, err = client.ld.FeatureFlagsApi.PatchFeatureFlag(client.ctx, projectKey, flagKey).PatchWithComment(patch).Execute()
+		err = client.withConcurrency(client.ctx, func() error {
+			_, _, err = client.ld.FeatureFlagsApi.PatchFeatureFlag(client.ctx, projectKey, flagKey).PatchWithComment(patch).Execute()
+			return err
+		})
 		if err != nil {
 			return diag.Errorf("failed to update flag %q in project %q, environment %q: %s", flagKey, projectKey, envKey, handleLdapiErr(err))
 		}
@@ -244,7 +250,11 @@ func resourceFeatureFlagEnvironmentDelete(ctx context.Context, d *schema.Resourc
 		return diag.Errorf("failed to find environment with key %q", envKey)
 	}
 
-	flag, _, err := client.ld.FeatureFlagsApi.GetFeatureFlag(client.ctx, projectKey, flagKey).Execute()
+	var flag *ldapi.FeatureFlag
+	err = client.withConcurrency(client.ctx, func() error {
+		flag, _, err = client.ld.FeatureFlagsApi.GetFeatureFlag(client.ctx, projectKey, flagKey).Execute()
+		return err
+	})
 	if err != nil {
 		return diag.Errorf("failed to update flag %q in project %q, environment %q: %s", flagKey, projectKey, envKey, handleLdapiErr(err))
 	}
@@ -271,7 +281,10 @@ func resourceFeatureFlagEnvironmentDelete(ctx context.Context, d *schema.Resourc
 		}}
 	log.Printf("[DEBUG] %+v\n", patch)
 
-	_, _, err = client.ld.FeatureFlagsApi.PatchFeatureFlag(client.ctx, projectKey, flagKey).PatchWithComment(patch).Execute()
+	err = client.withConcurrency(client.ctx, func() error {
+		_, _, err = client.ld.FeatureFlagsApi.PatchFeatureFlag(client.ctx, projectKey, flagKey).PatchWithComment(patch).Execute()
+		return err
+	})
 	if err != nil {
 		return diag.Errorf("failed to update flag %q in project %q, environment %q: %s", flagKey, projectKey, envKey, handleLdapiErr(err))
 	}

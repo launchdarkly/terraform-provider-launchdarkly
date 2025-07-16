@@ -3,6 +3,7 @@ package launchdarkly
 import (
 	"context"
 	"fmt"
+	"net/http"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/path"
@@ -88,7 +89,13 @@ func (r *TeamRoleMappingResource) Create(ctx context.Context, req resource.Creat
 	}
 
 	teamKey := data.TeamKey.ValueString()
-	team, res, err := r.client.ld404Retry.TeamsApi.GetTeam(r.client.ctx, teamKey).Expand("roles").Execute()
+	var team *ldapi.Team
+	var res *http.Response
+	var err error
+	err = r.client.withConcurrency(r.client.ctx, func() error {
+		team, res, err = r.client.ld404Retry.TeamsApi.GetTeam(r.client.ctx, teamKey).Expand("roles").Execute()
+		return err
+	})
 	if err != nil {
 		if isStatusNotFound(res) {
 			resp.Diagnostics.AddError("Team not found", fmt.Sprintf("Unable to create the team/role mapping because the team %q does not exist.", teamKey))
@@ -126,13 +133,22 @@ func (r *TeamRoleMappingResource) Create(ctx context.Context, req resource.Creat
 			Instructions: patchInstructions,
 		}
 
-		_, _, err := r.client.ld.TeamsApi.PatchTeam(r.client.ctx, teamKey).TeamPatchInput(patch).Execute()
+		var err error
+		err = r.client.withConcurrency(r.client.ctx, func() error {
+			_, _, err = r.client.ld.TeamsApi.PatchTeam(r.client.ctx, teamKey).TeamPatchInput(patch).Execute()
+			return err
+		})
 		if err != nil {
 			resp.Diagnostics.AddError("Unable to update team custom roles", fmt.Sprintf("Unable to modify the %q team's custom roles. %s", teamKey, handleLdapiErr(err)))
 			return
 		}
 
-		team, res, err := r.client.ld.TeamsApi.GetTeam(r.client.ctx, teamKey).Expand("roles").Execute()
+		var team *ldapi.Team
+		var res *http.Response
+		err = r.client.withConcurrency(r.client.ctx, func() error {
+			team, res, err = r.client.ld.TeamsApi.GetTeam(r.client.ctx, teamKey).Expand("roles").Execute()
+			return err
+		})
 		if err != nil {
 			if isStatusNotFound(res) {
 				resp.Diagnostics.AddError("Team not found", fmt.Sprintf("Unable to create the team/role mapping because the team %q does not exist.", teamKey))
@@ -175,7 +191,13 @@ func (r *TeamRoleMappingResource) Read(ctx context.Context, req resource.ReadReq
 
 	// we use the ld404Retry API client to fetch the team because users that provision their team via Okta team sync may
 	// see a delay before the team appears in LaunchDarkly. sc-218015
-	team, res, err := r.client.ld404Retry.TeamsApi.GetTeam(r.client.ctx, teamKey).Expand("roles").Execute()
+	var team *ldapi.Team
+	var res *http.Response
+	var err error
+	err = r.client.withConcurrency(r.client.ctx, func() error {
+		team, res, err = r.client.ld404Retry.TeamsApi.GetTeam(r.client.ctx, teamKey).Expand("roles").Execute()
+		return err
+	})
 	if err != nil {
 		if isStatusNotFound(res) {
 			resp.Diagnostics.AddError("Team not found", fmt.Sprintf("Unable to read the team/role mapping because the team %q does not exist.", teamKey))
@@ -210,7 +232,13 @@ func (r *TeamRoleMappingResource) Update(ctx context.Context, req resource.Updat
 	}
 
 	teamKey := data.TeamKey.ValueString()
-	team, res, err := r.client.ld404Retry.TeamsApi.GetTeam(r.client.ctx, teamKey).Expand("roles").Execute()
+	var team *ldapi.Team
+	var res *http.Response
+	var err error
+	err = r.client.withConcurrency(r.client.ctx, func() error {
+		team, res, err = r.client.ld404Retry.TeamsApi.GetTeam(r.client.ctx, teamKey).Expand("roles").Execute()
+		return err
+	})
 	if err != nil {
 		if isStatusNotFound(res) {
 			resp.Diagnostics.AddError("Team not found", fmt.Sprintf("Unable to get the team/role mapping because the team %q does not exist.", teamKey))
@@ -255,7 +283,11 @@ func (r *TeamRoleMappingResource) Update(ctx context.Context, req resource.Updat
 			Instructions: patchInstructions,
 		}
 
-		_, _, err := r.client.ld.TeamsApi.PatchTeam(r.client.ctx, teamKey).TeamPatchInput(patch).Execute()
+		var err error
+		err = r.client.withConcurrency(r.client.ctx, func() error {
+			_, _, err = r.client.ld.TeamsApi.PatchTeam(r.client.ctx, teamKey).TeamPatchInput(patch).Execute()
+			return err
+		})
 		if err != nil {
 			resp.Diagnostics.AddError("Unable to update team custom roles", fmt.Sprintf("Unable to modify the %q team's custom roles. %s", teamKey, handleLdapiErr(err)))
 			return
@@ -263,7 +295,12 @@ func (r *TeamRoleMappingResource) Update(ctx context.Context, req resource.Updat
 
 		// We need to fetch the team again via GET (with the expand=roles query param) because the PATCH response does not
 		// include custom role information.
-		team, res, err := r.client.ld.TeamsApi.GetTeam(r.client.ctx, teamKey).Expand("roles").Execute()
+		var team *ldapi.Team
+		var res *http.Response
+		err = r.client.withConcurrency(r.client.ctx, func() error {
+			team, res, err = r.client.ld.TeamsApi.GetTeam(r.client.ctx, teamKey).Expand("roles").Execute()
+			return err
+		})
 		if err != nil {
 			if isStatusNotFound(res) {
 				resp.Diagnostics.AddError("Team not found", fmt.Sprintf("Unable to create the team/role mapping because the team %q does not exist.", teamKey))
@@ -321,7 +358,11 @@ func (r *TeamRoleMappingResource) Delete(ctx context.Context, req resource.Delet
 			Instructions: instructions,
 		}
 
-		_, _, err := r.client.ld.TeamsApi.PatchTeam(r.client.ctx, teamKey).TeamPatchInput(patch).Execute()
+		var err error
+		err = r.client.withConcurrency(r.client.ctx, func() error {
+			_, _, err = r.client.ld.TeamsApi.PatchTeam(r.client.ctx, teamKey).TeamPatchInput(patch).Execute()
+			return err
+		})
 		if err != nil {
 			resp.Diagnostics.AddError("Unable to delete team custom roles", fmt.Sprintf("Unable to modify the %q team's custom roles. %s", teamKey, handleLdapiErr(err)))
 			return

@@ -5,6 +5,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	ldapi "github.com/launchdarkly/api-client-go/v17"
 )
 
 func teamSchema() map[string]*schema.Schema {
@@ -87,7 +88,12 @@ func dataSourceTeamRead(ctx context.Context, d *schema.ResourceData, meta interf
 	var diags diag.Diagnostics
 	client := meta.(*Client)
 	teamKey := d.Get(KEY).(string)
-	team, _, err := client.ld.TeamsApi.GetTeam(client.ctx, teamKey).Expand("roles,projects,maintainers,roleAttributes").Execute()
+	var team *ldapi.Team
+	var err error
+	err = client.withConcurrency(client.ctx, func() error {
+		team, _, err = client.ld.TeamsApi.GetTeam(client.ctx, teamKey).Expand("roles,projects,maintainers,roleAttributes").Execute()
+		return err
+	})
 
 	if err != nil {
 		return diag.Errorf("Error when calling `TeamsApi.GetTeam`: %v\n\n request: %v", err, team)
