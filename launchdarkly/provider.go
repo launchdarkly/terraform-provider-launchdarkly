@@ -26,11 +26,11 @@ const (
 
 // Provider keys
 const (
-	ACCESS_TOKEN = "access_token"
-	OAUTH_TOKEN  = "oauth_token"
-	API_HOST     = "api_host"
-	HTTP_TIMEOUT = "http_timeout"
-	PARALLELISM  = "paralellism" // max concurrent requests
+	ACCESS_TOKEN            = "access_token"
+	OAUTH_TOKEN             = "oauth_token"
+	API_HOST                = "api_host"
+	HTTP_TIMEOUT            = "http_timeout"
+	MAX_CONCURRENT_REQUESTS = "max_concurrent_requests" // handles parallelism
 )
 
 func providerSchema() map[string]*schema.Schema {
@@ -55,10 +55,10 @@ func providerSchema() map[string]*schema.Schema {
 			Optional:    true,
 			Description: "The HTTP timeout (in seconds) when making API calls to LaunchDarkly. Defaults to 20 seconds.",
 		},
-		PARALLELISM: {
+		MAX_CONCURRENT_REQUESTS: {
 			Type:        schema.TypeInt,
 			Optional:    true,
-			Description: "The maximum number of concurrent requests to the LaunchDarkly API. Use this if you are hitting timeouts or 429s. Defaults to 10.",
+			Description: "The maximum number of concurrent requests to the LaunchDarkly API (provider-specific --parallelism logic). Defaults to 10. Set this to a lower value if you are hitting timeouts or 429s.",
 		},
 	}
 }
@@ -143,7 +143,7 @@ func providerConfigure(ctx context.Context, d *schema.ResourceData) (interface{}
 		httpTimeoutSeconds = DEFAULT_HTTP_TIMEOUT_S
 	}
 
-	maxConcurrent := d.Get(PARALLELISM).(int)
+	maxConcurrent := d.Get(MAX_CONCURRENT_REQUESTS).(int)
 	if maxConcurrent == 0 {
 		maxConcurrent = DEFAULT_MAX_CONCURRENCY
 	}

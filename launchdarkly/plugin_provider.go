@@ -23,11 +23,11 @@ type launchdarklyProvider struct {
 }
 
 type launchdarklyProviderModel struct {
-	AccessToken   types.String `tfsdk:"access_token"`
-	OAuthToken    types.String `tfsdk:"oauth_token"`
-	Host          types.String `tfsdk:"api_host"`
-	HttpTimeout   types.Int64  `tfsdk:"http_timeout"`
-	MaxConcurrent types.Int64  `tfsdk:"parallelism"`
+	AccessToken           types.String `tfsdk:"access_token"`
+	OAuthToken            types.String `tfsdk:"oauth_token"`
+	Host                  types.String `tfsdk:"api_host"`
+	HttpTimeout           types.Int64  `tfsdk:"http_timeout"`
+	MaxConcurrentRequests types.Int64  `tfsdk:"max_concurrent_requests"`
 }
 
 // Metadata returns the provider type name.
@@ -57,9 +57,9 @@ func (p *launchdarklyProvider) Schema(_ context.Context, _ provider.SchemaReques
 				Optional:    true,
 				Description: sdkProviderSchema[HTTP_TIMEOUT].Description,
 			},
-			PARALLELISM: schema.Int64Attribute{
+			MAX_CONCURRENT_REQUESTS: schema.Int64Attribute{
 				Optional:    true,
-				Description: sdkProviderSchema[PARALLELISM].Description,
+				Description: sdkProviderSchema[MAX_CONCURRENT_REQUESTS].Description,
 			},
 		},
 	}
@@ -105,7 +105,7 @@ func (p *launchdarklyProvider) Configure(ctx context.Context, req provider.Confi
 		return
 	}
 
-	maxConcurrent := int(data.MaxConcurrent.ValueInt64())
+	maxConcurrent := int(data.MaxConcurrentRequests.ValueInt64())
 	if maxConcurrent == 0 {
 		maxConcurrent = DEFAULT_MAX_CONCURRENCY
 	}
