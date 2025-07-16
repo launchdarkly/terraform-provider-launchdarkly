@@ -41,7 +41,7 @@ func TestAccDataSourceFlagTrigger_noMatchReturnsError(t *testing.T) {
 	if accTest == "" {
 		t.SkipNow()
 	}
-	client, err := newClient(os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN), os.Getenv(LAUNCHDARKLY_API_HOST), false, DEFAULT_HTTP_TIMEOUT_S)
+	client, err := newClient(os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN), os.Getenv(LAUNCHDARKLY_API_HOST), false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
 	require.NoError(t, err)
 	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	flagKey := "trigger-test"
@@ -74,7 +74,7 @@ func TestAccDataSourceFlagTrigger_exists(t *testing.T) {
 		t.SkipNow()
 	}
 
-	client, err := newClient(os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN), os.Getenv(LAUNCHDARKLY_API_HOST), false, DEFAULT_HTTP_TIMEOUT_S)
+	client, err := newClient(os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN), os.Getenv(LAUNCHDARKLY_API_HOST), false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
 	require.NoError(t, err)
 	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	flagKey := "trigger-test"

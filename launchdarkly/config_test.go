@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// TODO test with max concurrency arg
 func TestHandleRateLimits(t *testing.T) {
 	t.Run("no retries needed", func(t *testing.T) {
 		t.Parallel()
@@ -24,7 +25,7 @@ func TestHandleRateLimits(t *testing.T) {
 		defer ts.Close()
 
 		// create a client
-		client, err := newClient("token", ts.URL, false, DEFAULT_HTTP_TIMEOUT_S)
+		client, err := newClient("token", ts.URL, false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
 		require.NoError(t, err)
 
 		res, err := client.ld.GetConfig().HTTPClient.Get(ts.URL)
@@ -46,7 +47,7 @@ func TestHandleRateLimits(t *testing.T) {
 		defer ts.Close()
 
 		// create a client
-		client, err := newClient("token", ts.URL, false, DEFAULT_HTTP_TIMEOUT_S)
+		client, err := newClient("token", ts.URL, false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
 		require.NoError(t, err)
 
 		res, err := client.ld.GetConfig().HTTPClient.Get(ts.URL)
@@ -74,7 +75,7 @@ func TestHandleRateLimits(t *testing.T) {
 		defer ts.Close()
 
 		// create a client
-		client, err := newClient("token", ts.URL, false, 20)
+		client, err := newClient("token", ts.URL, false, 20, DEFAULT_MAX_CONCURRENCY)
 		require.NoError(t, err)
 
 		res, err := client.ld.GetConfig().HTTPClient.Get(ts.URL)
@@ -102,7 +103,7 @@ func TestHandleRateLimits(t *testing.T) {
 		defer ts.Close()
 
 		// create a client
-		client, err := newClient("token", ts.URL, false, DEFAULT_HTTP_TIMEOUT_S)
+		client, err := newClient("token", ts.URL, false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
 		require.NoError(t, err)
 
 		res, err := client.ld.GetConfig().HTTPClient.Get(ts.URL)
@@ -129,7 +130,7 @@ func TestHandleRateLimits(t *testing.T) {
 		defer ts.Close()
 
 		// create a client
-		client, err := newClient("token", ts.URL, false, DEFAULT_HTTP_TIMEOUT_S)
+		client, err := newClient("token", ts.URL, false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
 		require.NoError(t, err)
 
 		res, err := client.ld.GetConfig().HTTPClient.Get(ts.URL)
@@ -152,7 +153,7 @@ func Test404RetryClient(t *testing.T) {
 		defer ts.Close()
 
 		// create a client
-		client, err := newClient("token", ts.URL, false, DEFAULT_HTTP_TIMEOUT_S)
+		client, err := newClient("token", ts.URL, false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
 		require.NoError(t, err)
 
 		res, err := client.ld404Retry.GetConfig().HTTPClient.Get(ts.URL)
@@ -173,7 +174,7 @@ func Test404RetryClient(t *testing.T) {
 		defer ts.Close()
 
 		// create a client
-		client, err := newClient("token", ts.URL, false, DEFAULT_HTTP_TIMEOUT_S)
+		client, err := newClient("token", ts.URL, false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
 		require.NoError(t, err)
 
 		res, err := client.ld404Retry.GetConfig().HTTPClient.Get(ts.URL)
@@ -200,7 +201,7 @@ func Test404RetryClient(t *testing.T) {
 		defer ts.Close()
 
 		// create a client
-		client, err := newClient("token", ts.URL, false, DEFAULT_HTTP_TIMEOUT_S)
+		client, err := newClient("token", ts.URL, false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
 		require.NoError(t, err)
 
 		res, err := client.ld404Retry.GetConfig().HTTPClient.Get(ts.URL)

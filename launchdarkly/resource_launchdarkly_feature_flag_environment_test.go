@@ -992,7 +992,7 @@ func TestAccFeatureFlagEnvironment_ContextTargets(t *testing.T) {
 	// scaffold. we have to do it via API request because we do not yet have the ability to add context_kind resources
 	// to projects via terraform
 	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
-	client, err := newClient(os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN), os.Getenv(LAUNCHDARKLY_API_HOST), false, DEFAULT_HTTP_TIMEOUT_S)
+	client, err := newClient(os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN), os.Getenv(LAUNCHDARKLY_API_HOST), false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
 	require.NoError(t, err)
 	accountContextKind := "account"
 	otherContextKind := "other"
@@ -1216,7 +1216,7 @@ func testAccCheckFeatureFlagEnvironmentExists(resourceName string) resource.Test
 // has defaulted to the expected global config variation (in this case 0)
 func testAccCheckFeatureFlagEnvironmentDefaults(t *testing.T, projectKey, flagKey string) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
-		client, err := newClient(os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN), os.Getenv(LAUNCHDARKLY_API_HOST), false, DEFAULT_HTTP_TIMEOUT_S)
+		client, err := newClient(os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN), os.Getenv(LAUNCHDARKLY_API_HOST), false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
 		require.NoError(t, err)
 		flag, _, err := client.ld.FeatureFlagsApi.GetFeatureFlag(client.ctx, projectKey, flagKey).Execute()
 		require.NoError(t, err)

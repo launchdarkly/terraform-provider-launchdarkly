@@ -68,7 +68,7 @@ func TestAccDataSourceTeam_exists(t *testing.T) {
 	}
 
 	// Populate account with dummy team
-	client, err := newClient(os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN), os.Getenv(LAUNCHDARKLY_API_HOST), false, DEFAULT_HTTP_TIMEOUT_S)
+	client, err := newClient(os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN), os.Getenv(LAUNCHDARKLY_API_HOST), false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
 	require.NoError(t, err)
 	teamKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	team, createErr := testAccDataSourceTeamCreate(client, teamKey)
