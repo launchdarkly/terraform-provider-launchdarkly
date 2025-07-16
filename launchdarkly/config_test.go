@@ -13,7 +13,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TODO test with max concurrency arg
 func TestHandleRateLimits(t *testing.T) {
 	t.Run("no retries needed", func(t *testing.T) {
 		t.Parallel()
