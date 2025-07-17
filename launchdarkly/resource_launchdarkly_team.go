@@ -405,8 +405,13 @@ func resourceTeamExists(d *schema.ResourceData, metaRaw interface{}) (bool, erro
 	return teamExists(d.Id(), metaRaw.(*Client))
 }
 
-func teamExists(teamKey string, meta *Client) (bool, error) {
-	_, res, err := meta.ld.TeamsApi.GetTeam(meta.ctx, teamKey).Execute()
+func teamExists(teamKey string, client *Client) (bool, error) {
+	var res *http.Response
+	var err error
+	err = client.withConcurrency(client.ctx, func() error {
+		_, res, err = client.ld.TeamsApi.GetTeam(client.ctx, teamKey).Execute()
+		return err
+	})
 	if isStatusNotFound(res) {
 		return false, nil
 	}

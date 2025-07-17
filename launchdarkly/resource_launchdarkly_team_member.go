@@ -213,8 +213,13 @@ func resourceTeamMemberExists(d *schema.ResourceData, metaRaw interface{}) (bool
 	return teamMemberExists(d.Id(), metaRaw.(*Client))
 }
 
-func teamMemberExists(memberID string, meta *Client) (bool, error) {
-	_, res, err := meta.ld.AccountMembersApi.GetMember(meta.ctx, memberID).Execute()
+func teamMemberExists(memberID string, client *Client) (bool, error) {
+	var res *http.Response
+	var err error
+	err = client.withConcurrency(client.ctx, func() error {
+		_, res, err = client.ld.AccountMembersApi.GetMember(client.ctx, memberID).Execute()
+		return err
+	})
 	if isStatusNotFound(res) {
 		return false, nil
 	}
