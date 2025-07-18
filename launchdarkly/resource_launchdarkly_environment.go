@@ -3,6 +3,7 @@ package launchdarkly
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"strings"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
@@ -167,8 +168,13 @@ func resourceEnvironmentExists(d *schema.ResourceData, metaRaw interface{}) (boo
 	return environmentExists(d.Get(PROJECT_KEY).(string), d.Get(KEY).(string), metaRaw.(*Client))
 }
 
-func environmentExists(projectKey string, key string, meta *Client) (bool, error) {
-	_, res, err := meta.ld.EnvironmentsApi.GetEnvironment(meta.ctx, projectKey, key).Execute()
+func environmentExists(projectKey string, key string, client *Client) (bool, error) {
+	var res *http.Response
+	var err error
+	err = client.withConcurrency(client.ctx, func() error {
+		_, res, err = client.ld.EnvironmentsApi.GetEnvironment(client.ctx, projectKey, key).Execute()
+		return err
+	})
 	if isStatusNotFound(res) {
 		return false, nil
 	}

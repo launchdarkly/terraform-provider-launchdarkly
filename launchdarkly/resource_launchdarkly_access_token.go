@@ -348,8 +348,13 @@ func resourceAccessTokenExists(d *schema.ResourceData, metaRaw interface{}) (boo
 	return accessTokenExists(d.Id(), metaRaw.(*Client))
 }
 
-func accessTokenExists(accessTokenID string, meta *Client) (bool, error) {
-	_, res, err := meta.ld.AccessTokensApi.GetToken(meta.ctx, accessTokenID).Execute()
+func accessTokenExists(accessTokenID string, client *Client) (bool, error) {
+	var res *http.Response
+	var err error
+	err = client.withConcurrency(client.ctx, func() error {
+		_, res, err = client.ld.AccessTokensApi.GetToken(client.ctx, accessTokenID).Execute()
+		return err
+	})
 	if isStatusNotFound(res) {
 		return false, nil
 	}

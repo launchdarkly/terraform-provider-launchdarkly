@@ -3,6 +3,7 @@ package launchdarkly
 import (
 	"context"
 	"fmt"
+	"net/http"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -162,8 +163,13 @@ func resourceWebhookExists(d *schema.ResourceData, metaRaw interface{}) (bool, e
 	return webhookExists(d.Id(), metaRaw.(*Client))
 }
 
-func webhookExists(webhookID string, meta *Client) (bool, error) {
-	_, res, err := meta.ld.WebhooksApi.GetWebhook(meta.ctx, webhookID).Execute()
+func webhookExists(webhookID string, client *Client) (bool, error) {
+	var res *http.Response
+	var err error
+	err = client.withConcurrency(client.ctx, func() error {
+		_, res, err = client.ld.WebhooksApi.GetWebhook(client.ctx, webhookID).Execute()
+		return err
+	})
 	if isStatusNotFound(res) {
 		return false, nil
 	}

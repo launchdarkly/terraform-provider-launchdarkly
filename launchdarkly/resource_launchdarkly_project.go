@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"net/http"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -319,8 +320,13 @@ func resourceProjectExists(d *schema.ResourceData, metaRaw interface{}) (bool, e
 	return projectExists(d.Get(KEY).(string), metaRaw.(*Client))
 }
 
-func projectExists(projectKey string, meta *Client) (bool, error) {
-	_, res, err := meta.ld.ProjectsApi.GetProject(meta.ctx, projectKey).Execute()
+func projectExists(projectKey string, client *Client) (bool, error) {
+	var res *http.Response
+	var err error
+	err = client.withConcurrency(client.ctx, func() error {
+		_, res, err = client.ld.ProjectsApi.GetProject(client.ctx, projectKey).Execute()
+		return err
+	})
 	if isStatusNotFound(res) {
 		log.Println("got 404 when getting project. returning false.")
 		return false, nil

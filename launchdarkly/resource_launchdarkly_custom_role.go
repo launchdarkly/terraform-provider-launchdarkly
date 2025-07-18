@@ -215,8 +215,13 @@ func resourceCustomRoleExists(d *schema.ResourceData, metaRaw interface{}) (bool
 	return customRoleExists(d.Id(), metaRaw.(*Client))
 }
 
-func customRoleExists(customRoleKey string, meta *Client) (bool, error) {
-	_, res, err := meta.ld.CustomRolesApi.GetCustomRole(meta.ctx, customRoleKey).Execute()
+func customRoleExists(customRoleKey string, client *Client) (bool, error) {
+	var res *http.Response
+	var err error
+	err = client.withConcurrency(client.ctx, func() error {
+		_, res, err = client.ld.CustomRolesApi.GetCustomRole(client.ctx, customRoleKey).Execute()
+		return err
+	})
 	if isStatusNotFound(res) {
 		return false, nil
 	}
