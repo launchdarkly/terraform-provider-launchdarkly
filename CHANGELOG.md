@@ -2,6 +2,14 @@
 
 All notable changes to the LaunchDarkly Terraform Provider will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org).
 
+## [2.25.3](https://github.com/launchdarkly/terraform-provider-launchdarkly/compare/v2.25.2...v2.25.3) (2025-07-18)
+
+
+### Bug Fixes
+
+* [REL-8483] limit concurrency on the client to address 429/timeouts issue ([#338](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/338)) ([f38b51f](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/f38b51f5009c955e804dee9f4b5206a344ac41be))
+* [REL-8605] add documentation note on discrepancy in default base permissions with current API version ([#336](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/336)) ([53733ee](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/53733ee7eb2e1e8a62257faa6ef01369c5dd435c))
+
 ## [2.25.2](https://github.com/launchdarkly/terraform-provider-launchdarkly/compare/v2.25.1...v2.25.2) (2025-07-01)
 
 
