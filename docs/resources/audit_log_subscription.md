@@ -41,7 +41,7 @@ resource "launchdarkly_audit_log_subscription" "example" {
 ### Required
 
 - `config` (Map of String) The set of configuration fields corresponding to the value defined for `integration_key`. Refer to the `formVariables` field in the corresponding `integrations/<integration_key>/manifest.json` file in [this repo](https://github.com/launchdarkly/integration-framework/tree/master/integrations) for a full list of fields for the integration you wish to configure. **IMPORTANT**: Please note that Terraform will only accept these in snake case, regardless of the case shown in the manifest.
-- `integration_key` (String) The integration key. Supported integration keys are `slack`. A change in this field will force the destruction of the existing resource and the creation of a new one.
+- `integration_key` (String) The integration key. Supported integration keys are `chronosphere`, `cloudtrail`, `datadog`, `dynatrace`, `elastic`, `grafana`, `honeycomb`, `kosli`, `last9`, `logdna`, `msteams`, `new-relic-apm`, `pagerduty`, `signalfx`, `slack`, and `splunk`. A change in this field will force the destruction of the existing resource and the creation of a new one.
 - `name` (String) A human-friendly name for your audit log subscription viewable from within the LaunchDarkly Integrations page.
 - `on` (Boolean) Whether or not you want your subscription enabled, i.e. to actively send events.
 - `statements` (Block List, Min: 1) A block representing the resources to which you wish to subscribe. (see [below for nested schema](#nestedblock--statements))
