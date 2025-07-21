@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"net/http"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -97,7 +98,12 @@ func resourceTeamMemberCreate(ctx context.Context, d *schema.ResourceData, metaR
 	}
 
 	// role attributes will not come back here because we have to set an expand query param
-	members, _, err := client.ld.AccountMembersApi.PostMembers(client.ctx).NewMemberForm([]ldapi.NewMemberForm{membersBody}).Execute()
+	var members *ldapi.Members
+	var err error
+	err = client.withConcurrency(client.ctx, func() error {
+		members, _, err = client.ld.AccountMembersApi.PostMembers(client.ctx).NewMemberForm([]ldapi.NewMemberForm{membersBody}).Execute()
+		return err
+	})
 	if err != nil {
 		return diag.Errorf("failed to create team member with email: %s: %v", memberEmail, handleLdapiErr(err))
 	}
@@ -112,7 +118,13 @@ func resourceTeamMemberRead(ctx context.Context, d *schema.ResourceData, metaRaw
 	client := metaRaw.(*Client)
 	memberID := d.Id()
 
-	member, res, err := client.ld.AccountMembersApi.GetMember(client.ctx, memberID).Expand("roleAttributes").Execute()
+	var member *ldapi.Member
+	var res *http.Response
+	var err error
+	err = client.withConcurrency(client.ctx, func() error {
+		member, res, err = client.ld.AccountMembersApi.GetMember(client.ctx, memberID).Expand("roleAttributes").Execute()
+		return err
+	})
 	if isStatusNotFound(res) {
 		log.Printf("[WARN] failed to find member with id %q, removing from state", memberID)
 		diags = append(diags, diag.Diagnostic{
@@ -169,7 +181,10 @@ func resourceTeamMemberUpdate(ctx context.Context, d *schema.ResourceData, metaR
 	}
 	patch = append(patch, getRoleAttributePatches(d)...)
 
-	_, _, err = client.ld.AccountMembersApi.PatchMember(client.ctx, memberID).PatchOperation(patch).Execute()
+	err = client.withConcurrency(client.ctx, func() error {
+		_, _, err = client.ld.AccountMembersApi.PatchMember(client.ctx, memberID).PatchOperation(patch).Execute()
+		return err
+	})
 	if err != nil {
 		return diag.Errorf("failed to update team member with id %q: %s", memberID, handleLdapiErr(err))
 	}
@@ -182,7 +197,11 @@ func resourceTeamMemberDelete(ctx context.Context, d *schema.ResourceData, metaR
 
 	client := metaRaw.(*Client)
 
-	_, err := client.ld.AccountMembersApi.DeleteMember(client.ctx, d.Id()).Execute()
+	var err error
+	err = client.withConcurrency(client.ctx, func() error {
+		_, err = client.ld.AccountMembersApi.DeleteMember(client.ctx, d.Id()).Execute()
+		return err
+	})
 	if err != nil {
 		return diag.Errorf("failed to delete team member with id %q: %s", d.Id(), handleLdapiErr(err))
 	}
@@ -194,8 +213,13 @@ func resourceTeamMemberExists(d *schema.ResourceData, metaRaw interface{}) (bool
 	return teamMemberExists(d.Id(), metaRaw.(*Client))
 }
 
-func teamMemberExists(memberID string, meta *Client) (bool, error) {
-	_, res, err := meta.ld.AccountMembersApi.GetMember(meta.ctx, memberID).Execute()
+func teamMemberExists(memberID string, client *Client) (bool, error) {
+	var res *http.Response
+	var err error
+	err = client.withConcurrency(client.ctx, func() error {
+		_, res, err = client.ld.AccountMembersApi.GetMember(client.ctx, memberID).Execute()
+		return err
+	})
 	if isStatusNotFound(res) {
 		return false, nil
 	}

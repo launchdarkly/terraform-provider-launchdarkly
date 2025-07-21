@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"net/http"
 	"strings"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
@@ -96,7 +97,11 @@ func resourceDestinationCreate(ctx context.Context, d *schema.ResourceData, meta
 		On:     &destinationOn,
 	}
 
-	destination, _, err := client.ld.DataExportDestinationsApi.PostDestination(client.ctx, destinationProjKey, destinationEnvKey).DestinationPost(destinationBody).Execute()
+	var destination *ldapi.Destination
+	err = client.withConcurrency(client.ctx, func() error {
+		destination, _, err = client.ld.DataExportDestinationsApi.PostDestination(client.ctx, destinationProjKey, destinationEnvKey).DestinationPost(destinationBody).Execute()
+		return err
+	})
 	if err != nil {
 		d.SetId("")
 		return diag.Errorf("failed to create destination with project key %q and env key %q: %s", destinationProjKey, destinationEnvKey, handleLdapiErr(err))
@@ -119,7 +124,12 @@ func resourceDestinationRead(ctx context.Context, d *schema.ResourceData, metaRa
 	destinationProjKey := d.Get(PROJECT_KEY).(string)
 	destinationEnvKey := d.Get(ENV_KEY).(string)
 
-	destination, res, err := client.ld.DataExportDestinationsApi.GetDestination(client.ctx, destinationProjKey, destinationEnvKey, destinationID).Execute()
+	var destination *ldapi.Destination
+	var res *http.Response
+	err = client.withConcurrency(client.ctx, func() error {
+		destination, res, err = client.ld.DataExportDestinationsApi.GetDestination(client.ctx, destinationProjKey, destinationEnvKey, destinationID).Execute()
+		return err
+	})
 
 	if isStatusNotFound(res) {
 		log.Printf("[WARN] failed to find destination with id: %q in project %q, environment: %q, removing from state", destinationID, destinationProjKey, destinationEnvKey)
@@ -169,7 +179,10 @@ func resourceDestinationUpdate(ctx context.Context, d *schema.ResourceData, meta
 		patchReplace("/config", &destinationConfig),
 	}
 
-	_, _, err = client.ld.DataExportDestinationsApi.PatchDestination(client.ctx, destinationProjKey, destinationEnvKey, destinationID).PatchOperation(patch).Execute()
+	err = client.withConcurrency(client.ctx, func() error {
+		_, _, err = client.ld.DataExportDestinationsApi.PatchDestination(client.ctx, destinationProjKey, destinationEnvKey, destinationID).PatchOperation(patch).Execute()
+		return err
+	})
 	if err != nil {
 		return diag.Errorf("failed to update destination with id %q: %s", destinationID, handleLdapiErr(err))
 	}
@@ -188,7 +201,10 @@ func resourceDestinationDelete(ctx context.Context, d *schema.ResourceData, meta
 	destinationProjKey := d.Get(PROJECT_KEY).(string)
 	destinationEnvKey := d.Get(ENV_KEY).(string)
 
-	_, err = client.ld.DataExportDestinationsApi.DeleteDestination(client.ctx, destinationProjKey, destinationEnvKey, destinationID).Execute()
+	err = client.withConcurrency(client.ctx, func() error {
+		_, err = client.ld.DataExportDestinationsApi.DeleteDestination(client.ctx, destinationProjKey, destinationEnvKey, destinationID).Execute()
+		return err
+	})
 	if err != nil {
 		return diag.Errorf("failed to delete destination with id %q: %s", destinationID, handleLdapiErr(err))
 	}
@@ -205,7 +221,11 @@ func resourceDestinationExists(d *schema.ResourceData, metaRaw interface{}) (boo
 	destinationProjKey := d.Get(PROJECT_KEY).(string)
 	destinationEnvKey := d.Get(ENV_KEY).(string)
 
-	_, res, err := client.ld.DataExportDestinationsApi.GetDestination(client.ctx, destinationProjKey, destinationEnvKey, destinationID).Execute()
+	var res *http.Response
+	err = client.withConcurrency(client.ctx, func() error {
+		_, res, err = client.ld.DataExportDestinationsApi.GetDestination(client.ctx, destinationProjKey, destinationEnvKey, destinationID).Execute()
+		return err
+	})
 	if isStatusNotFound(res) {
 		return false, nil
 	}

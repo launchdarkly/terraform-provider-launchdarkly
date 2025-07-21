@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"net/http"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -143,7 +144,11 @@ func resourceProjectCreate(ctx context.Context, d *schema.ResourceData, metaRaw 
 		projectBody.Environments = envs
 	}
 
-	_, _, err := client.ld.ProjectsApi.PostProject(client.ctx).ProjectPost(projectBody).Execute()
+	var err error
+	err = client.withConcurrency(client.ctx, func() error {
+		_, _, err = client.ld.ProjectsApi.PostProject(client.ctx).ProjectPost(projectBody).Execute()
+		return err
+	})
 	if err != nil {
 		if !isTimeoutError(err) {
 			return diag.Errorf("failed to create project with name %s and projectKey %s: %v", name, projectKey, handleLdapiErr(err))
@@ -207,7 +212,11 @@ func resourceProjectUpdate(ctx context.Context, d *schema.ResourceData, metaRaw 
 		}))
 	}
 
-	_, _, err := client.ld.ProjectsApi.PatchProject(client.ctx, projectKey).PatchOperation(patch).Execute()
+	var err error
+	err = client.withConcurrency(client.ctx, func() error {
+		_, _, err = client.ld.ProjectsApi.PatchProject(client.ctx, projectKey).PatchOperation(patch).Execute()
+		return err
+	})
 	if err != nil {
 		return diag.Errorf("failed to update project with key %q: %s", projectKey, handleLdapiErr(err))
 	}
@@ -239,7 +248,11 @@ func resourceProjectUpdate(ctx context.Context, d *schema.ResourceData, metaRaw 
 		exists := environmentExistsInProject(*project, envKey)
 		if !exists {
 			envPost := environmentPostFromResourceData(env)
-			_, _, err := client.ld.EnvironmentsApi.PostEnvironment(client.ctx, projectKey).EnvironmentPost(envPost).Execute()
+			var err error
+			err = client.withConcurrency(client.ctx, func() error {
+				_, _, err = client.ld.EnvironmentsApi.PostEnvironment(client.ctx, projectKey).EnvironmentPost(envPost).Execute()
+				return err
+			})
 			if err != nil {
 				return diag.Errorf("failed to create environment %q in project %q: %s", envKey, projectKey, handleLdapiErr(err))
 			}
@@ -254,7 +267,10 @@ func resourceProjectUpdate(ctx context.Context, d *schema.ResourceData, metaRaw 
 		if err != nil {
 			return diag.FromErr(err)
 		}
-		_, _, err = client.ld.EnvironmentsApi.PatchEnvironment(client.ctx, projectKey, envKey).PatchOperation(patch).Execute()
+		err = client.withConcurrency(client.ctx, func() error {
+			_, _, err = client.ld.EnvironmentsApi.PatchEnvironment(client.ctx, projectKey, envKey).PatchOperation(patch).Execute()
+			return err
+		})
 		if err != nil {
 			return diag.Errorf("failed to update project environment with key %q for project: %q: %+v", envKey, projectKey, handleLdapiErr(err))
 		}
@@ -266,7 +282,10 @@ func resourceProjectUpdate(ctx context.Context, d *schema.ResourceData, metaRaw 
 		envConfig := env.(map[string]interface{})
 		envKey := envConfig[KEY].(string)
 		if _, persists := envConfigsForCompare[envKey]; !persists {
-			_, err = client.ld.EnvironmentsApi.DeleteEnvironment(client.ctx, projectKey, envKey).Execute()
+			err = client.withConcurrency(client.ctx, func() error {
+				_, err = client.ld.EnvironmentsApi.DeleteEnvironment(client.ctx, projectKey, envKey).Execute()
+				return err
+			})
 			if err != nil {
 				return diag.Errorf("failed to delete environment %q in project %q: %s", envKey, projectKey, handleLdapiErr(err))
 			}
@@ -282,7 +301,11 @@ func resourceProjectDelete(ctx context.Context, d *schema.ResourceData, metaRaw 
 	client := metaRaw.(*Client)
 	projectKey := d.Get(KEY).(string)
 
-	_, err := client.ld.ProjectsApi.DeleteProject(client.ctx, projectKey).Execute()
+	var err error
+	err = client.withConcurrency(client.ctx, func() error {
+		_, err = client.ld.ProjectsApi.DeleteProject(client.ctx, projectKey).Execute()
+		return err
+	})
 	if err != nil {
 		if !isTimeoutError(err) {
 			return diag.Errorf("failed to delete project with key %q: %s", projectKey, handleLdapiErr(err))
@@ -297,8 +320,13 @@ func resourceProjectExists(d *schema.ResourceData, metaRaw interface{}) (bool, e
 	return projectExists(d.Get(KEY).(string), metaRaw.(*Client))
 }
 
-func projectExists(projectKey string, meta *Client) (bool, error) {
-	_, res, err := meta.ld.ProjectsApi.GetProject(meta.ctx, projectKey).Execute()
+func projectExists(projectKey string, client *Client) (bool, error) {
+	var res *http.Response
+	var err error
+	err = client.withConcurrency(client.ctx, func() error {
+		_, res, err = client.ld.ProjectsApi.GetProject(client.ctx, projectKey).Execute()
+		return err
+	})
 	if isStatusNotFound(res) {
 		log.Println("got 404 when getting project. returning false.")
 		return false, nil

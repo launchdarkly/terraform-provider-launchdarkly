@@ -3,6 +3,7 @@ package launchdarkly
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"strings"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
@@ -77,7 +78,11 @@ func resourceSegmentCreate(ctx context.Context, d *schema.ResourceData, metaRaw 
 		UnboundedContextKind: &unboundedContextKind,
 	}
 
-	_, _, err := client.ld.SegmentsApi.PostSegment(client.ctx, projectKey, envKey).SegmentBody(segment).Execute()
+	var err error
+	err = client.withConcurrency(client.ctx, func() error {
+		_, _, err = client.ld.SegmentsApi.PostSegment(client.ctx, projectKey, envKey).SegmentBody(segment).Execute()
+		return err
+	})
 	if err != nil {
 		return diag.Errorf("failed to create segment %q in project %q: %s", key, projectKey, handleLdapiErr(err))
 	}
@@ -134,9 +139,12 @@ func resourceSegmentUpdate(ctx context.Context, d *schema.ResourceData, metaRaw 
 	}
 	patchOps = append(patchOps, tagPatch)
 
-	_, _, err = client.ld.SegmentsApi.PatchSegment(client.ctx, projectKey, envKey, key).PatchWithComment(ldapi.PatchWithComment{
-		Comment: &comment,
-		Patch:   patchOps}).Execute()
+	err = client.withConcurrency(client.ctx, func() error {
+		_, _, err = client.ld.SegmentsApi.PatchSegment(client.ctx, projectKey, envKey, key).PatchWithComment(ldapi.PatchWithComment{
+			Comment: &comment,
+			Patch:   patchOps}).Execute()
+		return err
+	})
 	if err != nil {
 		return diag.Errorf("failed to update segment %q in project %q: %s", key, projectKey, handleLdapiErr(err))
 	}
@@ -152,7 +160,11 @@ func resourceSegmentDelete(ctx context.Context, d *schema.ResourceData, metaRaw 
 	envKey := d.Get(ENV_KEY).(string)
 	key := d.Get(KEY).(string)
 
-	_, err := client.ld.SegmentsApi.DeleteSegment(client.ctx, projectKey, envKey, key).Execute()
+	var err error
+	err = client.withConcurrency(client.ctx, func() error {
+		_, err = client.ld.SegmentsApi.DeleteSegment(client.ctx, projectKey, envKey, key).Execute()
+		return err
+	})
 	if err != nil {
 		return diag.Errorf("failed to delete segment %q from project %q: %s", key, projectKey, handleLdapiErr(err))
 	}
@@ -166,7 +178,12 @@ func resourceSegmentExists(d *schema.ResourceData, metaRaw interface{}) (bool, e
 	envKey := d.Get(ENV_KEY).(string)
 	key := d.Get(KEY).(string)
 
-	_, res, err := client.ld.SegmentsApi.GetSegment(client.ctx, projectKey, envKey, key).Execute()
+	var res *http.Response
+	var err error
+	err = client.withConcurrency(client.ctx, func() error {
+		_, res, err = client.ld.SegmentsApi.GetSegment(client.ctx, projectKey, envKey, key).Execute()
+		return err
+	})
 	if isStatusNotFound(res) {
 		return false, nil
 	}

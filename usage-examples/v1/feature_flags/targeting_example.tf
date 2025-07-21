@@ -22,13 +22,19 @@ resource "launchdarkly_feature_flag_environment" "prereq_flag" {
       negate    = false
     }
   }
+
+  fallthrough {
+    variation = 1
+  }
+
+  off_variation = 0
 }
 
 # This flag provides an example of user-specific targeting in the test environment
 # on the string_flag defined in "flag_types_example.tf".
 # The rules block of this resource determines that the 0-index variation ("string1") will
 # be served to users whose names start with the letters a-e.
-# flag_fallthrough describes the default to serve if none of the other rules apply:
+# fallthrough describes the default to serve if none of the other rules apply:
 # in this case, the percentage of users who will be served each variation (must sum to 100000).
 # Use of the bucket_by attribute ensures that all users with the same company will be served the 
 # same variation within the rollout buckets.
@@ -39,12 +45,15 @@ resource "launchdarkly_feature_flag_environment" "user_targeting_flag" {
   track_events      = true
   targets {
     values    = ["test_user0"]
+    variation = 0
   }
   targets {
     values    = ["test_user1", "test_user2"]
+    variation = 1
   }
   targets {
     values    = ["test_user3"]
+    variation = 2
   }
   rules {
     clauses {
@@ -56,8 +65,10 @@ resource "launchdarkly_feature_flag_environment" "user_targeting_flag" {
     variation = 0
   }
 
-  flag_fallthrough {
+  fallthrough {
     rollout_weights = [60000, 30000, 10000]
     bucket_by       = "company"
   }
+
+  off_variation = 1
 }

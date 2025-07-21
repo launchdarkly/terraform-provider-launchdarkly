@@ -101,7 +101,7 @@ func (p *launchdarklyProvider) Configure(ctx context.Context, req provider.Confi
 	}
 
 	if oauthToken != "" {
-		client, err := newClient(oauthToken, host, true, httpTimeoutSeconds)
+		client, err := newClient(oauthToken, host, true, httpTimeoutSeconds, DEFAULT_MAX_CONCURRENCY)
 		if err != nil {
 			resp.Diagnostics.AddError("Unable to create LaunchDarkly client", err.Error())
 			return
@@ -110,7 +110,7 @@ func (p *launchdarklyProvider) Configure(ctx context.Context, req provider.Confi
 		return
 	}
 
-	client, err := newClient(accessToken, host, false, httpTimeoutSeconds)
+	client, err := newClient(accessToken, host, false, httpTimeoutSeconds, DEFAULT_MAX_CONCURRENCY)
 	if err != nil {
 		resp.Diagnostics.AddError("Unable to create LaunchDarkly client", err.Error())
 		return

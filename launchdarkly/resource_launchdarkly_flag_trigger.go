@@ -3,6 +3,7 @@ package launchdarkly
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"strings"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
@@ -46,7 +47,12 @@ func resourceFlagTriggerCreate(ctx context.Context, d *schema.ResourceData, meta
 	triggerBody := ldapi.NewTriggerPost(integrationKey)
 	triggerBody.Instructions = instructions
 
-	createdTrigger, _, err := client.ld.FlagTriggersApi.CreateTriggerWorkflow(client.ctx, projectKey, envKey, flagKey).TriggerPost(*triggerBody).Execute()
+	var createdTrigger *ldapi.TriggerWorkflowRep
+	var err error
+	err = client.withConcurrency(client.ctx, func() error {
+		createdTrigger, _, err = client.ld.FlagTriggersApi.CreateTriggerWorkflow(client.ctx, projectKey, envKey, flagKey).TriggerPost(*triggerBody).Execute()
+		return err
+	})
 	if err != nil {
 		return diag.Errorf("failed to create %s trigger for proj/env/flag %s/%s/%s: %s", integrationKey, projectKey, envKey, flagKey, err.Error())
 	}
@@ -67,7 +73,10 @@ func resourceFlagTriggerCreate(ctx context.Context, d *schema.ResourceData, meta
 			Instructions: instructions,
 		}
 
-		_, _, err = client.ld.FlagTriggersApi.PatchTriggerWorkflow(client.ctx, projectKey, envKey, flagKey, *createdTrigger.Id).FlagTriggerInput(input).Execute()
+		err = client.withConcurrency(client.ctx, func() error {
+			_, _, err = client.ld.FlagTriggersApi.PatchTriggerWorkflow(client.ctx, projectKey, envKey, flagKey, *createdTrigger.Id).FlagTriggerInput(input).Execute()
+			return err
+		})
 		if err != nil {
 			return diag.Errorf("failed to update %s trigger for proj/env/flag %s/%s/%s: %s", integrationKey, projectKey, envKey, flagKey, err.Error())
 		}
@@ -105,7 +114,11 @@ func resourceFlagTriggerUpdate(ctx context.Context, d *schema.ResourceData, meta
 		Instructions: instructions,
 	}
 
-	_, _, err := client.ld.FlagTriggersApi.PatchTriggerWorkflow(client.ctx, projectKey, envKey, flagKey, triggerId).FlagTriggerInput(input).Execute()
+	var err error
+	err = client.withConcurrency(client.ctx, func() error {
+		_, _, err = client.ld.FlagTriggersApi.PatchTriggerWorkflow(client.ctx, projectKey, envKey, flagKey, triggerId).FlagTriggerInput(input).Execute()
+		return err
+	})
 	if err != nil {
 		return diag.Errorf("failed to update %s trigger for proj/env/flag %s/%s/%s", integrationKey, projectKey, envKey, flagKey)
 	}
@@ -121,7 +134,11 @@ func resourceFlagTriggerDelete(ctx context.Context, d *schema.ResourceData, meta
 
 	triggerId := d.Id()
 
-	_, err := client.ld.FlagTriggersApi.DeleteTriggerWorkflow(client.ctx, projectKey, envKey, flagKey, triggerId).Execute()
+	var err error
+	err = client.withConcurrency(client.ctx, func() error {
+		_, err = client.ld.FlagTriggersApi.DeleteTriggerWorkflow(client.ctx, projectKey, envKey, flagKey, triggerId).Execute()
+		return err
+	})
 	if err != nil {
 		return diag.Errorf("failed to delete %s trigger with ID %s for proj/env/flag %s/%s/%s", integrationKey, triggerId, projectKey, envKey, flagKey)
 	}
@@ -137,7 +154,12 @@ func resourceFlagTriggerExists(d *schema.ResourceData, metaRaw interface{}) (boo
 
 	triggerId := d.Id()
 
-	_, res, err := client.ld.FlagTriggersApi.GetTriggerWorkflowById(client.ctx, projectKey, flagKey, envKey, triggerId).Execute()
+	var res *http.Response
+	var err error
+	err = client.withConcurrency(client.ctx, func() error {
+		_, res, err = client.ld.FlagTriggersApi.GetTriggerWorkflowById(client.ctx, projectKey, flagKey, envKey, triggerId).Execute()
+		return err
+	})
 	if isStatusNotFound(res) {
 		return false, nil
 	}
