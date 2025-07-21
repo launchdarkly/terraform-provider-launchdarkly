@@ -234,7 +234,7 @@ func featureFlagRead(ctx context.Context, d *schema.ResourceData, raw interface{
 
 	// For data sources, also fetch and set linked views for discovery
 	if isDataSource {
-		betaClient, err := newBetaClient(client.apiKey, client.apiHost, false, DEFAULT_HTTP_TIMEOUT_S)
+		betaClient, err := newBetaClient(client.apiKey, client.apiHost, false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
 		if err != nil {
 			log.Printf("[WARN] failed to create beta client for views lookup: %v", err)
 		} else {
