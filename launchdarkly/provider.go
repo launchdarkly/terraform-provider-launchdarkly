@@ -52,7 +52,7 @@ func providerSchema() map[string]*schema.Schema {
 		HTTP_TIMEOUT: {
 			Type:        schema.TypeInt,
 			Optional:    true,
-			Description: "The HTTP timeout (in seconds) when making API calls to LaunchDarkly.",
+			Description: "The HTTP timeout (in seconds) when making API calls to LaunchDarkly. Defaults to 20 seconds.",
 		},
 	}
 }
@@ -141,14 +141,14 @@ func providerConfigure(ctx context.Context, d *schema.ResourceData) (interface{}
 	}
 
 	if oauthToken != "" {
-		client, err := newClient(oauthToken, host, true, httpTimeoutSeconds)
+		client, err := newClient(oauthToken, host, true, httpTimeoutSeconds, DEFAULT_MAX_CONCURRENCY)
 		if err != nil {
 			return client, diag.FromErr(err)
 		}
 		return client, diags
 	}
 
-	client, err := newClient(accessToken, host, false, httpTimeoutSeconds)
+	client, err := newClient(accessToken, host, false, httpTimeoutSeconds, DEFAULT_MAX_CONCURRENCY)
 	if err != nil {
 		return client, diag.FromErr(err)
 	}

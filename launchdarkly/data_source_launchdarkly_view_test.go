@@ -50,7 +50,7 @@ func TestAccDataSourceView_exists(t *testing.T) {
 	viewDescription := "Test view description"
 	tag := "test-tag"
 
-	client, err := newClient(os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN), os.Getenv(LAUNCHDARKLY_API_HOST), false, DEFAULT_HTTP_TIMEOUT_S)
+	client, err := newClient(os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN), os.Getenv(LAUNCHDARKLY_API_HOST), false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
 	require.NoError(t, err)
 
 	members, _, err := client.ld.AccountMembersApi.GetMembers(client.ctx).Execute()
@@ -120,7 +120,7 @@ func TestAccDataSourceView_withLinkedFlags(t *testing.T) {
 	projectName := "view-discovery-test-" + projectKey
 	resourceName := "data.launchdarkly_view.test"
 
-	client, err := newClient(os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN), os.Getenv(LAUNCHDARKLY_API_HOST), false, DEFAULT_HTTP_TIMEOUT_S)
+	client, err := newClient(os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN), os.Getenv(LAUNCHDARKLY_API_HOST), false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
 	require.NoError(t, err)
 
 	members, _, err := client.ld.AccountMembersApi.GetMembers(client.ctx).Execute()

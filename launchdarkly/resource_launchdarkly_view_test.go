@@ -122,7 +122,7 @@ func TestAccView_Update(t *testing.T) {
 	updatedViewDescription := "Updated test view description"
 	resourceName := "launchdarkly_view.test"
 
-	client, err := newClient(os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN), os.Getenv(LAUNCHDARKLY_API_HOST), false, DEFAULT_HTTP_TIMEOUT_S)
+	client, err := newClient(os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN), os.Getenv(LAUNCHDARKLY_API_HOST), false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
 	require.NoError(t, err)
 
 	members, _, err := client.ld.AccountMembersApi.GetMembers(client.ctx).Execute()
@@ -206,7 +206,7 @@ func TestAccView_WithMaintainer(t *testing.T) {
 	viewDescription := "Test view description"
 	resourceName := "launchdarkly_view.test"
 
-	client, err := newClient(os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN), os.Getenv(LAUNCHDARKLY_API_HOST), false, DEFAULT_HTTP_TIMEOUT_S)
+	client, err := newClient(os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN), os.Getenv(LAUNCHDARKLY_API_HOST), false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
 	require.NoError(t, err)
 
 	members, _, err := client.ld.AccountMembersApi.GetMembers(client.ctx).Execute()
@@ -279,7 +279,7 @@ func TestAccView_InvalidKey(t *testing.T) {
 	viewName := "Test View"
 	viewDescription := "Test view description"
 
-	client, err := newClient(os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN), os.Getenv(LAUNCHDARKLY_API_HOST), false, DEFAULT_HTTP_TIMEOUT_S)
+	client, err := newClient(os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN), os.Getenv(LAUNCHDARKLY_API_HOST), false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
 	require.NoError(t, err)
 
 	members, _, err := client.ld.AccountMembersApi.GetMembers(client.ctx).Execute()

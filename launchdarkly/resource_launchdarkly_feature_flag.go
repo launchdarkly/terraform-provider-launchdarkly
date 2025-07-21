@@ -3,6 +3,7 @@ package launchdarkly
 import (
 	"context"
 	"fmt"
+	"net/http"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -111,7 +112,10 @@ func resourceFeatureFlagCreate(ctx context.Context, d *schema.ResourceData, meta
 			UsingMobileKey:     *defaultCSA.UsingMobileKey,
 		}
 	}
-	_, _, err = client.ld.FeatureFlagsApi.PostFeatureFlag(client.ctx, projectKey).FeatureFlagBody(flag).Execute()
+	err = client.withConcurrency(ctx, func() error {
+		_, _, err = client.ld.FeatureFlagsApi.PostFeatureFlag(client.ctx, projectKey).FeatureFlagBody(flag).Execute()
+		return err
+	})
 	if err != nil {
 		return diag.Errorf("failed to create flag %q in project %q: %s", key, projectKey, handleLdapiErr(err))
 	}
@@ -121,9 +125,12 @@ func resourceFeatureFlagCreate(ctx context.Context, d *schema.ResourceData, meta
 	updateDiags := featureFlagUpdate(ctx, d, metaRaw, true)
 	if updateDiags.HasError() {
 		// if there was a problem in the update state, we need to clean up completely by deleting the flag
-		_, deleteErr := client.ld.FeatureFlagsApi.DeleteFeatureFlag(client.ctx, projectKey, key).Execute()
-		if deleteErr != nil {
-			return diag.Errorf("failed to delete flag %q from project %q: %s", key, projectKey, handleLdapiErr(deleteErr))
+		err := client.withConcurrency(ctx, func() error {
+			_, deleteErr := client.ld.FeatureFlagsApi.DeleteFeatureFlag(client.ctx, projectKey, key).Execute()
+			return deleteErr
+		})
+		if err != nil {
+			return diag.Errorf("failed to delete flag %q from project %q: %s", key, projectKey, handleLdapiErr(err))
 		}
 		return diag.Errorf("failed to update flag with name %q key %q for projectKey %q: %s",
 			flagName, key, projectKey, updateDiags[0].Summary)
@@ -204,7 +211,13 @@ func featureFlagUpdate(ctx context.Context, d *schema.ResourceData, metaRaw inte
 
 	// Only update the maintainer fields if is specified in the schema
 	if d.HasChange(MAINTAINER_ID) || d.HasChange(MAINTAINER_TEAM_KEY) {
-		flag, res, err := client.ld.FeatureFlagsApi.GetFeatureFlag(client.ctx, projectKey, key).Execute()
+		var flag *ldapi.FeatureFlag
+		var res *http.Response
+		var err error
+		err = client.withConcurrency(ctx, func() error {
+			flag, res, err = client.ld.FeatureFlagsApi.GetFeatureFlag(client.ctx, projectKey, key).Execute()
+			return err
+		})
 		if isStatusNotFound(res) || err != nil {
 			return diag.Errorf("error getting flag %q in project %q for update: %s", key, projectKey, handleLdapiErr(err))
 		}
@@ -248,7 +261,10 @@ func featureFlagUpdate(ctx context.Context, d *schema.ResourceData, metaRaw inte
 		}
 	}
 
-	_, _, err = client.ld.FeatureFlagsApi.PatchFeatureFlag(client.ctx, projectKey, key).PatchWithComment(patch).Execute()
+	err = client.withConcurrency(ctx, func() error {
+		_, _, err = client.ld.FeatureFlagsApi.PatchFeatureFlag(client.ctx, projectKey, key).PatchWithComment(patch).Execute()
+		return err
+	})
 	if err != nil {
 		return diag.Errorf("failed to update flag %q in project %q: %s", key, projectKey, handleLdapiErr(err))
 	}
@@ -263,7 +279,10 @@ func resourceFeatureFlagDelete(ctx context.Context, d *schema.ResourceData, meta
 	projectKey := d.Get(PROJECT_KEY).(string)
 	key := d.Get(KEY).(string)
 
-	_, err := client.ld.FeatureFlagsApi.DeleteFeatureFlag(client.ctx, projectKey, key).Execute()
+	err := client.withConcurrency(ctx, func() error {
+		_, err := client.ld.FeatureFlagsApi.DeleteFeatureFlag(client.ctx, projectKey, key).Execute()
+		return err
+	})
 	if err != nil {
 		return diag.Errorf("failed to delete flag %q from project %q: %s", key, projectKey, handleLdapiErr(err))
 	}
@@ -276,7 +295,12 @@ func resourceFeatureFlagExists(d *schema.ResourceData, metaRaw interface{}) (boo
 	projectKey := d.Get(PROJECT_KEY).(string)
 	key := d.Get(KEY).(string)
 
-	_, res, err := client.ld.FeatureFlagsApi.GetFeatureFlag(client.ctx, projectKey, key).Execute()
+	var res *http.Response
+	var err error
+	err = client.withConcurrency(client.ctx, func() error {
+		_, res, err = client.ld.FeatureFlagsApi.GetFeatureFlag(client.ctx, projectKey, key).Execute()
+		return err
+	})
 	if isStatusNotFound(res) {
 		return false, nil
 	}

@@ -30,4 +30,9 @@ resource "launchdarkly_feature_flag_environment" "ld_internal_tester_staging" {
       negate    = false
     }
   }
+
+  off_variation = 0
+  fallthrough {
+    variation = 1
+  }
 }

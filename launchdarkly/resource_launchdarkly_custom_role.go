@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"net/http"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -51,7 +52,7 @@ This resource allows you to create and manage custom roles within your LaunchDar
 			BASE_PERMISSIONS: {
 				Type:             schema.TypeString,
 				Optional:         true,
-				Description:      "The base permission level - either reader or no_access. Defaults to reader.",
+				Description:      "The base permission level - either `reader` or `no_access`. While newer API versions default to `no_access`, this field defaults to `reader` in keeping with previous API versions.",
 				ValidateDiagFunc: validation.ToDiagFunc(validation.StringInSlice([]string{"reader", "no_access"}, false)),
 				Default:          "reader",
 			},
@@ -91,8 +92,10 @@ func resourceCustomRoleCreate(ctx context.Context, d *schema.ResourceData, metaR
 		customRoleBody.BasePermissions = ldapi.PtrString(customRoleBasePermissions)
 	}
 
-	_, _, err = client.ld.CustomRolesApi.PostCustomRole(client.ctx).CustomRolePost(customRoleBody).Execute()
-
+	err = client.withConcurrency(client.ctx, func() error {
+		_, _, err = client.ld.CustomRolesApi.PostCustomRole(client.ctx).CustomRolePost(customRoleBody).Execute()
+		return err
+	})
 	if err != nil {
 		return diag.Errorf("failed to create custom role with name %q: %s", customRoleName, handleLdapiErr(err))
 	}
@@ -107,7 +110,13 @@ func resourceCustomRoleRead(ctx context.Context, d *schema.ResourceData, metaRaw
 	client := metaRaw.(*Client)
 	customRoleID := d.Id()
 
-	customRole, res, err := client.ld.CustomRolesApi.GetCustomRole(client.ctx, customRoleID).Execute()
+	var customRole *ldapi.CustomRole
+	var res *http.Response
+	var err error
+	err = client.withConcurrency(client.ctx, func() error {
+		customRole, res, err = client.ld.CustomRolesApi.GetCustomRole(client.ctx, customRoleID).Execute()
+		return err
+	})
 
 	if isStatusNotFound(res) {
 		log.Printf("[WARN] failed to find custom role with id %q, removing from state", customRoleID)
@@ -172,7 +181,10 @@ func resourceCustomRoleUpdate(ctx context.Context, d *schema.ResourceData, metaR
 		patch.Patch = append(patch.Patch, patchReplace("/basePermissions", &customRoleBasePermissions))
 	}
 
-	_, _, err = client.ld.CustomRolesApi.PatchCustomRole(client.ctx, customRoleKey).PatchWithComment(patch).Execute()
+	err = client.withConcurrency(client.ctx, func() error {
+		_, _, err = client.ld.CustomRolesApi.PatchCustomRole(client.ctx, customRoleKey).PatchWithComment(patch).Execute()
+		return err
+	})
 	if err != nil {
 		return diag.Errorf("failed to update custom role with key %q: %s", customRoleKey, handleLdapiErr(err))
 	}
@@ -186,7 +198,11 @@ func resourceCustomRoleDelete(ctx context.Context, d *schema.ResourceData, metaR
 	client := metaRaw.(*Client)
 	customRoleKey := d.Id()
 
-	_, err := client.ld.CustomRolesApi.DeleteCustomRole(client.ctx, customRoleKey).Execute()
+	var err error
+	err = client.withConcurrency(client.ctx, func() error {
+		_, err = client.ld.CustomRolesApi.DeleteCustomRole(client.ctx, customRoleKey).Execute()
+		return err
+	})
 
 	if err != nil {
 		return diag.Errorf("failed to delete custom role with key %q: %s", customRoleKey, handleLdapiErr(err))
@@ -199,8 +215,13 @@ func resourceCustomRoleExists(d *schema.ResourceData, metaRaw interface{}) (bool
 	return customRoleExists(d.Id(), metaRaw.(*Client))
 }
 
-func customRoleExists(customRoleKey string, meta *Client) (bool, error) {
-	_, res, err := meta.ld.CustomRolesApi.GetCustomRole(meta.ctx, customRoleKey).Execute()
+func customRoleExists(customRoleKey string, client *Client) (bool, error) {
+	var res *http.Response
+	var err error
+	err = client.withConcurrency(client.ctx, func() error {
+		_, res, err = client.ld.CustomRolesApi.GetCustomRole(client.ctx, customRoleKey).Execute()
+		return err
+	})
 	if isStatusNotFound(res) {
 		return false, nil
 	}

@@ -17,7 +17,10 @@ require (
 	github.com/stretchr/testify v1.9.0
 )
 
-require github.com/launchdarkly/api-client-go/v17 v17.1.0
+require (
+	github.com/launchdarkly/api-client-go/v17 v17.1.0
+	golang.org/x/sync v0.16.0
+)
 
 require (
 	github.com/BurntSushi/toml v1.2.1 // indirect
@@ -31,7 +34,6 @@ require (
 	github.com/yuin/goldmark v1.7.1 // indirect
 	github.com/yuin/goldmark-meta v1.1.0 // indirect
 	go.abhg.dev/goldmark/frontmatter v0.2.0 // indirect
-	golang.org/x/sync v0.12.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240610135401-a8a62080eff3 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 )
@@ -94,7 +96,7 @@ require (
 	golang.org/x/exp v0.0.0-20240808152545-0cdaa3abc0fa // indirect
 	golang.org/x/mod v0.20.0 // indirect
 	golang.org/x/net v0.38.0 // indirect
-	golang.org/x/oauth2 v0.21.0 // indirect
+	golang.org/x/oauth2 v0.27.0 // indirect
 	golang.org/x/sys v0.31.0 // indirect
 	golang.org/x/text v0.23.0 // indirect
 	golang.org/x/tools v0.24.0 // indirect

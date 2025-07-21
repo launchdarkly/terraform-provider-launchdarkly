@@ -81,7 +81,7 @@ func TestAccDataSourceAuditLogSubscription_exists(t *testing.T) {
 	}
 
 	integrationKey := "datadog"
-	client, err := newClient(os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN), os.Getenv(LAUNCHDARKLY_API_HOST), false, DEFAULT_HTTP_TIMEOUT_S)
+	client, err := newClient(os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN), os.Getenv(LAUNCHDARKLY_API_HOST), false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
 	require.NoError(t, err)
 
 	subscriptionBody := ldapi.SubscriptionPost{
@@ -124,7 +124,7 @@ func TestAccDataSourceAuditLogSubscription_Slack(t *testing.T) {
 	}
 
 	integrationKey := "slack"
-	client, err := newClient(os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN), os.Getenv(LAUNCHDARKLY_API_HOST), false, DEFAULT_HTTP_TIMEOUT_S)
+	client, err := newClient(os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN), os.Getenv(LAUNCHDARKLY_API_HOST), false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
 	require.NoError(t, err)
 
 	subscriptionBody := ldapi.SubscriptionPost{

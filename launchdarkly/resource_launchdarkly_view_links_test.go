@@ -161,7 +161,7 @@ func TestAccViewLinks_Update(t *testing.T) {
 	projectName := "view-links-test-" + projectKey
 	resourceName := "launchdarkly_view_links.test"
 
-	client, err := newClient(os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN), os.Getenv(LAUNCHDARKLY_API_HOST), false, DEFAULT_HTTP_TIMEOUT_S)
+	client, err := newClient(os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN), os.Getenv(LAUNCHDARKLY_API_HOST), false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
 	require.NoError(t, err)
 
 	members, _, err := client.ld.AccountMembersApi.GetMembers(client.ctx).Execute()
@@ -228,7 +228,7 @@ func TestAccViewLinks_Import(t *testing.T) {
 	projectName := "view-links-test-" + projectKey
 	resourceName := "launchdarkly_view_links.test"
 
-	client, err := newClient(os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN), os.Getenv(LAUNCHDARKLY_API_HOST), false, DEFAULT_HTTP_TIMEOUT_S)
+	client, err := newClient(os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN), os.Getenv(LAUNCHDARKLY_API_HOST), false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
 	require.NoError(t, err)
 
 	members, _, err := client.ld.AccountMembersApi.GetMembers(client.ctx).Execute()
@@ -266,7 +266,7 @@ func testAccCheckViewForLinksExists(resourceName string) resource.TestCheckFunc 
 		}
 
 		client := testAccProvider.Meta().(*Client)
-		betaClient, err := newBetaClient(client.apiKey, client.apiHost, false, DEFAULT_HTTP_TIMEOUT_S)
+		betaClient, err := newBetaClient(client.apiKey, client.apiHost, false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
 		if err != nil {
 			return err
 		}
@@ -290,7 +290,7 @@ func testAccCheckViewForLinksExists(resourceName string) resource.TestCheckFunc 
 func testAccCheckViewExistsViaAPI(projectKey, viewKey string) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
 		client := testAccProvider.Meta().(*Client)
-		betaClient, err := newBetaClient(client.apiKey, client.apiHost, false, DEFAULT_HTTP_TIMEOUT_S)
+		betaClient, err := newBetaClient(client.apiKey, client.apiHost, false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
 		if err != nil {
 			return fmt.Errorf("failed to create beta client: %v", err)
 		}
@@ -311,7 +311,7 @@ func testAccCheckViewExistsViaAPI(projectKey, viewKey string) resource.TestCheck
 func testAccCheckViewLinksAPIState(projectKey, viewKey string, expectedFlags []string) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
 		client := testAccProvider.Meta().(*Client)
-		betaClient, err := newBetaClient(client.apiKey, client.apiHost, false, DEFAULT_HTTP_TIMEOUT_S)
+		betaClient, err := newBetaClient(client.apiKey, client.apiHost, false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
 		if err != nil {
 			return fmt.Errorf("failed to create beta client: %v", err)
 		}
