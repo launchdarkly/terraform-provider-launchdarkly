@@ -650,3 +650,134 @@ func testAccCheckMetricExists(resourceName string) resource.TestCheckFunc {
 		return nil
 	}
 }
+
+func TestAccMetric_ArchivedField(t *testing.T) {
+	accTest := os.Getenv("TF_ACC")
+	if accTest == "" {
+		t.SkipNow()
+	}
+	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	resourceName := "launchdarkly_metric.archived_test"
+
+	// Test configuration with archived = true
+	testAccMetricArchivedTrue := `
+resource "launchdarkly_metric" "archived_test" {
+	project_key = launchdarkly_project.test.key
+	key = "archived-metric"
+	name = "Archived Metric"
+	description = "Test metric for archived field"
+	kind = "pageview"
+	archived = true
+	tags = ["test", "archived"]
+	urls {
+		kind = "substring"
+		substring = "test"
+	}
+}
+`
+
+	// Test configuration with archived = false
+	testAccMetricArchivedFalse := `
+resource "launchdarkly_metric" "archived_test" {
+	project_key = launchdarkly_project.test.key
+	key = "archived-metric"
+	name = "Archived Metric"
+	description = "Test metric for archived field"
+	kind = "pageview"
+	archived = false
+	tags = ["test", "archived"]
+	urls {
+		kind = "substring"
+		substring = "test"
+	}
+}
+`
+
+	// Test configuration without archived field (should default to false)
+	testAccMetricArchivedDefault := `
+resource "launchdarkly_metric" "archived_test" {
+	project_key = launchdarkly_project.test.key
+	key = "archived-metric"
+	name = "Archived Metric"
+	description = "Test metric for archived field"
+	kind = "pageview"
+	tags = ["test", "archived"]
+	urls {
+		kind = "substring"
+		substring = "test"
+	}
+}
+`
+
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck: func() {
+			testAccPreCheck(t)
+		},
+		Providers: testAccProviders,
+		Steps: []resource.TestStep{
+			// Step 1: Create metric with archived = true
+			{
+				Config: withRandomProject(projectKey, testAccMetricArchivedTrue),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckProjectExists("launchdarkly_project.test"),
+					testAccCheckMetricExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, KEY, "archived-metric"),
+					resource.TestCheckResourceAttr(resourceName, NAME, "Archived Metric"),
+					resource.TestCheckResourceAttr(resourceName, PROJECT_KEY, projectKey),
+					resource.TestCheckResourceAttr(resourceName, KIND, "pageview"),
+					resource.TestCheckResourceAttr(resourceName, ARCHIVED, "true"),
+					resource.TestCheckResourceAttr(resourceName, "tags.0", "test"),
+					resource.TestCheckResourceAttr(resourceName, "tags.1", "archived"),
+				),
+			},
+			// Step 2: Import state verification for archived = true
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
+			// Step 3: Update metric to archived = false
+			{
+				Config: withRandomProject(projectKey, testAccMetricArchivedFalse),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckProjectExists("launchdarkly_project.test"),
+					testAccCheckMetricExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, KEY, "archived-metric"),
+					resource.TestCheckResourceAttr(resourceName, NAME, "Archived Metric"),
+					resource.TestCheckResourceAttr(resourceName, PROJECT_KEY, projectKey),
+					resource.TestCheckResourceAttr(resourceName, KIND, "pageview"),
+					resource.TestCheckResourceAttr(resourceName, ARCHIVED, "false"),
+					resource.TestCheckResourceAttr(resourceName, "tags.0", "test"),
+					resource.TestCheckResourceAttr(resourceName, "tags.1", "archived"),
+				),
+			},
+			// Step 4: Import state verification for archived = false
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
+			// Step 5: Remove archived field (should default to false)
+			{
+				Config: withRandomProject(projectKey, testAccMetricArchivedDefault),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckProjectExists("launchdarkly_project.test"),
+					testAccCheckMetricExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, KEY, "archived-metric"),
+					resource.TestCheckResourceAttr(resourceName, NAME, "Archived Metric"),
+					resource.TestCheckResourceAttr(resourceName, PROJECT_KEY, projectKey),
+					resource.TestCheckResourceAttr(resourceName, KIND, "pageview"),
+					resource.TestCheckResourceAttr(resourceName, ARCHIVED, "false"),
+					resource.TestCheckResourceAttr(resourceName, "tags.0", "test"),
+					resource.TestCheckResourceAttr(resourceName, "tags.1", "archived"),
+				),
+			},
+			// Step 6: Import state verification for default archived value
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
+		},
+	})
+}

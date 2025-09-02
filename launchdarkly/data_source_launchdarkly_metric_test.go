@@ -163,3 +163,114 @@ func TestAccDataSourceMetric_exists(t *testing.T) {
 		},
 	})
 }
+
+func TestAccDataSourceMetric_ArchivedField(t *testing.T) {
+	accTest := os.Getenv("TF_ACC")
+	if accTest == "" {
+		t.SkipNow()
+	}
+	client, err := newClient(os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN), os.Getenv(LAUNCHDARKLY_API_HOST), false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
+	require.NoError(t, err)
+	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	projectBody := ldapi.ProjectPost{
+		Name: "Terraform Metric Archived Test Project",
+		Key:  projectKey,
+	}
+	project, err := testAccProjectScaffoldCreate(client, projectBody)
+	require.NoError(t, err)
+
+	defer func() {
+		err := testAccProjectScaffoldDelete(client, projectKey)
+		require.NoError(t, err)
+	}()
+
+	// Create archived metric (without Archived field since API client doesn't support it yet)
+	archivedMetricKey := "archived-metric"
+	archivedMetricBody := ldapi.MetricPost{
+		Name:        "Archived Test Metric",
+		Key:         archivedMetricKey,
+		Description: "Test metric for archived field testing",
+		Kind:        "pageview",
+		Tags:        []string{"test", "archived"},
+		Urls: []ldapi.MetricUrlPost{
+			{
+				Kind:      "substring",
+				Substring: "archived-test",
+			},
+		},
+	}
+	_, err = testAccDataSourceMetricScaffold(client, nil, project.Key, archivedMetricBody)
+	require.NoError(t, err)
+
+	// Create non-archived metric (without Archived field since API client doesn't support it yet)
+	nonArchivedMetricKey := "non-archived-metric"
+	nonArchivedMetricBody := ldapi.MetricPost{
+		Name:        "Non-Archived Test Metric",
+		Key:         nonArchivedMetricKey,
+		Description: "Test metric for non-archived field testing",
+		Kind:        "pageview",
+		Tags:        []string{"test", "non-archived"},
+		Urls: []ldapi.MetricUrlPost{
+			{
+				Kind:      "substring",
+				Substring: "non-archived-test",
+			},
+		},
+	}
+	_, err = testAccDataSourceMetricScaffold(client, nil, project.Key, nonArchivedMetricBody)
+	require.NoError(t, err)
+
+	// Test data source configurations
+	testAccDataSourceMetricArchived := `
+data "launchdarkly_metric" "archived" {
+	key         = "%s"
+	project_key = "%s"
+}
+`
+
+	testAccDataSourceMetricNonArchived := `
+data "launchdarkly_metric" "non_archived" {
+	key         = "%s"
+	project_key = "%s"
+}
+`
+
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck: func() {
+			testAccPreCheck(t)
+		},
+		Providers: testAccProviders,
+		Steps: []resource.TestStep{
+			// Test reading archived metric (currently returns false since API client doesn't support Archived field yet)
+			{
+				Config: fmt.Sprintf(testAccDataSourceMetricArchived, archivedMetricKey, project.Key),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr("data.launchdarkly_metric.archived", KEY, archivedMetricKey),
+					resource.TestCheckResourceAttr("data.launchdarkly_metric.archived", NAME, "Archived Test Metric"),
+					resource.TestCheckResourceAttr("data.launchdarkly_metric.archived", PROJECT_KEY, project.Key),
+					resource.TestCheckResourceAttr("data.launchdarkly_metric.archived", KIND, "pageview"),
+					resource.TestCheckResourceAttr("data.launchdarkly_metric.archived", ARCHIVED, "false"), // Default value until API client supports Archived field
+					resource.TestCheckResourceAttr("data.launchdarkly_metric.archived", "tags.0", "test"),
+					resource.TestCheckResourceAttr("data.launchdarkly_metric.archived", "tags.1", "archived"),
+					resource.TestCheckResourceAttr("data.launchdarkly_metric.archived", "urls.0.kind", "substring"),
+					resource.TestCheckResourceAttr("data.launchdarkly_metric.archived", "urls.0.substring", "archived-test"),
+				),
+			},
+			// Test reading non-archived metric
+			{
+				Config: fmt.Sprintf(testAccDataSourceMetricNonArchived, nonArchivedMetricKey, project.Key),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr("data.launchdarkly_metric.non_archived", KEY, nonArchivedMetricKey),
+					resource.TestCheckResourceAttr("data.launchdarkly_metric.non_archived", NAME, "Non-Archived Test Metric"),
+					resource.TestCheckResourceAttr("data.launchdarkly_metric.non_archived", PROJECT_KEY, project.Key),
+					resource.TestCheckResourceAttr("data.launchdarkly_metric.non_archived", KIND, "pageview"),
+					resource.TestCheckResourceAttr("data.launchdarkly_metric.non_archived", ARCHIVED, "false"),
+					resource.TestCheckResourceAttr("data.launchdarkly_metric.non_archived", "tags.0", "test"),
+					resource.TestCheckResourceAttr("data.launchdarkly_metric.non_archived", "tags.1", "non-archived"),
+					resource.TestCheckResourceAttr("data.launchdarkly_metric.non_archived", "urls.0.kind", "substring"),
+					resource.TestCheckResourceAttr("data.launchdarkly_metric.non_archived", "urls.0.substring", "non-archived-test"),
+				),
+			},
+		},
+	})
+}
