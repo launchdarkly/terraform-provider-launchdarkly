@@ -186,16 +186,20 @@ func TestAccDataSourceMetric_ArchivedField(t *testing.T) {
 
 	// Create archived metric (without Archived field since API client doesn't support it yet)
 	archivedMetricKey := "archived-metric"
+	archivedMetricName := "Archived Test Metric"
+	archivedMetricDescription := "Test metric for archived field testing"
+	archivedUrlKind := "substring"
+	archivedUrlSubstring := "archived-test"
 	archivedMetricBody := ldapi.MetricPost{
-		Name:        "Archived Test Metric",
+		Name:        &archivedMetricName,
 		Key:         archivedMetricKey,
-		Description: "Test metric for archived field testing",
+		Description: ldapi.PtrString(archivedMetricDescription),
 		Kind:        "pageview",
 		Tags:        []string{"test", "archived"},
-		Urls: []ldapi.MetricUrlPost{
+		Urls: []ldapi.UrlPost{
 			{
-				Kind:      "substring",
-				Substring: "archived-test",
+				Kind:      &archivedUrlKind,
+				Substring: &archivedUrlSubstring,
 			},
 		},
 	}
@@ -204,16 +208,20 @@ func TestAccDataSourceMetric_ArchivedField(t *testing.T) {
 
 	// Create non-archived metric (without Archived field since API client doesn't support it yet)
 	nonArchivedMetricKey := "non-archived-metric"
+	nonArchivedMetricName := "Non-Archived Test Metric"
+	nonArchivedMetricDescription := "Test metric for non-archived field testing"
+	nonArchivedUrlKind := "substring"
+	nonArchivedUrlSubstring := "non-archived-test"
 	nonArchivedMetricBody := ldapi.MetricPost{
-		Name:        "Non-Archived Test Metric",
+		Name:        &nonArchivedMetricName,
 		Key:         nonArchivedMetricKey,
-		Description: "Test metric for non-archived field testing",
+		Description: ldapi.PtrString(nonArchivedMetricDescription),
 		Kind:        "pageview",
 		Tags:        []string{"test", "non-archived"},
-		Urls: []ldapi.MetricUrlPost{
+		Urls: []ldapi.UrlPost{
 			{
-				Kind:      "substring",
-				Substring: "non-archived-test",
+				Kind:      &nonArchivedUrlKind,
+				Substring: &nonArchivedUrlSubstring,
 			},
 		},
 	}
