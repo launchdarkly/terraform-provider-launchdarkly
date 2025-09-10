@@ -203,7 +203,8 @@ func TestAccDataSourceMetric_ArchivedField(t *testing.T) {
 			},
 		},
 	}
-	_, err = testAccDataSourceMetricScaffold(client, nil, project.Key, archivedMetricBody)
+	// Create archived metric directly without scaffold (to avoid duplicate project creation)
+	_, _, err = client.ld.MetricsApi.PostMetric(client.ctx, project.Key).MetricPost(archivedMetricBody).Execute()
 	require.NoError(t, err)
 
 	// Create non-archived metric (without Archived field since API client doesn't support it yet)
@@ -225,7 +226,8 @@ func TestAccDataSourceMetric_ArchivedField(t *testing.T) {
 			},
 		},
 	}
-	_, err = testAccDataSourceMetricScaffold(client, nil, project.Key, nonArchivedMetricBody)
+	// Create non-archived metric directly without scaffold (to avoid duplicate project creation)
+	_, _, err = client.ld.MetricsApi.PostMetric(client.ctx, project.Key).MetricPost(nonArchivedMetricBody).Execute()
 	require.NoError(t, err)
 
 	// Test data source configurations
