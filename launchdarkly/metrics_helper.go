@@ -154,7 +154,7 @@ func baseMetricSchema(isDataSource bool) map[string]*schema.Schema {
 		ARCHIVED: {
 			Type:        schema.TypeBool,
 			Optional:    !isDataSource,
-			Computed:    true,
+			Computed:    isDataSource,
 			Description: "Whether the metric is archived.",
 		},
 	}
@@ -216,7 +216,7 @@ func metricRead(ctx context.Context, d *schema.ResourceData, metaRaw interface{}
 	_ = d.Set(ANALYSIS_TYPE, metric.AnalysisType)
 	_ = d.Set(PERCENTILE_VALUE, metric.PercentileValue)
 	_ = d.Set(VERSION, metric.Version)
-	// _ = d.Set(ARCHIVED, metric.Archived) // Uncomment when API client is updated with archived field
+	_ = d.Set(ARCHIVED, metric.Archived)
 
 	d.SetId(projectKey + "/" + key)
 

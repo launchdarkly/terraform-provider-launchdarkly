@@ -203,7 +203,7 @@ func resourceMetricCreate(ctx context.Context, d *schema.ResourceData, metaRaw i
 	analysisType := d.Get(ANALYSIS_TYPE).(string)
 	includeUnitsWithoutEvents := d.Get(INCLUDE_UNITS_WITHOUT_EVENTS).(bool)
 	eventDefaultDisabled := !includeUnitsWithoutEvents
-	// archived := d.Get(ARCHIVED).(bool) // Uncomment when API client is updated with archived field
+	archived := d.Get(ARCHIVED).(bool)
 
 	metric := ldapi.MetricPost{
 		Name:                &name,
@@ -221,7 +221,7 @@ func resourceMetricCreate(ctx context.Context, d *schema.ResourceData, metaRaw i
 		UnitAggregationType: &unitAggregationType,
 		AnalysisType:        &analysisType,
 		EventDefault:        &ldapi.MetricEventDefaultRep{Disabled: &eventDefaultDisabled},
-		// Archived:            &archived, // Uncomment when API client is updated with archived field
+		Archived:            &archived,
 	}
 	percentileValueData, hasPercentile := d.GetOk(PERCENTILE_VALUE)
 	if hasPercentile {
@@ -312,7 +312,7 @@ func resourceMetricUpdate(ctx context.Context, d *schema.ResourceData, metaRaw i
 	unitAggregationType := d.Get(UNIT_AGGREGATION_TYPE).(string)
 	analysisType := d.Get(ANALYSIS_TYPE).(string)
 	includeUnitsWithoutEvents := d.Get(INCLUDE_UNITS_WITHOUT_EVENTS).(bool)
-	// archived := d.Get(ARCHIVED).(bool) // Uncomment when API client is updated with archived field
+	archived := d.Get(ARCHIVED).(bool)
 
 	patch := []ldapi.PatchOperation{
 		patchReplace("/name", name),
@@ -328,7 +328,7 @@ func resourceMetricUpdate(ctx context.Context, d *schema.ResourceData, metaRaw i
 		patchReplace("/unitAggregationType", unitAggregationType),
 		patchReplace("/analysisType", analysisType),
 		patchReplace("/eventDefault/disabled", !includeUnitsWithoutEvents),
-		// patchReplace("/archived", archived), // Uncomment when API client is updated with archived field
+		patchReplace("/archived", archived),
 	}
 
 	percentileValueData, ok := d.GetOk(PERCENTILE_VALUE)

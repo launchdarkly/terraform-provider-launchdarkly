@@ -732,10 +732,9 @@ resource "launchdarkly_metric" "archived_test" {
 			},
 			// Step 2: Import state verification for archived = true
 			{
-				ResourceName:            resourceName,
-				ImportState:             true,
-				ImportStateVerify:       true,
-				ImportStateVerifyIgnore: []string{ARCHIVED}, // TODO: Remove when API client supports archived field
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
 			},
 			// Step 3: Update metric to archived = false
 			{
@@ -754,10 +753,9 @@ resource "launchdarkly_metric" "archived_test" {
 			},
 			// Step 4: Import state verification for archived = false
 			{
-				ResourceName:            resourceName,
-				ImportState:             true,
-				ImportStateVerify:       true,
-				ImportStateVerifyIgnore: []string{ARCHIVED}, // TODO: Remove when API client supports archived field
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
 			},
 			// Step 5: Remove archived field (should default to false)
 			{
@@ -776,10 +774,9 @@ resource "launchdarkly_metric" "archived_test" {
 			},
 			// Step 6: Import state verification for default archived value
 			{
-				ResourceName:            resourceName,
-				ImportState:             true,
-				ImportStateVerify:       true,
-				ImportStateVerifyIgnore: []string{ARCHIVED}, // TODO: Remove when API client supports archived field
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
 			},
 		},
 	})
