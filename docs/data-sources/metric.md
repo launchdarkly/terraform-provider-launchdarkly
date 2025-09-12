@@ -37,6 +37,7 @@ data "launchdarkly_metric" "example" {
 ### Read-Only
 
 - `analysis_type` (String) The method for analyzing metric events. Available choices are `mean` and `percentile`.
+- `archived` (Boolean) Whether the metric is archived.
 - `description` (String) The description of the metric's purpose.
 - `event_key` (String) The event key for your metric (if custom metric)
 - `id` (String) The ID of this resource.
