@@ -91,6 +91,7 @@ jobs:
           - TestAccMetric
           - TestAccProject
           - TestAccRelayProxy
+          - TestAccReleasePolicy_
           - TestAccSegment
           - TestAccTeamMember_CreateGeneric
           - TestAccTeamMember_UpdateGeneric

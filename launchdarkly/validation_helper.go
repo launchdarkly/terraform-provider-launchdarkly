@@ -89,3 +89,10 @@ func validateOp() schema.SchemaValidateDiagFunc {
 		"semVerGreaterThan",
 	}, false))
 }
+
+func validateReleaseMethod() schema.SchemaValidateDiagFunc {
+	return validation.ToDiagFunc(validation.StringInSlice([]string{
+		"guarded-release",
+		"progressive-release",
+	}, false))
+}
