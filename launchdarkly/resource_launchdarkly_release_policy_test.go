@@ -98,9 +98,6 @@ resource "launchdarkly_release_policy" "test" {
 	scope {
 		environment_keys = ["test-env"]
 	}
-
-	progressive_release_config {
-	}
 }
 `
 
@@ -290,7 +287,6 @@ func TestAccReleasePolicy_ProgressiveRelease(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, KEY, policyKey),
 					resource.TestCheckResourceAttr(resourceName, NAME, policyName),
 					resource.TestCheckResourceAttr(resourceName, RELEASE_METHOD, "progressive-release"),
-					resource.TestCheckResourceAttr(resourceName, "progressive_release_config.#", "0"),
 					resource.TestCheckResourceAttr(resourceName, "scope.0.environment_keys.#", "1"),
 					resource.TestCheckResourceAttr(resourceName, "scope.0.environment_keys.0", "test-env"),
 				),

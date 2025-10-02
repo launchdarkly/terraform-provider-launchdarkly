@@ -72,27 +72,18 @@ func releasePolicyRead(ctx context.Context, d *schema.ResourceData, meta interfa
 		}
 	}
 
-	if policy.ProgressiveReleaseConfig != nil && policy.ReleaseMethod == "progressive-release" {
-		configList := []map[string]interface{}{}
-		err = d.Set(PROGRESSIVE_RELEASE_CONFIG, configList)
-		if err != nil {
-			return diag.Errorf("could not set progressive_release_config on release policy with key %q: %v", policy.Key, err)
-		}
-	}
-
 	return diags
 }
 
 // ReleasePolicy represents a release policy
 type ReleasePolicy struct {
-	Id                       string                    `json:"id"`
-	Key                      string                    `json:"key"`
-	Name                     string                    `json:"name"`
-	ProjectKey               string                    `json:"projectKey"`
-	ReleaseMethod            string                    `json:"releaseMethod"`
-	Scope                    *ReleasePolicyScope       `json:"scope,omitempty"`
-	GuardedReleaseConfig     *GuardedReleaseConfig     `json:"guardedReleaseConfig,omitempty"`
-	ProgressiveReleaseConfig *ProgressiveReleaseConfig `json:"progressiveReleaseConfig,omitempty"`
+	Id                   string                `json:"id"`
+	Key                  string                `json:"key"`
+	Name                 string                `json:"name"`
+	ProjectKey           string                `json:"projectKey"`
+	ReleaseMethod        string                `json:"releaseMethod"`
+	Scope                *ReleasePolicyScope   `json:"scope,omitempty"`
+	GuardedReleaseConfig *GuardedReleaseConfig `json:"guardedReleaseConfig,omitempty"`
 }
 
 // ReleasePolicyScope represents the scope configuration for a release policy
@@ -104,10 +95,6 @@ type ReleasePolicyScope struct {
 type GuardedReleaseConfig struct {
 	RollbackOnRegression bool `json:"rollbackOnRegression"`
 	MinSampleSize        *int `json:"minSampleSize,omitempty"`
-}
-
-// ProgressiveReleaseConfig represents the configuration for progressive release
-type ProgressiveReleaseConfig struct {
 }
 
 func getReleasePolicy(client *Client, projectKey, policyKey string) (*ReleasePolicy, *http.Response, error) {
@@ -161,10 +148,6 @@ func getReleasePolicyRaw(client *Client, projectKey, policyKey string) (*Release
 	}
 	policy.Id = fmt.Sprintf("%s/%s", projectKey, policyKey)
 	policy.ProjectKey = projectKey
-
-	if policy.ReleaseMethod == "progressive-release" {
-		policy.ProgressiveReleaseConfig = &ProgressiveReleaseConfig{}
-	}
 
 	return &policy, resp, nil
 }

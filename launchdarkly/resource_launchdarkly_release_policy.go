@@ -21,9 +21,11 @@ func resourceReleasePolicy() *schema.Resource {
 			StateContext: resourceReleasePolicyImport,
 		},
 
-		Description: `Provides a LaunchDarkly release policy resource.
+		Description: `Provides a LaunchDarkly release policy resource. This resource is still in beta.
 
-This resource allows you to create and manage release policies within your LaunchDarkly organization.`,
+This resource allows you to create and manage release policies within your LaunchDarkly organization.
+
+Learn more about [release policies here](https://launchdarkly.com/docs/home/releases/release-policies), and read our [API docs here](https://launchdarkly.com/docs/api/release-policies-beta/).`,
 
 		Schema: map[string]*schema.Schema{
 			PROJECT_KEY: {
@@ -95,15 +97,6 @@ This resource allows you to create and manage release policies within your Launc
 					},
 				},
 			},
-			PROGRESSIVE_RELEASE_CONFIG: {
-				Type:        schema.TypeList,
-				MaxItems:    1,
-				Optional:    true,
-				Description: "Configuration for progressive release.",
-				Elem: &schema.Resource{
-					Schema: map[string]*schema.Schema{},
-				},
-			},
 		},
 	}
 }
@@ -146,7 +139,7 @@ func resourceReleasePolicyUpdate(ctx context.Context, d *schema.ResourceData, me
 		return resourceReleasePolicyCreate(ctx, d, metaRaw)
 	}
 
-	if d.HasChange(NAME) || d.HasChange(RELEASE_METHOD) || d.HasChange(SCOPE) || d.HasChange(GUARDED_RELEASE_CONFIG) || d.HasChange(PROGRESSIVE_RELEASE_CONFIG) {
+	if d.HasChange(NAME) || d.HasChange(RELEASE_METHOD) || d.HasChange(SCOPE) || d.HasChange(GUARDED_RELEASE_CONFIG) {
 		updatedPolicy := resourceDataToAPIBody(d, policyKey)
 		err := putReleasePolicy(client, projectKey, policyKey, updatedPolicy)
 		if err != nil {

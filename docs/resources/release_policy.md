@@ -3,15 +3,18 @@
 page_title: "launchdarkly_release_policy Resource - launchdarkly"
 subcategory: ""
 description: |-
-  Provides a LaunchDarkly release policy resource.
+  Provides a LaunchDarkly release policy resource. This resource is still in beta.
   This resource allows you to create and manage release policies within your LaunchDarkly organization.
+  Learn more about release policies here https://launchdarkly.com/docs/home/releases/release-policies, and read our API docs here https://launchdarkly.com/docs/api/release-policies-beta/.
 ---
 
 # launchdarkly_release_policy (Resource)
 
-Provides a LaunchDarkly release policy resource.
+Provides a LaunchDarkly release policy resource. This resource is still in beta.
 
 This resource allows you to create and manage release policies within your LaunchDarkly organization.
+
+Learn more about [release policies here](https://launchdarkly.com/docs/home/releases/release-policies), and read our [API docs here](https://launchdarkly.com/docs/api/release-policies-beta/).
 
 ## Example Usage
 
@@ -58,7 +61,6 @@ resource "launchdarkly_release_policy" "progressive_example" {
 ### Optional
 
 - `guarded_release_config` (Block List, Max: 1) Configuration for guarded release. (see [below for nested schema](#nestedblock--guarded_release_config))
-- `progressive_release_config` (Block List, Max: 1) Configuration for progressive release. (see [below for nested schema](#nestedblock--progressive_release_config))
 - `scope` (Block List, Max: 1) The scope configuration for the release policy. (see [below for nested schema](#nestedblock--scope))
 
 ### Read-Only
@@ -75,10 +77,6 @@ Required:
 Optional:
 
 - `min_sample_size` (Number) The minimum sample size for the release policy.
-
-
-<a id="nestedblock--progressive_release_config"></a>
-### Nested Schema for `progressive_release_config`
 
 
 <a id="nestedblock--scope"></a>
