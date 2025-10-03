@@ -96,6 +96,7 @@ const (
 	PROJECT_KEYS                     = "project_keys"
 	RANDOMIZATION_UNITS              = "randomization_units"
 	RELEASE_METHOD                   = "release_method"
+	RELEASE_POLICY_KEYS              = "release_policy_keys"
 	REQUIRED                         = "required"
 	REQUIRED_APPROVAL_TAGS           = "required_approval_tags"
 	REQUIRE_COMMENTS                 = "require_comments"

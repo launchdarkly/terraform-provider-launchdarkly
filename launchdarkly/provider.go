@@ -65,6 +65,7 @@ func Provider() *schema.Provider {
 			"launchdarkly_team":                      resourceTeam(),
 			"launchdarkly_project":                   resourceProject(),
 			"launchdarkly_release_policy":            resourceReleasePolicy(),
+			"launchdarkly_release_policy_order":      resourceReleasePolicyOrder(),
 			"launchdarkly_view":                      resourceView(),
 			"launchdarkly_view_links":                resourceViewLinks(),
 			"launchdarkly_environment":               resourceEnvironment(),
