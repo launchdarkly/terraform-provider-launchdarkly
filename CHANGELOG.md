@@ -2,6 +2,13 @@
 
 All notable changes to the LaunchDarkly Terraform Provider will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org).
 
+## [2.26.0-beta.2](https://github.com/launchdarkly/terraform-provider-launchdarkly/compare/v2.26.0-beta.1...v2.26.0-beta.2) (2025-10-03)
+
+
+### Features
+
+* [RO-1833] Add release policies resource ([#352](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/352)) ([2d1c139](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/2d1c13932667af15c9ae47cefd839e8614f01908))
+
 ## [2.26.0-beta.1](https://github.com/launchdarkly/terraform-provider-launchdarkly/compare/v2.26.0-beta...v2.26.0-beta.1) (2025-07-21)
 
 
