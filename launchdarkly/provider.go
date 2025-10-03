@@ -64,6 +64,7 @@ func Provider() *schema.Provider {
 		ResourcesMap: map[string]*schema.Resource{
 			"launchdarkly_team":                      resourceTeam(),
 			"launchdarkly_project":                   resourceProject(),
+			"launchdarkly_release_policy":            resourceReleasePolicy(),
 			"launchdarkly_view":                      resourceView(),
 			"launchdarkly_view_links":                resourceViewLinks(),
 			"launchdarkly_environment":               resourceEnvironment(),
