@@ -96,6 +96,7 @@ func Provider() *schema.Provider {
 			"launchdarkly_audit_log_subscription":    dataSourceAuditLogSubscription(),
 			"launchdarkly_relay_proxy_configuration": dataSourceRelayProxyConfig(),
 			"launchdarkly_metric":                    dataSourceMetric(),
+			"launchdarkly_release_policy":            dataSourceReleasePolicy(),
 		},
 		ConfigureContextFunc: providerConfigure,
 	}
