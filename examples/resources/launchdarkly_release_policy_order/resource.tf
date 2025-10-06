@@ -28,6 +28,12 @@ resource "launchdarkly_project" "example" {
     key   = "production"
     color = "ff0000"
   }
+
+  environments {
+    name  = "Development Environment"
+    key   = "development"
+    color = "0000ff"
+  }
 }
 
 # Create multiple release policies

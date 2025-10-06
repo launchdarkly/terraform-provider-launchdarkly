@@ -3,7 +3,6 @@ package launchdarkly
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -23,7 +22,7 @@ func resourceReleasePolicyOrder() *schema.Resource {
 
 		Description: `Provides a LaunchDarkly release policy order resource. This resource is still in beta.
 
-This resource allows you to manage the order of release policies within LaunchDarkly projects.
+This resource allows you to manage the priority of release policies within LaunchDarkly projects.
 
 Learn more about [release policies here](https://launchdarkly.com/docs/home/releases/release-policies), and read our [API docs here](https://launchdarkly.com/docs/api/release-policies-beta/).`,
 
@@ -64,7 +63,7 @@ func resourceReleasePolicyOrderCreate(ctx context.Context, d *schema.ResourceDat
 		return diag.Errorf("failed to create release policy order for project %q: %s", projectKey, handleLdapiErr(err))
 	}
 
-	d.SetId(releasePolicyOrderID(projectKey))
+	d.SetId(projectKey)
 
 	return resourceReleasePolicyOrderRead(ctx, d, metaRaw)
 }
@@ -133,21 +132,12 @@ func resourceReleasePolicyOrderExists(d *schema.ResourceData, metaRaw interface{
 }
 
 func resourceReleasePolicyOrderImport(ctx context.Context, d *schema.ResourceData, meta interface{}) ([]*schema.ResourceData, error) {
-	importID := d.Id()
-	if importID == "" {
+	projectKey := d.Id()
+	if projectKey == "" {
 		return nil, fmt.Errorf("import ID cannot be empty")
 	}
-
-	// Parse the import ID to extract the project key
-	projectKey := strings.TrimSuffix(importID, "/release-policy-order")
-
 	_ = d.Set(PROJECT_KEY, projectKey)
-	d.SetId(releasePolicyOrderID(projectKey))
+	d.SetId(projectKey)
 
 	return []*schema.ResourceData{d}, nil
-}
-
-// releasePolicyOrderID constructs the ID for a release policy order resource
-func releasePolicyOrderID(projectKey string) string {
-	return fmt.Sprintf("%s/release-policy-order", projectKey)
 }

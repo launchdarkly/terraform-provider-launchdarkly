@@ -87,6 +87,7 @@ func Provider() *schema.Provider {
 			"launchdarkly_team_member":               dataSourceTeamMember(),
 			"launchdarkly_team_members":              dataSourceTeamMembers(),
 			"launchdarkly_project":                   dataSourceProject(),
+			"launchdarkly_release_policy_order":      dataSourceReleasePolicyOrder(),
 			"launchdarkly_view":                      dataSourceView(),
 			"launchdarkly_environment":               dataSourceEnvironment(),
 			"launchdarkly_feature_flag":              dataSourceFeatureFlag(),

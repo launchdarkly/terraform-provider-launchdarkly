@@ -4,7 +4,7 @@ page_title: "launchdarkly_release_policy_order Resource - launchdarkly"
 subcategory: ""
 description: |-
   Provides a LaunchDarkly release policy order resource. This resource is still in beta.
-  This resource allows you to manage the order of release policies within LaunchDarkly projects.
+  This resource allows you to manage the priority of release policies within LaunchDarkly projects.
   Learn more about release policies here https://launchdarkly.com/docs/home/releases/release-policies, and read our API docs here https://launchdarkly.com/docs/api/release-policies-beta/.
 ---
 
@@ -12,7 +12,7 @@ description: |-
 
 Provides a LaunchDarkly release policy order resource. This resource is still in beta.
 
-This resource allows you to manage the order of release policies within LaunchDarkly projects.
+This resource allows you to manage the priority of release policies within LaunchDarkly projects.
 
 Learn more about [release policies here](https://launchdarkly.com/docs/home/releases/release-policies), and read our [API docs here](https://launchdarkly.com/docs/api/release-policies-beta/).
 
@@ -48,6 +48,12 @@ resource "launchdarkly_project" "example" {
     name  = "Production Environment"
     key   = "production"
     color = "ff0000"
+  }
+
+  environments {
+    name  = "Development Environment"
+    key   = "development"
+    color = "0000ff"
   }
 }
 
