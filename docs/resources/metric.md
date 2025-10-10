@@ -46,6 +46,7 @@ resource "launchdarkly_metric" "example" {
 ### Optional
 
 - `analysis_type` (String) The method for analyzing metric events. Available choices are `mean` and `percentile`.
+- `archived` (Boolean) Whether the metric is archived.
 - `description` (String) The description of the metric's purpose.
 - `event_key` (String) The event key for your metric (if custom metric)
 - `include_units_without_events` (Boolean) Include units that did not send any events and set their value to 0.

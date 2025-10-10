@@ -151,6 +151,12 @@ func baseMetricSchema(isDataSource bool) map[string]*schema.Schema {
 			Computed:    true,
 			Description: "Version of the metric",
 		},
+		ARCHIVED: {
+			Type:        schema.TypeBool,
+			Optional:    !isDataSource,
+			Computed:    isDataSource,
+			Description: "Whether the metric is archived.",
+		},
 	}
 
 	if isDataSource {
@@ -210,6 +216,7 @@ func metricRead(ctx context.Context, d *schema.ResourceData, metaRaw interface{}
 	_ = d.Set(ANALYSIS_TYPE, metric.AnalysisType)
 	_ = d.Set(PERCENTILE_VALUE, metric.PercentileValue)
 	_ = d.Set(VERSION, metric.Version)
+	_ = d.Set(ARCHIVED, metric.Archived)
 
 	d.SetId(projectKey + "/" + key)
 
