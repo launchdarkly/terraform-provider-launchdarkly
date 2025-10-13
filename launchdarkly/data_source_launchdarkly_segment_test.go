@@ -312,7 +312,7 @@ resource "launchdarkly_view_links" "test" {
 	project_key = launchdarkly_project.test.key
 	view_key    = launchdarkly_view.test.key
 	segments {
-		segment_environment_id = launchdarkly_project.test.environments[0].id
+		segment_environment_id = launchdarkly_project.test.environments[0].client_side_id
 		segment_key            = launchdarkly_segment.test.key
 	}
 }
