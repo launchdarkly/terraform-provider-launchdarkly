@@ -83,5 +83,5 @@ output "team_flag_access" {
 
 Read-Only:
 
-- `segment_environment_id` (String)
+- `environment_id` (String)
 - `segment_key` (String)

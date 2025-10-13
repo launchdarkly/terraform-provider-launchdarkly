@@ -41,13 +41,13 @@ resource "launchdarkly_view_links" "frontend_team" {
 
   # Link segments relevant to this team's view
   segments {
-    segment_environment_id = "507f1f77bcf86cd799439011"
-    segment_key            = "frontend-beta-users"
+    environment_id = "507f1f77bcf86cd799439011"
+    segment_key    = "frontend-beta-users"
   }
 
   segments {
-    segment_environment_id = "507f1f77bcf86cd799439011"
-    segment_key            = "premium-customers"
+    environment_id = "507f1f77bcf86cd799439011"
+    segment_key    = "premium-customers"
   }
 }
 
@@ -99,13 +99,13 @@ resource "launchdarkly_view_links" "backend_team" {
 
   # Link backend-specific segments across multiple environments
   segments {
-    segment_environment_id = "507f1f77bcf86cd799439011"
-    segment_key            = "high-volume-api-users"
+    environment_id = "507f1f77bcf86cd799439011"
+    segment_key    = "high-volume-api-users"
   }
 
   segments {
-    segment_environment_id = "507f1f77bcf86cd799439022" # Production environment
-    segment_key            = "database-migration-pilot"
+    environment_id = "507f1f77bcf86cd799439022" # Production environment
+    segment_key    = "database-migration-pilot"
   }
 }
 
@@ -115,18 +115,18 @@ resource "launchdarkly_view_links" "segments_only" {
   view_key    = "user-segments-view"
 
   segments {
-    segment_environment_id = "507f1f77bcf86cd799439011"
-    segment_key            = "vip-customers"
+    environment_id = "507f1f77bcf86cd799439011"
+    segment_key    = "vip-customers"
   }
 
   segments {
-    segment_environment_id = "507f1f77bcf86cd799439011"
-    segment_key            = "enterprise-customers"
+    environment_id = "507f1f77bcf86cd799439011"
+    segment_key    = "enterprise-customers"
   }
 
   segments {
-    segment_environment_id = "507f1f77bcf86cd799439011"
-    segment_key            = "trial-users"
+    environment_id = "507f1f77bcf86cd799439011"
+    segment_key    = "trial-users"
   }
 }
 ```
@@ -153,5 +153,5 @@ resource "launchdarkly_view_links" "segments_only" {
 
 Required:
 
-- `segment_environment_id` (String) The environment ID of the segment.
+- `environment_id` (String) The environment ID of the segment.
 - `segment_key` (String) The key of the segment.
