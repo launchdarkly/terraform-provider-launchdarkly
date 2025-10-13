@@ -2,15 +2,6 @@
 
 All notable changes to the LaunchDarkly Terraform Provider will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org).
 
-## Unreleased
-
-### Features
-
-* Add segment support to View Links resource and data sources
-  * `launchdarkly_view_links` resource now supports linking segments to views via the `segments` block
-  * `launchdarkly_view` data source now includes `linked_segments` attribute to discover segments linked to a view
-  * `launchdarkly_segment` data source now includes `views` attribute to discover views that reference a segment
-  * Segments are identified by environment ID and segment key (unlike flags which only use keys)
 
 ## [2.26.0-beta.2](https://github.com/launchdarkly/terraform-provider-launchdarkly/compare/v2.26.0-beta.1...v2.26.0-beta.2) (2025-10-09)
 
