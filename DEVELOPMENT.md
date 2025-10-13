@@ -54,3 +54,15 @@ provider_installation {
   direct {}
 }
 ```
+
+## Releasing the provider
+
+Provider releases for the main branch are fully automatic via CI.
+
+### Prerelease versions
+
+Due to some [constraints with how the TF Registry and Github versions/tags interact](https://discuss.hashicorp.com/t/publishing-pre-release-versions-of-provider-ignored-draft-release-event/69536), we need to jump through a few hoops to release pre-release versions of the provider.
+
+* Remove the pre-release marker from the GH release
+* Ensure TF publishes it (it will be marked as pre-release in the TF Registry due to semver versioning)
+* Put the pre-release marker back on the GH release
