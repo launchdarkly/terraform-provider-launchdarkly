@@ -114,7 +114,7 @@ const (
 	SECRET                           = "secret"
 	SECURE_MODE                      = "secure_mode"
 	SEGMENTS                         = "segments"
-	SEGMENT_ENVIRONMENT_ID           = "segment_environment_id"
+	SEGMENT_ENVIRONMENT_ID           = "environment_id"
 	SEGMENT_KEY                      = "segment_key"
 	SELECTOR                         = "selector"
 	SERVICE_CONFIG                   = "service_config"
