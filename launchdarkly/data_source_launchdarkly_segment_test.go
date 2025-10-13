@@ -311,10 +311,10 @@ resource "launchdarkly_segment" "test" {
 resource "launchdarkly_view_links" "test" {
 	project_key = launchdarkly_project.test.key
 	view_key    = launchdarkly_view.test.key
-	segments = [{
-		environment_id = launchdarkly_project.test.environments[0].id
-		segment_key    = launchdarkly_segment.test.key
-	}]
+	segments {
+		segment_environment_id = launchdarkly_project.test.environments[0].id
+		segment_key            = launchdarkly_segment.test.key
+	}
 }
 
 data "launchdarkly_segment" "test" {
