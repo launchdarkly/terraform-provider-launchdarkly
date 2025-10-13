@@ -72,7 +72,16 @@ output "team_flag_access" {
 - `generate_sdk_keys` (Boolean) Whether SDK keys are generated for this view.
 - `id` (String) The ID of this resource.
 - `linked_flags` (List of String) A list of feature flag keys that are linked to this view.
+- `linked_segments` (List of Object) A list of segments that are linked to this view. (see [below for nested schema](#nestedatt--linked_segments))
 - `maintainer_id` (String) The member ID of the maintainer for this view.
 - `maintainer_team_key` (String) The team key of the maintainer team for this view.
 - `name` (String) The view's name.
 - `tags` (Set of String) Tags associated with your resource.
+
+<a id="nestedatt--linked_segments"></a>
+### Nested Schema for `linked_segments`
+
+Read-Only:
+
+- `segment_environment_id` (String)
+- `segment_key` (String)

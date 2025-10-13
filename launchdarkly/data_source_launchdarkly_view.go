@@ -63,6 +63,25 @@ func dataSourceView() *schema.Resource {
 					Type: schema.TypeString,
 				},
 			},
+			LINKED_SEGMENTS: {
+				Type:        schema.TypeList,
+				Computed:    true,
+				Description: "A list of segments that are linked to this view.",
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						SEGMENT_ENVIRONMENT_ID: {
+							Type:        schema.TypeString,
+							Computed:    true,
+							Description: "The environment ID of the segment.",
+						},
+						SEGMENT_KEY: {
+							Type:        schema.TypeString,
+							Computed:    true,
+							Description: "The key of the segment.",
+						},
+					},
+				},
+			},
 		},
 	}
 }

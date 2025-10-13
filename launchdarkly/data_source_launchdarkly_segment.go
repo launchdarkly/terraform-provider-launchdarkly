@@ -33,6 +33,14 @@ func dataSourceSegment() *schema.Resource {
 		Computed:    true,
 		Description: "The human-friendly name for the segment.",
 	}
+	schemaMap[VIEWS] = &schema.Schema{
+		Type:        schema.TypeList,
+		Computed:    true,
+		Description: "A list of view keys that this segment is linked to.",
+		Elem: &schema.Schema{
+			Type: schema.TypeString,
+		},
+	}
 	return &schema.Resource{
 		ReadContext: dataSourceSegmentRead,
 		Schema:      schemaMap,

@@ -173,6 +173,37 @@ func segmentRead(ctx context.Context, d *schema.ResourceData, raw interface{}, i
 	if err != nil {
 		return diag.Errorf("failed to set excluded on segment with key %q: %v", segmentKey, err)
 	}
+
+	// For data sources, also fetch and set linked views for discovery
+	if isDataSource {
+		betaClient, err := newBetaClient(client.apiKey, client.apiHost, false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
+		if err != nil {
+			// Log warning but don't fail the read for discovery data
+			log.Printf("[WARN] failed to create beta client for segment %q in project %q, environment %q: %v", segmentKey, projectKey, envKey, err)
+		} else {
+			// Get the environment to retrieve its ID
+			var env *ldapi.Environment
+			err = client.withConcurrency(client.ctx, func() error {
+				env, _, err = client.ld.EnvironmentsApi.GetEnvironment(client.ctx, projectKey, envKey).Execute()
+				return err
+			})
+			if err != nil {
+				log.Printf("[WARN] failed to get environment %q in project %q: %v", envKey, projectKey, err)
+			} else {
+				viewKeys, err := getViewsContainingSegment(betaClient, projectKey, env.Id, segmentKey)
+				if err != nil {
+					// Log warning but don't fail the read for discovery data
+					log.Printf("[WARN] failed to get views for segment %q in project %q, environment %q: %v", segmentKey, projectKey, envKey, err)
+				} else {
+					err = d.Set(VIEWS, viewKeys)
+					if err != nil {
+						return diag.Errorf("could not set views on segment with key %q: %v", segmentKey, err)
+					}
+				}
+			}
+		}
+	}
+
 	return diags
 }
 
