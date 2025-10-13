@@ -252,3 +252,87 @@ func TestAccDataSourceSegment_UnboundedExists(t *testing.T) {
 		},
 	})
 }
+
+func TestAccDataSourceSegment_WithLinkedViews(t *testing.T) {
+	accTest := os.Getenv("TF_ACC")
+	if accTest == "" {
+		t.SkipNow()
+	}
+
+	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	projectName := "segment-view-test-" + projectKey
+	segmentKey := "test-segment"
+	resourceName := "data.launchdarkly_segment.test"
+
+	client, err := newClient(os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN), os.Getenv(LAUNCHDARKLY_API_HOST), false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
+	require.NoError(t, err)
+
+	members, _, err := client.ld.AccountMembersApi.GetMembers(client.ctx).Execute()
+	require.NoError(t, err)
+	require.True(t, len(members.Items) > 0, "This test requires at least one member in the account")
+
+	maintainerId := members.Items[0].Id
+
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck: func() {
+			testAccPreCheck(t)
+		},
+		Providers: testAccProviders,
+		Steps: []resource.TestStep{
+			{
+				Config: fmt.Sprintf(`
+resource "launchdarkly_project" "test" {
+	name = "%s"
+	key  = "%s"
+	environments {
+		name  = "Test Environment"
+		key   = "test"
+		color = "000000"
+	}
+}
+
+resource "launchdarkly_view" "test" {
+	project_key   = launchdarkly_project.test.key
+	key           = "test-view"
+	name          = "Test View"
+	description   = "Test view for segment linking"
+	maintainer_id = "%s"
+}
+
+resource "launchdarkly_segment" "test" {
+	key         = "%s"
+	project_key = launchdarkly_project.test.key
+	env_key     = "test"
+	name        = "Test Segment"
+	description = "Test segment for view linking"
+	tags        = ["test"]
+}
+
+resource "launchdarkly_view_links" "test" {
+	project_key = launchdarkly_project.test.key
+	view_key    = launchdarkly_view.test.key
+	segments = [{
+		environment_id = launchdarkly_project.test.environments[0].id
+		segment_key    = launchdarkly_segment.test.key
+	}]
+}
+
+data "launchdarkly_segment" "test" {
+	project_key = launchdarkly_project.test.key
+	env_key     = "test"
+	key         = launchdarkly_segment.test.key
+	depends_on  = [launchdarkly_view_links.test]
+}
+`, projectName, projectKey, maintainerId, segmentKey),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(resourceName, "project_key", projectKey),
+					resource.TestCheckResourceAttr(resourceName, "env_key", "test"),
+					resource.TestCheckResourceAttr(resourceName, "key", segmentKey),
+					resource.TestCheckResourceAttr(resourceName, "name", "Test Segment"),
+					resource.TestCheckResourceAttr(resourceName, "views.#", "1"),
+					resource.TestCheckTypeSetElemAttr(resourceName, "views.*", "test-view"),
+				),
+			},
+		},
+	})
+}
