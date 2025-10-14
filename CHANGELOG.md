@@ -3,6 +3,13 @@
 All notable changes to the LaunchDarkly Terraform Provider will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org).
 
 
+## [2.26.0-beta.3](https://github.com/launchdarkly/terraform-provider-launchdarkly/compare/v2.26.0-beta.2...v2.26.0-beta.3) (2025-10-14)
+
+
+### Features
+
+* [REL-10105] Ffeldberg/rel 10105/add views segments to tf provider and release prerelease ([#357](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/357)) ([cb40618](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/cb406185b912cb8840475072ab6c7f02daa30291))
+
 ## [2.26.0-beta.2](https://github.com/launchdarkly/terraform-provider-launchdarkly/compare/v2.26.0-beta.1...v2.26.0-beta.2) (2025-10-09)
 
 
