@@ -108,6 +108,40 @@ var SUBSCRIPTION_CONFIGURATION_FIELDS = map[string]IntegrationConfig{
 			Type:          "uri",
 		},
 	},
+	"dynatrace-v2": {
+		"apiToken": {
+			AllowedValues: []string{},
+			DefaultValue:  nil,
+			Description:   "Enter your Dynatrace Access token. [Learn more](https://www.dynatrace.com/support/help/shortlink/api-authentication#generate-a-token) about generating tokens. The 'Access problem and event feed, metrics, and topology' scope is required.",
+			IsOptional:    false,
+			IsSecret:      true,
+			Type:          "string",
+		},
+		"entity": {
+			AllowedValues: []string{"APPLICATION", "APPLICATION_METHOD", "APPLICATION_METHOD_GROUP", "AUTO_SCALING_GROUP", "AUXILIARY_SYNTHETIC_TEST", "AWS_APPLICATION_LOAD_BALANCER", "AWS_AVAILABILITY_ZONE", "AWS_CREDENTIALS", "AWS_LAMBDA_FUNCTION", "AWS_NETWORK_LOAD_BALANCER", "AZURE_API_MANAGEMENT_SERVICE", "AZURE_APPLICATION_GATEWAY", "AZURE_COSMOS_DB", "AZURE_CREDENTIALS", "AZURE_EVENT_HUB", "AZURE_EVENT_HUB_NAMESPACE", "AZURE_FUNCTION_APP", "AZURE_IOT_HUB", "AZURE_LOAD_BALANCER", "AZURE_MGMT_GROUP", "AZURE_REDIS_CACHE", "AZURE_REGION", "AZURE_SERVICE_BUS_NAMESPACE", "AZURE_SERVICE_BUS_QUEUE", "AZURE_SERVICE_BUS_TOPIC", "AZURE_SQL_DATABASE", "AZURE_SQL_ELASTIC_POOL", "AZURE_SQL_SERVER", "AZURE_STORAGE_ACCOUNT", "AZURE_SUBSCRIPTION", "AZURE_TENANT", "AZURE_VM", "AZURE_VM_SCALE_SET", "AZURE_WEB_APP", "CF_APPLICATION", "CF_FOUNDATION", "CINDER_VOLUME", "CLOUD_APPLICATION", "CLOUD_APPLICATION_INSTANCE", "CLOUD_APPLICATION_NAMESPACE", "CONTAINER_GROUP", "CONTAINER_GROUP_INSTANCE", "CUSTOM_APPLICATION", "CUSTOM_DEVICE", "CUSTOM_DEVICE_GROUP", "DCRUM_APPLICATION", "DCRUM_SERVICE", "DCRUM_SERVICE_INSTANCE", "DEVICE_APPLICATION_METHOD", "DISK", "DOCKER_CONTAINER_GROUP_INSTANCE", "DYNAMO_DB_TABLE", "EBS_VOLUME", "EC2_INSTANCE", "ELASTIC_LOAD_BALANCER", "ENVIRONMENT", "EXTERNAL_SYNTHETIC_TEST_STEP", "GCP_ZONE", "GEOLOCATION", "GEOLOC_SITE", "GOOGLE_COMPUTE_ENGINE", "HOST", "HOST_GROUP", "HTTP_CHECK", "HTTP_CHECK_STEP", "HYPERVISOR", "KUBERNETES_CLUSTER", "KUBERNETES_NODE", "MOBILE_APPLICATION", "NETWORK_INTERFACE", "NEUTRON_SUBNET", "OPENSTACK_PROJECT", "OPENSTACK_REGION", "OPENSTACK_VM", "OS", "PROCESS_GROUP", "PROCESS_GROUP_INSTANCE", "RELATIONAL_DATABASE_SERVICE", "SERVICE", "SERVICE_INSTANCE", "SERVICE_METHOD", "SERVICE_METHOD_GROUP", "SWIFT_CONTAINER", "SYNTHETIC_LOCATION", "SYNTHETIC_TEST", "SYNTHETIC_TEST_STEP", "VIRTUALMACHINE", "VMWARE_DATACENTER"},
+			DefaultValue:  "APPLICATION",
+			Description:   "Select the Dynatrace entity `meType` to associate with all events.",
+			IsOptional:    true,
+			IsSecret:      false,
+			Type:          "enum",
+		},
+		"tag": {
+			AllowedValues: []string{},
+			DefaultValue:  "",
+			Description:   "If provided, all feature flag events matching the policy filter will be associated with Dynatrace entities with the same tag.",
+			IsOptional:    true,
+			IsSecret:      false,
+			Type:          "string",
+		},
+		"url": {
+			AllowedValues: []string{},
+			DefaultValue:  nil,
+			Description:   "Enter the URL used to access your Dynatrace (managed or hosted) service. Follow the pattern shown in the placeholder text.",
+			IsOptional:    false,
+			IsSecret:      false,
+			Type:          "uri",
+		},
+	},
 	"elastic": {
 		"index": {
 			AllowedValues: []string{},

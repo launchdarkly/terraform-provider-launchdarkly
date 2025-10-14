@@ -1,4 +1,4 @@
-# Example: Frontend team view with bulk flag assignments
+# Example: Frontend team view with bulk flag and segment assignments
 resource "launchdarkly_view_links" "frontend_team" {
   project_key = "my-project"
   view_key    = "frontend-team"
@@ -18,7 +18,16 @@ resource "launchdarkly_view_links" "frontend_team" {
     # ... can easily scale to 100+ flags
   ]
 
-  comment = "Frontend team flag assignments managed by Terraform"
+  # Link segments relevant to this team's view
+  segments {
+    environment_id = "507f1f77bcf86cd799439011"
+    segment_key    = "frontend-beta-users"
+  }
+
+  segments {
+    environment_id = "507f1f77bcf86cd799439011"
+    segment_key    = "premium-customers"
+  }
 }
 
 # Example: Mobile team view with different flags
@@ -53,7 +62,7 @@ resource "launchdarkly_view_links" "shared_features" {
   comment = "Cross-team shared feature flags"
 }
 
-# Demonstrating updates - adding/removing flags from a view
+# Demonstrating updates - adding/removing flags and segments from a view
 resource "launchdarkly_view_links" "backend_team" {
   project_key = "my-project"
   view_key    = "backend-team"
@@ -67,5 +76,35 @@ resource "launchdarkly_view_links" "backend_team" {
     # Terraform will handle the link/unlink operations automatically
   ]
 
-  comment = "Backend infrastructure and API flags"
+  # Link backend-specific segments across multiple environments
+  segments {
+    environment_id = "507f1f77bcf86cd799439011"
+    segment_key    = "high-volume-api-users"
+  }
+
+  segments {
+    environment_id = "507f1f77bcf86cd799439022" # Production environment
+    segment_key    = "database-migration-pilot"
+  }
+}
+
+# Example: View with only segments (no flags)
+resource "launchdarkly_view_links" "segments_only" {
+  project_key = "my-project"
+  view_key    = "user-segments-view"
+
+  segments {
+    environment_id = "507f1f77bcf86cd799439011"
+    segment_key    = "vip-customers"
+  }
+
+  segments {
+    environment_id = "507f1f77bcf86cd799439011"
+    segment_key    = "enterprise-customers"
+  }
+
+  segments {
+    environment_id = "507f1f77bcf86cd799439011"
+    segment_key    = "trial-users"
+  }
 }

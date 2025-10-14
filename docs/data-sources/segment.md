@@ -46,6 +46,7 @@ data "launchdarkly_segment" "example" {
 - `tags` (Set of String) Tags associated with your resource.
 - `unbounded` (Boolean) Whether to create a standard segment (`false`) or a Big Segment (`true`). Standard segments include rule-based and smaller list-based segments. Big Segments include larger list-based segments and synced segments. Only use a Big Segment if you need to add more than 15,000 individual targets. It is not possible to manage the list of targeted contexts for Big Segments with Terraform.
 - `unbounded_context_kind` (String) For Big Segments, the targeted context kind. If this attribute is not specified it will default to `user`.
+- `views` (List of String) A list of view keys that this segment is linked to.
 
 <a id="nestedatt--excluded_contexts"></a>
 ### Nested Schema for `excluded_contexts`

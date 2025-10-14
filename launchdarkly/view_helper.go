@@ -84,6 +84,25 @@ func viewRead(ctx context.Context, d *schema.ResourceData, meta interface{}, isD
 				return diag.Errorf("could not set linked_flags on view with key %q: %v", view.Key, err)
 			}
 		}
+
+		// Also fetch and set linked segments for discovery
+		linkedSegments, err := getLinkedResources(betaClient, projectKey, viewKey, SEGMENTS)
+		if err != nil {
+			// Log warning but don't fail the read for discovery data
+			log.Printf("[WARN] failed to get linked segments for view %q in project %q: %v", viewKey, projectKey, err)
+		} else {
+			segments := make([]map[string]interface{}, len(linkedSegments))
+			for i, segment := range linkedSegments {
+				segments[i] = map[string]interface{}{
+					SEGMENT_ENVIRONMENT_ID: segment.EnvironmentId,
+					SEGMENT_KEY:            segment.ResourceKey,
+				}
+			}
+			err = d.Set(LINKED_SEGMENTS, segments)
+			if err != nil {
+				return diag.Errorf("could not set linked_segments on view with key %q: %v", view.Key, err)
+			}
+		}
 	}
 
 	return diags
@@ -273,9 +292,10 @@ func deleteView(client *Client, projectKey, viewKey string) error {
 
 // ViewLinkedResource represents a linked resource in a view
 type ViewLinkedResource struct {
-	ResourceKey  string `json:"resourceKey"`
-	ResourceType string `json:"resourceType"`
-	LinkedAt     int64  `json:"linkedAt"`
+	ResourceKey   string `json:"resourceKey"`
+	ResourceType  string `json:"resourceType"`
+	LinkedAt      int64  `json:"linkedAt"`
+	EnvironmentId string `json:"environmentId,omitempty"`
 }
 
 // ViewLinkedResources represents the response from getting linked resources
@@ -285,13 +305,33 @@ type ViewLinkedResources struct {
 
 // ViewLinkRequest represents the request body for linking resources
 type ViewLinkRequest struct {
-	Keys    []string `json:"keys"`
-	Comment string   `json:"comment,omitempty"`
+	Keys               []string                `json:"keys,omitempty"`
+	SegmentIdentifiers []ViewSegmentIdentifier `json:"segmentIdentifiers,omitempty"`
+	Comment            string                  `json:"comment,omitempty"`
+}
+
+// ViewSegmentIdentifier represents a segment identifier for linking to a view
+type ViewSegmentIdentifier struct {
+	EnvironmentId string `json:"environmentId"`
+	SegmentKey    string `json:"segmentKey"`
 }
 
 // chunkStringSlice splits a string slice into chunks of the specified size
 func chunkStringSlice(slice []string, chunkSize int) [][]string {
 	var chunks [][]string
+	for i := 0; i < len(slice); i += chunkSize {
+		end := i + chunkSize
+		if end > len(slice) {
+			end = len(slice)
+		}
+		chunks = append(chunks, slice[i:end])
+	}
+	return chunks
+}
+
+// chunkSegmentIdentifiers splits a segment identifier slice into chunks of the specified size
+func chunkSegmentIdentifiers(slice []ViewSegmentIdentifier, chunkSize int) [][]ViewSegmentIdentifier {
+	var chunks [][]ViewSegmentIdentifier
 	for i := 0; i < len(slice); i += chunkSize {
 		end := i + chunkSize
 		if end > len(slice) {
@@ -368,6 +408,42 @@ func performViewLinkOperation(client *Client, projectKey, viewKey, resourceType 
 	return nil
 }
 
+// performViewSegmentLinkOperation performs the actual HTTP request for linking/unlinking segments
+func performViewSegmentLinkOperation(client *Client, projectKey, viewKey string, segmentIdentifiers []ViewSegmentIdentifier, method string) error {
+	url := buildViewLinkURL(client, projectKey, viewKey, SEGMENTS)
+
+	linkRequest := ViewLinkRequest{
+		SegmentIdentifiers: segmentIdentifiers,
+	}
+
+	jsonData, err := json.Marshal(linkRequest)
+	if err != nil {
+		return err
+	}
+
+	req, err := http.NewRequestWithContext(client.ctx, method, url, bytes.NewBuffer(jsonData))
+	if err != nil {
+		return err
+	}
+
+	req.Header.Set("Authorization", client.apiKey)
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("LD-API-Version", "beta")
+
+	resp, err := client.ld.GetConfig().HTTPClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 400 {
+		body, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("HTTP %d: %s", resp.StatusCode, string(body))
+	}
+
+	return nil
+}
+
 // linkResourceChunkToView links a single chunk of resources to a view
 func linkResourceChunkToView(client *Client, projectKey, viewKey, resourceType string, resourceKeys []string) error {
 	return performViewLinkOperation(client, projectKey, viewKey, resourceType, resourceKeys, "POST")
@@ -405,6 +481,72 @@ func unlinkResourcesFromView(client *Client, projectKey, viewKey, resourceType s
 // unlinkResourceChunkFromView unlinks a single chunk of resources from a view
 func unlinkResourceChunkFromView(client *Client, projectKey, viewKey, resourceType string, resourceKeys []string) error {
 	return performViewLinkOperation(client, projectKey, viewKey, resourceType, resourceKeys, "DELETE")
+}
+
+// linkSegmentsToView links segments to a view using segment identifiers
+func linkSegmentsToView(client *Client, projectKey, viewKey string, segmentIdentifiers []ViewSegmentIdentifier) error {
+	const maxSegmentsPerRequest = 10
+
+	// Handle empty slice
+	if len(segmentIdentifiers) == 0 {
+		return nil
+	}
+
+	// Chunk the segment identifiers into groups of maxSegmentsPerRequest
+	segmentChunks := chunkSegmentIdentifiers(segmentIdentifiers, maxSegmentsPerRequest)
+
+	var errors []string
+
+	for i, chunk := range segmentChunks {
+		err := linkSegmentChunkToView(client, projectKey, viewKey, chunk)
+		if err != nil {
+			errors = append(errors, fmt.Sprintf("chunk %d/%d: %v", i+1, len(segmentChunks), err))
+		}
+	}
+
+	if len(errors) > 0 {
+		return fmt.Errorf("failed to link some segment chunks: %s", strings.Join(errors, "; "))
+	}
+
+	return nil
+}
+
+// linkSegmentChunkToView links a single chunk of segments to a view
+func linkSegmentChunkToView(client *Client, projectKey, viewKey string, segmentIdentifiers []ViewSegmentIdentifier) error {
+	return performViewSegmentLinkOperation(client, projectKey, viewKey, segmentIdentifiers, "POST")
+}
+
+// unlinkSegmentsFromView unlinks segments from a view
+func unlinkSegmentsFromView(client *Client, projectKey, viewKey string, segmentIdentifiers []ViewSegmentIdentifier) error {
+	const maxSegmentsPerRequest = 10
+
+	// Handle empty slice
+	if len(segmentIdentifiers) == 0 {
+		return nil
+	}
+
+	// Chunk the segment identifiers into groups of maxSegmentsPerRequest
+	segmentChunks := chunkSegmentIdentifiers(segmentIdentifiers, maxSegmentsPerRequest)
+
+	var errors []string
+
+	for i, chunk := range segmentChunks {
+		err := unlinkSegmentChunkFromView(client, projectKey, viewKey, chunk)
+		if err != nil {
+			errors = append(errors, fmt.Sprintf("chunk %d/%d: %v", i+1, len(segmentChunks), err))
+		}
+	}
+
+	if len(errors) > 0 {
+		return fmt.Errorf("failed to unlink some segment chunks: %s", strings.Join(errors, "; "))
+	}
+
+	return nil
+}
+
+// unlinkSegmentChunkFromView unlinks a single chunk of segments from a view
+func unlinkSegmentChunkFromView(client *Client, projectKey, viewKey string, segmentIdentifiers []ViewSegmentIdentifier) error {
+	return performViewSegmentLinkOperation(client, projectKey, viewKey, segmentIdentifiers, "DELETE")
 }
 
 // getLinkedResources gets all linked resources of a specific type for a view
@@ -510,6 +652,44 @@ func getViewsContainingFlag(client *Client, projectKey, flagKey string) ([]strin
 	return viewKeys, nil
 }
 
+// getViewsContainingSegment finds all views that contain a specific segment using the view-associations endpoint
+func getViewsContainingSegment(client *Client, projectKey, environmentId, segmentKey string) ([]string, error) {
+	url := buildViewAssociationsURLWithEnv(client, projectKey, SEGMENTS, segmentKey, environmentId)
+	req, err := http.NewRequestWithContext(client.ctx, "GET", url, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Set("Authorization", client.apiKey)
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("LD-API-Version", "beta")
+
+	resp, err := client.ld.GetConfig().HTTPClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 400 {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("HTTP %d: %s", resp.StatusCode, string(body))
+	}
+
+	var viewsResponse ViewsResponse
+	err = json.NewDecoder(resp.Body).Decode(&viewsResponse)
+	if err != nil {
+		return nil, err
+	}
+
+	// Extract view keys from the response
+	viewKeys := make([]string, len(viewsResponse.Items))
+	for i, view := range viewsResponse.Items {
+		viewKeys[i] = view.Key
+	}
+
+	return viewKeys, nil
+}
+
 // buildViewAssociationsURL builds the URL for getting views associated with a specific resource
 func buildViewAssociationsURL(client *Client, projectKey, resourceType, resourceKey string) string {
 	host := client.apiHost
@@ -517,4 +697,17 @@ func buildViewAssociationsURL(client *Client, projectKey, resourceType, resource
 		host = "app.launchdarkly.com"
 	}
 	return fmt.Sprintf("https://%s/api/v2/projects/%s/view-associations/%s/%s", host, projectKey, resourceType, resourceKey)
+}
+
+// buildViewAssociationsURLWithEnv builds the URL for getting views associated with a specific resource (with environment ID for segments)
+func buildViewAssociationsURLWithEnv(client *Client, projectKey, resourceType, resourceKey, environmentId string) string {
+	host := client.apiHost
+	if host == "" {
+		host = "app.launchdarkly.com"
+	}
+	url := fmt.Sprintf("https://%s/api/v2/projects/%s/view-associations/%s/%s", host, projectKey, resourceType, resourceKey)
+	if environmentId != "" {
+		url = fmt.Sprintf("%s?environmentId=%s", url, environmentId)
+	}
+	return url
 }
