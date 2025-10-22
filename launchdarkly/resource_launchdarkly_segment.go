@@ -3,6 +3,7 @@ package launchdarkly
 import (
 	"context"
 	"fmt"
+	"log"
 	"net/http"
 	"strings"
 
@@ -147,6 +148,107 @@ func resourceSegmentUpdate(ctx context.Context, d *schema.ResourceData, metaRaw 
 	})
 	if err != nil {
 		return diag.Errorf("failed to update segment %q in project %q: %s", key, projectKey, handleLdapiErr(err))
+	}
+
+	// Handle view associations if view_keys field is managed
+	if d.HasChange(VIEW_KEYS) {
+		if viewKeysRaw, ok := d.GetOk(VIEW_KEYS); ok {
+			betaClient, err := newBetaClient(client.apiKey, client.apiHost, false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
+			if err != nil {
+				return diag.Errorf("failed to create beta client for view linking: %v", err)
+			}
+
+			desiredViewKeys := interfaceSliceToStringSlice(viewKeysRaw.(*schema.Set).List())
+
+			// Get the environment ID
+			var env *ldapi.Environment
+			err = client.withConcurrency(client.ctx, func() error {
+				env, _, err = client.ld.EnvironmentsApi.GetEnvironment(client.ctx, projectKey, envKey).Execute()
+				return err
+			})
+			if err != nil {
+				return diag.Errorf("failed to get environment %q in project %q: %s", envKey, projectKey, handleLdapiErr(err))
+			}
+
+			// Validate that all specified views exist
+			for _, viewKey := range desiredViewKeys {
+				exists, err := viewExists(projectKey, viewKey, betaClient)
+				if err != nil {
+					return diag.Errorf("failed to check if view %q exists: %v", viewKey, err)
+				}
+				if !exists {
+					return diag.Errorf("cannot link segment to view %q in project %q: view does not exist", viewKey, projectKey)
+				}
+			}
+
+			// Get currently linked views
+			currentViewKeys, err := getViewsContainingSegment(betaClient, projectKey, env.Id, key)
+			if err != nil {
+				log.Printf("[WARN] failed to get current views for segment %q: %v", key, err)
+				currentViewKeys = []string{}
+			}
+
+			// Calculate views to add and remove
+			viewsToAdd := difference(desiredViewKeys, currentViewKeys)
+			viewsToRemove := difference(currentViewKeys, desiredViewKeys)
+
+			// Warn if there might be conflicts with view_links resource
+			if len(viewsToRemove) > 0 {
+				log.Printf("[INFO] Segment %q: Unlinking from views %v. If you're also using launchdarkly_view_links to manage this segment, this may cause conflicts.", key, viewsToRemove)
+			}
+
+			// Remove views that are no longer in the list
+			for _, viewKey := range viewsToRemove {
+				segmentIdentifiers := []ViewSegmentIdentifier{{
+					EnvironmentId: env.Id,
+					SegmentKey:    key,
+				}}
+				err = unlinkSegmentsFromView(betaClient, projectKey, viewKey, segmentIdentifiers)
+				if err != nil {
+					return diag.Errorf("failed to unlink segment %q from view %q: %v", key, viewKey, err)
+				}
+			}
+
+			// Add new views
+			for _, viewKey := range viewsToAdd {
+				segmentIdentifiers := []ViewSegmentIdentifier{{
+					EnvironmentId: env.Id,
+					SegmentKey:    key,
+				}}
+				err = linkSegmentsToView(betaClient, projectKey, viewKey, segmentIdentifiers)
+				if err != nil {
+					return diag.Errorf("failed to link segment %q to view %q: %v", key, viewKey, err)
+				}
+			}
+		} else {
+			// If view_keys was explicitly removed (set to null), unlink from all views
+			// that were previously managed by this resource
+			betaClient, err := newBetaClient(client.apiKey, client.apiHost, false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
+			if err == nil {
+				oldViewKeysRaw, _ := d.GetChange(VIEW_KEYS)
+				if oldViewKeysRaw != nil {
+					// Get the environment ID
+					var env *ldapi.Environment
+					err = client.withConcurrency(client.ctx, func() error {
+						env, _, err = client.ld.EnvironmentsApi.GetEnvironment(client.ctx, projectKey, envKey).Execute()
+						return err
+					})
+					if err == nil {
+						oldViewKeys := interfaceSliceToStringSlice(oldViewKeysRaw.(*schema.Set).List())
+						for _, viewKey := range oldViewKeys {
+							segmentIdentifiers := []ViewSegmentIdentifier{{
+								EnvironmentId: env.Id,
+								SegmentKey:    key,
+							}}
+							err = unlinkSegmentsFromView(betaClient, projectKey, viewKey, segmentIdentifiers)
+							if err != nil {
+								log.Printf("[WARN] failed to unlink segment %q from view %q: %v", key, viewKey, err)
+							}
+						}
+					}
+				}
+			}
+		}
 	}
 
 	return resourceSegmentRead(ctx, d, metaRaw)

@@ -76,6 +76,24 @@ func baseSegmentSchema(options segmentSchemaOptions) map[string]*schema.Schema {
 			ForceNew:      !options.isDataSource,
 			ConflictsWith: []string{INCLUDED, EXCLUDED, INCLUDED_CONTEXTS, EXCLUDED_CONTEXTS, RULES},
 		},
+		VIEW_KEYS: {
+			Type:     schema.TypeSet,
+			Optional: !options.isDataSource,
+			Computed: options.isDataSource,
+			Elem: &schema.Schema{
+				Type:             schema.TypeString,
+				ValidateDiagFunc: validateKey(),
+			},
+			Description: "A set of view keys to link this segment to. This is an alternative to using the `launchdarkly_view_links` resource for managing view associations. When set, this segment will be linked to the specified views. Note: Using both `view_keys` on the segment and `launchdarkly_view_links` to manage the same segment may cause conflicts.",
+		},
+		LINKED_VIEWS: {
+			Type:     schema.TypeSet,
+			Computed: true,
+			Elem: &schema.Schema{
+				Type: schema.TypeString,
+			},
+			Description: "A computed set of all view keys this segment is currently linked to, regardless of how the associations were created (via `view_keys` or `launchdarkly_view_links`).",
+		},
 	}
 }
 
@@ -174,27 +192,35 @@ func segmentRead(ctx context.Context, d *schema.ResourceData, raw interface{}, i
 		return diag.Errorf("failed to set excluded on segment with key %q: %v", segmentKey, err)
 	}
 
-	// For data sources, also fetch and set linked views for discovery
-	if isDataSource {
-		betaClient, err := newBetaClient(client.apiKey, client.apiHost, false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
+	// Fetch and set linked views for all resources (not just data sources)
+	// This populates the linked_views computed field
+	betaClient, err := newBetaClient(client.apiKey, client.apiHost, false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
+	if err != nil {
+		// Log warning but don't fail the read for discovery data
+		log.Printf("[WARN] failed to create beta client for segment %q in project %q, environment %q: %v", segmentKey, projectKey, envKey, err)
+	} else {
+		// Get the environment to retrieve its ID
+		var env *ldapi.Environment
+		err = client.withConcurrency(client.ctx, func() error {
+			env, _, err = client.ld.EnvironmentsApi.GetEnvironment(client.ctx, projectKey, envKey).Execute()
+			return err
+		})
 		if err != nil {
-			// Log warning but don't fail the read for discovery data
-			log.Printf("[WARN] failed to create beta client for segment %q in project %q, environment %q: %v", segmentKey, projectKey, envKey, err)
+			log.Printf("[WARN] failed to get environment %q in project %q: %v", envKey, projectKey, err)
 		} else {
-			// Get the environment to retrieve its ID
-			var env *ldapi.Environment
-			err = client.withConcurrency(client.ctx, func() error {
-				env, _, err = client.ld.EnvironmentsApi.GetEnvironment(client.ctx, projectKey, envKey).Execute()
-				return err
-			})
+			viewKeys, err := getViewsContainingSegment(betaClient, projectKey, env.Id, segmentKey)
 			if err != nil {
-				log.Printf("[WARN] failed to get environment %q in project %q: %v", envKey, projectKey, err)
+				// Log warning but don't fail the read for discovery data
+				log.Printf("[WARN] failed to get views for segment %q in project %q, environment %q: %v", segmentKey, projectKey, envKey, err)
 			} else {
-				viewKeys, err := getViewsContainingSegment(betaClient, projectKey, env.Id, segmentKey)
+				// Set linked_views (computed field showing all associations)
+				err = d.Set(LINKED_VIEWS, viewKeys)
 				if err != nil {
-					// Log warning but don't fail the read for discovery data
-					log.Printf("[WARN] failed to get views for segment %q in project %q, environment %q: %v", segmentKey, projectKey, envKey, err)
-				} else {
+					return diag.Errorf("could not set linked_views on segment with key %q: %v", segmentKey, err)
+				}
+
+				// For data sources, also set the legacy VIEWS field for backwards compatibility
+				if isDataSource {
 					err = d.Set(VIEWS, viewKeys)
 					if err != nil {
 						return diag.Errorf("could not set views on segment with key %q: %v", segmentKey, err)

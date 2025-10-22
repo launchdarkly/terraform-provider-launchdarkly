@@ -3,6 +3,7 @@ package launchdarkly
 import (
 	"context"
 	"fmt"
+	"log"
 	"net/http"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
@@ -267,6 +268,77 @@ func featureFlagUpdate(ctx context.Context, d *schema.ResourceData, metaRaw inte
 	})
 	if err != nil {
 		return diag.Errorf("failed to update flag %q in project %q: %s", key, projectKey, handleLdapiErr(err))
+	}
+
+	// Handle view associations if view_keys field is managed
+	if d.HasChange(VIEW_KEYS) || isCreate {
+		if viewKeysRaw, ok := d.GetOk(VIEW_KEYS); ok {
+			betaClient, err := newBetaClient(client.apiKey, client.apiHost, false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
+			if err != nil {
+				return diag.Errorf("failed to create beta client for view linking: %v", err)
+			}
+
+			desiredViewKeys := interfaceSliceToStringSlice(viewKeysRaw.(*schema.Set).List())
+
+			// Validate that all specified views exist
+			for _, viewKey := range desiredViewKeys {
+				exists, err := viewExists(projectKey, viewKey, betaClient)
+				if err != nil {
+					return diag.Errorf("failed to check if view %q exists: %v", viewKey, err)
+				}
+				if !exists {
+					return diag.Errorf("cannot link flag to view %q in project %q: view does not exist", viewKey, projectKey)
+				}
+			}
+
+			// Get currently linked views
+			currentViewKeys, err := getViewsContainingFlag(betaClient, projectKey, key)
+			if err != nil {
+				log.Printf("[WARN] failed to get current views for flag %q: %v", key, err)
+				currentViewKeys = []string{}
+			}
+
+			// Calculate views to add and remove
+			viewsToAdd := difference(desiredViewKeys, currentViewKeys)
+			viewsToRemove := difference(currentViewKeys, desiredViewKeys)
+
+			// Warn if there might be conflicts with view_links resource
+			if len(viewsToRemove) > 0 {
+				log.Printf("[INFO] Flag %q: Unlinking from views %v. If you're also using launchdarkly_view_links to manage this flag, this may cause conflicts.", key, viewsToRemove)
+			}
+
+			// Remove views that are no longer in the list
+			for _, viewKey := range viewsToRemove {
+				err = unlinkResourcesFromView(betaClient, projectKey, viewKey, FLAGS, []string{key})
+				if err != nil {
+					return diag.Errorf("failed to unlink flag %q from view %q: %v", key, viewKey, err)
+				}
+			}
+
+			// Add new views
+			for _, viewKey := range viewsToAdd {
+				err = linkResourcesToView(betaClient, projectKey, viewKey, FLAGS, []string{key})
+				if err != nil {
+					return diag.Errorf("failed to link flag %q to view %q: %v", key, viewKey, err)
+				}
+			}
+		} else if !isCreate {
+			// If view_keys was explicitly removed (set to null), unlink from all views
+			// that were previously managed by this resource
+			betaClient, err := newBetaClient(client.apiKey, client.apiHost, false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
+			if err == nil {
+				oldViewKeysRaw, _ := d.GetChange(VIEW_KEYS)
+				if oldViewKeysRaw != nil {
+					oldViewKeys := interfaceSliceToStringSlice(oldViewKeysRaw.(*schema.Set).List())
+					for _, viewKey := range oldViewKeys {
+						err = unlinkResourcesFromView(betaClient, projectKey, viewKey, FLAGS, []string{key})
+						if err != nil {
+							log.Printf("[WARN] failed to unlink flag %q from view %q: %v", key, viewKey, err)
+						}
+					}
+				}
+			}
+		}
 	}
 
 	return resourceFeatureFlagRead(ctx, d, metaRaw)

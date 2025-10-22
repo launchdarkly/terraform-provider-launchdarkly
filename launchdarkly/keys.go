@@ -72,6 +72,7 @@ const (
 	LAST_NAME                        = "last_name"
 	LINKED_FLAGS                     = "linked_flags"
 	LINKED_SEGMENTS                  = "linked_segments"
+	LINKED_VIEWS                     = "linked_views"
 	MAINTAINERS                      = "maintainers"
 	MAINTAINER_ID                    = "maintainer_id"
 	MAINTAINER_TEAM_KEY              = "maintainer_team_key"
@@ -147,5 +148,6 @@ const (
 	VERSION                          = "version"
 	VIEWS                            = "views"
 	VIEW_KEY                         = "view_key"
+	VIEW_KEYS                        = "view_keys"
 	WEIGHT                           = "weight"
 )

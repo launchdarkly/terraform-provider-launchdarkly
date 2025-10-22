@@ -59,3 +59,39 @@ resource "launchdarkly_feature_flag" "json_example" {
     off_variation = 0
   }
 }
+
+# Example: Feature flag with view associations
+# This approach is ideal for modular Terraform where each flag is managed in its own file
+resource "launchdarkly_feature_flag" "checkout_flow" {
+  project_key = "example-project"
+  key         = "checkout-flow-redesign"
+  name        = "Checkout Flow Redesign"
+  description = "New checkout experience with improved UX"
+
+  variation_type = "boolean"
+  
+  # Link this flag to specific views
+  # The flag will appear in both the "payments-team" and "frontend-team" views
+  view_keys = [
+    "payments-team",
+    "frontend-team"
+  ]
+
+  tags = ["checkout", "payments", "frontend"]
+}
+
+# Example: Flag managed in a module that can specify its own views
+# This enables a modular structure where each team/domain can manage their flags
+# without needing to coordinate with a central view_links resource
+resource "launchdarkly_feature_flag" "mobile_app_feature" {
+  project_key = "example-project"
+  key         = "mobile-push-notifications"
+  name        = "Mobile Push Notifications"
+
+  variation_type = "boolean"
+  
+  # Each flag can independently specify which views it belongs to
+  view_keys = ["mobile-team"]
+
+  tags = ["mobile", "notifications"]
+}

@@ -128,6 +128,24 @@ func baseFeatureFlagSchema(options featureFlagSchemaOptions) map[string]*schema.
 			Description: "Specifies whether the flag is archived or not. Note that you cannot create a new flag that is archived, but can update a flag to be archived.",
 			Default:     false,
 		},
+		VIEW_KEYS: {
+			Type:     schema.TypeSet,
+			Optional: !options.isDataSource,
+			Computed: options.isDataSource,
+			Elem: &schema.Schema{
+				Type:             schema.TypeString,
+				ValidateDiagFunc: validateKey(),
+			},
+			Description: "A set of view keys to link this flag to. This is an alternative to using the `launchdarkly_view_links` resource for managing view associations. When set, this flag will be linked to the specified views. Note: Using both `view_keys` on the flag and `launchdarkly_view_links` to manage the same flag may cause conflicts.",
+		},
+		LINKED_VIEWS: {
+			Type:     schema.TypeSet,
+			Computed: true,
+			Elem: &schema.Schema{
+				Type: schema.TypeString,
+			},
+			Description: "A computed set of all view keys this flag is currently linked to, regardless of how the associations were created (via `view_keys` or `launchdarkly_view_links`).",
+		},
 	}
 
 	if options.isDataSource {
@@ -232,17 +250,25 @@ func featureFlagRead(ctx context.Context, d *schema.ResourceData, raw interface{
 	}
 	_ = d.Set(DEFAULTS, defaults)
 
-	// For data sources, also fetch and set linked views for discovery
-	if isDataSource {
-		betaClient, err := newBetaClient(client.apiKey, client.apiHost, false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
+	// Fetch and set linked views for all resources (not just data sources)
+	// This populates the linked_views computed field
+	betaClient, err := newBetaClient(client.apiKey, client.apiHost, false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
+	if err != nil {
+		log.Printf("[WARN] failed to create beta client for views lookup: %v", err)
+	} else {
+		viewsWithFlag, err := getViewsContainingFlag(betaClient, projectKey, key)
 		if err != nil {
-			log.Printf("[WARN] failed to create beta client for views lookup: %v", err)
+			// Log warning but don't fail the read for discovery data
+			log.Printf("[WARN] failed to get views for flag %q in project %q: %v", key, projectKey, err)
 		} else {
-			viewsWithFlag, err := getViewsContainingFlag(betaClient, projectKey, key)
+			// Set linked_views (computed field showing all associations)
+			err = d.Set(LINKED_VIEWS, viewsWithFlag)
 			if err != nil {
-				// Log warning but don't fail the read for discovery data
-				log.Printf("[WARN] failed to get views for flag %q in project %q: %v", key, projectKey, err)
-			} else {
+				return diag.Errorf("could not set linked_views on flag with key %q: %v", key, err)
+			}
+
+			// For data sources, also set the legacy VIEWS field for backwards compatibility
+			if isDataSource {
 				err = d.Set(VIEWS, viewsWithFlag)
 				if err != nil {
 					return diag.Errorf("could not set views on flag with key %q: %v", key, err)

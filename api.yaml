@@ -1,0 +1,1387 @@
+# yaml-language-server: $schema=https://json-schema.org/draft/2020-12/schema
+openapi: 3.0.0
+info:
+  title: Views
+  description: API for managing views within a project
+  version: '1.0'
+paths:
+  /api/v2/projects/{projectKey}/views:
+    get:
+      operationId: getViews
+      summary: List views
+      description: Get a list of all views in the given project.
+      tags:
+        - Views (beta)
+      parameters:
+        - $ref: '#/components/parameters/LD-API-Version'
+        - name: projectKey
+          example: default
+          in: path
+          required: true
+          schema:
+            type: string
+        - $ref: '#/components/parameters/Sort'
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Offset'
+        - $ref: '#/components/parameters/Filter'
+        - $ref: '#/components/parameters/ListViewsExpandOptions'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Views'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServer'
+    post:
+      operationId: createView
+      summary: Create view
+      description: Create a new view in the given project.
+      tags:
+        - Views (beta)
+      parameters:
+        - $ref: '#/components/parameters/LD-API-Version'
+        - name: projectKey
+          example: default
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        description: View object to create
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ViewPost'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/View'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServer'
+
+  /api/v2/projects/{projectKey}/views/{viewKey}:
+    get:
+      operationId: getView
+      summary: Get view
+      description: Retrieve a specific view by its key.
+      tags:
+        - Views (beta)
+      parameters:
+        - $ref: '#/components/parameters/LD-API-Version'
+        - name: projectKey
+          example: default
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: viewKey
+          example: my-view
+          in: path
+          required: true
+          schema:
+            type: string
+        - $ref: '#/components/parameters/Sort'
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Offset'
+        - $ref: '#/components/parameters/Filter'
+        - $ref: '#/components/parameters/GetViewExpandOptions'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/View'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServer'
+    delete:
+      operationId: deleteView
+      summary: Delete view
+      description: Delete a specific view by its key.
+      tags:
+        - Views (beta)
+      parameters:
+        - $ref: '#/components/parameters/LD-API-Version'
+        - name: projectKey
+          example: default
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: viewKey
+          example: my-view
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          $ref: '#/components/responses/NoContent'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServer'
+    patch:
+      operationId: updateView
+      summary: Update view
+      description: |
+        Edit an existing view.
+
+        The request body must be a JSON object of the fields to update. The values you include replace the existing values for the fields.
+
+        Here's an example:
+          ```
+            {
+              "description": "Example updated description",
+              "tags": ["new-tag"]
+            }
+          ```
+      tags:
+        - Views (beta)
+      parameters:
+        - $ref: '#/components/parameters/LD-API-Version'
+        - name: projectKey
+          example: default
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: viewKey
+          example: my-view
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        description: A JSON representation of the view including only the fields to update.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ViewPatch'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/View'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServer'
+
+  /api/v2/projects/{projectKey}/views/{viewKey}/link/{resourceType}:
+    post:
+      operationId: linkResource
+      summary: Link resource
+      description: |
+        Link one or multiple resources to a view:
+        - Link flags using flag keys
+        - Link AI configs using AI config keys
+        - Link metrics using metric keys
+        - Link segments using segment IDs
+      tags:
+        - Views (beta)
+      parameters:
+        - $ref: '#/components/parameters/LD-API-Version'
+        - name: projectKey
+          example: default
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: viewKey
+          example: my-view
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: resourceType
+          example: flags
+          in: path
+          required: true
+          schema:
+            type: string
+            enum:
+              - flags
+              - segments
+              - aiConfigs
+              - metrics
+      requestBody:
+        description: The resource to link to the view. Flags are identified by key. Segments are identified by segment ID.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ViewLinkRequest'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LinkResourceSuccessResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServer'
+    delete:
+      operationId: unlinkResource
+      summary: Unlink resource
+      description: |
+        Unlink one or multiple resources from a view:
+        - Unlink flags using flag keys
+        - Unlink segments using segment IDs
+        - Unlink AI configs using AI config keys
+        - Unlink metrics using metric keys
+      tags:
+        - Views (beta)
+      parameters:
+        - $ref: '#/components/parameters/LD-API-Version'
+        - name: projectKey
+          example: default
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: viewKey
+          example: my-view
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: resourceType
+          example: flags
+          in: path
+          required: true
+          schema:
+            type: string
+            enum:
+              - flags
+              - segments
+              - aiConfigs
+              - metrics
+      requestBody:
+        description: The resource to link to the view. Flags are identified by key. Segments are identified by segment ID.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ViewLinkRequest'
+      responses:
+        '200':
+          description: Successful response with unlink details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnlinkResourceSuccessResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServer'
+
+  /api/v2/projects/{projectKey}/views/{viewKey}/linked/{resourceType}:
+    get:
+      operationId: getLinkedResources
+      summary: Get linked resources
+      description: Get a list of all linked resources for a given view.
+      tags:
+        - Views (beta)
+      parameters:
+        - $ref: '#/components/parameters/LD-API-Version'
+        - name: projectKey
+          example: default
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: viewKey
+          example: my-view
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: resourceType
+          example: flags
+          in: path
+          required: true
+          schema:
+            type: string
+            enum:
+              - flags
+              - segments
+              - aiConfigs
+              - metrics
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Offset'
+        - name: sort
+          in: query
+          description: Field to sort by. Default field is `linkedAt`, default order is ascending.
+          schema:
+            type: string
+            enum: [linkedAt, name]
+            default: linkedAt
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ViewLinkedResources'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServer'
+
+  /api/v2/projects/{projectKey}/view-associations/{resourceType}/{resourceKey}:
+    get:
+      operationId: getLinkedViews
+      summary: Get linked views for a given resource
+      description: Get a list of all linked views for a resource. Flags, AI configs and metrics are identified by key. Segments are identified by segment ID.
+      tags:
+        - Views (beta)
+      parameters:
+        - $ref: '#/components/parameters/LD-API-Version'
+        - name: projectKey
+          example: default
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: resourceType
+          example: flags
+          in: path
+          required: true
+          schema:
+            type: string
+            enum:
+              - flags
+              - segments
+              - aiConfigs
+              - metrics
+        - name: resourceKey
+          example: my-flag
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: environmentId
+          in: query
+          required: false
+          description: Environment ID. Required when resourceType is 'segments'
+          schema:
+            type: string
+          example: 6890ff25c3e3830ba1a352e4
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Offset'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Views'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServer'
+components:
+  parameters:
+    LD-API-Version:
+      description: Version of the endpoint.
+      explode: false
+      in: header
+      name: LD-API-Version
+      required: true
+      schema:
+        type: string
+        enum:
+          - beta
+      style: simple
+    Limit:
+      name: limit
+      in: query
+      description: The number of views to return.
+      schema:
+        type: integer
+    Offset:
+      name: offset
+      in: query
+      description: Where to start in the list. Use this with pagination. For example, an offset of 10 skips the first ten items and then returns the next items in the list, up to the query `limit`.
+      schema:
+        type: integer
+    Filter:
+      name: filter
+      in: query
+      description: A filter to apply to the list of views.
+      schema:
+        type: string
+    Sort:
+      name: sort
+      in: query
+      description: A sort to apply to the list of views.
+      schema:
+        type: string
+        enum:
+          - key
+          - name
+          - updatedAt
+    ListViewsExpandOptions:
+      name: expand
+      in: query
+      description: A comma-separated list of fields to expand.
+      style: form
+      explode: false
+      schema:
+        type: array
+        items:
+          type: string
+          enum: [flagsSummary, segmentsSummary, metricsSummary, aiConfigsSummary, resourceSummary]
+    GetViewExpandOptions:
+      name: expand
+      in: query
+      description: A comma-separated list of fields to expand.
+      style: form
+      explode: true
+      schema:
+        type: array
+        items:
+          type: string
+          enum:
+            - allFlags
+            - allSegments
+            - allMetrics
+            - allAIConfigs
+            - allResources
+            - flagsSummary
+            - segmentsSummary
+            - metricsSummary
+            - aiConfigsSummary
+            - resourceSummary
+  responses:
+    NoContent:
+      description: No content
+    BadRequest:
+      description: Bad request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    NotFound:
+      description: Not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    InternalServer:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Forbidden:
+      description: Forbidden
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+  schemas:
+    Views:
+      type: object
+      required:
+        - items
+        - totalCount
+      properties:
+        _links:
+          $ref: '#/components/schemas/PaginatedLinks'
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/View'
+        totalCount:
+          type: integer
+    View:
+      type: object
+      required:
+        - id
+        - accountId
+        - projectId
+        - projectKey
+        - key
+        - name
+        - description
+        - generateSdkKeys
+        - version
+        - tags
+        - createdAt
+        - updatedAt
+        - archived
+        - deleted
+      properties:
+        _access:
+          $ref: 'access_rep.yaml#/components/schemas/AccessRep'
+        _links:
+          $ref: '#/components/schemas/ParentAndSelfLinks'
+        id:
+          type: string
+          format: string
+          description: Unique ID of this view
+        accountId:
+          type: string
+          description: ID of the account that owns this view
+        projectId:
+          type: string
+          description: ID of the project this view belongs to
+        projectKey:
+          type: string
+          description: Key of the project this view belongs to
+        key:
+          type: string
+          description: Unique key for the view within the account/project
+        name:
+          type: string
+          description: Human-readable name for the view
+        description:
+          type: string
+          description: Optional detailed description of the view
+        generateSdkKeys:
+          type: boolean
+          description: Whether to generate SDK keys for this view. Defaults to false.
+        version:
+          type: integer
+          description: Version number for tracking changes
+        tags:
+          type: array
+          items:
+            type: string
+          description: Tags associated with this view
+        createdAt:
+          $ref: './apidocs/ld-openapi-hidden.json#/components/schemas/UnixMillis'
+        updatedAt:
+          $ref: './apidocs/ld-openapi-hidden.json#/components/schemas/UnixMillis'
+        archived:
+          type: boolean
+          description: Whether this view is archived
+          default: false
+        archivedAt:
+          $ref: './apidocs/ld-openapi-hidden.json#/components/schemas/UnixMillis'
+        deletedAt:
+          $ref: './apidocs/ld-openapi-hidden.json#/components/schemas/UnixMillis'
+        deleted:
+          type: boolean
+          description: Whether this view is deleted
+          default: false
+        maintainer:
+          $ref: '#/components/schemas/Maintainer'
+        flagsSummary:
+          $ref: '#/components/schemas/FlagsSummary'
+        segmentsSummary:
+          $ref: '#/components/schemas/SegmentsSummary'
+        metricsSummary:
+          $ref: '#/components/schemas/MetricsSummary'
+        aiConfigsSummary:
+          $ref: '#/components/schemas/AIConfigsSummary'
+        resourceSummary:
+          $ref: '#/components/schemas/ResourceSummary'
+        flagsExpanded:
+          $ref: '#/components/schemas/ExpandedLinkedFlags'
+        segmentsExpanded:
+          $ref: '#/components/schemas/ExpandedLinkedSegments'
+        metricsExpanded:
+          $ref: '#/components/schemas/ExpandedLinkedMetrics'
+        aiConfigsExpanded:
+          $ref: '#/components/schemas/ExpandedLinkedAIConfigs'
+        resourcesExpanded:
+          $ref: '#/components/schemas/ExpandedLinkedResources'
+    Maintainer:
+      type: object
+      required:
+        - id
+        - kind
+      properties:
+        id:
+          type: string
+        kind:
+          type: string
+        maintainerMember:
+          $ref: '#/components/schemas/MaintainerMember'
+        maintainerTeam:
+          $ref: '#/components/schemas/MaintainerTeam'
+    MaintainerMember:
+      type: object
+      required:
+        - id
+        - email
+        - role
+      properties:
+        id:
+          type: string
+        email:
+          type: string
+        role:
+          type: string
+        firstName:
+          type: string
+        lastName:
+          type: string
+    MaintainerTeam:
+      type: object
+      required:
+        - id
+        - key
+        - name
+      properties:
+        id:
+          type: string
+        key:
+          type: string
+        name:
+          type: string
+    ViewPost:
+      type: object
+      required:
+        - key
+        - name
+      properties:
+        key:
+          type: string
+          description: Unique key for the view within the account/project
+        name:
+          type: string
+          description: Human-readable name for the view
+        description:
+          type: string
+          default: ''
+          description: Optional detailed description of the view
+        generateSdkKeys:
+          type: boolean
+          default: false
+          description: Whether to generate SDK keys for this view
+        maintainerId:
+          type: string
+          description: Member ID of the maintainer for this view. Only one of `maintainerId` or `maintainerTeamKey` can be specified.
+        maintainerTeamKey:
+          type: string
+          description: Key of the maintainer team for this view. Only one of `maintainerId` or `maintainerTeamKey` can be specified.
+        tags:
+          type: array
+          items:
+            type: string
+          description: Tags associated with this view
+    ViewPatch:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Human-readable name for the view
+        description:
+          type: string
+          description: Optional detailed description of the view
+        generateSdkKeys:
+          type: boolean
+          description: Whether to generate SDK keys for this view
+        maintainerId:
+          type: string
+          description: Member ID of the maintainer for this view. Only one of `maintainerId` or `maintainerTeamKey` can be specified.
+        maintainerTeamKey:
+          type: string
+          description: Key of the maintainer team for this view. Only one of `maintainerId` or `maintainerTeamKey` can be specified.
+        tags:
+          type: array
+          items:
+            type: string
+          description: Tags associated with this view
+        archived:
+          type: boolean
+          description: Whether or not the view is archived
+    ViewLinkedResources:
+      type: object
+      required:
+        - items
+        - totalCount
+      properties:
+        _links:
+          $ref: '#/components/schemas/PaginatedLinks'
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ViewLinkedResource'
+        totalCount:
+          type: integer
+    ViewLinkedResource:
+      type: object
+      required:
+        - resourceKey
+        - resourceType
+        - linkedAt
+        - _links
+      properties:
+        _links:
+          $ref: '#/components/schemas/ParentAndSelfLinks'
+        resourceKey:
+          description: Key of the resource (flag, segment, AI config or metric)
+          type: string
+        environmentId:
+          type: string
+          description: Environment ID of the resource (only present for segments)
+        environmentKey:
+          type: string
+          description: Environment Key of the resource (only present for segments)
+        resourceType:
+          type: string
+          enum:
+            - flag
+            - segment
+            - metric
+            - aiConfig
+        linkedAt:
+          $ref: './apidocs/ld-openapi-hidden.json#/components/schemas/UnixMillis'
+        resourceDetails:
+          title: ViewLinkedResourceDetails
+          type: object
+          properties:
+            view:
+              $ref: '#/components/schemas/View'
+            flag:
+              $ref: '#/components/schemas/ExpandedFlag'
+            segment:
+              $ref: '#/components/schemas/ExpandedSegment'
+            aiConfig:
+              $ref: '#/components/schemas/ExpandedAIConfig'
+            metric:
+              $ref: '#/components/schemas/ExpandedMetric'
+    ViewLinkRequest:
+      type: object
+      oneOf:
+        - type: object
+          title: ViewLinkRequestKeys
+          required:
+            - keys
+          properties:
+            keys:
+              type: array
+              items:
+                type: string
+              description: Keys of the resources (flags, segments, AI configs) to link/unlink
+            comment:
+              type: string
+              default: ''
+              description: Optional comment for the link/unlink operation
+        - type: object
+          title: ViewLinkRequestSegmentIdentifiers
+          required:
+            - segmentIdentifiers
+          properties:
+            segmentIdentifiers:
+              type: array
+              items:
+                type: object
+                title: ViewLinkRequestSegmentIdentifier
+                required:
+                  - environmentId
+                  - segmentKey
+                properties:
+                  environmentId:
+                    type: string
+                  segmentKey:
+                    type: string
+              description: Identifiers of the segments to link/unlink (environmentId and segmentKey)
+            comment:
+              type: string
+              default: ''
+              description: Optional comment for the link/unlink operation
+    Error:
+      type: object
+      required:
+        - message
+        - code
+      properties:
+        message:
+          type: string
+        code:
+          type: string
+    FailedResourceLink:
+      type: object
+      required:
+        - resourceKey
+        - resourceType
+        - errorMessage
+      properties:
+        resourceKey:
+          type: string
+          description: The key of the resource that failed to link.
+        environmentId:
+          type: string
+          description: Environment ID of the resource (only present for segments)
+        resourceType:
+          type: string
+          description: The type of the resource that failed to link.
+          enum:
+            - flag
+            - segment
+            - metric
+            - aiConfig
+        errorMessage:
+          type: string
+          description: The reason why linking this resource failed.
+    LinkResourceSuccessResponse:
+      type: object
+      required:
+        - successCount
+        - failureCount
+      properties:
+        successCount:
+          type: integer
+          description: The number of resources successfully linked.
+        failureCount:
+          type: integer
+          description: The number of resources that failed to link.
+        linkedResources:
+          $ref: '#/components/schemas/ViewLinkedResources'
+          description: Details of successfully linked resources.
+        failedResources:
+          type: array
+          items:
+            $ref: '#/components/schemas/FailedResourceLink'
+          description: Details of resources that failed to link.
+    UnlinkResourceSuccessResponse:
+      type: object
+      required:
+        - successCount
+        - failureCount
+      properties:
+        successCount:
+          type: integer
+          description: The number of resources successfully unlinked.
+        failureCount:
+          type: integer
+          description: The number of resources that failed to unlink.
+        failedResources:
+          type: array
+          items:
+            $ref: '#/components/schemas/FailedResourceLink'
+          description: Details of resources that failed to unlink.
+    ParentAndSelfLinks:
+      type: object
+      description: The location and content type of related resources
+      required:
+        - self
+        - parent
+      properties:
+        self:
+          $ref: '#/components/schemas/CoreLink'
+        parent:
+          $ref: '#/components/schemas/CoreLink'
+    ParentLink:
+      type: object
+      required:
+        - parent
+      properties:
+        parent:
+          $ref: '#/components/schemas/CoreLink'
+    SelfLink:
+      type: object
+      required:
+        - self
+      properties:
+        self:
+          $ref: '#/components/schemas/CoreLink'
+    CoreLink:
+      type: object
+      required:
+        - href
+        - type
+      properties:
+        href:
+          type: string
+        type:
+          type: string
+    PaginatedLinks:
+      type: object
+      required:
+        - self
+      properties:
+        first:
+          $ref: 'link.yaml#/components/schemas/Link'
+        last:
+          $ref: 'link.yaml#/components/schemas/Link'
+        next:
+          $ref: 'link.yaml#/components/schemas/Link'
+        prev:
+          $ref: 'link.yaml#/components/schemas/Link'
+        self:
+          $ref: 'link.yaml#/components/schemas/Link'
+    FlagsSummary:
+      type: object
+      required:
+        - count
+      properties:
+        count:
+          type: integer
+        linkedFlags:
+          $ref: '#/components/schemas/ExpandedDirectlyLinkedFlags'
+    ResourceSummary:
+      type: object
+      required:
+        - flagCount
+        - totalCount
+      properties:
+        flagCount:
+          type: integer
+        segmentCount:
+          type: integer
+        metricCount:
+          type: integer
+        aiConfigCount:
+          type: integer
+        totalCount:
+          type: integer
+    SegmentsSummary:
+      type: object
+      required:
+        - count
+      properties:
+        count:
+          type: integer
+        linkedSegments:
+          $ref: '#/components/schemas/ExpandedDirectlyLinkedSegments'
+    AIConfigsSummary:
+      type: object
+      required:
+        - count
+      properties:
+        count:
+          type: integer
+    MetricsSummary:
+      type: object
+      required:
+        - count
+      properties:
+        count:
+          type: integer
+    ExpandedViews:
+      type: object
+      required:
+        - items
+        - totalCount
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ExpandedView'
+        totalCount:
+          type: integer
+    ExpandedDirectlyLinkedFlags:
+      type: object
+      required:
+        - items
+        - totalCount
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ExpandedDirectlyLinkedFlag'
+        totalCount:
+          type: integer
+    ExpandedDirectlyLinkedSegments:
+      type: object
+      required:
+        - items
+        - totalCount
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ExpandedDirectlyLinkedSegment'
+        totalCount:
+          type: integer
+    ExpandedLinkedFlags:
+      type: object
+      description: Details on linked flags for a view - requires passing the 'allFlags' expand field
+      required:
+        - items
+        - totalCount
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ExpandedFlag'
+        totalCount:
+          type: integer
+    ExpandedLinkedSegments:
+      description: Details on linked segments for a view - requires passing the 'allSegments' expand field
+      type: object
+      required:
+        - items
+        - totalCount
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ExpandedSegment'
+        totalCount:
+          type: integer
+    ExpandedLinkedAIConfigs:
+      type: object
+      required:
+        - items
+        - totalCount
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ExpandedAIConfig'
+        totalCount:
+          type: integer
+    ExpandedLinkedMetrics:
+      type: object
+      required:
+        - items
+        - totalCount
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ExpandedMetric'
+        totalCount:
+          type: integer
+    ExpandedLinkedResources:
+      type: object
+      description: Details on linked resources for a view - requires passing the 'allResources' expand field
+      required:
+        - items
+        - totalCount
+      properties:
+        items:
+          type: object
+          title: ExpandedLinkedResourcesItems
+          required:
+            - flags
+          properties:
+            flags:
+              type: object
+              title: ExpandedLinkedResourcesFlags
+              required:
+                - items
+                - totalCount
+              properties:
+                items:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/ExpandedFlag'
+                totalCount:
+                  type: integer
+            segments:
+              type: object
+              title: ExpandedLinkedResourcesSegments
+              required:
+                - items
+                - totalCount
+              properties:
+                items:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/ExpandedSegment'
+                totalCount:
+                  type: integer
+            aiConfigs:
+              type: object
+              title: ExpandedLinkedResourcesAIConfigs
+              required:
+                - items
+                - totalCount
+              properties:
+                items:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/ExpandedAIConfig'
+                totalCount:
+                  type: integer
+            metrics:
+              type: object
+              title: ExpandedLinkedResourcesMetrics
+              required:
+                - items
+                - totalCount
+              properties:
+                items:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/ExpandedMetric'
+                totalCount:
+                  type: integer
+        totalCount:
+          type: integer
+    ExpandedView:
+      type: object
+      required:
+        - _id
+        - key
+        - name
+        - links
+      properties:
+        _id:
+          type: string
+        key:
+          type: string
+        name:
+          type: string
+        links:
+          $ref: '#/components/schemas/SelfLink'
+    ExpandedDirectlyLinkedFlag:
+      type: object
+      required:
+        - key
+        - name
+        - links
+      properties:
+        key:
+          type: string
+        name:
+          type: string
+        links:
+          $ref: '#/components/schemas/SelfLink'
+    ExpandedDirectlyLinkedSegment:
+      type: object
+      required:
+        - key
+        - name
+        - environmentId
+        - links
+      properties:
+        key:
+          type: string
+        name:
+          type: string
+        environmentId:
+          type: string
+        links:
+          $ref: '#/components/schemas/SelfLink'
+    ExpandedFlag:
+      x-go-type: reps2.FlagGlobalAttributesRep
+      x-go-type-import:
+        path: github.com/launchdarkly/gonfalon/internal/reps2
+        name: reps2
+      type: object
+      description: Flag representation for Views API - contains only fields actually used by the Views service
+      required:
+        - key
+        - name
+      properties:
+        key:
+          type: string
+          description: A unique key used to reference the flag
+        name:
+          type: string
+          description: A human-friendly name for the flag
+        description:
+          type: string
+          description: Description of the flag
+        creationDate:
+          type: integer
+          format: int64
+          description: Creation date in milliseconds
+        version:
+          type: integer
+          description: Version of the flag
+        archived:
+          type: boolean
+          description: Whether the flag is archived
+        tags:
+          type: array
+          items:
+            type: string
+          description: Tags for the flag
+        temporary:
+          type: boolean
+          description: Whether the flag is temporary
+        includeInSnippet:
+          type: boolean
+          description: Whether to include in snippet
+        _links:
+          $ref: '#/components/schemas/ParentAndSelfLinks'
+    ExpandedAIConfig:
+      type: object
+      x-go-type: domain.ExternalAIConfigRep
+      x-go-type-import:
+        path: github.com/launchdarkly/gonfalon/internal/ai/ai_configs/domain
+        name: domain
+      description: AI Config representation for Views API - contains only fields actually used by the Views service
+      properties:
+        key:
+          type: string
+          description: A unique key used to reference the AI config
+        name:
+          type: string
+          description: A human-friendly name for the AI config
+        tags:
+          type: array
+          items:
+            type: string
+          description: Tags for the AI config
+        description:
+          type: string
+          description: Description of the AI config
+        version:
+          type: integer
+          description: Version of the AI config
+        createdAt:
+          type: integer
+          format: int64
+          description: Creation date in milliseconds
+        updatedAt:
+          type: integer
+          format: int64
+          description: Last modification date in milliseconds
+        flagKey:
+          type: string
+          description: Key of the flag that this AI config is attached to
+        _links:
+          $ref: '#/components/schemas/ParentAndSelfLinks'
+    ExpandedSegment:
+      type: object
+      description: Segment representation for Views API - contains only fields actually used by the Views service
+      required:
+        - key
+        - name
+      properties:
+        key:
+          type: string
+          description: A unique key used to reference the segment
+        name:
+          type: string
+          description: A human-friendly name for the segment
+        environmentId:
+          type: string
+          description: Environment ID of the segment
+        environmentKey:
+          type: string
+          description: Environment key of the segment
+        description:
+          type: string
+          description: Description of the segment
+        creationDate:
+          type: integer
+          format: int64
+          description: Creation date in milliseconds
+        lastModifiedDate:
+          type: integer
+          format: int64
+          description: Last modification date in milliseconds
+        deleted:
+          type: boolean
+          description: Whether the segment is deleted
+        tags:
+          type: array
+          items:
+            type: string
+          description: Tags for the segment
+        unbounded:
+          type: boolean
+          description: Whether the segment is unbounded
+        version:
+          type: integer
+          description: Version of the segment
+        generation:
+          type: integer
+          description: Generation of the segment
+        _links:
+          $ref: '#/components/schemas/ParentAndSelfLinks'
+    ExpandedMetric:
+      x-go-type: metrics.MetricExpandable
+      x-go-type-import:
+        path: github.com/launchdarkly/gonfalon/internal/shared/metrics
+        name: metrics
+      type: object
+      description: Metric representation for Views API - contains only fields actually used by the Views service
+      properties:
+        key:
+          type: string
+          description: A unique key used to reference the metric
+        name:
+          type: string
+          description: A human-friendly name for the metric
+        creationDate:
+          type: integer
+          format: int64
+          description: Creation date in milliseconds
+        lastModified:
+          type: integer
+          format: int64
+          description: Last modification date in milliseconds
+        isActive:
+          type: boolean
+          description: Whether the metric is active
+        eventKey:
+          type: string
+          description: Event key for the metric
+        _id:
+          type: string
+          description: ID of the metric
+        _versionId:
+          type: string
+          description: Version ID of the metric
+        kind:
+          type: string
+          description: Kind of the Metric
+        category:
+          type: string
+          description: Category of the Metric
+        description:
+          type: string
+          description: Description of the Metric
+        isNumeric:
+          type: boolean
+        lastSeen:
+          type: integer
+          format: int64
+          description: Last seen date in milliseconds
+        _links:
+          $ref: '#/components/schemas/ParentAndSelfLinks'
