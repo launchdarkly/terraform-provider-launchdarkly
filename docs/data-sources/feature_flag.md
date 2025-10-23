@@ -93,7 +93,7 @@ output "team_notifications" {
 - `temporary` (Boolean) Specifies whether the flag is a temporary flag.
 - `variation_type` (String) The uniform type for all variations. Can be either "boolean", "string", "number", or "json".
 - `variations` (List of Object) An array of possible variations for the flag (see [below for nested schema](#nestedatt--variations))
-- `view_keys` (Set of String) A set of view keys to link this flag to. This is an alternative to using the `launchdarkly_view_links` resource for managing view associations. When set, this flag will be linked to the specified views. Note: Using both `view_keys` on the flag and `launchdarkly_view_links` to manage the same flag may cause conflicts.
+- `view_keys` (Set of String) A set of view keys to link this flag to. This is an alternative to using the `launchdarkly_view_links` resource for managing view associations. When set, this flag will be linked to the specified views. The field is also computed, meaning Terraform will read back the current view associations from LaunchDarkly to detect drift. To explicitly remove all view associations, set `view_keys = []`. Simply removing the field from your configuration will leave existing associations unchanged. Note: Using both `view_keys` on the flag and `launchdarkly_view_links` to manage the same flag may cause conflicts.
 - `views` (List of String) A list of view keys that this feature flag is linked to.
 
 <a id="nestedatt--client_side_availability"></a>

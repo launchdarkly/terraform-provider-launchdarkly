@@ -84,7 +84,7 @@ func baseSegmentSchema(options segmentSchemaOptions) map[string]*schema.Schema {
 				Type:             schema.TypeString,
 				ValidateDiagFunc: validateKey(),
 			},
-			Description: "A set of view keys to link this segment to. This is an alternative to using the `launchdarkly_view_links` resource for managing view associations. When set, this segment will be linked to the specified views. Note: Using both `view_keys` on the segment and `launchdarkly_view_links` to manage the same segment may cause conflicts.",
+			Description: "A set of view keys to link this segment to. This is an alternative to using the `launchdarkly_view_links` resource for managing view associations. When set, this segment will be linked to the specified views. The field is also computed, meaning Terraform will read back the current view associations from LaunchDarkly to detect drift. To explicitly remove all view associations, set `view_keys = []`. Simply removing the field from your configuration will leave existing associations unchanged. Note: Using both `view_keys` on the segment and `launchdarkly_view_links` to manage the same segment may cause conflicts.",
 		},
 	}
 }
