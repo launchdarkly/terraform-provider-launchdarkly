@@ -143,6 +143,8 @@ resource "launchdarkly_segment" "test" {
 	name        = "Test Segment with Views"
 	description = "Test segment"
 	
+	view_keys = []
+	
 	tags = ["test"]
 }
 `

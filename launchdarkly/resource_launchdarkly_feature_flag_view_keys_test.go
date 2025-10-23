@@ -124,6 +124,8 @@ resource "launchdarkly_feature_flag" "test" {
 	name        = "Test Flag with Views"
 	variation_type = "boolean"
 	
+	view_keys = []
+	
 	tags = ["test"]
 }
 `

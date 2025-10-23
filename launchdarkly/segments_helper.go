@@ -184,8 +184,8 @@ func segmentRead(ctx context.Context, d *schema.ResourceData, raw interface{}, i
 		return diag.Errorf("failed to set excluded on segment with key %q: %v", segmentKey, err)
 	}
 
-	// Fetch and set linked views for all resources (not just data sources)
-	// This populates the linked_views computed field
+	// Fetch and set view associations
+	// Always populate view_keys from the API (Optional+Computed behavior)
 	betaClient, err := newBetaClient(client.apiKey, client.apiHost, false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
 	if err != nil {
 		// Log warning but don't fail the read for discovery data
@@ -205,7 +205,7 @@ func segmentRead(ctx context.Context, d *schema.ResourceData, raw interface{}, i
 				// Log warning but don't fail the read for discovery data
 				log.Printf("[WARN] failed to get views for segment %q in project %q, environment %q: %v", segmentKey, projectKey, envKey, err)
 			} else {
-				// Set view_keys to the actual view associations (for both resources and data sources)
+				// Set view_keys to the actual view associations
 				err = d.Set(VIEW_KEYS, viewKeys)
 				if err != nil {
 					return diag.Errorf("could not set view_keys on segment with key %q: %v", segmentKey, err)
