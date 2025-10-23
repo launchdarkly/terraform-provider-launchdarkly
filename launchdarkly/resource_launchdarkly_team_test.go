@@ -197,7 +197,8 @@ func TestAccTeam_CreateAndUpdate(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		Providers:    testAccProviders,
+		CheckDestroy: testAccCheckTeamDestroy,
 		Steps: []resource.TestStep{
 			{
 				Config: fmt.Sprintf(testAccTeamCreate, randomRoleOne, randomRoleOne, randomEmailOne, randomEmailTwo, randomTeamKey),
@@ -339,4 +340,27 @@ func testAccCheckTeamExists(resourceName string) resource.TestCheckFunc {
 		}
 		return nil
 	}
+}
+
+// testAccCheckTeamDestroy verifies the team has been destroyed
+func testAccCheckTeamDestroy(s *terraform.State) error {
+	client := testAccProvider.Meta().(*Client)
+	for _, rs := range s.RootModule().Resources {
+		if rs.Type != "launchdarkly_team" {
+			continue
+		}
+
+		_, res, err := client.ld.TeamsApi.GetTeam(client.ctx, rs.Primary.ID).Execute()
+
+		if isStatusNotFound(res) {
+			continue
+		}
+
+		if err != nil {
+			return err
+		}
+
+		return fmt.Errorf("team %s still exists", rs.Primary.ID)
+	}
+	return nil
 }
