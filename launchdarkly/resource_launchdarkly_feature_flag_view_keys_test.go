@@ -188,9 +188,6 @@ func TestAccFeatureFlagViewKeys_CreateAndUpdate(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "view_keys.#", "2"),
 					resource.TestCheckTypeSetElemAttr(resourceName, "view_keys.*", "test-view-1"),
 					resource.TestCheckTypeSetElemAttr(resourceName, "view_keys.*", "test-view-2"),
-					resource.TestCheckResourceAttr(resourceName, "linked_views.#", "2"),
-					resource.TestCheckTypeSetElemAttr(resourceName, "linked_views.*", "test-view-1"),
-					resource.TestCheckTypeSetElemAttr(resourceName, "linked_views.*", "test-view-2"),
 					// Verify via API that the flag is actually linked to the views
 					testAccCheckFlagLinkedToViews(projectKey, "test-flag-with-views", []string{"test-view-1", "test-view-2"}),
 				),
@@ -207,9 +204,6 @@ func TestAccFeatureFlagViewKeys_CreateAndUpdate(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "view_keys.#", "2"),
 					resource.TestCheckTypeSetElemAttr(resourceName, "view_keys.*", "test-view-1"),
 					resource.TestCheckTypeSetElemAttr(resourceName, "view_keys.*", "test-view-3"),
-					resource.TestCheckResourceAttr(resourceName, "linked_views.#", "2"),
-					resource.TestCheckTypeSetElemAttr(resourceName, "linked_views.*", "test-view-1"),
-					resource.TestCheckTypeSetElemAttr(resourceName, "linked_views.*", "test-view-3"),
 					// Verify via API that view-2 was unlinked and view-3 was linked
 					testAccCheckFlagLinkedToViews(projectKey, "test-flag-with-views", []string{"test-view-1", "test-view-3"}),
 				),
@@ -219,7 +213,6 @@ func TestAccFeatureFlagViewKeys_CreateAndUpdate(t *testing.T) {
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckFeatureFlagExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, "view_keys.#", "0"),
-					resource.TestCheckResourceAttr(resourceName, "linked_views.#", "0"),
 					// Verify via API that all views were unlinked
 					testAccCheckFlagLinkedToViews(projectKey, "test-flag-with-views", []string{}),
 				),

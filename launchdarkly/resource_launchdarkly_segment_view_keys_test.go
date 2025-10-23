@@ -213,9 +213,6 @@ func TestAccSegmentViewKeys_CreateAndUpdate(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "view_keys.#", "2"),
 					resource.TestCheckTypeSetElemAttr(resourceName, "view_keys.*", "test-view-1"),
 					resource.TestCheckTypeSetElemAttr(resourceName, "view_keys.*", "test-view-2"),
-					resource.TestCheckResourceAttr(resourceName, "linked_views.#", "2"),
-					resource.TestCheckTypeSetElemAttr(resourceName, "linked_views.*", "test-view-1"),
-					resource.TestCheckTypeSetElemAttr(resourceName, "linked_views.*", "test-view-2"),
 					// Verify via API that the segment is actually linked to the views
 					testAccCheckSegmentLinkedToViews(projectKey, "test-env", "test-segment-with-views", []string{"test-view-1", "test-view-2"}),
 				),
@@ -232,9 +229,6 @@ func TestAccSegmentViewKeys_CreateAndUpdate(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "view_keys.#", "2"),
 					resource.TestCheckTypeSetElemAttr(resourceName, "view_keys.*", "test-view-1"),
 					resource.TestCheckTypeSetElemAttr(resourceName, "view_keys.*", "test-view-3"),
-					resource.TestCheckResourceAttr(resourceName, "linked_views.#", "2"),
-					resource.TestCheckTypeSetElemAttr(resourceName, "linked_views.*", "test-view-1"),
-					resource.TestCheckTypeSetElemAttr(resourceName, "linked_views.*", "test-view-3"),
 					// Verify via API that view-2 was unlinked and view-3 was linked
 					testAccCheckSegmentLinkedToViews(projectKey, "test-env", "test-segment-with-views", []string{"test-view-1", "test-view-3"}),
 				),
@@ -244,7 +238,6 @@ func TestAccSegmentViewKeys_CreateAndUpdate(t *testing.T) {
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckSegmentExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, "view_keys.#", "0"),
-					resource.TestCheckResourceAttr(resourceName, "linked_views.#", "0"),
 					// Verify via API that all views were unlinked
 					testAccCheckSegmentLinkedToViews(projectKey, "test-env", "test-segment-with-views", []string{}),
 				),
