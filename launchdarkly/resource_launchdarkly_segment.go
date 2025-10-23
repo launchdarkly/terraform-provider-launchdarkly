@@ -192,9 +192,25 @@ func resourceSegmentUpdate(ctx context.Context, d *schema.ResourceData, metaRaw 
 			viewsToAdd := difference(desiredViewKeys, currentViewKeys)
 			viewsToRemove := difference(currentViewKeys, desiredViewKeys)
 
-			// Warn if there might be conflicts with view_links resource
+			// Check for potential conflicts with view_links resource
+			// If we're using view_keys and there are views to remove, check if they were previously managed by view_keys
 			if len(viewsToRemove) > 0 {
-				log.Printf("[INFO] Segment %q: Unlinking from views %v. If you're also using launchdarkly_view_links to manage this segment, this may cause conflicts.", key, viewsToRemove)
+				oldViewKeysRaw, _ := d.GetChange(VIEW_KEYS)
+				if oldViewKeysRaw != nil {
+					oldViewKeys := interfaceSliceToStringSlice(oldViewKeysRaw.(*schema.Set).List())
+					// Check if any views we're removing were NOT in our previous view_keys
+					// This indicates they might be managed by view_links
+					unexpectedViews := difference(viewsToRemove, oldViewKeys)
+					if len(unexpectedViews) > 0 {
+						return diag.Errorf(
+							"Conflict detected: Segment %q is linked to views %v which are not managed by this resource's view_keys field. "+
+								"This typically means these views are managed by a launchdarkly_view_links resource. "+
+								"You cannot use both view_keys and view_links to manage the same segment. "+
+								"Please either: (1) Remove view_keys from this segment and use view_links only, or "+
+								"(2) Remove this segment from any view_links resources and use view_keys only.",
+							key, unexpectedViews)
+					}
+				}
 			}
 
 			// Remove views that are no longer in the list

@@ -146,7 +146,7 @@ resource "launchdarkly_feature_flag" "mobile_app_feature" {
 - `tags` (Set of String) Tags associated with your resource.
 - `temporary` (Boolean) Specifies whether the flag is a temporary flag.
 - `variations` (Block List) An array of possible variations for the flag (see [below for nested schema](#nestedblock--variations))
-- `view_keys` (Set of String) A set of view keys to link this flag to. This is an alternative to using the `launchdarkly_view_links` resource for managing view associations. When set, this flag will be linked to the specified views. The field is also computed, meaning Terraform will read back the current view associations from LaunchDarkly to detect drift. To explicitly remove all view associations, set `view_keys = []`. Simply removing the field from your configuration will leave existing associations unchanged. Note: Using both `view_keys` on the flag and `launchdarkly_view_links` to manage the same flag may cause conflicts.
+- `view_keys` (Set of String) A set of view keys to link this flag to. This is an alternative to using the `launchdarkly_view_links` resource for managing view associations. When set, this flag will be linked to the specified views. The field is also computed, meaning Terraform will read back the current view associations from LaunchDarkly to detect drift. To explicitly remove all view associations, set `view_keys = []`. Simply removing the field from your configuration will leave existing associations unchanged. **Important**: You cannot use both `view_keys` and `launchdarkly_view_links` to manage the same flag - Terraform will return an error if a conflict is detected. Choose one approach per resource.
 
 ### Read-Only
 
