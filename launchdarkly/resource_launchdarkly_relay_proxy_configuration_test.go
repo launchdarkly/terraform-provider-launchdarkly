@@ -48,7 +48,8 @@ func TestAccRelayProxyConfig_Create(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		Providers:    testAccProviders,
+		CheckDestroy: testAccCheckRelayProxyConfigDestroy,
 		Steps: []resource.TestStep{
 			{
 				Config: testAccRelayProxyConfigCreate,
@@ -77,7 +78,8 @@ func TestAccRelayProxyConfig_Update(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		Providers:    testAccProviders,
+		CheckDestroy: testAccCheckRelayProxyConfigDestroy,
 		Steps: []resource.TestStep{
 			{
 				Config: testAccRelayProxyConfigCreate,
@@ -137,4 +139,27 @@ func testAccCheckRelayProxyConfigExists(resourceName string) resource.TestCheckF
 
 		return nil
 	}
+}
+
+// testAccCheckRelayProxyConfigDestroy verifies the relay proxy config has been destroyed
+func testAccCheckRelayProxyConfigDestroy(s *terraform.State) error {
+	client := testAccProvider.Meta().(*Client)
+	for _, rs := range s.RootModule().Resources {
+		if rs.Type != "launchdarkly_relay_proxy_configuration" {
+			continue
+		}
+
+		_, res, err := client.ld.RelayProxyConfigurationsApi.GetRelayProxyConfig(client.ctx, rs.Primary.ID).Execute()
+
+		if isStatusNotFound(res) {
+			continue
+		}
+
+		if err != nil {
+			return err
+		}
+
+		return fmt.Errorf("relay proxy config %s still exists", rs.Primary.ID)
+	}
+	return nil
 }
