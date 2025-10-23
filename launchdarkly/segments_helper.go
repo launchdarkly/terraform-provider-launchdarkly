@@ -79,12 +79,16 @@ func baseSegmentSchema(options segmentSchemaOptions) map[string]*schema.Schema {
 		VIEW_KEYS: {
 			Type:     schema.TypeSet,
 			Optional: !options.isDataSource,
-			Computed: true, // Always computed to support import and drift detection
+			Computed: options.isDataSource, // Data sources only read, resources manage
 			Elem: &schema.Schema{
 				Type:             schema.TypeString,
 				ValidateDiagFunc: validateKey(),
 			},
-			Description: "A set of view keys to link this segment to. This is an alternative to using the `launchdarkly_view_links` resource for managing view associations. When set, this segment will be linked to the specified views. The field is also computed, meaning Terraform will read back the current view associations from LaunchDarkly to detect drift. To explicitly remove all view associations, set `view_keys = []`. Simply removing the field from your configuration will leave existing associations unchanged. **Important**: You cannot use both `view_keys` and `launchdarkly_view_links` to manage the same segment - Terraform will return an error if a conflict is detected. Choose one approach per resource.",
+			Description: "A set of view keys to link this segment to. This is an alternative to using the `launchdarkly_view_links` resource for managing view associations. " +
+				"**Behavior**: When `view_keys` is present in your configuration (even if empty), Terraform will manage view associations for this segment. Set `view_keys = []` to explicitly remove all associations. " +
+				"When you remove the `view_keys` field entirely from your configuration, Terraform will remove all existing view associations and stop managing them. " +
+				"If you never set `view_keys`, Terraform will not manage view associations for this segment at all (use `launchdarkly_view_links` instead). " +
+				"**Important**: You cannot use both `view_keys` and `launchdarkly_view_links` to manage the same segment - Terraform will return an error if a conflict is detected. Choose one approach per resource.",
 		},
 	}
 }
@@ -184,38 +188,43 @@ func segmentRead(ctx context.Context, d *schema.ResourceData, raw interface{}, i
 		return diag.Errorf("failed to set excluded on segment with key %q: %v", segmentKey, err)
 	}
 
-	// Fetch and set view associations
-	// Always populate view_keys from the API (Optional+Computed behavior)
-	betaClient, err := newBetaClient(client.apiKey, client.apiHost, false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
-	if err != nil {
-		// Log warning but don't fail the read for discovery data
-		log.Printf("[WARN] failed to create beta client for segment %q in project %q, environment %q: %v", segmentKey, projectKey, envKey, err)
-	} else {
-		// Get the environment to retrieve its ID
-		var env *ldapi.Environment
-		err = client.withConcurrency(client.ctx, func() error {
-			env, _, err = client.ld.EnvironmentsApi.GetEnvironment(client.ctx, projectKey, envKey).Execute()
-			return err
-		})
-		if err != nil {
-			log.Printf("[WARN] failed to get environment %q in project %q: %v", envKey, projectKey, err)
-		} else {
-			viewKeys, err := getViewsContainingSegment(betaClient, projectKey, env.Id, segmentKey)
-			if err != nil {
-				// Log warning but don't fail the read for discovery data
-				log.Printf("[WARN] failed to get views for segment %q in project %q, environment %q: %v", segmentKey, projectKey, envKey, err)
-			} else {
-				// Set view_keys to the actual view associations
-				err = d.Set(VIEW_KEYS, viewKeys)
-				if err != nil {
-					return diag.Errorf("could not set view_keys on segment with key %q: %v", segmentKey, err)
-				}
+	// Fetch and set view associations only if user is managing them via view_keys
+	// Check if view_keys exists in config or state
+	_, viewKeysInState := d.GetOk(VIEW_KEYS)
 
-				// For data sources, also set the legacy VIEWS field for backwards compatibility
-				if isDataSource {
-					err = d.Set(VIEWS, viewKeys)
+	// For data sources, always populate for read-only visibility
+	if isDataSource || viewKeysInState {
+		betaClient, err := newBetaClient(client.apiKey, client.apiHost, false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
+		if err != nil {
+			// Log warning but don't fail the read for discovery data
+			log.Printf("[WARN] failed to create beta client for segment %q in project %q, environment %q: %v", segmentKey, projectKey, envKey, err)
+		} else {
+			// Get the environment to retrieve its ID
+			var env *ldapi.Environment
+			err = client.withConcurrency(client.ctx, func() error {
+				env, _, err = client.ld.EnvironmentsApi.GetEnvironment(client.ctx, projectKey, envKey).Execute()
+				return err
+			})
+			if err != nil {
+				log.Printf("[WARN] failed to get environment %q in project %q: %v", envKey, projectKey, err)
+			} else {
+				viewKeys, err := getViewsContainingSegment(betaClient, projectKey, env.Id, segmentKey)
+				if err != nil {
+					// Log warning but don't fail the read for discovery data
+					log.Printf("[WARN] failed to get views for segment %q in project %q, environment %q: %v", segmentKey, projectKey, envKey, err)
+				} else {
+					// Set view_keys to the actual view associations
+					err = d.Set(VIEW_KEYS, viewKeys)
 					if err != nil {
-						return diag.Errorf("could not set views on segment with key %q: %v", segmentKey, err)
+						return diag.Errorf("could not set view_keys on segment with key %q: %v", segmentKey, err)
+					}
+
+					// For data sources, also set the legacy VIEWS field for backwards compatibility
+					if isDataSource {
+						err = d.Set(VIEWS, viewKeys)
+						if err != nil {
+							return diag.Errorf("could not set views on segment with key %q: %v", segmentKey, err)
+						}
 					}
 				}
 			}

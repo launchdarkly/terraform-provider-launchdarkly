@@ -131,12 +131,16 @@ func baseFeatureFlagSchema(options featureFlagSchemaOptions) map[string]*schema.
 		VIEW_KEYS: {
 			Type:     schema.TypeSet,
 			Optional: !options.isDataSource,
-			Computed: true, // Always computed to support import and drift detection
+			Computed: options.isDataSource, // Data sources only read, resources manage
 			Elem: &schema.Schema{
 				Type:             schema.TypeString,
 				ValidateDiagFunc: validateKey(),
 			},
-			Description: "A set of view keys to link this flag to. This is an alternative to using the `launchdarkly_view_links` resource for managing view associations. When set, this flag will be linked to the specified views. The field is also computed, meaning Terraform will read back the current view associations from LaunchDarkly to detect drift. To explicitly remove all view associations, set `view_keys = []`. Simply removing the field from your configuration will leave existing associations unchanged. **Important**: You cannot use both `view_keys` and `launchdarkly_view_links` to manage the same flag - Terraform will return an error if a conflict is detected. Choose one approach per resource.",
+			Description: "A set of view keys to link this flag to. This is an alternative to using the `launchdarkly_view_links` resource for managing view associations. " +
+				"**Behavior**: When `view_keys` is present in your configuration (even if empty), Terraform will manage view associations for this flag. Set `view_keys = []` to explicitly remove all associations. " +
+				"When you remove the `view_keys` field entirely from your configuration, Terraform will remove all existing view associations and stop managing them. " +
+				"If you never set `view_keys`, Terraform will not manage view associations for this flag at all (use `launchdarkly_view_links` instead). " +
+				"**Important**: You cannot use both `view_keys` and `launchdarkly_view_links` to manage the same flag - Terraform will return an error if a conflict is detected. Choose one approach per resource.",
 		},
 	}
 
@@ -242,28 +246,34 @@ func featureFlagRead(ctx context.Context, d *schema.ResourceData, raw interface{
 	}
 	_ = d.Set(DEFAULTS, defaults)
 
-	// Fetch and set view associations
-	// Always populate view_keys from the API (Optional+Computed behavior)
-	betaClient, err := newBetaClient(client.apiKey, client.apiHost, false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
-	if err != nil {
-		log.Printf("[WARN] failed to create beta client for views lookup: %v", err)
-	} else {
-		viewsWithFlag, err := getViewsContainingFlag(betaClient, projectKey, key)
-		if err != nil {
-			// Log warning but don't fail the read for discovery data
-			log.Printf("[WARN] failed to get views for flag %q in project %q: %v", key, projectKey, err)
-		} else {
-			// Set view_keys to the actual view associations
-			err = d.Set(VIEW_KEYS, viewsWithFlag)
-			if err != nil {
-				return diag.Errorf("could not set view_keys on flag with key %q: %v", key, err)
-			}
+	// Fetch and set view associations only if user is managing them via view_keys
+	// Check if view_keys exists in config or state (GetRawConfig would be better but requires SDK changes)
+	// We check if it's currently in state, which means user has set it at some point
+	_, viewKeysInState := d.GetOk(VIEW_KEYS)
 
-			// For data sources, also set the legacy VIEWS field for backwards compatibility
-			if isDataSource {
-				err = d.Set(VIEWS, viewsWithFlag)
+	// For data sources, always populate for read-only visibility
+	if isDataSource || viewKeysInState {
+		betaClient, err := newBetaClient(client.apiKey, client.apiHost, false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
+		if err != nil {
+			log.Printf("[WARN] failed to create beta client for views lookup: %v", err)
+		} else {
+			viewsWithFlag, err := getViewsContainingFlag(betaClient, projectKey, key)
+			if err != nil {
+				// Log warning but don't fail the read for discovery data
+				log.Printf("[WARN] failed to get views for flag %q in project %q: %v", key, projectKey, err)
+			} else {
+				// Set view_keys to the actual view associations
+				err = d.Set(VIEW_KEYS, viewsWithFlag)
 				if err != nil {
-					return diag.Errorf("could not set views on flag with key %q: %v", key, err)
+					return diag.Errorf("could not set view_keys on flag with key %q: %v", key, err)
+				}
+
+				// For data sources, also set the legacy VIEWS field for backwards compatibility
+				if isDataSource {
+					err = d.Set(VIEWS, viewsWithFlag)
+					if err != nil {
+						return diag.Errorf("could not set views on flag with key %q: %v", key, err)
+					}
 				}
 			}
 		}

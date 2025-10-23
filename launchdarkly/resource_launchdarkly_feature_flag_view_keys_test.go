@@ -124,7 +124,7 @@ resource "launchdarkly_feature_flag" "test" {
 	name        = "Test Flag with Views"
 	variation_type = "boolean"
 	
-	view_keys = []
+	# view_keys field removed entirely - should unlink from all views
 	
 	tags = ["test"]
 }
@@ -214,7 +214,7 @@ func TestAccFeatureFlagViewKeys_CreateAndUpdate(t *testing.T) {
 				Config: fmt.Sprintf(testAccFeatureFlagWithViewKeysRemoved, projectName, projectKey, maintainerId, maintainerId, maintainerId),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckFeatureFlagExists(resourceName),
-					resource.TestCheckResourceAttr(resourceName, "view_keys.#", "0"),
+					// Note: view_keys field is not in state when removed from config (Optional-only behavior)
 					// Verify via API that all views were unlinked
 					testAccCheckFlagLinkedToViews(projectKey, "test-flag-with-views", []string{}),
 				),

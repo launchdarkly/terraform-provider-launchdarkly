@@ -169,7 +169,10 @@ resource "launchdarkly_segment" "beta_testers" {
   included = ["user123", "user456"]
 }
 
-# IMPORTANT: Removing view associations
-# - To explicitly remove all view associations: set view_keys = []
-# - Simply removing the view_keys field from your config will leave existing associations unchanged
-# - The field is computed, so Terraform will detect drift if associations change outside Terraform
+# IMPORTANT: Managing view associations with view_keys
+# - When view_keys is present (even if empty), Terraform manages view associations
+# - To explicitly remove all associations: set view_keys = []
+# - To stop managing associations and remove them: remove the view_keys field entirely from your config
+# - If you never set view_keys, Terraform won't manage view associations (use launchdarkly_view_links instead)
+# 
+# NOTE: You cannot use both view_keys and launchdarkly_view_links for the same segment
