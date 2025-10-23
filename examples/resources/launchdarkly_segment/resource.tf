@@ -133,7 +133,7 @@ resource "launchdarkly_segment" "premium_users" {
   env_key     = "production"
   name        = "Premium Users"
   description = "Users with premium subscriptions"
-  
+
   # Link this segment to specific views
   # The segment will appear in both the "sales-team" and "customer-success" views
   view_keys = [
@@ -142,7 +142,7 @@ resource "launchdarkly_segment" "premium_users" {
   ]
 
   tags = ["premium", "subscription"]
-  
+
   rules {
     clauses {
       attribute = "plan"
@@ -160,11 +160,11 @@ resource "launchdarkly_segment" "beta_testers" {
   project_key = "example-project"
   env_key     = "staging"
   name        = "Beta Testers"
-  
+
   # Each segment can independently specify which views it belongs to
   view_keys = ["product-team"]
 
   tags = ["beta", "testing"]
-  
+
   included = ["user123", "user456"]
 }

@@ -88,11 +88,13 @@ output "team_notifications" {
 - `description` (String) The feature flag's description.
 - `id` (String) The ID of this resource.
 - `include_in_snippet` (Boolean, Deprecated) Specifies whether this flag should be made available to the client-side JavaScript SDK using the client-side Id. This value gets its default from your project configuration if not set. `include_in_snippet` is now deprecated. Please migrate to `client_side_availability.using_environment_id` to maintain future compatibility.
+- `linked_views` (Set of String) A computed set of all view keys this flag is currently linked to, regardless of how the associations were created (via `view_keys` or `launchdarkly_view_links`).
 - `name` (String) The feature flag's human-readable name
 - `tags` (Set of String) Tags associated with your resource.
 - `temporary` (Boolean) Specifies whether the flag is a temporary flag.
 - `variation_type` (String) The uniform type for all variations. Can be either "boolean", "string", "number", or "json".
 - `variations` (List of Object) An array of possible variations for the flag (see [below for nested schema](#nestedatt--variations))
+- `view_keys` (Set of String) A set of view keys to link this flag to. This is an alternative to using the `launchdarkly_view_links` resource for managing view associations. When set, this flag will be linked to the specified views. Note: Using both `view_keys` on the flag and `launchdarkly_view_links` to manage the same flag may cause conflicts.
 - `views` (List of String) A list of view keys that this feature flag is linked to.
 
 <a id="nestedatt--client_side_availability"></a>

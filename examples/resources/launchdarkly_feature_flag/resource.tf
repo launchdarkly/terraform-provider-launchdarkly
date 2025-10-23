@@ -69,7 +69,7 @@ resource "launchdarkly_feature_flag" "checkout_flow" {
   description = "New checkout experience with improved UX"
 
   variation_type = "boolean"
-  
+
   # Link this flag to specific views
   # The flag will appear in both the "payments-team" and "frontend-team" views
   view_keys = [
@@ -89,7 +89,7 @@ resource "launchdarkly_feature_flag" "mobile_app_feature" {
   name        = "Mobile Push Notifications"
 
   variation_type = "boolean"
-  
+
   # Each flag can independently specify which views it belongs to
   view_keys = ["mobile-team"]
 

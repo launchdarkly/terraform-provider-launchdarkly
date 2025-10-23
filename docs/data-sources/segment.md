@@ -41,11 +41,13 @@ data "launchdarkly_segment" "example" {
 - `id` (String) The ID of this resource.
 - `included` (List of String) List of user keys included in the segment. To target on other context kinds, use the included_contexts block attribute. This attribute is not valid when `unbounded` is set to `true`.
 - `included_contexts` (List of Object) List of non-user target objects included in the segment. This attribute is not valid when `unbounded` is set to `true`. (see [below for nested schema](#nestedatt--included_contexts))
+- `linked_views` (Set of String) A computed set of all view keys this segment is currently linked to, regardless of how the associations were created (via `view_keys` or `launchdarkly_view_links`).
 - `name` (String) The human-friendly name for the segment.
 - `rules` (List of Object) List of nested custom rule blocks to apply to the segment. This attribute is not valid when `unbounded` is set to `true`. (see [below for nested schema](#nestedatt--rules))
 - `tags` (Set of String) Tags associated with your resource.
 - `unbounded` (Boolean) Whether to create a standard segment (`false`) or a Big Segment (`true`). Standard segments include rule-based and smaller list-based segments. Big Segments include larger list-based segments and synced segments. Only use a Big Segment if you need to add more than 15,000 individual targets. It is not possible to manage the list of targeted contexts for Big Segments with Terraform.
 - `unbounded_context_kind` (String) For Big Segments, the targeted context kind. If this attribute is not specified it will default to `user`.
+- `view_keys` (Set of String) A set of view keys to link this segment to. This is an alternative to using the `launchdarkly_view_links` resource for managing view associations. When set, this segment will be linked to the specified views. Note: Using both `view_keys` on the segment and `launchdarkly_view_links` to manage the same segment may cause conflicts.
 - `views` (List of String) A list of view keys that this segment is linked to.
 
 <a id="nestedatt--excluded_contexts"></a>
