@@ -117,7 +117,8 @@ func TestAccAccessToken_Create(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		Providers:    testAccProviders,
+		CheckDestroy: testAccCheckAccessTokenDestroy,
 		Steps: []resource.TestStep{
 			{
 				Config: fmt.Sprintf(testAccAccessTokenCreate, name),
@@ -143,7 +144,8 @@ func TestAccAccessToken_WithCustomRole(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		Providers:    testAccProviders,
+		CheckDestroy: testAccCheckAccessTokenDestroy,
 		Steps: []resource.TestStep{
 			{
 				Config: fmt.Sprintf(testAccAccessTokenCreateWithCustomRole, name, name, name),
@@ -179,7 +181,8 @@ func TestAccAccessToken_CreateWithImmutableParams(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		Providers:    testAccProviders,
+		CheckDestroy: testAccCheckAccessTokenDestroy,
 		Steps: []resource.TestStep{
 			{
 				Config: fmt.Sprintf(testAccAccessTokenCreateWithImmutableParams, name),
@@ -205,7 +208,8 @@ func TestAccAccessToken_CreateWithInlineRoles(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		Providers:    testAccProviders,
+		CheckDestroy: testAccCheckAccessTokenDestroy,
 		Steps: []resource.TestStep{
 			{
 				Config: fmt.Sprintf(testAccAccessTokenCreateWithInlineRoles, name),
@@ -236,7 +240,8 @@ func TestAccAccessToken_CreateWithPolicyStatements(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		Providers:    testAccProviders,
+		CheckDestroy: testAccCheckAccessTokenDestroy,
 		Steps: []resource.TestStep{
 			{
 				Config: fmt.Sprintf(testAccAccessTokenCreateWithPolicyStatements, name),
@@ -267,7 +272,8 @@ func TestAccAccessToken_Update(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		Providers:    testAccProviders,
+		CheckDestroy: testAccCheckAccessTokenDestroy,
 		Steps: []resource.TestStep{
 			{
 				Config: fmt.Sprintf(testAccAccessTokenCreate, name),
@@ -304,7 +310,8 @@ func TestAccAccessToken_Reset(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		Providers:    testAccProviders,
+		CheckDestroy: testAccCheckAccessTokenDestroy,
 		Steps: []resource.TestStep{
 			{
 				Config: fmt.Sprintf(testAccAccessTokenCreate, name),
@@ -371,4 +378,27 @@ func testAccCheckAccessTokenExists(resourceName string) resource.TestCheckFunc {
 		}
 		return nil
 	}
+}
+
+// testAccCheckAccessTokenDestroy verifies the access token has been destroyed
+func testAccCheckAccessTokenDestroy(s *terraform.State) error {
+	client := testAccProvider.Meta().(*Client)
+	for _, rs := range s.RootModule().Resources {
+		if rs.Type != "launchdarkly_access_token" {
+			continue
+		}
+
+		_, res, err := client.ld.AccessTokensApi.GetToken(client.ctx, rs.Primary.ID).Execute()
+
+		if isStatusNotFound(res) {
+			continue
+		}
+
+		if err != nil {
+			return err
+		}
+
+		return fmt.Errorf("access token %s still exists", rs.Primary.ID)
+	}
+	return nil
 }
