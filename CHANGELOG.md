@@ -3,6 +3,13 @@
 All notable changes to the LaunchDarkly Terraform Provider will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org).
 
 
+## [2.26.0-beta.5](https://github.com/launchdarkly/terraform-provider-launchdarkly/compare/v2.26.0-beta.4...v2.26.0-beta.5) (2025-10-23)
+
+
+### Features
+
+* **REL-10285:** Update provider to support assigning view membership on flag/segment resources directly ([#361](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/361)) ([96b0ec9](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/96b0ec92046e2a319cad2d27a37e76844e28e1ae))
+
 ## [2.26.0-beta.4](https://github.com/launchdarkly/terraform-provider-launchdarkly/compare/v2.26.0-beta.3...v2.26.0-beta.4) (2025-10-14)
 
 
