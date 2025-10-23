@@ -94,7 +94,8 @@ func TestAccCustomRole_CreateAndUpdate(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		Providers:    testAccProviders,
+		CheckDestroy: testAccCheckCustomRoleDestroy,
 		Steps: []resource.TestStep{
 			{
 				Config: fmt.Sprintf(testAccCustomRoleCreate, key, name),
@@ -140,7 +141,8 @@ func TestAccCustomRole_CreateAndUpdateWithStatements(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		Providers:    testAccProviders,
+		CheckDestroy: testAccCheckCustomRoleDestroy,
 		Steps: []resource.TestStep{
 			{
 				Config: fmt.Sprintf(testAccCustomRoleCreateWithStatements, key, name),
@@ -196,7 +198,8 @@ func TestAccCustomRole_CreateAndUpdateWithNotStatements(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		Providers:    testAccProviders,
+		CheckDestroy: testAccCheckCustomRoleDestroy,
 		Steps: []resource.TestStep{
 			{
 				Config: fmt.Sprintf(testAccCustomRoleCreateWithNotStatements, key, name),
@@ -261,4 +264,27 @@ func testAccCheckCustomRoleExists(resourceName string) resource.TestCheckFunc {
 		}
 		return nil
 	}
+}
+
+// testAccCheckCustomRoleDestroy verifies the custom role has been destroyed
+func testAccCheckCustomRoleDestroy(s *terraform.State) error {
+	client := testAccProvider.Meta().(*Client)
+	for _, rs := range s.RootModule().Resources {
+		if rs.Type != "launchdarkly_custom_role" {
+			continue
+		}
+
+		_, res, err := client.ld.CustomRolesApi.GetCustomRole(client.ctx, rs.Primary.ID).Execute()
+
+		if isStatusNotFound(res) {
+			continue
+		}
+
+		if err != nil {
+			return err
+		}
+
+		return fmt.Errorf("custom role %s still exists", rs.Primary.ID)
+	}
+	return nil
 }

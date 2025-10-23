@@ -237,7 +237,8 @@ func TestAccProject_Create(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		Providers:    testAccProviders,
+		CheckDestroy: testAccCheckProjectDestroy,
 		Steps: []resource.TestStep{
 			{
 				Config: fmt.Sprintf(testAccProjectCreate, projectKey),
@@ -266,7 +267,8 @@ func TestAccProject_Update(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		Providers:    testAccProviders,
+		CheckDestroy: testAccCheckProjectDestroy,
 		Steps: []resource.TestStep{
 			{
 				Config: fmt.Sprintf(testAccProjectCreate, projectKey),
@@ -325,7 +327,8 @@ func TestAccProject_CSA_Update_And_Revert(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		Providers:    testAccProviders,
+		CheckDestroy: testAccCheckProjectDestroy,
 		Steps: []resource.TestStep{
 			{
 				Config: fmt.Sprintf(testAccProjectCreate, projectKey),
@@ -376,7 +379,8 @@ func TestAccProject_WithEnvironments(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		Providers:    testAccProviders,
+		CheckDestroy: testAccCheckProjectDestroy,
 		Steps: []resource.TestStep{
 			{
 				Config: fmt.Sprintf(testAccProjectWithEnvironment, projectKey),
@@ -504,7 +508,8 @@ func TestAccProject_EnvApprovalUpdate(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		Providers:    testAccProviders,
+		CheckDestroy: testAccCheckProjectDestroy,
 		Steps: []resource.TestStep{
 			{
 				Config: fmt.Sprintf(testAccProjectWithEnvApprovalSettings, projectKey),
@@ -565,7 +570,8 @@ func TestAccProject_ManyEnvironments(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		Providers:    testAccProviders,
+		CheckDestroy: testAccCheckProjectDestroy,
 		Steps: []resource.TestStep{
 			{
 				Config: fmt.Sprintf(testAccProjectWithManyEnvironments, "%d", projectKey, "%s", "%s"),
@@ -605,4 +611,27 @@ func testAccCheckProjectExists(resourceName string) resource.TestCheckFunc {
 		}
 		return nil
 	}
+}
+
+// testAccCheckProjectDestroy verifies the project has been destroyed
+func testAccCheckProjectDestroy(s *terraform.State) error {
+	client := testAccProvider.Meta().(*Client)
+	for _, rs := range s.RootModule().Resources {
+		if rs.Type != "launchdarkly_project" {
+			continue
+		}
+
+		_, res, err := client.ld.ProjectsApi.GetProject(client.ctx, rs.Primary.ID).Execute()
+
+		if isStatusNotFound(res) {
+			continue
+		}
+
+		if err != nil {
+			return err
+		}
+
+		return fmt.Errorf("project %s still exists", rs.Primary.ID)
+	}
+	return nil
 }

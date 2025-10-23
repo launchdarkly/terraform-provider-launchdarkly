@@ -160,7 +160,8 @@ func TestAccTeamMember_CreateAndUpdateGeneric(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		Providers:    testAccProviders,
+		CheckDestroy: testAccCheckTeamMemberDestroy,
 		Steps: []resource.TestStep{
 			{
 				Config: fmt.Sprintf(testAccTeamMemberCreate, randomName),
@@ -209,7 +210,8 @@ func TestAccTeamMember_WithCustomRole(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		Providers:    testAccProviders,
+		CheckDestroy: testAccCheckTeamMemberDestroy,
 		Steps: []resource.TestStep{
 			{
 				Config: fmt.Sprintf(testAccTeamMemberCustomRoleCreate, roleKey1, roleKey1, randomName),
@@ -342,4 +344,27 @@ func testAccCheckMemberExists(resourceName string) resource.TestCheckFunc {
 		}
 		return nil
 	}
+}
+
+// testAccCheckTeamMemberDestroy verifies the team member has been destroyed
+func testAccCheckTeamMemberDestroy(s *terraform.State) error {
+	client := testAccProvider.Meta().(*Client)
+	for _, rs := range s.RootModule().Resources {
+		if rs.Type != "launchdarkly_team_member" {
+			continue
+		}
+
+		_, res, err := client.ld.AccountMembersApi.GetMember(client.ctx, rs.Primary.ID).Execute()
+
+		if isStatusNotFound(res) {
+			continue
+		}
+
+		if err != nil {
+			return err
+		}
+
+		return fmt.Errorf("team member %s still exists", rs.Primary.ID)
+	}
+	return nil
 }
