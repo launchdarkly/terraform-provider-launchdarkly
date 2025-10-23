@@ -143,7 +143,7 @@ resource "launchdarkly_segment" "test" {
 	name        = "Test Segment with Views"
 	description = "Test segment"
 	
-	# view_keys field removed entirely - should unlink from all views
+	view_keys = []
 	
 	tags = ["test"]
 }
@@ -239,7 +239,7 @@ func TestAccSegmentViewKeys_CreateAndUpdate(t *testing.T) {
 				Config: fmt.Sprintf(testAccSegmentWithViewKeysRemoved, projectName, projectKey, maintainerId, maintainerId, maintainerId),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckSegmentExists(resourceName),
-					// Note: view_keys field is not in state when removed from config (Optional-only behavior)
+					resource.TestCheckResourceAttr(resourceName, "view_keys.#", "0"),
 					// Verify via API that all views were unlinked
 					testAccCheckSegmentLinkedToViews(projectKey, "test-env", "test-segment-with-views", []string{}),
 				),

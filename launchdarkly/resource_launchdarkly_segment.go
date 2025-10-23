@@ -237,37 +237,30 @@ func resourceSegmentUpdate(ctx context.Context, d *schema.ResourceData, metaRaw 
 				}
 			}
 		} else {
-			// If view_keys field was removed from config (HasChange but not present),
-			// unlink from ALL current views to ensure clean removal
+			// If view_keys was explicitly removed (set to null), unlink from all views
+			// that were previously managed by this resource
 			betaClient, err := newBetaClient(client.apiKey, client.apiHost, false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
-			if err != nil {
-				return diag.Errorf("failed to create beta client for view unlinking: %v", err)
-			}
-
-			// Get the environment ID
-			var env *ldapi.Environment
-			err = client.withConcurrency(client.ctx, func() error {
-				env, _, err = client.ld.EnvironmentsApi.GetEnvironment(client.ctx, projectKey, envKey).Execute()
-				return err
-			})
-			if err != nil {
-				return diag.Errorf("failed to get environment %q: %v", envKey, err)
-			}
-
-			// Get ALL currently linked views from the API
-			currentViewKeys, err := getViewsContainingSegment(betaClient, projectKey, env.Id, key)
-			if err != nil {
-				log.Printf("[WARN] failed to get current views for segment %q during removal: %v", key, err)
-			} else {
-				// Unlink from all current views
-				for _, viewKey := range currentViewKeys {
-					segmentIdentifiers := []ViewSegmentIdentifier{{
-						EnvironmentId: env.Id,
-						SegmentKey:    key,
-					}}
-					err = unlinkSegmentsFromView(betaClient, projectKey, viewKey, segmentIdentifiers)
-					if err != nil {
-						log.Printf("[WARN] failed to unlink segment %q from view %q: %v", key, viewKey, err)
+			if err == nil {
+				oldViewKeysRaw, _ := d.GetChange(VIEW_KEYS)
+				if oldViewKeysRaw != nil {
+					// Get the environment ID
+					var env *ldapi.Environment
+					err = client.withConcurrency(client.ctx, func() error {
+						env, _, err = client.ld.EnvironmentsApi.GetEnvironment(client.ctx, projectKey, envKey).Execute()
+						return err
+					})
+					if err == nil {
+						oldViewKeys := interfaceSliceToStringSlice(oldViewKeysRaw.(*schema.Set).List())
+						for _, viewKey := range oldViewKeys {
+							segmentIdentifiers := []ViewSegmentIdentifier{{
+								EnvironmentId: env.Id,
+								SegmentKey:    key,
+							}}
+							err = unlinkSegmentsFromView(betaClient, projectKey, viewKey, segmentIdentifiers)
+							if err != nil {
+								log.Printf("[WARN] failed to unlink segment %q from view %q: %v", key, viewKey, err)
+							}
+						}
 					}
 				}
 			}
