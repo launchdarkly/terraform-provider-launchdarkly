@@ -124,3 +124,52 @@ resource "launchdarkly_segment" "segment_with_all_clause_operators" {
     }
   }
 }
+
+# Example: Segment with view associations
+# This approach is ideal for modular Terraform where each segment is managed in its own file
+resource "launchdarkly_segment" "premium_users" {
+  key         = "premium-users"
+  project_key = "example-project"
+  env_key     = "production"
+  name        = "Premium Users"
+  description = "Users with premium subscriptions"
+
+  # Link this segment to specific views
+  # The segment will appear in both the "sales-team" and "customer-success" views
+  view_keys = [
+    "sales-team",
+    "customer-success"
+  ]
+
+  tags = ["premium", "subscription"]
+
+  rules {
+    clauses {
+      attribute = "plan"
+      op        = "in"
+      values    = ["premium", "enterprise"]
+    }
+  }
+}
+
+# Example: Segment managed in a module that can specify its own views
+# This enables a modular structure where each team/domain can manage their segments
+# without needing to coordinate with a central view_links resource
+resource "launchdarkly_segment" "beta_testers" {
+  key         = "beta-testers"
+  project_key = "example-project"
+  env_key     = "staging"
+  name        = "Beta Testers"
+
+  # Each segment can independently specify which views it belongs to
+  view_keys = ["product-team"]
+
+  tags = ["beta", "testing"]
+
+  included = ["user123", "user456"]
+}
+
+# IMPORTANT: Removing view associations
+# - To explicitly remove all view associations: set view_keys = []
+# - Simply removing the view_keys field from your config will leave existing associations unchanged
+# - The field is computed, so Terraform will detect drift if associations change outside Terraform
