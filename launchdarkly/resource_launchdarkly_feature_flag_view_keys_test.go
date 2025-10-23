@@ -2,6 +2,7 @@ package launchdarkly
 
 import (
 	"fmt"
+	"net/http"
 	"os"
 	"regexp"
 	"testing"
@@ -177,7 +178,8 @@ func TestAccFeatureFlagViewKeys_CreateAndUpdate(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		Providers:    testAccProviders,
+		CheckDestroy: testAccCheckFeatureFlagDestroy,
 		Steps: []resource.TestStep{
 			{
 				Config: fmt.Sprintf(testAccFeatureFlagWithViewKeysCreate, projectName, projectKey, maintainerId, maintainerId),
@@ -248,7 +250,8 @@ func TestAccFeatureFlagViewKeys_NonexistentView(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		Providers:    testAccProviders,
+		CheckDestroy: testAccCheckFeatureFlagDestroy,
 		Steps: []resource.TestStep{
 			{
 				Config:      fmt.Sprintf(testAccFeatureFlagWithViewKeysNonexistentView, projectName, projectKey, maintainerId),
@@ -294,4 +297,35 @@ func testAccCheckFlagLinkedToViews(projectKey, flagKey string, expectedViewKeys 
 
 		return nil
 	}
+}
+
+// testAccCheckFeatureFlagDestroy verifies the flag has been destroyed
+func testAccCheckFeatureFlagDestroy(s *terraform.State) error {
+	client := testAccProvider.Meta().(*Client)
+	for _, rs := range s.RootModule().Resources {
+		if rs.Type != "launchdarkly_feature_flag" {
+			continue
+		}
+
+		projectKey := rs.Primary.Attributes[PROJECT_KEY]
+		flagKey := rs.Primary.Attributes[KEY]
+
+		var res *http.Response
+		var err error
+		err = client.withConcurrency(client.ctx, func() error {
+			_, res, err = client.ld.FeatureFlagsApi.GetFeatureFlag(client.ctx, projectKey, flagKey).Execute()
+			return err
+		})
+
+		if isStatusNotFound(res) {
+			continue
+		}
+
+		if err != nil {
+			return err
+		}
+
+		return fmt.Errorf("feature flag %s still exists", flagKey)
+	}
+	return nil
 }

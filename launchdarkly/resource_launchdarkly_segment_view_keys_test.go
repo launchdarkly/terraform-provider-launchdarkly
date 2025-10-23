@@ -2,6 +2,7 @@ package launchdarkly
 
 import (
 	"fmt"
+	"net/http"
 	"os"
 	"regexp"
 	"testing"
@@ -202,7 +203,8 @@ func TestAccSegmentViewKeys_CreateAndUpdate(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		Providers:    testAccProviders,
+		CheckDestroy: testAccCheckSegmentDestroy,
 		Steps: []resource.TestStep{
 			{
 				Config: fmt.Sprintf(testAccSegmentWithViewKeysCreate, projectName, projectKey, maintainerId, maintainerId),
@@ -273,7 +275,8 @@ func TestAccSegmentViewKeys_NonexistentView(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		Providers:    testAccProviders,
+		CheckDestroy: testAccCheckSegmentDestroy,
 		Steps: []resource.TestStep{
 			{
 				Config:      fmt.Sprintf(testAccSegmentWithViewKeysNonexistentView, projectName, projectKey, maintainerId),
@@ -329,4 +332,36 @@ func testAccCheckSegmentLinkedToViews(projectKey, envKey, segmentKey string, exp
 
 		return nil
 	}
+}
+
+// testAccCheckSegmentDestroy verifies the segment has been destroyed
+func testAccCheckSegmentDestroy(s *terraform.State) error {
+	client := testAccProvider.Meta().(*Client)
+	for _, rs := range s.RootModule().Resources {
+		if rs.Type != "launchdarkly_segment" {
+			continue
+		}
+
+		projectKey := rs.Primary.Attributes[PROJECT_KEY]
+		envKey := rs.Primary.Attributes[ENV_KEY]
+		segmentKey := rs.Primary.Attributes[KEY]
+
+		var res *http.Response
+		var err error
+		err = client.withConcurrency(client.ctx, func() error {
+			_, res, err = client.ld.SegmentsApi.GetSegment(client.ctx, projectKey, envKey, segmentKey).Execute()
+			return err
+		})
+
+		if isStatusNotFound(res) {
+			continue
+		}
+
+		if err != nil {
+			return err
+		}
+
+		return fmt.Errorf("segment %s still exists", segmentKey)
+	}
+	return nil
 }
