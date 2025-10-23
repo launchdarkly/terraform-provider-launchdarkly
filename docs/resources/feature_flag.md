@@ -146,7 +146,6 @@ resource "launchdarkly_feature_flag" "mobile_app_feature" {
 ### Read-Only
 
 - `id` (String) The ID of this resource.
-- `linked_views` (Set of String) A computed set of all view keys this flag is currently linked to, regardless of how the associations were created (via `view_keys` or `launchdarkly_view_links`).
 
 <a id="nestedblock--client_side_availability"></a>
 ### Nested Schema for `client_side_availability`

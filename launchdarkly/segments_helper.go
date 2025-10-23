@@ -79,20 +79,12 @@ func baseSegmentSchema(options segmentSchemaOptions) map[string]*schema.Schema {
 		VIEW_KEYS: {
 			Type:     schema.TypeSet,
 			Optional: !options.isDataSource,
-			Computed: options.isDataSource,
+			Computed: true, // Always computed to support import and drift detection
 			Elem: &schema.Schema{
 				Type:             schema.TypeString,
 				ValidateDiagFunc: validateKey(),
 			},
 			Description: "A set of view keys to link this segment to. This is an alternative to using the `launchdarkly_view_links` resource for managing view associations. When set, this segment will be linked to the specified views. Note: Using both `view_keys` on the segment and `launchdarkly_view_links` to manage the same segment may cause conflicts.",
-		},
-		LINKED_VIEWS: {
-			Type:     schema.TypeSet,
-			Computed: true,
-			Elem: &schema.Schema{
-				Type: schema.TypeString,
-			},
-			Description: "A computed set of all view keys this segment is currently linked to, regardless of how the associations were created (via `view_keys` or `launchdarkly_view_links`).",
 		},
 	}
 }
@@ -213,10 +205,10 @@ func segmentRead(ctx context.Context, d *schema.ResourceData, raw interface{}, i
 				// Log warning but don't fail the read for discovery data
 				log.Printf("[WARN] failed to get views for segment %q in project %q, environment %q: %v", segmentKey, projectKey, envKey, err)
 			} else {
-				// Set linked_views (computed field showing all associations)
-				err = d.Set(LINKED_VIEWS, viewKeys)
+				// Set view_keys to the actual view associations (for both resources and data sources)
+				err = d.Set(VIEW_KEYS, viewKeys)
 				if err != nil {
-					return diag.Errorf("could not set linked_views on segment with key %q: %v", segmentKey, err)
+					return diag.Errorf("could not set view_keys on segment with key %q: %v", segmentKey, err)
 				}
 
 				// For data sources, also set the legacy VIEWS field for backwards compatibility

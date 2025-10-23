@@ -215,7 +215,6 @@ resource "launchdarkly_segment" "beta_testers" {
 
 - `creation_date` (Number) The segment's creation date represented as a UNIX epoch timestamp.
 - `id` (String) The ID of this resource.
-- `linked_views` (Set of String) A computed set of all view keys this segment is currently linked to, regardless of how the associations were created (via `view_keys` or `launchdarkly_view_links`).
 
 <a id="nestedblock--excluded_contexts"></a>
 ### Nested Schema for `excluded_contexts`

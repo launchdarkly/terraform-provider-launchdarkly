@@ -41,7 +41,6 @@ data "launchdarkly_segment" "example" {
 - `id` (String) The ID of this resource.
 - `included` (List of String) List of user keys included in the segment. To target on other context kinds, use the included_contexts block attribute. This attribute is not valid when `unbounded` is set to `true`.
 - `included_contexts` (List of Object) List of non-user target objects included in the segment. This attribute is not valid when `unbounded` is set to `true`. (see [below for nested schema](#nestedatt--included_contexts))
-- `linked_views` (Set of String) A computed set of all view keys this segment is currently linked to, regardless of how the associations were created (via `view_keys` or `launchdarkly_view_links`).
 - `name` (String) The human-friendly name for the segment.
 - `rules` (List of Object) List of nested custom rule blocks to apply to the segment. This attribute is not valid when `unbounded` is set to `true`. (see [below for nested schema](#nestedatt--rules))
 - `tags` (Set of String) Tags associated with your resource.

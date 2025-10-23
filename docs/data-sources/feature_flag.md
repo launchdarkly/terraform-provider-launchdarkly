@@ -88,7 +88,6 @@ output "team_notifications" {
 - `description` (String) The feature flag's description.
 - `id` (String) The ID of this resource.
 - `include_in_snippet` (Boolean, Deprecated) Specifies whether this flag should be made available to the client-side JavaScript SDK using the client-side Id. This value gets its default from your project configuration if not set. `include_in_snippet` is now deprecated. Please migrate to `client_side_availability.using_environment_id` to maintain future compatibility.
-- `linked_views` (Set of String) A computed set of all view keys this flag is currently linked to, regardless of how the associations were created (via `view_keys` or `launchdarkly_view_links`).
 - `name` (String) The feature flag's human-readable name
 - `tags` (Set of String) Tags associated with your resource.
 - `temporary` (Boolean) Specifies whether the flag is a temporary flag.
