@@ -77,7 +77,9 @@ func validateRuleResourceData(ruleMap map[string]interface{}) error {
 		if ruleMap[BUCKET_BY].(string) != "" {
 			return errors.New("rules: cannot use bucket_by argument with variation, only with rollout_weights")
 		}
-		if ruleMap[CONTEXT_KIND].(string) != "" {
+		contextKind := ruleMap[CONTEXT_KIND].(string)
+		// fix for REL-10234. however, if context_kind "user" is specified alongside variation, it will throw a generic non-empty plan error instead of the intended one below
+		if contextKind != "" && contextKind != "user" {
 			return errors.New("rules: cannot use context_kind argument with variation, only with rollout_weights")
 		}
 	}
