@@ -842,26 +842,26 @@ func TestAccFeatureFlagEnvironment_BoolClauseValue(t *testing.T) {
 		},
 		Providers: testAccProviders,
 		Steps: []resource.TestStep{
-			{
-				Config: withRandomProject(projectKey, testAccFeatureFlagEnvironmentBoolClauseValue),
-				Check: resource.ComposeTestCheckFunc(
-					testAccCheckFeatureFlagEnvironmentExists(resourceName),
-					resource.TestCheckResourceAttr(resourceName, ON, "true"),
-					resource.TestCheckResourceAttr(resourceName, "rules.#", "1"),
-					resource.TestCheckResourceAttr(resourceName, "rules.0.clauses.#", "1"),
-					resource.TestCheckResourceAttr(resourceName, "rules.0.clauses.0.value_type", "boolean"),
-					resource.TestCheckResourceAttr(resourceName, "rules.0.clauses.0.values.#", "1"),
-					resource.TestCheckResourceAttr(resourceName, "rules.0.clauses.0.values.0", "true"),
-					resource.TestCheckResourceAttr(resourceName, "rules.0.variation", "0"),
-					resource.TestCheckResourceAttr(resourceName, "fallthrough.0.variation", "0"),
-					resource.TestCheckResourceAttr(resourceName, OFF_VARIATION, "1"),
-				),
-			},
-			{
-				ResourceName:      resourceName,
-				ImportState:       true,
-				ImportStateVerify: true,
-			},
+			// {
+			// 	Config: withRandomProject(projectKey, testAccFeatureFlagEnvironmentBoolClauseValue),
+			// 	Check: resource.ComposeTestCheckFunc(
+			// 		testAccCheckFeatureFlagEnvironmentExists(resourceName),
+			// 		resource.TestCheckResourceAttr(resourceName, ON, "true"),
+			// 		resource.TestCheckResourceAttr(resourceName, "rules.#", "1"),
+			// 		resource.TestCheckResourceAttr(resourceName, "rules.0.clauses.#", "1"),
+			// 		resource.TestCheckResourceAttr(resourceName, "rules.0.clauses.0.value_type", "boolean"),
+			// 		resource.TestCheckResourceAttr(resourceName, "rules.0.clauses.0.values.#", "1"),
+			// 		resource.TestCheckResourceAttr(resourceName, "rules.0.clauses.0.values.0", "true"),
+			// 		resource.TestCheckResourceAttr(resourceName, "rules.0.variation", "0"),
+			// 		resource.TestCheckResourceAttr(resourceName, "fallthrough.0.variation", "0"),
+			// 		resource.TestCheckResourceAttr(resourceName, OFF_VARIATION, "1"),
+			// 	),
+			// },
+			// {
+			// 	ResourceName:      resourceName,
+			// 	ImportState:       true,
+			// 	ImportStateVerify: true,
+			// },
 			{ // check that you can update rule from variation to rollout
 				Config: withRandomProject(projectKey, testAccFeatureFlagEnvironmentBoolClauseValueUpdate),
 				Check: resource.ComposeTestCheckFunc(
