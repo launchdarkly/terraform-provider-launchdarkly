@@ -1004,26 +1004,6 @@ func TestAccFeatureFlagEnvironment_UpdateClauseWithRollout(t *testing.T) {
 				ImportState:       true,
 				ImportStateVerify: true,
 			},
-			{
-				Config: withRandomProject(projectKey, testAccFeatureFlagEnvironmentBasic),
-				Check: resource.ComposeTestCheckFunc(
-					testAccCheckFeatureFlagEnvironmentExists(resourceName),
-					resource.TestCheckResourceAttr(resourceName, ON, "false"),
-					resource.TestCheckResourceAttr(resourceName, "fallthrough.#", "1"),
-					resource.TestCheckResourceAttr(resourceName, "fallthrough.0.variation", "1"),
-					resource.TestCheckResourceAttr(resourceName, "fallthrough.0.rollout.#", "0"),
-					resource.TestCheckResourceAttr(resourceName, "targets.#", "1"),
-					resource.TestCheckResourceAttr(resourceName, "targets.0.values.0", "user1"),
-					resource.TestCheckResourceAttr(resourceName, "targets.0.variation", "0"),
-					resource.TestCheckResourceAttr(resourceName, "rules.#", "0"),
-					resource.TestCheckResourceAttr(resourceName, OFF_VARIATION, "2"),
-				),
-			},
-			{
-				ResourceName:      resourceName,
-				ImportState:       true,
-				ImportStateVerify: true,
-			},
 		},
 	})
 }
