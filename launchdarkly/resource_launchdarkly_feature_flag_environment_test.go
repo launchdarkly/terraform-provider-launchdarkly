@@ -258,6 +258,36 @@ resource "launchdarkly_feature_flag_environment" "bool_clause" {
 }
 `
 
+	testAccFeatureFlagEnvironmentBoolClauseValueUpdate = `
+resource "launchdarkly_feature_flag" "bool_flag" {
+	project_key = launchdarkly_project.test.key
+	key = "bool-flag"
+	name = "boolean flag"
+	variation_type = "boolean"
+}
+
+resource "launchdarkly_feature_flag_environment" "bool_clause" {
+	flag_id 		  = launchdarkly_feature_flag.bool_flag.id
+	env_key 		  = "test"
+	on = true
+	rules {
+		clauses {
+			attribute  = "is_vip"
+			op         = "startsWith"
+			values     = [true]
+			value_type = "boolean"
+			negate     = false
+		}
+		rollout_weights = [60000, 40000]
+		bucket_by = "email"
+	}
+	fallthrough {
+		variation = 0
+	}
+	off_variation = 1
+}
+`
+
 	testAccFeatureFlagEnvironmentNumberClauseValue = `
 resource "launchdarkly_feature_flag" "bool_flag" {
 	project_key = launchdarkly_project.test.key
@@ -822,6 +852,51 @@ func TestAccFeatureFlagEnvironment_BoolClauseValue(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "rules.0.clauses.0.value_type", "boolean"),
 					resource.TestCheckResourceAttr(resourceName, "rules.0.clauses.0.values.#", "1"),
 					resource.TestCheckResourceAttr(resourceName, "rules.0.clauses.0.values.0", "true"),
+					resource.TestCheckResourceAttr(resourceName, "rules.0.variation", "0"),
+					resource.TestCheckResourceAttr(resourceName, "fallthrough.0.variation", "0"),
+					resource.TestCheckResourceAttr(resourceName, OFF_VARIATION, "1"),
+				),
+			},
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
+			{ // check that you can update rule from variation to rollout
+				Config: withRandomProject(projectKey, testAccFeatureFlagEnvironmentBoolClauseValueUpdate),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckFeatureFlagEnvironmentExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, ON, "true"),
+					resource.TestCheckResourceAttr(resourceName, "rules.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "rules.0.clauses.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "rules.0.clauses.0.value_type", "boolean"),
+					resource.TestCheckResourceAttr(resourceName, "rules.0.clauses.0.values.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "rules.0.clauses.0.values.0", "true"),
+					resource.TestCheckResourceAttr(resourceName, "rules.0.rollout_weights.#", "2"),
+					resource.TestCheckResourceAttr(resourceName, "rules.0.rollout_weights.0", "60000"),
+					resource.TestCheckResourceAttr(resourceName, "rules.0.rollout_weights.1", "40000"),
+					resource.TestCheckResourceAttr(resourceName, "rules.0.bucket_by", "email"),
+					resource.TestCheckResourceAttr(resourceName, "rules.0.context_kind", "user"),
+					resource.TestCheckResourceAttr(resourceName, "fallthrough.0.variation", "0"),
+					resource.TestCheckResourceAttr(resourceName, OFF_VARIATION, "1"),
+				),
+			},
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
+			{ // check that you can update rule from rollout to variation
+				Config: withRandomProject(projectKey, testAccFeatureFlagEnvironmentBoolClauseValue),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckFeatureFlagEnvironmentExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, ON, "true"),
+					resource.TestCheckResourceAttr(resourceName, "rules.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "rules.0.clauses.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "rules.0.clauses.0.value_type", "boolean"),
+					resource.TestCheckResourceAttr(resourceName, "rules.0.clauses.0.values.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "rules.0.clauses.0.values.0", "true"),
+					resource.TestCheckResourceAttr(resourceName, "rules.0.variation", "0"),
 					resource.TestCheckResourceAttr(resourceName, "fallthrough.0.variation", "0"),
 					resource.TestCheckResourceAttr(resourceName, OFF_VARIATION, "1"),
 				),
@@ -922,6 +997,26 @@ func TestAccFeatureFlagEnvironment_UpdateClauseWithRollout(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "fallthrough.0.bucket_by", "country"),
 					resource.TestCheckResourceAttr(resourceName, "fallthrough.0.context_kind", "other"),
 					resource.TestCheckResourceAttr(resourceName, OFF_VARIATION, "1"),
+				),
+			},
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
+			{
+				Config: withRandomProject(projectKey, testAccFeatureFlagEnvironmentBasic),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckFeatureFlagEnvironmentExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, ON, "false"),
+					resource.TestCheckResourceAttr(resourceName, "fallthrough.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "fallthrough.0.variation", "1"),
+					resource.TestCheckResourceAttr(resourceName, "fallthrough.0.rollout.#", "0"),
+					resource.TestCheckResourceAttr(resourceName, "targets.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "targets.0.values.0", "user1"),
+					resource.TestCheckResourceAttr(resourceName, "targets.0.variation", "0"),
+					resource.TestCheckResourceAttr(resourceName, "rules.#", "0"),
+					resource.TestCheckResourceAttr(resourceName, OFF_VARIATION, "2"),
 				),
 			},
 			{
