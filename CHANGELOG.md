@@ -2,6 +2,18 @@
 
 All notable changes to the LaunchDarkly Terraform Provider will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org).
 
+## [2.26.0](https://github.com/launchdarkly/terraform-provider-launchdarkly/compare/v2.25.3...v2.26.0) (2025-11-10)
+
+
+### Features
+
+* [bot] Regenerate integration configs ([#346](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/346)) ([15a0ef3](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/15a0ef3afb4d0e8ddcc9f9a0c8f68960b66819bf))
+
+
+### Bug Fixes
+
+* [REL-10234] Imiller/rel 10234/terraform flag resource does not smoothly switch between rollout weights and variation ([#366](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/366)) ([c42cfa3](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/c42cfa3ee258f33b5d5347db7602d2ef86bfff91))
+
 ## [2.25.3](https://github.com/launchdarkly/terraform-provider-launchdarkly/compare/v2.25.2...v2.25.3) (2025-07-18)
 
 
