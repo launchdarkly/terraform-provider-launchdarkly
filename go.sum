@@ -542,6 +542,8 @@ github.com/kylelemons/godebug v1.1.0/go.mod h1:9/0rRGxNHcop5bhtWyNeEfOS8JIWk580+
 github.com/kyoh86/exportloopref v0.1.8/go.mod h1:1tUcJeiioIs7VWe5gcOObrux3lb66+sBqGZrRkMwPgg=
 github.com/launchdarkly/api-client-go/v17 v17.1.0 h1:IbR5UDLKBmff0eRBSD3UgVDfgnifOepBIe4gqivMaec=
 github.com/launchdarkly/api-client-go/v17 v17.1.0/go.mod h1:lMTmhEjepXfam8xm8b0ERBJbV9g8vdu9nbKueDXcB5o=
+github.com/launchdarkly/api-client-go/v17 v17.2.0 h1:5CJxDaL7ZgqALAcohNUMlV7hfXR65s2czZ4XmZjW/qI=
+github.com/launchdarkly/api-client-go/v17 v17.2.0/go.mod h1:lMTmhEjepXfam8xm8b0ERBJbV9g8vdu9nbKueDXcB5o=
 github.com/ldez/gomoddirectives v0.2.2/go.mod h1:cpgBogWITnCfRq2qGoDkKMEVSaarhdBr6g8G04uz6d0=
 github.com/ldez/tagliatelle v0.3.0/go.mod h1:8s6WJQwEYHbKZDsp/LjArytKOG8qaMrKQQ3mFukHs88=
 github.com/leonklingele/grouper v1.1.0/go.mod h1:uk3I3uDfi9B6PeUjsCKi6ndcf63Uy7snXgR4yDYQVDY=

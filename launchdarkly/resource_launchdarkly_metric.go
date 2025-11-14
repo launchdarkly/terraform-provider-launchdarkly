@@ -191,7 +191,6 @@ func resourceMetricCreate(ctx context.Context, d *schema.ResourceData, metaRaw i
 	kind := d.Get(KIND).(string)
 	description := d.Get(DESCRIPTION).(string)
 	tags := stringsFromResourceData(d, TAGS)
-	isActive := d.Get(IS_ACTIVE).(bool)
 	isNumeric := d.Get(IS_NUMERIC).(bool)
 	urls := metricUrlsFromResourceData(d)
 	randomizationUnits := stringsFromResourceData(d, RANDOMIZATION_UNITS)
@@ -210,7 +209,6 @@ func resourceMetricCreate(ctx context.Context, d *schema.ResourceData, metaRaw i
 		Description:         &description,
 		Tags:                tags,
 		Kind:                kind,
-		IsActive:            &isActive,
 		IsNumeric:           &isNumeric,
 		Selector:            &selector,
 		Urls:                urls,
@@ -300,7 +298,6 @@ func resourceMetricUpdate(ctx context.Context, d *schema.ResourceData, metaRaw i
 	kind := d.Get(KIND).(string)
 	description := d.Get(DESCRIPTION).(string)
 	tags := stringsFromResourceData(d, TAGS)
-	isActive := d.Get(IS_ACTIVE).(bool)
 	isNumeric := d.Get(IS_NUMERIC).(bool)
 	urls := metricUrlsFromResourceData(d)
 	// Required depending on type
@@ -316,7 +313,6 @@ func resourceMetricUpdate(ctx context.Context, d *schema.ResourceData, metaRaw i
 		patchReplace("/description", description),
 		patchReplace("/tags", tags),
 		patchReplace("/kind", kind),
-		patchReplace("/isActive", isActive),
 		patchReplace("/isNumeric", isNumeric),
 		patchReplace("/urls", urls),
 		patchReplace("/unit", unit),

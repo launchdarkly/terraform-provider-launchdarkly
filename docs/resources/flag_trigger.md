@@ -42,7 +42,7 @@ resource "launchdarkly_flag_trigger" "example" {
 - `env_key` (String) The unique key of the environment the flag trigger will work in. A change in this field will force the destruction of the existing resource and the creation of a new one.
 - `flag_key` (String) The unique key of the associated flag. A change in this field will force the destruction of the existing resource and the creation of a new one.
 - `instructions` (Block List, Min: 1, Max: 1) Instructions containing the action to perform when invoking the trigger. Currently supported flag actions are `turnFlagOn` and `turnFlagOff`. This must be passed as the key-value pair `{ kind = "<flag_action>" }`. (see [below for nested schema](#nestedblock--instructions))
-- `integration_key` (String) The unique identifier of the integration you intend to set your trigger up with. Currently supported are `generic-trigger`, `datadog`, `dynatrace`, `dynatrace-cloud-automation`, `honeycomb`, `new-relic-apm`, and `signalfx`. `generic-trigger` should be used for integrations not explicitly supported. A change in this field will force the destruction of the existing resource and the creation of a new one.
+- `integration_key` (String) The unique identifier of the integration you intend to set your trigger up with. Currently supported are `generic-trigger`. `generic-trigger` should be used for integrations not explicitly supported. A change in this field will force the destruction of the existing resource and the creation of a new one.
 - `project_key` (String) The unique key of the project encompassing the associated flag. A change in this field will force the destruction of the existing resource and the creation of a new one.
 
 ### Read-Only
