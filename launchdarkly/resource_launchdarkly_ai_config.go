@@ -53,14 +53,16 @@ func resourceAIConfig() *schema.Resource {
 				Description: "Tags associated with the AI Config.",
 			},
 			MAINTAINER_ID: {
-				Type:        schema.TypeString,
-				Optional:    true,
-				Description: "The ID of the member who maintains this AI Config.",
+				Type:          schema.TypeString,
+				Optional:      true,
+				ConflictsWith: []string{MAINTAINER_TEAM_KEY},
+				Description:   "The ID of the member who maintains this AI Config.",
 			},
 			MAINTAINER_TEAM_KEY: {
-				Type:        schema.TypeString,
-				Optional:    true,
-				Description: "The key of the team that maintains this AI Config.",
+				Type:          schema.TypeString,
+				Optional:      true,
+				ConflictsWith: []string{MAINTAINER_ID},
+				Description:   "The key of the team that maintains this AI Config.",
 			},
 			VERSION: {
 				Type:        schema.TypeInt,
