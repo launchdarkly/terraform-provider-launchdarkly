@@ -39,9 +39,9 @@ resource "launchdarkly_ai_config" "test" {
 }
 `
 
-	testAccAIConfigWithTeamMaintainer = `
+	testAccAIConfigWithTeamMaintainerFmt = `
 resource "launchdarkly_team" "test" {
-	key  = "test-team"
+	key  = "%s"
 	name = "Test Team"
 }
 
@@ -53,9 +53,9 @@ resource "launchdarkly_ai_config" "test" {
 }
 `
 
-	testAccAIConfigConflictingMaintainers = `
+	testAccAIConfigConflictingMaintainersFmt = `
 resource "launchdarkly_team" "test" {
-	key  = "test-team"
+	key  = "%s"
 	name = "Test Team"
 }
 
@@ -169,6 +169,7 @@ func TestAccAIConfig_WithTags(t *testing.T) {
 
 func TestAccAIConfig_WithTeamMaintainer(t *testing.T) {
 	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	teamKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	resourceName := "launchdarkly_ai_config.test"
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
@@ -177,12 +178,12 @@ func TestAccAIConfig_WithTeamMaintainer(t *testing.T) {
 		Providers: testAccProviders,
 		Steps: []resource.TestStep{
 			{
-				Config: withRandomProject(projectKey, testAccAIConfigWithTeamMaintainer),
+				Config: withRandomProject(projectKey, fmt.Sprintf(testAccAIConfigWithTeamMaintainerFmt, teamKey)),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckProjectExists("launchdarkly_project.test"),
 					testAccCheckAIConfigExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, NAME, "Test AI Config"),
-					resource.TestCheckResourceAttr(resourceName, MAINTAINER_TEAM_KEY, "test-team"),
+					resource.TestCheckResourceAttr(resourceName, MAINTAINER_TEAM_KEY, teamKey),
 				),
 			},
 			{
@@ -196,6 +197,7 @@ func TestAccAIConfig_WithTeamMaintainer(t *testing.T) {
 
 func TestAccAIConfig_ConflictingMaintainers(t *testing.T) {
 	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	teamKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
 			testAccPreCheck(t)
@@ -203,8 +205,8 @@ func TestAccAIConfig_ConflictingMaintainers(t *testing.T) {
 		Providers: testAccProviders,
 		Steps: []resource.TestStep{
 			{
-				Config:      withRandomProject(projectKey, testAccAIConfigConflictingMaintainers),
-				ExpectError: regexp.MustCompile(`"maintainer_id".*conflicts with maintainer_team_key`),
+				Config:      withRandomProject(projectKey, fmt.Sprintf(testAccAIConfigConflictingMaintainersFmt, teamKey)),
+				ExpectError: regexp.MustCompile(`(?i)maintainer_id.*conflicts.*maintainer_team_key`),
 			},
 		},
 	})

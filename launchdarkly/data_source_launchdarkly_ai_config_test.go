@@ -25,9 +25,9 @@ data "launchdarkly_ai_config" "test" {
 }
 `
 
-	testAccDataSourceAIConfigWithTeam = `
+	testAccDataSourceAIConfigWithTeamFmt = `
 resource "launchdarkly_team" "test" {
-	key  = "test-team"
+	key  = "%s"
 	name = "Test Team"
 }
 
@@ -72,6 +72,7 @@ func TestAccDataSourceAIConfig_exists(t *testing.T) {
 
 func TestAccDataSourceAIConfig_existsWithTeamMaintainer(t *testing.T) {
 	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	teamKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	resourceName := "data.launchdarkly_ai_config.test"
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
@@ -80,13 +81,13 @@ func TestAccDataSourceAIConfig_existsWithTeamMaintainer(t *testing.T) {
 		Providers: testAccProviders,
 		Steps: []resource.TestStep{
 			{
-				Config: withRandomProject(projectKey, testAccDataSourceAIConfigWithTeam),
+				Config: withRandomProject(projectKey, fmt.Sprintf(testAccDataSourceAIConfigWithTeamFmt, teamKey)),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttrSet(resourceName, ID),
 					resource.TestCheckResourceAttr(resourceName, NAME, "Test AI Config"),
 					resource.TestCheckResourceAttr(resourceName, KEY, "test-ai-config"),
 					resource.TestCheckResourceAttr(resourceName, PROJECT_KEY, projectKey),
-					resource.TestCheckResourceAttr(resourceName, MAINTAINER_TEAM_KEY, "test-team"),
+					resource.TestCheckResourceAttr(resourceName, MAINTAINER_TEAM_KEY, teamKey),
 					resource.TestCheckResourceAttrSet(resourceName, VERSION),
 				),
 			},
