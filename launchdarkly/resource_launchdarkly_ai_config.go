@@ -119,7 +119,7 @@ func resourceAIConfigCreate(ctx context.Context, d *schema.ResourceData, metaRaw
 
 	var err error
 	err = client.withConcurrency(ctx, func() error {
-		_, _, err = client.ldBeta.AIConfigsBetaApi.PostAIConfig(client.ctx, projectKey).AIConfigPost(aiConfigPost).Execute()
+		_, _, err = client.ldBeta.AIConfigsBetaApi.PostAIConfig(client.ctx, projectKey).LDAPIVersion("beta").AIConfigPost(aiConfigPost).Execute()
 		return err
 	})
 
@@ -142,7 +142,7 @@ func resourceAIConfigRead(ctx context.Context, d *schema.ResourceData, metaRaw i
 	var res *http.Response
 	var err error
 	err = client.withConcurrency(ctx, func() error {
-		aiConfig, res, err = client.ldBeta.AIConfigsBetaApi.GetAIConfig(client.ctx, projectKey, key).Execute()
+		aiConfig, res, err = client.ldBeta.AIConfigsBetaApi.GetAIConfig(client.ctx, projectKey, key).LDAPIVersion("beta").Execute()
 		return err
 	})
 
@@ -201,7 +201,7 @@ func resourceAIConfigUpdate(ctx context.Context, d *schema.ResourceData, metaRaw
 
 	var err error
 	err = client.withConcurrency(ctx, func() error {
-		_, _, err = client.ldBeta.AIConfigsBetaApi.PatchAIConfig(client.ctx, projectKey, key).AIConfigPatch(aiConfigPatch).Execute()
+		_, _, err = client.ldBeta.AIConfigsBetaApi.PatchAIConfig(client.ctx, projectKey, key).LDAPIVersion("beta").AIConfigPatch(aiConfigPatch).Execute()
 		return err
 	})
 
@@ -221,7 +221,7 @@ func resourceAIConfigDelete(ctx context.Context, d *schema.ResourceData, metaRaw
 
 	var err error
 	err = client.withConcurrency(ctx, func() error {
-		_, err = client.ldBeta.AIConfigsBetaApi.DeleteAIConfig(client.ctx, projectKey, key).Execute()
+		_, err = client.ldBeta.AIConfigsBetaApi.DeleteAIConfig(client.ctx, projectKey, key).LDAPIVersion("beta").Execute()
 		return err
 	})
 
@@ -240,7 +240,7 @@ func resourceAIConfigExists(d *schema.ResourceData, metaRaw interface{}) (bool, 
 	var res *http.Response
 	var err error
 	err = client.withConcurrency(client.ctx, func() error {
-		_, res, err = client.ldBeta.AIConfigsBetaApi.GetAIConfig(client.ctx, projectKey, key).Execute()
+		_, res, err = client.ldBeta.AIConfigsBetaApi.GetAIConfig(client.ctx, projectKey, key).LDAPIVersion("beta").Execute()
 		return err
 	})
 
