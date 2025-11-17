@@ -19,43 +19,43 @@ func dataSourceAIConfig() *schema.Resource {
 			KEY: {
 				Type:        schema.TypeString,
 				Required:    true,
-				Description: "The unique key of the AI config.",
+				Description: "The unique key of the AI Config.",
 			},
 			NAME: {
 				Type:        schema.TypeString,
 				Computed:    true,
-				Description: "The human-readable name of the AI config.",
+				Description: "The human-readable name of the AI Config.",
 			},
 			DESCRIPTION: {
 				Type:        schema.TypeString,
 				Computed:    true,
-				Description: "The description of the AI config.",
+				Description: "The description of the AI Config.",
 			},
 			TAGS: {
 				Type:        schema.TypeSet,
 				Computed:    true,
 				Elem:        &schema.Schema{Type: schema.TypeString},
-				Description: "Tags associated with the AI config.",
+				Description: "Tags associated with the AI Config.",
 			},
 			MAINTAINER_ID: {
 				Type:        schema.TypeString,
 				Computed:    true,
-				Description: "The ID of the member who maintains this AI config.",
+				Description: "The ID of the member who maintains this AI Config.",
 			},
 			MAINTAINER_TEAM_KEY: {
 				Type:        schema.TypeString,
 				Computed:    true,
-				Description: "The key of the team that maintains this AI config.",
+				Description: "The key of the team that maintains this AI Config.",
 			},
 			VERSION: {
 				Type:        schema.TypeInt,
 				Computed:    true,
-				Description: "The version of the AI config.",
+				Description: "The version of the AI Config.",
 			},
 		},
-		Description: `Provides a LaunchDarkly AI config data source.
+		Description: `Provides a LaunchDarkly AI Config data source.
 
-This data source allows you to retrieve AI config information from your LaunchDarkly project.
+This data source allows you to retrieve AI Config information from your LaunchDarkly project.
 
 -> **Note:** AI Configs are currently in beta.`,
 	}

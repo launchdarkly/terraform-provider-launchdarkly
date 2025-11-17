@@ -3,16 +3,16 @@
 page_title: "launchdarkly_ai_config Resource - launchdarkly"
 subcategory: ""
 description: |-
-  Provides a LaunchDarkly AI config resource.
-  This resource allows you to create and manage AI configs within your LaunchDarkly project.
+  Provides a LaunchDarkly AI Config resource.
+  This resource allows you to create and manage AI Configs within your LaunchDarkly project.
   -> Note: AI Configs are currently in beta.
 ---
 
 # launchdarkly_ai_config (Resource)
 
-Provides a LaunchDarkly AI config resource.
+Provides a LaunchDarkly AI Config resource.
 
-This resource allows you to create and manage AI configs within your LaunchDarkly project.
+This resource allows you to create and manage AI Configs within your LaunchDarkly project.
 
 -> **Note:** AI Configs are currently in beta.
 
@@ -23,18 +23,18 @@ This resource allows you to create and manage AI configs within your LaunchDarkl
 
 ### Required
 
-- `key` (String) The unique key of the AI config.
-- `name` (String) The human-readable name of the AI config.
+- `key` (String) The unique key of the AI Config.
+- `name` (String) The human-readable name of the AI Config.
 - `project_key` (String) The project key.
 
 ### Optional
 
-- `description` (String) The description of the AI config.
-- `maintainer_id` (String) The ID of the member who maintains this AI config.
-- `maintainer_team_key` (String) The key of the team that maintains this AI config.
-- `tags` (Set of String) Tags associated with the AI config.
+- `description` (String) The description of the AI Config.
+- `maintainer_id` (String) The ID of the member who maintains this AI Config.
+- `maintainer_team_key` (String) The key of the team that maintains this AI Config.
+- `tags` (Set of String) Tags associated with the AI Config.
 
 ### Read-Only
 
 - `id` (String) The ID of this resource.
-- `version` (Number) The version of the AI config.
+- `version` (Number) The version of the AI Config.

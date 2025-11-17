@@ -34,44 +34,44 @@ func resourceAIConfig() *schema.Resource {
 				Type:        schema.TypeString,
 				Required:    true,
 				ForceNew:    true,
-				Description: "The unique key of the AI config.",
+				Description: "The unique key of the AI Config.",
 			},
 			NAME: {
 				Type:        schema.TypeString,
 				Required:    true,
-				Description: "The human-readable name of the AI config.",
+				Description: "The human-readable name of the AI Config.",
 			},
 			DESCRIPTION: {
 				Type:        schema.TypeString,
 				Optional:    true,
-				Description: "The description of the AI config.",
+				Description: "The description of the AI Config.",
 			},
 			TAGS: {
 				Type:        schema.TypeSet,
 				Optional:    true,
 				Elem:        &schema.Schema{Type: schema.TypeString},
-				Description: "Tags associated with the AI config.",
+				Description: "Tags associated with the AI Config.",
 			},
 			MAINTAINER_ID: {
 				Type:        schema.TypeString,
 				Optional:    true,
-				Description: "The ID of the member who maintains this AI config.",
+				Description: "The ID of the member who maintains this AI Config.",
 			},
 			MAINTAINER_TEAM_KEY: {
 				Type:        schema.TypeString,
 				Optional:    true,
-				Description: "The key of the team that maintains this AI config.",
+				Description: "The key of the team that maintains this AI Config.",
 			},
 			VERSION: {
 				Type:        schema.TypeInt,
 				Computed:    true,
-				Description: "The version of the AI config.",
+				Description: "The version of the AI Config.",
 			},
 		},
 
-		Description: `Provides a LaunchDarkly AI config resource.
+		Description: `Provides a LaunchDarkly AI Config resource.
 
-This resource allows you to create and manage AI configs within your LaunchDarkly project.
+This resource allows you to create and manage AI Configs within your LaunchDarkly project.
 
 -> **Note:** AI Configs are currently in beta.`,
 	}
