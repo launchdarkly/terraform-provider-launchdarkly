@@ -156,8 +156,11 @@ func TestAccDataSourceFeatureFlagEnvironment_exists(t *testing.T) {
 		require.NoError(t, err)
 	}()
 
-	thisConfig := flag.Environments[envKey]
-	otherConfig := flag.Environments["production"]
+	if flag.Environments == nil {
+		t.Fatal("flag.Environments is nil")
+	}
+	thisConfig := (*flag.Environments)[envKey]
+	otherConfig := (*flag.Environments)["production"]
 
 	flagId := projectKey + "/" + flagKey
 	resourceName := "data.launchdarkly_feature_flag_environment.test"
@@ -283,8 +286,11 @@ func TestAccDataSourceFeatureFlagEnvironment_WithContextFields(t *testing.T) {
 		require.NoError(t, err)
 	}()
 
-	thisConfig := flag.Environments[envKey]
-	otherConfig := flag.Environments["production"]
+	if flag.Environments == nil {
+		t.Fatal("flag.Environments is nil")
+	}
+	thisConfig := (*flag.Environments)[envKey]
+	otherConfig := (*flag.Environments)["production"]
 
 	flagId := projectKey + "/" + flagKey
 	resourceName := "data.launchdarkly_feature_flag_environment.test"
