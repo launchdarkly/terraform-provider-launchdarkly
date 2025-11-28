@@ -1,12 +1,10 @@
 package launchdarkly
 
 import (
-	"encoding/json"
 	"fmt"
 	"math/rand"
 	"net"
 	"net/http"
-	"reflect"
 	"time"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -158,34 +156,4 @@ func oxfordCommaJoin(str []string) string {
 		}
 	}
 	return output
-}
-
-func jsonMarshal(v interface{}) (string, error) {
-	if v == nil {
-		return "{}", nil
-	}
-	bytes, err := json.Marshal(v)
-	if err != nil {
-		return "", err
-	}
-	return string(bytes), nil
-}
-
-func jsonEqual(a, b string) bool {
-	if a == "" && b == "" {
-		return true
-	}
-	if a == "" || b == "" {
-		return false
-	}
-
-	var aMap, bMap interface{}
-	if err := json.Unmarshal([]byte(a), &aMap); err != nil {
-		return false
-	}
-	if err := json.Unmarshal([]byte(b), &bMap); err != nil {
-		return false
-	}
-
-	return reflect.DeepEqual(aMap, bMap)
 }
