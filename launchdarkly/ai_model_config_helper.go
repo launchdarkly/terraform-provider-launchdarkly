@@ -57,24 +57,20 @@ func baseAIModelConfigSchema(isDataSource bool) map[string]*schema.Schema {
 			Description: addForceNewDescription("Icon for the model.", !isDataSource),
 		},
 		PARAMS: {
-			Type:        schema.TypeString,
+			Type:        schema.TypeMap,
 			Optional:    !isDataSource,
 			Computed:    isDataSource,
 			ForceNew:    !isDataSource,
-			Description: addForceNewDescription("Model parameters as a JSON string.", !isDataSource),
-			DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
-				return jsonEqual(old, new)
-			},
+			Elem:        &schema.Schema{Type: schema.TypeString},
+			Description: addForceNewDescription("Model parameters as a map of key-value pairs.", !isDataSource),
 		},
 		CUSTOM_PARAMS: {
-			Type:        schema.TypeString,
+			Type:        schema.TypeMap,
 			Optional:    !isDataSource,
 			Computed:    isDataSource,
 			ForceNew:    !isDataSource,
-			Description: addForceNewDescription("Custom model parameters as a JSON string.", !isDataSource),
-			DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
-				return jsonEqual(old, new)
-			},
+			Elem:        &schema.Schema{Type: schema.TypeString},
+			Description: addForceNewDescription("Custom model parameters as a map of key-value pairs.", !isDataSource),
 		},
 		TAGS: tagsSchema(tagsSchemaOptions{isDataSource: isDataSource}),
 		COST_PER_INPUT_TOKEN: {
@@ -156,18 +152,10 @@ func aiModelConfigRead(ctx context.Context, d *schema.ResourceData, metaRaw inte
 	}
 
 	if modelConfig.Params != nil {
-		paramsJSON, err := jsonMarshal(modelConfig.Params)
-		if err != nil {
-			return diag.FromErr(err)
-		}
-		_ = d.Set(PARAMS, paramsJSON)
+		_ = d.Set(PARAMS, flattenParams(modelConfig.Params))
 	}
 	if modelConfig.CustomParams != nil {
-		customParamsJSON, err := jsonMarshal(modelConfig.CustomParams)
-		if err != nil {
-			return diag.FromErr(err)
-		}
-		_ = d.Set(CUSTOM_PARAMS, customParamsJSON)
+		_ = d.Set(CUSTOM_PARAMS, flattenParams(modelConfig.CustomParams))
 	}
 
 	d.SetId(projectKey + "/" + key)
@@ -182,4 +170,21 @@ func aiModelConfigIdToKeys(id string) (projectKey string, modelConfigKey string,
 	parts := strings.SplitN(id, "/", 2)
 	projectKey, modelConfigKey = parts[0], parts[1]
 	return projectKey, modelConfigKey, nil
+}
+
+func flattenParams(params map[string]interface{}) map[string]string {
+	result := make(map[string]string)
+	for k, v := range params {
+		if v != nil {
+			result[k] = fmt.Sprintf("%v", v)
+		}
+	}
+	return result
+}
+
+func expandParams(params map[string]interface{}) map[string]interface{} {
+	if params == nil {
+		return nil
+	}
+	return params
 }

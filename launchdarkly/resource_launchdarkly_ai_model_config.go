@@ -2,7 +2,6 @@ package launchdarkly
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
@@ -59,20 +58,12 @@ func resourceAIModelConfigCreate(ctx context.Context, d *schema.ResourceData, me
 		Tags:     tags,
 	}
 
-	if paramsStr, ok := d.GetOk(PARAMS); ok {
-		var params map[string]interface{}
-		if err := json.Unmarshal([]byte(paramsStr.(string)), &params); err != nil {
-			return diag.FromErr(fmt.Errorf("failed to parse params JSON: %w", err))
-		}
-		modelConfig.Params = params
+	if params, ok := d.GetOk(PARAMS); ok {
+		modelConfig.Params = expandParams(params.(map[string]interface{}))
 	}
 
-	if customParamsStr, ok := d.GetOk(CUSTOM_PARAMS); ok {
-		var customParams map[string]interface{}
-		if err := json.Unmarshal([]byte(customParamsStr.(string)), &customParams); err != nil {
-			return diag.FromErr(fmt.Errorf("failed to parse custom_params JSON: %w", err))
-		}
-		modelConfig.CustomParams = customParams
+	if customParams, ok := d.GetOk(CUSTOM_PARAMS); ok {
+		modelConfig.CustomParams = expandParams(customParams.(map[string]interface{}))
 	}
 
 	if costPerInputToken, ok := d.GetOk(COST_PER_INPUT_TOKEN); ok {
