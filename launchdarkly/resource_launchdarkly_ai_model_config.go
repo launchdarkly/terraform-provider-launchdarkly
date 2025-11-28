@@ -45,7 +45,7 @@ func resourceAIModelConfigCreate(ctx context.Context, d *schema.ResourceData, me
 	key := d.Get(KEY).(string)
 	name := d.Get(NAME).(string)
 	id := d.Get(ID).(string)
-	provider := d.Get(PROVIDER).(string)
+	provider := d.Get(MODEL_PROVIDER).(string)
 	icon := d.Get(ICON).(string)
 	tags := stringsFromResourceData(d, TAGS)
 

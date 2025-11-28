@@ -96,7 +96,7 @@ const (
 	PREREQUISITES                    = "prerequisites"
 	PROJECT_KEY                      = "project_key"
 	PROJECT_KEYS                     = "project_keys"
-	PROVIDER                         = "provider"
+	MODEL_PROVIDER                   = "model_provider"
 	RANDOMIZATION_UNITS              = "randomization_units"
 	REQUIRED                         = "required"
 	REQUIRED_APPROVAL_TAGS           = "required_approval_tags"

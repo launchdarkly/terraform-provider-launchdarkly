@@ -42,7 +42,7 @@ func baseAIModelConfigSchema(isDataSource bool) map[string]*schema.Schema {
 			ForceNew:    !isDataSource,
 			Description: addForceNewDescription("Identifier for the model, for use with third party providers.", !isDataSource),
 		},
-		PROVIDER: {
+		MODEL_PROVIDER: {
 			Type:        schema.TypeString,
 			Optional:    !isDataSource,
 			Computed:    isDataSource,
@@ -99,6 +99,10 @@ func baseAIModelConfigSchema(isDataSource bool) map[string]*schema.Schema {
 		},
 	}
 
+	if !isDataSource {
+		schemaMap[TAGS].ForceNew = true
+	}
+
 	if isDataSource {
 		return removeInvalidFieldsForDataSource(schemaMap)
 	}
@@ -138,7 +142,7 @@ func aiModelConfigRead(ctx context.Context, d *schema.ResourceData, metaRaw inte
 	_ = d.Set(KEY, modelConfig.Key)
 	_ = d.Set(NAME, modelConfig.Name)
 	_ = d.Set(ID, modelConfig.Id)
-	_ = d.Set(PROVIDER, modelConfig.Provider)
+	_ = d.Set(MODEL_PROVIDER, modelConfig.Provider)
 	_ = d.Set(ICON, modelConfig.Icon)
 	_ = d.Set(TAGS, modelConfig.Tags)
 	_ = d.Set(VERSION, modelConfig.Version)
