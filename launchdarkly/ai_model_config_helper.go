@@ -17,14 +17,14 @@ func baseAIModelConfigSchema(isDataSource bool) map[string]*schema.Schema {
 		PROJECT_KEY: {
 			Type:             schema.TypeString,
 			Required:         true,
-			ForceNew:         true,
+			ForceNew:         !isDataSource,
 			Description:      addForceNewDescription("The AI model config's project key. A change in this field will force the destruction of the existing resource and the creation of a new one.", !isDataSource),
 			ValidateDiagFunc: validateKey(),
 		},
 		KEY: {
 			Type:             schema.TypeString,
 			Required:         true,
-			ForceNew:         true,
+			ForceNew:         !isDataSource,
 			ValidateDiagFunc: validateKey(),
 			Description:      addForceNewDescription("The unique key that references the AI model config. A change in this field will force the destruction of the existing resource and the creation of a new one.", !isDataSource),
 		},
@@ -157,9 +157,13 @@ func aiModelConfigRead(ctx context.Context, d *schema.ResourceData, metaRaw inte
 
 	if modelConfig.Params != nil {
 		_ = d.Set(PARAMS, flattenParams(modelConfig.Params))
+	} else {
+		_ = d.Set(PARAMS, map[string]string{})
 	}
 	if modelConfig.CustomParams != nil {
 		_ = d.Set(CUSTOM_PARAMS, flattenParams(modelConfig.CustomParams))
+	} else {
+		_ = d.Set(CUSTOM_PARAMS, map[string]string{})
 	}
 
 	d.SetId(projectKey + "/" + key)
