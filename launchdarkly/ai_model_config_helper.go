@@ -91,7 +91,6 @@ func baseAIModelConfigSchema(isDataSource bool) map[string]*schema.Schema {
 		},
 	}
 
-
 	if isDataSource {
 		return removeInvalidFieldsForDataSource(schemaMap)
 	}

@@ -130,5 +130,3 @@ func TestAccDataSourceAIModelConfig_exists(t *testing.T) {
 		},
 	})
 }
-
-
