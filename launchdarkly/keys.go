@@ -80,6 +80,7 @@ const (
 	MIN_NUM_APPROVALS                = "min_num_approvals"
 	MOBILE_KEY                       = "mobile_key"
 	MODEL_CONFIG_KEY                 = "model_config_key"
+	MODEL_ID                         = "model_id"
 	NAME                             = "name"
 	NEGATE                           = "negate"
 	NOT_ACTIONS                      = "not_actions"

@@ -15,7 +15,7 @@ resource "launchdarkly_ai_model_config" "basic" {
 	project_key = launchdarkly_project.test.key
 	key         = "basic-ai-model"
 	name        = "Basic AI Model"
-	id          = "gpt-4"
+	model_id    = "gpt-4"
 }
 `
 	testAccAIModelConfigFull = `
@@ -23,7 +23,7 @@ resource "launchdarkly_ai_model_config" "full" {
 	project_key          = launchdarkly_project.test.key
 	key                  = "full-ai-model"
 	name                 = "Full AI Model"
-	id                   = "gpt-4-turbo"
+	model_id             = "gpt-4-turbo"
 	model_provider       = "openai"
 	icon                 = "openai-icon"
 	tags                 = ["test", "ai"]
@@ -56,7 +56,7 @@ func TestAccAIModelConfig_BasicCreate(t *testing.T) {
 					testAccCheckAIModelConfigExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, KEY, "basic-ai-model"),
 					resource.TestCheckResourceAttr(resourceName, NAME, "Basic AI Model"),
-					resource.TestCheckResourceAttr(resourceName, ID, "gpt-4"),
+					resource.TestCheckResourceAttr(resourceName, MODEL_ID, "gpt-4"),
 					resource.TestCheckResourceAttr(resourceName, PROJECT_KEY, projectKey),
 					resource.TestCheckResourceAttrSet(resourceName, VERSION),
 				),
@@ -86,7 +86,7 @@ func TestAccAIModelConfig_FullCreate(t *testing.T) {
 					testAccCheckAIModelConfigExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, KEY, "full-ai-model"),
 					resource.TestCheckResourceAttr(resourceName, NAME, "Full AI Model"),
-					resource.TestCheckResourceAttr(resourceName, ID, "gpt-4-turbo"),
+					resource.TestCheckResourceAttr(resourceName, MODEL_ID, "gpt-4-turbo"),
 					resource.TestCheckResourceAttr(resourceName, PROJECT_KEY, projectKey),
 					resource.TestCheckResourceAttr(resourceName, MODEL_PROVIDER, "openai"),
 					resource.TestCheckResourceAttr(resourceName, ICON, "openai-icon"),
@@ -117,7 +117,7 @@ resource "launchdarkly_ai_model_config" "basic" {
 	project_key = launchdarkly_project.test.key
 	key         = "ai-model-v1"
 	name        = "AI Model V1"
-	id          = "gpt-4"
+	model_id    = "gpt-4"
 }
 `
 	config2 := `
@@ -125,7 +125,7 @@ resource "launchdarkly_ai_model_config" "basic" {
 	project_key = launchdarkly_project.test.key
 	key         = "ai-model-v2"
 	name        = "AI Model V2"
-	id          = "gpt-4"
+	model_id    = "gpt-4"
 }
 `
 
@@ -172,7 +172,7 @@ func testAccCheckAIModelConfigExists(resourceName string) resource.TestCheckFunc
 			return fmt.Errorf("project key not found: %s", resourceName)
 		}
 		client := testAccProvider.Meta().(*Client)
-		_, _, err := client.ld.AIConfigsBetaApi.GetModelConfig(client.ctx, projKey, aiModelConfigKey).Execute()
+		_, _, err := client.ldBeta.AIConfigsBetaApi.GetModelConfig(client.ctx, projKey, aiModelConfigKey).LDAPIVersion("beta").Execute()
 		if err != nil {
 			return fmt.Errorf("received an error getting AI model config. %s", err)
 		}

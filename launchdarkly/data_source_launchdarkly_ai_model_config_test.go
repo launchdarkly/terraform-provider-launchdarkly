@@ -31,7 +31,7 @@ func testAccDataSourceAIModelConfigScaffold(client *Client, projectKey string, m
 		return nil, err
 	}
 
-	modelConfig, _, err := client.ld.AIConfigsBetaApi.PostModelConfig(client.ctx, projectKey).ModelConfigPost(modelConfigBody).Execute()
+	modelConfig, _, err := client.ldBeta.AIConfigsBetaApi.PostModelConfig(client.ctx, projectKey).LDAPIVersion("beta").ModelConfigPost(modelConfigBody).Execute()
 	if err != nil {
 		return nil, err
 	}
@@ -121,7 +121,7 @@ func TestAccDataSourceAIModelConfig_exists(t *testing.T) {
 					resource.TestCheckResourceAttrSet(resourceName, PROJECT_KEY),
 					resource.TestCheckResourceAttr(resourceName, KEY, modelConfig.Key),
 					resource.TestCheckResourceAttr(resourceName, NAME, modelConfig.Name),
-					resource.TestCheckResourceAttr(resourceName, ID, modelConfig.Id),
+					resource.TestCheckResourceAttr(resourceName, MODEL_ID, modelConfig.Id),
 					resource.TestCheckResourceAttr(resourceName, MODEL_PROVIDER, *modelConfig.Provider),
 					resource.TestCheckResourceAttr(resourceName, ICON, *modelConfig.Icon),
 					resource.TestCheckResourceAttr(resourceName, "tags.#", "2"),

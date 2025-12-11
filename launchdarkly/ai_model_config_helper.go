@@ -35,7 +35,7 @@ func baseAIModelConfigSchema(isDataSource bool) map[string]*schema.Schema {
 			ForceNew:    !isDataSource,
 			Description: addForceNewDescription("The human-friendly name for the AI model config.", !isDataSource),
 		},
-		ID: {
+		MODEL_ID: {
 			Type:        schema.TypeString,
 			Required:    !isDataSource,
 			Computed:    isDataSource,
@@ -122,7 +122,7 @@ func aiModelConfigRead(ctx context.Context, d *schema.ResourceData, metaRaw inte
 	var res *http.Response
 	var err error
 	err = client.withConcurrency(client.ctx, func() error {
-		modelConfig, res, err = client.ld.AIConfigsBetaApi.GetModelConfig(client.ctx, projectKey, key).Execute()
+		modelConfig, res, err = client.ldBeta.AIConfigsBetaApi.GetModelConfig(client.ctx, projectKey, key).LDAPIVersion("beta").Execute()
 		return err
 	})
 
@@ -141,7 +141,7 @@ func aiModelConfigRead(ctx context.Context, d *schema.ResourceData, metaRaw inte
 
 	_ = d.Set(KEY, modelConfig.Key)
 	_ = d.Set(NAME, modelConfig.Name)
-	_ = d.Set(ID, modelConfig.Id)
+	_ = d.Set(MODEL_ID, modelConfig.Id)
 	_ = d.Set(MODEL_PROVIDER, modelConfig.Provider)
 	_ = d.Set(ICON, modelConfig.Icon)
 	_ = d.Set(TAGS, modelConfig.Tags)

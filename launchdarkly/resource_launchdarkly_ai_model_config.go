@@ -44,7 +44,7 @@ func resourceAIModelConfigCreate(ctx context.Context, d *schema.ResourceData, me
 
 	key := d.Get(KEY).(string)
 	name := d.Get(NAME).(string)
-	id := d.Get(ID).(string)
+	modelId := d.Get(MODEL_ID).(string)
 	provider := d.Get(MODEL_PROVIDER).(string)
 	icon := d.Get(ICON).(string)
 	tags := stringsFromResourceData(d, TAGS)
@@ -52,7 +52,7 @@ func resourceAIModelConfigCreate(ctx context.Context, d *schema.ResourceData, me
 	modelConfig := ldapi.ModelConfigPost{
 		Key:      key,
 		Name:     name,
-		Id:       id,
+		Id:       modelId,
 		Provider: &provider,
 		Icon:     &icon,
 		Tags:     tags,
@@ -78,7 +78,7 @@ func resourceAIModelConfigCreate(ctx context.Context, d *schema.ResourceData, me
 
 	var err error
 	err = client.withConcurrency(client.ctx, func() error {
-		_, _, err = client.ld.AIConfigsBetaApi.PostModelConfig(client.ctx, projectKey).ModelConfigPost(modelConfig).Execute()
+		_, _, err = client.ldBeta.AIConfigsBetaApi.PostModelConfig(client.ctx, projectKey).LDAPIVersion("beta").ModelConfigPost(modelConfig).Execute()
 		return err
 	})
 
@@ -109,7 +109,7 @@ func resourceAIModelConfigDelete(ctx context.Context, d *schema.ResourceData, me
 
 	var err error
 	err = client.withConcurrency(client.ctx, func() error {
-		_, err = client.ld.AIConfigsBetaApi.DeleteModelConfig(client.ctx, projectKey, key).Execute()
+		_, err = client.ldBeta.AIConfigsBetaApi.DeleteModelConfig(client.ctx, projectKey, key).LDAPIVersion("beta").Execute()
 		return err
 	})
 	if err != nil {
