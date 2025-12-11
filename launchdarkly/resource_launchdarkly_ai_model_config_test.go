@@ -2,6 +2,7 @@ package launchdarkly
 
 import (
 	"fmt"
+	"regexp"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/acctest"
@@ -116,7 +117,7 @@ func TestAccAIModelConfig_ForceNewOnKeyChange(t *testing.T) {
 resource "launchdarkly_ai_model_config" "basic" {
 	project_key = launchdarkly_project.test.key
 	key         = "ai-model-v1"
-	name        = "AI Model V1"
+	name        = "AI Model"
 	model_id    = "gpt-4"
 }
 `
@@ -124,7 +125,7 @@ resource "launchdarkly_ai_model_config" "basic" {
 resource "launchdarkly_ai_model_config" "basic" {
 	project_key = launchdarkly_project.test.key
 	key         = "ai-model-v2"
-	name        = "AI Model V2"
+	name        = "AI Model"
 	model_id    = "gpt-4"
 }
 `
@@ -141,7 +142,7 @@ resource "launchdarkly_ai_model_config" "basic" {
 					testAccCheckProjectExists("launchdarkly_project.test"),
 					testAccCheckAIModelConfigExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, KEY, "ai-model-v1"),
-					resource.TestCheckResourceAttr(resourceName, NAME, "AI Model V1"),
+					resource.TestCheckResourceAttr(resourceName, NAME, "AI Model"),
 				),
 			},
 			{
@@ -150,7 +151,7 @@ resource "launchdarkly_ai_model_config" "basic" {
 					testAccCheckProjectExists("launchdarkly_project.test"),
 					testAccCheckAIModelConfigExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, KEY, "ai-model-v2"),
-					resource.TestCheckResourceAttr(resourceName, NAME, "AI Model V2"),
+					resource.TestCheckResourceAttr(resourceName, NAME, "AI Model"),
 				),
 			},
 		},
@@ -180,4 +181,182 @@ func testAccCheckAIModelConfigExists(resourceName string) resource.TestCheckFunc
 	}
 }
 
+func TestAccAIModelConfig_ImmutableName(t *testing.T) {
+	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	resourceName := "launchdarkly_ai_model_config.test"
 
+	config1 := `
+resource "launchdarkly_ai_model_config" "test" {
+	project_key = launchdarkly_project.test.key
+	key         = "immutable-test"
+	name        = "Original Name"
+	model_id    = "gpt-4"
+}
+`
+	config2 := `
+resource "launchdarkly_ai_model_config" "test" {
+	project_key = launchdarkly_project.test.key
+	key         = "immutable-test"
+	name        = "Changed Name"
+	model_id    = "gpt-4"
+}
+`
+
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck: func() {
+			testAccPreCheck(t)
+		},
+		Providers: testAccProviders,
+		Steps: []resource.TestStep{
+			{
+				Config: withRandomProject(projectKey, config1),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckProjectExists("launchdarkly_project.test"),
+					testAccCheckAIModelConfigExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, NAME, "Original Name"),
+				),
+			},
+			{
+				Config:      withRandomProject(projectKey, config2),
+				ExpectError: regexp.MustCompile(`AI model config resources are immutable. The field "name" cannot be changed after creation`),
+			},
+		},
+	})
+}
+
+func TestAccAIModelConfig_ImmutableModelId(t *testing.T) {
+	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	resourceName := "launchdarkly_ai_model_config.test"
+
+	config1 := `
+resource "launchdarkly_ai_model_config" "test" {
+	project_key = launchdarkly_project.test.key
+	key         = "immutable-model-id-test"
+	name        = "Test Model"
+	model_id    = "gpt-4"
+}
+`
+	config2 := `
+resource "launchdarkly_ai_model_config" "test" {
+	project_key = launchdarkly_project.test.key
+	key         = "immutable-model-id-test"
+	name        = "Test Model"
+	model_id    = "gpt-4-turbo"
+}
+`
+
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck: func() {
+			testAccPreCheck(t)
+		},
+		Providers: testAccProviders,
+		Steps: []resource.TestStep{
+			{
+				Config: withRandomProject(projectKey, config1),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckProjectExists("launchdarkly_project.test"),
+					testAccCheckAIModelConfigExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, MODEL_ID, "gpt-4"),
+				),
+			},
+			{
+				Config:      withRandomProject(projectKey, config2),
+				ExpectError: regexp.MustCompile(`AI model config resources are immutable. The field "model_id" cannot be changed after creation`),
+			},
+		},
+	})
+}
+
+func TestAccAIModelConfig_ImmutableTags(t *testing.T) {
+	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	resourceName := "launchdarkly_ai_model_config.test"
+
+	config1 := `
+resource "launchdarkly_ai_model_config" "test" {
+	project_key = launchdarkly_project.test.key
+	key         = "immutable-tags-test"
+	name        = "Test Model"
+	model_id    = "gpt-4"
+	tags        = ["original"]
+}
+`
+	config2 := `
+resource "launchdarkly_ai_model_config" "test" {
+	project_key = launchdarkly_project.test.key
+	key         = "immutable-tags-test"
+	name        = "Test Model"
+	model_id    = "gpt-4"
+	tags        = ["changed"]
+}
+`
+
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck: func() {
+			testAccPreCheck(t)
+		},
+		Providers: testAccProviders,
+		Steps: []resource.TestStep{
+			{
+				Config: withRandomProject(projectKey, config1),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckProjectExists("launchdarkly_project.test"),
+					testAccCheckAIModelConfigExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, "tags.#", "1"),
+				),
+			},
+			{
+				Config:      withRandomProject(projectKey, config2),
+				ExpectError: regexp.MustCompile(`AI model config resources are immutable. The field "tags" cannot be changed after creation`),
+			},
+		},
+	})
+}
+
+func TestAccAIModelConfig_ImmutableParams(t *testing.T) {
+	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	resourceName := "launchdarkly_ai_model_config.test"
+
+	config1 := `
+resource "launchdarkly_ai_model_config" "test" {
+	project_key = launchdarkly_project.test.key
+	key         = "immutable-params-test"
+	name        = "Test Model"
+	model_id    = "gpt-4"
+	params = {
+		temperature = "0.7"
+	}
+}
+`
+	config2 := `
+resource "launchdarkly_ai_model_config" "test" {
+	project_key = launchdarkly_project.test.key
+	key         = "immutable-params-test"
+	name        = "Test Model"
+	model_id    = "gpt-4"
+	params = {
+		temperature = "0.9"
+	}
+}
+`
+
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck: func() {
+			testAccPreCheck(t)
+		},
+		Providers: testAccProviders,
+		Steps: []resource.TestStep{
+			{
+				Config: withRandomProject(projectKey, config1),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckProjectExists("launchdarkly_project.test"),
+					testAccCheckAIModelConfigExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, "params.temperature", "0.7"),
+				),
+			},
+			{
+				Config:      withRandomProject(projectKey, config2),
+				ExpectError: regexp.MustCompile(`AI model config resources are immutable. The field "params" cannot be changed after creation`),
+			},
+		},
+	})
+}

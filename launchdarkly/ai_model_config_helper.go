@@ -32,60 +32,52 @@ func baseAIModelConfigSchema(isDataSource bool) map[string]*schema.Schema {
 			Type:        schema.TypeString,
 			Required:    !isDataSource,
 			Computed:    isDataSource,
-			ForceNew:    !isDataSource,
-			Description: addForceNewDescription("The human-friendly name for the AI model config.", !isDataSource),
+			Description: "The human-friendly name for the AI model config.",
 		},
 		MODEL_ID: {
 			Type:        schema.TypeString,
 			Required:    !isDataSource,
 			Computed:    isDataSource,
-			ForceNew:    !isDataSource,
-			Description: addForceNewDescription("Identifier for the model, for use with third party providers.", !isDataSource),
+			Description: "Identifier for the model, for use with third party providers.",
 		},
 		MODEL_PROVIDER: {
 			Type:        schema.TypeString,
 			Optional:    !isDataSource,
 			Computed:    isDataSource,
-			ForceNew:    !isDataSource,
-			Description: addForceNewDescription("Provider for the model.", !isDataSource),
+			Description: "Provider for the model.",
 		},
 		ICON: {
 			Type:        schema.TypeString,
 			Optional:    !isDataSource,
 			Computed:    isDataSource,
-			ForceNew:    !isDataSource,
-			Description: addForceNewDescription("Icon for the model.", !isDataSource),
+			Description: "Icon for the model.",
 		},
 		PARAMS: {
 			Type:        schema.TypeMap,
 			Optional:    !isDataSource,
 			Computed:    isDataSource,
-			ForceNew:    !isDataSource,
 			Elem:        &schema.Schema{Type: schema.TypeString},
-			Description: addForceNewDescription("Model parameters as a map of key-value pairs.", !isDataSource),
+			Description: "Model parameters as a map of key-value pairs.",
 		},
 		CUSTOM_PARAMS: {
 			Type:        schema.TypeMap,
 			Optional:    !isDataSource,
 			Computed:    isDataSource,
-			ForceNew:    !isDataSource,
 			Elem:        &schema.Schema{Type: schema.TypeString},
-			Description: addForceNewDescription("Custom model parameters as a map of key-value pairs.", !isDataSource),
+			Description: "Custom model parameters as a map of key-value pairs.",
 		},
 		TAGS: tagsSchema(tagsSchemaOptions{isDataSource: isDataSource}),
 		COST_PER_INPUT_TOKEN: {
 			Type:        schema.TypeFloat,
 			Optional:    !isDataSource,
 			Computed:    isDataSource,
-			ForceNew:    !isDataSource,
-			Description: addForceNewDescription("Cost per input token in USD.", !isDataSource),
+			Description: "Cost per input token in USD.",
 		},
 		COST_PER_OUTPUT_TOKEN: {
 			Type:        schema.TypeFloat,
 			Optional:    !isDataSource,
 			Computed:    isDataSource,
-			ForceNew:    !isDataSource,
-			Description: addForceNewDescription("Cost per output token in USD.", !isDataSource),
+			Description: "Cost per output token in USD.",
 		},
 		VERSION: {
 			Type:        schema.TypeInt,
@@ -99,9 +91,6 @@ func baseAIModelConfigSchema(isDataSource bool) map[string]*schema.Schema {
 		},
 	}
 
-	if !isDataSource {
-		schemaMap[TAGS].ForceNew = true
-	}
 
 	if isDataSource {
 		return removeInvalidFieldsForDataSource(schemaMap)

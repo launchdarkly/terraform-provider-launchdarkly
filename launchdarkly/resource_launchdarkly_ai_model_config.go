@@ -14,18 +14,47 @@ func resourceAIModelConfig() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: resourceAIModelConfigCreate,
 		ReadContext:   resourceAIModelConfigRead,
+		UpdateContext: resourceAIModelConfigUpdate,
 		DeleteContext: resourceAIModelConfigDelete,
 		Schema:        baseAIModelConfigSchema(false),
 		Importer: &schema.ResourceImporter{
 			State: resourceAIModelConfigImport,
 		},
+		CustomizeDiff: validateAIModelConfigImmutable,
 
 		Description: `Provides a LaunchDarkly AI model config resource.
 
 This resource allows you to create and manage AI model configs within your LaunchDarkly organization.
 
-~> **Note:** AI model configs cannot be updated after creation. Any changes will force the destruction and recreation of the resource.`,
+~> **Note:** AI model configs are immutable. Any changes to the configuration will result in an error. To modify an AI model config, you must delete and recreate the resource.`,
 	}
+}
+
+func validateAIModelConfigImmutable(ctx context.Context, d *schema.ResourceDiff, meta interface{}) error {
+	// Only validate on updates, not on initial creation
+	if d.Id() == "" {
+		return nil
+	}
+
+	immutableFields := []string{
+		NAME,
+		MODEL_ID,
+		MODEL_PROVIDER,
+		ICON,
+		PARAMS,
+		CUSTOM_PARAMS,
+		TAGS,
+		COST_PER_INPUT_TOKEN,
+		COST_PER_OUTPUT_TOKEN,
+	}
+
+	for _, field := range immutableFields {
+		if d.HasChange(field) {
+			return fmt.Errorf("AI model config resources are immutable. The field %q cannot be changed after creation. To modify this value, delete and recreate the resource", field)
+		}
+	}
+
+	return nil
 }
 
 func resourceAIModelConfigCreate(ctx context.Context, d *schema.ResourceData, metaRaw interface{}) diag.Diagnostics {
@@ -98,6 +127,13 @@ func resourceAIModelConfigCreate(ctx context.Context, d *schema.ResourceData, me
 
 func resourceAIModelConfigRead(ctx context.Context, d *schema.ResourceData, metaRaw interface{}) diag.Diagnostics {
 	return aiModelConfigRead(ctx, d, metaRaw, false)
+}
+
+// resourceAIModelConfigUpdate always returns an error because AI model configs are immutable.
+// This function exists to satisfy Terraform SDK's internal validation requirements.
+// The CustomizeDiff should catch any changes during the plan phase before this is ever called.
+func resourceAIModelConfigUpdate(ctx context.Context, d *schema.ResourceData, metaRaw interface{}) diag.Diagnostics {
+	return diag.Errorf("AI model config resources are immutable and cannot be updated. To modify an AI model config, delete and recreate the resource")
 }
 
 func resourceAIModelConfigDelete(ctx context.Context, d *schema.ResourceData, metaRaw interface{}) diag.Diagnostics {
