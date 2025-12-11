@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
 
@@ -159,9 +160,9 @@ func resourceAIConfigRead(ctx context.Context, d *schema.ResourceData, metaRaw i
 	}
 
 	if err != nil && res != nil && res.StatusCode >= 200 && res.StatusCode < 300 && isMaintainerOneOfDecodeErr(err) {
-		name, description, tags, version, teamKey, memberID, parseErr := parseAIConfigFromError(err)
+		name, description, tags, version, teamKey, memberID, parseErr := parseAIConfigFromResponse(res)
 		if parseErr != nil {
-			return diag.Errorf("failed to parse AI config %q from error response: %s", key, parseErr)
+			return diag.Errorf("failed to parse AI config %q from response: %s", key, parseErr)
 		}
 
 		_ = d.Set(NAME, name)
@@ -324,22 +325,19 @@ func isMaintainerOneOfDecodeErr(err error) bool {
 		strings.Contains(errStr, "Data failed to match schemas")
 }
 
-func parseAIConfigFromError(err error) (name, description string, tags []string, version int32, teamKey, memberID *string, parseErr error) {
-	if err == nil {
-		return "", "", nil, 0, nil, nil, fmt.Errorf("no error provided")
+func parseAIConfigFromResponse(res *http.Response) (name, description string, tags []string, version int32, teamKey, memberID *string, parseErr error) {
+	if res == nil || res.Body == nil {
+		return "", "", nil, 0, nil, nil, fmt.Errorf("no response body available")
 	}
 
-	errStr := err.Error()
-	jsonStart := strings.Index(errStr, ": {")
-	if jsonStart == -1 {
-		return "", "", nil, 0, nil, nil, fmt.Errorf("could not find JSON payload in error")
+	body, err := io.ReadAll(res.Body)
+	if err != nil {
+		return "", "", nil, 0, nil, nil, fmt.Errorf("failed to read response body: %w", err)
 	}
-
-	jsonStr := errStr[jsonStart+2:] // Skip ": " to get the JSON
 
 	var data map[string]interface{}
-	if err := json.Unmarshal([]byte(jsonStr), &data); err != nil {
-		return "", "", nil, 0, nil, nil, fmt.Errorf("failed to parse JSON from error: %w", err)
+	if err := json.Unmarshal(body, &data); err != nil {
+		return "", "", nil, 0, nil, nil, fmt.Errorf("failed to parse JSON from response body: %w", err)
 	}
 
 	if n, ok := data["name"].(string); ok {
