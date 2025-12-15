@@ -2,7 +2,6 @@ package launchdarkly
 
 import (
 	"fmt"
-	"regexp"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/acctest"
@@ -39,34 +38,6 @@ resource "launchdarkly_ai_config" "test" {
 }
 `
 
-	testAccAIConfigWithTeamMaintainerFmt = `
-resource "launchdarkly_team" "test" {
-	key  = "%s"
-	name = "Test Team"
-}
-
-resource "launchdarkly_ai_config" "test" {
-	project_key         = launchdarkly_project.test.key
-	key                 = "test-ai-config"
-	name                = "Test AI Config"
-	maintainer_team_key = launchdarkly_team.test.key
-}
-`
-
-	testAccAIConfigConflictingMaintainersFmt = `
-resource "launchdarkly_team" "test" {
-	key  = "%s"
-	name = "Test Team"
-}
-
-resource "launchdarkly_ai_config" "test" {
-	project_key         = launchdarkly_project.test.key
-	key                 = "test-ai-config"
-	name                = "Test AI Config"
-	maintainer_id       = "507f1f77bcf86cd799439011"
-	maintainer_team_key = launchdarkly_team.test.key
-}
-`
 )
 
 func TestAccAIConfig_Create(t *testing.T) {
@@ -167,51 +138,6 @@ func TestAccAIConfig_WithTags(t *testing.T) {
 	})
 }
 
-func TestAccAIConfig_WithTeamMaintainer(t *testing.T) {
-	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
-	teamKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
-	resourceName := "launchdarkly_ai_config.test"
-	resource.ParallelTest(t, resource.TestCase{
-		PreCheck: func() {
-			testAccPreCheck(t)
-		},
-		Providers: testAccProviders,
-		Steps: []resource.TestStep{
-			{
-				Config: withRandomProject(projectKey, fmt.Sprintf(testAccAIConfigWithTeamMaintainerFmt, teamKey)),
-				Check: resource.ComposeTestCheckFunc(
-					testAccCheckProjectExists("launchdarkly_project.test"),
-					testAccCheckAIConfigExists(resourceName),
-					resource.TestCheckResourceAttr(resourceName, NAME, "Test AI Config"),
-					resource.TestCheckResourceAttr(resourceName, MAINTAINER_TEAM_KEY, teamKey),
-				),
-			},
-			{
-				ResourceName:      resourceName,
-				ImportState:       true,
-				ImportStateVerify: true,
-			},
-		},
-	})
-}
-
-func TestAccAIConfig_ConflictingMaintainers(t *testing.T) {
-	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
-	teamKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
-	resource.ParallelTest(t, resource.TestCase{
-		PreCheck: func() {
-			testAccPreCheck(t)
-		},
-		Providers: testAccProviders,
-		Steps: []resource.TestStep{
-			{
-				Config:      withRandomProject(projectKey, fmt.Sprintf(testAccAIConfigConflictingMaintainersFmt, teamKey)),
-				ExpectError: regexp.MustCompile(`(?i)maintainer_id.*conflicts.*maintainer_team_key`),
-			},
-		},
-	})
-}
-
 func testAccCheckAIConfigExists(resourceName string) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
 		rs, ok := s.RootModule().Resources[resourceName]
@@ -226,7 +152,7 @@ func testAccCheckAIConfigExists(resourceName string) resource.TestCheckFunc {
 		if err != nil {
 			return err
 		}
-		_, _, err = client.ld.AIConfigsBetaApi.GetAIConfig(client.ctx, projectKey, key).Execute()
+		_, _, err = client.ldBeta.AIConfigsBetaApi.GetAIConfig(client.ctx, projectKey, key).LDAPIVersion("beta").Execute()
 		if err != nil {
 			return fmt.Errorf("received an error getting AI config: %s", err)
 		}

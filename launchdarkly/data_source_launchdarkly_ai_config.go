@@ -5,6 +5,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	ldapi "github.com/launchdarkly/api-client-go/v17"
 )
 
 func dataSourceAIConfig() *schema.Resource {
@@ -62,8 +63,37 @@ This data source allows you to retrieve AI Config information from your LaunchDa
 }
 
 func dataSourceAIConfigRead(ctx context.Context, d *schema.ResourceData, metaRaw interface{}) diag.Diagnostics {
+	var diags diag.Diagnostics
+
+	client := metaRaw.(*Client)
 	projectKey := d.Get(PROJECT_KEY).(string)
 	key := d.Get(KEY).(string)
+
+	var aiConfig *ldapi.AIConfig
+	var err error
+	err = client.withConcurrency(ctx, func() error {
+		aiConfig, _, err = client.ldBeta.AIConfigsBetaApi.GetAIConfig(client.ctx, projectKey, key).LDAPIVersion("beta").Execute()
+		return err
+	})
+
+	if err != nil {
+		return diag.Errorf("failed to get AI config %q in project %q: %s", key, projectKey, handleLdapiErr(err))
+	}
+
 	d.SetId(projectKey + "/" + key)
-	return resourceAIConfigRead(ctx, d, metaRaw)
+	_ = d.Set(NAME, aiConfig.Name)
+	_ = d.Set(DESCRIPTION, aiConfig.Description)
+	_ = d.Set(TAGS, aiConfig.Tags)
+	_ = d.Set(VERSION, aiConfig.Version)
+
+	if aiConfig.Maintainer != nil {
+		if aiConfig.Maintainer.MaintainerMember != nil {
+			_ = d.Set(MAINTAINER_ID, aiConfig.Maintainer.MaintainerMember.Id)
+		}
+		if aiConfig.Maintainer.AiConfigsMaintainerTeam != nil {
+			_ = d.Set(MAINTAINER_TEAM_KEY, aiConfig.Maintainer.AiConfigsMaintainerTeam.Key)
+		}
+	}
+
+	return diags
 }
