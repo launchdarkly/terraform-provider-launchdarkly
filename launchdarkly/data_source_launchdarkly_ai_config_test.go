@@ -24,7 +24,6 @@ data "launchdarkly_ai_config" "test" {
 	key         = launchdarkly_ai_config.test.key
 }
 `
-
 )
 
 func TestAccDataSourceAIConfig_exists(t *testing.T) {

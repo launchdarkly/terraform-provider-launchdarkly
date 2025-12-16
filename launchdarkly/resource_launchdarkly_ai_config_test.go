@@ -37,7 +37,6 @@ resource "launchdarkly_ai_config" "test" {
 	tags        = ["terraform", "test"]
 }
 `
-
 )
 
 func TestAccAIConfig_Create(t *testing.T) {
