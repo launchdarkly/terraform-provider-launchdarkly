@@ -2,6 +2,7 @@ package launchdarkly
 
 import (
 	"context"
+	"net/http"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -70,12 +71,38 @@ func dataSourceAIConfigRead(ctx context.Context, d *schema.ResourceData, metaRaw
 	key := d.Get(KEY).(string)
 
 	var aiConfig *ldapi.AIConfig
+	var res *http.Response
 	var err error
 	err = client.withConcurrency(ctx, func() error {
-		aiConfig, _, err = client.ldBeta.AIConfigsBetaApi.GetAIConfig(client.ctx, projectKey, key).LDAPIVersion("beta").Execute()
+		aiConfig, res, err = client.ldBeta.AIConfigsBetaApi.GetAIConfig(client.ctx, projectKey, key).LDAPIVersion("beta").Execute()
 		return err
 	})
 
+	if isStatusNotFound(res) {
+		return diag.Errorf("failed to get AI config %q in project %q: not found", key, projectKey)
+	}
+
+	if err != nil && res != nil && res.StatusCode >= 200 && res.StatusCode < 300 && isMaintainerOneOfDecodeErr(err) {
+		name, description, tags, version, teamKey, memberID, parseErr := parseAIConfigFromResponse(res)
+		if parseErr != nil {
+			return diag.Errorf("failed to parse AI config %q from response: %s", key, parseErr)
+		}
+
+		d.SetId(projectKey + "/" + key)
+		_ = d.Set(NAME, name)
+		_ = d.Set(DESCRIPTION, description)
+		_ = d.Set(TAGS, tags)
+		_ = d.Set(VERSION, version)
+
+		if teamKey != nil {
+			_ = d.Set(MAINTAINER_TEAM_KEY, *teamKey)
+		}
+		if memberID != nil {
+			_ = d.Set(MAINTAINER_ID, *memberID)
+		}
+
+		return diags
+	}
 	if err != nil {
 		return diag.Errorf("failed to get AI config %q in project %q: %s", key, projectKey, handleLdapiErr(err))
 	}
