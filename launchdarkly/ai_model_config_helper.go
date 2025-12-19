@@ -110,7 +110,7 @@ func aiModelConfigRead(ctx context.Context, d *schema.ResourceData, metaRaw inte
 	var res *http.Response
 	var err error
 	err = client.withConcurrency(client.ctx, func() error {
-		modelConfig, res, err = client.ldBeta.AIConfigsBetaApi.GetModelConfig(client.ctx, projectKey, key).LDAPIVersion("beta").Execute()
+		modelConfig, res, err = client.ld.AIConfigsBetaApi.GetModelConfig(client.ctx, projectKey, key).Execute()
 		return err
 	})
 

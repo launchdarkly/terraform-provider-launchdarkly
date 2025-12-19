@@ -107,7 +107,7 @@ func resourceAIModelConfigCreate(ctx context.Context, d *schema.ResourceData, me
 
 	var err error
 	err = client.withConcurrency(client.ctx, func() error {
-		_, _, err = client.ldBeta.AIConfigsBetaApi.PostModelConfig(client.ctx, projectKey).LDAPIVersion("beta").ModelConfigPost(modelConfig).Execute()
+		_, _, err = client.ld.AIConfigsBetaApi.PostModelConfig(client.ctx, projectKey).ModelConfigPost(modelConfig).Execute()
 		return err
 	})
 
@@ -145,7 +145,7 @@ func resourceAIModelConfigDelete(ctx context.Context, d *schema.ResourceData, me
 
 	var err error
 	err = client.withConcurrency(client.ctx, func() error {
-		_, err = client.ldBeta.AIConfigsBetaApi.DeleteModelConfig(client.ctx, projectKey, key).LDAPIVersion("beta").Execute()
+		_, err = client.ld.AIConfigsBetaApi.DeleteModelConfig(client.ctx, projectKey, key).Execute()
 		return err
 	})
 	if err != nil {

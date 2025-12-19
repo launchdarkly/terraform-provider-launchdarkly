@@ -173,7 +173,7 @@ func testAccCheckAIModelConfigExists(resourceName string) resource.TestCheckFunc
 			return fmt.Errorf("project key not found: %s", resourceName)
 		}
 		client := testAccProvider.Meta().(*Client)
-		_, _, err := client.ldBeta.AIConfigsBetaApi.GetModelConfig(client.ctx, projKey, aiModelConfigKey).LDAPIVersion("beta").Execute()
+		_, _, err := client.ld.AIConfigsBetaApi.GetModelConfig(client.ctx, projKey, aiModelConfigKey).Execute()
 		if err != nil {
 			return fmt.Errorf("received an error getting AI model config. %s", err)
 		}

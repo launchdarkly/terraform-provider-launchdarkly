@@ -31,7 +31,7 @@ func testAccDataSourceAIModelConfigScaffold(client *Client, projectKey string, m
 		return nil, err
 	}
 
-	modelConfig, _, err := client.ldBeta.AIConfigsBetaApi.PostModelConfig(client.ctx, projectKey).LDAPIVersion("beta").ModelConfigPost(modelConfigBody).Execute()
+	modelConfig, _, err := client.ld.AIConfigsBetaApi.PostModelConfig(client.ctx, projectKey).ModelConfigPost(modelConfigBody).Execute()
 	if err != nil {
 		return nil, err
 	}
