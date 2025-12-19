@@ -1296,7 +1296,7 @@ func testAccCheckFeatureFlagEnvironmentDefaults(t *testing.T, projectKey, flagKe
 		flag, _, err := client.ld.FeatureFlagsApi.GetFeatureFlag(client.ctx, projectKey, flagKey).Execute()
 		require.NoError(t, err)
 		require.NotNil(t, flag.Environments, "flag.Environments should not be nil")
-		envConfig := (*flag.Environments)["test"]
+		envConfig := flag.Environments["test"]
 		require.Equal(t, int32(0), *envConfig.OffVariation)
 		return nil
 	}
