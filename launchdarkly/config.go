@@ -76,25 +76,13 @@ func newLDClientConfig(apiHost string, httpTimeoutSeconds int, apiVersion string
 	return cfg
 }
 
-// newLDClientConfigNoVersion creates a client config without a default LD-API-Version header.
-// This is used for beta APIs where the version must be set per-request via .LDAPIVersion().
-func newLDClientConfigNoVersion(apiHost string, httpTimeoutSeconds int, retryPolicy retryablehttp.CheckRetry) *ldapi.Configuration {
-	cfg := ldapi.NewConfiguration()
-	cfg.Host = apiHost
-	cfg.DefaultHeader = make(map[string]string)
-	cfg.UserAgent = fmt.Sprintf("launchdarkly-terraform-provider/%s", version)
-	cfg.HTTPClient = newRetryableClient(retryPolicy)
-	cfg.HTTPClient.Timeout = time.Duration(httpTimeoutSeconds) * time.Second
-	return cfg
+func baseNewClient(token string, apiHost string, oauth bool, httpTimeoutSeconds int, apiVersion string, maxConcurrent int) (*Client, error) {
+if token == "" {
+return nil, errors.New("token cannot be empty")
 }
 
-func baseNewClient(token string, apiHost string, oauth bool, httpTimeoutSeconds int, apiVersion string, maxConcurrent int) (*Client, error) {
-	if token == "" {
-		return nil, errors.New("token cannot be empty")
-	}
-
-	standardConfig := newLDClientConfig(apiHost, httpTimeoutSeconds, apiVersion, standardRetryPolicy)
-	betaConfig := newLDClientConfigNoVersion(apiHost, httpTimeoutSeconds, standardRetryPolicy)
+standardConfig := newLDClientConfig(apiHost, httpTimeoutSeconds, apiVersion, standardRetryPolicy)
+	betaConfig := newLDClientConfig(apiHost, httpTimeoutSeconds,'beta, standardRetryPolicy)
 	configWith404Retries := newLDClientConfig(apiHost, httpTimeoutSeconds, apiVersion, retryPolicyWith404Retries)
 
 	ctx := context.WithValue(context.Background(), ldapi.ContextAPIKeys, map[string]ldapi.APIKey{
