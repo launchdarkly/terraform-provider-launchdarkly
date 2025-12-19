@@ -35,9 +35,6 @@ type Client struct {
 	// ld is the standard API client that we use in most cases to interact with LaunchDarkly's APIs.
 	ld *ldapi.APIClient
 
-	// ldBeta is the API client for beta APIs that require LD-API-Version: beta header.
-	ldBeta *ldapi.APIClient
-
 	// ld404Retry is the same as ld except that it will also retry 404s with an exponential backoff. In most cases `ld` should be used instead. sc-218015
 	ld404Retry     *ldapi.APIClient
 	ctx            context.Context
@@ -77,12 +74,11 @@ func newLDClientConfig(apiHost string, httpTimeoutSeconds int, apiVersion string
 }
 
 func baseNewClient(token string, apiHost string, oauth bool, httpTimeoutSeconds int, apiVersion string, maxConcurrent int) (*Client, error) {
-if token == "" {
-return nil, errors.New("token cannot be empty")
-}
+	if token == "" {
+		return nil, errors.New("token cannot be empty")
+	}
 
-standardConfig := newLDClientConfig(apiHost, httpTimeoutSeconds, apiVersion, standardRetryPolicy)
-	betaConfig := newLDClientConfig(apiHost, httpTimeoutSeconds,'beta, standardRetryPolicy)
+	standardConfig := newLDClientConfig(apiHost, httpTimeoutSeconds, apiVersion, standardRetryPolicy)
 	configWith404Retries := newLDClientConfig(apiHost, httpTimeoutSeconds, apiVersion, retryPolicyWith404Retries)
 
 	ctx := context.WithValue(context.Background(), ldapi.ContextAPIKeys, map[string]ldapi.APIKey{
@@ -101,7 +97,6 @@ standardConfig := newLDClientConfig(apiHost, httpTimeoutSeconds, apiVersion, sta
 		apiKey:         token,
 		apiHost:        apiHost,
 		ld:             ldapi.NewAPIClient(standardConfig),
-		ldBeta:         ldapi.NewAPIClient(betaConfig),
 		ld404Retry:     ldapi.NewAPIClient(configWith404Retries),
 		ctx:            ctx,
 		fallbackClient: fallbackClient,
