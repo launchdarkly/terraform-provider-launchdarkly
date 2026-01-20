@@ -15,6 +15,22 @@ import (
 	"golang.org/x/sync/semaphore"
 )
 
+// mustWriteJSON writes a JSON response to the http.ResponseWriter and panics on error.
+// This is appropriate for test handlers where a write failure indicates broken test infrastructure.
+func mustWriteJSON(w http.ResponseWriter, v interface{}) {
+	if err := json.NewEncoder(w).Encode(v); err != nil {
+		panic("test server failed to encode JSON response: " + err.Error())
+	}
+}
+
+// mustWrite writes bytes to the http.ResponseWriter and panics on error.
+// This is appropriate for test handlers where a write failure indicates broken test infrastructure.
+func mustWrite(w http.ResponseWriter, data []byte) {
+	if _, err := w.Write(data); err != nil {
+		panic("test server failed to write response: " + err.Error())
+	}
+}
+
 // createTestClientWithServer creates a test client that points to a mock server.
 // This helper properly configures the LaunchDarkly API client to use the test server.
 func createTestClientWithServer(t *testing.T, handler http.HandlerFunc) (*Client, *httptest.Server) {
@@ -92,7 +108,7 @@ func TestGetAllTeamCustomRoleKeys_SinglePage(t *testing.T) {
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(response)
+		mustWriteJSON(w, response)
 	})
 	defer ts.Close()
 
@@ -139,7 +155,7 @@ func TestGetAllTeamCustomRoleKeys_MultiplePages(t *testing.T) {
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(response)
+		mustWriteJSON(w, response)
 	})
 	defer ts.Close()
 
@@ -174,7 +190,7 @@ func TestGetAllTeamCustomRoleKeys_ExactPageBoundary(t *testing.T) {
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(response)
+		mustWriteJSON(w, response)
 	})
 	defer ts.Close()
 
@@ -198,7 +214,7 @@ func TestGetAllTeamCustomRoleKeys_EmptyTeam(t *testing.T) {
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(response)
+		mustWriteJSON(w, response)
 	})
 	defer ts.Close()
 
@@ -217,7 +233,7 @@ func TestGetAllTeamCustomRoleKeys_APIError(t *testing.T) {
 	// Scenario: API returns an error
 	client, ts := createTestClientWithServer(t, func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(`{"message": "Internal server error"}`))
+		mustWrite(w, []byte(`{"message": "Internal server error"}`))
 	})
 	defer ts.Close()
 
@@ -246,7 +262,7 @@ func TestGetAllTeamCustomRoleKeys_SkipsEmptyKeys(t *testing.T) {
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(response))
+		mustWrite(w, []byte(response))
 	})
 	defer ts.Close()
 
@@ -276,7 +292,7 @@ func TestGetAllTeamCustomRoleKeysWithRetry_UsesCorrectClient(t *testing.T) {
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(response)
+		mustWriteJSON(w, response)
 	})
 	defer ts.Close()
 
@@ -320,7 +336,7 @@ func TestGetAllTeamCustomRoleKeys_LargeTeam(t *testing.T) {
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(response)
+		mustWriteJSON(w, response)
 	})
 	defer ts.Close()
 
@@ -395,7 +411,7 @@ func TestGetAllTeamMaintainers_SinglePage(t *testing.T) {
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(response)
+		mustWriteJSON(w, response)
 	})
 	defer ts.Close()
 
@@ -442,7 +458,7 @@ func TestGetAllTeamMaintainers_MultiplePages(t *testing.T) {
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(response)
+		mustWriteJSON(w, response)
 	})
 	defer ts.Close()
 
@@ -472,7 +488,7 @@ func TestGetAllTeamMaintainers_EmptyTeam(t *testing.T) {
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(response)
+		mustWriteJSON(w, response)
 	})
 	defer ts.Close()
 
@@ -491,7 +507,7 @@ func TestGetAllTeamMaintainers_APIError(t *testing.T) {
 	// Scenario: API returns an error
 	client, ts := createTestClientWithServer(t, func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(`{"message": "Internal server error"}`))
+		mustWrite(w, []byte(`{"message": "Internal server error"}`))
 	})
 	defer ts.Close()
 
