@@ -2,6 +2,13 @@
 
 All notable changes to the LaunchDarkly Terraform Provider will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org).
 
+## [2.26.1](https://github.com/launchdarkly/terraform-provider-launchdarkly/compare/v2.26.0...v2.26.1) (2026-01-20)
+
+
+### Bug Fixes
+
+* [REL-11737] Add pagination to teams resource nested fields roles and maintainers ([#375](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/375)) ([a22a7a0](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/a22a7a0d28a7fcdf2ce3d66d3effba6601b1c8db))
+
 ## [2.26.0](https://github.com/launchdarkly/terraform-provider-launchdarkly/compare/v2.25.3...v2.26.0) (2025-11-10)
 
 
