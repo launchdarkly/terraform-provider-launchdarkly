@@ -233,9 +233,11 @@ func resourceTeamRead(ctx context.Context, d *schema.ResourceData, metaRaw inter
 		i++
 	}
 
-	customRoleKeys := make([]string, len(team.Roles.Items))
-	for i, v := range team.Roles.Items {
-		customRoleKeys[i] = *v.Key
+	// Fetch all custom role keys with pagination
+	// The expand=roles parameter only returns the first page (default 25 items)
+	customRoleKeys, err := getAllTeamCustomRoleKeys(client, teamKey)
+	if err != nil {
+		return diag.Errorf("failed to get custom roles for team %q: %s", teamKey, err)
 	}
 
 	maintainers := make([]string, len(team.Maintainers.Items))
