@@ -206,6 +206,9 @@ func TestGetAllTeamCustomRoleKeys_EmptyTeam(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.Empty(t, roleKeys)
+	// Verify it's an empty slice, not nil - this is important for Terraform's type system
+	// to distinguish between null and empty sets
+	assert.NotNil(t, roleKeys, "Should return empty slice, not nil, for teams with no roles")
 }
 
 func TestGetAllTeamCustomRoleKeys_APIError(t *testing.T) {
@@ -477,6 +480,9 @@ func TestGetAllTeamMaintainers_EmptyTeam(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.Empty(t, maintainers)
+	// Verify it's an empty slice, not nil - this is important for Terraform's type system
+	// to distinguish between null and empty sets
+	assert.NotNil(t, maintainers, "Should return empty slice, not nil, for teams with no maintainers")
 }
 
 func TestGetAllTeamMaintainers_APIError(t *testing.T) {

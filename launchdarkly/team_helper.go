@@ -19,8 +19,10 @@ const (
 // getAllTeamCustomRoleKeys fetches all custom role keys for a team using pagination.
 // The LaunchDarkly API returns a maximum of 25 roles by default when using the expand=roles
 // parameter on GetTeam.
+// Returns an empty slice (not nil) when the team has no roles, which is important for
+// Terraform's type system to distinguish between null and empty sets.
 func getAllTeamCustomRoleKeys(client *Client, teamKey string) ([]string, error) {
-	var allRoleKeys []string
+	allRoleKeys := []string{}
 	offset := int64(0)
 
 	for {
@@ -65,8 +67,10 @@ func getAllTeamCustomRoleKeys(client *Client, teamKey string) ([]string, error) 
 // getAllTeamCustomRoleKeysWithRetry fetches all custom role keys using the 404-retry client.
 // This is useful for resources that may experience eventual consistency issues
 // (e.g., teams provisioned via Okta team sync).
+// Returns an empty slice (not nil) when the team has no roles, which is important for
+// Terraform's type system to distinguish between null and empty sets.
 func getAllTeamCustomRoleKeysWithRetry(client *Client, teamKey string) ([]string, error) {
-	var allRoleKeys []string
+	allRoleKeys := []string{}
 	offset := int64(0)
 
 	for {
@@ -112,9 +116,11 @@ func getAllTeamCustomRoleKeysWithRetry(client *Client, teamKey string) ([]string
 // The LaunchDarkly API returns a maximum of 25 maintainers by default when using the expand=maintainers
 // parameter on GetTeam. For teams with more than 25 maintainers, we need to use the dedicated
 // GetTeamMaintainers endpoint with pagination.
+// Returns an empty slice (not nil) when the team has no maintainers, which is important for
+// Terraform's type system to distinguish between null and empty sets.
 // See: https://launchdarkly.atlassian.net/browse/REL-11737
 func getAllTeamMaintainers(client *Client, teamKey string) ([]ldapi.MemberSummary, error) {
-	var allMaintainers []ldapi.MemberSummary
+	allMaintainers := []ldapi.MemberSummary{}
 	offset := int64(0)
 
 	for {
