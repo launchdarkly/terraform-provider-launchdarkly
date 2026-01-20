@@ -13,10 +13,8 @@ const (
 )
 
 // getAllTeamCustomRoleKeys fetches all custom role keys for a team using pagination.
-// The LaunchDarkly API returns a maximum of 20 roles by default when using the expand=roles
-// parameter on GetTeam. For teams with more than 20 roles, we need to use the dedicated
-// GetTeamRoles endpoint with pagination.
-// See: https://launchdarkly.atlassian.net/browse/REL-11737
+// The LaunchDarkly API returns a maximum of 25 roles by default when using the expand=roles
+// parameter on GetTeam.
 func getAllTeamCustomRoleKeys(client *Client, teamKey string) ([]string, error) {
 	var allRoleKeys []string
 	offset := int64(0)
