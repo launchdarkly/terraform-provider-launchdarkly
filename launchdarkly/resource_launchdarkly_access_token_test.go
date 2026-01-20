@@ -23,7 +23,7 @@ resource "launchdarkly_access_token" "test" {
 	name = "Access token - %s"
 	role = "reader"
 	service_token = true
-	default_api_version = 20160426
+	default_api_version = 20240415
 }
 `
 	testAccAccessTokenCreateWithCustomRole = `
@@ -191,7 +191,7 @@ func TestAccAccessToken_CreateWithImmutableParams(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, NAME, "Access token - "+name),
 					resource.TestCheckResourceAttr(resourceName, ROLE, "reader"),
 					resource.TestCheckResourceAttr(resourceName, SERVICE_TOKEN, "true"),
-					resource.TestCheckResourceAttr(resourceName, DEFAULT_API_VERSION, "20160426"),
+					resource.TestCheckResourceAttr(resourceName, DEFAULT_API_VERSION, "20240415"),
 					resource.TestCheckResourceAttrSet(resourceName, TOKEN),
 					resource.TestCheckNoResourceAttr(resourceName, POLICY),
 					resource.TestCheckNoResourceAttr(resourceName, CUSTOM_ROLES),

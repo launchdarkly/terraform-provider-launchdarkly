@@ -104,13 +104,24 @@ func dataSourceTeamRead(ctx context.Context, d *schema.ResourceData, meta interf
 		projects[i] = v.Key
 	}
 
-	customRoleKeys := make([]string, len(team.Roles.Items))
-	for i, v := range team.Roles.Items {
-		customRoleKeys[i] = *v.Key
+	// Fetch all custom role keys with pagination
+	// The expand=roles parameter only returns the first page (default 25 items)
+	// See: https://launchdarkly.atlassian.net/browse/REL-11737
+	customRoleKeys, err := getAllTeamCustomRoleKeys(client, teamKey)
+	if err != nil {
+		return diag.Errorf("failed to get custom roles for team %q: %s", teamKey, err)
 	}
 
-	maintainers := make([]map[string]interface{}, 0, len(team.Maintainers.Items))
-	for _, m := range team.Maintainers.Items {
+	// Fetch all maintainers with pagination
+	// The expand=maintainers parameter only returns the first page (default 25 items)
+	// See: https://launchdarkly.atlassian.net/browse/REL-11737
+	maintainersList, err := getAllTeamMaintainers(client, teamKey)
+	if err != nil {
+		return diag.Errorf("failed to get maintainers for team %q: %s", teamKey, err)
+	}
+
+	maintainers := make([]map[string]interface{}, 0, len(maintainersList))
+	for _, m := range maintainersList {
 		maintainer := make(map[string]interface{})
 		maintainer[ID] = m.Id
 		maintainer[EMAIL] = m.Email
@@ -118,10 +129,6 @@ func dataSourceTeamRead(ctx context.Context, d *schema.ResourceData, meta interf
 		maintainer[LAST_NAME] = m.LastName
 		maintainer[ROLE] = m.Role
 		maintainers = append(maintainers, maintainer)
-	}
-
-	if err != nil {
-		return diag.Errorf("failed to get team %q: %s", teamKey, handleLdapiErr(err))
 	}
 
 	d.SetId(teamKey)
