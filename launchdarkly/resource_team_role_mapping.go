@@ -181,6 +181,24 @@ func (r *TeamRoleMappingResource) Read(ctx context.Context, req resource.ReadReq
 
 	teamKey := data.TeamKey.ValueString()
 
+	// First verify the team exists - this provides clearer error messages than
+	// failing on the roles API call
+	var res *http.Response
+	var err error
+	err = r.client.withConcurrency(r.client.ctx, func() error {
+		_, res, err = r.client.ld404Retry.TeamsApi.GetTeam(r.client.ctx, teamKey).Execute()
+		return err
+	})
+	if err != nil {
+		if isStatusNotFound(res) {
+			// Team was deleted outside of Terraform, remove from state
+			resp.State.RemoveResource(ctx)
+			return
+		}
+		resp.Diagnostics.AddError("Unable to get team", fmt.Sprintf("Received an error when fetching the team %q: %s", teamKey, handleLdapiErr(err)))
+		return
+	}
+
 	// Fetch all role keys with pagination using the 404-retry client
 	// We use the ld404Retry API client because users that provision their team via Okta team sync may
 	// see a delay before the team appears in LaunchDarkly. sc-218015
@@ -214,6 +232,23 @@ func (r *TeamRoleMappingResource) Update(ctx context.Context, req resource.Updat
 	}
 
 	teamKey := data.TeamKey.ValueString()
+
+	// First verify the team exists - this provides clearer error messages than
+	// failing on the roles API call
+	var res *http.Response
+	var err error
+	err = r.client.withConcurrency(r.client.ctx, func() error {
+		_, res, err = r.client.ld404Retry.TeamsApi.GetTeam(r.client.ctx, teamKey).Execute()
+		return err
+	})
+	if err != nil {
+		if isStatusNotFound(res) {
+			resp.Diagnostics.AddError("Team not found", fmt.Sprintf("Unable to update the team/role mapping because the team %q does not exist.", teamKey))
+			return
+		}
+		resp.Diagnostics.AddError("Unable to get team", fmt.Sprintf("Received an error when fetching the team %q: %s", teamKey, handleLdapiErr(err)))
+		return
+	}
 
 	// Fetch existing role keys with pagination
 	existingRoleKeys, err := getAllTeamCustomRoleKeysWithRetry(r.client, teamKey)

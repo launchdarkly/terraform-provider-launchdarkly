@@ -524,3 +524,108 @@ func TestTeamMaintainersPageLimit(t *testing.T) {
 	assert.Equal(t, int64(100), teamMaintainersPageLimit)
 	assert.Greater(t, teamMaintainersPageLimit, int64(25), "Page limit should be greater than default API page size of 25")
 }
+
+// ==================== PAGINATION INTEGRATION TESTS ====================
+// These tests verify that pagination works correctly for teams with more than 25 roles,
+// which is the default page size returned by the expand=roles parameter.
+// See: https://launchdarkly.atlassian.net/browse/REL-11737
+
+// TestRolePagination_MoreThan25Roles verifies that we correctly fetch all roles
+// when a team has more than the default API page size of 25 roles.
+// This is the exact bug scenario from REL-11737.
+func TestRolePagination_MoreThan25Roles(t *testing.T) {
+	t.Parallel()
+
+	// Scenario: Team has 30 roles - just above the default API page size of 25
+	totalRoles := 30
+	callCount := 0
+
+	client, ts := createTestClientWithServer(t, func(w http.ResponseWriter, r *http.Request) {
+		callCount++
+
+		limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
+		offset, _ := strconv.Atoi(r.URL.Query().Get("offset"))
+
+		if limit == 0 {
+			limit = 100
+		}
+
+		startIdx := offset + 1
+		remaining := totalRoles - offset
+		itemCount := limit
+		if remaining < limit {
+			itemCount = remaining
+		}
+
+		response := mockTeamRolesResponse{
+			TotalCount: totalRoles,
+			Items:      generateMockRoles(startIdx, itemCount),
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		mustWriteJSON(w, response)
+	})
+	defer ts.Close()
+
+	roleKeys, err := getAllTeamCustomRoleKeys(client, "test-team")
+	require.NoError(t, err)
+
+	// All 30 roles should be returned, not just the first 25
+	assert.Len(t, roleKeys, totalRoles, "Should fetch all 30 roles, not just the first 25")
+	assert.Equal(t, "role-1", roleKeys[0])
+	assert.Equal(t, "role-30", roleKeys[29])
+}
+
+// TestRolePagination_Exactly25Roles verifies correct behavior at the boundary
+func TestRolePagination_Exactly25Roles(t *testing.T) {
+	t.Parallel()
+
+	// Scenario: Team has exactly 25 roles - the default API page size
+	totalRoles := 25
+
+	client, ts := createTestClientWithServer(t, func(w http.ResponseWriter, r *http.Request) {
+		response := mockTeamRolesResponse{
+			TotalCount: totalRoles,
+			Items:      generateMockRoles(1, totalRoles),
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		mustWriteJSON(w, response)
+	})
+	defer ts.Close()
+
+	roleKeys, err := getAllTeamCustomRoleKeys(client, "test-team")
+	require.NoError(t, err)
+
+	assert.Len(t, roleKeys, totalRoles, "Should fetch all 25 roles")
+}
+
+// TestRolePagination_50Roles verifies pagination works for typical large teams
+func TestRolePagination_50Roles(t *testing.T) {
+	t.Parallel()
+
+	// Scenario: Team has 50 roles - requires pagination with our page size of 100
+	totalRoles := 50
+
+	client, ts := createTestClientWithServer(t, func(w http.ResponseWriter, r *http.Request) {
+		response := mockTeamRolesResponse{
+			TotalCount: totalRoles,
+			Items:      generateMockRoles(1, totalRoles),
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		mustWriteJSON(w, response)
+	})
+	defer ts.Close()
+
+	roleKeys, err := getAllTeamCustomRoleKeys(client, "test-team")
+	require.NoError(t, err)
+
+	assert.Len(t, roleKeys, totalRoles, "Should fetch all 50 roles")
+	// Verify first and last to ensure ordering is preserved
+	assert.Equal(t, "role-1", roleKeys[0])
+	assert.Equal(t, "role-50", roleKeys[49])
+}
