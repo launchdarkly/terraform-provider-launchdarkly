@@ -8,8 +8,12 @@ import (
 
 const (
 	// teamRolesPageLimit is the number of roles to fetch per API request
-	// The API default is 20, but supports higher limits
+	// The API default is 25, but supports higher limits
 	teamRolesPageLimit = int64(100)
+
+	// teamMaintainersPageLimit is the number of maintainers to fetch per API request
+	// The expand=maintainers parameter has the same 25 item limit as roles
+	teamMaintainersPageLimit = int64(100)
 )
 
 // getAllTeamCustomRoleKeys fetches all custom role keys for a team using pagination.
@@ -102,4 +106,48 @@ func getAllTeamCustomRoleKeysWithRetry(client *Client, teamKey string) ([]string
 	}
 
 	return allRoleKeys, nil
+}
+
+// getAllTeamMaintainers fetches all maintainers for a team using pagination.
+// The LaunchDarkly API returns a maximum of 25 maintainers by default when using the expand=maintainers
+// parameter on GetTeam. For teams with more than 25 maintainers, we need to use the dedicated
+// GetTeamMaintainers endpoint with pagination.
+// See: https://launchdarkly.atlassian.net/browse/REL-11737
+func getAllTeamMaintainers(client *Client, teamKey string) ([]ldapi.MemberSummary, error) {
+	var allMaintainers []ldapi.MemberSummary
+	offset := int64(0)
+
+	for {
+		var maintainersResponse *ldapi.TeamMaintainers
+		var err error
+
+		err = client.withConcurrency(client.ctx, func() error {
+			maintainersResponse, _, err = client.ld.TeamsApi.GetTeamMaintainers(client.ctx, teamKey).
+				Limit(teamMaintainersPageLimit).
+				Offset(offset).
+				Execute()
+			return err
+		})
+
+		if err != nil {
+			return nil, fmt.Errorf("failed to get maintainers for team %q: %s", teamKey, handleLdapiErr(err))
+		}
+
+		// Append maintainers from this page
+		allMaintainers = append(allMaintainers, maintainersResponse.Items...)
+
+		// Check if we've fetched all maintainers
+		totalCount := int64(0)
+		if maintainersResponse.TotalCount != nil {
+			totalCount = int64(*maintainersResponse.TotalCount)
+		}
+
+		if int64(len(allMaintainers)) >= totalCount {
+			break
+		}
+
+		offset += teamMaintainersPageLimit
+	}
+
+	return allMaintainers, nil
 }

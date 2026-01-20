@@ -235,23 +235,28 @@ func resourceTeamRead(ctx context.Context, d *schema.ResourceData, metaRaw inter
 
 	// Fetch all custom role keys with pagination
 	// The expand=roles parameter only returns the first page (default 25 items)
+	// See: https://launchdarkly.atlassian.net/browse/REL-11737
 	customRoleKeys, err := getAllTeamCustomRoleKeys(client, teamKey)
 	if err != nil {
 		return diag.Errorf("failed to get custom roles for team %q: %s", teamKey, err)
 	}
 
-	maintainers := make([]string, len(team.Maintainers.Items))
-	for i, m := range team.Maintainers.Items {
+	// Fetch all maintainers with pagination
+	// The expand=maintainers parameter only returns the first page (default 25 items)
+	// See: https://launchdarkly.atlassian.net/browse/REL-11737
+	maintainersList, err := getAllTeamMaintainers(client, teamKey)
+	if err != nil {
+		return diag.Errorf("failed to get maintainers for team %q: %s", teamKey, err)
+	}
+
+	maintainers := make([]string, len(maintainersList))
+	for i, m := range maintainersList {
 		maintainers[i] = m.Id
 	}
 
 	member_ids := make([]string, len(members))
 	for i, m := range members {
 		member_ids[i] = m.Id
-	}
-
-	if err != nil {
-		return diag.Errorf("failed to get team %q: %s", teamKey, handleLdapiErr(err))
 	}
 
 	d.SetId(teamKey)
