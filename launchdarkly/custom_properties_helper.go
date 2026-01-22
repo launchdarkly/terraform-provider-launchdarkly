@@ -88,6 +88,10 @@ func customPropertiesToResourceData(customProperties map[string]ldapi.CustomProp
 		for _, v := range cp.Value {
 			values = append(values, v)
 		}
+		// Sort the values to ensure consistency with how they're sent to the API
+		sort.Slice(values, func(i, j int) bool {
+			return values[i].(string) < values[j].(string)
+		})
 		cpRaw := map[string]interface{}{
 			KEY:   k,
 			NAME:  cp.Name,
@@ -98,8 +102,32 @@ func customPropertiesToResourceData(customProperties map[string]ldapi.CustomProp
 	return transformed
 }
 
+// hashCustomProperty is a struct used for hashing custom properties
+// to ensure consistent hash values based on actual field values
+type hashCustomProperty struct {
+	Key   string
+	Name  string
+	Value []string
+}
+
 // https://godoc.org/github.com/hashicorp/terraform/helper/schema#SchemaSetFunc
 func customPropertyHash(val interface{}) int {
 	customPropertyMap := val.(map[string]interface{})
-	return schema.HashString(fmt.Sprintf("%v", customPropertyMap[KEY]))
+	// Extract and sort values to ensure consistent hashing
+	var values []string
+	if valueList, ok := customPropertyMap[VALUE].([]interface{}); ok {
+		for _, v := range valueList {
+			values = append(values, v.(string))
+		}
+	}
+	sort.Strings(values)
+
+	// Hash all fields together to ensure consistent hash calculation
+	// This prevents issues where the hash function is called with incomplete data
+	cp := hashCustomProperty{
+		Key:   fmt.Sprintf("%v", customPropertyMap[KEY]),
+		Name:  fmt.Sprintf("%v", customPropertyMap[NAME]),
+		Value: values,
+	}
+	return schema.HashString(fmt.Sprintf("%v", cp))
 }
