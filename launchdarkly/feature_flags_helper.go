@@ -1,10 +1,14 @@
 package launchdarkly
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
+	"net/url"
 	"strings"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
@@ -294,4 +298,67 @@ func getProjectDefaultCSAandIncludeInSnippet(client *Client, projectKey string) 
 	}
 
 	return *project.DefaultClientSideAvailability, project.IncludeInSnippetByDefault, nil
+}
+
+// FeatureFlagBodyWithViewKeys represents the feature flag creation request body with view_keys support.
+// This is needed because the API client doesn't include the viewKeys field (it's hidden in the API spec).
+type FeatureFlagBodyWithViewKeys struct {
+	Name                   string                            `json:"name"`
+	Key                    string                            `json:"key"`
+	Description            string                            `json:"description,omitempty"`
+	Variations             []ldapi.Variation                 `json:"variations,omitempty"`
+	Temporary              bool                              `json:"temporary,omitempty"`
+	Tags                   []string                          `json:"tags,omitempty"`
+	Defaults               *ldapi.Defaults                   `json:"defaults,omitempty"`
+	ClientSideAvailability *ldapi.ClientSideAvailabilityPost `json:"clientSideAvailability,omitempty"`
+	ViewKeys               []string                          `json:"viewKeys,omitempty"`
+}
+
+// createFeatureFlagWithViewKeys creates a feature flag using a raw HTTP call to support the viewKeys field.
+// This is necessary because the API client doesn't include viewKeys in FeatureFlagBody.
+func createFeatureFlagWithViewKeys(client *Client, projectKey string, body FeatureFlagBodyWithViewKeys) error {
+	host := client.apiHost
+	if host == "" {
+		host = DEFAULT_LAUNCHDARKLY_HOST
+	}
+
+	// Build the endpoint URL
+	var endpoint string
+	if u, err := url.Parse(host); err == nil && u.Scheme != "" {
+		u.Path = fmt.Sprintf("/api/v2/flags/%s", projectKey)
+		endpoint = u.String()
+	} else {
+		endpoint = fmt.Sprintf("https://%s/api/v2/flags/%s", host, projectKey)
+	}
+
+	jsonData, err := json.Marshal(body)
+	if err != nil {
+		return err
+	}
+
+	req, err := http.NewRequestWithContext(client.ctx, "POST", endpoint, bytes.NewBuffer(jsonData))
+	if err != nil {
+		return err
+	}
+
+	req.Header.Set("Authorization", client.apiKey)
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("LD-API-Version", APIVersion)
+
+	resp, err := client.ld.GetConfig().HTTPClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	respBody, readErr := io.ReadAll(resp.Body)
+	if readErr != nil {
+		return readErr
+	}
+
+	if resp.StatusCode >= 400 {
+		return fmt.Errorf("%d %s: %s", resp.StatusCode, http.StatusText(resp.StatusCode), string(respBody))
+	}
+
+	return nil
 }

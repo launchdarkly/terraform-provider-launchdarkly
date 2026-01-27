@@ -114,21 +114,13 @@ func resourceFeatureFlagCreate(ctx context.Context, d *schema.ResourceData, meta
 		variations = []ldapi.Variation{{Value: true}, {Value: false}}
 	}
 
-	flag := ldapi.FeatureFlagBody{
-		Name:        flagName,
-		Key:         key,
-		Description: &description,
-		Variations:  variations,
-		Temporary:   &temporary,
-		Tags:        tags,
-		Defaults:    defaults,
-	}
-
+	// Determine client side availability
+	var finalClientSideAvailability *ldapi.ClientSideAvailabilityPost
 	if clientSideAvailabilityOk {
-		flag.ClientSideAvailability = clientSideAvailability
+		finalClientSideAvailability = clientSideAvailability
 	} else if includeInSnippetOk {
 		// If includeInSnippet is set, still use clientSideAvailability behind the scenes in order to switch UsingMobileKey to false if needed
-		flag.ClientSideAvailability = &ldapi.ClientSideAvailabilityPost{
+		finalClientSideAvailability = &ldapi.ClientSideAvailabilityPost{
 			UsingEnvironmentId: includeInSnippet,
 			UsingMobileKey:     false,
 		}
@@ -139,15 +131,54 @@ func resourceFeatureFlagCreate(ctx context.Context, d *schema.ResourceData, meta
 		if err != nil {
 			return diag.Errorf("failed to get project level client side availability defaults. %v", err)
 		}
-		flag.ClientSideAvailability = &ldapi.ClientSideAvailabilityPost{
+		finalClientSideAvailability = &ldapi.ClientSideAvailabilityPost{
 			UsingEnvironmentId: *defaultCSA.UsingEnvironmentId,
 			UsingMobileKey:     *defaultCSA.UsingMobileKey,
 		}
 	}
-	err = client.withConcurrency(ctx, func() error {
-		_, _, err = client.ld.FeatureFlagsApi.PostFeatureFlag(client.ctx, projectKey).FeatureFlagBody(flag).Execute()
-		return err
-	})
+
+	// Check if view_keys is specified - if so, we need to use raw HTTP to include it in creation
+	var viewKeys []string
+	if viewKeysRaw, ok := d.GetOk(VIEW_KEYS); ok {
+		viewKeysSet := viewKeysRaw.(*schema.Set)
+		for _, v := range viewKeysSet.List() {
+			viewKeys = append(viewKeys, v.(string))
+		}
+	}
+
+	if len(viewKeys) > 0 {
+		// Use raw HTTP call to include viewKeys in the creation request
+		flagBody := FeatureFlagBodyWithViewKeys{
+			Name:                   flagName,
+			Key:                    key,
+			Description:            description,
+			Variations:             variations,
+			Temporary:              temporary,
+			Tags:                   tags,
+			Defaults:               defaults,
+			ClientSideAvailability: finalClientSideAvailability,
+			ViewKeys:               viewKeys,
+		}
+		err = client.withConcurrency(ctx, func() error {
+			return createFeatureFlagWithViewKeys(client, projectKey, flagBody)
+		})
+	} else {
+		// Use the standard API client when no view_keys are specified
+		flag := ldapi.FeatureFlagBody{
+			Name:                   flagName,
+			Key:                    key,
+			Description:            &description,
+			Variations:             variations,
+			Temporary:              &temporary,
+			Tags:                   tags,
+			Defaults:               defaults,
+			ClientSideAvailability: finalClientSideAvailability,
+		}
+		err = client.withConcurrency(ctx, func() error {
+			_, _, err = client.ld.FeatureFlagsApi.PostFeatureFlag(client.ctx, projectKey).FeatureFlagBody(flag).Execute()
+			return err
+		})
+	}
 	if err != nil {
 		return diag.Errorf("failed to create flag %q in project %q: %s", key, projectKey, handleLdapiErr(err))
 	}
