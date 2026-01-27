@@ -11,6 +11,35 @@ import (
 	ldapi "github.com/launchdarkly/api-client-go/v17"
 )
 
+// customizeFeatureFlagDiff validates that view_keys is set when the project requires view association for new flags
+func customizeFeatureFlagDiff(ctx context.Context, diff *schema.ResourceDiff, meta interface{}) error {
+	// Only validate on create (when there's no ID yet)
+	if diff.Id() != "" {
+		return nil
+	}
+
+	client := meta.(*Client)
+	projectKey := diff.Get(PROJECT_KEY).(string)
+
+	// Fetch project view settings
+	viewSettings, err := getProjectViewSettings(client, projectKey)
+	if err != nil {
+		// Log warning but don't fail - the setting might not be available
+		log.Printf("[WARN] could not fetch project view settings for %q during plan: %v", projectKey, err)
+		return nil
+	}
+
+	if viewSettings.RequireViewAssociationForNewFlags {
+		viewKeysRaw := diff.Get(VIEW_KEYS)
+		viewKeys, ok := viewKeysRaw.(*schema.Set)
+		if !ok || viewKeys == nil || viewKeys.Len() == 0 {
+			return fmt.Errorf("project %q requires new flags to be associated with at least one view. Please set the 'view_keys' attribute", projectKey)
+		}
+	}
+
+	return nil
+}
+
 func resourceFeatureFlag() *schema.Resource {
 	schemaMap := baseFeatureFlagSchema(featureFlagSchemaOptions{isDataSource: false})
 	schemaMap[NAME] = &schema.Schema{
@@ -25,6 +54,8 @@ func resourceFeatureFlag() *schema.Resource {
 		UpdateContext: resourceFeatureFlagUpdate,
 		DeleteContext: resourceFeatureFlagDelete,
 		Exists:        resourceFeatureFlagExists,
+
+		CustomizeDiff: customizeFeatureFlagDiff,
 
 		Importer: &schema.ResourceImporter{
 			State: resourceFeatureFlagImport,

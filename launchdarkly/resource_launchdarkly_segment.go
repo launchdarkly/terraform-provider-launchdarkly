@@ -12,6 +12,35 @@ import (
 	ldapi "github.com/launchdarkly/api-client-go/v17"
 )
 
+// customizeSegmentDiff validates that view_keys is set when the project requires view association for new segments
+func customizeSegmentDiff(ctx context.Context, diff *schema.ResourceDiff, meta interface{}) error {
+	// Only validate on create (when there's no ID yet)
+	if diff.Id() != "" {
+		return nil
+	}
+
+	client := meta.(*Client)
+	projectKey := diff.Get(PROJECT_KEY).(string)
+
+	// Fetch project view settings
+	viewSettings, err := getProjectViewSettings(client, projectKey)
+	if err != nil {
+		// Log warning but don't fail - the setting might not be available
+		log.Printf("[WARN] could not fetch project view settings for %q during plan: %v", projectKey, err)
+		return nil
+	}
+
+	if viewSettings.RequireViewAssociationForNewSegments {
+		viewKeysRaw := diff.Get(VIEW_KEYS)
+		viewKeys, ok := viewKeysRaw.(*schema.Set)
+		if !ok || viewKeys == nil || viewKeys.Len() == 0 {
+			return fmt.Errorf("project %q requires new segments to be associated with at least one view. Please set the 'view_keys' attribute", projectKey)
+		}
+	}
+
+	return nil
+}
+
 func resourceSegment() *schema.Resource {
 	schemaMap := baseSegmentSchema(segmentSchemaOptions{isDataSource: false})
 	schemaMap[PROJECT_KEY] = &schema.Schema{
@@ -46,6 +75,8 @@ func resourceSegment() *schema.Resource {
 		UpdateContext: resourceSegmentUpdate,
 		DeleteContext: resourceSegmentDelete,
 		Exists:        resourceSegmentExists,
+
+		CustomizeDiff: customizeSegmentDiff,
 
 		Importer: &schema.ResourceImporter{
 			State: resourceSegmentImport,
