@@ -6,6 +6,7 @@ import (
 	"os"
 	"regexp"
 	"testing"
+	"time"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
@@ -130,7 +131,23 @@ resource "launchdarkly_feature_flag" "test" {
 }
 `
 
-	testAccFeatureFlagWithViewKeysNonexistentView = `
+	// Step 1: Create project and view first
+	testAccFeatureFlagWithViewKeysNonexistentViewStep1 = `
+resource "launchdarkly_project" "test" {
+	name = "%s"
+	key  = "%s"
+}
+
+resource "launchdarkly_view" "view1" {
+	project_key = launchdarkly_project.test.key
+	key         = "test-view-1"
+	name        = "Test View 1"
+	maintainer_id = "%s"
+}
+`
+
+	// Step 2: Add flag with nonexistent view (should fail)
+	testAccFeatureFlagWithViewKeysNonexistentViewStep2 = `
 resource "launchdarkly_project" "test" {
 	name = "%s"
 	key  = "%s"
@@ -248,8 +265,20 @@ func TestAccFeatureFlagViewKeys_NonexistentView(t *testing.T) {
 		Providers:    testAccProviders,
 		CheckDestroy: testAccCheckFeatureFlagDestroy,
 		Steps: []resource.TestStep{
+			// Step 1: Create project and view first
 			{
-				Config:      fmt.Sprintf(testAccFeatureFlagWithViewKeysNonexistentView, projectName, projectKey, maintainerId),
+				Config: fmt.Sprintf(testAccFeatureFlagWithViewKeysNonexistentViewStep1, projectName, projectKey, maintainerId),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckProjectExists("launchdarkly_project.test"),
+				),
+			},
+			// Step 2: Try to create flag with nonexistent view (should fail)
+			{
+				PreConfig: func() {
+					// Wait for view to be fully propagated before attempting flag creation
+					time.Sleep(3 * time.Second)
+				},
+				Config:      fmt.Sprintf(testAccFeatureFlagWithViewKeysNonexistentViewStep2, projectName, projectKey, maintainerId),
 				ExpectError: regexp.MustCompile("view does not exist"),
 			},
 		},
