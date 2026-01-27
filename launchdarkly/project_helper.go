@@ -15,10 +15,23 @@ import (
 	ldapi "github.com/launchdarkly/api-client-go/v17"
 )
 
-// getDefaultAPIHost extracts the hostname from DEFAULT_LAUNCHDARKLY_HOST
-func getDefaultAPIHost() string {
-	u, _ := url.Parse(DEFAULT_LAUNCHDARKLY_HOST)
-	return u.Host
+// buildProjectURL constructs a properly formatted URL for the projects API endpoint.
+// It handles cases where apiHost may or may not include a scheme.
+func buildProjectURL(apiHost, projectKey string) string {
+	host := apiHost
+	if host == "" {
+		host = DEFAULT_LAUNCHDARKLY_HOST
+	}
+
+	// Parse the host - if it doesn't have a scheme, add https://
+	if u, err := url.Parse(host); err == nil && u.Scheme != "" {
+		// Host already has a scheme, use it directly
+		u.Path = fmt.Sprintf("/api/v2/projects/%s", projectKey)
+		return u.String()
+	}
+
+	// No scheme present, construct URL with https
+	return fmt.Sprintf("https://%s/api/v2/projects/%s", host, projectKey)
 }
 
 func projectRead(ctx context.Context, d *schema.ResourceData, meta interface{}, isDataSource bool) diag.Diagnostics {
@@ -188,13 +201,9 @@ type ProjectViewSettings struct {
 // Since these fields are not in the official API client model, we make a raw HTTP request
 // and parse only the fields we need.
 func getProjectViewSettings(client *Client, projectKey string) (*ProjectViewSettings, error) {
-	host := client.apiHost
-	if host == "" {
-		host = getDefaultAPIHost()
-	}
-	url := fmt.Sprintf("https://%s/api/v2/projects/%s", host, projectKey)
+	endpoint := buildProjectURL(client.apiHost, projectKey)
 
-	req, err := http.NewRequestWithContext(client.ctx, "GET", url, nil)
+	req, err := http.NewRequestWithContext(client.ctx, "GET", endpoint, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -228,11 +237,7 @@ func getProjectViewSettings(client *Client, projectKey string) (*ProjectViewSett
 
 // patchProjectViewSettings updates the view association requirement settings for a project.
 func patchProjectViewSettings(client *Client, projectKey string, flagsRequired, segmentsRequired bool, flagsChanged, segmentsChanged bool) error {
-	host := client.apiHost
-	if host == "" {
-		host = getDefaultAPIHost()
-	}
-	url := fmt.Sprintf("https://%s/api/v2/projects/%s", host, projectKey)
+	endpoint := buildProjectURL(client.apiHost, projectKey)
 
 	// Build patch operations only for fields that changed
 	var patchOps []map[string]interface{}
@@ -260,7 +265,7 @@ func patchProjectViewSettings(client *Client, projectKey string, flagsRequired, 
 		return err
 	}
 
-	req, err := http.NewRequestWithContext(client.ctx, "PATCH", url, bytes.NewBuffer(jsonData))
+	req, err := http.NewRequestWithContext(client.ctx, "PATCH", endpoint, bytes.NewBuffer(jsonData))
 	if err != nil {
 		return err
 	}
