@@ -103,10 +103,10 @@ The resource must contain either a "role", "custom_role" or an "inline_roles" (p
 func validateAPIVersion(val interface{}, key string) (warns []string, errs []error) {
 	v := val.(int)
 	switch v {
-	case 0, 20191212, 20160426:
+	case 0, 20240415, 20191212, 20160426:
 		// do nothing
 	default:
-		errs = append(errs, fmt.Errorf("%q must be either `20191212` or `20160426`. Got: %v", key, v))
+		errs = append(errs, fmt.Errorf("%q must be one of `20240415`, `20191212`, or `20160426`. Got: %v", key, v))
 	}
 	return warns, errs
 }

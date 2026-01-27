@@ -2,6 +2,31 @@
 
 All notable changes to the LaunchDarkly Terraform Provider will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org).
 
+## [2.26.2](https://github.com/launchdarkly/terraform-provider-launchdarkly/compare/v2.26.1...v2.26.2) (2026-01-22)
+
+
+### Bug Fixes
+
+* improve custom_properties hashing to resolve false / missing diffs ([#373](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/373)) ([ff36941](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/ff3694144eea34d0958b9d4b9d3d376378520f1c))
+
+## [2.26.1](https://github.com/launchdarkly/terraform-provider-launchdarkly/compare/v2.26.0...v2.26.1) (2026-01-20)
+
+
+### Bug Fixes
+
+* [REL-11737] Add pagination to teams resource nested fields roles and maintainers ([#375](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/375)) ([a22a7a0](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/a22a7a0d28a7fcdf2ce3d66d3effba6601b1c8db))
+
+## [2.26.0](https://github.com/launchdarkly/terraform-provider-launchdarkly/compare/v2.25.3...v2.26.0) (2025-11-10)
+
+
+### Features
+
+* [bot] Regenerate integration configs ([#346](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/346)) ([15a0ef3](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/15a0ef3afb4d0e8ddcc9f9a0c8f68960b66819bf))
+
+
+### Bug Fixes
+
+* [REL-10234] Imiller/rel 10234/terraform flag resource does not smoothly switch between rollout weights and variation ([#366](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/366)) ([c42cfa3](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/c42cfa3ee258f33b5d5347db7602d2ef86bfff91))
 
 ## [2.26.0-beta.5](https://github.com/launchdarkly/terraform-provider-launchdarkly/compare/v2.26.0-beta.4...v2.26.0-beta.5) (2025-10-23)
 
@@ -81,7 +106,6 @@ All notable changes to the LaunchDarkly Terraform Provider will be documented in
 
 * [REL-8483] limit concurrency on the client to address 429/timeouts issue ([#338](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/338)) ([f38b51f](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/f38b51f5009c955e804dee9f4b5206a344ac41be))
 * [REL-8605] add documentation note on discrepancy in default base permissions with current API version ([#336](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/336)) ([53733ee](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/53733ee7eb2e1e8a62257faa6ef01369c5dd435c))
-
 ## [2.25.2](https://github.com/launchdarkly/terraform-provider-launchdarkly/compare/v2.25.1...v2.25.2) (2025-07-01)
 
 
