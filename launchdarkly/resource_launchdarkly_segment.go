@@ -3,7 +3,6 @@ package launchdarkly
 import (
 	"context"
 	"fmt"
-	"log"
 	"net/http"
 	"strings"
 

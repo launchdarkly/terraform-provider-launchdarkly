@@ -45,7 +45,8 @@ resource "launchdarkly_access_token" "service_token" {
 # Create a token with default api version configured
 # Your token will be using the latest api version by default. 
 # However, you can also specify an api version as needed: https://apidocs.launchdarkly.com/reference#versioning
+# Note: Some accounts are restricted to only use the latest API version (20240415)
 resource "launchdarkly_access_token" "token_with_default_api_version" {
   role                = "reader"
-  default_api_version = 20191212
+  default_api_version = 20240415
 }

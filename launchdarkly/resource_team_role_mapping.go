@@ -109,7 +109,13 @@ func (r *TeamRoleMappingResource) Create(ctx context.Context, req resource.Creat
 	data.TeamKey = types.StringValue(*team.Key)
 	data.ID = types.StringValue(*team.Key)
 
-	if team.Roles != nil && len(team.Roles.Items) > 0 {
+	// Check if team already has custom roles assigned using paginated API
+	existingRoleKeys, err := getAllTeamCustomRoleKeysWithRetry(r.client, teamKey)
+	if err != nil {
+		resp.Diagnostics.AddError("Unable to get team roles", fmt.Sprintf("Received an error when fetching roles for team %q: %s", teamKey, err))
+		return
+	}
+	if len(existingRoleKeys) > 0 {
 		resp.Diagnostics.AddError("The team already has custom roles assigned.", fmt.Sprintf("The team %q already has custom roles assigned.", teamKey))
 	}
 
@@ -143,25 +149,11 @@ func (r *TeamRoleMappingResource) Create(ctx context.Context, req resource.Creat
 			return
 		}
 
-		var team *ldapi.Team
-		var res *http.Response
-		err = r.client.withConcurrency(r.client.ctx, func() error {
-			team, res, err = r.client.ld.TeamsApi.GetTeam(r.client.ctx, teamKey).Expand("roles").Execute()
-			return err
-		})
+		// Fetch all role keys with pagination to verify they were added
+		returnedRoleKeys, err := getAllTeamCustomRoleKeys(r.client, teamKey)
 		if err != nil {
-			if isStatusNotFound(res) {
-				resp.Diagnostics.AddError("Team not found", fmt.Sprintf("Unable to create the team/role mapping because the team %q does not exist.", teamKey))
-				return
-			}
-
-			resp.Diagnostics.AddError("Unable to get team", fmt.Sprintf("Received an error when fetching the team %q: %s", teamKey, handleLdapiErr((err))))
+			resp.Diagnostics.AddError("Unable to get team roles", fmt.Sprintf("Received an error when fetching roles for team %q: %s", teamKey, err))
 			return
-		}
-
-		returnedRoleKeys := make([]string, 0, len(team.Roles.Items))
-		for _, role := range team.Roles.Items {
-			returnedRoleKeys = append(returnedRoleKeys, role.GetKey())
 		}
 		for _, role := range customRoleKeys {
 			if !stringInSlice(role, returnedRoleKeys) {
@@ -189,30 +181,38 @@ func (r *TeamRoleMappingResource) Read(ctx context.Context, req resource.ReadReq
 
 	teamKey := data.TeamKey.ValueString()
 
-	// we use the ld404Retry API client to fetch the team because users that provision their team via Okta team sync may
-	// see a delay before the team appears in LaunchDarkly. sc-218015
-	var team *ldapi.Team
+	// First verify the team exists - this provides clearer error messages than
+	// failing on the roles API call
 	var res *http.Response
 	var err error
 	err = r.client.withConcurrency(r.client.ctx, func() error {
-		team, res, err = r.client.ld404Retry.TeamsApi.GetTeam(r.client.ctx, teamKey).Expand("roles").Execute()
+		_, res, err = r.client.ld404Retry.TeamsApi.GetTeam(r.client.ctx, teamKey).Execute()
 		return err
 	})
 	if err != nil {
 		if isStatusNotFound(res) {
-			resp.Diagnostics.AddError("Team not found", fmt.Sprintf("Unable to read the team/role mapping because the team %q does not exist.", teamKey))
+			// Team was deleted outside of Terraform, remove from state
+			resp.State.RemoveResource(ctx)
 			return
 		}
-
-		resp.Diagnostics.AddError("Unable to get team", fmt.Sprintf("Received an error when fetching the team %q: %s", teamKey, handleLdapiErr((err))))
+		resp.Diagnostics.AddError("Unable to get team", fmt.Sprintf("Received an error when fetching the team %q: %s", teamKey, handleLdapiErr(err)))
 		return
 	}
 
-	data.TeamKey = types.StringValue(*team.Key)
-	data.ID = types.StringValue(*team.Key)
-	coercedRoleKeys := make([]attr.Value, 0, len(team.Roles.Items))
-	for _, customRole := range team.Roles.Items {
-		coercedRoleKeys = append(coercedRoleKeys, types.StringValue(customRole.GetKey()))
+	// Fetch all role keys with pagination using the 404-retry client
+	// We use the ld404Retry API client because users that provision their team via Okta team sync may
+	// see a delay before the team appears in LaunchDarkly. sc-218015
+	roleKeys, err := getAllTeamCustomRoleKeysWithRetry(r.client, teamKey)
+	if err != nil {
+		resp.Diagnostics.AddError("Unable to get team roles", fmt.Sprintf("Received an error when fetching roles for team %q: %s", teamKey, err))
+		return
+	}
+
+	data.TeamKey = types.StringValue(teamKey)
+	data.ID = types.StringValue(teamKey)
+	coercedRoleKeys := make([]attr.Value, 0, len(roleKeys))
+	for _, roleKey := range roleKeys {
+		coercedRoleKeys = append(coercedRoleKeys, types.StringValue(roleKey))
 	}
 	customRoleSet, diags := types.SetValue(types.StringType, coercedRoleKeys)
 	resp.Diagnostics.Append(diags...)
@@ -232,27 +232,29 @@ func (r *TeamRoleMappingResource) Update(ctx context.Context, req resource.Updat
 	}
 
 	teamKey := data.TeamKey.ValueString()
-	var team *ldapi.Team
+
+	// First verify the team exists - this provides clearer error messages than
+	// failing on the roles API call
 	var res *http.Response
 	var err error
 	err = r.client.withConcurrency(r.client.ctx, func() error {
-		team, res, err = r.client.ld404Retry.TeamsApi.GetTeam(r.client.ctx, teamKey).Expand("roles").Execute()
+		_, res, err = r.client.ld404Retry.TeamsApi.GetTeam(r.client.ctx, teamKey).Execute()
 		return err
 	})
 	if err != nil {
 		if isStatusNotFound(res) {
-			resp.Diagnostics.AddError("Team not found", fmt.Sprintf("Unable to get the team/role mapping because the team %q does not exist.", teamKey))
+			resp.Diagnostics.AddError("Team not found", fmt.Sprintf("Unable to update the team/role mapping because the team %q does not exist.", teamKey))
 			return
 		}
-
-		resp.Diagnostics.AddError("Unable to get team", fmt.Sprintf("Received an error when fetching the team %q: %s", teamKey, handleLdapiErr((err))))
+		resp.Diagnostics.AddError("Unable to get team", fmt.Sprintf("Received an error when fetching the team %q: %s", teamKey, handleLdapiErr(err)))
 		return
 	}
 
-	existingCustomRoles := team.Roles.Items
-	existingRoleKeys := make([]string, 0, len(existingCustomRoles))
-	for _, role := range existingCustomRoles {
-		existingRoleKeys = append(existingRoleKeys, role.GetKey())
+	// Fetch existing role keys with pagination
+	existingRoleKeys, err := getAllTeamCustomRoleKeysWithRetry(r.client, teamKey)
+	if err != nil {
+		resp.Diagnostics.AddError("Unable to get team roles", fmt.Sprintf("Received an error when fetching roles for team %q: %s", teamKey, err))
+		return
 	}
 
 	customRoleKeys := make([]string, 0, len(data.CustomRoleKeys.Elements()))
@@ -293,30 +295,15 @@ func (r *TeamRoleMappingResource) Update(ctx context.Context, req resource.Updat
 			return
 		}
 
-		// We need to fetch the team again via GET (with the expand=roles query param) because the PATCH response does not
-		// include custom role information.
-		var team *ldapi.Team
-		var res *http.Response
-		err = r.client.withConcurrency(r.client.ctx, func() error {
-			team, res, err = r.client.ld.TeamsApi.GetTeam(r.client.ctx, teamKey).Expand("roles").Execute()
-			return err
-		})
+		// Fetch all role keys with pagination to verify they were updated
+		returnedRoleKeys, err := getAllTeamCustomRoleKeys(r.client, teamKey)
 		if err != nil {
-			if isStatusNotFound(res) {
-				resp.Diagnostics.AddError("Team not found", fmt.Sprintf("Unable to create the team/role mapping because the team %q does not exist.", teamKey))
-				return
-			}
-
-			resp.Diagnostics.AddError("Unable to get team", fmt.Sprintf("Received an error when fetching the team %q: %s", teamKey, handleLdapiErr((err))))
+			resp.Diagnostics.AddError("Unable to get team roles", fmt.Sprintf("Received an error when fetching roles for team %q: %s", teamKey, err))
 			return
 		}
 
-		data.TeamKey = types.StringValue(*team.Key)
-		data.ID = types.StringValue(*team.Key)
-		returnedRoleKeys := make([]string, 0, len(team.Roles.Items))
-		for _, role := range team.Roles.Items {
-			returnedRoleKeys = append(returnedRoleKeys, role.GetKey())
-		}
+		data.TeamKey = types.StringValue(teamKey)
+		data.ID = types.StringValue(teamKey)
 		for _, role := range customRoleKeys {
 			if !stringInSlice(role, returnedRoleKeys) {
 				resp.Diagnostics.AddError("Unable to add custom role to team", fmt.Sprintf("Unable to add custom role with key %q to the team. Ensure the custom role exists first.", role))

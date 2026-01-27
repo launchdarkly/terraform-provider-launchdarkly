@@ -46,3 +46,5 @@ website/node_modules
 .vscode/
 
 local-testing/
+
+.DS_Store
