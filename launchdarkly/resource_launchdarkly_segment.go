@@ -101,20 +101,45 @@ func resourceSegmentCreate(ctx context.Context, d *schema.ResourceData, metaRaw 
 	unbounded := d.Get(UNBOUNDED).(bool)
 	unboundedContextKind := d.Get(UNBOUNDED_CONTEXT_KIND).(string)
 
-	segment := ldapi.SegmentBody{
-		Name:                 segmentName,
-		Key:                  key,
-		Description:          &description,
-		Tags:                 tags,
-		Unbounded:            &unbounded,
-		UnboundedContextKind: &unboundedContextKind,
+	// Check if view_keys is specified - if so, we need to use raw HTTP to include it in creation
+	var viewKeys []string
+	if viewKeysRaw, ok := d.GetOk(VIEW_KEYS); ok {
+		viewKeysSet := viewKeysRaw.(*schema.Set)
+		for _, v := range viewKeysSet.List() {
+			viewKeys = append(viewKeys, v.(string))
+		}
 	}
 
 	var err error
-	err = client.withConcurrency(client.ctx, func() error {
-		_, _, err = client.ld.SegmentsApi.PostSegment(client.ctx, projectKey, envKey).SegmentBody(segment).Execute()
-		return err
-	})
+	if len(viewKeys) > 0 {
+		// Use raw HTTP call to include viewKeys in the creation request
+		segmentBody := SegmentBodyWithViewKeys{
+			Name:                 segmentName,
+			Key:                  key,
+			Description:          description,
+			Tags:                 tags,
+			Unbounded:            unbounded,
+			UnboundedContextKind: unboundedContextKind,
+			ViewKeys:             viewKeys,
+		}
+		err = client.withConcurrency(client.ctx, func() error {
+			return createSegmentWithViewKeys(client, projectKey, envKey, segmentBody)
+		})
+	} else {
+		// Use the standard API client when no view_keys are specified
+		segment := ldapi.SegmentBody{
+			Name:                 segmentName,
+			Key:                  key,
+			Description:          &description,
+			Tags:                 tags,
+			Unbounded:            &unbounded,
+			UnboundedContextKind: &unboundedContextKind,
+		}
+		err = client.withConcurrency(client.ctx, func() error {
+			_, _, err = client.ld.SegmentsApi.PostSegment(client.ctx, projectKey, envKey).SegmentBody(segment).Execute()
+			return err
+		})
+	}
 	if err != nil {
 		return diag.Errorf("failed to create segment %q in project %q: %s", key, projectKey, handleLdapiErr(err))
 	}
