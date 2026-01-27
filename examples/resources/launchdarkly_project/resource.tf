@@ -6,6 +6,10 @@ resource "launchdarkly_project" "example" {
     "terraform",
   ]
 
+  # Require new flags and segments to be associated with a view
+  require_view_association_for_new_flags    = false
+  require_view_association_for_new_segments = false
+
   environments {
     key   = "production"
     name  = "Production"
