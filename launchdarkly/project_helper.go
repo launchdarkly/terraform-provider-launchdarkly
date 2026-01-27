@@ -8,11 +8,18 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"net/url"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	ldapi "github.com/launchdarkly/api-client-go/v17"
 )
+
+// getDefaultAPIHost extracts the hostname from DEFAULT_LAUNCHDARKLY_HOST
+func getDefaultAPIHost() string {
+	u, _ := url.Parse(DEFAULT_LAUNCHDARKLY_HOST)
+	return u.Host
+}
 
 func projectRead(ctx context.Context, d *schema.ResourceData, meta interface{}, isDataSource bool) diag.Diagnostics {
 	var diags diag.Diagnostics
@@ -183,7 +190,7 @@ type ProjectViewSettings struct {
 func getProjectViewSettings(client *Client, projectKey string) (*ProjectViewSettings, error) {
 	host := client.apiHost
 	if host == "" {
-		host = "app.launchdarkly.com"
+		host = getDefaultAPIHost()
 	}
 	url := fmt.Sprintf("https://%s/api/v2/projects/%s", host, projectKey)
 
@@ -223,7 +230,7 @@ func getProjectViewSettings(client *Client, projectKey string) (*ProjectViewSett
 func patchProjectViewSettings(client *Client, projectKey string, flagsRequired, segmentsRequired bool, flagsChanged, segmentsChanged bool) error {
 	host := client.apiHost
 	if host == "" {
-		host = "app.launchdarkly.com"
+		host = getDefaultAPIHost()
 	}
 	url := fmt.Sprintf("https://%s/api/v2/projects/%s", host, projectKey)
 
