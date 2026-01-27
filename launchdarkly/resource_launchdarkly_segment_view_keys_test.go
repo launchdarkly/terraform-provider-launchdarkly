@@ -309,7 +309,7 @@ func TestAccSegmentViewKeys_NonexistentView(t *testing.T) {
 					time.Sleep(3 * time.Second)
 				},
 				Config:      fmt.Sprintf(testAccSegmentWithViewKeysNonexistentViewStep2, projectName, projectKey, maintainerId),
-				ExpectError: regexp.MustCompile("view does not exist"),
+				ExpectError: regexp.MustCompile(`(?i)view.*not found`),
 			},
 		},
 	})
