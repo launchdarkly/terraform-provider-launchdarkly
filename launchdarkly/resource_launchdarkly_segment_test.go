@@ -2,11 +2,14 @@ package launchdarkly
 
 import (
 	"fmt"
+	"os"
+	"regexp"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
+	"github.com/stretchr/testify/require"
 )
 
 const (
@@ -646,4 +649,92 @@ func testAccCheckSegmentExists(resourceName string) resource.TestCheckFunc {
 		}
 		return nil
 	}
+}
+
+// TestAccSegment_ViewAssociationRequired tests that creating a segment without view_keys
+// fails when the project requires view association for new segments
+func TestAccSegment_ViewAssociationRequired(t *testing.T) {
+	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	resourceName := "launchdarkly_segment.test"
+
+	// Get a maintainer ID for view creation
+	client, err := newClient(os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN), os.Getenv(LAUNCHDARKLY_API_HOST), false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
+	require.NoError(t, err)
+	members, _, err := client.ld.AccountMembersApi.GetMembers(client.ctx).Execute()
+	require.NoError(t, err)
+	require.True(t, len(members.Items) > 0, "This test requires at least one member in the account")
+	maintainerId := members.Items[0].Id
+
+	// Config with project requiring view association but segment without view_keys (should fail)
+	testAccSegmentWithoutViewKeys := fmt.Sprintf(`
+resource "launchdarkly_project" "test" {
+	key  = "%s"
+	name = "View Requirement Test"
+	require_view_association_for_new_segments = true
+	environments {
+		key   = "test-env"
+		name  = "Test Environment"
+		color = "010101"
+	}
+}
+
+resource "launchdarkly_segment" "test" {
+	project_key = launchdarkly_project.test.key
+	env_key     = "test-env"
+	key         = "test-segment-no-views"
+	name        = "Test Segment Without Views"
+}
+`, projectKey)
+
+	// Config with project requiring view association and segment with view_keys (should succeed)
+	testAccSegmentWithViewKeys := fmt.Sprintf(`
+resource "launchdarkly_project" "test" {
+	key  = "%s"
+	name = "View Requirement Test"
+	require_view_association_for_new_segments = true
+	environments {
+		key   = "test-env"
+		name  = "Test Environment"
+		color = "010101"
+	}
+}
+
+resource "launchdarkly_view" "test" {
+	project_key   = launchdarkly_project.test.key
+	key           = "test-view"
+	name          = "Test View"
+	maintainer_id = "%s"
+}
+
+resource "launchdarkly_segment" "test" {
+	project_key = launchdarkly_project.test.key
+	env_key     = "test-env"
+	key         = "test-segment-with-views"
+	name        = "Test Segment With Views"
+	view_keys   = [launchdarkly_view.test.key]
+}
+`, projectKey, maintainerId)
+
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck: func() {
+			testAccPreCheck(t)
+		},
+		Providers:    testAccProviders,
+		CheckDestroy: testAccCheckProjectDestroy,
+		Steps: []resource.TestStep{
+			// Step 1: Verify segment without view_keys fails when project requires it
+			{
+				Config:      testAccSegmentWithoutViewKeys,
+				ExpectError: regexp.MustCompile(`requires new segments to be associated with at least one view`),
+			},
+			// Step 2: Verify segment with view_keys succeeds when project requires it
+			{
+				Config: testAccSegmentWithViewKeys,
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckSegmentExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, "view_keys.#", "1"),
+				),
+			},
+		},
+	})
 }

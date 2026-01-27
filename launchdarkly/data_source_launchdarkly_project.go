@@ -60,6 +60,16 @@ func dataSourceProject() *schema.Resource {
 				},
 			},
 			TAGS: tagsSchema(tagsSchemaOptions{isDataSource: true}),
+			REQUIRE_VIEW_ASSOCIATION_FOR_NEW_FLAGS: {
+				Type:        schema.TypeBool,
+				Computed:    true,
+				Description: "Whether new flags created in this project must be associated with at least one view.",
+			},
+			REQUIRE_VIEW_ASSOCIATION_FOR_NEW_SEGMENTS: {
+				Type:        schema.TypeBool,
+				Computed:    true,
+				Description: "Whether new segments created in this project must be associated with at least one view.",
+			},
 		},
 	}
 }

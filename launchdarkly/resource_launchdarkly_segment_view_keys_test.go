@@ -6,6 +6,7 @@ import (
 	"os"
 	"regexp"
 	"testing"
+	"time"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
@@ -149,7 +150,28 @@ resource "launchdarkly_segment" "test" {
 }
 `
 
-	testAccSegmentWithViewKeysNonexistentView = `
+	// Step 1: Create project and view first
+	testAccSegmentWithViewKeysNonexistentViewStep1 = `
+resource "launchdarkly_project" "test" {
+	name = "%s"
+	key  = "%s"
+	environments {
+		name  = "Test Environment"
+		key   = "test-env"
+		color = "000000"
+	}
+}
+
+resource "launchdarkly_view" "view1" {
+	project_key = launchdarkly_project.test.key
+	key         = "test-view-1"
+	name        = "Test View 1"
+	maintainer_id = "%s"
+}
+`
+
+	// Step 2: Add segment with nonexistent view (should fail)
+	testAccSegmentWithViewKeysNonexistentViewStep2 = `
 resource "launchdarkly_project" "test" {
 	name = "%s"
 	key  = "%s"
@@ -273,9 +295,21 @@ func TestAccSegmentViewKeys_NonexistentView(t *testing.T) {
 		Providers:    testAccProviders,
 		CheckDestroy: testAccCheckSegmentDestroy,
 		Steps: []resource.TestStep{
+			// Step 1: Create project and view first
 			{
-				Config:      fmt.Sprintf(testAccSegmentWithViewKeysNonexistentView, projectName, projectKey, maintainerId),
-				ExpectError: regexp.MustCompile("view does not exist"),
+				Config: fmt.Sprintf(testAccSegmentWithViewKeysNonexistentViewStep1, projectName, projectKey, maintainerId),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckProjectExists("launchdarkly_project.test"),
+				),
+			},
+			// Step 2: Try to create segment with nonexistent view (should fail)
+			{
+				PreConfig: func() {
+					// Wait for view to be fully propagated before attempting segment creation
+					time.Sleep(3 * time.Second)
+				},
+				Config:      fmt.Sprintf(testAccSegmentWithViewKeysNonexistentViewStep2, projectName, projectKey, maintainerId),
+				ExpectError: regexp.MustCompile(`(?i)view.*not found`),
 			},
 		},
 	})

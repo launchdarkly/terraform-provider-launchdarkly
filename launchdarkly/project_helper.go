@@ -1,15 +1,38 @@
 package launchdarkly
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
+	"net/url"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	ldapi "github.com/launchdarkly/api-client-go/v17"
 )
+
+// buildProjectURL constructs a properly formatted URL for the projects API endpoint.
+// It handles cases where apiHost may or may not include a scheme.
+func buildProjectURL(apiHost, projectKey string) string {
+	host := apiHost
+	if host == "" {
+		host = DEFAULT_LAUNCHDARKLY_HOST
+	}
+
+	// Parse the host - if it doesn't have a scheme, add https://
+	if u, err := url.Parse(host); err == nil && u.Scheme != "" {
+		// Host already has a scheme, use it directly
+		u.Path = fmt.Sprintf("/api/v2/projects/%s", projectKey)
+		return u.String()
+	}
+
+	// No scheme present, construct URL with https
+	return fmt.Sprintf("https://%s/api/v2/projects/%s", host, projectKey)
+}
 
 func projectRead(ctx context.Context, d *schema.ResourceData, meta interface{}, isDataSource bool) diag.Diagnostics {
 	var diags diag.Diagnostics
@@ -99,6 +122,23 @@ func projectRead(ctx context.Context, d *schema.ResourceData, meta interface{}, 
 		return diag.Errorf("could not set default_client_side_availability on project with key %q: %v", project.Key, err)
 	}
 
+	// Fetch and set view association requirement fields using raw HTTP
+	// These fields are not in the official API client model yet
+	viewSettings, viewSettingsErr := getProjectViewSettings(client, projectKey)
+	if viewSettingsErr != nil {
+		// Log warning but don't fail the read - these fields may not be available on all accounts
+		log.Printf("[WARN] failed to get view association settings for project %q: %v", projectKey, viewSettingsErr)
+	} else {
+		err = d.Set(REQUIRE_VIEW_ASSOCIATION_FOR_NEW_FLAGS, viewSettings.RequireViewAssociationForNewFlags)
+		if err != nil {
+			return diag.Errorf("could not set require_view_association_for_new_flags on project with key %q: %v", project.Key, err)
+		}
+		err = d.Set(REQUIRE_VIEW_ASSOCIATION_FOR_NEW_SEGMENTS, viewSettings.RequireViewAssociationForNewSegments)
+		if err != nil {
+			return diag.Errorf("could not set require_view_association_for_new_segments on project with key %q: %v", project.Key, err)
+		}
+	}
+
 	return diags
 }
 
@@ -148,4 +188,106 @@ func getAllEnvironments(client *Client, projectKey string) (ldapi.Environments, 
 	envs := *ldapi.NewEnvironments(envItems)
 	envs.SetTotalCount(int32(len(envItems)))
 	return envs, nil, nil
+}
+
+// ProjectViewSettings represents the view association requirement settings for a project.
+// These fields are not yet in the official API client, so we use raw HTTP to read them.
+type ProjectViewSettings struct {
+	RequireViewAssociationForNewFlags    bool `json:"requireViewAssociationForNewFlags"`
+	RequireViewAssociationForNewSegments bool `json:"requireViewAssociationForNewSegments"`
+}
+
+// getProjectViewSettings fetches the view association requirement settings for a project.
+// Since these fields are not in the official API client model, we make a raw HTTP request
+// and parse only the fields we need.
+func getProjectViewSettings(client *Client, projectKey string) (*ProjectViewSettings, error) {
+	endpoint := buildProjectURL(client.apiHost, projectKey)
+
+	req, err := http.NewRequestWithContext(client.ctx, "GET", endpoint, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Set("Authorization", client.apiKey)
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("LD-API-Version", APIVersion)
+
+	resp, err := client.ld.GetConfig().HTTPClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	body, readErr := io.ReadAll(resp.Body)
+	if readErr != nil {
+		return nil, readErr
+	}
+
+	if resp.StatusCode >= 400 {
+		return nil, fmt.Errorf("LaunchDarkly API error - Status: %d, Response: %s", resp.StatusCode, string(body))
+	}
+
+	var settings ProjectViewSettings
+	if err := json.Unmarshal(body, &settings); err != nil {
+		return nil, err
+	}
+
+	return &settings, nil
+}
+
+// patchProjectViewSettings updates the view association requirement settings for a project.
+func patchProjectViewSettings(client *Client, projectKey string, flagsRequired, segmentsRequired bool, flagsChanged, segmentsChanged bool) error {
+	endpoint := buildProjectURL(client.apiHost, projectKey)
+
+	// Build patch operations only for fields that changed
+	var patchOps []map[string]interface{}
+	if flagsChanged {
+		patchOps = append(patchOps, map[string]interface{}{
+			"op":    "replace",
+			"path":  "/requireViewAssociationForNewFlags",
+			"value": flagsRequired,
+		})
+	}
+	if segmentsChanged {
+		patchOps = append(patchOps, map[string]interface{}{
+			"op":    "replace",
+			"path":  "/requireViewAssociationForNewSegments",
+			"value": segmentsRequired,
+		})
+	}
+
+	if len(patchOps) == 0 {
+		return nil
+	}
+
+	jsonData, err := json.Marshal(patchOps)
+	if err != nil {
+		return err
+	}
+
+	req, err := http.NewRequestWithContext(client.ctx, "PATCH", endpoint, bytes.NewBuffer(jsonData))
+	if err != nil {
+		return err
+	}
+
+	req.Header.Set("Authorization", client.apiKey)
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("LD-API-Version", APIVersion)
+
+	resp, err := client.ld.GetConfig().HTTPClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	body, readErr := io.ReadAll(resp.Body)
+	if readErr != nil {
+		return readErr
+	}
+
+	if resp.StatusCode >= 400 {
+		return fmt.Errorf("LaunchDarkly API error - Status: %d, Response: %s", resp.StatusCode, string(body))
+	}
+
+	return nil
 }

@@ -123,6 +123,18 @@ This resource allows you to create and manage projects within your LaunchDarkly 
 					Schema: environmentSchema(environmentSchemaOptions{forProject: true, isDataSource: false}),
 				},
 			},
+			REQUIRE_VIEW_ASSOCIATION_FOR_NEW_FLAGS: {
+				Type:        schema.TypeBool,
+				Optional:    true,
+				Default:     false,
+				Description: "Whether new flags created in this project must be associated with at least one view.",
+			},
+			REQUIRE_VIEW_ASSOCIATION_FOR_NEW_SEGMENTS: {
+				Type:        schema.TypeBool,
+				Optional:    true,
+				Default:     false,
+				Description: "Whether new segments created in this project must be associated with at least one view.",
+			},
 		},
 	}
 }
@@ -220,6 +232,20 @@ func resourceProjectUpdate(ctx context.Context, d *schema.ResourceData, metaRaw 
 	if err != nil {
 		return diag.Errorf("failed to update project with key %q: %s", projectKey, handleLdapiErr(err))
 	}
+
+	// Update view association requirement settings if changed
+	// These are handled separately via raw HTTP since they're not in the official API client
+	flagsRequiredChanged := d.HasChange(REQUIRE_VIEW_ASSOCIATION_FOR_NEW_FLAGS)
+	segmentsRequiredChanged := d.HasChange(REQUIRE_VIEW_ASSOCIATION_FOR_NEW_SEGMENTS)
+	if flagsRequiredChanged || segmentsRequiredChanged {
+		flagsRequired := d.Get(REQUIRE_VIEW_ASSOCIATION_FOR_NEW_FLAGS).(bool)
+		segmentsRequired := d.Get(REQUIRE_VIEW_ASSOCIATION_FOR_NEW_SEGMENTS).(bool)
+		err = patchProjectViewSettings(client, projectKey, flagsRequired, segmentsRequired, flagsRequiredChanged, segmentsRequiredChanged)
+		if err != nil {
+			return diag.Errorf("failed to update view association settings for project %q: %s", projectKey, err)
+		}
+	}
+
 	// Update environments if necessary
 	oldSchemaEnvList, newSchemaEnvList := d.GetChange(ENVIRONMENTS)
 	// Get the project so we can see if we need to create any environments or just update existing environments

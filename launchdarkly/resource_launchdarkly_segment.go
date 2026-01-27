@@ -12,6 +12,35 @@ import (
 	ldapi "github.com/launchdarkly/api-client-go/v17"
 )
 
+// customizeSegmentDiff validates that view_keys is set when the project requires view association for new segments
+func customizeSegmentDiff(ctx context.Context, diff *schema.ResourceDiff, meta interface{}) error {
+	// Only validate on create (when there's no ID yet)
+	if diff.Id() != "" {
+		return nil
+	}
+
+	client := meta.(*Client)
+	projectKey := diff.Get(PROJECT_KEY).(string)
+
+	// Fetch project view settings
+	viewSettings, err := getProjectViewSettings(client, projectKey)
+	if err != nil {
+		// Log warning but don't fail - the setting might not be available
+		log.Printf("[WARN] could not fetch project view settings for %q during plan: %v", projectKey, err)
+		return nil
+	}
+
+	if viewSettings.RequireViewAssociationForNewSegments {
+		viewKeysRaw := diff.Get(VIEW_KEYS)
+		viewKeys, ok := viewKeysRaw.(*schema.Set)
+		if !ok || viewKeys == nil || viewKeys.Len() == 0 {
+			return fmt.Errorf("project %q requires new segments to be associated with at least one view. Please set the 'view_keys' attribute", projectKey)
+		}
+	}
+
+	return nil
+}
+
 func resourceSegment() *schema.Resource {
 	schemaMap := baseSegmentSchema(segmentSchemaOptions{isDataSource: false})
 	schemaMap[PROJECT_KEY] = &schema.Schema{
@@ -47,6 +76,8 @@ func resourceSegment() *schema.Resource {
 		DeleteContext: resourceSegmentDelete,
 		Exists:        resourceSegmentExists,
 
+		CustomizeDiff: customizeSegmentDiff,
+
 		Importer: &schema.ResourceImporter{
 			State: resourceSegmentImport,
 		},
@@ -70,20 +101,45 @@ func resourceSegmentCreate(ctx context.Context, d *schema.ResourceData, metaRaw 
 	unbounded := d.Get(UNBOUNDED).(bool)
 	unboundedContextKind := d.Get(UNBOUNDED_CONTEXT_KIND).(string)
 
-	segment := ldapi.SegmentBody{
-		Name:                 segmentName,
-		Key:                  key,
-		Description:          &description,
-		Tags:                 tags,
-		Unbounded:            &unbounded,
-		UnboundedContextKind: &unboundedContextKind,
+	// Check if view_keys is specified - if so, we need to use raw HTTP to include it in creation
+	var viewKeys []string
+	if viewKeysRaw, ok := d.GetOk(VIEW_KEYS); ok {
+		viewKeysSet := viewKeysRaw.(*schema.Set)
+		for _, v := range viewKeysSet.List() {
+			viewKeys = append(viewKeys, v.(string))
+		}
 	}
 
 	var err error
-	err = client.withConcurrency(client.ctx, func() error {
-		_, _, err = client.ld.SegmentsApi.PostSegment(client.ctx, projectKey, envKey).SegmentBody(segment).Execute()
-		return err
-	})
+	if len(viewKeys) > 0 {
+		// Use raw HTTP call to include viewKeys in the creation request
+		segmentBody := SegmentBodyWithViewKeys{
+			Name:                 segmentName,
+			Key:                  key,
+			Description:          description,
+			Tags:                 tags,
+			Unbounded:            unbounded,
+			UnboundedContextKind: unboundedContextKind,
+			ViewKeys:             viewKeys,
+		}
+		err = client.withConcurrency(client.ctx, func() error {
+			return createSegmentWithViewKeys(client, projectKey, envKey, segmentBody)
+		})
+	} else {
+		// Use the standard API client when no view_keys are specified
+		segment := ldapi.SegmentBody{
+			Name:                 segmentName,
+			Key:                  key,
+			Description:          &description,
+			Tags:                 tags,
+			Unbounded:            &unbounded,
+			UnboundedContextKind: &unboundedContextKind,
+		}
+		err = client.withConcurrency(client.ctx, func() error {
+			_, _, err = client.ld.SegmentsApi.PostSegment(client.ctx, projectKey, envKey).SegmentBody(segment).Execute()
+			return err
+		})
+	}
 	if err != nil {
 		return diag.Errorf("failed to create segment %q in project %q: %s", key, projectKey, handleLdapiErr(err))
 	}

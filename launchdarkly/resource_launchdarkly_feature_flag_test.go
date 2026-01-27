@@ -2,12 +2,14 @@ package launchdarkly
 
 import (
 	"fmt"
+	"os"
 	"regexp"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
+	"github.com/stretchr/testify/require"
 )
 
 const (
@@ -1528,4 +1530,93 @@ func testAccCheckFeatureFlagExists(resourceName string) resource.TestCheckFunc {
 		}
 		return nil
 	}
+}
+
+// TestAccFeatureFlag_ViewAssociationRequired tests that creating a flag without view_keys
+// fails when the project requires view association for new flags
+func TestAccFeatureFlag_ViewAssociationRequired(t *testing.T) {
+	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	resourceName := "launchdarkly_feature_flag.test"
+
+	// Get a maintainer ID for view creation
+	client, err := newClient(os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN), os.Getenv(LAUNCHDARKLY_API_HOST), false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
+	require.NoError(t, err)
+	members, _, err := client.ld.AccountMembersApi.GetMembers(client.ctx).Execute()
+	require.NoError(t, err)
+	require.True(t, len(members.Items) > 0, "This test requires at least one member in the account")
+	maintainerId := members.Items[0].Id
+
+	// Config with project requiring view association but flag without view_keys (should fail)
+	testAccFlagWithoutViewKeys := fmt.Sprintf(`
+resource "launchdarkly_project" "test" {
+	key  = "%s"
+	name = "View Requirement Test"
+	require_view_association_for_new_flags = true
+	environments {
+		key   = "test-env"
+		name  = "Test Environment"
+		color = "010101"
+	}
+}
+
+resource "launchdarkly_feature_flag" "test" {
+	project_key    = launchdarkly_project.test.key
+	key            = "test-flag-no-views"
+	name           = "Test Flag Without Views"
+	variation_type = "boolean"
+}
+`, projectKey)
+
+	// Config with project requiring view association and flag with view_keys (should succeed)
+	testAccFlagWithViewKeys := fmt.Sprintf(`
+resource "launchdarkly_project" "test" {
+	key  = "%s"
+	name = "View Requirement Test"
+	require_view_association_for_new_flags = true
+	environments {
+		key   = "test-env"
+		name  = "Test Environment"
+		color = "010101"
+	}
+}
+
+resource "launchdarkly_view" "test" {
+	project_key   = launchdarkly_project.test.key
+	key           = "test-view"
+	name          = "Test View"
+	maintainer_id = "%s"
+}
+
+resource "launchdarkly_feature_flag" "test" {
+	project_key    = launchdarkly_project.test.key
+	key            = "test-flag-with-views"
+	name           = "Test Flag With Views"
+	variation_type = "boolean"
+	view_keys      = [launchdarkly_view.test.key]
+}
+`, projectKey, maintainerId)
+
+	// Config with project NOT requiring view association and flag without view_keys (should succeed)
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck: func() {
+			testAccPreCheck(t)
+		},
+		Providers:    testAccProviders,
+		CheckDestroy: testAccCheckProjectDestroy,
+		Steps: []resource.TestStep{
+			// Step 1: Verify flag without view_keys fails when project requires it
+			{
+				Config:      testAccFlagWithoutViewKeys,
+				ExpectError: regexp.MustCompile(`requires new flags to be associated with at least one view`),
+			},
+			// Step 2: Verify flag with view_keys succeeds when project requires it
+			{
+				Config: testAccFlagWithViewKeys,
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckFeatureFlagExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, "view_keys.#", "1"),
+				),
+			},
+		},
+	})
 }
