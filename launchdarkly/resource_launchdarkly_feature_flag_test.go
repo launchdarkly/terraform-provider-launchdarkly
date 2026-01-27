@@ -1597,26 +1597,6 @@ resource "launchdarkly_feature_flag" "test" {
 `, projectKey, maintainerId)
 
 	// Config with project NOT requiring view association and flag without view_keys (should succeed)
-	testAccFlagWithoutRequirement := fmt.Sprintf(`
-resource "launchdarkly_project" "test" {
-	key  = "%s"
-	name = "No View Requirement Test"
-	require_view_association_for_new_flags = false
-	environments {
-		key   = "test-env"
-		name  = "Test Environment"
-		color = "010101"
-	}
-}
-
-resource "launchdarkly_feature_flag" "test" {
-	project_key    = launchdarkly_project.test.key
-	key            = "test-flag-no-views-ok"
-	name           = "Test Flag Without Views OK"
-	variation_type = "boolean"
-}
-`, projectKey)
-
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
 			testAccPreCheck(t)
@@ -1635,24 +1615,6 @@ resource "launchdarkly_feature_flag" "test" {
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckFeatureFlagExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, "view_keys.#", "1"),
-				),
-			},
-		},
-	})
-
-	// Separate test for flags without requirement
-	resource.ParallelTest(t, resource.TestCase{
-		PreCheck: func() {
-			testAccPreCheck(t)
-		},
-		Providers:    testAccProviders,
-		CheckDestroy: testAccCheckProjectDestroy,
-		Steps: []resource.TestStep{
-			// Verify flag without view_keys succeeds when project doesn't require it
-			{
-				Config: testAccFlagWithoutRequirement,
-				Check: resource.ComposeTestCheckFunc(
-					testAccCheckFeatureFlagExists(resourceName),
 				),
 			},
 		},

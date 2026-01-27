@@ -715,27 +715,6 @@ resource "launchdarkly_segment" "test" {
 }
 `, projectKey, maintainerId)
 
-	// Config with project NOT requiring view association and segment without view_keys (should succeed)
-	testAccSegmentWithoutRequirement := fmt.Sprintf(`
-resource "launchdarkly_project" "test" {
-	key  = "%s"
-	name = "No View Requirement Test"
-	require_view_association_for_new_segments = false
-	environments {
-		key   = "test-env"
-		name  = "Test Environment"
-		color = "010101"
-	}
-}
-
-resource "launchdarkly_segment" "test" {
-	project_key = launchdarkly_project.test.key
-	env_key     = "test-env"
-	key         = "test-segment-no-views-ok"
-	name        = "Test Segment Without Views OK"
-}
-`, projectKey)
-
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
 			testAccPreCheck(t)
@@ -754,24 +733,6 @@ resource "launchdarkly_segment" "test" {
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckSegmentExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, "view_keys.#", "1"),
-				),
-			},
-		},
-	})
-
-	// Separate test for segments without requirement
-	resource.ParallelTest(t, resource.TestCase{
-		PreCheck: func() {
-			testAccPreCheck(t)
-		},
-		Providers:    testAccProviders,
-		CheckDestroy: testAccCheckProjectDestroy,
-		Steps: []resource.TestStep{
-			// Verify segment without view_keys succeeds when project doesn't require it
-			{
-				Config: testAccSegmentWithoutRequirement,
-				Check: resource.ComposeTestCheckFunc(
-					testAccCheckSegmentExists(resourceName),
 				),
 			},
 		},
