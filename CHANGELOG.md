@@ -2,42 +2,6 @@
 
 All notable changes to the LaunchDarkly Terraform Provider will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org).
 
-## [2.27.0-beta.1](https://github.com/launchdarkly/terraform-provider-launchdarkly/compare/v2.26.2-beta.1...v2.27.0-beta.1) (2026-01-28)
-
-
-### Features
-
-* [REL-10105] Ffeldberg/rel 10105/add views segments to tf provider and release prerelease ([#357](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/357)) ([cb40618](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/cb406185b912cb8840475072ab6c7f02daa30291))
-* [REL-11851] update tf provider preview to support project level view requirement ([#379](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/379)) ([5aab808](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/5aab8089d44ae3193e568fbd34a2a698e93e6e3a))
-* [REL-8140] add LaunchDarkly Views resource and data source  ([#329](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/329)) ([e2a5e68](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/e2a5e6881e3ea29b63b145918c12f72481766245))
-* [RO-1833] Add release policies resource ([#352](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/352)) ([2d1c139](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/2d1c13932667af15c9ae47cefd839e8614f01908))
-* [RO-1835] Add release policy order resource ([#354](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/354)) ([64b3981](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/64b398105bb53944679fd643b74b70200122f3bb))
-* [RO-2042] Add release policy datasource ([#355](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/355)) ([5162e5e](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/5162e5e43819366525217e9c3108cc7521f31ee8))
-* add auto apply to env approvals ([#295](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/295)) ([c546fbe](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/c546fbee93d58964472c2723ad14bbb3ce07a1b3))
-* add context_kind to targeting rules with percentage rollouts ([#293](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/293)) ([a41f969](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/a41f96963b8cf66b3045e8571e391630895e3b47))
-* add role attributes to `launchdarkly_team_member` ([#289](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/289)) ([bc24609](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/bc2460932a50bb81c39dd8ebe11024644e4a3e58))
-* add role attributes to custom roles ([#286](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/286)) ([5160b78](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/5160b7885ddeb98421efa93625076275a233e33e))
-* add role_attributes to `launchdarkly_team` ([#290](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/290)) ([10ac131](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/10ac13184d8f04a02c98d1f69a1629760e16ed19))
-* Add support for PagerDuty Events integration ([#305](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/305)) ([15dfb9d](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/15dfb9df42aa048bf78171cde520f885c59f029c))
-* **REL-10285:** Update provider to support assigning view membership on flag/segment resources directly ([#361](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/361)) ([96b0ec9](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/96b0ec92046e2a319cad2d27a37e76844e28e1ae))
-
-
-### Bug Fixes
-
-* [REL-7954] update error messages to return properly ([#317](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/317)) ([755f43d](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/755f43dc700f14e00c75dc7616191e14e0110e0b))
-* [REL-8490] remove ConflictsWith for unbounded and rules, included, excluded ([#324](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/324)) ([14a1980](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/14a1980deeffb1e9124c859ed80e9f082a89a279))
-* [REL-8721] merge in fixes from 2.25.3 ([#343](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/343)) ([de0f022](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/de0f022ad8ce612806aa35eda4c981387c30dd6c))
-* Add missing changelog entry ([#236](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/236)) ([171d3d6](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/171d3d60b42560a23e3033a324efc07de0016046))
-* add random characters to name that keeps conflicting ([#272](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/272)) ([4d5cd7a](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/4d5cd7a637ec862a6926a30097a9da470cbacfa2))
-* add test for segments with anonymous clauses ([#249](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/249)) ([0274906](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/0274906a3a05dd08f1152517b324ef22e1ec6b7b))
-* Bump golang.org/x/crypto from 0.24.0 to 0.31.0 ([#254](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/254)) ([eaea627](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/eaea6272d3ffa93eddbd5c8c1ac34ba94a00e85c))
-* Bump golang.org/x/net from 0.26.0 to 0.33.0 ([#267](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/267)) ([505712e](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/505712e0bedeb2f6e5a8171403d83f130358d785))
-* make deprecated metric is_active field optional and computed ([#285](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/285)) ([afcbdc3](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/afcbdc359552f588a91a609996a313f57db6f2dd))
-* set `critical` property on environment resource ([#296](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/296)) ([3e3cd70](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/3e3cd70cb69211a3c689241c71a019e6d9b8b9fb))
-* update LD API version to 20240415 ([#268](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/268)) ([70bef86](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/70bef8676551150ba3ead5286ea6823d2cff0563))
-* update README.md ([#233](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/233)) ([c51bb25](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/c51bb25c2f04f51d43d0d50346e37aa574269e9f))
-* update release action ([#269](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/269)) ([dba75fc](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/dba75fccc94c669cb75f812a70f24a0946c8e8e1))
-
 ## [2.26.2-beta.6](https://github.com/launchdarkly/terraform-provider-launchdarkly/compare/v2.26.0-beta.5...v2.26.2-beta.1) (2026-01-27)
 
 
