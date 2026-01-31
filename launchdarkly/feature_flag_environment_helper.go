@@ -119,7 +119,7 @@ func featureFlagEnvironmentRead(ctx context.Context, d *schema.ResourceData, raw
 		return diag.Errorf("failed to get flag %q of project %q: %s", flagKey, projectKey, handleLdapiErr(err))
 	}
 
-	environment, ok := flag.Environments[envKey]
+	environment, ok := (*flag.Environments)[envKey]
 	if !ok {
 		log.Printf("[WARN] failed to find environment %q for flag %q, removing from state", envKey, flagKey)
 		diags = append(diags, diag.Diagnostic{

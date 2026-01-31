@@ -189,13 +189,13 @@ func TestAccMetric_WithRandomizationUnits(t *testing.T) {
 	require.NoError(t, err)
 	// In order to add additional randomization units we need to update the project's context kind and
 	// experimentation settings. Because this can only be done using beta endpoints we can't set this up via Terraform.
-	betaClient, err := newBetaClient(os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN), os.Getenv(LAUNCHDARKLY_API_HOST), false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
+	client2, err := newClient(os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN), os.Getenv(LAUNCHDARKLY_API_HOST), false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
 	require.NoError(t, err)
-	err = scaffoldProjectWithExperimentationSettings(client, betaClient, projectKey, []string{"user", "request", "organization"})
+	err = scaffoldProjectWithExperimentationSettings(client, client2, projectKey, []string{"user", "request", "organization"})
 	require.NoError(t, err)
 
 	defer func() {
-		require.NoError(t, testAccProjectScaffoldDelete(betaClient, projectKey))
+		require.NoError(t, testAccProjectScaffoldDelete(client2, projectKey))
 	}()
 
 	resource.ParallelTest(t, resource.TestCase{

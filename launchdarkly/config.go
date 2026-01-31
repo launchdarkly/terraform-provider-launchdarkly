@@ -58,10 +58,6 @@ func newClient(token string, apiHost string, oauth bool, httpTimeoutSeconds, max
 	return baseNewClient(token, apiHost, oauth, httpTimeoutSeconds, APIVersion, maxConcurrent)
 }
 
-func newBetaClient(token string, apiHost string, oauth bool, httpTimeoutSeconds, maxConcurrent int) (*Client, error) {
-	return baseNewClient(token, apiHost, oauth, httpTimeoutSeconds, "beta", maxConcurrent)
-}
-
 func newLDClientConfig(apiHost string, httpTimeoutSeconds int, apiVersion string, retryPolicy retryablehttp.CheckRetry) *ldapi.Configuration {
 	cfg := ldapi.NewConfiguration()
 	cfg.Host = apiHost

@@ -110,8 +110,6 @@ func TestAccDataSourceMetric_exists(t *testing.T) {
 	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	client, err := newClient(os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN), os.Getenv(LAUNCHDARKLY_API_HOST), false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
 	require.NoError(t, err)
-	betaClient, err := newBetaClient(os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN), os.Getenv(LAUNCHDARKLY_API_HOST), false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
-	require.NoError(t, err)
 
 	metricName := "Metric Data Source Test"
 	metricKey := "metric-ds-testing"
@@ -128,7 +126,7 @@ func TestAccDataSourceMetric_exists(t *testing.T) {
 		Description:        ldapi.PtrString("a metric to test the terraform metric data source"),
 		RandomizationUnits: []string{"request", "user"},
 	}
-	metric, err := testAccDataSourceMetricScaffold(client, betaClient, projectKey, metricBody)
+	metric, err := testAccDataSourceMetricScaffold(client, client, projectKey, metricBody)
 	require.NoError(t, err)
 
 	defer func() {
