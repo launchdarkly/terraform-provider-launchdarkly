@@ -14,6 +14,14 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
+// setViewRequestHeaders sets the common headers for View API requests
+func setViewRequestHeaders(req *http.Request, apiKey string) {
+	req.Header.Set("Authorization", apiKey)
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("LD-API-Version", "beta")
+	req.Header.Set("User-Agent", fmt.Sprintf("launchdarkly-terraform-provider/%s", version))
+}
+
 func viewRead(ctx context.Context, d *schema.ResourceData, meta interface{}, isDataSource bool) diag.Diagnostics {
 	var diags diag.Diagnostics
 	client := meta.(*Client)
@@ -160,9 +168,7 @@ func getViewRaw(client *Client, projectKey, viewKey string) (*View, *http.Respon
 		return nil, nil, err
 	}
 
-	req.Header.Set("Authorization", client.apiKey)
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("LD-API-Version", "beta")
+	setViewRequestHeaders(req, client.apiKey)
 
 	resp, err := client.ld.GetConfig().HTTPClient.Do(req)
 	if err != nil {
@@ -199,9 +205,7 @@ func createView(client *Client, projectKey string, viewPost map[string]interface
 		return nil, err
 	}
 
-	req.Header.Set("Authorization", client.apiKey)
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("LD-API-Version", "beta")
+	setViewRequestHeaders(req, client.apiKey)
 
 	resp, err := client.ld.GetConfig().HTTPClient.Do(req)
 	if err != nil {
@@ -238,9 +242,7 @@ func patchView(client *Client, projectKey, viewKey string, patch map[string]inte
 		return err
 	}
 
-	req.Header.Set("Authorization", client.apiKey)
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("LD-API-Version", "beta")
+	setViewRequestHeaders(req, client.apiKey)
 
 	resp, err := client.ld.GetConfig().HTTPClient.Do(req)
 	if err != nil {
@@ -268,9 +270,7 @@ func deleteView(client *Client, projectKey, viewKey string) error {
 		return err
 	}
 
-	req.Header.Set("Authorization", client.apiKey)
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("LD-API-Version", "beta")
+	setViewRequestHeaders(req, client.apiKey)
 
 	resp, err := client.ld.GetConfig().HTTPClient.Do(req)
 	if err != nil {
@@ -390,9 +390,7 @@ func performViewLinkOperation(client *Client, projectKey, viewKey, resourceType 
 		return err
 	}
 
-	req.Header.Set("Authorization", client.apiKey)
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("LD-API-Version", "beta")
+	setViewRequestHeaders(req, client.apiKey)
 
 	resp, err := client.ld.GetConfig().HTTPClient.Do(req)
 	if err != nil {
@@ -426,9 +424,7 @@ func performViewSegmentLinkOperation(client *Client, projectKey, viewKey string,
 		return err
 	}
 
-	req.Header.Set("Authorization", client.apiKey)
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("LD-API-Version", "beta")
+	setViewRequestHeaders(req, client.apiKey)
 
 	resp, err := client.ld.GetConfig().HTTPClient.Do(req)
 	if err != nil {
@@ -558,9 +554,7 @@ func getLinkedResources(client *Client, projectKey, viewKey, resourceType string
 		return nil, err
 	}
 
-	req.Header.Set("Authorization", client.apiKey)
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("LD-API-Version", "beta")
+	setViewRequestHeaders(req, client.apiKey)
 
 	resp, err := client.ld.GetConfig().HTTPClient.Do(req)
 	if err != nil {
@@ -622,9 +616,7 @@ func getViewsContainingFlag(client *Client, projectKey, flagKey string) ([]strin
 		return nil, err
 	}
 
-	req.Header.Set("Authorization", client.apiKey)
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("LD-API-Version", "beta")
+	setViewRequestHeaders(req, client.apiKey)
 
 	resp, err := client.ld.GetConfig().HTTPClient.Do(req)
 	if err != nil {
@@ -660,9 +652,7 @@ func getViewsContainingSegment(client *Client, projectKey, environmentId, segmen
 		return nil, err
 	}
 
-	req.Header.Set("Authorization", client.apiKey)
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("LD-API-Version", "beta")
+	setViewRequestHeaders(req, client.apiKey)
 
 	resp, err := client.ld.GetConfig().HTTPClient.Do(req)
 	if err != nil {
