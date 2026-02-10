@@ -307,6 +307,7 @@ type ViewLinkedResources struct {
 type ViewLinkRequest struct {
 	Keys               []string                `json:"keys,omitempty"`
 	SegmentIdentifiers []ViewSegmentIdentifier `json:"segmentIdentifiers,omitempty"`
+	Filter             string                  `json:"filter,omitempty"`
 	Comment            string                  `json:"comment,omitempty"`
 }
 
@@ -700,4 +701,48 @@ func buildViewAssociationsURLWithEnv(client *Client, projectKey, resourceType, r
 		url = fmt.Sprintf("%s?environmentId=%s", url, environmentId)
 	}
 	return url
+}
+
+// performViewFilterLinkOperation performs an HTTP request for linking/unlinking resources using a filter string
+func performViewFilterLinkOperation(client *Client, projectKey, viewKey, resourceType, filter, method string) error {
+	url := buildViewLinkURL(client, projectKey, viewKey, resourceType)
+
+	linkRequest := ViewLinkRequest{
+		Filter: filter,
+	}
+
+	jsonData, err := json.Marshal(linkRequest)
+	if err != nil {
+		return err
+	}
+
+	req, err := http.NewRequestWithContext(client.ctx, method, url, bytes.NewBuffer(jsonData))
+	if err != nil {
+		return err
+	}
+
+	setViewRequestHeaders(req, client.apiKey)
+
+	resp, err := client.ld.GetConfig().HTTPClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 400 {
+		body, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("HTTP %d: %s", resp.StatusCode, string(body))
+	}
+
+	return nil
+}
+
+// linkResourcesByFilterToView links resources matching a filter to a view
+func linkResourcesByFilterToView(client *Client, projectKey, viewKey, resourceType, filter string) error {
+	return performViewFilterLinkOperation(client, projectKey, viewKey, resourceType, filter, "POST")
+}
+
+// unlinkResourcesByFilterFromView unlinks resources matching a filter from a view
+func unlinkResourcesByFilterFromView(client *Client, projectKey, viewKey, resourceType, filter string) error {
+	return performViewFilterLinkOperation(client, projectKey, viewKey, resourceType, filter, "DELETE")
 }
