@@ -308,6 +308,7 @@ type ViewLinkRequest struct {
 	Keys               []string                `json:"keys,omitempty"`
 	SegmentIdentifiers []ViewSegmentIdentifier `json:"segmentIdentifiers,omitempty"`
 	Filter             string                  `json:"filter,omitempty"`
+	EnvironmentId      string                  `json:"environmentId,omitempty"`
 	Comment            string                  `json:"comment,omitempty"`
 }
 
@@ -703,12 +704,14 @@ func buildViewAssociationsURLWithEnv(client *Client, projectKey, resourceType, r
 	return url
 }
 
-// performViewFilterLinkOperation performs an HTTP request for linking/unlinking resources using a filter string
-func performViewFilterLinkOperation(client *Client, projectKey, viewKey, resourceType, filter, method string) error {
+// performViewFilterLinkOperation performs an HTTP request for linking/unlinking resources using a filter string.
+// environmentId is optional — only required for segment filter operations.
+func performViewFilterLinkOperation(client *Client, projectKey, viewKey, resourceType, filter, environmentId, method string) error {
 	url := buildViewLinkURL(client, projectKey, viewKey, resourceType)
 
 	linkRequest := ViewLinkRequest{
-		Filter: filter,
+		Filter:        filter,
+		EnvironmentId: environmentId,
 	}
 
 	jsonData, err := json.Marshal(linkRequest)
@@ -737,12 +740,14 @@ func performViewFilterLinkOperation(client *Client, projectKey, viewKey, resourc
 	return nil
 }
 
-// linkResourcesByFilterToView links resources matching a filter to a view
-func linkResourcesByFilterToView(client *Client, projectKey, viewKey, resourceType, filter string) error {
-	return performViewFilterLinkOperation(client, projectKey, viewKey, resourceType, filter, "POST")
+// linkResourcesByFilterToView links resources matching a filter to a view.
+// environmentId is optional — only required for segment filter operations.
+func linkResourcesByFilterToView(client *Client, projectKey, viewKey, resourceType, filter, environmentId string) error {
+	return performViewFilterLinkOperation(client, projectKey, viewKey, resourceType, filter, environmentId, "POST")
 }
 
-// unlinkResourcesByFilterFromView unlinks resources matching a filter from a view
-func unlinkResourcesByFilterFromView(client *Client, projectKey, viewKey, resourceType, filter string) error {
-	return performViewFilterLinkOperation(client, projectKey, viewKey, resourceType, filter, "DELETE")
+// unlinkResourcesByFilterFromView unlinks resources matching a filter from a view.
+// environmentId is optional — only required for segment filter operations.
+func unlinkResourcesByFilterFromView(client *Client, projectKey, viewKey, resourceType, filter, environmentId string) error {
+	return performViewFilterLinkOperation(client, projectKey, viewKey, resourceType, filter, environmentId, "DELETE")
 }

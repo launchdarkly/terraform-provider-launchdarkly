@@ -143,9 +143,10 @@ resource "launchdarkly_segment" "test1" {
 }
 
 resource "launchdarkly_view_filter_links" "test" {
-	project_key    = launchdarkly_project.test.key
-	view_key       = launchdarkly_view.test.key
-	segment_filter = "tags:segment-filter-test"
+	project_key                   = launchdarkly_project.test.key
+	view_key                      = launchdarkly_view.test.key
+	segment_filter                = "tags:segment-filter-test"
+	segment_filter_environment_id = launchdarkly_project.test.environments[0].client_side_id
 
 	depends_on = [
 		launchdarkly_segment.test1
@@ -189,10 +190,11 @@ resource "launchdarkly_segment" "test1" {
 }
 
 resource "launchdarkly_view_filter_links" "test" {
-	project_key    = launchdarkly_project.test.key
-	view_key       = launchdarkly_view.test.key
-	flag_filter    = "tags:both-filter-test"
-	segment_filter = "tags:both-filter-test"
+	project_key                   = launchdarkly_project.test.key
+	view_key                      = launchdarkly_view.test.key
+	flag_filter                   = "tags:both-filter-test"
+	segment_filter                = "tags:both-filter-test"
+	segment_filter_environment_id = launchdarkly_project.test.environments[0].client_side_id
 
 	depends_on = [
 		launchdarkly_feature_flag.test1,

@@ -39,17 +39,19 @@ resource "launchdarkly_view_filter_links" "frontend_flags" {
 
 # Link both flags and segments matching a tag
 resource "launchdarkly_view_filter_links" "platform_resources" {
-  project_key    = "my-project"
-  view_key       = "platform-team"
-  flag_filter    = "tags:platform"
-  segment_filter = "tags:platform"
+  project_key                   = "my-project"
+  view_key                      = "platform-team"
+  flag_filter                   = "tags:platform"
+  segment_filter                = "tags:platform"
+  segment_filter_environment_id = launchdarkly_project.my_project.environments[0].client_side_id
 }
 
 # Link only segments matching a filter
 resource "launchdarkly_view_filter_links" "beta_segments" {
-  project_key    = "my-project"
-  view_key       = "beta-program"
-  segment_filter = "tags:beta"
+  project_key                   = "my-project"
+  view_key                      = "beta-program"
+  segment_filter                = "tags:beta"
+  segment_filter_environment_id = launchdarkly_project.my_project.environments[0].client_side_id
 }
 ```
 
@@ -64,7 +66,8 @@ resource "launchdarkly_view_filter_links" "beta_segments" {
 ### Optional
 
 - `flag_filter` (String) A filter expression to match feature flags for linking to the view. Uses the same filter syntax as the flag list API endpoint (e.g. `tags:frontend`, `status:active`).
-- `segment_filter` (String) A filter expression to match segments for linking to the view. Uses the same filter syntax as the segment list API endpoint (e.g. `tags:backend`).
+- `segment_filter` (String) A filter expression to match segments for linking to the view. Uses the same filter syntax as the segment list API endpoint (e.g. `tags:backend`). Requires `segment_filter_environment_id` to be set.
+- `segment_filter_environment_id` (String) The environment ID to use when resolving segment filters. Required when `segment_filter` is set. This is the environment's opaque ID (e.g. from `launchdarkly_project.environments[*].client_side_id`).
 
 ### Read-Only
 

@@ -56,7 +56,12 @@ This resource allows you to link all flags and/or segments matching a filter exp
 				Type:         schema.TypeString,
 				Optional:     true,
 				AtLeastOneOf: []string{FLAG_FILTER, SEGMENT_FILTER},
-				Description:  "A filter expression to match segments for linking to the view. Uses the same filter syntax as the segment list API endpoint (e.g. `tags:backend`).",
+				Description:  "A filter expression to match segments for linking to the view. Uses the same filter syntax as the segment list API endpoint (e.g. `tags:backend`). Requires `segment_filter_environment_id` to be set.",
+			},
+			SEGMENT_FILTER_ENVIRONMENT_ID: {
+				Type:        schema.TypeString,
+				Optional:    true,
+				Description: "The environment ID to use when resolving segment filters. Required when `segment_filter` is set. This is the environment's opaque ID (e.g. from `launchdarkly_project.environments[*].client_side_id`).",
 			},
 		},
 	}
@@ -80,9 +85,15 @@ func resourceViewFilterLinksCreate(ctx context.Context, d *schema.ResourceData, 
 		return diag.Errorf("cannot find view with key %q in project %q", viewKey, projectKey)
 	}
 
+	// Validate that segment_filter_environment_id is set when segment_filter is used
+	segmentFilterEnvId := d.Get(SEGMENT_FILTER_ENVIRONMENT_ID).(string)
+	if _, ok := d.GetOk(SEGMENT_FILTER); ok && segmentFilterEnvId == "" {
+		return diag.Errorf("%q is required when %q is set", SEGMENT_FILTER_ENVIRONMENT_ID, SEGMENT_FILTER)
+	}
+
 	// Link flags by filter if specified
 	if flagFilter, ok := d.GetOk(FLAG_FILTER); ok {
-		err = linkResourcesByFilterToView(betaClient, projectKey, viewKey, FLAGS, flagFilter.(string))
+		err = linkResourcesByFilterToView(betaClient, projectKey, viewKey, FLAGS, flagFilter.(string), "")
 		if err != nil {
 			return diag.Errorf("failed to link flags by filter to view %q in project %q: %s", viewKey, projectKey, err)
 		}
@@ -90,7 +101,7 @@ func resourceViewFilterLinksCreate(ctx context.Context, d *schema.ResourceData, 
 
 	// Link segments by filter if specified
 	if segmentFilter, ok := d.GetOk(SEGMENT_FILTER); ok {
-		err = linkResourcesByFilterToView(betaClient, projectKey, viewKey, SEGMENTS, segmentFilter.(string))
+		err = linkResourcesByFilterToView(betaClient, projectKey, viewKey, SEGMENTS, segmentFilter.(string), segmentFilterEnvId)
 		if err != nil {
 			return diag.Errorf("failed to link segments by filter to view %q in project %q: %s", viewKey, projectKey, err)
 		}
@@ -137,6 +148,12 @@ func resourceViewFilterLinksUpdate(ctx context.Context, d *schema.ResourceData, 
 	projectKey := d.Get(PROJECT_KEY).(string)
 	viewKey := d.Get(VIEW_KEY).(string)
 
+	// Validate that segment_filter_environment_id is set when segment_filter is used
+	segmentFilterEnvId := d.Get(SEGMENT_FILTER_ENVIRONMENT_ID).(string)
+	if _, ok := d.GetOk(SEGMENT_FILTER); ok && segmentFilterEnvId == "" {
+		return diag.Errorf("%q is required when %q is set", SEGMENT_FILTER_ENVIRONMENT_ID, SEGMENT_FILTER)
+	}
+
 	if d.HasChange(FLAG_FILTER) {
 		oldVal, newVal := d.GetChange(FLAG_FILTER)
 		oldFilter := oldVal.(string)
@@ -144,7 +161,7 @@ func resourceViewFilterLinksUpdate(ctx context.Context, d *schema.ResourceData, 
 
 		// Unlink using old filter if it was set
 		if oldFilter != "" {
-			err = unlinkResourcesByFilterFromView(betaClient, projectKey, viewKey, FLAGS, oldFilter)
+			err = unlinkResourcesByFilterFromView(betaClient, projectKey, viewKey, FLAGS, oldFilter, "")
 			if err != nil {
 				return diag.Errorf("failed to unlink flags by old filter from view %q in project %q: %s", viewKey, projectKey, err)
 			}
@@ -152,21 +169,24 @@ func resourceViewFilterLinksUpdate(ctx context.Context, d *schema.ResourceData, 
 
 		// Link using new filter if it is set
 		if newFilter != "" {
-			err = linkResourcesByFilterToView(betaClient, projectKey, viewKey, FLAGS, newFilter)
+			err = linkResourcesByFilterToView(betaClient, projectKey, viewKey, FLAGS, newFilter, "")
 			if err != nil {
 				return diag.Errorf("failed to link flags by new filter to view %q in project %q: %s", viewKey, projectKey, err)
 			}
 		}
 	}
 
-	if d.HasChange(SEGMENT_FILTER) {
+	if d.HasChange(SEGMENT_FILTER) || d.HasChange(SEGMENT_FILTER_ENVIRONMENT_ID) {
 		oldVal, newVal := d.GetChange(SEGMENT_FILTER)
 		oldFilter := oldVal.(string)
 		newFilter := newVal.(string)
 
+		oldEnvVal, _ := d.GetChange(SEGMENT_FILTER_ENVIRONMENT_ID)
+		oldEnvId := oldEnvVal.(string)
+
 		// Unlink using old filter if it was set
 		if oldFilter != "" {
-			err = unlinkResourcesByFilterFromView(betaClient, projectKey, viewKey, SEGMENTS, oldFilter)
+			err = unlinkResourcesByFilterFromView(betaClient, projectKey, viewKey, SEGMENTS, oldFilter, oldEnvId)
 			if err != nil {
 				return diag.Errorf("failed to unlink segments by old filter from view %q in project %q: %s", viewKey, projectKey, err)
 			}
@@ -174,7 +194,7 @@ func resourceViewFilterLinksUpdate(ctx context.Context, d *schema.ResourceData, 
 
 		// Link using new filter if it is set
 		if newFilter != "" {
-			err = linkResourcesByFilterToView(betaClient, projectKey, viewKey, SEGMENTS, newFilter)
+			err = linkResourcesByFilterToView(betaClient, projectKey, viewKey, SEGMENTS, newFilter, segmentFilterEnvId)
 			if err != nil {
 				return diag.Errorf("failed to link segments by new filter to view %q in project %q: %s", viewKey, projectKey, err)
 			}
@@ -195,9 +215,11 @@ func resourceViewFilterLinksDelete(ctx context.Context, d *schema.ResourceData, 
 	projectKey := d.Get(PROJECT_KEY).(string)
 	viewKey := d.Get(VIEW_KEY).(string)
 
+	segmentFilterEnvId := d.Get(SEGMENT_FILTER_ENVIRONMENT_ID).(string)
+
 	// Unlink flags by filter if set
 	if flagFilter, ok := d.GetOk(FLAG_FILTER); ok {
-		err = unlinkResourcesByFilterFromView(betaClient, projectKey, viewKey, FLAGS, flagFilter.(string))
+		err = unlinkResourcesByFilterFromView(betaClient, projectKey, viewKey, FLAGS, flagFilter.(string), "")
 		if err != nil {
 			return diag.Errorf("failed to unlink flags by filter from view %q in project %q: %s", viewKey, projectKey, err)
 		}
@@ -205,7 +227,7 @@ func resourceViewFilterLinksDelete(ctx context.Context, d *schema.ResourceData, 
 
 	// Unlink segments by filter if set
 	if segmentFilter, ok := d.GetOk(SEGMENT_FILTER); ok {
-		err = unlinkResourcesByFilterFromView(betaClient, projectKey, viewKey, SEGMENTS, segmentFilter.(string))
+		err = unlinkResourcesByFilterFromView(betaClient, projectKey, viewKey, SEGMENTS, segmentFilter.(string), segmentFilterEnvId)
 		if err != nil {
 			return diag.Errorf("failed to unlink segments by filter from view %q in project %q: %s", viewKey, projectKey, err)
 		}
