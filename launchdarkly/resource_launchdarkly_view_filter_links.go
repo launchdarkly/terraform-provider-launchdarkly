@@ -56,7 +56,7 @@ This resource allows you to link all flags and/or segments matching a filter exp
 				Type:         schema.TypeString,
 				Optional:     true,
 				AtLeastOneOf: []string{FLAG_FILTER, SEGMENT_FILTER},
-				Description:  "A filter expression to match segments for linking to the view. Uses the same filter syntax as the segment list API endpoint (e.g. `tags:backend`). Requires `segment_filter_environment_id` to be set.",
+				Description:  "A filter expression to match segments for linking to the view. Uses the segment query filter syntax (e.g. `tags anyOf [\"backend\"]`, `query = \"my-segment\"`, `unbounded = true`). Requires `segment_filter_environment_id` to be set.",
 			},
 			SEGMENT_FILTER_ENVIRONMENT_ID: {
 				Type:        schema.TypeString,

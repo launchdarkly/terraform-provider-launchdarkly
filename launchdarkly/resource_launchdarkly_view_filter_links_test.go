@@ -145,7 +145,7 @@ resource "launchdarkly_segment" "test1" {
 resource "launchdarkly_view_filter_links" "test" {
 	project_key                   = launchdarkly_project.test.key
 	view_key                      = launchdarkly_view.test.key
-	segment_filter                = "tags:segment-filter-test"
+	segment_filter                = "tags anyOf [\"segment-filter-test\"]"
 	segment_filter_environment_id = launchdarkly_project.test.environments[0].client_side_id
 
 	depends_on = [
@@ -193,7 +193,7 @@ resource "launchdarkly_view_filter_links" "test" {
 	project_key                   = launchdarkly_project.test.key
 	view_key                      = launchdarkly_view.test.key
 	flag_filter                   = "tags:both-filter-test"
-	segment_filter                = "tags:both-filter-test"
+	segment_filter                = "tags anyOf [\"both-filter-test\"]"
 	segment_filter_environment_id = launchdarkly_project.test.environments[0].client_side_id
 
 	depends_on = [
@@ -328,7 +328,7 @@ func TestAccViewFilterLinks_SegmentFilter(t *testing.T) {
 				Config: fmt.Sprintf(testAccViewFilterLinksCreateSegmentFilter, projectName, projectKey, maintainerId),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckViewForFilterLinksExists(resourceName),
-					resource.TestCheckResourceAttr(resourceName, SEGMENT_FILTER, "tags:segment-filter-test"),
+					resource.TestCheckResourceAttr(resourceName, SEGMENT_FILTER, `tags anyOf ["segment-filter-test"]`),
 					resource.TestCheckNoResourceAttr(resourceName, FLAG_FILTER),
 					testAccCheckViewLinksSegmentsAPIState(projectKey, "test-view", []string{"filter-test-segment-1"}),
 				),
@@ -367,7 +367,7 @@ func TestAccViewFilterLinks_BothFilters(t *testing.T) {
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckViewForFilterLinksExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, FLAG_FILTER, "tags:both-filter-test"),
-					resource.TestCheckResourceAttr(resourceName, SEGMENT_FILTER, "tags:both-filter-test"),
+					resource.TestCheckResourceAttr(resourceName, SEGMENT_FILTER, `tags anyOf ["both-filter-test"]`),
 					testAccCheckViewLinksAPIState(projectKey, "test-view", []string{"both-filter-flag-1"}),
 					testAccCheckViewLinksSegmentsAPIState(projectKey, "test-view", []string{"both-filter-segment-1"}),
 				),
