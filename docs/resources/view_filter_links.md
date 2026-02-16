@@ -5,10 +5,10 @@ subcategory: ""
 description: |-
   Provides a LaunchDarkly view filter links resource for linking resources to views using filter expressions.
   This resource allows you to link all flags and/or segments matching a filter expression to a specific view. The filter is resolved at apply time — the backend finds all resources matching the filter and links them to the view.
-  -> Note: Filter-based links are "point-in-time". The filter is resolved when terraform apply runs. Resources created or tagged after the apply will not be automatically linked. Run terraform apply again to pick up new matches.
+  -> Note: Filter-based links are point-in-time. The filter is resolved when terraform apply runs. Resources created or tagged after the apply will not be automatically linked. Run terraform apply again to pick up new matches.
   When to use which resource
   view_links: You know the exact flag/segment keys to link. Terraform tracks the explicit list and detects drift if links are removed externally.view_filter_links (this resource): You want to link all resources matching a dynamic query (e.g. all flags tagged "frontend"). No drift detection on resolved keys — only changes to the filter string itself trigger updates.view_keys on individual resources: Each flag/segment declares its own view membership. Best for modular Terraform structures.
-  -> Warning: Be careful not to use view_filter_links and view_links targeting the same view and resource type, as they may conflict.
+  -> Warning: Do not use view_filter_links and view_links targeting the same view and resource type, as conflicts may cause unexpected behavior.
 ---
 
 # launchdarkly_view_filter_links (Resource)
@@ -17,7 +17,7 @@ Provides a LaunchDarkly view filter links resource for linking resources to view
 
 This resource allows you to link all flags and/or segments matching a filter expression to a specific view. The filter is resolved at apply time — the backend finds all resources matching the filter and links them to the view.
 
--> **Note:** Filter-based links are "point-in-time". The filter is resolved when `terraform apply` runs. Resources created or tagged after the apply will not be automatically linked. Run `terraform apply` again to pick up new matches.
+-> **Note:** Filter-based links are point-in-time. The filter is resolved when `terraform apply` runs. Resources created or tagged after the apply will not be automatically linked. Run `terraform apply` again to pick up new matches.
 
 ## When to use which resource
 
@@ -25,7 +25,7 @@ This resource allows you to link all flags and/or segments matching a filter exp
 - **`view_filter_links` (this resource)**: You want to link all resources matching a dynamic query (e.g. all flags tagged "frontend"). No drift detection on resolved keys — only changes to the filter string itself trigger updates.
 - **`view_keys` on individual resources**: Each flag/segment declares its own view membership. Best for modular Terraform structures.
 
--> **Warning:** Be careful not to use `view_filter_links` and `view_links` targeting the same view and resource type, as they may conflict.
+-> **Warning:** Do not use `view_filter_links` and `view_links` targeting the same view and resource type, as conflicts may cause unexpected behavior.
 
 ## Example Usage
 

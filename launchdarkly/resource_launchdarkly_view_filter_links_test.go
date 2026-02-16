@@ -115,6 +115,62 @@ resource "launchdarkly_view_filter_links" "test" {
 }
 `
 
+	testAccViewFilterLinksRelinkAfterTagRemoval = `
+resource "launchdarkly_project" "test" {
+	name = "%s"
+	key  = "%s"
+	environments {
+		name  = "Test Environment"
+		key   = "test-env"
+		color = "000000"
+	}
+}
+
+resource "launchdarkly_view" "test" {
+	project_key   = launchdarkly_project.test.key
+	key           = "test-view"
+	name          = "Test View"
+	description   = "Test view for filter link testing"
+	maintainer_id = "%s"
+}
+
+resource "launchdarkly_feature_flag" "test1" {
+	project_key    = launchdarkly_project.test.key
+	key            = "filter-test-flag-1"
+	name           = "Filter Test Flag 1"
+	variation_type = "boolean"
+	tags           = ["filter-test"]
+}
+
+resource "launchdarkly_feature_flag" "test2" {
+	project_key    = launchdarkly_project.test.key
+	key            = "filter-test-flag-2"
+	name           = "Filter Test Flag 2"
+	variation_type = "boolean"
+	tags           = ["other-tag"]
+}
+
+resource "launchdarkly_feature_flag" "test3" {
+	project_key    = launchdarkly_project.test.key
+	key            = "filter-test-flag-3"
+	name           = "Filter Test Flag 3"
+	variation_type = "boolean"
+	tags           = ["filter-test-v2"]
+}
+
+resource "launchdarkly_view_filter_links" "test" {
+	project_key = launchdarkly_project.test.key
+	view_key    = launchdarkly_view.test.key
+	flag_filter = "tags:filter-test"
+
+	depends_on = [
+		launchdarkly_feature_flag.test1,
+		launchdarkly_feature_flag.test2,
+		launchdarkly_feature_flag.test3
+	]
+}
+`
+
 	testAccViewFilterLinksCreateSegmentFilter = `
 resource "launchdarkly_project" "test" {
 	name = "%s"
@@ -268,7 +324,7 @@ func TestAccViewFilterLinks_FlagFilter(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, len(members.Items) > 0, "This test requires at least one member in the account")
 
-	maintainerId := members.Items[0].Id
+	maintainerID := members.Items[0].Id
 
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
@@ -277,7 +333,7 @@ func TestAccViewFilterLinks_FlagFilter(t *testing.T) {
 		Providers: testAccProviders,
 		Steps: []resource.TestStep{
 			{
-				Config: fmt.Sprintf(testAccViewFilterLinksCreateFlagFilter, projectName, projectKey, maintainerId),
+				Config: fmt.Sprintf(testAccViewFilterLinksCreateFlagFilter, projectName, projectKey, maintainerID),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckViewForFilterLinksExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, FLAG_FILTER, "tags:filter-test"),
@@ -287,13 +343,42 @@ func TestAccViewFilterLinks_FlagFilter(t *testing.T) {
 				),
 			},
 			{
-				Config: fmt.Sprintf(testAccViewFilterLinksUpdateFlagFilter, projectName, projectKey, maintainerId),
+				ResourceName:            resourceName,
+				ImportState:             true,
+				ImportStateVerify:       true,
+				ImportStateVerifyIgnore: []string{FLAG_FILTER, SEGMENT_FILTER, SEGMENT_FILTER_ENVIRONMENT_ID},
+			},
+			{
+				Config: fmt.Sprintf(testAccViewFilterLinksUpdateFlagFilter, projectName, projectKey, maintainerID),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckViewForFilterLinksExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, FLAG_FILTER, "tags:filter-test-v2"),
 					// After update: old filter flags should be unlinked, new filter flags should be linked
 					testAccCheckViewLinksAPIState(projectKey, "test-view", []string{"filter-test-flag-3"}),
 				),
+			},
+			{
+				ResourceName:            resourceName,
+				ImportState:             true,
+				ImportStateVerify:       true,
+				ImportStateVerifyIgnore: []string{FLAG_FILTER, SEGMENT_FILTER, SEGMENT_FILTER_ENVIRONMENT_ID},
+			},
+			{
+				// Re-apply original filter after removing the tag from flag2.
+				// flag2's tag changes from "filter-test" to "other-tag", so only flag1 should match.
+				Config: fmt.Sprintf(testAccViewFilterLinksRelinkAfterTagRemoval, projectName, projectKey, maintainerID),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckViewForFilterLinksExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, FLAG_FILTER, "tags:filter-test"),
+					// Only flag1 should be linked — flag2 no longer has the "filter-test" tag
+					testAccCheckViewLinksAPIState(projectKey, "test-view", []string{"filter-test-flag-1"}),
+				),
+			},
+			{
+				ResourceName:            resourceName,
+				ImportState:             true,
+				ImportStateVerify:       true,
+				ImportStateVerifyIgnore: []string{FLAG_FILTER, SEGMENT_FILTER, SEGMENT_FILTER_ENVIRONMENT_ID},
 			},
 		},
 	})
@@ -316,7 +401,7 @@ func TestAccViewFilterLinks_SegmentFilter(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, len(members.Items) > 0, "This test requires at least one member in the account")
 
-	maintainerId := members.Items[0].Id
+	maintainerID := members.Items[0].Id
 
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
@@ -325,13 +410,19 @@ func TestAccViewFilterLinks_SegmentFilter(t *testing.T) {
 		Providers: testAccProviders,
 		Steps: []resource.TestStep{
 			{
-				Config: fmt.Sprintf(testAccViewFilterLinksCreateSegmentFilter, projectName, projectKey, maintainerId),
+				Config: fmt.Sprintf(testAccViewFilterLinksCreateSegmentFilter, projectName, projectKey, maintainerID),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckViewForFilterLinksExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, SEGMENT_FILTER, `tags anyOf ["segment-filter-test"]`),
 					resource.TestCheckNoResourceAttr(resourceName, FLAG_FILTER),
 					testAccCheckViewLinksSegmentsAPIState(projectKey, "test-view", []string{"filter-test-segment-1"}),
 				),
+			},
+			{
+				ResourceName:            resourceName,
+				ImportState:             true,
+				ImportStateVerify:       true,
+				ImportStateVerifyIgnore: []string{FLAG_FILTER, SEGMENT_FILTER, SEGMENT_FILTER_ENVIRONMENT_ID},
 			},
 		},
 	})
@@ -354,7 +445,7 @@ func TestAccViewFilterLinks_BothFilters(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, len(members.Items) > 0, "This test requires at least one member in the account")
 
-	maintainerId := members.Items[0].Id
+	maintainerID := members.Items[0].Id
 
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
@@ -363,7 +454,7 @@ func TestAccViewFilterLinks_BothFilters(t *testing.T) {
 		Providers: testAccProviders,
 		Steps: []resource.TestStep{
 			{
-				Config: fmt.Sprintf(testAccViewFilterLinksCreateBothFilters, projectName, projectKey, maintainerId),
+				Config: fmt.Sprintf(testAccViewFilterLinksCreateBothFilters, projectName, projectKey, maintainerID),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckViewForFilterLinksExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, FLAG_FILTER, "tags:both-filter-test"),
@@ -373,8 +464,14 @@ func TestAccViewFilterLinks_BothFilters(t *testing.T) {
 				),
 			},
 			{
+				ResourceName:            resourceName,
+				ImportState:             true,
+				ImportStateVerify:       true,
+				ImportStateVerifyIgnore: []string{FLAG_FILTER, SEGMENT_FILTER, SEGMENT_FILTER_ENVIRONMENT_ID},
+			},
+			{
 				// Remove segment_filter, keep flag_filter
-				Config: fmt.Sprintf(testAccViewFilterLinksRemoveOneFilter, projectName, projectKey, maintainerId),
+				Config: fmt.Sprintf(testAccViewFilterLinksRemoveOneFilter, projectName, projectKey, maintainerID),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckViewForFilterLinksExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, FLAG_FILTER, "tags:both-filter-test"),
@@ -383,6 +480,12 @@ func TestAccViewFilterLinks_BothFilters(t *testing.T) {
 					// Flags should still be linked
 					testAccCheckViewLinksAPIState(projectKey, "test-view", []string{"both-filter-flag-1"}),
 				),
+			},
+			{
+				ResourceName:            resourceName,
+				ImportState:             true,
+				ImportStateVerify:       true,
+				ImportStateVerifyIgnore: []string{FLAG_FILTER, SEGMENT_FILTER, SEGMENT_FILTER_ENVIRONMENT_ID},
 			},
 		},
 	})
