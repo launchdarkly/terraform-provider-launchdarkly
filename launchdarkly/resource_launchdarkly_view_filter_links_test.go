@@ -259,6 +259,100 @@ resource "launchdarkly_view_filter_links" "test" {
 }
 `
 
+	testAccViewFilterLinksTriggersStep1 = `
+resource "launchdarkly_project" "test" {
+	name = "%s"
+	key  = "%s"
+	environments {
+		name  = "Test Environment"
+		key   = "test-env"
+		color = "000000"
+	}
+}
+
+resource "launchdarkly_view" "test" {
+	project_key   = launchdarkly_project.test.key
+	key           = "test-view"
+	name          = "Test View"
+	description   = "Test view for trigger testing"
+	maintainer_id = "%s"
+}
+
+resource "launchdarkly_feature_flag" "trigger1" {
+	project_key    = launchdarkly_project.test.key
+	key            = "trigger-flag-1"
+	name           = "Trigger Flag 1"
+	variation_type = "boolean"
+	tags           = ["trigger-test"]
+}
+
+resource "launchdarkly_feature_flag" "trigger2" {
+	project_key    = launchdarkly_project.test.key
+	key            = "trigger-flag-2"
+	name           = "Trigger Flag 2"
+	variation_type = "boolean"
+	tags           = ["trigger-test"]
+}
+
+resource "launchdarkly_view_filter_links" "test" {
+	project_key = launchdarkly_project.test.key
+	view_key    = launchdarkly_view.test.key
+	flag_filter = "tags:trigger-test"
+
+	depends_on = [
+		launchdarkly_feature_flag.trigger1,
+		launchdarkly_feature_flag.trigger2
+	]
+}
+`
+
+	testAccViewFilterLinksTriggersStep2 = `
+resource "launchdarkly_project" "test" {
+	name = "%s"
+	key  = "%s"
+	environments {
+		name  = "Test Environment"
+		key   = "test-env"
+		color = "000000"
+	}
+}
+
+resource "launchdarkly_view" "test" {
+	project_key   = launchdarkly_project.test.key
+	key           = "test-view"
+	name          = "Test View"
+	description   = "Test view for trigger testing"
+	maintainer_id = "%s"
+}
+
+resource "launchdarkly_feature_flag" "trigger1" {
+	project_key    = launchdarkly_project.test.key
+	key            = "trigger-flag-1"
+	name           = "Trigger Flag 1"
+	variation_type = "boolean"
+	tags           = ["trigger-test"]
+}
+
+resource "launchdarkly_feature_flag" "trigger2" {
+	project_key    = launchdarkly_project.test.key
+	key            = "trigger-flag-2"
+	name           = "Trigger Flag 2"
+	variation_type = "boolean"
+	tags           = ["other-tag"]
+}
+
+resource "launchdarkly_view_filter_links" "test" {
+	project_key = launchdarkly_project.test.key
+	view_key    = launchdarkly_view.test.key
+	flag_filter = "tags:trigger-test"
+
+	depends_on = [
+		launchdarkly_feature_flag.trigger1,
+		launchdarkly_feature_flag.trigger2
+	]
+}
+`
+
 	testAccViewFilterLinksRemoveOneFilter = `
 resource "launchdarkly_project" "test" {
 	name = "%s"
@@ -346,7 +440,7 @@ func TestAccViewFilterLinks_FlagFilter(t *testing.T) {
 				ResourceName:            resourceName,
 				ImportState:             true,
 				ImportStateVerify:       true,
-				ImportStateVerifyIgnore: []string{FLAG_FILTER, SEGMENT_FILTER, SEGMENT_FILTER_ENVIRONMENT_ID},
+				ImportStateVerifyIgnore: []string{FLAG_FILTER, SEGMENT_FILTER, SEGMENT_FILTER_ENVIRONMENT_ID, RESOLVED_AT},
 			},
 			{
 				Config: fmt.Sprintf(testAccViewFilterLinksUpdateFlagFilter, projectName, projectKey, maintainerID),
@@ -361,7 +455,7 @@ func TestAccViewFilterLinks_FlagFilter(t *testing.T) {
 				ResourceName:            resourceName,
 				ImportState:             true,
 				ImportStateVerify:       true,
-				ImportStateVerifyIgnore: []string{FLAG_FILTER, SEGMENT_FILTER, SEGMENT_FILTER_ENVIRONMENT_ID},
+				ImportStateVerifyIgnore: []string{FLAG_FILTER, SEGMENT_FILTER, SEGMENT_FILTER_ENVIRONMENT_ID, RESOLVED_AT},
 			},
 			{
 				// Re-apply original filter after removing the tag from flag2.
@@ -378,7 +472,7 @@ func TestAccViewFilterLinks_FlagFilter(t *testing.T) {
 				ResourceName:            resourceName,
 				ImportState:             true,
 				ImportStateVerify:       true,
-				ImportStateVerifyIgnore: []string{FLAG_FILTER, SEGMENT_FILTER, SEGMENT_FILTER_ENVIRONMENT_ID},
+				ImportStateVerifyIgnore: []string{FLAG_FILTER, SEGMENT_FILTER, SEGMENT_FILTER_ENVIRONMENT_ID, RESOLVED_AT},
 			},
 		},
 	})
@@ -422,7 +516,7 @@ func TestAccViewFilterLinks_SegmentFilter(t *testing.T) {
 				ResourceName:            resourceName,
 				ImportState:             true,
 				ImportStateVerify:       true,
-				ImportStateVerifyIgnore: []string{FLAG_FILTER, SEGMENT_FILTER, SEGMENT_FILTER_ENVIRONMENT_ID},
+				ImportStateVerifyIgnore: []string{FLAG_FILTER, SEGMENT_FILTER, SEGMENT_FILTER_ENVIRONMENT_ID, RESOLVED_AT},
 			},
 		},
 	})
@@ -467,7 +561,7 @@ func TestAccViewFilterLinks_BothFilters(t *testing.T) {
 				ResourceName:            resourceName,
 				ImportState:             true,
 				ImportStateVerify:       true,
-				ImportStateVerifyIgnore: []string{FLAG_FILTER, SEGMENT_FILTER, SEGMENT_FILTER_ENVIRONMENT_ID},
+				ImportStateVerifyIgnore: []string{FLAG_FILTER, SEGMENT_FILTER, SEGMENT_FILTER_ENVIRONMENT_ID, RESOLVED_AT},
 			},
 			{
 				// Remove segment_filter, keep flag_filter
@@ -485,7 +579,54 @@ func TestAccViewFilterLinks_BothFilters(t *testing.T) {
 				ResourceName:            resourceName,
 				ImportState:             true,
 				ImportStateVerify:       true,
-				ImportStateVerifyIgnore: []string{FLAG_FILTER, SEGMENT_FILTER, SEGMENT_FILTER_ENVIRONMENT_ID},
+				ImportStateVerifyIgnore: []string{FLAG_FILTER, SEGMENT_FILTER, SEGMENT_FILTER_ENVIRONMENT_ID, RESOLVED_AT},
+			},
+		},
+	})
+}
+
+func TestAccViewFilterLinks_Triggers(t *testing.T) {
+	accTest := os.Getenv("TF_ACC")
+	if accTest == "" {
+		t.SkipNow()
+	}
+
+	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	projectName := "view-filter-links-trigger-test-" + projectKey
+	resourceName := "launchdarkly_view_filter_links.test"
+
+	client, err := newClient(os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN), os.Getenv(LAUNCHDARKLY_API_HOST), false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
+	require.NoError(t, err)
+
+	members, _, err := client.ld.AccountMembersApi.GetMembers(client.ctx).Execute()
+	require.NoError(t, err)
+	require.True(t, len(members.Items) > 0, "This test requires at least one member in the account")
+
+	maintainerID := members.Items[0].Id
+
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck: func() {
+			testAccPreCheck(t)
+		},
+		Providers: testAccProviders,
+		Steps: []resource.TestStep{
+			{
+				// Step 1: Both flags tagged "trigger-test" → both should be linked
+				Config: fmt.Sprintf(testAccViewFilterLinksTriggersStep1, projectName, projectKey, maintainerID),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckViewForFilterLinksExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, FLAG_FILTER, "tags:trigger-test"),
+					testAccCheckViewLinksAPIState(projectKey, "test-view", []string{"trigger-flag-1", "trigger-flag-2"}),
+				),
+			},
+			{
+				// Step 2: trigger-flag-2 tag changed to "other-tag" (filter unchanged) → only trigger-flag-1 linked
+				Config: fmt.Sprintf(testAccViewFilterLinksTriggersStep2, projectName, projectKey, maintainerID),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckViewForFilterLinksExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, FLAG_FILTER, "tags:trigger-test"),
+					testAccCheckViewLinksAPIState(projectKey, "test-view", []string{"trigger-flag-1"}),
+				),
 			},
 		},
 	})

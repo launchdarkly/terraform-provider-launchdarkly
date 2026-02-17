@@ -72,3 +72,4 @@ resource "launchdarkly_view_filter_links" "beta_segments" {
 ### Read-Only
 
 - `id` (String) The ID of this resource.
+- `resolved_at` (String) Timestamp of the last filter resolution. This value changes on every apply, ensuring linked resources stay in sync with the filter.
