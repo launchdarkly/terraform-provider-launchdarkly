@@ -745,9 +745,3 @@ func performViewFilterLinkOperation(client *Client, projectKey, viewKey, resourc
 func linkResourcesByFilterToView(client *Client, projectKey, viewKey, resourceType, filter, environmentId string) error {
 	return performViewFilterLinkOperation(client, projectKey, viewKey, resourceType, filter, environmentId, "POST")
 }
-
-// unlinkResourcesByFilterFromView unlinks resources matching a filter from a view.
-// environmentId is optional — only required for segment filter operations.
-func unlinkResourcesByFilterFromView(client *Client, projectKey, viewKey, resourceType, filter, environmentId string) error {
-	return performViewFilterLinkOperation(client, projectKey, viewKey, resourceType, filter, environmentId, "DELETE")
-}
