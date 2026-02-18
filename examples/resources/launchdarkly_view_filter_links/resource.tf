@@ -10,7 +10,7 @@ resource "launchdarkly_view_filter_links" "platform_resources" {
   project_key                   = "my-project"
   view_key                      = "platform-team"
   flag_filter                   = "tags:platform"
-  segment_filter                = "tags:platform"
+  segment_filter                = "tags anyOf [\"platform\"]"
   segment_filter_environment_id = launchdarkly_project.my_project.environments[0].client_side_id
 }
 
@@ -18,6 +18,6 @@ resource "launchdarkly_view_filter_links" "platform_resources" {
 resource "launchdarkly_view_filter_links" "beta_segments" {
   project_key                   = "my-project"
   view_key                      = "beta-program"
-  segment_filter                = "tags:beta"
+  segment_filter                = "tags anyOf [\"beta\"]"
   segment_filter_environment_id = launchdarkly_project.my_project.environments[0].client_side_id
 }

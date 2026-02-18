@@ -76,10 +76,11 @@ This resource allows you to link all flags and/or segments matching a filter exp
 				Description:  "A filter expression to match segments for linking to the view. Uses the segment query filter syntax (e.g. `tags anyOf [\"backend\"]`, `query = \"my-segment\"`, `unbounded = true`). Requires `segment_filter_environment_id` to be set.",
 			},
 			SEGMENT_FILTER_ENVIRONMENT_ID: {
-				Type:         schema.TypeString,
-				Optional:     true,
-				RequiredWith: []string{SEGMENT_FILTER},
-				Description:  "The environment ID to use when resolving segment filters. Required when `segment_filter` is set. This is the environment's opaque ID (e.g. from `launchdarkly_project.environments[*].client_side_id`).",
+				Type:             schema.TypeString,
+				Optional:         true,
+				RequiredWith:     []string{SEGMENT_FILTER},
+				Description:      "The environment ID to use when resolving segment filters. Required when `segment_filter` is set. This is the environment's opaque ID (e.g. from `launchdarkly_project.environments[*].client_side_id`).",
+				ValidateDiagFunc: validateID(),
 			},
 			RECONCILE_ON_APPLY: {
 				Type:        schema.TypeBool,
@@ -177,34 +178,15 @@ func resourceViewFilterLinksUpdate(ctx context.Context, d *schema.ResourceData, 
 	viewKey := d.Get(VIEW_KEY).(string)
 
 	segmentFilterEnvId := d.Get(SEGMENT_FILTER_ENVIRONMENT_ID).(string)
+	reconcileRun := d.HasChange(RESOLVED_AT)
+	shouldResyncFlags := d.HasChange(FLAG_FILTER) || reconcileRun
+	shouldResyncSegments := d.HasChange(SEGMENT_FILTER) || d.HasChange(SEGMENT_FILTER_ENVIRONMENT_ID) || reconcileRun
 
-	// Flags: full re-sync
-	flagFilter := d.Get(FLAG_FILTER).(string)
-	if flagFilter != "" {
-		// Unlink all currently linked flags (clean slate)
-		linkedFlags, err := getLinkedResources(betaClient, projectKey, viewKey, FLAGS)
-		if err != nil {
-			return diag.Errorf("failed to get linked flags for view %q in project %q: %s", viewKey, projectKey, err)
-		}
-		if len(linkedFlags) > 0 {
-			flagKeys := make([]string, len(linkedFlags))
-			for i, f := range linkedFlags {
-				flagKeys[i] = f.ResourceKey
-			}
-			err = unlinkResourcesFromView(betaClient, projectKey, viewKey, FLAGS, flagKeys)
-			if err != nil {
-				return diag.Errorf("failed to unlink flags from view %q in project %q: %s", viewKey, projectKey, err)
-			}
-		}
-		// Re-link by current filter
-		err = linkResourcesByFilterToView(betaClient, projectKey, viewKey, FLAGS, flagFilter, "")
-		if err != nil {
-			return diag.Errorf("failed to link flags by filter to view %q in project %q: %s", viewKey, projectKey, err)
-		}
-	} else {
-		// Flag filter was removed — unlink all flags
-		oldVal, _ := d.GetChange(FLAG_FILTER)
-		if oldVal.(string) != "" {
+	if shouldResyncFlags {
+		// Flags: full re-sync
+		flagFilter := d.Get(FLAG_FILTER).(string)
+		if flagFilter != "" {
+			// Unlink all currently linked flags (clean slate)
 			linkedFlags, err := getLinkedResources(betaClient, projectKey, viewKey, FLAGS)
 			if err != nil {
 				return diag.Errorf("failed to get linked flags for view %q in project %q: %s", viewKey, projectKey, err)
@@ -219,39 +201,38 @@ func resourceViewFilterLinksUpdate(ctx context.Context, d *schema.ResourceData, 
 					return diag.Errorf("failed to unlink flags from view %q in project %q: %s", viewKey, projectKey, err)
 				}
 			}
+			// Re-link by current filter
+			err = linkResourcesByFilterToView(betaClient, projectKey, viewKey, FLAGS, flagFilter, "")
+			if err != nil {
+				return diag.Errorf("failed to link flags by filter to view %q in project %q: %s", viewKey, projectKey, err)
+			}
+		} else {
+			// Flag filter was removed — unlink all flags
+			oldVal, _ := d.GetChange(FLAG_FILTER)
+			if oldVal.(string) != "" {
+				linkedFlags, err := getLinkedResources(betaClient, projectKey, viewKey, FLAGS)
+				if err != nil {
+					return diag.Errorf("failed to get linked flags for view %q in project %q: %s", viewKey, projectKey, err)
+				}
+				if len(linkedFlags) > 0 {
+					flagKeys := make([]string, len(linkedFlags))
+					for i, f := range linkedFlags {
+						flagKeys[i] = f.ResourceKey
+					}
+					err = unlinkResourcesFromView(betaClient, projectKey, viewKey, FLAGS, flagKeys)
+					if err != nil {
+						return diag.Errorf("failed to unlink flags from view %q in project %q: %s", viewKey, projectKey, err)
+					}
+				}
+			}
 		}
 	}
 
-	// Segments: full re-sync
-	segmentFilter := d.Get(SEGMENT_FILTER).(string)
-	if segmentFilter != "" {
-		// Unlink all currently linked segments (clean slate)
-		linkedSegments, err := getLinkedResources(betaClient, projectKey, viewKey, SEGMENTS)
-		if err != nil {
-			return diag.Errorf("failed to get linked segments for view %q in project %q: %s", viewKey, projectKey, err)
-		}
-		if len(linkedSegments) > 0 {
-			segmentIds := make([]ViewSegmentIdentifier, len(linkedSegments))
-			for i, s := range linkedSegments {
-				segmentIds[i] = ViewSegmentIdentifier{
-					EnvironmentId: s.EnvironmentId,
-					SegmentKey:    s.ResourceKey,
-				}
-			}
-			err = unlinkSegmentsFromView(betaClient, projectKey, viewKey, segmentIds)
-			if err != nil {
-				return diag.Errorf("failed to unlink segments from view %q in project %q: %s", viewKey, projectKey, err)
-			}
-		}
-		// Re-link by current filter
-		err = linkResourcesByFilterToView(betaClient, projectKey, viewKey, SEGMENTS, segmentFilter, segmentFilterEnvId)
-		if err != nil {
-			return diag.Errorf("failed to link segments by filter to view %q in project %q: %s", viewKey, projectKey, err)
-		}
-	} else {
-		// Segment filter was removed — unlink all segments
-		oldVal, _ := d.GetChange(SEGMENT_FILTER)
-		if oldVal.(string) != "" {
+	if shouldResyncSegments {
+		// Segments: full re-sync
+		segmentFilter := d.Get(SEGMENT_FILTER).(string)
+		if segmentFilter != "" {
+			// Unlink all currently linked segments (clean slate)
 			linkedSegments, err := getLinkedResources(betaClient, projectKey, viewKey, SEGMENTS)
 			if err != nil {
 				return diag.Errorf("failed to get linked segments for view %q in project %q: %s", viewKey, projectKey, err)
@@ -267,6 +248,33 @@ func resourceViewFilterLinksUpdate(ctx context.Context, d *schema.ResourceData, 
 				err = unlinkSegmentsFromView(betaClient, projectKey, viewKey, segmentIds)
 				if err != nil {
 					return diag.Errorf("failed to unlink segments from view %q in project %q: %s", viewKey, projectKey, err)
+				}
+			}
+			// Re-link by current filter
+			err = linkResourcesByFilterToView(betaClient, projectKey, viewKey, SEGMENTS, segmentFilter, segmentFilterEnvId)
+			if err != nil {
+				return diag.Errorf("failed to link segments by filter to view %q in project %q: %s", viewKey, projectKey, err)
+			}
+		} else {
+			// Segment filter was removed — unlink all segments
+			oldVal, _ := d.GetChange(SEGMENT_FILTER)
+			if oldVal.(string) != "" {
+				linkedSegments, err := getLinkedResources(betaClient, projectKey, viewKey, SEGMENTS)
+				if err != nil {
+					return diag.Errorf("failed to get linked segments for view %q in project %q: %s", viewKey, projectKey, err)
+				}
+				if len(linkedSegments) > 0 {
+					segmentIds := make([]ViewSegmentIdentifier, len(linkedSegments))
+					for i, s := range linkedSegments {
+						segmentIds[i] = ViewSegmentIdentifier{
+							EnvironmentId: s.EnvironmentId,
+							SegmentKey:    s.ResourceKey,
+						}
+					}
+					err = unlinkSegmentsFromView(betaClient, projectKey, viewKey, segmentIds)
+					if err != nil {
+						return diag.Errorf("failed to unlink segments from view %q in project %q: %s", viewKey, projectKey, err)
+					}
 				}
 			}
 		}
