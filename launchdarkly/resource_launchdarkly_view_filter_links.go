@@ -178,9 +178,12 @@ func resourceViewFilterLinksUpdate(ctx context.Context, d *schema.ResourceData, 
 	viewKey := d.Get(VIEW_KEY).(string)
 
 	segmentFilterEnvId := d.Get(SEGMENT_FILTER_ENVIRONMENT_ID).(string)
-	reconcileRun := d.HasChange(RESOLVED_AT)
-	shouldResyncFlags := d.HasChange(FLAG_FILTER) || reconcileRun
-	shouldResyncSegments := d.HasChange(SEGMENT_FILTER) || d.HasChange(SEGMENT_FILTER_ENVIRONMENT_ID) || reconcileRun
+	hasFlagFilterChange := d.HasChange(FLAG_FILTER)
+	hasSegmentFilterChange := d.HasChange(SEGMENT_FILTER) || d.HasChange(SEGMENT_FILTER_ENVIRONMENT_ID)
+	reconcileOnApply := d.Get(RECONCILE_ON_APPLY).(bool)
+	isPeriodicReconcile := reconcileOnApply && !hasFlagFilterChange && !hasSegmentFilterChange
+	shouldResyncFlags := hasFlagFilterChange || isPeriodicReconcile
+	shouldResyncSegments := hasSegmentFilterChange || isPeriodicReconcile
 
 	if shouldResyncFlags {
 		// Flags: full re-sync
