@@ -2,6 +2,12 @@
 
 All notable changes to the LaunchDarkly Terraform Provider will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org).
 
+## [Unreleased]
+
+### Added
+
+- Added validation to `approval_settings` that produces an error when `service_kind` (with non-default value) or `service_config` are used with `resource_kind` values other than `"flag"`. These fields are only supported for flag approval settings. Previously, these fields were silently ignored for segment and aiconfig approval settings, which could lead to unexpected behavior.
+
 ## [2.26.2](https://github.com/launchdarkly/terraform-provider-launchdarkly/compare/v2.26.1...v2.26.2) (2026-01-22)
 
 

@@ -99,6 +99,7 @@ func TestEnvironmentToResourceData(t *testing.T) {
 				TAGS:                 []string{"test"},
 				APPROVAL_SETTINGS: []map[string]interface{}{
 					{
+						RESOURCE_KIND:              "flag",
 						CAN_REVIEW_OWN_REQUEST:     true,
 						MIN_NUM_APPROVALS:          int32(3),
 						CAN_APPLY_DECLINED_CHANGES: true,
@@ -106,6 +107,7 @@ func TestEnvironmentToResourceData(t *testing.T) {
 						REQUIRED:                   true,
 						SERVICE_KIND:               "launchdarkly",
 						SERVICE_CONFIG:             map[string]interface{}(nil),
+						AUTO_APPLY_APPROVED_CHANGES: (*bool)(nil),
 					},
 				},
 			},

@@ -40,9 +40,11 @@ func TestApprovalPatchFromSettings_MultipleResourceKinds(t *testing.T) {
 	require.NoError(t, err)
 
 	// Should have patches for both flag and segment
-	// Each resource kind has 8 fields (required, canReviewOwnRequest, minNumApprovals,
+	// Flag has 8 fields (required, canReviewOwnRequest, minNumApprovals,
 	// canApplyDeclinedChanges, requiredApprovalTags, serviceKind, serviceConfig, autoApplyApprovedChanges)
-	assert.Equal(t, 16, len(patches), "Expected 16 patches (8 for flag + 8 for segment)")
+	// Segment has 5 fields (required, canReviewOwnRequest, minNumApprovals,
+	// canApplyDeclinedChanges, requiredApprovalTags) - service_kind, service_config, auto_apply not supported
+	assert.Equal(t, 13, len(patches), "Expected 13 patches (8 for flag + 5 for segment)")
 
 	// Verify flag patches have /approvalSettings path
 	flagPatchCount := 0
@@ -57,7 +59,7 @@ func TestApprovalPatchFromSettings_MultipleResourceKinds(t *testing.T) {
 	}
 
 	assert.Equal(t, 8, flagPatchCount, "Expected 8 patches for flag approval settings")
-	assert.Equal(t, 8, segmentPatchCount, "Expected 8 patches for segment approval settings")
+	assert.Equal(t, 5, segmentPatchCount, "Expected 5 patches for segment approval settings")
 }
 
 func TestApprovalPatchFromSettings_RemoveResourceKind(t *testing.T) {
@@ -206,4 +208,178 @@ func TestApprovalPatchFromSettings_BackwardsCompatibility(t *testing.T) {
 		assert.Contains(t, patch.Path, "/approvalSettings", "Expected /approvalSettings path for backwards compatibility")
 		assert.NotContains(t, patch.Path, "/resourceApprovalSettings", "Should not use /resourceApprovalSettings path when resource_kind is omitted")
 	}
+}
+
+func TestApprovalSettingFromMap_ServiceKindErrorWithSegment(t *testing.T) {
+	// Test that setting service_kind to non-default value with segment resource_kind produces an error
+	settingsMap := map[string]interface{}{
+		RESOURCE_KIND:               "segment",
+		REQUIRED:                    true,
+		CAN_REVIEW_OWN_REQUEST:      false,
+		MIN_NUM_APPROVALS:           1,
+		CAN_APPLY_DECLINED_CHANGES:  true,
+		SERVICE_KIND:                "servicenow", // Non-default value
+		SERVICE_CONFIG:              map[string]interface{}{},
+		AUTO_APPLY_APPROVED_CHANGES: false,
+		REQUIRED_APPROVAL_TAGS:      []interface{}{},
+	}
+
+	_, err := approvalSettingFromMap(settingsMap)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "service_kind cannot be set for resource_kind 'segment'")
+}
+
+func TestApprovalSettingFromMap_ServiceKindErrorWithAiconfig(t *testing.T) {
+	// Test that setting service_kind to non-default value with aiconfig resource_kind produces an error
+	settingsMap := map[string]interface{}{
+		RESOURCE_KIND:               "aiconfig",
+		REQUIRED:                    true,
+		CAN_REVIEW_OWN_REQUEST:      false,
+		MIN_NUM_APPROVALS:           1,
+		CAN_APPLY_DECLINED_CHANGES:  true,
+		SERVICE_KIND:                "servicenow", // Non-default value
+		SERVICE_CONFIG:              map[string]interface{}{},
+		AUTO_APPLY_APPROVED_CHANGES: false,
+		REQUIRED_APPROVAL_TAGS:      []interface{}{},
+	}
+
+	_, err := approvalSettingFromMap(settingsMap)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "service_kind cannot be set for resource_kind 'aiconfig'")
+}
+
+func TestApprovalSettingFromMap_ServiceConfigErrorWithSegment(t *testing.T) {
+	// Test that setting service_config with segment resource_kind produces an error
+	settingsMap := map[string]interface{}{
+		RESOURCE_KIND:              "segment",
+		REQUIRED:                   true,
+		CAN_REVIEW_OWN_REQUEST:     false,
+		MIN_NUM_APPROVALS:          1,
+		CAN_APPLY_DECLINED_CHANGES: true,
+		SERVICE_KIND:               "launchdarkly",
+		SERVICE_CONFIG: map[string]interface{}{
+			"template":      "some-template-id",
+			"detail_column": "justification",
+		},
+		AUTO_APPLY_APPROVED_CHANGES: false,
+		REQUIRED_APPROVAL_TAGS:      []interface{}{},
+	}
+
+	_, err := approvalSettingFromMap(settingsMap)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "service_config cannot be set for resource_kind 'segment'")
+}
+
+func TestApprovalSettingFromMap_ServiceConfigErrorWithAiconfig(t *testing.T) {
+	// Test that setting service_config with aiconfig resource_kind produces an error
+	settingsMap := map[string]interface{}{
+		RESOURCE_KIND:              "aiconfig",
+		REQUIRED:                   true,
+		CAN_REVIEW_OWN_REQUEST:     false,
+		MIN_NUM_APPROVALS:          1,
+		CAN_APPLY_DECLINED_CHANGES: true,
+		SERVICE_KIND:               "launchdarkly",
+		SERVICE_CONFIG: map[string]interface{}{
+			"template": "some-template-id",
+		},
+		AUTO_APPLY_APPROVED_CHANGES: false,
+		REQUIRED_APPROVAL_TAGS:      []interface{}{},
+	}
+
+	_, err := approvalSettingFromMap(settingsMap)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "service_config cannot be set for resource_kind 'aiconfig'")
+}
+
+func TestApprovalSettingFromMap_DefaultValuesSuccessWithSegment(t *testing.T) {
+	// Test that using default values (service_kind="launchdarkly", empty service_config, auto_apply=false)
+	// succeeds with segment resource_kind
+	settingsMap := map[string]interface{}{
+		RESOURCE_KIND:               "segment",
+		REQUIRED:                    true,
+		CAN_REVIEW_OWN_REQUEST:      false,
+		MIN_NUM_APPROVALS:           1,
+		CAN_APPLY_DECLINED_CHANGES:  true,
+		SERVICE_KIND:                "launchdarkly",           // Default value
+		SERVICE_CONFIG:              map[string]interface{}{}, // Empty
+		AUTO_APPLY_APPROVED_CHANGES: false,                    // Default value
+		REQUIRED_APPROVAL_TAGS:      []interface{}{},
+	}
+
+	result, err := approvalSettingFromMap(settingsMap)
+	require.NoError(t, err)
+	assert.Equal(t, "segment", result.ResourceKind)
+	assert.Equal(t, "launchdarkly", result.Settings.ServiceKind)
+	assert.Equal(t, 0, len(result.Settings.ServiceConfig))
+	assert.False(t, *result.Settings.AutoApplyApprovedChanges)
+}
+
+func TestApprovalSettingFromMap_DefaultValuesSuccessWithAiconfig(t *testing.T) {
+	// Test that using default values succeeds with aiconfig resource_kind
+	settingsMap := map[string]interface{}{
+		RESOURCE_KIND:               "aiconfig",
+		REQUIRED:                    true,
+		CAN_REVIEW_OWN_REQUEST:      false,
+		MIN_NUM_APPROVALS:           1,
+		CAN_APPLY_DECLINED_CHANGES:  true,
+		SERVICE_KIND:                "launchdarkly",           // Default value
+		SERVICE_CONFIG:              map[string]interface{}{}, // Empty
+		AUTO_APPLY_APPROVED_CHANGES: false,                    // Default value
+		REQUIRED_APPROVAL_TAGS:      []interface{}{},
+	}
+
+	result, err := approvalSettingFromMap(settingsMap)
+	require.NoError(t, err)
+	assert.Equal(t, "aiconfig", result.ResourceKind)
+	assert.Equal(t, "launchdarkly", result.Settings.ServiceKind)
+	assert.Equal(t, 0, len(result.Settings.ServiceConfig))
+	assert.False(t, *result.Settings.AutoApplyApprovedChanges)
+}
+
+func TestApprovalSettingFromMap_FlagResourceKindSupportsAllFields(t *testing.T) {
+	// Test that flag resource_kind continues to support all fields (backwards compatibility)
+	settingsMap := map[string]interface{}{
+		RESOURCE_KIND:              "flag",
+		REQUIRED:                   true,
+		CAN_REVIEW_OWN_REQUEST:     false,
+		MIN_NUM_APPROVALS:          2,
+		CAN_APPLY_DECLINED_CHANGES: false,
+		SERVICE_KIND:               "servicenow", // Non-default value
+		SERVICE_CONFIG: map[string]interface{}{
+			"template":      "some-template-id",
+			"detail_column": "justification",
+		},
+		AUTO_APPLY_APPROVED_CHANGES: true, // Set to true
+		REQUIRED_APPROVAL_TAGS:      []interface{}{},
+	}
+
+	result, err := approvalSettingFromMap(settingsMap)
+	require.NoError(t, err)
+	assert.Equal(t, "flag", result.ResourceKind)
+	assert.Equal(t, "servicenow", result.Settings.ServiceKind)
+	assert.Equal(t, 2, len(result.Settings.ServiceConfig))
+	assert.True(t, *result.Settings.AutoApplyApprovedChanges)
+}
+
+func TestApprovalSettingFromMap_MultipleFieldErrorsWithSegment(t *testing.T) {
+	// Test that when multiple invalid fields are set, we get an error for the first one checked
+	// (service_kind is checked first in the validation logic)
+	settingsMap := map[string]interface{}{
+		RESOURCE_KIND:              "segment",
+		REQUIRED:                   true,
+		CAN_REVIEW_OWN_REQUEST:     false,
+		MIN_NUM_APPROVALS:          1,
+		CAN_APPLY_DECLINED_CHANGES: true,
+		SERVICE_KIND:               "servicenow", // Invalid for segment
+		SERVICE_CONFIG: map[string]interface{}{ // Also invalid for segment
+			"template": "some-template-id",
+		},
+		AUTO_APPLY_APPROVED_CHANGES: false,
+		REQUIRED_APPROVAL_TAGS:      []interface{}{},
+	}
+
+	_, err := approvalSettingFromMap(settingsMap)
+	require.Error(t, err)
+	// Should get error for service_kind since it's checked first
+	assert.Contains(t, err.Error(), "service_kind cannot be set for resource_kind 'segment'")
 }

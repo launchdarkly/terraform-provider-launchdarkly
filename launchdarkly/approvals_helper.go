@@ -67,7 +67,7 @@ func approvalSchema(options approvalSchemaOptions) *schema.Schema {
 			Type:             schema.TypeString,
 			Optional:         !options.isDataSource,
 			Computed:         options.isDataSource,
-			Description:      "The kind of service associated with this approval. This determines which platform is used for requesting approval. Valid values are `servicenow`, `launchdarkly`. **Note:** This field is only supported for `resource_kind = \"flag\"`. If you use a value other than `launchdarkly`, you must have already configured the integration in the LaunchDarkly UI or your apply will fail.",
+			Description:      "The kind of service associated with this approval. This determines which platform is used for requesting approval. Valid values are `servicenow`, `launchdarkly`. **Note:** This field is only supported for `resource_kind = \"flag\"`. Using this field with `resource_kind = \"segment\"` or `resource_kind = \"aiconfig\"` will result in an error. If you use a value other than `launchdarkly`, you must have already configured the integration in the LaunchDarkly UI or your apply will fail.",
 			Default:          "launchdarkly",
 			ValidateDiagFunc: validation.ToDiagFunc(validation.StringInSlice([]string{"servicenow", "launchdarkly"}, false)),
 		},
@@ -75,7 +75,7 @@ func approvalSchema(options approvalSchemaOptions) *schema.Schema {
 			Type:        schema.TypeMap,
 			Optional:    !options.isDataSource,
 			Computed:    options.isDataSource,
-			Description: "The configuration for the service associated with this approval. **Note:** This field is only supported for `resource_kind = \"flag\"`. For a `service_kind` of `servicenow`, the following fields apply:\n\n\t - `template` (String) The sys_id of the Standard Change Request Template in ServiceNow that LaunchDarkly will use when creating the change request.\n\t - `detail_column` (String) The name of the ServiceNow Change Request column LaunchDarkly uses to populate detailed approval request information. This is most commonly \"justification\".",
+			Description: "The configuration for the service associated with this approval. **Note:** This field is only supported for `resource_kind = \"flag\"`. Using this field with `resource_kind = \"segment\"` or `resource_kind = \"aiconfig\"` will result in an error. For a `service_kind` of `servicenow`, the following fields apply:\n\n\t - `template` (String) The sys_id of the Standard Change Request Template in ServiceNow that LaunchDarkly will use when creating the change request.\n\t - `detail_column` (String) The name of the ServiceNow Change Request column LaunchDarkly uses to populate detailed approval request information. This is most commonly \"justification\".",
 		},
 		AUTO_APPLY_APPROVED_CHANGES: {
 			Type:        schema.TypeBool,
@@ -142,9 +142,26 @@ func approvalSettingFromMap(approvalSettingsMap map[string]interface{}) (approva
 
 	settings.ServiceKind = approvalSettingsMap[SERVICE_KIND].(string)
 	settings.ServiceConfig = approvalSettingsMap[SERVICE_CONFIG].(map[string]interface{})
+
+	// Validate that service_kind and service_config are only used with flag resource kinds
+	if resourceKind != "flag" {
+		// Error if service_kind is set to non-default value
+		serviceKind := settings.ServiceKind
+		if serviceKind != "launchdarkly" {
+			return approvalSettingWithKind{}, fmt.Errorf("invalid approval_settings config: service_kind cannot be set for resource_kind '%s'. This field is only supported for resource_kind 'flag'", resourceKind)
+		}
+
+		// Error if service_config has any values
+		if len(settings.ServiceConfig) > 0 {
+			return approvalSettingWithKind{}, fmt.Errorf("invalid approval_settings config: service_config cannot be set for resource_kind '%s'. This field is only supported for resource_kind 'flag'", resourceKind)
+		}
+	}
+
+	// Validate that auto_apply cannot be used with launchdarkly service_kind (existing validation)
 	if settings.ServiceKind == "launchdarkly" && settings.AutoApplyApprovedChanges != nil && *settings.AutoApplyApprovedChanges {
 		return approvalSettingWithKind{}, fmt.Errorf("invalid approval_settings config: auto_apply_approved_changes cannot be set to true for service_kind of launchdarkly")
 	}
+
 	return approvalSettingWithKind{ResourceKind: resourceKind, Settings: settings}, nil
 }
 
