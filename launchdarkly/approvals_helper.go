@@ -14,11 +14,19 @@ type approvalSchemaOptions struct {
 
 func approvalSchema(options approvalSchemaOptions) *schema.Schema {
 	elemSchema := map[string]*schema.Schema{
+		RESOURCE_KIND: {
+			Type:             schema.TypeString,
+			Optional:         !options.isDataSource,
+			Computed:         options.isDataSource,
+			Description:      "The kind of resource for which approval settings should apply. Valid values are `flag`, `segment`, and `aiconfig`. Defaults to `flag`.",
+			Default:          "flag",
+			ValidateDiagFunc: validation.ToDiagFunc(validation.StringInSlice([]string{"flag", "segment", "aiconfig"}, false)),
+		},
 		REQUIRED: {
 			Type:        schema.TypeBool,
 			Optional:    !options.isDataSource,
 			Computed:    options.isDataSource,
-			Description: "Set to `true` for changes to flags in this environment to require approval. You may only set `required` to true if `required_approval_tags` is not set and vice versa. Defaults to `false`.",
+			Description: "Set to `true` for changes to resources of this kind in this environment to require approval. You may only set `required` to true if `required_approval_tags` is not set and vice versa. Defaults to `false`.",
 			Default:     false,
 		},
 		CAN_REVIEW_OWN_REQUEST: {
@@ -59,7 +67,7 @@ func approvalSchema(options approvalSchemaOptions) *schema.Schema {
 			Type:             schema.TypeString,
 			Optional:         !options.isDataSource,
 			Computed:         options.isDataSource,
-			Description:      "The kind of service associated with this approval. This determines which platform is used for requesting approval. Valid values are `servicenow`, `launchdarkly`. If you use a value other than `launchdarkly`, you must have already configured the integration in the LaunchDarkly UI or your apply will fail.",
+			Description:      "The kind of service associated with this approval. This determines which platform is used for requesting approval. Valid values are `servicenow`, `launchdarkly`. **Note:** This field is only supported for `resource_kind = \"flag\"`. If you use a value other than `launchdarkly`, you must have already configured the integration in the LaunchDarkly UI or your apply will fail.",
 			Default:          "launchdarkly",
 			ValidateDiagFunc: validation.ToDiagFunc(validation.StringInSlice([]string{"servicenow", "launchdarkly"}, false)),
 		},
@@ -67,12 +75,12 @@ func approvalSchema(options approvalSchemaOptions) *schema.Schema {
 			Type:        schema.TypeMap,
 			Optional:    !options.isDataSource,
 			Computed:    options.isDataSource,
-			Description: "The configuration for the service associated with this approval. This is specific to each approval service. For a `service_kind` of `servicenow`, the following fields apply:\n\n\t - `template` (String) The sys_id of the Standard Change Request Template in ServiceNow that LaunchDarkly will use when creating the change request.\n\t - `detail_column` (String) The name of the ServiceNow Change Request column LaunchDarkly uses to populate detailed approval request information. This is most commonly \"justification\".",
+			Description: "The configuration for the service associated with this approval. **Note:** This field is only supported for `resource_kind = \"flag\"`. For a `service_kind` of `servicenow`, the following fields apply:\n\n\t - `template` (String) The sys_id of the Standard Change Request Template in ServiceNow that LaunchDarkly will use when creating the change request.\n\t - `detail_column` (String) The name of the ServiceNow Change Request column LaunchDarkly uses to populate detailed approval request information. This is most commonly \"justification\".",
 		},
 		AUTO_APPLY_APPROVED_CHANGES: {
 			Type:        schema.TypeBool,
 			Optional:    true,
-			Description: "Automatically apply changes that have been approved by all reviewers. This field is only applicable for approval service kinds other than `launchdarkly`.",
+			Description: "Automatically apply changes that have been approved by all reviewers. **Note:** This field is only supported for `resource_kind = \"flag\"` and is only applicable for approval service kinds other than `launchdarkly`.",
 			Default:     false,
 		},
 	}
@@ -81,7 +89,7 @@ func approvalSchema(options approvalSchemaOptions) *schema.Schema {
 		elemSchema = removeInvalidFieldsForDataSource(elemSchema)
 	}
 
-	return &schema.Schema{
+	approvalSettingsSchema := &schema.Schema{
 		Type:     schema.TypeList,
 		Optional: !options.isDataSource,
 		Computed: true,
@@ -89,14 +97,22 @@ func approvalSchema(options approvalSchemaOptions) *schema.Schema {
 			Schema: elemSchema,
 		},
 	}
+
+	return approvalSettingsSchema
 }
 
-func approvalSettingsFromResourceData(val interface{}) (ldapi.ApprovalSettings, error) {
-	raw := val.([]interface{})
-	if len(raw) == 0 {
-		return ldapi.ApprovalSettings{}, nil
+// approvalSettingWithKind wraps approval settings with its resource kind
+type approvalSettingWithKind struct {
+	ResourceKind string
+	Settings     ldapi.ApprovalSettings
+}
+
+func approvalSettingFromMap(approvalSettingsMap map[string]interface{}) (approvalSettingWithKind, error) {
+	resourceKind, ok := approvalSettingsMap[RESOURCE_KIND].(string)
+	if !ok || resourceKind == "" {
+		resourceKind = "flag" // default value
 	}
-	approvalSettingsMap := raw[0].(map[string]interface{})
+
 	autoApply := approvalSettingsMap[AUTO_APPLY_APPROVED_CHANGES].(bool)
 	settings := ldapi.ApprovalSettings{
 		CanReviewOwnRequest:      approvalSettingsMap[CAN_REVIEW_OWN_REQUEST].(bool),
@@ -113,7 +129,7 @@ func approvalSettingsFromResourceData(val interface{}) (ldapi.ApprovalSettings, 
 	tags := approvalSettingsMap[REQUIRED_APPROVAL_TAGS].([]interface{})
 	if len(tags) > 0 {
 		if required {
-			return ldapi.ApprovalSettings{}, fmt.Errorf("invalid approval_settings config: required and required_approval_tags cannot be set simultaneously")
+			return approvalSettingWithKind{}, fmt.Errorf("invalid approval_settings config: required and required_approval_tags cannot be set simultaneously")
 		}
 		stringTags := make([]string, len(tags))
 		for i := range tags {
@@ -127,13 +143,24 @@ func approvalSettingsFromResourceData(val interface{}) (ldapi.ApprovalSettings, 
 	settings.ServiceKind = approvalSettingsMap[SERVICE_KIND].(string)
 	settings.ServiceConfig = approvalSettingsMap[SERVICE_CONFIG].(map[string]interface{})
 	if settings.ServiceKind == "launchdarkly" && settings.AutoApplyApprovedChanges != nil && *settings.AutoApplyApprovedChanges {
-		return ldapi.ApprovalSettings{}, fmt.Errorf("invalid approval_settings config: auto_apply_approved_changes cannot be set to true for service_kind of launchdarkly")
+		return approvalSettingWithKind{}, fmt.Errorf("invalid approval_settings config: auto_apply_approved_changes cannot be set to true for service_kind of launchdarkly")
 	}
-	return settings, nil
+	return approvalSettingWithKind{ResourceKind: resourceKind, Settings: settings}, nil
 }
 
-func approvalSettingsToResourceData(settings ldapi.ApprovalSettings) interface{} {
-	transformed := map[string]interface{}{
+func approvalSettingsFromResourceData(val interface{}) (ldapi.ApprovalSettings, error) {
+	raw := val.([]interface{})
+	if len(raw) == 0 {
+		return ldapi.ApprovalSettings{}, nil
+	}
+	approvalSettingsMap := raw[0].(map[string]interface{})
+	setting, err := approvalSettingFromMap(approvalSettingsMap)
+	return setting.Settings, err
+}
+
+func approvalSettingToResourceData(settings ldapi.ApprovalSettings, resourceKind string) map[string]interface{} {
+	return map[string]interface{}{
+		RESOURCE_KIND:               resourceKind,
 		CAN_REVIEW_OWN_REQUEST:      settings.CanReviewOwnRequest,
 		MIN_NUM_APPROVALS:           settings.MinNumApprovals,
 		CAN_APPLY_DECLINED_CHANGES:  settings.CanApplyDeclinedChanges,
@@ -143,36 +170,179 @@ func approvalSettingsToResourceData(settings ldapi.ApprovalSettings) interface{}
 		SERVICE_CONFIG:              settings.ServiceConfig,
 		AUTO_APPLY_APPROVED_CHANGES: settings.AutoApplyApprovedChanges,
 	}
-	return []map[string]interface{}{transformed}
+}
+
+// approvalSettingsToResourceData converts approval settings from API to Terraform format
+// It handles both the root approvalSettings (for flags) and nested resourceApprovalSettings
+func approvalSettingsToResourceData(settings ldapi.ApprovalSettings) interface{} {
+	// For backwards compatibility, this function treats input as flag approval settings
+	return []map[string]interface{}{approvalSettingToResourceData(settings, "flag")}
+}
+
+// environmentApprovalSettingsToResourceData converts environment approval settings from API response
+// It handles both approvalSettings (flags) and resourceApprovalSettings (segment, aiconfig, etc.)
+func environmentApprovalSettingsToResourceData(env ldapi.Environment) []map[string]interface{} {
+	result := make([]map[string]interface{}, 0)
+
+	// Handle flag approval settings (from root approvalSettings)
+	if env.ApprovalSettings != nil {
+		result = append(result, approvalSettingToResourceData(*env.ApprovalSettings, "flag"))
+	}
+
+	// Handle resource approval settings (from resourceApprovalSettings)
+	if env.ResourceApprovalSettings != nil {
+		resourceApprovalSettings := *env.ResourceApprovalSettings
+
+		// Handle segment approval settings
+		if segmentSettings, ok := resourceApprovalSettings["segment"]; ok {
+			result = append(result, approvalSettingToResourceData(segmentSettings, "segment"))
+		}
+
+		// Handle aiconfig approval settings
+		if aiconfigSettings, ok := resourceApprovalSettings["aiconfig"]; ok {
+			result = append(result, approvalSettingToResourceData(aiconfigSettings, "aiconfig"))
+		}
+	}
+
+	return result
+}
+
+// getApprovalSettingByKind finds an approval setting by resource_kind in a list
+func getApprovalSettingByKind(settings []interface{}, kind string) (map[string]interface{}, bool) {
+	for _, rawSetting := range settings {
+		if rawSetting == nil {
+			continue
+		}
+		setting := rawSetting.(map[string]interface{})
+		settingKind, ok := setting[RESOURCE_KIND].(string)
+		if !ok || settingKind == "" {
+			settingKind = "flag"
+		}
+		if settingKind == kind {
+			return setting, true
+		}
+	}
+	return nil, false
+}
+
+// approvalPatchForResourceKind generates patch operations for a specific resource kind
+func approvalPatchForResourceKind(settings approvalSettingWithKind) []ldapi.PatchOperation {
+	// Determine the base path based on resource kind
+	var basePath string
+	if settings.ResourceKind == "flag" {
+		basePath = "/approvalSettings"
+	} else {
+		basePath = fmt.Sprintf("/resourceApprovalSettings/%s", settings.ResourceKind)
+	}
+
+	patch := []ldapi.PatchOperation{
+		patchReplace(basePath+"/required", settings.Settings.Required),
+		patchReplace(basePath+"/canReviewOwnRequest", settings.Settings.CanReviewOwnRequest),
+		patchReplace(basePath+"/minNumApprovals", settings.Settings.MinNumApprovals),
+		patchReplace(basePath+"/canApplyDeclinedChanges", settings.Settings.CanApplyDeclinedChanges),
+		patchReplace(basePath+"/requiredApprovalTags", settings.Settings.RequiredApprovalTags),
+	}
+
+	// serviceKind, serviceConfig, and autoApplyApprovedChanges are only supported for flag approval settings
+	if settings.ResourceKind == "flag" {
+		patch = append(patch,
+			patchReplace(basePath+"/serviceKind", settings.Settings.ServiceKind),
+			patchReplace(basePath+"/serviceConfig", settings.Settings.ServiceConfig),
+		)
+		if settings.Settings.AutoApplyApprovedChanges != nil {
+			patch = append(patch, patchReplace(basePath+"/autoApplyApprovedChanges", *settings.Settings.AutoApplyApprovedChanges))
+		}
+	}
+
+	return patch
 }
 
 func approvalPatchFromSettings(oldApprovalSettings, newApprovalSettings interface{}) ([]ldapi.PatchOperation, error) {
-	settings, err := approvalSettingsFromResourceData(newApprovalSettings)
-	if err != nil {
-		return []ldapi.PatchOperation{}, err
-	}
 	new := newApprovalSettings.([]interface{})
 	old := oldApprovalSettings.([]interface{})
+
 	if len(new) == 0 && len(old) == 0 {
 		return []ldapi.PatchOperation{}, nil
 	}
-	if len(new) == 0 && len(old) > 0 {
-		return []ldapi.PatchOperation{
-			patchRemove("/approvalSettings/required"),
-			patchRemove("/approvalSettings/requiredApprovalTags"),
-		}, nil
+
+	// Validate that there are no duplicate resource_kind values
+	seenKinds := make(map[string]bool)
+	for _, rawSetting := range new {
+		if rawSetting == nil {
+			continue
+		}
+		setting := rawSetting.(map[string]interface{})
+		kind, ok := setting[RESOURCE_KIND].(string)
+		if !ok || kind == "" {
+			kind = "flag"
+		}
+		if seenKinds[kind] {
+			return []ldapi.PatchOperation{}, fmt.Errorf("duplicate resource_kind '%s' found in approval_settings. Each resource_kind can only be specified once", kind)
+		}
+		seenKinds[kind] = true
 	}
-	patch := []ldapi.PatchOperation{
-		patchReplace("/approvalSettings/required", settings.Required),
-		patchReplace("/approvalSettings/canReviewOwnRequest", settings.CanReviewOwnRequest),
-		patchReplace("/approvalSettings/minNumApprovals", settings.MinNumApprovals),
-		patchReplace("/approvalSettings/canApplyDeclinedChanges", settings.CanApplyDeclinedChanges),
-		patchReplace("/approvalSettings/requiredApprovalTags", settings.RequiredApprovalTags),
-		patchReplace("/approvalSettings/serviceKind", settings.ServiceKind),
-		patchReplace("/approvalSettings/serviceConfig", settings.ServiceConfig),
+
+	patches := []ldapi.PatchOperation{}
+
+	// Track which resource kinds exist in old and new
+	oldKinds := make(map[string]bool)
+	newKinds := make(map[string]bool)
+
+	for _, rawSetting := range old {
+		if rawSetting == nil {
+			continue
+		}
+		setting := rawSetting.(map[string]interface{})
+		kind, ok := setting[RESOURCE_KIND].(string)
+		if !ok || kind == "" {
+			kind = "flag"
+		}
+		oldKinds[kind] = true
 	}
-	if settings.AutoApplyApprovedChanges != nil {
-		patch = append(patch, patchReplace("/approvalSettings/autoApplyApprovedChanges", *settings.AutoApplyApprovedChanges))
+
+	for _, rawSetting := range new {
+		if rawSetting == nil {
+			continue
+		}
+		setting := rawSetting.(map[string]interface{})
+		kind, ok := setting[RESOURCE_KIND].(string)
+		if !ok || kind == "" {
+			kind = "flag"
+		}
+		newKinds[kind] = true
 	}
-	return patch, nil
+
+	// Handle removals - resource kinds that were in old but not in new
+	for kind := range oldKinds {
+		if !newKinds[kind] {
+			if kind == "flag" {
+				patches = append(patches,
+					patchRemove("/approvalSettings/required"),
+					patchRemove("/approvalSettings/requiredApprovalTags"),
+				)
+			} else {
+				basePath := fmt.Sprintf("/resourceApprovalSettings/%s", kind)
+				patches = append(patches,
+					patchRemove(basePath+"/required"),
+					patchRemove(basePath+"/requiredApprovalTags"),
+				)
+			}
+		}
+	}
+
+	// Handle additions and updates - resource kinds that are in new
+	for _, rawSetting := range new {
+		if rawSetting == nil {
+			continue
+		}
+		settingMap := rawSetting.(map[string]interface{})
+		setting, err := approvalSettingFromMap(settingMap)
+		if err != nil {
+			return []ldapi.PatchOperation{}, err
+		}
+
+		patches = append(patches, approvalPatchForResourceKind(setting)...)
+	}
+
+	return patches, nil
 }

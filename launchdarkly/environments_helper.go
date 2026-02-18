@@ -244,8 +244,10 @@ func environmentToResourceData(env ldapi.Environment) envResourceData {
 		TAGS:                 env.Tags,
 		CRITICAL:             env.Critical,
 	}
-	if env.ApprovalSettings != nil {
-		envData[APPROVAL_SETTINGS] = approvalSettingsToResourceData(*env.ApprovalSettings)
+	// Handle approval settings for all resource kinds (flag, segment, aiconfig)
+	approvalSettings := environmentApprovalSettingsToResourceData(env)
+	if len(approvalSettings) > 0 {
+		envData[APPROVAL_SETTINGS] = approvalSettings
 	}
 	return envData
 }
@@ -302,8 +304,10 @@ func environmentRead(ctx context.Context, d *schema.ResourceData, meta interface
 	_ = d.Set(REQUIRE_COMMENTS, env.RequireComments)
 	_ = d.Set(CONFIRM_CHANGES, env.ConfirmChanges)
 
-	if env.ApprovalSettings != nil {
-		err = d.Set(APPROVAL_SETTINGS, approvalSettingsToResourceData(*env.ApprovalSettings))
+	// Handle approval settings for all resource kinds (flag, segment, aiconfig)
+	approvalSettings := environmentApprovalSettingsToResourceData(*env)
+	if len(approvalSettings) > 0 {
+		err = d.Set(APPROVAL_SETTINGS, approvalSettings)
 		if err != nil {
 			return diag.FromErr(err)
 		}

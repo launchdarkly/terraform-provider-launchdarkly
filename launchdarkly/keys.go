@@ -93,6 +93,7 @@ const (
 	REQUIRED_APPROVAL_TAGS           = "required_approval_tags"
 	REQUIRE_COMMENTS                 = "require_comments"
 	RESOURCE                         = "resource"
+	RESOURCE_KIND                    = "resource_kind"
 	RESOURCES                        = "resources"
 	ROLE                             = "role"
 	ROLE_ATTRIBUTES                  = "role_attributes"
