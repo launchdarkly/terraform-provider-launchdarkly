@@ -98,6 +98,7 @@ const (
 	PROJECT_KEY                               = "project_key"
 	PROJECT_KEYS                              = "project_keys"
 	RANDOMIZATION_UNITS                       = "randomization_units"
+	RECONCILE_ON_APPLY                        = "reconcile_on_apply"
 	RELEASE_METHOD                            = "release_method"
 	RELEASE_POLICY_KEYS                       = "release_policy_keys"
 	REQUIRED                                  = "required"

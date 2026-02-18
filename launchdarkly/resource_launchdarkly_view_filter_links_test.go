@@ -298,6 +298,7 @@ resource "launchdarkly_view_filter_links" "test" {
 	project_key = launchdarkly_project.test.key
 	view_key    = launchdarkly_view.test.key
 	flag_filter = "tags:trigger-test"
+	reconcile_on_apply = true
 
 	depends_on = [
 		launchdarkly_feature_flag.trigger1,
@@ -345,6 +346,7 @@ resource "launchdarkly_view_filter_links" "test" {
 	project_key = launchdarkly_project.test.key
 	view_key    = launchdarkly_view.test.key
 	flag_filter = "tags:trigger-test"
+	reconcile_on_apply = true
 
 	depends_on = [
 		launchdarkly_feature_flag.trigger1,
@@ -440,7 +442,7 @@ func TestAccViewFilterLinks_FlagFilter(t *testing.T) {
 				ResourceName:            resourceName,
 				ImportState:             true,
 				ImportStateVerify:       true,
-				ImportStateVerifyIgnore: []string{FLAG_FILTER, SEGMENT_FILTER, SEGMENT_FILTER_ENVIRONMENT_ID, RESOLVED_AT},
+				ImportStateVerifyIgnore: []string{FLAG_FILTER, SEGMENT_FILTER, SEGMENT_FILTER_ENVIRONMENT_ID, RECONCILE_ON_APPLY, RESOLVED_AT},
 			},
 			{
 				Config: fmt.Sprintf(testAccViewFilterLinksUpdateFlagFilter, projectName, projectKey, maintainerID),
@@ -455,7 +457,7 @@ func TestAccViewFilterLinks_FlagFilter(t *testing.T) {
 				ResourceName:            resourceName,
 				ImportState:             true,
 				ImportStateVerify:       true,
-				ImportStateVerifyIgnore: []string{FLAG_FILTER, SEGMENT_FILTER, SEGMENT_FILTER_ENVIRONMENT_ID, RESOLVED_AT},
+				ImportStateVerifyIgnore: []string{FLAG_FILTER, SEGMENT_FILTER, SEGMENT_FILTER_ENVIRONMENT_ID, RECONCILE_ON_APPLY, RESOLVED_AT},
 			},
 			{
 				// Re-apply original filter after removing the tag from flag2.
@@ -472,7 +474,7 @@ func TestAccViewFilterLinks_FlagFilter(t *testing.T) {
 				ResourceName:            resourceName,
 				ImportState:             true,
 				ImportStateVerify:       true,
-				ImportStateVerifyIgnore: []string{FLAG_FILTER, SEGMENT_FILTER, SEGMENT_FILTER_ENVIRONMENT_ID, RESOLVED_AT},
+				ImportStateVerifyIgnore: []string{FLAG_FILTER, SEGMENT_FILTER, SEGMENT_FILTER_ENVIRONMENT_ID, RECONCILE_ON_APPLY, RESOLVED_AT},
 			},
 		},
 	})
@@ -516,7 +518,7 @@ func TestAccViewFilterLinks_SegmentFilter(t *testing.T) {
 				ResourceName:            resourceName,
 				ImportState:             true,
 				ImportStateVerify:       true,
-				ImportStateVerifyIgnore: []string{FLAG_FILTER, SEGMENT_FILTER, SEGMENT_FILTER_ENVIRONMENT_ID, RESOLVED_AT},
+				ImportStateVerifyIgnore: []string{FLAG_FILTER, SEGMENT_FILTER, SEGMENT_FILTER_ENVIRONMENT_ID, RECONCILE_ON_APPLY, RESOLVED_AT},
 			},
 		},
 	})
@@ -561,7 +563,7 @@ func TestAccViewFilterLinks_BothFilters(t *testing.T) {
 				ResourceName:            resourceName,
 				ImportState:             true,
 				ImportStateVerify:       true,
-				ImportStateVerifyIgnore: []string{FLAG_FILTER, SEGMENT_FILTER, SEGMENT_FILTER_ENVIRONMENT_ID, RESOLVED_AT},
+				ImportStateVerifyIgnore: []string{FLAG_FILTER, SEGMENT_FILTER, SEGMENT_FILTER_ENVIRONMENT_ID, RECONCILE_ON_APPLY, RESOLVED_AT},
 			},
 			{
 				// Remove segment_filter, keep flag_filter
@@ -579,7 +581,7 @@ func TestAccViewFilterLinks_BothFilters(t *testing.T) {
 				ResourceName:            resourceName,
 				ImportState:             true,
 				ImportStateVerify:       true,
-				ImportStateVerifyIgnore: []string{FLAG_FILTER, SEGMENT_FILTER, SEGMENT_FILTER_ENVIRONMENT_ID, RESOLVED_AT},
+				ImportStateVerifyIgnore: []string{FLAG_FILTER, SEGMENT_FILTER, SEGMENT_FILTER_ENVIRONMENT_ID, RECONCILE_ON_APPLY, RESOLVED_AT},
 			},
 		},
 	})
@@ -616,6 +618,7 @@ func TestAccViewFilterLinks_Triggers(t *testing.T) {
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckViewForFilterLinksExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, FLAG_FILTER, "tags:trigger-test"),
+					resource.TestCheckResourceAttr(resourceName, RECONCILE_ON_APPLY, "true"),
 					testAccCheckViewLinksAPIState(projectKey, "test-view", []string{"trigger-flag-1", "trigger-flag-2"}),
 				),
 			},
@@ -625,6 +628,7 @@ func TestAccViewFilterLinks_Triggers(t *testing.T) {
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckViewForFilterLinksExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, FLAG_FILTER, "tags:trigger-test"),
+					resource.TestCheckResourceAttr(resourceName, RECONCILE_ON_APPLY, "true"),
 					testAccCheckViewLinksAPIState(projectKey, "test-view", []string{"trigger-flag-1"}),
 				),
 			},
