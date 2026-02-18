@@ -68,6 +68,7 @@ func Provider() *schema.Provider {
 			"launchdarkly_release_policy_order":      resourceReleasePolicyOrder(),
 			"launchdarkly_view":                      resourceView(),
 			"launchdarkly_view_links":                resourceViewLinks(),
+			"launchdarkly_view_filter_links":         resourceViewFilterLinks(),
 			"launchdarkly_environment":               resourceEnvironment(),
 			"launchdarkly_feature_flag":              resourceFeatureFlag(),
 			"launchdarkly_webhook":                   resourceWebhook(),
