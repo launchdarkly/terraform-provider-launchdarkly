@@ -2,6 +2,13 @@
 
 All notable changes to the LaunchDarkly Terraform Provider will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org).
 
+## [2.27.0-beta.3](https://github.com/launchdarkly/terraform-provider-launchdarkly/compare/v2.27.0-beta.2...v2.27.0-beta.3) (2026-02-18)
+
+
+### Features
+
+* [REL-12106] add launchdarkly_view_filter_links resource ([#386](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/386)) ([8f20528](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/8f20528c40d18a7b77588ffb02dc570384516c78))
+
 ## [2.27.0-beta.2](https://github.com/launchdarkly/terraform-provider-launchdarkly/compare/v2.27.0-beta.1...v2.27.0-beta.2) (2026-02-03)
 
 
