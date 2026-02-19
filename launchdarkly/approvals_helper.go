@@ -165,16 +165,6 @@ func approvalSettingFromMap(approvalSettingsMap map[string]interface{}) (approva
 	return approvalSettingWithKind{ResourceKind: resourceKind, Settings: settings}, nil
 }
 
-func approvalSettingsFromResourceData(val interface{}) (ldapi.ApprovalSettings, error) {
-	raw := val.([]interface{})
-	if len(raw) == 0 {
-		return ldapi.ApprovalSettings{}, nil
-	}
-	approvalSettingsMap := raw[0].(map[string]interface{})
-	setting, err := approvalSettingFromMap(approvalSettingsMap)
-	return setting.Settings, err
-}
-
 func approvalSettingToResourceData(settings ldapi.ApprovalSettings, resourceKind string) map[string]interface{} {
 	return map[string]interface{}{
 		RESOURCE_KIND:               resourceKind,
@@ -187,13 +177,6 @@ func approvalSettingToResourceData(settings ldapi.ApprovalSettings, resourceKind
 		SERVICE_CONFIG:              settings.ServiceConfig,
 		AUTO_APPLY_APPROVED_CHANGES: settings.AutoApplyApprovedChanges,
 	}
-}
-
-// approvalSettingsToResourceData converts approval settings from API to Terraform format
-// It handles both the root approvalSettings (for flags) and nested resourceApprovalSettings
-func approvalSettingsToResourceData(settings ldapi.ApprovalSettings) interface{} {
-	// For backwards compatibility, this function treats input as flag approval settings
-	return []map[string]interface{}{approvalSettingToResourceData(settings, "flag")}
 }
 
 // environmentApprovalSettingsToResourceData converts environment approval settings from API response
@@ -214,7 +197,7 @@ func environmentApprovalSettingsToResourceData(env ldapi.Environment) []map[stri
 		// Handle segment approval settings - only include if actually configured
 		if segmentSettings, ok := resourceApprovalSettings["segment"]; ok {
 			// Skip if not configured (just defaults from API)
-			if segmentSettings.Required || (segmentSettings.RequiredApprovalTags != nil && len(segmentSettings.RequiredApprovalTags) > 0) {
+			if segmentSettings.Required || len(segmentSettings.RequiredApprovalTags) > 0 {
 				result = append(result, approvalSettingToResourceData(segmentSettings, "segment"))
 			}
 		}
@@ -222,31 +205,13 @@ func environmentApprovalSettingsToResourceData(env ldapi.Environment) []map[stri
 		// Handle aiconfig approval settings - only include if actually configured
 		if aiconfigSettings, ok := resourceApprovalSettings["aiconfig"]; ok {
 			// Skip if not configured (just defaults from API)
-			if aiconfigSettings.Required || (aiconfigSettings.RequiredApprovalTags != nil && len(aiconfigSettings.RequiredApprovalTags) > 0) {
+			if aiconfigSettings.Required || len(aiconfigSettings.RequiredApprovalTags) > 0 {
 				result = append(result, approvalSettingToResourceData(aiconfigSettings, "aiconfig"))
 			}
 		}
 	}
 
 	return result
-}
-
-// getApprovalSettingByKind finds an approval setting by resource_kind in a list
-func getApprovalSettingByKind(settings []interface{}, kind string) (map[string]interface{}, bool) {
-	for _, rawSetting := range settings {
-		if rawSetting == nil {
-			continue
-		}
-		setting := rawSetting.(map[string]interface{})
-		settingKind, ok := setting[RESOURCE_KIND].(string)
-		if !ok || settingKind == "" {
-			settingKind = "flag"
-		}
-		if settingKind == kind {
-			return setting, true
-		}
-	}
-	return nil, false
 }
 
 // approvalPatchForResourceKind generates patch operations for a specific resource kind
