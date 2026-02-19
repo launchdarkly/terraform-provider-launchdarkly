@@ -202,6 +202,7 @@ func environmentApprovalSettingsToResourceData(env ldapi.Environment) []map[stri
 	result := make([]map[string]interface{}, 0)
 
 	// Handle flag approval settings (from root approvalSettings)
+	// Always include flag approval settings if present for backwards compatibility
 	if env.ApprovalSettings != nil {
 		result = append(result, approvalSettingToResourceData(*env.ApprovalSettings, "flag"))
 	}
@@ -210,14 +211,20 @@ func environmentApprovalSettingsToResourceData(env ldapi.Environment) []map[stri
 	if env.ResourceApprovalSettings != nil {
 		resourceApprovalSettings := *env.ResourceApprovalSettings
 
-		// Handle segment approval settings
+		// Handle segment approval settings - only include if actually configured
 		if segmentSettings, ok := resourceApprovalSettings["segment"]; ok {
-			result = append(result, approvalSettingToResourceData(segmentSettings, "segment"))
+			// Skip if not configured (just defaults from API)
+			if segmentSettings.Required || (segmentSettings.RequiredApprovalTags != nil && len(segmentSettings.RequiredApprovalTags) > 0) {
+				result = append(result, approvalSettingToResourceData(segmentSettings, "segment"))
+			}
 		}
 
-		// Handle aiconfig approval settings
+		// Handle aiconfig approval settings - only include if actually configured
 		if aiconfigSettings, ok := resourceApprovalSettings["aiconfig"]; ok {
-			result = append(result, approvalSettingToResourceData(aiconfigSettings, "aiconfig"))
+			// Skip if not configured (just defaults from API)
+			if aiconfigSettings.Required || (aiconfigSettings.RequiredApprovalTags != nil && len(aiconfigSettings.RequiredApprovalTags) > 0) {
+				result = append(result, approvalSettingToResourceData(aiconfigSettings, "aiconfig"))
+			}
 		}
 	}
 
