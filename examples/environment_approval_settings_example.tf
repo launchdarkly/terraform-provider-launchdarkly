@@ -1,14 +1,14 @@
 # Example of environment with approval settings for both flags and segments
 
 resource "launchdarkly_environment" "example" {
-  name       = "Example Environment"
-  key        = "example-env"
-  color      = "FFFFFF"
+  name        = "Example Environment"
+  key         = "example-env"
+  color       = "FFFFFF"
   project_key = "example-project"
 
   # Flag approval settings (resource_kind defaults to "flag")
   approval_settings {
-    resource_kind              = "flag"  # Optional, defaults to "flag"
+    resource_kind              = "flag" # Optional, defaults to "flag"
     required                   = true
     can_review_own_request     = false
     min_num_approvals          = 2
@@ -40,9 +40,9 @@ resource "launchdarkly_environment" "example" {
 # Example maintaining backwards compatibility (without resource_kind)
 # This will default to flag approval settings
 resource "launchdarkly_environment" "backwards_compatible" {
-  name       = "Backwards Compatible Environment"
-  key        = "backwards-compat"
-  color      = "000000"
+  name        = "Backwards Compatible Environment"
+  key         = "backwards-compat"
+  color       = "000000"
   project_key = "example-project"
 
   approval_settings {
