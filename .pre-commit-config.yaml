@@ -7,7 +7,7 @@ repos:
       - id: gofmts
 
   - repo: https://github.com/golangci/golangci-lint
-    rev: v1.51.2
+    rev: v1.63.2
     hooks:
       - id: golangci-lint
 
