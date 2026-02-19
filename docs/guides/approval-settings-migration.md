@@ -1,3 +1,9 @@
+---
+page_title: "Migrating to multi-resource approval settings"
+description: |-
+  This guide explains how to use the approval_settings block to configure approval requirements for flags, segments, and AI configs within the same environment. Learn about the new resource_kind attribute, validation rules, and how to migrate existing configurations.
+---
+
 # Approval Settings Migration Guide
 
 ## Overview
