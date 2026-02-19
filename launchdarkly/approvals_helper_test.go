@@ -383,4 +383,3 @@ func TestApprovalSettingFromMap_MultipleFieldErrorsWithSegment(t *testing.T) {
 	// Should get error for service_kind since it's checked first
 	assert.Contains(t, err.Error(), "service_kind cannot be set for resource_kind 'segment'")
 }
-
