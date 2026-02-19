@@ -281,9 +281,9 @@ func approvalPatchForResourceKind(settings approvalSettingWithKind) []ldapi.Patc
 	return patch
 }
 
-func approvalPatchFromSettings(oldApprovalSettings, newApprovalSettings interface{}) ([]ldapi.PatchOperation, error) {
-	new := newApprovalSettings.([]interface{})
-	old := oldApprovalSettings.([]interface{})
+func approvalPatchFromSettings(oldApprovalSettings, newApprovalSettings []interface{}) ([]ldapi.PatchOperation, error) {
+	new := newApprovalSettings
+	old := oldApprovalSettings
 
 	if len(new) == 0 && len(old) == 0 {
 		return []ldapi.PatchOperation{}, nil

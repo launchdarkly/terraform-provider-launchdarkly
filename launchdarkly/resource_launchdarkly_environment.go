@@ -129,7 +129,14 @@ func resourceEnvironmentUpdate(ctx context.Context, d *schema.ResourceData, meta
 	}
 
 	oldApprovalSettings, newApprovalSettings := d.GetChange(APPROVAL_SETTINGS)
-	approvalPatch, err := approvalPatchFromSettings(oldApprovalSettings, newApprovalSettings)
+	var oldSettings, newSettings []interface{}
+	if oldApprovalSettings != nil {
+		oldSettings = oldApprovalSettings.([]interface{})
+	}
+	if newApprovalSettings != nil {
+		newSettings = newApprovalSettings.([]interface{})
+	}
+	approvalPatch, err := approvalPatchFromSettings(oldSettings, newSettings)
 	if err != nil {
 		return diag.FromErr(err)
 	}

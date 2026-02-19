@@ -154,10 +154,13 @@ func getEnvironmentUpdatePatches(oldConfig, config map[string]interface{}) ([]ld
 	}
 
 	var oldApprovalSettings []interface{}
-	if oldSettings, ok := oldConfig[APPROVAL_SETTINGS]; ok {
+	if oldSettings, ok := oldConfig[APPROVAL_SETTINGS]; ok && oldSettings != nil {
 		oldApprovalSettings = oldSettings.([]interface{})
 	}
-	newApprovalSettings := config[APPROVAL_SETTINGS]
+	var newApprovalSettings []interface{}
+	if settings, ok := config[APPROVAL_SETTINGS]; ok && settings != nil {
+		newApprovalSettings = settings.([]interface{})
+	}
 	approvalPatches, err := approvalPatchFromSettings(oldApprovalSettings, newApprovalSettings)
 	if err != nil {
 		return []ldapi.PatchOperation{}, err
