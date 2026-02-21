@@ -54,11 +54,21 @@ func TestValidateRuleResourceData(t *testing.T) {
 			ruleMap: map[string]interface{}{
 				ROLLOUT_WEIGHTS: []interface{}{},
 				BUCKET_BY:       "",
-				CONTEXT_KIND:    "user",
+				CONTEXT_KIND:    "organization",
 				VARIATION:       1,
 			},
 			wantErr: true,
 			errMsg:  "rules: cannot use context_kind argument with variation, only with rollout_weights",
+		},
+		{
+			name: "valid - context_kind user with variation",
+			ruleMap: map[string]interface{}{
+				ROLLOUT_WEIGHTS: []interface{}{},
+				BUCKET_BY:       "",
+				CONTEXT_KIND:    "user",
+				VARIATION:       1,
+			},
+			wantErr: false,
 		},
 	}
 
