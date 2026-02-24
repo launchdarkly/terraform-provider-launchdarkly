@@ -204,6 +204,24 @@ var SUBSCRIPTION_CONFIGURATION_FIELDS = map[string]IntegrationConfig{
 			Type:          "string",
 		},
 	},
+	"jira": {
+		"secret": {
+			AllowedValues: []string{},
+			DefaultValue:  nil,
+			Description:   "Enter the secret shared between Jira and LaunchDarkly",
+			IsOptional:    false,
+			IsSecret:      true,
+			Type:          "string",
+		},
+		"url": {
+			AllowedValues: []string{},
+			DefaultValue:  nil,
+			Description:   "Enter your Jira web trigger URL",
+			IsOptional:    false,
+			IsSecret:      false,
+			Type:          "uri",
+		},
+	},
 	"kosli": {
 		"secret": {
 			AllowedValues: []string{},
