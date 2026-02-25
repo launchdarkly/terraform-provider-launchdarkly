@@ -117,6 +117,7 @@ const (
 	RULES                                     = "rules"
 	SCOPE                                     = "scope"
 	SCOPE_ENVIRONMENT_KEYS                    = "environment_keys"
+	SCOPE_FLAG_TAG_KEYS                       = "flag_tag_keys"
 	SECRET                                    = "secret"
 	SECURE_MODE                               = "secure_mode"
 	SEGMENTS                                  = "segments"

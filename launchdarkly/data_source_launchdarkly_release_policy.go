@@ -52,6 +52,14 @@ Learn more about [release policies here](https://launchdarkly.com/docs/home/rele
 								Type: schema.TypeString,
 							},
 						},
+						SCOPE_FLAG_TAG_KEYS: {
+							Type:        schema.TypeList,
+							Computed:    true,
+							Description: "The flag tag keys that the release policy is applied to.",
+							Elem: &schema.Schema{
+								Type: schema.TypeString,
+							},
+						},
 					},
 				},
 			},

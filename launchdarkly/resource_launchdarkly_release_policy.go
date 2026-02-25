@@ -70,6 +70,14 @@ Learn more about [release policies here](https://launchdarkly.com/docs/home/rele
 								ValidateDiagFunc: validateKeyAndLength(1, 100),
 							},
 						},
+						SCOPE_FLAG_TAG_KEYS: {
+							Type:        schema.TypeList,
+							Optional:    true,
+							Description: "The flag tag keys that the release policy will be applied to.",
+							Elem: &schema.Schema{
+								Type: schema.TypeString,
+							},
+						},
 					},
 				},
 			},
@@ -210,6 +218,12 @@ func convertScopeToAPI(scopeData map[string]interface{}) map[string]interface{} 
 	scopeAPI := make(map[string]interface{})
 	if envKeys, ok := scopeData[SCOPE_ENVIRONMENT_KEYS]; ok {
 		scopeAPI["environmentKeys"] = envKeys
+	}
+	if flagTagKeys, ok := scopeData[SCOPE_FLAG_TAG_KEYS]; ok {
+		keys := flagTagKeys.([]interface{})
+		if len(keys) > 0 {
+			scopeAPI["flagTagKeys"] = keys
+		}
 	}
 	return scopeAPI
 }

@@ -174,6 +174,34 @@ resource "launchdarkly_release_policy" "test" {
 }
 `
 
+	testAccReleasePolicyWithFlagTagKeys = `
+resource "launchdarkly_project" "test" {
+	key  = "%s"
+	name = "Test project"
+	environments {
+		name  = "Test Environment"
+		key   = "test-env"
+		color = "000000"
+	}
+}
+
+resource "launchdarkly_release_policy" "test" {
+	project_key    = launchdarkly_project.test.key
+	key            = "%s"
+	name           = "%s"
+	release_method = "guarded-release"
+
+	scope {
+		environment_keys = ["test-env"]
+		flag_tag_keys    = ["frontend", "backend"]
+	}
+
+	guarded_release_config {
+		rollback_on_regression = true
+	}
+}
+`
+
 	testAccReleasePolicyInvalidMinSampleSize = `
 resource "launchdarkly_project" "test" {
 	key  = "%s"
@@ -447,6 +475,44 @@ func TestAccReleasePolicy_InvalidKey(t *testing.T) {
 			{
 				Config:      fmt.Sprintf(testAccReleasePolicyMinimal, projectKey, invalidPolicyKey, policyName),
 				ExpectError: regexp.MustCompile(`Must contain only letters, numbers, '.', '-', or '_' and must start with an alphanumeric`),
+			},
+		},
+	})
+}
+
+func TestAccReleasePolicy_WithFlagTagKeys(t *testing.T) {
+	accTest := os.Getenv("TF_ACC")
+	if accTest == "" {
+		t.SkipNow()
+	}
+
+	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	policyKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	policyName := "Test Release Policy With Flag Tag Keys"
+	resourceName := "launchdarkly_release_policy.test"
+
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck: func() {
+			testAccPreCheck(t)
+		},
+		Providers:    testAccProviders,
+		CheckDestroy: testAccCheckReleasePolicyDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config: fmt.Sprintf(testAccReleasePolicyWithFlagTagKeys, projectKey, policyKey, policyName),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckReleasePolicyExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, "scope.0.environment_keys.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "scope.0.environment_keys.0", "test-env"),
+					resource.TestCheckResourceAttr(resourceName, "scope.0.flag_tag_keys.#", "2"),
+					resource.TestCheckResourceAttr(resourceName, "scope.0.flag_tag_keys.0", "frontend"),
+					resource.TestCheckResourceAttr(resourceName, "scope.0.flag_tag_keys.1", "backend"),
+				),
+			},
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
 			},
 		},
 	})
