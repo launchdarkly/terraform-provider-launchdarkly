@@ -151,6 +151,61 @@ resource "launchdarkly_release_policy" "test" {
 }
 `
 
+	testAccReleasePolicyGuardedWithContextKind = `
+resource "launchdarkly_project" "test" {
+	key  = "%s"
+	name = "Test project"
+	environments {
+		name  = "Test Environment"
+		key   = "test-env"
+		color = "000000"
+	}
+}
+
+resource "launchdarkly_release_policy" "test" {
+	project_key    = launchdarkly_project.test.key
+	key            = "%s"
+	name           = "%s"
+	release_method = "guarded-release"
+
+	scope {
+		environment_keys = ["test-env"]
+	}
+
+	guarded_release_config {
+		rollback_on_regression = true
+		rollout_context_kind   = "user"
+	}
+}
+`
+
+	testAccReleasePolicyProgressiveWithContextKind = `
+resource "launchdarkly_project" "test" {
+	key  = "%s"
+	name = "Test project"
+	environments {
+		name  = "Test Environment"
+		key   = "test-env"
+		color = "000000"
+	}
+}
+
+resource "launchdarkly_release_policy" "test" {
+	project_key    = launchdarkly_project.test.key
+	key            = "%s"
+	name           = "%s"
+	release_method = "progressive-release"
+
+	scope {
+		environment_keys = ["test-env"]
+	}
+
+	progressive_release_config {
+		rollout_context_kind = "user"
+	}
+}
+`
+
 	testAccReleasePolicyInvalidReleaseMethod = `
 resource "launchdarkly_project" "test" {
 	key  = "%s"
@@ -447,6 +502,77 @@ func TestAccReleasePolicy_InvalidKey(t *testing.T) {
 			{
 				Config:      fmt.Sprintf(testAccReleasePolicyMinimal, projectKey, invalidPolicyKey, policyName),
 				ExpectError: regexp.MustCompile(`Must contain only letters, numbers, '.', '-', or '_' and must start with an alphanumeric`),
+			},
+		},
+	})
+}
+
+func TestAccReleasePolicy_GuardedWithContextKind(t *testing.T) {
+	accTest := os.Getenv("TF_ACC")
+	if accTest == "" {
+		t.SkipNow()
+	}
+
+	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	policyKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	policyName := "Test Guarded With Context Kind"
+	resourceName := "launchdarkly_release_policy.test"
+
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck: func() {
+			testAccPreCheck(t)
+		},
+		Providers:    testAccProviders,
+		CheckDestroy: testAccCheckReleasePolicyDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config: fmt.Sprintf(testAccReleasePolicyGuardedWithContextKind, projectKey, policyKey, policyName),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckReleasePolicyExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, RELEASE_METHOD, "guarded-release"),
+					resource.TestCheckResourceAttr(resourceName, "guarded_release_config.0.rollback_on_regression", "true"),
+					resource.TestCheckResourceAttr(resourceName, "guarded_release_config.0.rollout_context_kind", "user"),
+				),
+			},
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
+		},
+	})
+}
+
+func TestAccReleasePolicy_ProgressiveWithContextKind(t *testing.T) {
+	accTest := os.Getenv("TF_ACC")
+	if accTest == "" {
+		t.SkipNow()
+	}
+
+	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	policyKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	policyName := "Test Progressive With Context Kind"
+	resourceName := "launchdarkly_release_policy.test"
+
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck: func() {
+			testAccPreCheck(t)
+		},
+		Providers:    testAccProviders,
+		CheckDestroy: testAccCheckReleasePolicyDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config: fmt.Sprintf(testAccReleasePolicyProgressiveWithContextKind, projectKey, policyKey, policyName),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckReleasePolicyExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, RELEASE_METHOD, "progressive-release"),
+					resource.TestCheckResourceAttr(resourceName, "progressive_release_config.0.rollout_context_kind", "user"),
+				),
+			},
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
 			},
 		},
 	})

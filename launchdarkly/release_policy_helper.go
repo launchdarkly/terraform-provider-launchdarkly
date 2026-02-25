@@ -65,10 +65,25 @@ func releasePolicyRead(ctx context.Context, d *schema.ResourceData, meta interfa
 		if policy.GuardedReleaseConfig.MinSampleSize != nil && *policy.GuardedReleaseConfig.MinSampleSize > 0 {
 			configList[0][MIN_SAMPLE_SIZE] = policy.GuardedReleaseConfig.MinSampleSize
 		}
+		if policy.GuardedReleaseConfig.RolloutContextKindKey != "" {
+			configList[0][ROLLOUT_CONTEXT_KIND] = policy.GuardedReleaseConfig.RolloutContextKindKey
+		}
 
 		err = d.Set(GUARDED_RELEASE_CONFIG, configList)
 		if err != nil {
 			return diag.Errorf("could not set guarded_release_config on release policy with key %q: %v", policy.Key, err)
+		}
+	}
+
+	// Set progressive release config if it exists
+	if policy.ProgressiveReleaseConfig != nil && policy.ReleaseMethod == "progressive-release" {
+		configList := []map[string]interface{}{{}}
+		if policy.ProgressiveReleaseConfig.RolloutContextKindKey != "" {
+			configList[0][ROLLOUT_CONTEXT_KIND] = policy.ProgressiveReleaseConfig.RolloutContextKindKey
+		}
+		err = d.Set(PROGRESSIVE_RELEASE_CONFIG, configList)
+		if err != nil {
+			return diag.Errorf("could not set progressive_release_config on release policy with key %q: %v", policy.Key, err)
 		}
 	}
 
@@ -77,13 +92,14 @@ func releasePolicyRead(ctx context.Context, d *schema.ResourceData, meta interfa
 
 // ReleasePolicy represents a release policy
 type ReleasePolicy struct {
-	Id                   string                `json:"id"`
-	Key                  string                `json:"key"`
-	Name                 string                `json:"name"`
-	ProjectKey           string                `json:"projectKey"`
-	ReleaseMethod        string                `json:"releaseMethod"`
-	Scope                *ReleasePolicyScope   `json:"scope,omitempty"`
-	GuardedReleaseConfig *GuardedReleaseConfig `json:"guardedReleaseConfig,omitempty"`
+	Id                       string                    `json:"id"`
+	Key                      string                    `json:"key"`
+	Name                     string                    `json:"name"`
+	ProjectKey               string                    `json:"projectKey"`
+	ReleaseMethod            string                    `json:"releaseMethod"`
+	Scope                    *ReleasePolicyScope       `json:"scope,omitempty"`
+	GuardedReleaseConfig     *GuardedReleaseConfig     `json:"guardedReleaseConfig,omitempty"`
+	ProgressiveReleaseConfig *ProgressiveReleaseConfig `json:"progressiveReleaseConfig,omitempty"`
 }
 
 // ReleasePolicyScope represents the scope configuration for a release policy
@@ -93,8 +109,14 @@ type ReleasePolicyScope struct {
 
 // GuardedReleaseConfig represents the configuration for guarded release
 type GuardedReleaseConfig struct {
-	RollbackOnRegression bool `json:"rollbackOnRegression"`
-	MinSampleSize        *int `json:"minSampleSize,omitempty"`
+	RollbackOnRegression  bool   `json:"rollbackOnRegression"`
+	MinSampleSize         *int   `json:"minSampleSize,omitempty"`
+	RolloutContextKindKey string `json:"rolloutContextKindKey,omitempty"`
+}
+
+// ProgressiveReleaseConfig represents the configuration for progressive release
+type ProgressiveReleaseConfig struct {
+	RolloutContextKindKey string `json:"rolloutContextKindKey,omitempty"`
 }
 
 func getReleasePolicy(client *Client, projectKey, policyKey string) (*ReleasePolicy, *http.Response, error) {
