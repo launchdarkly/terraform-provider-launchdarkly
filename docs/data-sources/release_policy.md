@@ -76,6 +76,8 @@ resource "launchdarkly_feature_flag" "conditional_flag" {
 
 Read-Only:
 
+- `metric_group_keys` (List of String)
+- `metric_keys` (List of String)
 - `min_sample_size` (Number)
 - `rollback_on_regression` (Boolean)
 
