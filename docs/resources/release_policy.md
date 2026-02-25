@@ -25,9 +25,10 @@ resource "launchdarkly_release_policy" "guarded_example" {
   name           = "Production Guarded Release"
   release_method = "guarded-release"
 
-  # Optional: Add scope configuration 
+  # Optional: Add scope configuration
   scope {
     environment_keys = ["production", "staging"]
+    flag_tag_keys    = ["frontend", "backend"]
   }
 
   # Required for guarded-release method
@@ -85,3 +86,4 @@ Optional:
 Optional:
 
 - `environment_keys` (List of String) The environment keys for environments the release policy will be applied to.
+- `flag_tag_keys` (List of String) The flag tag keys that the release policy will be applied to.

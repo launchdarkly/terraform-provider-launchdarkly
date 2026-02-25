@@ -43,11 +43,13 @@ func releasePolicyRead(ctx context.Context, d *schema.ResourceData, meta interfa
 
 	// Set scope if it exists
 	if policy.Scope != nil {
-		scopeList := []map[string]interface{}{
-			{
-				SCOPE_ENVIRONMENT_KEYS: policy.Scope.EnvironmentKeys,
-			},
+		scopeMap := map[string]interface{}{
+			SCOPE_ENVIRONMENT_KEYS: policy.Scope.EnvironmentKeys,
 		}
+		if len(policy.Scope.FlagTagKeys) > 0 {
+			scopeMap[SCOPE_FLAG_TAG_KEYS] = policy.Scope.FlagTagKeys
+		}
+		scopeList := []map[string]interface{}{scopeMap}
 		err = d.Set(SCOPE, scopeList)
 		if err != nil {
 			return diag.Errorf("could not set scope on release policy with key %q: %v", policy.Key, err)
@@ -89,6 +91,7 @@ type ReleasePolicy struct {
 // ReleasePolicyScope represents the scope configuration for a release policy
 type ReleasePolicyScope struct {
 	EnvironmentKeys []string `json:"environmentKeys"`
+	FlagTagKeys     []string `json:"flagTagKeys,omitempty"`
 }
 
 // GuardedReleaseConfig represents the configuration for guarded release
