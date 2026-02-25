@@ -94,6 +94,22 @@ Learn more about [release policies here](https://launchdarkly.com/docs/home/rele
 							Description:      "The minimum sample size for the release policy.",
 							ValidateDiagFunc: validation.ToDiagFunc(validation.IntAtLeast(5)),
 						},
+						METRIC_KEYS: {
+							Type:        schema.TypeList,
+							Optional:    true,
+							Description: "List of metric keys to monitor during the guarded release.",
+							Elem: &schema.Schema{
+								Type: schema.TypeString,
+							},
+						},
+						METRIC_GROUP_KEYS: {
+							Type:        schema.TypeList,
+							Optional:    true,
+							Description: "List of metric group keys to monitor during the guarded release.",
+							Elem: &schema.Schema{
+								Type: schema.TypeString,
+							},
+						},
 					},
 				},
 			},
@@ -226,6 +242,20 @@ func convertGuardedConfigToAPI(config map[string]interface{}) map[string]interfa
 		// I don't think it's possible for this to be unset if the user doesn't provide it, so...if they set it to 0 it will be ignored.
 		if minSampleSize.(int) > 0 {
 			guardedConfigAPI["minSampleSize"] = minSampleSize
+		}
+	}
+
+	if metricKeys, ok := config[METRIC_KEYS]; ok {
+		keys := metricKeys.([]interface{})
+		if len(keys) > 0 {
+			guardedConfigAPI["metricKeys"] = keys
+		}
+	}
+
+	if metricGroupKeys, ok := config[METRIC_GROUP_KEYS]; ok {
+		keys := metricGroupKeys.([]interface{})
+		if len(keys) > 0 {
+			guardedConfigAPI["metricGroupKeys"] = keys
 		}
 	}
 

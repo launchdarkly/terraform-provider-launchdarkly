@@ -65,6 +65,12 @@ func releasePolicyRead(ctx context.Context, d *schema.ResourceData, meta interfa
 		if policy.GuardedReleaseConfig.MinSampleSize != nil && *policy.GuardedReleaseConfig.MinSampleSize > 0 {
 			configList[0][MIN_SAMPLE_SIZE] = policy.GuardedReleaseConfig.MinSampleSize
 		}
+		if len(policy.GuardedReleaseConfig.MetricKeys) > 0 {
+			configList[0][METRIC_KEYS] = policy.GuardedReleaseConfig.MetricKeys
+		}
+		if len(policy.GuardedReleaseConfig.MetricGroupKeys) > 0 {
+			configList[0][METRIC_GROUP_KEYS] = policy.GuardedReleaseConfig.MetricGroupKeys
+		}
 
 		err = d.Set(GUARDED_RELEASE_CONFIG, configList)
 		if err != nil {
@@ -93,8 +99,10 @@ type ReleasePolicyScope struct {
 
 // GuardedReleaseConfig represents the configuration for guarded release
 type GuardedReleaseConfig struct {
-	RollbackOnRegression bool `json:"rollbackOnRegression"`
-	MinSampleSize        *int `json:"minSampleSize,omitempty"`
+	RollbackOnRegression bool     `json:"rollbackOnRegression"`
+	MinSampleSize        *int     `json:"minSampleSize,omitempty"`
+	MetricKeys           []string `json:"metricKeys,omitempty"`
+	MetricGroupKeys      []string `json:"metricGroupKeys,omitempty"`
 }
 
 func getReleasePolicy(client *Client, projectKey, policyKey string) (*ReleasePolicy, *http.Response, error) {

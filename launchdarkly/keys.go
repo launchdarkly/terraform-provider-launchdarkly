@@ -78,6 +78,8 @@ const (
 	MAINTAINER_ID                             = "maintainer_id"
 	MAINTAINER_TEAM_KEY                       = "maintainer_team_key"
 	MEMBER_IDS                                = "member_ids"
+	METRIC_GROUP_KEYS                         = "metric_group_keys"
+	METRIC_KEYS                               = "metric_keys"
 	MIN_NUM_APPROVALS                         = "min_num_approvals"
 	MIN_SAMPLE_SIZE                           = "min_sample_size"
 	MOBILE_KEY                                = "mobile_key"

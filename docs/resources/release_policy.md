@@ -25,7 +25,7 @@ resource "launchdarkly_release_policy" "guarded_example" {
   name           = "Production Guarded Release"
   release_method = "guarded-release"
 
-  # Optional: Add scope configuration 
+  # Optional: Add scope configuration
   scope {
     environment_keys = ["production", "staging"]
   }
@@ -34,6 +34,8 @@ resource "launchdarkly_release_policy" "guarded_example" {
   guarded_release_config {
     rollback_on_regression = true
     min_sample_size        = 100
+    metric_keys            = ["http-errors", "latency"]
+    metric_group_keys      = ["frontend-metrics"]
   }
 }
 
@@ -76,6 +78,8 @@ Required:
 
 Optional:
 
+- `metric_group_keys` (List of String) List of metric group keys to monitor during the guarded release.
+- `metric_keys` (List of String) List of metric keys to monitor during the guarded release.
 - `min_sample_size` (Number) The minimum sample size for the release policy.
 
 
