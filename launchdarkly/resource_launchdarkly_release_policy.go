@@ -9,6 +9,38 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 )
 
+var guardedReleaseStageSchema = &schema.Resource{
+	Schema: map[string]*schema.Schema{
+		STAGE_ALLOCATION: {
+			Type:             schema.TypeInt,
+			Required:         true,
+			Description:      "The allocation for this stage (in thousandths, e.g. 25000 = 25%). Must be between 0 and 50000.",
+			ValidateDiagFunc: validation.ToDiagFunc(validation.IntBetween(0, 50000)),
+		},
+		STAGE_DURATION_MILLIS: {
+			Type:        schema.TypeInt,
+			Required:    true,
+			Description: "The duration in milliseconds for this stage.",
+		},
+	},
+}
+
+var progressiveReleaseStageSchema = &schema.Resource{
+	Schema: map[string]*schema.Schema{
+		STAGE_ALLOCATION: {
+			Type:             schema.TypeInt,
+			Required:         true,
+			Description:      "The allocation for this stage (in thousandths, e.g. 25000 = 25%). Must be between 0 and 100000.",
+			ValidateDiagFunc: validation.ToDiagFunc(validation.IntBetween(0, 100000)),
+		},
+		STAGE_DURATION_MILLIS: {
+			Type:        schema.TypeInt,
+			Required:    true,
+			Description: "The duration in milliseconds for this stage.",
+		},
+	},
+}
+
 func resourceReleasePolicy() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: resourceReleasePolicyCreate,
@@ -94,6 +126,28 @@ Learn more about [release policies here](https://launchdarkly.com/docs/home/rele
 							Description:      "The minimum sample size for the release policy.",
 							ValidateDiagFunc: validation.ToDiagFunc(validation.IntAtLeast(5)),
 						},
+						STAGES: {
+							Type:        schema.TypeList,
+							Optional:    true,
+							Description: "The stages for the guarded release.",
+							Elem:        guardedReleaseStageSchema,
+						},
+					},
+				},
+			},
+			PROGRESSIVE_RELEASE_CONFIG: {
+				Type:        schema.TypeList,
+				MaxItems:    1,
+				Optional:    true,
+				Description: "Configuration for progressive release.",
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						STAGES: {
+							Type:        schema.TypeList,
+							Optional:    true,
+							Description: "The stages for the progressive release.",
+							Elem:        progressiveReleaseStageSchema,
+						},
 					},
 				},
 			},
@@ -139,7 +193,7 @@ func resourceReleasePolicyUpdate(ctx context.Context, d *schema.ResourceData, me
 		return resourceReleasePolicyCreate(ctx, d, metaRaw)
 	}
 
-	if d.HasChange(NAME) || d.HasChange(RELEASE_METHOD) || d.HasChange(SCOPE) || d.HasChange(GUARDED_RELEASE_CONFIG) {
+	if d.HasChange(NAME) || d.HasChange(RELEASE_METHOD) || d.HasChange(SCOPE) || d.HasChange(GUARDED_RELEASE_CONFIG) || d.HasChange(PROGRESSIVE_RELEASE_CONFIG) {
 		updatedPolicy := resourceDataToAPIBody(d, policyKey)
 		err := putReleasePolicy(client, projectKey, policyKey, updatedPolicy)
 		if err != nil {
@@ -214,6 +268,19 @@ func convertScopeToAPI(scopeData map[string]interface{}) map[string]interface{} 
 	return scopeAPI
 }
 
+// convertStagesToAPI converts Terraform stages data to API format
+func convertStagesToAPI(stagesRaw []interface{}) []map[string]interface{} {
+	stages := make([]map[string]interface{}, len(stagesRaw))
+	for i, stageRaw := range stagesRaw {
+		stage := stageRaw.(map[string]interface{})
+		stages[i] = map[string]interface{}{
+			"allocation":     stage[STAGE_ALLOCATION],
+			"durationMillis": stage[STAGE_DURATION_MILLIS],
+		}
+	}
+	return stages
+}
+
 // convertGuardedConfigToAPI converts Terraform guarded config data to API format
 func convertGuardedConfigToAPI(config map[string]interface{}) map[string]interface{} {
 	guardedConfigAPI := make(map[string]interface{})
@@ -229,7 +296,28 @@ func convertGuardedConfigToAPI(config map[string]interface{}) map[string]interfa
 		}
 	}
 
+	if stages, ok := config[STAGES]; ok {
+		stagesList := stages.([]interface{})
+		if len(stagesList) > 0 {
+			guardedConfigAPI["stages"] = convertStagesToAPI(stagesList)
+		}
+	}
+
 	return guardedConfigAPI
+}
+
+// convertProgressiveConfigToAPI converts Terraform progressive config data to API format
+func convertProgressiveConfigToAPI(config map[string]interface{}) map[string]interface{} {
+	progressiveConfigAPI := make(map[string]interface{})
+
+	if stages, ok := config[STAGES]; ok {
+		stagesList := stages.([]interface{})
+		if len(stagesList) > 0 {
+			progressiveConfigAPI["stages"] = convertStagesToAPI(stagesList)
+		}
+	}
+
+	return progressiveConfigAPI
 }
 
 // resourceDataToAPIBody converts Terraform resource data to the API request body format
@@ -253,6 +341,14 @@ func resourceDataToAPIBody(d *schema.ResourceData, policyKey string) map[string]
 		if len(configList) > 0 {
 			config := configList[0].(map[string]interface{})
 			releasePolicyPost["guardedReleaseConfig"] = convertGuardedConfigToAPI(config)
+		}
+	}
+
+	if progressiveConfig, ok := d.GetOk(PROGRESSIVE_RELEASE_CONFIG); ok {
+		configList := progressiveConfig.([]interface{})
+		if len(configList) > 0 {
+			config := configList[0].(map[string]interface{})
+			releasePolicyPost["progressiveReleaseConfig"] = convertProgressiveConfigToAPI(config)
 		}
 	}
 

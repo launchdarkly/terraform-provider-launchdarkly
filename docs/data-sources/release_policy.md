@@ -68,6 +68,7 @@ resource "launchdarkly_feature_flag" "conditional_flag" {
 - `guarded_release_config` (List of Object) Configuration for guarded release. (see [below for nested schema](#nestedatt--guarded_release_config))
 - `id` (String) The ID of this resource.
 - `name` (String) The release policy's name.
+- `progressive_release_config` (List of Object) Configuration for progressive release. (see [below for nested schema](#nestedatt--progressive_release_config))
 - `release_method` (String) The release method for the release policy.
 - `scope` (List of Object) The scope configuration for the release policy. (see [below for nested schema](#nestedatt--scope))
 
@@ -78,6 +79,31 @@ Read-Only:
 
 - `min_sample_size` (Number)
 - `rollback_on_regression` (Boolean)
+- `stages` (List of Object) (see [below for nested schema](#nestedatt--guarded_release_config--stages))
+
+<a id="nestedatt--guarded_release_config--stages"></a>
+### Nested Schema for `guarded_release_config.stages`
+
+Read-Only:
+
+- `allocation` (Number)
+- `duration_millis` (Number)
+
+
+<a id="nestedatt--progressive_release_config"></a>
+### Nested Schema for `progressive_release_config`
+
+Read-Only:
+
+- `stages` (List of Object) (see [below for nested schema](#nestedatt--progressive_release_config--stages))
+
+<a id="nestedatt--progressive_release_config--stages"></a>
+### Nested Schema for `progressive_release_config.stages`
+
+Read-Only:
+
+- `allocation` (Number)
+- `duration_millis` (Number)
 
 
 <a id="nestedatt--scope"></a>

@@ -65,6 +65,9 @@ func releasePolicyRead(ctx context.Context, d *schema.ResourceData, meta interfa
 		if policy.GuardedReleaseConfig.MinSampleSize != nil && *policy.GuardedReleaseConfig.MinSampleSize > 0 {
 			configList[0][MIN_SAMPLE_SIZE] = policy.GuardedReleaseConfig.MinSampleSize
 		}
+		if len(policy.GuardedReleaseConfig.Stages) > 0 {
+			configList[0][STAGES] = flattenStages(policy.GuardedReleaseConfig.Stages)
+		}
 
 		err = d.Set(GUARDED_RELEASE_CONFIG, configList)
 		if err != nil {
@@ -72,18 +75,43 @@ func releasePolicyRead(ctx context.Context, d *schema.ResourceData, meta interfa
 		}
 	}
 
+	// Set progressive release config if it exists
+	if policy.ProgressiveReleaseConfig != nil && policy.ReleaseMethod == "progressive-release" {
+		configList := []map[string]interface{}{{}}
+		if len(policy.ProgressiveReleaseConfig.Stages) > 0 {
+			configList[0][STAGES] = flattenStages(policy.ProgressiveReleaseConfig.Stages)
+		}
+		err = d.Set(PROGRESSIVE_RELEASE_CONFIG, configList)
+		if err != nil {
+			return diag.Errorf("could not set progressive_release_config on release policy with key %q: %v", policy.Key, err)
+		}
+	}
+
 	return diags
+}
+
+// flattenStages converts API stage data to Terraform state format
+func flattenStages(stages []ReleasePolicyStage) []map[string]interface{} {
+	result := make([]map[string]interface{}, len(stages))
+	for i, stage := range stages {
+		result[i] = map[string]interface{}{
+			STAGE_ALLOCATION:     stage.Allocation,
+			STAGE_DURATION_MILLIS: stage.DurationMillis,
+		}
+	}
+	return result
 }
 
 // ReleasePolicy represents a release policy
 type ReleasePolicy struct {
-	Id                   string                `json:"id"`
-	Key                  string                `json:"key"`
-	Name                 string                `json:"name"`
-	ProjectKey           string                `json:"projectKey"`
-	ReleaseMethod        string                `json:"releaseMethod"`
-	Scope                *ReleasePolicyScope   `json:"scope,omitempty"`
-	GuardedReleaseConfig *GuardedReleaseConfig `json:"guardedReleaseConfig,omitempty"`
+	Id                       string                    `json:"id"`
+	Key                      string                    `json:"key"`
+	Name                     string                    `json:"name"`
+	ProjectKey               string                    `json:"projectKey"`
+	ReleaseMethod            string                    `json:"releaseMethod"`
+	Scope                    *ReleasePolicyScope       `json:"scope,omitempty"`
+	GuardedReleaseConfig     *GuardedReleaseConfig     `json:"guardedReleaseConfig,omitempty"`
+	ProgressiveReleaseConfig *ProgressiveReleaseConfig `json:"progressiveReleaseConfig,omitempty"`
 }
 
 // ReleasePolicyScope represents the scope configuration for a release policy
@@ -93,8 +121,20 @@ type ReleasePolicyScope struct {
 
 // GuardedReleaseConfig represents the configuration for guarded release
 type GuardedReleaseConfig struct {
-	RollbackOnRegression bool `json:"rollbackOnRegression"`
-	MinSampleSize        *int `json:"minSampleSize,omitempty"`
+	RollbackOnRegression bool                 `json:"rollbackOnRegression"`
+	MinSampleSize        *int                 `json:"minSampleSize,omitempty"`
+	Stages               []ReleasePolicyStage `json:"stages,omitempty"`
+}
+
+// ProgressiveReleaseConfig represents the configuration for progressive release
+type ProgressiveReleaseConfig struct {
+	Stages []ReleasePolicyStage `json:"stages,omitempty"`
+}
+
+// ReleasePolicyStage represents a stage in a release policy
+type ReleasePolicyStage struct {
+	Allocation     int   `json:"allocation"`
+	DurationMillis int64 `json:"durationMillis"`
 }
 
 func getReleasePolicy(client *Client, projectKey, policyKey string) (*ReleasePolicy, *http.Response, error) {

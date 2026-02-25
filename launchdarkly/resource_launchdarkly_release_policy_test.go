@@ -151,6 +151,133 @@ resource "launchdarkly_release_policy" "test" {
 }
 `
 
+	testAccReleasePolicyProgressiveWithStages = `
+resource "launchdarkly_project" "test" {
+	key  = "%s"
+	name = "Test project"
+	environments {
+		name  = "Test Environment"
+		key   = "test-env"
+		color = "000000"
+	}
+}
+
+resource "launchdarkly_release_policy" "test" {
+	project_key    = launchdarkly_project.test.key
+	key            = "%s"
+	name           = "%s"
+	release_method = "progressive-release"
+
+	scope {
+		environment_keys = ["test-env"]
+	}
+
+	progressive_release_config {
+		stages {
+			allocation      = 25000
+			duration_millis = 60000
+		}
+		stages {
+			allocation      = 50000
+			duration_millis = 120000
+		}
+		stages {
+			allocation      = 100000
+			duration_millis = 0
+		}
+	}
+}
+`
+
+	testAccReleasePolicyGuardedWithStages = `
+resource "launchdarkly_project" "test" {
+	key  = "%s"
+	name = "Test project"
+	environments {
+		name  = "Test Environment"
+		key   = "test-env"
+		color = "000000"
+	}
+}
+
+resource "launchdarkly_release_policy" "test" {
+	project_key    = launchdarkly_project.test.key
+	key            = "%s"
+	name           = "%s"
+	release_method = "guarded-release"
+
+	scope {
+		environment_keys = ["test-env"]
+	}
+
+	guarded_release_config {
+		rollback_on_regression = true
+		min_sample_size        = 100
+		stages {
+			allocation      = 50000
+			duration_millis = 60000
+		}
+		stages {
+			allocation      = 100000
+			duration_millis = 0
+		}
+	}
+}
+`
+
+	testAccReleasePolicyGuardedInvalidAllocation = `
+resource "launchdarkly_project" "test" {
+	key  = "%s"
+	name = "Test project"
+	environments {
+		name  = "Test Environment"
+		key   = "test-env"
+		color = "000000"
+	}
+}
+
+resource "launchdarkly_release_policy" "test" {
+	project_key    = launchdarkly_project.test.key
+	key            = "%s"
+	name           = "Test Release Policy"
+	release_method = "guarded-release"
+
+	guarded_release_config {
+		rollback_on_regression = true
+		stages {
+			allocation      = 60000
+			duration_millis = 60000
+		}
+	}
+}
+`
+
+	testAccReleasePolicyProgressiveInvalidAllocation = `
+resource "launchdarkly_project" "test" {
+	key  = "%s"
+	name = "Test project"
+	environments {
+		name  = "Test Environment"
+		key   = "test-env"
+		color = "000000"
+	}
+}
+
+resource "launchdarkly_release_policy" "test" {
+	project_key    = launchdarkly_project.test.key
+	key            = "%s"
+	name           = "Test Release Policy"
+	release_method = "progressive-release"
+
+	progressive_release_config {
+		stages {
+			allocation      = 150000
+			duration_millis = 60000
+		}
+	}
+}
+`
+
 	testAccReleasePolicyInvalidReleaseMethod = `
 resource "launchdarkly_project" "test" {
 	key  = "%s"
@@ -403,6 +530,54 @@ func TestAccReleasePolicy_InvalidReleaseMethod(t *testing.T) {
 	})
 }
 
+func TestAccReleasePolicy_GuardedInvalidAllocation(t *testing.T) {
+	accTest := os.Getenv("TF_ACC")
+	if accTest == "" {
+		t.SkipNow()
+	}
+
+	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	policyKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck: func() {
+			testAccPreCheck(t)
+		},
+		Providers:    testAccProviders,
+		CheckDestroy: testAccCheckReleasePolicyDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config:      fmt.Sprintf(testAccReleasePolicyGuardedInvalidAllocation, projectKey, policyKey),
+				ExpectError: regexp.MustCompile(`expected allocation to be in the range \(0 - 50000\), got 60000`),
+			},
+		},
+	})
+}
+
+func TestAccReleasePolicy_ProgressiveInvalidAllocation(t *testing.T) {
+	accTest := os.Getenv("TF_ACC")
+	if accTest == "" {
+		t.SkipNow()
+	}
+
+	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	policyKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck: func() {
+			testAccPreCheck(t)
+		},
+		Providers:    testAccProviders,
+		CheckDestroy: testAccCheckReleasePolicyDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config:      fmt.Sprintf(testAccReleasePolicyProgressiveInvalidAllocation, projectKey, policyKey),
+				ExpectError: regexp.MustCompile(`expected allocation to be in the range \(0 - 100000\), got 150000`),
+			},
+		},
+	})
+}
+
 func TestAccReleasePolicy_InvalidMinSampleSize(t *testing.T) {
 	accTest := os.Getenv("TF_ACC")
 	if accTest == "" {
@@ -447,6 +622,88 @@ func TestAccReleasePolicy_InvalidKey(t *testing.T) {
 			{
 				Config:      fmt.Sprintf(testAccReleasePolicyMinimal, projectKey, invalidPolicyKey, policyName),
 				ExpectError: regexp.MustCompile(`Must contain only letters, numbers, '.', '-', or '_' and must start with an alphanumeric`),
+			},
+		},
+	})
+}
+
+func TestAccReleasePolicy_ProgressiveWithStages(t *testing.T) {
+	accTest := os.Getenv("TF_ACC")
+	if accTest == "" {
+		t.SkipNow()
+	}
+
+	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	policyKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	policyName := "Test Progressive Release With Stages"
+	resourceName := "launchdarkly_release_policy.test"
+
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck: func() {
+			testAccPreCheck(t)
+		},
+		Providers:    testAccProviders,
+		CheckDestroy: testAccCheckReleasePolicyDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config: fmt.Sprintf(testAccReleasePolicyProgressiveWithStages, projectKey, policyKey, policyName),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckReleasePolicyExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, RELEASE_METHOD, "progressive-release"),
+					resource.TestCheckResourceAttr(resourceName, "progressive_release_config.0.stages.#", "3"),
+					resource.TestCheckResourceAttr(resourceName, "progressive_release_config.0.stages.0.allocation", "25000"),
+					resource.TestCheckResourceAttr(resourceName, "progressive_release_config.0.stages.0.duration_millis", "60000"),
+					resource.TestCheckResourceAttr(resourceName, "progressive_release_config.0.stages.1.allocation", "50000"),
+					resource.TestCheckResourceAttr(resourceName, "progressive_release_config.0.stages.1.duration_millis", "120000"),
+					resource.TestCheckResourceAttr(resourceName, "progressive_release_config.0.stages.2.allocation", "100000"),
+					resource.TestCheckResourceAttr(resourceName, "progressive_release_config.0.stages.2.duration_millis", "0"),
+				),
+			},
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
+		},
+	})
+}
+
+func TestAccReleasePolicy_GuardedWithStages(t *testing.T) {
+	accTest := os.Getenv("TF_ACC")
+	if accTest == "" {
+		t.SkipNow()
+	}
+
+	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	policyKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	policyName := "Test Guarded Release With Stages"
+	resourceName := "launchdarkly_release_policy.test"
+
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck: func() {
+			testAccPreCheck(t)
+		},
+		Providers:    testAccProviders,
+		CheckDestroy: testAccCheckReleasePolicyDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config: fmt.Sprintf(testAccReleasePolicyGuardedWithStages, projectKey, policyKey, policyName),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckReleasePolicyExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, RELEASE_METHOD, "guarded-release"),
+					resource.TestCheckResourceAttr(resourceName, "guarded_release_config.0.rollback_on_regression", "true"),
+					resource.TestCheckResourceAttr(resourceName, "guarded_release_config.0.min_sample_size", "100"),
+					resource.TestCheckResourceAttr(resourceName, "guarded_release_config.0.stages.#", "2"),
+					resource.TestCheckResourceAttr(resourceName, "guarded_release_config.0.stages.0.allocation", "50000"),
+					resource.TestCheckResourceAttr(resourceName, "guarded_release_config.0.stages.0.duration_millis", "60000"),
+					resource.TestCheckResourceAttr(resourceName, "guarded_release_config.0.stages.1.allocation", "100000"),
+					resource.TestCheckResourceAttr(resourceName, "guarded_release_config.0.stages.1.duration_millis", "0"),
+				),
+			},
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
 			},
 		},
 	})
