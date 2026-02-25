@@ -25,15 +25,14 @@ resource "launchdarkly_release_policy" "guarded_example" {
   name           = "Production Guarded Release"
   release_method = "guarded-release"
 
-  # Optional: Add scope configuration 
   scope {
     environment_keys = ["production", "staging"]
   }
 
-  # Required for guarded-release method
   guarded_release_config {
     rollback_on_regression = true
     min_sample_size        = 100
+    rollout_context_kind   = "user"
   }
 }
 
@@ -42,6 +41,10 @@ resource "launchdarkly_release_policy" "progressive_example" {
   key            = "staging-progressive"
   name           = "Staging Progressive Release"
   release_method = "progressive-release"
+
+  progressive_release_config {
+    rollout_context_kind = "user"
+  }
 }
 
 # To import an existing release policy, use:
@@ -61,6 +64,7 @@ resource "launchdarkly_release_policy" "progressive_example" {
 ### Optional
 
 - `guarded_release_config` (Block List, Max: 1) Configuration for guarded release. (see [below for nested schema](#nestedblock--guarded_release_config))
+- `progressive_release_config` (Block List, Max: 1) Configuration for progressive release. (see [below for nested schema](#nestedblock--progressive_release_config))
 - `scope` (Block List, Max: 1) The scope configuration for the release policy. (see [below for nested schema](#nestedblock--scope))
 
 ### Read-Only
@@ -77,6 +81,15 @@ Required:
 Optional:
 
 - `min_sample_size` (Number) The minimum sample size for the release policy.
+- `rollout_context_kind` (String) The context kind to use as the randomization unit for the rollout.
+
+
+<a id="nestedblock--progressive_release_config"></a>
+### Nested Schema for `progressive_release_config`
+
+Optional:
+
+- `rollout_context_kind` (String) The context kind to use as the randomization unit for the rollout.
 
 
 <a id="nestedblock--scope"></a>

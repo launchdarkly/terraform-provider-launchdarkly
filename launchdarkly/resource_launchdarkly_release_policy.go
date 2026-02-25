@@ -94,6 +94,26 @@ Learn more about [release policies here](https://launchdarkly.com/docs/home/rele
 							Description:      "The minimum sample size for the release policy.",
 							ValidateDiagFunc: validation.ToDiagFunc(validation.IntAtLeast(5)),
 						},
+						ROLLOUT_CONTEXT_KIND: {
+							Type:        schema.TypeString,
+							Optional:    true,
+							Description: "The context kind to use as the randomization unit for the rollout.",
+						},
+					},
+				},
+			},
+			PROGRESSIVE_RELEASE_CONFIG: {
+				Type:        schema.TypeList,
+				MaxItems:    1,
+				Optional:    true,
+				Description: "Configuration for progressive release.",
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						ROLLOUT_CONTEXT_KIND: {
+							Type:        schema.TypeString,
+							Optional:    true,
+							Description: "The context kind to use as the randomization unit for the rollout.",
+						},
 					},
 				},
 			},
@@ -139,7 +159,7 @@ func resourceReleasePolicyUpdate(ctx context.Context, d *schema.ResourceData, me
 		return resourceReleasePolicyCreate(ctx, d, metaRaw)
 	}
 
-	if d.HasChange(NAME) || d.HasChange(RELEASE_METHOD) || d.HasChange(SCOPE) || d.HasChange(GUARDED_RELEASE_CONFIG) {
+	if d.HasChange(NAME) || d.HasChange(RELEASE_METHOD) || d.HasChange(SCOPE) || d.HasChange(GUARDED_RELEASE_CONFIG) || d.HasChange(PROGRESSIVE_RELEASE_CONFIG) {
 		updatedPolicy := resourceDataToAPIBody(d, policyKey)
 		err := putReleasePolicy(client, projectKey, policyKey, updatedPolicy)
 		if err != nil {
@@ -229,7 +249,26 @@ func convertGuardedConfigToAPI(config map[string]interface{}) map[string]interfa
 		}
 	}
 
+	if rolloutContextKind, ok := config[ROLLOUT_CONTEXT_KIND]; ok {
+		if rolloutContextKind.(string) != "" {
+			guardedConfigAPI["rolloutContextKindKey"] = rolloutContextKind
+		}
+	}
+
 	return guardedConfigAPI
+}
+
+// convertProgressiveConfigToAPI converts Terraform progressive config data to API format
+func convertProgressiveConfigToAPI(config map[string]interface{}) map[string]interface{} {
+	progressiveConfigAPI := make(map[string]interface{})
+
+	if rolloutContextKind, ok := config[ROLLOUT_CONTEXT_KIND]; ok {
+		if rolloutContextKind.(string) != "" {
+			progressiveConfigAPI["rolloutContextKindKey"] = rolloutContextKind
+		}
+	}
+
+	return progressiveConfigAPI
 }
 
 // resourceDataToAPIBody converts Terraform resource data to the API request body format
@@ -253,6 +292,14 @@ func resourceDataToAPIBody(d *schema.ResourceData, policyKey string) map[string]
 		if len(configList) > 0 {
 			config := configList[0].(map[string]interface{})
 			releasePolicyPost["guardedReleaseConfig"] = convertGuardedConfigToAPI(config)
+		}
+	}
+
+	if progressiveConfig, ok := d.GetOk(PROGRESSIVE_RELEASE_CONFIG); ok {
+		configList := progressiveConfig.([]interface{})
+		if len(configList) > 0 {
+			config := configList[0].(map[string]interface{})
+			releasePolicyPost["progressiveReleaseConfig"] = convertProgressiveConfigToAPI(config)
 		}
 	}
 
