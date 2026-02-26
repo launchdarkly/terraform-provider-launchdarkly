@@ -171,6 +171,69 @@ resource "launchdarkly_environment" "critical_env" {
 	}
 }
 `
+
+	testAccEnvironmentWithMultiResourceApprovals = `
+resource "launchdarkly_environment" "multi_approvals_test" {
+	name = "Multi Resource Approvals Test"
+	key = "multi-approvals-test"
+	color = "ababab"
+	project_key = launchdarkly_project.test.key
+
+	# Flag approval settings
+	approval_settings {
+		resource_kind = "flag"
+		required = true
+		min_num_approvals = 2
+		can_review_own_request = false
+		can_apply_declined_changes = false
+	}
+
+	# Segment approval settings
+	approval_settings {
+		resource_kind = "segment"
+		required = true
+		min_num_approvals = 1
+		can_review_own_request = true
+		can_apply_declined_changes = true
+	}
+}
+`
+
+	// Negative test: service_kind with segment should error
+	testAccEnvironmentWithInvalidServiceKindSegment = `
+resource "launchdarkly_environment" "invalid_test" {
+	name = "Invalid Test"
+	key = "invalid-test"
+	color = "ababab"
+	project_key = launchdarkly_project.test.key
+
+	approval_settings {
+		resource_kind = "segment"
+		service_kind = "servicenow"  # This should error
+		required = true
+		min_num_approvals = 1
+	}
+}
+`
+
+	// Negative test: service_config with segment should error
+	testAccEnvironmentWithInvalidServiceConfigSegment = `
+resource "launchdarkly_environment" "invalid_test" {
+	name = "Invalid Test"
+	key = "invalid-test"
+	color = "ababab"
+	project_key = launchdarkly_project.test.key
+
+	approval_settings {
+		resource_kind = "segment"
+		service_config = {
+			template = "some-template"
+		}
+		required = true
+		min_num_approvals = 1
+	}
+}
+`
 )
 
 func TestAccEnvironment_Create(t *testing.T) {
@@ -559,6 +622,78 @@ func TestAccEnvironment_Critical(t *testing.T) {
 				ResourceName:      resourceName,
 				ImportState:       true,
 				ImportStateVerify: true,
+			},
+		},
+	})
+}
+
+func TestAccEnvironment_WithMultiResourceApprovals(t *testing.T) {
+	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	resourceName := "launchdarkly_environment.multi_approvals_test"
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck: func() {
+			testAccPreCheck(t)
+		},
+		Providers: testAccProviders,
+		Steps: []resource.TestStep{
+			{
+				Config: withRandomProject(projectKey, testAccEnvironmentWithMultiResourceApprovals),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckProjectExists("launchdarkly_project.test"),
+					testAccCheckEnvironmentExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, NAME, "Multi Resource Approvals Test"),
+					resource.TestCheckResourceAttr(resourceName, KEY, "multi-approvals-test"),
+					resource.TestCheckResourceAttr(resourceName, PROJECT_KEY, projectKey),
+					// Check flag approval settings (first block)
+					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.resource_kind", "flag"),
+					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.required", "true"),
+					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.min_num_approvals", "2"),
+					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.can_review_own_request", "false"),
+					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.can_apply_declined_changes", "false"),
+					// Check segment approval settings (second block)
+					resource.TestCheckResourceAttr(resourceName, "approval_settings.1.resource_kind", "segment"),
+					resource.TestCheckResourceAttr(resourceName, "approval_settings.1.required", "true"),
+					resource.TestCheckResourceAttr(resourceName, "approval_settings.1.min_num_approvals", "1"),
+					resource.TestCheckResourceAttr(resourceName, "approval_settings.1.can_review_own_request", "true"),
+					resource.TestCheckResourceAttr(resourceName, "approval_settings.1.can_apply_declined_changes", "true"),
+				),
+			},
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
+		},
+	})
+}
+
+func TestAccEnvironment_WithInvalidServiceKindSegment(t *testing.T) {
+	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck: func() {
+			testAccPreCheck(t)
+		},
+		Providers: testAccProviders,
+		Steps: []resource.TestStep{
+			{
+				Config:      withRandomProject(projectKey, testAccEnvironmentWithInvalidServiceKindSegment),
+				ExpectError: regexp.MustCompile("service_kind cannot be set for resource_kind 'segment'"),
+			},
+		},
+	})
+}
+
+func TestAccEnvironment_WithInvalidServiceConfigSegment(t *testing.T) {
+	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck: func() {
+			testAccPreCheck(t)
+		},
+		Providers: testAccProviders,
+		Steps: []resource.TestStep{
+			{
+				Config:      withRandomProject(projectKey, testAccEnvironmentWithInvalidServiceConfigSegment),
+				ExpectError: regexp.MustCompile("service_config cannot be set for resource_kind 'segment'"),
 			},
 		},
 	})

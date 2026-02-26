@@ -94,6 +94,7 @@ const (
 	REQUIRE_COMMENTS                 = "require_comments"
 	RESOURCE                         = "resource"
 	RESOURCES                        = "resources"
+	RESOURCE_KIND                    = "resource_kind"
 	ROLE                             = "role"
 	ROLE_ATTRIBUTES                  = "role_attributes"
 	ROLLOUT_CONTEXT_KIND             = "rollout_context_kind"
