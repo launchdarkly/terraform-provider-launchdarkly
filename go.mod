@@ -16,7 +16,7 @@ require (
 )
 
 require (
-	github.com/launchdarkly/api-client-go/v17 v17.1.0
+	github.com/launchdarkly/api-client-go/v17 v17.2.0
 	golang.org/x/sync v0.18.0
 )
 
