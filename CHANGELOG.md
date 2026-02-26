@@ -2,6 +2,13 @@
 
 All notable changes to the LaunchDarkly Terraform Provider will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org).
 
+## [2.27.0](https://github.com/launchdarkly/terraform-provider-launchdarkly/compare/v2.26.2...v2.27.0) (2026-02-26)
+
+
+### Features
+
+* [bot] Regenerate integration configs ([#391](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/391)) ([b772383](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/b7723839b7c4a45f5010c9990c755e28f1272509))
+
 ## [2.26.2](https://github.com/launchdarkly/terraform-provider-launchdarkly/compare/v2.26.1...v2.26.2) (2026-01-22)
 
 
