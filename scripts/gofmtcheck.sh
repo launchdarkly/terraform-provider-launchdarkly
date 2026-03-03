@@ -16,7 +16,7 @@ if ! which gofmts > /dev/null; then
     go install github.com/ashanbrown/gofmts/cmd/gofmts@v0.2.0
 fi
 gofmts_files=$(gofmts -l `find . -name '*.go' | grep -v vendor`)
-if [[ -n ${gofmt_files} ]]; then
+if [[ -n ${gofmts_files} ]]; then
     echo 'gofmts needs running on the following files:'
     echo "${gofmts_files}"
     echo "You can use the command: \`make fmt\` to reformat code."
