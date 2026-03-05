@@ -35,6 +35,13 @@ resource "launchdarkly_view" "view2" {
 	maintainer_id = "%s"
 }
 
+resource "launchdarkly_view" "view3" {
+	project_key = launchdarkly_project.test.key
+	key         = "test-view-3"
+	name        = "Test View 3"
+	maintainer_id = "%s"
+}
+
 resource "launchdarkly_feature_flag" "test" {
 	project_key = launchdarkly_project.test.key
 	key         = "test-flag-with-views"
@@ -242,7 +249,7 @@ func TestAccFeatureFlagViewKeys_CreateAndUpdate(t *testing.T) {
 		CheckDestroy: testAccCheckFeatureFlagDestroy,
 		Steps: []resource.TestStep{
 			{
-				Config: fmt.Sprintf(testAccFeatureFlagWithViewKeysCreate, projectName, projectKey, maintainerId, maintainerId),
+				Config: fmt.Sprintf(testAccFeatureFlagWithViewKeysCreate, projectName, projectKey, maintainerId, maintainerId, maintainerId),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckFeatureFlagExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, "view_keys.#", "2"),
@@ -353,7 +360,7 @@ func TestAccFeatureFlagViewKeys_ReconcileUnexpectedViewAssociation(t *testing.T)
 		CheckDestroy: testAccCheckFeatureFlagDestroy,
 		Steps: []resource.TestStep{
 			{
-				Config: fmt.Sprintf(testAccFeatureFlagWithViewKeysCreate, projectName, projectKey, maintainerId, maintainerId),
+				Config: fmt.Sprintf(testAccFeatureFlagWithViewKeysCreate, projectName, projectKey, maintainerId, maintainerId, maintainerId),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckFeatureFlagExists(resourceName),
 					testAccCheckFlagLinkedToViews(projectKey, "test-flag-with-views", []string{"test-view-1", "test-view-2"}),

@@ -41,6 +41,13 @@ resource "launchdarkly_view" "view2" {
 	maintainer_id = "%s"
 }
 
+resource "launchdarkly_view" "view3" {
+	project_key = launchdarkly_project.test.key
+	key         = "test-view-3"
+	name        = "Test View 3"
+	maintainer_id = "%s"
+}
+
 resource "launchdarkly_segment" "test" {
 	project_key = launchdarkly_project.test.key
 	env_key     = "test-env"
@@ -278,7 +285,7 @@ func TestAccSegmentViewKeys_CreateAndUpdate(t *testing.T) {
 		CheckDestroy: testAccCheckSegmentDestroy,
 		Steps: []resource.TestStep{
 			{
-				Config: fmt.Sprintf(testAccSegmentWithViewKeysCreate, projectName, projectKey, maintainerId, maintainerId),
+				Config: fmt.Sprintf(testAccSegmentWithViewKeysCreate, projectName, projectKey, maintainerId, maintainerId, maintainerId),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckSegmentExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, "view_keys.#", "2"),
@@ -389,7 +396,7 @@ func TestAccSegmentViewKeys_ReconcileUnexpectedViewAssociation(t *testing.T) {
 		CheckDestroy: testAccCheckSegmentDestroy,
 		Steps: []resource.TestStep{
 			{
-				Config: fmt.Sprintf(testAccSegmentWithViewKeysCreate, projectName, projectKey, maintainerId, maintainerId),
+				Config: fmt.Sprintf(testAccSegmentWithViewKeysCreate, projectName, projectKey, maintainerId, maintainerId, maintainerId),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckSegmentExists(resourceName),
 					testAccCheckSegmentLinkedToViews(projectKey, "test-env", "test-segment-with-views", []string{"test-view-1", "test-view-2"}),
