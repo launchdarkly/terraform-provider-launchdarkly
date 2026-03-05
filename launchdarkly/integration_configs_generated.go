@@ -270,7 +270,7 @@ var SUBSCRIPTION_CONFIGURATION_FIELDS = map[string]IntegrationConfig{
 		"ingestionKey": {
 			AllowedValues: []string{},
 			DefaultValue:  nil,
-			Description:   "Enter your [LogDNA ingestion key](https://app.logdna.com/manage/api-keys).",
+			Description:   "Enter your [Mezmo ingestion key](https://docs.mezmo.com/docs/ingestion-key).",
 			IsOptional:    false,
 			IsSecret:      true,
 			Type:          "string",

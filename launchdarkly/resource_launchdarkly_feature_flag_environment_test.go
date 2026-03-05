@@ -9,7 +9,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
-	ldapi "github.com/launchdarkly/api-client-go/v17"
+	ldapi "github.com/launchdarkly/api-client-go/v22"
 	"github.com/stretchr/testify/require"
 )
 
@@ -1295,7 +1295,7 @@ func testAccCheckFeatureFlagEnvironmentDefaults(t *testing.T, projectKey, flagKe
 		require.NoError(t, err)
 		flag, _, err := client.ld.FeatureFlagsApi.GetFeatureFlag(client.ctx, projectKey, flagKey).Execute()
 		require.NoError(t, err)
-		envConfig := flag.Environments["test"]
+		envConfig := (*flag.Environments)["test"]
 		require.Equal(t, int32(0), *envConfig.OffVariation)
 		return nil
 	}

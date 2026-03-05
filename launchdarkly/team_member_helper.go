@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"net/http"
 
-	ldapi "github.com/launchdarkly/api-client-go/v17"
+	ldapi "github.com/launchdarkly/api-client-go/v22"
 )
 
 // The LD api returns custom role IDs (not keys). Since we want to set custom_roles with keys, we need to look up their IDs

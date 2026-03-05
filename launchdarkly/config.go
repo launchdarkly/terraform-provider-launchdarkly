@@ -8,12 +8,13 @@ import (
 	"math"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"golang.org/x/sync/semaphore"
 
 	retryablehttp "github.com/hashicorp/go-retryablehttp"
-	ldapi "github.com/launchdarkly/api-client-go/v17"
+	ldapi "github.com/launchdarkly/api-client-go/v22"
 )
 
 //nolint:staticcheck // The version string gets updated at build time using -ldflags
@@ -64,7 +65,7 @@ func newBetaClient(token string, apiHost string, oauth bool, httpTimeoutSeconds,
 
 func newLDClientConfig(apiHost string, httpTimeoutSeconds int, apiVersion string, retryPolicy retryablehttp.CheckRetry) *ldapi.Configuration {
 	cfg := ldapi.NewConfiguration()
-	cfg.Host = apiHost
+	cfg.Host = strings.TrimPrefix(strings.TrimPrefix(apiHost, "https://"), "http://")
 	cfg.DefaultHeader = make(map[string]string)
 	cfg.UserAgent = fmt.Sprintf("launchdarkly-terraform-provider/%s", version)
 	cfg.HTTPClient = newRetryableClient(retryPolicy)
@@ -86,7 +87,12 @@ func baseNewClient(token string, apiHost string, oauth bool, httpTimeoutSeconds 
 			Key: token,
 		}})
 	if oauth {
-		ctx = context.WithValue(context.Background(), ldapi.ContextAccessToken, token)
+		// v22 removed ContextAccessToken; OAuth tokens use the same Authorization header.
+		ctx = context.WithValue(context.Background(), ldapi.ContextAPIKeys, map[string]ldapi.APIKey{
+			"ApiKey": {
+				Key: token,
+			},
+		})
 	}
 
 	// TODO: remove this once we get the go client reset endpoint fixed

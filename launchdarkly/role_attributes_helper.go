@@ -2,7 +2,7 @@ package launchdarkly
 
 import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	ldapi "github.com/launchdarkly/api-client-go/v17"
+	ldapi "github.com/launchdarkly/api-client-go/v22"
 )
 
 func roleAttributesSchema(isDataSource bool) *schema.Schema {

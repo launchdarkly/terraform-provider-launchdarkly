@@ -9,7 +9,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
-	ldapi "github.com/launchdarkly/api-client-go/v17"
+	ldapi "github.com/launchdarkly/api-client-go/v22"
 	"github.com/stretchr/testify/require"
 )
 
@@ -102,7 +102,7 @@ func scaffoldProjectWithExperimentationSettings(client *Client, betaClient *Clie
 	for _, randomizationUnit := range randomizationUnits {
 		if randomizationUnit == "user" {
 			defaultTrue := true
-			defaultRandomizationUnit := *ldapi.NewRandomizationUnitInput(randomizationUnit, randomizationUnit)
+			defaultRandomizationUnit := *ldapi.NewRandomizationUnitInput(randomizationUnit)
 			defaultRandomizationUnit.Default = &defaultTrue
 			randomizationUnitsInput = append(randomizationUnitsInput, defaultRandomizationUnit)
 			continue
@@ -113,7 +113,7 @@ func scaffoldProjectWithExperimentationSettings(client *Client, betaClient *Clie
 		if err != nil {
 			return err
 		}
-		randomizationUnitsInput = append(randomizationUnitsInput, *ldapi.NewRandomizationUnitInput(randomizationUnit, randomizationUnit))
+		randomizationUnitsInput = append(randomizationUnitsInput, *ldapi.NewRandomizationUnitInput(randomizationUnit))
 	}
 
 	// Update the project's experimentation settings to make the new context available for experiments
