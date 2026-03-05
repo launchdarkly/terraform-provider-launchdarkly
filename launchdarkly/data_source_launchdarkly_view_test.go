@@ -31,7 +31,7 @@ func TestAccDataSourceView_noMatchReturnsError(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config:      fmt.Sprintf(testAccDataSourceViewBasic, projectKey, viewKey),
-				ExpectError: regexp.MustCompile(`Project not found`),
+				ExpectError: regexp.MustCompile(`failed to get view with key "nonexistent-view-key" in project "nonexistent-project-key"`),
 			},
 		},
 	})

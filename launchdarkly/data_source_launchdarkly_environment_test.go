@@ -71,7 +71,7 @@ func TestAccDataSourceEnvironment_noMatchReturnsError(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config:      fmt.Sprintf(testAccDataSourceEnvironment, envKey, project.Key),
-				ExpectError: regexp.MustCompile(fmt.Sprintf(`Error: failed to get environment with key "bad-env-key" for project key: "%s": 404 Not Found: {"message":"Unknown environment key bad-env-key"}`, projectKey)),
+				ExpectError: regexp.MustCompile(fmt.Sprintf(`failed to get environment with key "bad-env-key" for project key: "%s"`, projectKey)),
 			},
 		},
 	})

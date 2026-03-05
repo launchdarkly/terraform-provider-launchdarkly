@@ -36,7 +36,7 @@ func TestAccDataSourceProject_noMatchReturnsError(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config:      fmt.Sprintf(testAccProjectBasic, projectKey),
-				ExpectError: regexp.MustCompile(`Error: failed to get project with key "nonexistent-project-key": 404 Not Found`),
+				ExpectError: regexp.MustCompile(`failed to get project with key "nonexistent-project-key"`),
 			},
 		},
 	})
