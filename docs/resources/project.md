@@ -23,6 +23,10 @@ resource "launchdarkly_project" "example" {
     "terraform",
   ]
 
+  # Require new flags and segments to be associated with a view
+  require_view_association_for_new_flags    = false
+  require_view_association_for_new_segments = false
+
   environments {
     key   = "production"
     name  = "Production"
@@ -60,6 +64,8 @@ resource "launchdarkly_project" "example" {
 
 - `default_client_side_availability` (Block List) A block describing which client-side SDKs can use new flags by default. (see [below for nested schema](#nestedblock--default_client_side_availability))
 - `include_in_snippet` (Boolean, Deprecated) Whether feature flags created under the project should be available to client-side SDKs by default. Please migrate to `default_client_side_availability` to maintain future compatibility.
+- `require_view_association_for_new_flags` (Boolean) Whether new flags created in this project must be associated with at least one view.
+- `require_view_association_for_new_segments` (Boolean) Whether new segments created in this project must be associated with at least one view.
 - `tags` (Set of String) Tags associated with your resource.
 
 ### Read-Only

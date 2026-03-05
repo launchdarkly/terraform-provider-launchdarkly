@@ -10,7 +10,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
-	ldapi "github.com/launchdarkly/api-client-go/v17"
+	ldapi "github.com/launchdarkly/api-client-go/v22"
 )
 
 type featureFlagEnvSchemaOptions struct {
@@ -119,7 +119,17 @@ func featureFlagEnvironmentRead(ctx context.Context, d *schema.ResourceData, raw
 		return diag.Errorf("failed to get flag %q of project %q: %s", flagKey, projectKey, handleLdapiErr(err))
 	}
 
-	environment, ok := flag.Environments[envKey]
+	if flag.Environments == nil {
+		log.Printf("[WARN] failed to find environments map for flag %q, removing from state", flagKey)
+		diags = append(diags, diag.Diagnostic{
+			Severity: diag.Warning,
+			Summary:  fmt.Sprintf("[WARN] failed to find environments map for flag %q, removing from state", flagKey),
+		})
+		d.SetId("")
+		return diags
+	}
+
+	environment, ok := (*flag.Environments)[envKey]
 	if !ok {
 		log.Printf("[WARN] failed to find environment %q for flag %q, removing from state", envKey, flagKey)
 		diags = append(diags, diag.Diagnostic{

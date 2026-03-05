@@ -8,7 +8,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
-	ldapi "github.com/launchdarkly/api-client-go/v17"
+	ldapi "github.com/launchdarkly/api-client-go/v22"
 	"github.com/stretchr/testify/require"
 )
 
@@ -36,7 +36,7 @@ func TestAccDataSourceProject_noMatchReturnsError(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config:      fmt.Sprintf(testAccProjectBasic, projectKey),
-				ExpectError: regexp.MustCompile(`Error: failed to get project with key "nonexistent-project-key": 404 Not Found`),
+				ExpectError: regexp.MustCompile(`failed to get project with key "nonexistent-project-key"`),
 			},
 		},
 	})

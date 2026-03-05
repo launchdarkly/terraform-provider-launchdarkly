@@ -5,10 +5,11 @@ import (
 	"math/rand"
 	"net"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	ldapi "github.com/launchdarkly/api-client-go/v17"
+	ldapi "github.com/launchdarkly/api-client-go/v22"
 )
 
 // getRandomSleepDuration returns a duration between [0, maxDuration)
@@ -156,4 +157,12 @@ func oxfordCommaJoin(str []string) string {
 		}
 	}
 	return output
+}
+
+func splitID(id string, expectedParts int) []string {
+	parts := strings.Split(id, "/")
+	if len(parts) != expectedParts {
+		return nil
+	}
+	return parts
 }

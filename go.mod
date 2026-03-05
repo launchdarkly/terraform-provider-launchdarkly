@@ -1,6 +1,6 @@
 module github.com/launchdarkly/terraform-provider-launchdarkly
 
-go 1.24.0
+go 1.25.5
 
 require (
 	github.com/ashanbrown/gofmts v0.2.0
@@ -16,7 +16,7 @@ require (
 )
 
 require (
-	github.com/launchdarkly/api-client-go/v17 v17.1.0
+	github.com/launchdarkly/api-client-go/v22 v22.0.0
 	golang.org/x/sync v0.18.0
 )
 
@@ -33,6 +33,7 @@ require (
 	github.com/yuin/goldmark-meta v1.1.0 // indirect
 	go.abhg.dev/goldmark/frontmatter v0.2.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240610135401-a8a62080eff3 // indirect
+	gopkg.in/validator.v2 v2.0.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 )
 
@@ -94,7 +95,6 @@ require (
 	golang.org/x/exp v0.0.0-20240808152545-0cdaa3abc0fa // indirect
 	golang.org/x/mod v0.29.0 // indirect
 	golang.org/x/net v0.47.0 // indirect
-	golang.org/x/oauth2 v0.27.0 // indirect
 	golang.org/x/sys v0.38.0 // indirect
 	golang.org/x/text v0.31.0 // indirect
 	golang.org/x/tools v0.38.0 // indirect

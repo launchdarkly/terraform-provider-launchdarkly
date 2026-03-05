@@ -7,13 +7,15 @@ import (
 	"log"
 	"math"
 	"net/http"
+	"net/url"
 	"strconv"
+	"strings"
 	"time"
 
 	"golang.org/x/sync/semaphore"
 
 	retryablehttp "github.com/hashicorp/go-retryablehttp"
-	ldapi "github.com/launchdarkly/api-client-go/v17"
+	ldapi "github.com/launchdarkly/api-client-go/v22"
 )
 
 //nolint:staticcheck // The version string gets updated at build time using -ldflags
@@ -64,12 +66,26 @@ func newBetaClient(token string, apiHost string, oauth bool, httpTimeoutSeconds,
 
 func newLDClientConfig(apiHost string, httpTimeoutSeconds int, apiVersion string, retryPolicy retryablehttp.CheckRetry) *ldapi.Configuration {
 	cfg := ldapi.NewConfiguration()
-	cfg.Host = apiHost
+	if apiHost != "" {
+		parsedHost, err := url.Parse(apiHost)
+		if err == nil && parsedHost.Host != "" {
+			cfg.Host = parsedHost.Host
+			if parsedHost.Scheme != "" {
+				cfg.Scheme = parsedHost.Scheme
+			}
+		} else {
+			cfg.Host = strings.TrimPrefix(strings.TrimPrefix(apiHost, "https://"), "http://")
+		}
+	}
 	cfg.DefaultHeader = make(map[string]string)
 	cfg.UserAgent = fmt.Sprintf("launchdarkly-terraform-provider/%s", version)
 	cfg.HTTPClient = newRetryableClient(retryPolicy)
 	cfg.HTTPClient.Timeout = time.Duration(httpTimeoutSeconds) * time.Second
-	cfg.AddDefaultHeader("LD-API-Version", apiVersion)
+	// Views beta endpoints pass LDAPIVersion explicitly per request in the generated client.
+	// Setting a default beta API version header here would duplicate LD-API-Version.
+	if apiVersion != "" && apiVersion != "beta" {
+		cfg.AddDefaultHeader("LD-API-Version", apiVersion)
+	}
 	return cfg
 }
 
@@ -86,7 +102,12 @@ func baseNewClient(token string, apiHost string, oauth bool, httpTimeoutSeconds 
 			Key: token,
 		}})
 	if oauth {
-		ctx = context.WithValue(context.Background(), ldapi.ContextAccessToken, token)
+		// v22 removed ContextAccessToken; OAuth tokens use the same Authorization header.
+		ctx = context.WithValue(context.Background(), ldapi.ContextAPIKeys, map[string]ldapi.APIKey{
+			"ApiKey": {
+				Key: token,
+			},
+		})
 	}
 
 	// TODO: remove this once we get the go client reset endpoint fixed

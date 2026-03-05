@@ -16,9 +16,53 @@ This data source allows you to retrieve feature flag information from your Launc
 ## Example Usage
 
 ```terraform
+# Example: Get feature flag information including linked views
 data "launchdarkly_feature_flag" "example" {
-  key         = "example-flag"
   project_key = "example-project"
+  key         = "example-flag"
+}
+
+# The feature flag data source now includes discovery of linked views
+output "flag_details" {
+  value = {
+    name        = data.launchdarkly_feature_flag.example.name
+    description = data.launchdarkly_feature_flag.example.description
+    views       = data.launchdarkly_feature_flag.example.views
+    archived    = data.launchdarkly_feature_flag.example.archived
+  }
+}
+
+# Example: Check if flag is accessible to specific teams
+locals {
+  accessible_to_frontend = contains(data.launchdarkly_feature_flag.example.views, "frontend-team")
+  accessible_to_mobile   = contains(data.launchdarkly_feature_flag.example.views, "mobile-team")
+  is_shared_flag         = length(data.launchdarkly_feature_flag.example.views) > 1
+}
+
+# Example: Conditional resource creation based on views
+resource "launchdarkly_feature_flag_environment" "prod_config" {
+  # Only create production config if flag is assigned to production view
+  count = contains(data.launchdarkly_feature_flag.example.views, "production-ready") ? 1 : 0
+
+  flag_id = data.launchdarkly_feature_flag.example.id
+  env_key = "production"
+  on      = true
+  fallthrough {
+    variation = 0
+  }
+  off_variation = 1
+}
+
+# Example: Generate team notifications based on views
+output "team_notifications" {
+  description = "Teams that should be notified about this flag"
+  value = {
+    flag_name = data.launchdarkly_feature_flag.example.name
+    teams = [
+      for view in data.launchdarkly_feature_flag.example.views : view
+      if can(regex("-team$", view))
+    ]
+  }
 }
 ```
 
@@ -49,6 +93,8 @@ data "launchdarkly_feature_flag" "example" {
 - `temporary` (Boolean) Specifies whether the flag is a temporary flag.
 - `variation_type` (String) The uniform type for all variations. Can be either "boolean", "string", "number", or "json".
 - `variations` (List of Object) An array of possible variations for the flag (see [below for nested schema](#nestedatt--variations))
+- `view_keys` (Set of String) A set of view keys to link this flag to. This is an alternative to using the `launchdarkly_view_links` resource for managing view associations. When set, this flag will be linked to the specified views. The field is also computed, meaning Terraform will read back the current view associations from LaunchDarkly to detect drift. To explicitly remove all view associations, set `view_keys = []`. Simply removing the field from your configuration will leave existing associations unchanged. **Important**: Avoid using both `view_keys` and `launchdarkly_view_links` to manage the same flag. Mixed ownership can cause conflicts; when detected, Terraform logs a warning and reconciles to the configured `view_keys`. Choose one approach per resource.
+- `views` (List of String) A list of view keys that this feature flag is linked to.
 
 <a id="nestedatt--client_side_availability"></a>
 ### Nested Schema for `client_side_availability`

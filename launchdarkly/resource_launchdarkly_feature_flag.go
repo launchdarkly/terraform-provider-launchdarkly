@@ -3,12 +3,42 @@ package launchdarkly
 import (
 	"context"
 	"fmt"
+	"log"
 	"net/http"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	ldapi "github.com/launchdarkly/api-client-go/v17"
+	ldapi "github.com/launchdarkly/api-client-go/v22"
 )
+
+// customizeFeatureFlagDiff validates that view_keys is set when the project requires view association for new flags
+func customizeFeatureFlagDiff(ctx context.Context, diff *schema.ResourceDiff, meta interface{}) error {
+	// Only validate on create (when there's no ID yet)
+	if diff.Id() != "" {
+		return nil
+	}
+
+	client := meta.(*Client)
+	projectKey := diff.Get(PROJECT_KEY).(string)
+
+	// Fetch project view settings
+	viewSettings, err := getProjectViewSettings(ctx, client, projectKey)
+	if err != nil {
+		// Log warning but don't fail - the setting might not be available
+		log.Printf("[WARN] could not fetch project view settings for %q during plan: %v", projectKey, err)
+		return nil
+	}
+
+	if viewSettings.RequireViewAssociationForNewFlags {
+		viewKeysRaw := diff.Get(VIEW_KEYS)
+		viewKeys, ok := viewKeysRaw.(*schema.Set)
+		if !ok || viewKeys == nil || viewKeys.Len() == 0 {
+			return fmt.Errorf("project %q requires new flags to be associated with at least one view. Please set the 'view_keys' attribute", projectKey)
+		}
+	}
+
+	return nil
+}
 
 func resourceFeatureFlag() *schema.Resource {
 	schemaMap := baseFeatureFlagSchema(featureFlagSchemaOptions{isDataSource: false})
@@ -24,6 +54,8 @@ func resourceFeatureFlag() *schema.Resource {
 		UpdateContext: resourceFeatureFlagUpdate,
 		DeleteContext: resourceFeatureFlagDelete,
 		Exists:        resourceFeatureFlagExists,
+
+		CustomizeDiff: customizeFeatureFlagDiff,
 
 		Importer: &schema.ResourceImporter{
 			State: resourceFeatureFlagImport,
@@ -82,21 +114,13 @@ func resourceFeatureFlagCreate(ctx context.Context, d *schema.ResourceData, meta
 		variations = []ldapi.Variation{{Value: true}, {Value: false}}
 	}
 
-	flag := ldapi.FeatureFlagBody{
-		Name:        flagName,
-		Key:         key,
-		Description: &description,
-		Variations:  variations,
-		Temporary:   &temporary,
-		Tags:        tags,
-		Defaults:    defaults,
-	}
-
+	// Determine client side availability
+	var finalClientSideAvailability *ldapi.ClientSideAvailabilityPost
 	if clientSideAvailabilityOk {
-		flag.ClientSideAvailability = clientSideAvailability
+		finalClientSideAvailability = clientSideAvailability
 	} else if includeInSnippetOk {
 		// If includeInSnippet is set, still use clientSideAvailability behind the scenes in order to switch UsingMobileKey to false if needed
-		flag.ClientSideAvailability = &ldapi.ClientSideAvailabilityPost{
+		finalClientSideAvailability = &ldapi.ClientSideAvailabilityPost{
 			UsingEnvironmentId: includeInSnippet,
 			UsingMobileKey:     false,
 		}
@@ -107,15 +131,54 @@ func resourceFeatureFlagCreate(ctx context.Context, d *schema.ResourceData, meta
 		if err != nil {
 			return diag.Errorf("failed to get project level client side availability defaults. %v", err)
 		}
-		flag.ClientSideAvailability = &ldapi.ClientSideAvailabilityPost{
+		finalClientSideAvailability = &ldapi.ClientSideAvailabilityPost{
 			UsingEnvironmentId: *defaultCSA.UsingEnvironmentId,
 			UsingMobileKey:     *defaultCSA.UsingMobileKey,
 		}
 	}
-	err = client.withConcurrency(ctx, func() error {
-		_, _, err = client.ld.FeatureFlagsApi.PostFeatureFlag(client.ctx, projectKey).FeatureFlagBody(flag).Execute()
-		return err
-	})
+
+	// Check if view_keys is specified - if so, we need to use raw HTTP to include it in creation
+	var viewKeys []string
+	if viewKeysRaw, ok := d.GetOk(VIEW_KEYS); ok {
+		viewKeysSet := viewKeysRaw.(*schema.Set)
+		for _, v := range viewKeysSet.List() {
+			viewKeys = append(viewKeys, v.(string))
+		}
+	}
+
+	if len(viewKeys) > 0 {
+		// Use raw HTTP call to include viewKeys in the creation request
+		flagBody := FeatureFlagBodyWithViewKeys{
+			Name:                   flagName,
+			Key:                    key,
+			Description:            description,
+			Variations:             variations,
+			Temporary:              temporary,
+			Tags:                   tags,
+			Defaults:               defaults,
+			ClientSideAvailability: finalClientSideAvailability,
+			ViewKeys:               viewKeys,
+		}
+		err = client.withConcurrency(ctx, func() error {
+			return createFeatureFlagWithViewKeys(ctx, client, projectKey, flagBody)
+		})
+	} else {
+		// Use the standard API client when no view_keys are specified
+		flag := ldapi.FeatureFlagBody{
+			Name:                   flagName,
+			Key:                    key,
+			Description:            &description,
+			Variations:             variations,
+			Temporary:              &temporary,
+			Tags:                   tags,
+			Defaults:               defaults,
+			ClientSideAvailability: finalClientSideAvailability,
+		}
+		err = client.withConcurrency(ctx, func() error {
+			_, _, err = client.ld.FeatureFlagsApi.PostFeatureFlag(client.ctx, projectKey).FeatureFlagBody(flag).Execute()
+			return err
+		})
+	}
 	if err != nil {
 		return diag.Errorf("failed to create flag %q in project %q: %s", key, projectKey, handleLdapiErr(err))
 	}
@@ -267,6 +330,92 @@ func featureFlagUpdate(ctx context.Context, d *schema.ResourceData, metaRaw inte
 	})
 	if err != nil {
 		return diag.Errorf("failed to update flag %q in project %q: %s", key, projectKey, handleLdapiErr(err))
+	}
+
+	// Handle view associations if view_keys field is managed
+	if d.HasChange(VIEW_KEYS) || isCreate {
+		if viewKeysRaw, ok := d.GetOk(VIEW_KEYS); ok {
+			betaClient, err := newBetaClient(client.apiKey, client.apiHost, false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
+			if err != nil {
+				return diag.Errorf("failed to create beta client for view linking: %v", err)
+			}
+
+			desiredViewKeys := interfaceSliceToStringSlice(viewKeysRaw.(*schema.Set).List())
+
+			// Validate that all specified views exist
+			for _, viewKey := range desiredViewKeys {
+				exists, err := viewExists(projectKey, viewKey, betaClient)
+				if err != nil {
+					return diag.Errorf("failed to check if view %q exists: %v", viewKey, err)
+				}
+				if !exists {
+					return diag.Errorf("cannot link flag to view %q in project %q: view does not exist", viewKey, projectKey)
+				}
+			}
+
+			// Get currently linked views
+			currentViewKeys, err := getViewsContainingFlag(betaClient, projectKey, key)
+			if err != nil {
+				log.Printf("[WARN] failed to get current views for flag %q: %v", key, err)
+				currentViewKeys = []string{}
+			}
+
+			// Calculate views to add and remove
+			viewsToAdd := difference(desiredViewKeys, currentViewKeys)
+			viewsToRemove := difference(currentViewKeys, desiredViewKeys)
+
+			// Detect potential mixed-management and warn, but still reconcile to configured view_keys.
+			// This preserves convergence when out-of-band changes happen between plan and apply.
+			if len(viewsToRemove) > 0 && !isCreate {
+				oldViewKeysRaw, _ := d.GetChange(VIEW_KEYS)
+				if oldViewKeysRaw != nil {
+					oldViewKeys := interfaceSliceToStringSlice(oldViewKeysRaw.(*schema.Set).List())
+					unexpectedViews := difference(viewsToRemove, oldViewKeys)
+					if len(unexpectedViews) > 0 {
+						log.Printf(
+							"[WARN] Flag %q has view associations %v that were not previously tracked by view_keys; "+
+								"proceeding to reconcile to configured view_keys. Avoid mixing view_keys and launchdarkly_view_links "+
+								"for the same flag to prevent ownership conflicts.",
+							key, unexpectedViews,
+						)
+					}
+				}
+			}
+
+			// Remove views that are no longer in the list
+			for _, viewKey := range viewsToRemove {
+				err = unlinkResourcesFromView(betaClient, projectKey, viewKey, FLAGS, []string{key})
+				if err != nil {
+					return diag.Errorf("failed to unlink flag %q from view %q: %v", key, viewKey, err)
+				}
+			}
+
+			// Add new views
+			for _, viewKey := range viewsToAdd {
+				err = linkResourcesToView(betaClient, projectKey, viewKey, FLAGS, []string{key})
+				if err != nil {
+					return diag.Errorf("failed to link flag %q to view %q: %v", key, viewKey, err)
+				}
+			}
+		} else if !isCreate {
+			// If view_keys was explicitly removed (set to null), unlink from all views
+			// that were previously managed by this resource
+			betaClient, err := newBetaClient(client.apiKey, client.apiHost, false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
+			if err != nil {
+				return diag.Errorf("failed to create beta client for view unlinking: %v", err)
+			}
+
+			oldViewKeysRaw, _ := d.GetChange(VIEW_KEYS)
+			if oldViewKeysRaw != nil {
+				oldViewKeys := interfaceSliceToStringSlice(oldViewKeysRaw.(*schema.Set).List())
+				for _, viewKey := range oldViewKeys {
+					err = unlinkResourcesFromView(betaClient, projectKey, viewKey, FLAGS, []string{key})
+					if err != nil {
+						return diag.Errorf("failed to unlink flag %q from view %q: %v", key, viewKey, err)
+					}
+				}
+			}
+		}
 	}
 
 	return resourceFeatureFlagRead(ctx, d, metaRaw)

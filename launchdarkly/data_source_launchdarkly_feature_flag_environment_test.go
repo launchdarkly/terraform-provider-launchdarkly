@@ -7,7 +7,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
-	ldapi "github.com/launchdarkly/api-client-go/v17"
+	ldapi "github.com/launchdarkly/api-client-go/v22"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -156,8 +156,8 @@ func TestAccDataSourceFeatureFlagEnvironment_exists(t *testing.T) {
 		require.NoError(t, err)
 	}()
 
-	thisConfig := flag.Environments[envKey]
-	otherConfig := flag.Environments["production"]
+	thisConfig := (*flag.Environments)[envKey]
+	otherConfig := (*flag.Environments)["production"]
 
 	flagId := projectKey + "/" + flagKey
 	resourceName := "data.launchdarkly_feature_flag_environment.test"
@@ -283,8 +283,8 @@ func TestAccDataSourceFeatureFlagEnvironment_WithContextFields(t *testing.T) {
 		require.NoError(t, err)
 	}()
 
-	thisConfig := flag.Environments[envKey]
-	otherConfig := flag.Environments["production"]
+	thisConfig := (*flag.Environments)[envKey]
+	otherConfig := (*flag.Environments)["production"]
 
 	flagId := projectKey + "/" + flagKey
 	resourceName := "data.launchdarkly_feature_flag_environment.test"

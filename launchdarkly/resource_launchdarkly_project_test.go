@@ -594,6 +594,100 @@ func TestAccProject_ManyEnvironments(t *testing.T) {
 	})
 }
 
+func TestAccProject_ViewAssociationRequirement(t *testing.T) {
+	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	resourceName := "launchdarkly_project.view_req_test"
+
+	// Test config with view association requirements disabled (default)
+	testAccProjectViewReqDefault := fmt.Sprintf(`
+resource "launchdarkly_project" "view_req_test" {
+	key  = "%s"
+	name = "View Requirement Test"
+	environments {
+		key   = "test-env"
+		name  = "Test Environment"
+		color = "010101"
+	}
+}
+`, projectKey)
+
+	// Test config with view association requirements enabled
+	testAccProjectViewReqEnabled := fmt.Sprintf(`
+resource "launchdarkly_project" "view_req_test" {
+	key  = "%s"
+	name = "View Requirement Test"
+	require_view_association_for_new_flags    = true
+	require_view_association_for_new_segments = true
+	environments {
+		key   = "test-env"
+		name  = "Test Environment"
+		color = "010101"
+	}
+}
+`, projectKey)
+
+	// Test config with only flags view association requirement enabled
+	testAccProjectViewReqFlagsOnly := fmt.Sprintf(`
+resource "launchdarkly_project" "view_req_test" {
+	key  = "%s"
+	name = "View Requirement Test"
+	require_view_association_for_new_flags    = true
+	require_view_association_for_new_segments = false
+	environments {
+		key   = "test-env"
+		name  = "Test Environment"
+		color = "010101"
+	}
+}
+`, projectKey)
+
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck: func() {
+			testAccPreCheck(t)
+		},
+		Providers:    testAccProviders,
+		CheckDestroy: testAccCheckProjectDestroy,
+		Steps: []resource.TestStep{
+			{
+				// Create with defaults (both false)
+				Config: testAccProjectViewReqDefault,
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckProjectExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, KEY, projectKey),
+					resource.TestCheckResourceAttr(resourceName, REQUIRE_VIEW_ASSOCIATION_FOR_NEW_FLAGS, "false"),
+					resource.TestCheckResourceAttr(resourceName, REQUIRE_VIEW_ASSOCIATION_FOR_NEW_SEGMENTS, "false"),
+				),
+			},
+			{
+				// Update to enable both
+				Config: testAccProjectViewReqEnabled,
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckProjectExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, KEY, projectKey),
+					resource.TestCheckResourceAttr(resourceName, REQUIRE_VIEW_ASSOCIATION_FOR_NEW_FLAGS, "true"),
+					resource.TestCheckResourceAttr(resourceName, REQUIRE_VIEW_ASSOCIATION_FOR_NEW_SEGMENTS, "true"),
+				),
+			},
+			{
+				// Update to enable only flags
+				Config: testAccProjectViewReqFlagsOnly,
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckProjectExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, KEY, projectKey),
+					resource.TestCheckResourceAttr(resourceName, REQUIRE_VIEW_ASSOCIATION_FOR_NEW_FLAGS, "true"),
+					resource.TestCheckResourceAttr(resourceName, REQUIRE_VIEW_ASSOCIATION_FOR_NEW_SEGMENTS, "false"),
+				),
+			},
+			{
+				// Import test
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
+		},
+	})
+}
+
 func testAccCheckProjectExists(resourceName string) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
 		rs, ok := s.RootModule().Resources[resourceName]

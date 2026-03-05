@@ -1,15 +1,19 @@
 package launchdarkly
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
+	"net/url"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
-	ldapi "github.com/launchdarkly/api-client-go/v17"
+	ldapi "github.com/launchdarkly/api-client-go/v22"
 )
 
 type segmentSchemaOptions struct {
@@ -75,6 +79,16 @@ func baseSegmentSchema(options segmentSchemaOptions) map[string]*schema.Schema {
 			Description:   addForceNewDescription("For Big Segments, the targeted context kind. If this attribute is not specified it will default to `user`.", !options.isDataSource),
 			ForceNew:      !options.isDataSource,
 			ConflictsWith: []string{INCLUDED, EXCLUDED, INCLUDED_CONTEXTS, EXCLUDED_CONTEXTS, RULES},
+		},
+		VIEW_KEYS: {
+			Type:     schema.TypeSet,
+			Optional: !options.isDataSource,
+			Computed: true, // Always computed to support import and drift detection
+			Elem: &schema.Schema{
+				Type:             schema.TypeString,
+				ValidateDiagFunc: validateKey(),
+			},
+			Description: "A set of view keys to link this segment to. This is an alternative to using the `launchdarkly_view_links` resource for managing view associations. When set, this segment will be linked to the specified views. The field is also computed, meaning Terraform will read back the current view associations from LaunchDarkly to detect drift. To explicitly remove all view associations, set `view_keys = []`. Simply removing the field from your configuration will leave existing associations unchanged. **Important**: Avoid using both `view_keys` and `launchdarkly_view_links` to manage the same segment. Mixed ownership can cause conflicts; when detected, Terraform logs a warning and reconciles to the configured `view_keys`. Choose one approach per resource.",
 		},
 	}
 }
@@ -173,6 +187,45 @@ func segmentRead(ctx context.Context, d *schema.ResourceData, raw interface{}, i
 	if err != nil {
 		return diag.Errorf("failed to set excluded on segment with key %q: %v", segmentKey, err)
 	}
+
+	// Fetch and set view associations
+	// Always populate view_keys from the API (Optional+Computed behavior)
+	betaClient, err := newBetaClient(client.apiKey, client.apiHost, false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
+	if err != nil {
+		// Log warning but don't fail the read for discovery data
+		log.Printf("[WARN] failed to create beta client for segment %q in project %q, environment %q: %v", segmentKey, projectKey, envKey, err)
+	} else {
+		// Get the environment to retrieve its ID
+		var env *ldapi.Environment
+		err = client.withConcurrency(client.ctx, func() error {
+			env, _, err = client.ld.EnvironmentsApi.GetEnvironment(client.ctx, projectKey, envKey).Execute()
+			return err
+		})
+		if err != nil {
+			log.Printf("[WARN] failed to get environment %q in project %q: %v", envKey, projectKey, err)
+		} else {
+			viewKeys, err := getViewsContainingSegment(betaClient, projectKey, env.Id, segmentKey)
+			if err != nil {
+				// Log warning but don't fail the read for discovery data
+				log.Printf("[WARN] failed to get views for segment %q in project %q, environment %q: %v", segmentKey, projectKey, envKey, err)
+			} else {
+				// Set view_keys to the actual view associations
+				err = d.Set(VIEW_KEYS, viewKeys)
+				if err != nil {
+					return diag.Errorf("could not set view_keys on segment with key %q: %v", segmentKey, err)
+				}
+
+				// For data sources, also set the legacy VIEWS field for backwards compatibility
+				if isDataSource {
+					err = d.Set(VIEWS, viewKeys)
+					if err != nil {
+						return diag.Errorf("could not set views on segment with key %q: %v", segmentKey, err)
+					}
+				}
+			}
+		}
+	}
+
 	return diags
 }
 
@@ -220,4 +273,66 @@ func segmentTargetsToResourceData(targets []ldapi.SegmentTarget) interface{} {
 		transformed = append(transformed, target)
 	}
 	return transformed
+}
+
+// SegmentBodyWithViewKeys represents the segment creation request body with view_keys support.
+// This is needed because the API client doesn't include the viewKeys field (it's hidden in the API spec).
+type SegmentBodyWithViewKeys struct {
+	Name                 string   `json:"name"`
+	Key                  string   `json:"key"`
+	Description          string   `json:"description,omitempty"`
+	Tags                 []string `json:"tags,omitempty"`
+	Unbounded            bool     `json:"unbounded,omitempty"`
+	UnboundedContextKind string   `json:"unboundedContextKind,omitempty"`
+	ViewKeys             []string `json:"viewKeys,omitempty"`
+}
+
+// createSegmentWithViewKeys creates a segment using a raw HTTP call to support the viewKeys field.
+// This is necessary because the API client doesn't include viewKeys in SegmentBody.
+func createSegmentWithViewKeys(ctx context.Context, client *Client, projectKey, envKey string, body SegmentBodyWithViewKeys) error {
+	host := client.apiHost
+	if host == "" {
+		host = DEFAULT_LAUNCHDARKLY_HOST
+	}
+
+	// Build the endpoint URL
+	var endpoint string
+	if u, err := url.Parse(host); err == nil && u.Scheme != "" {
+		u.Path = fmt.Sprintf("/api/v2/segments/%s/%s", projectKey, envKey)
+		endpoint = u.String()
+	} else {
+		endpoint = fmt.Sprintf("https://%s/api/v2/segments/%s/%s", host, projectKey, envKey)
+	}
+
+	jsonData, err := json.Marshal(body)
+	if err != nil {
+		return err
+	}
+
+	req, err := http.NewRequestWithContext(ctx, "POST", endpoint, bytes.NewBuffer(jsonData))
+	if err != nil {
+		return err
+	}
+
+	req.Header.Set("Authorization", client.apiKey)
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("LD-API-Version", APIVersion)
+	req.Header.Set("User-Agent", fmt.Sprintf("launchdarkly-terraform-provider/%s", version))
+
+	resp, err := client.ld.GetConfig().HTTPClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	respBody, readErr := io.ReadAll(resp.Body)
+	if readErr != nil {
+		return readErr
+	}
+
+	if resp.StatusCode >= 400 {
+		return fmt.Errorf("%d %s: %s", resp.StatusCode, http.StatusText(resp.StatusCode), string(respBody))
+	}
+
+	return nil
 }
