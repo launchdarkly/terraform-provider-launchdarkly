@@ -81,7 +81,11 @@ func newLDClientConfig(apiHost string, httpTimeoutSeconds int, apiVersion string
 	cfg.UserAgent = fmt.Sprintf("launchdarkly-terraform-provider/%s", version)
 	cfg.HTTPClient = newRetryableClient(retryPolicy)
 	cfg.HTTPClient.Timeout = time.Duration(httpTimeoutSeconds) * time.Second
-	cfg.AddDefaultHeader("LD-API-Version", apiVersion)
+	// Views beta endpoints pass LDAPIVersion explicitly per request in the generated client.
+	// Setting a default beta API version header here would duplicate LD-API-Version.
+	if apiVersion != "" && apiVersion != "beta" {
+		cfg.AddDefaultHeader("LD-API-Version", apiVersion)
+	}
 	return cfg
 }
 

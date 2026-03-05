@@ -33,14 +33,14 @@ func TestViewRequestsIncludeUserAgentHeader(t *testing.T) {
 	expectedUA := fmt.Sprintf("launchdarkly-terraform-provider/%s", version)
 
 	userAgentCh := make(chan string, 1)
-	apiVersionCh := make(chan string, 1)
+	apiVersionValuesCh := make(chan []string, 1)
 	ts := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		select {
 		case userAgentCh <- r.Header.Get("User-Agent"):
 		default:
 		}
 		select {
-		case apiVersionCh <- r.Header.Get("LD-API-Version"):
+		case apiVersionValuesCh <- append([]string(nil), r.Header.Values("LD-API-Version")...):
 		default:
 		}
 
@@ -97,8 +97,8 @@ func TestViewRequestsIncludeUserAgentHeader(t *testing.T) {
 		t.Fatal("timed out waiting for User-Agent header")
 	}
 	select {
-	case apiVersion := <-apiVersionCh:
-		require.Equal(t, "beta", apiVersion)
+	case apiVersionValues := <-apiVersionValuesCh:
+		require.Equal(t, []string{"beta"}, apiVersionValues)
 	case <-time.After(2 * time.Second):
 		t.Fatal("timed out waiting for LD-API-Version header")
 	}

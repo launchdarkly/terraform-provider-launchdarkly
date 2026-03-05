@@ -29,6 +29,21 @@ func TestNewLDClientConfigWithoutSchemeUsesDefaultScheme(t *testing.T) {
 	assert.Equal(t, "", cfg.Scheme)
 }
 
+func TestNewLDClientConfigSetsDefaultAPIVersionHeaderForStandardClient(t *testing.T) {
+	t.Parallel()
+
+	cfg := newLDClientConfig("127.0.0.1:8080", DEFAULT_HTTP_TIMEOUT_S, APIVersion, standardRetryPolicy)
+	assert.Equal(t, APIVersion, cfg.DefaultHeader["LD-API-Version"])
+}
+
+func TestNewLDClientConfigSkipsDefaultAPIVersionHeaderForBetaClient(t *testing.T) {
+	t.Parallel()
+
+	cfg := newLDClientConfig("127.0.0.1:8080", DEFAULT_HTTP_TIMEOUT_S, "beta", standardRetryPolicy)
+	_, ok := cfg.DefaultHeader["LD-API-Version"]
+	assert.False(t, ok)
+}
+
 func TestHandleRateLimits(t *testing.T) {
 	t.Run("no retries needed", func(t *testing.T) {
 		t.Parallel()
