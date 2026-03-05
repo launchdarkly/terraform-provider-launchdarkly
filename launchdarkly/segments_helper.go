@@ -88,7 +88,7 @@ func baseSegmentSchema(options segmentSchemaOptions) map[string]*schema.Schema {
 				Type:             schema.TypeString,
 				ValidateDiagFunc: validateKey(),
 			},
-			Description: "A set of view keys to link this segment to. This is an alternative to using the `launchdarkly_view_links` resource for managing view associations. When set, this segment will be linked to the specified views. The field is also computed, meaning Terraform will read back the current view associations from LaunchDarkly to detect drift. To explicitly remove all view associations, set `view_keys = []`. Simply removing the field from your configuration will leave existing associations unchanged. **Important**: You cannot use both `view_keys` and `launchdarkly_view_links` to manage the same segment - Terraform will return an error if a conflict is detected. Choose one approach per resource.",
+			Description: "A set of view keys to link this segment to. This is an alternative to using the `launchdarkly_view_links` resource for managing view associations. When set, this segment will be linked to the specified views. The field is also computed, meaning Terraform will read back the current view associations from LaunchDarkly to detect drift. To explicitly remove all view associations, set `view_keys = []`. Simply removing the field from your configuration will leave existing associations unchanged. **Important**: Avoid using both `view_keys` and `launchdarkly_view_links` to manage the same segment. Mixed ownership can cause conflicts; when detected, Terraform logs a warning and reconciles to the configured `view_keys`. Choose one approach per resource.",
 		},
 	}
 }
@@ -317,6 +317,7 @@ func createSegmentWithViewKeys(client *Client, projectKey, envKey string, body S
 	req.Header.Set("Authorization", client.apiKey)
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("LD-API-Version", APIVersion)
+	req.Header.Set("User-Agent", fmt.Sprintf("launchdarkly-terraform-provider/%s", version))
 
 	resp, err := client.ld.GetConfig().HTTPClient.Do(req)
 	if err != nil {

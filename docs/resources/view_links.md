@@ -13,7 +13,7 @@ description: |-
   Managing many flags/segments for a single view (bulk operations)Centralized view management across your infrastructureAdministrative view organization
   When to use view_keys on individual resources:
   Modular Terraform structures with separate files per flag/segmentEach team/module manages their own resourcesWant view membership defined alongside the resource
-  -> Warning: You cannot use both view_links and view_keys to manage the same flag or segment's view associations. Terraform will return an error if a conflict is detected. Choose one approach per resource.
+  -> Warning: Do not use both view_links and view_keys to manage the same flag or segment's view associations. Mixed ownership can cause conflicts; when detected, Terraform logs a warning and reconciles to the managing resource's configured associations. Choose one approach per resource.
   See the feature flag resource documentation and segment resource documentation for details on the view_keys attribute.
 ---
 
@@ -42,7 +42,7 @@ For modular Terraform configurations where flags and segments are defined in sep
 - Each team/module manages their own resources
 - Want view membership defined alongside the resource
 
--> **Warning:** You cannot use both `view_links` and `view_keys` to manage the same flag or segment's view associations. Terraform will return an error if a conflict is detected. Choose one approach per resource.
+-> **Warning:** Do not use both `view_links` and `view_keys` to manage the same flag or segment's view associations. Mixed ownership can cause conflicts; when detected, Terraform logs a warning and reconciles to the managing resource's configured associations. Choose one approach per resource.
 
 See the feature flag resource documentation and segment resource documentation for details on the `view_keys` attribute.
 
@@ -95,7 +95,6 @@ resource "launchdarkly_view_links" "mobile_team" {
     "feature-app-rating",
   ]
 
-  comment = "Mobile team specific features"
 }
 
 # Example: Shared features across teams
@@ -110,7 +109,6 @@ resource "launchdarkly_view_links" "shared_features" {
     "feature-logging-level",
   ]
 
-  comment = "Cross-team shared feature flags"
 }
 
 # Demonstrating updates - adding/removing flags and segments from a view

@@ -293,27 +293,31 @@ func resourceSegmentUpdate(ctx context.Context, d *schema.ResourceData, metaRaw 
 			// If view_keys was explicitly removed (set to null), unlink from all views
 			// that were previously managed by this resource
 			betaClient, err := newBetaClient(client.apiKey, client.apiHost, false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
-			if err == nil {
-				oldViewKeysRaw, _ := d.GetChange(VIEW_KEYS)
-				if oldViewKeysRaw != nil {
-					// Get the environment ID
-					var env *ldapi.Environment
-					err = client.withConcurrency(client.ctx, func() error {
-						env, _, err = client.ld.EnvironmentsApi.GetEnvironment(client.ctx, projectKey, envKey).Execute()
-						return err
-					})
-					if err == nil {
-						oldViewKeys := interfaceSliceToStringSlice(oldViewKeysRaw.(*schema.Set).List())
-						for _, viewKey := range oldViewKeys {
-							segmentIdentifiers := []ViewSegmentIdentifier{{
-								EnvironmentId: env.Id,
-								SegmentKey:    key,
-							}}
-							err = unlinkSegmentsFromView(betaClient, projectKey, viewKey, segmentIdentifiers)
-							if err != nil {
-								log.Printf("[WARN] failed to unlink segment %q from view %q: %v", key, viewKey, err)
-							}
-						}
+			if err != nil {
+				return diag.Errorf("failed to create beta client for view unlinking: %v", err)
+			}
+
+			oldViewKeysRaw, _ := d.GetChange(VIEW_KEYS)
+			if oldViewKeysRaw != nil {
+				// Get the environment ID
+				var env *ldapi.Environment
+				err = client.withConcurrency(client.ctx, func() error {
+					env, _, err = client.ld.EnvironmentsApi.GetEnvironment(client.ctx, projectKey, envKey).Execute()
+					return err
+				})
+				if err != nil {
+					return diag.Errorf("failed to get environment %q in project %q: %s", envKey, projectKey, handleLdapiErr(err))
+				}
+
+				oldViewKeys := interfaceSliceToStringSlice(oldViewKeysRaw.(*schema.Set).List())
+				for _, viewKey := range oldViewKeys {
+					segmentIdentifiers := []ViewSegmentIdentifier{{
+						EnvironmentId: env.Id,
+						SegmentKey:    key,
+					}}
+					err = unlinkSegmentsFromView(betaClient, projectKey, viewKey, segmentIdentifiers)
+					if err != nil {
+						return diag.Errorf("failed to unlink segment %q from view %q: %v", key, viewKey, err)
 					}
 				}
 			}

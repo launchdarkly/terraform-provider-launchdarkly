@@ -44,7 +44,6 @@ resource "launchdarkly_view_links" "mobile_team" {
     "feature-app-rating",
   ]
 
-  comment = "Mobile team specific features"
 }
 
 # Example: Shared features across teams
@@ -59,7 +58,6 @@ resource "launchdarkly_view_links" "shared_features" {
     "feature-logging-level",
   ]
 
-  comment = "Cross-team shared feature flags"
 }
 
 # Demonstrating updates - adding/removing flags and segments from a view

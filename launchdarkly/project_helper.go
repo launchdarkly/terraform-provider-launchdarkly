@@ -211,6 +211,7 @@ func getProjectViewSettings(client *Client, projectKey string) (*ProjectViewSett
 	req.Header.Set("Authorization", client.apiKey)
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("LD-API-Version", APIVersion)
+	req.Header.Set("User-Agent", fmt.Sprintf("launchdarkly-terraform-provider/%s", version))
 
 	resp, err := client.ld.GetConfig().HTTPClient.Do(req)
 	if err != nil {
@@ -273,6 +274,7 @@ func patchProjectViewSettings(client *Client, projectKey string, flagsRequired, 
 	req.Header.Set("Authorization", client.apiKey)
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("LD-API-Version", APIVersion)
+	req.Header.Set("User-Agent", fmt.Sprintf("launchdarkly-terraform-provider/%s", version))
 
 	resp, err := client.ld.GetConfig().HTTPClient.Do(req)
 	if err != nil {

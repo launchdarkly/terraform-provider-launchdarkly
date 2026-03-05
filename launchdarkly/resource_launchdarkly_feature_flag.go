@@ -401,15 +401,17 @@ func featureFlagUpdate(ctx context.Context, d *schema.ResourceData, metaRaw inte
 			// If view_keys was explicitly removed (set to null), unlink from all views
 			// that were previously managed by this resource
 			betaClient, err := newBetaClient(client.apiKey, client.apiHost, false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
-			if err == nil {
-				oldViewKeysRaw, _ := d.GetChange(VIEW_KEYS)
-				if oldViewKeysRaw != nil {
-					oldViewKeys := interfaceSliceToStringSlice(oldViewKeysRaw.(*schema.Set).List())
-					for _, viewKey := range oldViewKeys {
-						err = unlinkResourcesFromView(betaClient, projectKey, viewKey, FLAGS, []string{key})
-						if err != nil {
-							log.Printf("[WARN] failed to unlink flag %q from view %q: %v", key, viewKey, err)
-						}
+			if err != nil {
+				return diag.Errorf("failed to create beta client for view unlinking: %v", err)
+			}
+
+			oldViewKeysRaw, _ := d.GetChange(VIEW_KEYS)
+			if oldViewKeysRaw != nil {
+				oldViewKeys := interfaceSliceToStringSlice(oldViewKeysRaw.(*schema.Set).List())
+				for _, viewKey := range oldViewKeys {
+					err = unlinkResourcesFromView(betaClient, projectKey, viewKey, FLAGS, []string{key})
+					if err != nil {
+						return diag.Errorf("failed to unlink flag %q from view %q: %v", key, viewKey, err)
 					}
 				}
 			}
