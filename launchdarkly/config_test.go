@@ -13,6 +13,22 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestNewLDClientConfigPreservesExplicitScheme(t *testing.T) {
+	t.Parallel()
+
+	cfg := newLDClientConfig("http://127.0.0.1:8080", DEFAULT_HTTP_TIMEOUT_S, APIVersion, standardRetryPolicy)
+	assert.Equal(t, "127.0.0.1:8080", cfg.Host)
+	assert.Equal(t, "http", cfg.Scheme)
+}
+
+func TestNewLDClientConfigWithoutSchemeUsesDefaultScheme(t *testing.T) {
+	t.Parallel()
+
+	cfg := newLDClientConfig("127.0.0.1:8080", DEFAULT_HTTP_TIMEOUT_S, APIVersion, standardRetryPolicy)
+	assert.Equal(t, "127.0.0.1:8080", cfg.Host)
+	assert.Equal(t, "", cfg.Scheme)
+}
+
 func TestHandleRateLimits(t *testing.T) {
 	t.Run("no retries needed", func(t *testing.T) {
 		t.Parallel()

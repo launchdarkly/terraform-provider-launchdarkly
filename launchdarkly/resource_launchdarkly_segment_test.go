@@ -656,14 +656,7 @@ func testAccCheckSegmentExists(resourceName string) resource.TestCheckFunc {
 func TestAccSegment_ViewAssociationRequired(t *testing.T) {
 	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	resourceName := "launchdarkly_segment.test"
-
-	// Get a maintainer ID for view creation
-	client, err := newClient(os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN), os.Getenv(LAUNCHDARKLY_API_HOST), false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
-	require.NoError(t, err)
-	members, _, err := client.ld.AccountMembersApi.GetMembers(client.ctx).Execute()
-	require.NoError(t, err)
-	require.True(t, len(members.Items) > 0, "This test requires at least one member in the account")
-	maintainerId := members.Items[0].Id
+	var testAccSegmentWithViewKeys string
 
 	// Config with project requiring view association but segment without view_keys (should fail)
 	testAccSegmentWithoutViewKeys := fmt.Sprintf(`
@@ -687,7 +680,7 @@ resource "launchdarkly_segment" "test" {
 `, projectKey)
 
 	// Config with project requiring view association and segment with view_keys (should succeed)
-	testAccSegmentWithViewKeys := fmt.Sprintf(`
+	testAccSegmentWithViewKeysTemplate := `
 resource "launchdarkly_project" "test" {
 	key  = "%s"
 	name = "View Requirement Test"
@@ -713,11 +706,23 @@ resource "launchdarkly_segment" "test" {
 	name        = "Test Segment With Views"
 	view_keys   = [launchdarkly_view.test.key]
 }
-`, projectKey, maintainerId)
+`
 
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
 			testAccPreCheck(t)
+			if testAccSegmentWithViewKeys != "" {
+				return
+			}
+
+			client, err := newClient(os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN), os.Getenv(LAUNCHDARKLY_API_HOST), false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
+			require.NoError(t, err)
+
+			members, _, err := client.ld.AccountMembersApi.GetMembers(client.ctx).Execute()
+			require.NoError(t, err)
+			require.True(t, len(members.Items) > 0, "This test requires at least one member in the account")
+
+			testAccSegmentWithViewKeys = fmt.Sprintf(testAccSegmentWithViewKeysTemplate, projectKey, members.Items[0].Id)
 		},
 		Providers:    testAccProviders,
 		CheckDestroy: testAccCheckProjectDestroy,

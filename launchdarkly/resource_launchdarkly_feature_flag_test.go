@@ -1537,14 +1537,7 @@ func testAccCheckFeatureFlagExists(resourceName string) resource.TestCheckFunc {
 func TestAccFeatureFlag_ViewAssociationRequired(t *testing.T) {
 	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	resourceName := "launchdarkly_feature_flag.test"
-
-	// Get a maintainer ID for view creation
-	client, err := newClient(os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN), os.Getenv(LAUNCHDARKLY_API_HOST), false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
-	require.NoError(t, err)
-	members, _, err := client.ld.AccountMembersApi.GetMembers(client.ctx).Execute()
-	require.NoError(t, err)
-	require.True(t, len(members.Items) > 0, "This test requires at least one member in the account")
-	maintainerId := members.Items[0].Id
+	var testAccFlagWithViewKeys string
 
 	// Config with project requiring view association but flag without view_keys (should fail)
 	testAccFlagWithoutViewKeys := fmt.Sprintf(`
@@ -1568,7 +1561,7 @@ resource "launchdarkly_feature_flag" "test" {
 `, projectKey)
 
 	// Config with project requiring view association and flag with view_keys (should succeed)
-	testAccFlagWithViewKeys := fmt.Sprintf(`
+	testAccFlagWithViewKeysTemplate := `
 resource "launchdarkly_project" "test" {
 	key  = "%s"
 	name = "View Requirement Test"
@@ -1594,12 +1587,24 @@ resource "launchdarkly_feature_flag" "test" {
 	variation_type = "boolean"
 	view_keys      = [launchdarkly_view.test.key]
 }
-`, projectKey, maintainerId)
+`
 
 	// Config with project NOT requiring view association and flag without view_keys (should succeed)
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
 			testAccPreCheck(t)
+			if testAccFlagWithViewKeys != "" {
+				return
+			}
+
+			client, err := newClient(os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN), os.Getenv(LAUNCHDARKLY_API_HOST), false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
+			require.NoError(t, err)
+
+			members, _, err := client.ld.AccountMembersApi.GetMembers(client.ctx).Execute()
+			require.NoError(t, err)
+			require.True(t, len(members.Items) > 0, "This test requires at least one member in the account")
+
+			testAccFlagWithViewKeys = fmt.Sprintf(testAccFlagWithViewKeysTemplate, projectKey, members.Items[0].Id)
 		},
 		Providers:    testAccProviders,
 		CheckDestroy: testAccCheckProjectDestroy,

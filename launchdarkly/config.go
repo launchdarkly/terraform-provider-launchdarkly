@@ -7,6 +7,7 @@ import (
 	"log"
 	"math"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -65,7 +66,17 @@ func newBetaClient(token string, apiHost string, oauth bool, httpTimeoutSeconds,
 
 func newLDClientConfig(apiHost string, httpTimeoutSeconds int, apiVersion string, retryPolicy retryablehttp.CheckRetry) *ldapi.Configuration {
 	cfg := ldapi.NewConfiguration()
-	cfg.Host = strings.TrimPrefix(strings.TrimPrefix(apiHost, "https://"), "http://")
+	if apiHost != "" {
+		parsedHost, err := url.Parse(apiHost)
+		if err == nil && parsedHost.Host != "" {
+			cfg.Host = parsedHost.Host
+			if parsedHost.Scheme != "" {
+				cfg.Scheme = parsedHost.Scheme
+			}
+		} else {
+			cfg.Host = strings.TrimPrefix(strings.TrimPrefix(apiHost, "https://"), "http://")
+		}
+	}
 	cfg.DefaultHeader = make(map[string]string)
 	cfg.UserAgent = fmt.Sprintf("launchdarkly-terraform-provider/%s", version)
 	cfg.HTTPClient = newRetryableClient(retryPolicy)
