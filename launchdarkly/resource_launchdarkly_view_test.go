@@ -315,7 +315,12 @@ func testAccCheckViewExists(resourceName string) resource.TestCheckFunc {
 		viewKey := rs.Primary.Attributes[KEY]
 
 		client := testAccProvider.Meta().(*Client)
-		_, _, err := getView(client, projectKey, viewKey)
+		betaClient, err := newBetaClient(client.apiKey, client.apiHost, false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
+		if err != nil {
+			return fmt.Errorf("failed to create beta client: %v", err)
+		}
+
+		_, _, err = getView(betaClient, projectKey, viewKey)
 		if err != nil {
 			return fmt.Errorf("received an error getting view. %s", err)
 		}
@@ -325,6 +330,11 @@ func testAccCheckViewExists(resourceName string) resource.TestCheckFunc {
 
 func testAccCheckViewDestroy(s *terraform.State) error {
 	client := testAccProvider.Meta().(*Client)
+	betaClient, err := newBetaClient(client.apiKey, client.apiHost, false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
+	if err != nil {
+		return fmt.Errorf("failed to create beta client: %v", err)
+	}
+
 	for _, rs := range s.RootModule().Resources {
 		if rs.Type != "launchdarkly_view" {
 			continue
@@ -332,7 +342,7 @@ func testAccCheckViewDestroy(s *terraform.State) error {
 		projectKey := rs.Primary.Attributes[PROJECT_KEY]
 		viewKey := rs.Primary.Attributes[KEY]
 
-		_, res, err := getView(client, projectKey, viewKey)
+		_, res, err := getView(betaClient, projectKey, viewKey)
 		if isStatusNotFound(res) {
 			continue
 		}
