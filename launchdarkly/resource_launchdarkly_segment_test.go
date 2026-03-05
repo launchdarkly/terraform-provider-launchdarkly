@@ -707,13 +707,12 @@ resource "launchdarkly_segment" "test" {
 	view_keys   = [launchdarkly_view.test.key]
 }
 `
+	const placeholderMaintainerID = "507f1f77bcf86cd799439011"
+	testAccSegmentWithViewKeys = fmt.Sprintf(testAccSegmentWithViewKeysTemplate, projectKey, placeholderMaintainerID)
 
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
 			testAccPreCheck(t)
-			if testAccSegmentWithViewKeys != "" {
-				return
-			}
 
 			client, err := newClient(os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN), os.Getenv(LAUNCHDARKLY_API_HOST), false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
 			require.NoError(t, err)

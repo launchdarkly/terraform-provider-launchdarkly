@@ -1588,14 +1588,13 @@ resource "launchdarkly_feature_flag" "test" {
 	view_keys      = [launchdarkly_view.test.key]
 }
 `
+	const placeholderMaintainerID = "507f1f77bcf86cd799439011"
+	testAccFlagWithViewKeys = fmt.Sprintf(testAccFlagWithViewKeysTemplate, projectKey, placeholderMaintainerID)
 
 	// Config with project NOT requiring view association and flag without view_keys (should succeed)
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
 			testAccPreCheck(t)
-			if testAccFlagWithViewKeys != "" {
-				return
-			}
 
 			client, err := newClient(os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN), os.Getenv(LAUNCHDARKLY_API_HOST), false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
 			require.NoError(t, err)
