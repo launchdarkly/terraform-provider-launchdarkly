@@ -289,7 +289,7 @@ type SegmentBodyWithViewKeys struct {
 
 // createSegmentWithViewKeys creates a segment using a raw HTTP call to support the viewKeys field.
 // This is necessary because the API client doesn't include viewKeys in SegmentBody.
-func createSegmentWithViewKeys(client *Client, projectKey, envKey string, body SegmentBodyWithViewKeys) error {
+func createSegmentWithViewKeys(ctx context.Context, client *Client, projectKey, envKey string, body SegmentBodyWithViewKeys) error {
 	host := client.apiHost
 	if host == "" {
 		host = DEFAULT_LAUNCHDARKLY_HOST
@@ -309,7 +309,7 @@ func createSegmentWithViewKeys(client *Client, projectKey, envKey string, body S
 		return err
 	}
 
-	req, err := http.NewRequestWithContext(client.ctx, "POST", endpoint, bytes.NewBuffer(jsonData))
+	req, err := http.NewRequestWithContext(ctx, "POST", endpoint, bytes.NewBuffer(jsonData))
 	if err != nil {
 		return err
 	}

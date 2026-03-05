@@ -316,7 +316,7 @@ type FeatureFlagBodyWithViewKeys struct {
 
 // createFeatureFlagWithViewKeys creates a feature flag using a raw HTTP call to support the viewKeys field.
 // This is necessary because the API client doesn't include viewKeys in FeatureFlagBody.
-func createFeatureFlagWithViewKeys(client *Client, projectKey string, body FeatureFlagBodyWithViewKeys) error {
+func createFeatureFlagWithViewKeys(ctx context.Context, client *Client, projectKey string, body FeatureFlagBodyWithViewKeys) error {
 	host := client.apiHost
 	if host == "" {
 		host = DEFAULT_LAUNCHDARKLY_HOST
@@ -336,7 +336,7 @@ func createFeatureFlagWithViewKeys(client *Client, projectKey string, body Featu
 		return err
 	}
 
-	req, err := http.NewRequestWithContext(client.ctx, "POST", endpoint, bytes.NewBuffer(jsonData))
+	req, err := http.NewRequestWithContext(ctx, "POST", endpoint, bytes.NewBuffer(jsonData))
 	if err != nil {
 		return err
 	}

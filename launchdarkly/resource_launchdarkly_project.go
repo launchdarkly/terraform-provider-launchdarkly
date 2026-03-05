@@ -240,7 +240,7 @@ func resourceProjectUpdate(ctx context.Context, d *schema.ResourceData, metaRaw 
 	if flagsRequiredChanged || segmentsRequiredChanged {
 		flagsRequired := d.Get(REQUIRE_VIEW_ASSOCIATION_FOR_NEW_FLAGS).(bool)
 		segmentsRequired := d.Get(REQUIRE_VIEW_ASSOCIATION_FOR_NEW_SEGMENTS).(bool)
-		err = patchProjectViewSettings(client, projectKey, flagsRequired, segmentsRequired, flagsRequiredChanged, segmentsRequiredChanged)
+		err = patchProjectViewSettings(ctx, client, projectKey, flagsRequired, segmentsRequired, flagsRequiredChanged, segmentsRequiredChanged)
 		if err != nil {
 			return diag.Errorf("failed to update view association settings for project %q: %s", projectKey, err)
 		}

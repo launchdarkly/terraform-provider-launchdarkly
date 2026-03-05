@@ -124,7 +124,7 @@ func projectRead(ctx context.Context, d *schema.ResourceData, meta interface{}, 
 
 	// Fetch and set view association requirement fields using raw HTTP
 	// These fields are not in the official API client model yet
-	viewSettings, viewSettingsErr := getProjectViewSettings(client, projectKey)
+	viewSettings, viewSettingsErr := getProjectViewSettings(ctx, client, projectKey)
 	if viewSettingsErr != nil {
 		// Log warning but don't fail the read - these fields may not be available on all accounts
 		log.Printf("[WARN] failed to get view association settings for project %q: %v", projectKey, viewSettingsErr)
@@ -200,10 +200,10 @@ type ProjectViewSettings struct {
 // getProjectViewSettings fetches the view association requirement settings for a project.
 // Since these fields are not in the official API client model, we make a raw HTTP request
 // and parse only the fields we need.
-func getProjectViewSettings(client *Client, projectKey string) (*ProjectViewSettings, error) {
+func getProjectViewSettings(ctx context.Context, client *Client, projectKey string) (*ProjectViewSettings, error) {
 	endpoint := buildProjectURL(client.apiHost, projectKey)
 
-	req, err := http.NewRequestWithContext(client.ctx, "GET", endpoint, nil)
+	req, err := http.NewRequestWithContext(ctx, "GET", endpoint, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -237,7 +237,7 @@ func getProjectViewSettings(client *Client, projectKey string) (*ProjectViewSett
 }
 
 // patchProjectViewSettings updates the view association requirement settings for a project.
-func patchProjectViewSettings(client *Client, projectKey string, flagsRequired, segmentsRequired bool, flagsChanged, segmentsChanged bool) error {
+func patchProjectViewSettings(ctx context.Context, client *Client, projectKey string, flagsRequired, segmentsRequired bool, flagsChanged, segmentsChanged bool) error {
 	endpoint := buildProjectURL(client.apiHost, projectKey)
 
 	// Build patch operations only for fields that changed
@@ -266,7 +266,7 @@ func patchProjectViewSettings(client *Client, projectKey string, flagsRequired, 
 		return err
 	}
 
-	req, err := http.NewRequestWithContext(client.ctx, "PATCH", endpoint, bytes.NewBuffer(jsonData))
+	req, err := http.NewRequestWithContext(ctx, "PATCH", endpoint, bytes.NewBuffer(jsonData))
 	if err != nil {
 		return err
 	}

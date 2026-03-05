@@ -22,7 +22,7 @@ func customizeFeatureFlagDiff(ctx context.Context, diff *schema.ResourceDiff, me
 	projectKey := diff.Get(PROJECT_KEY).(string)
 
 	// Fetch project view settings
-	viewSettings, err := getProjectViewSettings(client, projectKey)
+	viewSettings, err := getProjectViewSettings(ctx, client, projectKey)
 	if err != nil {
 		// Log warning but don't fail - the setting might not be available
 		log.Printf("[WARN] could not fetch project view settings for %q during plan: %v", projectKey, err)
@@ -160,7 +160,7 @@ func resourceFeatureFlagCreate(ctx context.Context, d *schema.ResourceData, meta
 			ViewKeys:               viewKeys,
 		}
 		err = client.withConcurrency(ctx, func() error {
-			return createFeatureFlagWithViewKeys(client, projectKey, flagBody)
+			return createFeatureFlagWithViewKeys(ctx, client, projectKey, flagBody)
 		})
 	} else {
 		// Use the standard API client when no view_keys are specified

@@ -23,7 +23,7 @@ func customizeSegmentDiff(ctx context.Context, diff *schema.ResourceDiff, meta i
 	projectKey := diff.Get(PROJECT_KEY).(string)
 
 	// Fetch project view settings
-	viewSettings, err := getProjectViewSettings(client, projectKey)
+	viewSettings, err := getProjectViewSettings(ctx, client, projectKey)
 	if err != nil {
 		// Log warning but don't fail - the setting might not be available
 		log.Printf("[WARN] could not fetch project view settings for %q during plan: %v", projectKey, err)
@@ -122,8 +122,8 @@ func resourceSegmentCreate(ctx context.Context, d *schema.ResourceData, metaRaw 
 			UnboundedContextKind: unboundedContextKind,
 			ViewKeys:             viewKeys,
 		}
-		err = client.withConcurrency(client.ctx, func() error {
-			return createSegmentWithViewKeys(client, projectKey, envKey, segmentBody)
+		err = client.withConcurrency(ctx, func() error {
+			return createSegmentWithViewKeys(ctx, client, projectKey, envKey, segmentBody)
 		})
 	} else {
 		// Use the standard API client when no view_keys are specified
@@ -135,7 +135,7 @@ func resourceSegmentCreate(ctx context.Context, d *schema.ResourceData, metaRaw 
 			Unbounded:            &unbounded,
 			UnboundedContextKind: &unboundedContextKind,
 		}
-		err = client.withConcurrency(client.ctx, func() error {
+		err = client.withConcurrency(ctx, func() error {
 			_, _, err = client.ld.SegmentsApi.PostSegment(client.ctx, projectKey, envKey).SegmentBody(segment).Execute()
 			return err
 		})

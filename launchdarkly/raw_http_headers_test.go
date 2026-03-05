@@ -1,6 +1,7 @@
 package launchdarkly
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"net/http"
@@ -26,7 +27,7 @@ func TestCreateFeatureFlagWithViewKeysSetsUserAgentHeader(t *testing.T) {
 	client, err := newClient("token", server.URL, false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
 	require.NoError(t, err)
 
-	err = createFeatureFlagWithViewKeys(client, "test-project", FeatureFlagBodyWithViewKeys{
+	err = createFeatureFlagWithViewKeys(context.Background(), client, "test-project", FeatureFlagBodyWithViewKeys{
 		Name: "test-flag",
 		Key:  "test-flag",
 	})
@@ -50,7 +51,7 @@ func TestCreateSegmentWithViewKeysSetsUserAgentHeader(t *testing.T) {
 	client, err := newClient("token", server.URL, false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
 	require.NoError(t, err)
 
-	err = createSegmentWithViewKeys(client, "test-project", "test-env", SegmentBodyWithViewKeys{
+	err = createSegmentWithViewKeys(context.Background(), client, "test-project", "test-env", SegmentBodyWithViewKeys{
 		Name: "test-segment",
 		Key:  "test-segment",
 	})
@@ -72,7 +73,7 @@ func TestGetProjectViewSettingsSetsUserAgentHeader(t *testing.T) {
 	client, err := newClient("token", server.URL, false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
 	require.NoError(t, err)
 
-	_, err = getProjectViewSettings(client, "test-project")
+	_, err = getProjectViewSettings(context.Background(), client, "test-project")
 	require.NoError(t, err)
 	require.Equal(t, fmt.Sprintf("launchdarkly-terraform-provider/%s", version), gotUserAgent)
 }
@@ -94,7 +95,7 @@ func TestPatchProjectViewSettingsSetsUserAgentHeader(t *testing.T) {
 	client, err := newClient("token", server.URL, false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
 	require.NoError(t, err)
 
-	err = patchProjectViewSettings(client, "test-project", true, false, true, false)
+	err = patchProjectViewSettings(context.Background(), client, "test-project", true, false, true, false)
 	require.NoError(t, err)
 	require.Equal(t, fmt.Sprintf("launchdarkly-terraform-provider/%s", version), gotUserAgent)
 }
