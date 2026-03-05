@@ -182,16 +182,6 @@ resource "launchdarkly_view" "view3" {
 	maintainer_id = "%s"
 }
 
-resource "launchdarkly_view_links" "external_link" {
-	project_key = launchdarkly_project.test.key
-	view_key    = launchdarkly_view.view3.key
-
-	segments {
-		environment_id = launchdarkly_project.test.environments[0].client_side_id
-		segment_key    = "test-segment-with-views"
-	}
-}
-
 resource "launchdarkly_segment" "test" {
 	project_key = launchdarkly_project.test.key
 	env_key     = "test-env"
@@ -204,9 +194,6 @@ resource "launchdarkly_segment" "test" {
 	]
 
 	tags = ["test"]
-
-	// Simulate an out-of-band link added before this resource reconciles.
-	depends_on = [launchdarkly_view_links.external_link]
 }
 `
 
@@ -409,6 +396,36 @@ func TestAccSegmentViewKeys_ReconcileUnexpectedViewAssociation(t *testing.T) {
 				),
 			},
 			{
+				PreConfig: func() {
+					client, err := newClient(
+						os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN),
+						os.Getenv(LAUNCHDARKLY_API_HOST),
+						false,
+						DEFAULT_HTTP_TIMEOUT_S,
+						DEFAULT_MAX_CONCURRENCY,
+					)
+					require.NoError(t, err)
+
+					betaClient, err := newBetaClient(
+						os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN),
+						os.Getenv(LAUNCHDARKLY_API_HOST),
+						false,
+						DEFAULT_HTTP_TIMEOUT_S,
+						DEFAULT_MAX_CONCURRENCY,
+					)
+					require.NoError(t, err)
+
+					env, _, err := client.ld.EnvironmentsApi.GetEnvironment(client.ctx, projectKey, "test-env").Execute()
+					require.NoError(t, err)
+
+					err = linkSegmentsToView(betaClient, projectKey, "test-view-3", []ViewSegmentIdentifier{
+						{
+							EnvironmentId: env.Id,
+							SegmentKey:    "test-segment-with-views",
+						},
+					})
+					require.NoError(t, err)
+				},
 				Config: fmt.Sprintf(
 					testAccSegmentWithViewKeysUnexpectedAssociationReconcile,
 					projectName,

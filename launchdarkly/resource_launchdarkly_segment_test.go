@@ -656,7 +656,7 @@ func testAccCheckSegmentExists(resourceName string) resource.TestCheckFunc {
 func TestAccSegment_ViewAssociationRequired(t *testing.T) {
 	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	resourceName := "launchdarkly_segment.test"
-	var testAccSegmentWithViewKeys string
+	testAccSegmentWithViewKeys := ""
 
 	// Config with project requiring view association but segment without view_keys (should fail)
 	testAccSegmentWithoutViewKeys := fmt.Sprintf(`
@@ -707,21 +707,22 @@ resource "launchdarkly_segment" "test" {
 	view_keys   = [launchdarkly_view.test.key]
 }
 `
-	const placeholderMaintainerID = "507f1f77bcf86cd799439011"
-	testAccSegmentWithViewKeys = fmt.Sprintf(testAccSegmentWithViewKeysTemplate, projectKey, placeholderMaintainerID)
+	maintainerID := "507f1f77bcf86cd799439011"
+	if os.Getenv("TF_ACC") != "" {
+		testAccPreCheck(t)
+		client, err := newClient(os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN), os.Getenv(LAUNCHDARKLY_API_HOST), false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
+		require.NoError(t, err)
+
+		members, _, err := client.ld.AccountMembersApi.GetMembers(client.ctx).Execute()
+		require.NoError(t, err)
+		require.True(t, len(members.Items) > 0, "This test requires at least one member in the account")
+		maintainerID = members.Items[0].Id
+	}
+	testAccSegmentWithViewKeys = fmt.Sprintf(testAccSegmentWithViewKeysTemplate, projectKey, maintainerID)
 
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
 			testAccPreCheck(t)
-
-			client, err := newClient(os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN), os.Getenv(LAUNCHDARKLY_API_HOST), false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
-			require.NoError(t, err)
-
-			members, _, err := client.ld.AccountMembersApi.GetMembers(client.ctx).Execute()
-			require.NoError(t, err)
-			require.True(t, len(members.Items) > 0, "This test requires at least one member in the account")
-
-			testAccSegmentWithViewKeys = fmt.Sprintf(testAccSegmentWithViewKeysTemplate, projectKey, members.Items[0].Id)
 		},
 		Providers:    testAccProviders,
 		CheckDestroy: testAccCheckProjectDestroy,

@@ -196,20 +196,6 @@ func getView(client *Client, projectKey, viewKey string) (*View, *http.Response,
 	return getViewRaw(client, projectKey, viewKey)
 }
 
-func buildViewURL(client *Client, projectKey, viewKey string) string {
-	host := client.apiHost
-	if host == "" {
-		host = "app.launchdarkly.com"
-	}
-	var url string
-	if viewKey == "" {
-		url = fmt.Sprintf("https://%s/api/v2/projects/%s/views", host, projectKey)
-	} else {
-		url = fmt.Sprintf("https://%s/api/v2/projects/%s/views/%s", host, projectKey, viewKey)
-	}
-	return url
-}
-
 func getViewRaw(client *Client, projectKey, viewKey string) (*View, *http.Response, error) {
 	var (
 		apiView *ldapi.View
@@ -597,24 +583,6 @@ func getLinkedResources(client *Client, projectKey, viewKey, resourceType string
 	return linkedResources, nil
 }
 
-// buildViewLinkURL builds the URL for linking/unlinking resources to/from a view
-func buildViewLinkURL(client *Client, projectKey, viewKey, resourceType string) string {
-	host := client.apiHost
-	if host == "" {
-		host = "app.launchdarkly.com"
-	}
-	return fmt.Sprintf("https://%s/api/v2/projects/%s/views/%s/link/%s", host, projectKey, viewKey, resourceType)
-}
-
-// buildViewLinkedResourcesURL builds the URL for getting linked resources from a view
-func buildViewLinkedResourcesURL(client *Client, projectKey, viewKey, resourceType string) string {
-	host := client.apiHost
-	if host == "" {
-		host = "app.launchdarkly.com"
-	}
-	return fmt.Sprintf("https://%s/api/v2/projects/%s/views/%s/linked/%s", host, projectKey, viewKey, resourceType)
-}
-
 // viewIdToKeys splits a view ID into project key and view key
 func viewIdToKeys(id string) (projectKey string, viewKey string, err error) {
 	if strings.Count(id, "/") != 1 {
@@ -682,28 +650,6 @@ func getViewsContainingSegment(client *Client, projectKey, environmentId, segmen
 	}
 
 	return viewKeys, nil
-}
-
-// buildViewAssociationsURL builds the URL for getting views associated with a specific resource
-func buildViewAssociationsURL(client *Client, projectKey, resourceType, resourceKey string) string {
-	host := client.apiHost
-	if host == "" {
-		host = "app.launchdarkly.com"
-	}
-	return fmt.Sprintf("https://%s/api/v2/projects/%s/view-associations/%s/%s", host, projectKey, resourceType, resourceKey)
-}
-
-// buildViewAssociationsURLWithEnv builds the URL for getting views associated with a specific resource (with environment ID for segments)
-func buildViewAssociationsURLWithEnv(client *Client, projectKey, resourceType, resourceKey, environmentId string) string {
-	host := client.apiHost
-	if host == "" {
-		host = "app.launchdarkly.com"
-	}
-	url := fmt.Sprintf("https://%s/api/v2/projects/%s/view-associations/%s/%s", host, projectKey, resourceType, resourceKey)
-	if environmentId != "" {
-		url = fmt.Sprintf("%s?environmentId=%s", url, environmentId)
-	}
-	return url
 }
 
 // performViewFilterLinkOperation performs an HTTP request for linking/unlinking resources using a filter string.

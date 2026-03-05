@@ -1537,7 +1537,7 @@ func testAccCheckFeatureFlagExists(resourceName string) resource.TestCheckFunc {
 func TestAccFeatureFlag_ViewAssociationRequired(t *testing.T) {
 	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	resourceName := "launchdarkly_feature_flag.test"
-	var testAccFlagWithViewKeys string
+	testAccFlagWithViewKeys := ""
 
 	// Config with project requiring view association but flag without view_keys (should fail)
 	testAccFlagWithoutViewKeys := fmt.Sprintf(`
@@ -1588,22 +1588,23 @@ resource "launchdarkly_feature_flag" "test" {
 	view_keys      = [launchdarkly_view.test.key]
 }
 `
-	const placeholderMaintainerID = "507f1f77bcf86cd799439011"
-	testAccFlagWithViewKeys = fmt.Sprintf(testAccFlagWithViewKeysTemplate, projectKey, placeholderMaintainerID)
+	maintainerID := "507f1f77bcf86cd799439011"
+	if os.Getenv("TF_ACC") != "" {
+		testAccPreCheck(t)
+		client, err := newClient(os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN), os.Getenv(LAUNCHDARKLY_API_HOST), false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
+		require.NoError(t, err)
+
+		members, _, err := client.ld.AccountMembersApi.GetMembers(client.ctx).Execute()
+		require.NoError(t, err)
+		require.True(t, len(members.Items) > 0, "This test requires at least one member in the account")
+		maintainerID = members.Items[0].Id
+	}
+	testAccFlagWithViewKeys = fmt.Sprintf(testAccFlagWithViewKeysTemplate, projectKey, maintainerID)
 
 	// Config with project NOT requiring view association and flag without view_keys (should succeed)
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
 			testAccPreCheck(t)
-
-			client, err := newClient(os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN), os.Getenv(LAUNCHDARKLY_API_HOST), false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
-			require.NoError(t, err)
-
-			members, _, err := client.ld.AccountMembersApi.GetMembers(client.ctx).Execute()
-			require.NoError(t, err)
-			require.True(t, len(members.Items) > 0, "This test requires at least one member in the account")
-
-			testAccFlagWithViewKeys = fmt.Sprintf(testAccFlagWithViewKeysTemplate, projectKey, members.Items[0].Id)
 		},
 		Providers:    testAccProviders,
 		CheckDestroy: testAccCheckProjectDestroy,

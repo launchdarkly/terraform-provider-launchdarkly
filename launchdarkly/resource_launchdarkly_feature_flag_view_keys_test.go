@@ -158,13 +158,6 @@ resource "launchdarkly_view" "view3" {
 	maintainer_id = "%s"
 }
 
-resource "launchdarkly_view_links" "external_link" {
-	project_key = launchdarkly_project.test.key
-	view_key    = launchdarkly_view.view3.key
-
-	flags = ["test-flag-with-views"]
-}
-
 resource "launchdarkly_feature_flag" "test" {
 	project_key = launchdarkly_project.test.key
 	key         = "test-flag-with-views"
@@ -176,9 +169,6 @@ resource "launchdarkly_feature_flag" "test" {
 	]
 
 	tags = ["test"]
-
-	// Simulate an out-of-band link added before this resource reconciles.
-	depends_on = [launchdarkly_view_links.external_link]
 }
 `
 
@@ -370,6 +360,19 @@ func TestAccFeatureFlagViewKeys_ReconcileUnexpectedViewAssociation(t *testing.T)
 				),
 			},
 			{
+				PreConfig: func() {
+					betaClient, err := newBetaClient(
+						os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN),
+						os.Getenv(LAUNCHDARKLY_API_HOST),
+						false,
+						DEFAULT_HTTP_TIMEOUT_S,
+						DEFAULT_MAX_CONCURRENCY,
+					)
+					require.NoError(t, err)
+
+					err = linkResourcesToView(betaClient, projectKey, "test-view-3", FLAGS, []string{"test-flag-with-views"})
+					require.NoError(t, err)
+				},
 				Config: fmt.Sprintf(
 					testAccFeatureFlagWithViewKeysUnexpectedAssociationReconcile,
 					projectName,
