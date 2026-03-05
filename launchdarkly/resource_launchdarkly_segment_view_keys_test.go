@@ -150,6 +150,66 @@ resource "launchdarkly_segment" "test" {
 }
 `
 
+	testAccSegmentWithViewKeysUnexpectedAssociationReconcile = `
+resource "launchdarkly_project" "test" {
+	name = "%s"
+	key  = "%s"
+	environments {
+		name  = "Test Environment"
+		key   = "test-env"
+		color = "000000"
+	}
+}
+
+resource "launchdarkly_view" "view1" {
+	project_key = launchdarkly_project.test.key
+	key         = "test-view-1"
+	name        = "Test View 1"
+	maintainer_id = "%s"
+}
+
+resource "launchdarkly_view" "view2" {
+	project_key = launchdarkly_project.test.key
+	key         = "test-view-2"
+	name        = "Test View 2"
+	maintainer_id = "%s"
+}
+
+resource "launchdarkly_view" "view3" {
+	project_key = launchdarkly_project.test.key
+	key         = "test-view-3"
+	name        = "Test View 3"
+	maintainer_id = "%s"
+}
+
+resource "launchdarkly_view_links" "external_link" {
+	project_key = launchdarkly_project.test.key
+	view_key    = launchdarkly_view.view3.key
+
+	segments {
+		environment_id = launchdarkly_project.test.environments[0].client_side_id
+		segment_key    = "test-segment-with-views"
+	}
+}
+
+resource "launchdarkly_segment" "test" {
+	project_key = launchdarkly_project.test.key
+	env_key     = "test-env"
+	key         = "test-segment-with-views"
+	name        = "Test Segment with Views"
+	description = "Test segment"
+
+	view_keys = [
+		launchdarkly_view.view1.key
+	]
+
+	tags = ["test"]
+
+	// Simulate an out-of-band link added before this resource reconciles.
+	depends_on = [launchdarkly_view_links.external_link]
+}
+`
+
 	// Step 1: Create project and view first
 	testAccSegmentWithViewKeysNonexistentViewStep1 = `
 resource "launchdarkly_project" "test" {
@@ -310,6 +370,60 @@ func TestAccSegmentViewKeys_NonexistentView(t *testing.T) {
 				},
 				Config:      fmt.Sprintf(testAccSegmentWithViewKeysNonexistentViewStep2, projectName, projectKey, maintainerId),
 				ExpectError: regexp.MustCompile(`(?i)view.*not found`),
+			},
+		},
+	})
+}
+
+func TestAccSegmentViewKeys_ReconcileUnexpectedViewAssociation(t *testing.T) {
+	accTest := os.Getenv("TF_ACC")
+	if accTest == "" {
+		t.SkipNow()
+	}
+
+	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	projectName := "segment-view-keys-reconcile-test-" + projectKey
+	resourceName := "launchdarkly_segment.test"
+
+	client, err := newClient(os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN), os.Getenv(LAUNCHDARKLY_API_HOST), false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
+	require.NoError(t, err)
+
+	members, _, err := client.ld.AccountMembersApi.GetMembers(client.ctx).Execute()
+	require.NoError(t, err)
+	require.True(t, len(members.Items) > 0, "This test requires at least one member in the account")
+
+	maintainerId := members.Items[0].Id
+
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck: func() {
+			testAccPreCheck(t)
+		},
+		Providers:    testAccProviders,
+		CheckDestroy: testAccCheckSegmentDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config: fmt.Sprintf(testAccSegmentWithViewKeysCreate, projectName, projectKey, maintainerId, maintainerId),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckSegmentExists(resourceName),
+					testAccCheckSegmentLinkedToViews(projectKey, "test-env", "test-segment-with-views", []string{"test-view-1", "test-view-2"}),
+				),
+			},
+			{
+				Config: fmt.Sprintf(
+					testAccSegmentWithViewKeysUnexpectedAssociationReconcile,
+					projectName,
+					projectKey,
+					maintainerId,
+					maintainerId,
+					maintainerId,
+				),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckSegmentExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, "view_keys.#", "1"),
+					resource.TestCheckTypeSetElemAttr(resourceName, "view_keys.*", "test-view-1"),
+					// Ensure unexpected view links are removed and desired association remains.
+					testAccCheckSegmentLinkedToViews(projectKey, "test-env", "test-segment-with-views", []string{"test-view-1"}),
+				),
 			},
 		},
 	})

@@ -131,6 +131,57 @@ resource "launchdarkly_feature_flag" "test" {
 }
 `
 
+	testAccFeatureFlagWithViewKeysUnexpectedAssociationReconcile = `
+resource "launchdarkly_project" "test" {
+	name = "%s"
+	key  = "%s"
+}
+
+resource "launchdarkly_view" "view1" {
+	project_key = launchdarkly_project.test.key
+	key         = "test-view-1"
+	name        = "Test View 1"
+	maintainer_id = "%s"
+}
+
+resource "launchdarkly_view" "view2" {
+	project_key = launchdarkly_project.test.key
+	key         = "test-view-2"
+	name        = "Test View 2"
+	maintainer_id = "%s"
+}
+
+resource "launchdarkly_view" "view3" {
+	project_key = launchdarkly_project.test.key
+	key         = "test-view-3"
+	name        = "Test View 3"
+	maintainer_id = "%s"
+}
+
+resource "launchdarkly_view_links" "external_link" {
+	project_key = launchdarkly_project.test.key
+	view_key    = launchdarkly_view.view3.key
+
+	flags = ["test-flag-with-views"]
+}
+
+resource "launchdarkly_feature_flag" "test" {
+	project_key = launchdarkly_project.test.key
+	key         = "test-flag-with-views"
+	name        = "Test Flag with Views"
+	variation_type = "boolean"
+
+	view_keys = [
+		launchdarkly_view.view1.key
+	]
+
+	tags = ["test"]
+
+	// Simulate an out-of-band link added before this resource reconciles.
+	depends_on = [launchdarkly_view_links.external_link]
+}
+`
+
 	// Step 1: Create project and view first
 	testAccFeatureFlagWithViewKeysNonexistentViewStep1 = `
 resource "launchdarkly_project" "test" {
@@ -280,6 +331,60 @@ func TestAccFeatureFlagViewKeys_NonexistentView(t *testing.T) {
 				},
 				Config:      fmt.Sprintf(testAccFeatureFlagWithViewKeysNonexistentViewStep2, projectName, projectKey, maintainerId),
 				ExpectError: regexp.MustCompile("view does not exist"),
+			},
+		},
+	})
+}
+
+func TestAccFeatureFlagViewKeys_ReconcileUnexpectedViewAssociation(t *testing.T) {
+	accTest := os.Getenv("TF_ACC")
+	if accTest == "" {
+		t.SkipNow()
+	}
+
+	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	projectName := "flag-view-keys-reconcile-test-" + projectKey
+	resourceName := "launchdarkly_feature_flag.test"
+
+	client, err := newClient(os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN), os.Getenv(LAUNCHDARKLY_API_HOST), false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
+	require.NoError(t, err)
+
+	members, _, err := client.ld.AccountMembersApi.GetMembers(client.ctx).Execute()
+	require.NoError(t, err)
+	require.True(t, len(members.Items) > 0, "This test requires at least one member in the account")
+
+	maintainerId := members.Items[0].Id
+
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck: func() {
+			testAccPreCheck(t)
+		},
+		Providers:    testAccProviders,
+		CheckDestroy: testAccCheckFeatureFlagDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config: fmt.Sprintf(testAccFeatureFlagWithViewKeysCreate, projectName, projectKey, maintainerId, maintainerId),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckFeatureFlagExists(resourceName),
+					testAccCheckFlagLinkedToViews(projectKey, "test-flag-with-views", []string{"test-view-1", "test-view-2"}),
+				),
+			},
+			{
+				Config: fmt.Sprintf(
+					testAccFeatureFlagWithViewKeysUnexpectedAssociationReconcile,
+					projectName,
+					projectKey,
+					maintainerId,
+					maintainerId,
+					maintainerId,
+				),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckFeatureFlagExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, "view_keys.#", "1"),
+					resource.TestCheckTypeSetElemAttr(resourceName, "view_keys.*", "test-view-1"),
+					// Ensure unexpected view links are removed and desired association remains.
+					testAccCheckFlagLinkedToViews(projectKey, "test-flag-with-views", []string{"test-view-1"}),
+				),
 			},
 		},
 	})

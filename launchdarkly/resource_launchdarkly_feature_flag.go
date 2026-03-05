@@ -364,23 +364,20 @@ func featureFlagUpdate(ctx context.Context, d *schema.ResourceData, metaRaw inte
 			viewsToAdd := difference(desiredViewKeys, currentViewKeys)
 			viewsToRemove := difference(currentViewKeys, desiredViewKeys)
 
-			// Check for potential conflicts with view_links resource
-			// If we're using view_keys and there are views to remove, check if they were previously managed by view_keys
+			// Detect potential mixed-management and warn, but still reconcile to configured view_keys.
+			// This preserves convergence when out-of-band changes happen between plan and apply.
 			if len(viewsToRemove) > 0 && !isCreate {
 				oldViewKeysRaw, _ := d.GetChange(VIEW_KEYS)
 				if oldViewKeysRaw != nil {
 					oldViewKeys := interfaceSliceToStringSlice(oldViewKeysRaw.(*schema.Set).List())
-					// Check if any views we're removing were NOT in our previous view_keys
-					// This indicates they might be managed by view_links
 					unexpectedViews := difference(viewsToRemove, oldViewKeys)
 					if len(unexpectedViews) > 0 {
-						return diag.Errorf(
-							"Conflict detected: Flag %q is linked to views %v which are not managed by this resource's view_keys field. "+
-								"This typically means these views are managed by a launchdarkly_view_links resource. "+
-								"You cannot use both view_keys and view_links to manage the same flag. "+
-								"Please either: (1) Remove view_keys from this flag and use view_links only, or "+
-								"(2) Remove this flag from any view_links resources and use view_keys only.",
-							key, unexpectedViews)
+						log.Printf(
+							"[WARN] Flag %q has view associations %v that were not previously tracked by view_keys; "+
+								"proceeding to reconcile to configured view_keys. Avoid mixing view_keys and launchdarkly_view_links "+
+								"for the same flag to prevent ownership conflicts.",
+							key, unexpectedViews,
+						)
 					}
 				}
 			}
