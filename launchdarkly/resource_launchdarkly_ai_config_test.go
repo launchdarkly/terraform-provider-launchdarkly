@@ -38,6 +38,22 @@ resource "launchdarkly_ai_config" "test" {
 	tags        = ["test"]
 }
 `
+	testAccAiConfigWithOptionalFields = `
+resource "launchdarkly_ai_config" "test" {
+	project_key = launchdarkly_project.test.key
+	key         = "test-ai-config-optional"
+	name        = "AI Config With Optionals"
+	description = "A test AI Config with optional fields."
+	tags        = ["test", "optional"]
+}
+`
+	testAccAiConfigWithoutOptionalFields = `
+resource "launchdarkly_ai_config" "test" {
+	project_key = launchdarkly_project.test.key
+	key         = "test-ai-config-optional"
+	name        = "AI Config With Optionals"
+}
+`
 )
 
 func TestAccAiConfig_BasicCreateAndUpdate(t *testing.T) {
@@ -107,6 +123,50 @@ func TestAccAiConfig_WithMode(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, KEY, "test-ai-config-mode"),
 					resource.TestCheckResourceAttr(resourceName, PROJECT_KEY, projectKey),
 					resource.TestCheckResourceAttr(resourceName, MODE, "completion"),
+				),
+			},
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
+		},
+	})
+}
+
+func TestAccAiConfig_RemoveOptionalFields(t *testing.T) {
+	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	resourceName := "launchdarkly_ai_config.test"
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck: func() {
+			testAccPreCheck(t)
+		},
+		Providers:    testAccProviders,
+		CheckDestroy: testAccCheckAiConfigDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config: withRandomProject(projectKey, testAccAiConfigWithOptionalFields),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckProjectExists("launchdarkly_project.test"),
+					testAccCheckAiConfigExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, NAME, "AI Config With Optionals"),
+					resource.TestCheckResourceAttr(resourceName, KEY, "test-ai-config-optional"),
+					resource.TestCheckResourceAttr(resourceName, DESCRIPTION, "A test AI Config with optional fields."),
+					resource.TestCheckResourceAttr(resourceName, "tags.#", "2"),
+				),
+			},
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
+			{
+				Config: withRandomProject(projectKey, testAccAiConfigWithoutOptionalFields),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckAiConfigExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, NAME, "AI Config With Optionals"),
+					resource.TestCheckResourceAttr(resourceName, DESCRIPTION, ""),
+					resource.TestCheckResourceAttr(resourceName, "tags.#", "0"),
 				),
 			},
 			{
