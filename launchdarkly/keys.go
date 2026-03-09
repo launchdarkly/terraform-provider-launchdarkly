@@ -6,7 +6,6 @@ const (
 	//gofmts:sort
 	ACTIONS                                   = "actions"
 	ACTION_SET                                = "action_set"
-	AI_CONFIG_KEY                             = "config_key"
 	ANALYSIS_TYPE                             = "analysis_type"
 	API_KEY                                   = "api_key"
 	APPROVAL_SETTINGS                         = "approval_settings"

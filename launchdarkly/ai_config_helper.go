@@ -101,7 +101,8 @@ func baseAiConfigSchema(isDataSource bool) map[string]*schema.Schema {
 			Type:             schema.TypeString,
 			Optional:         !isDataSource,
 			Computed:         true,
-			Description:      "The mode for the AI Config. Available choices are `agent`, `completion`, and `judge`. Defaults to `completion`.",
+			ForceNew:         true,
+			Description:      addForceNewDescription("The mode for the AI Config. Available choices are `agent`, `completion`, and `judge`. Defaults to `completion`.", !isDataSource),
 			ValidateDiagFunc: validation.ToDiagFunc(validation.StringInSlice([]string{"agent", "completion", "judge"}, false)),
 		},
 		MAINTAINER_ID: {
@@ -315,7 +316,10 @@ func aiConfigRead(ctx context.Context, d *schema.ResourceData, meta interface{},
 
 	aiConfig, resp, err := getAiConfig(client, projectKey, configKey)
 
-	if isStatusNotFound(resp) && !isDataSource {
+	if isStatusNotFound(resp) {
+		if isDataSource {
+			return diag.Errorf("failed to find AI Config %q in project %q", configKey, projectKey)
+		}
 		log.Printf("[WARN] AI Config %q in project %q not found, removing from state", configKey, projectKey)
 		diags = append(diags, diag.Diagnostic{
 			Severity: diag.Warning,
