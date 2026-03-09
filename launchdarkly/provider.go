@@ -80,6 +80,7 @@ func Provider() *schema.Provider {
 			"launchdarkly_audit_log_subscription":    resourceAuditLogSubscription(),
 			"launchdarkly_relay_proxy_configuration": resourceRelayProxyConfig(),
 			"launchdarkly_metric":                    resourceMetric(),
+			"launchdarkly_ai_config":                 resourceAiConfig(),
 		},
 		DataSourcesMap: map[string]*schema.Resource{
 			"launchdarkly_team":                      dataSourceTeam(),
@@ -96,6 +97,7 @@ func Provider() *schema.Provider {
 			"launchdarkly_audit_log_subscription":    dataSourceAuditLogSubscription(),
 			"launchdarkly_relay_proxy_configuration": dataSourceRelayProxyConfig(),
 			"launchdarkly_metric":                    dataSourceMetric(),
+			"launchdarkly_ai_config":                 dataSourceAiConfig(),
 		},
 		ConfigureContextFunc: providerConfigure,
 	}
