@@ -6,6 +6,8 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+
+	ldapi "github.com/launchdarkly/api-client-go/v22"
 )
 
 func resourceAiConfig() *schema.Resource {
@@ -34,41 +36,41 @@ func resourceAiConfigCreate(ctx context.Context, d *schema.ResourceData, metaRaw
 	key := d.Get(KEY).(string)
 	name := d.Get(NAME).(string)
 
-	post := AiConfigPost{
-		Key:  key,
-		Name: name,
-	}
+	post := *ldapi.NewAIConfigPost(key, name)
 
 	if description, ok := d.GetOk(DESCRIPTION); ok {
-		post.Description = description.(string)
+		post.SetDescription(description.(string))
 	}
 
 	if mode, ok := d.GetOk(MODE); ok {
-		post.Mode = mode.(string)
+		post.SetMode(mode.(string))
 	}
 
 	if maintainerId, ok := d.GetOk(MAINTAINER_ID); ok {
-		post.MaintainerId = maintainerId.(string)
+		post.SetMaintainerId(maintainerId.(string))
 	}
 
 	if maintainerTeamKey, ok := d.GetOk(MAINTAINER_TEAM_KEY); ok {
-		post.MaintainerTeamKey = maintainerTeamKey.(string)
+		post.SetMaintainerTeamKey(maintainerTeamKey.(string))
 	}
 
 	if tags, ok := d.GetOk(TAGS); ok {
-		post.Tags = interfaceSliceToStringSlice(tags.(*schema.Set).List())
+		post.SetTags(interfaceSliceToStringSlice(tags.(*schema.Set).List()))
 	}
 
 	if evaluationMetricKey, ok := d.GetOk(EVALUATION_METRIC_KEY); ok {
-		post.EvaluationMetricKey = evaluationMetricKey.(string)
+		post.SetEvaluationMetricKey(evaluationMetricKey.(string))
 	}
 
 	if isInverted, ok := d.GetOk(IS_INVERTED); ok {
-		v := isInverted.(bool)
-		post.IsInverted = &v
+		post.SetIsInverted(isInverted.(bool))
 	}
 
-	_, err := createAiConfig(client, projectKey, post)
+	var err error
+	err = client.withConcurrency(client.ctx, func() error {
+		_, _, err = client.ld.AIConfigsApi.PostAIConfig(client.ctx, projectKey).AIConfigPost(post).Execute()
+		return err
+	})
 	if err != nil {
 		return diag.Errorf("failed to create AI Config %q in project %q: %s", key, projectKey, handleLdapiErr(err))
 	}
@@ -88,47 +90,45 @@ func resourceAiConfigUpdate(ctx context.Context, d *schema.ResourceData, metaRaw
 	projectKey := d.Get(PROJECT_KEY).(string)
 	configKey := d.Get(KEY).(string)
 
-	patch := AiConfigPatch{}
+	patch := *ldapi.NewAIConfigPatch()
 
 	if d.HasChange(NAME) {
-		name := d.Get(NAME).(string)
-		patch.Name = &name
+		patch.SetName(d.Get(NAME).(string))
 	}
 
 	if d.HasChange(DESCRIPTION) {
-		description := d.Get(DESCRIPTION).(string)
-		patch.Description = &description
+		patch.SetDescription(d.Get(DESCRIPTION).(string))
 	}
 
 	if d.HasChange(MAINTAINER_ID) {
 		if maintainerId, ok := d.GetOk(MAINTAINER_ID); ok {
-			id := maintainerId.(string)
-			patch.MaintainerId = &id
+			patch.SetMaintainerId(maintainerId.(string))
 		}
 	}
 
 	if d.HasChange(MAINTAINER_TEAM_KEY) {
 		if maintainerTeamKey, ok := d.GetOk(MAINTAINER_TEAM_KEY); ok {
-			key := maintainerTeamKey.(string)
-			patch.MaintainerTeamKey = &key
+			patch.SetMaintainerTeamKey(maintainerTeamKey.(string))
 		}
 	}
 
 	if d.HasChange(TAGS) {
-		patch.Tags = interfaceSliceToStringSlice(d.Get(TAGS).(*schema.Set).List())
+		patch.SetTags(interfaceSliceToStringSlice(d.Get(TAGS).(*schema.Set).List()))
 	}
 
 	if d.HasChange(EVALUATION_METRIC_KEY) {
-		evaluationMetricKey := d.Get(EVALUATION_METRIC_KEY).(string)
-		patch.EvaluationMetricKey = &evaluationMetricKey
+		patch.SetEvaluationMetricKey(d.Get(EVALUATION_METRIC_KEY).(string))
 	}
 
 	if d.HasChange(IS_INVERTED) {
-		isInverted := d.Get(IS_INVERTED).(bool)
-		patch.IsInverted = &isInverted
+		patch.SetIsInverted(d.Get(IS_INVERTED).(bool))
 	}
 
-	_, err := patchAiConfig(client, projectKey, configKey, patch)
+	var err error
+	err = client.withConcurrency(client.ctx, func() error {
+		_, _, err = client.ld.AIConfigsApi.PatchAIConfig(client.ctx, projectKey, configKey).AIConfigPatch(patch).Execute()
+		return err
+	})
 	if err != nil {
 		return diag.Errorf("failed to update AI Config %q in project %q: %s", configKey, projectKey, handleLdapiErr(err))
 	}
@@ -144,7 +144,11 @@ func resourceAiConfigDelete(ctx context.Context, d *schema.ResourceData, metaRaw
 	projectKey := d.Get(PROJECT_KEY).(string)
 	configKey := d.Get(KEY).(string)
 
-	err := deleteAiConfig(client, projectKey, configKey)
+	var err error
+	err = client.withConcurrency(client.ctx, func() error {
+		_, err = client.ld.AIConfigsApi.DeleteAIConfig(client.ctx, projectKey, configKey).Execute()
+		return err
+	})
 	if err != nil {
 		return diag.Errorf("failed to delete AI Config %q in project %q: %s", configKey, projectKey, handleLdapiErr(err))
 	}

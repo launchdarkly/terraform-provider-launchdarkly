@@ -192,7 +192,7 @@ func testAccCheckAiConfigExists(resourceName string) resource.TestCheckFunc {
 
 		client := testAccProvider.Meta().(*Client)
 
-		_, _, err := getAiConfig(client, projectKey, configKey)
+		_, _, err := client.ld.AIConfigsApi.GetAIConfig(client.ctx, projectKey, configKey).Execute()
 		if err != nil {
 			return fmt.Errorf("received an error getting AI Config: %s", err)
 		}
@@ -210,7 +210,7 @@ func testAccCheckAiConfigDestroy(s *terraform.State) error {
 		projectKey := rs.Primary.Attributes[PROJECT_KEY]
 		configKey := rs.Primary.Attributes[KEY]
 
-		_, resp, err := getAiConfig(client, projectKey, configKey)
+		_, resp, err := client.ld.AIConfigsApi.GetAIConfig(client.ctx, projectKey, configKey).Execute()
 		if isStatusNotFound(resp) {
 			continue
 		}
