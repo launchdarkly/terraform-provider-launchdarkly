@@ -54,6 +54,92 @@ resource "launchdarkly_ai_config" "test" {
 	name        = "AI Config With Optionals"
 }
 `
+
+	// The email must be set with a random name using fmt.Sprintf for this test to work since LD does
+	// not support creating members with the same email address more than once.
+	testAccAiConfigWithMaintainer = `
+resource "launchdarkly_team_member" "test" {
+	email      = "%s+wbteste2e@launchdarkly.com"
+	first_name = "first"
+	last_name  = "last"
+	role       = "admin"
+	custom_roles = []
+}
+
+resource "launchdarkly_ai_config" "test" {
+	project_key   = launchdarkly_project.test.key
+	key           = "test-ai-config-maintainer"
+	name          = "AI Config With Maintainer"
+	maintainer_id = launchdarkly_team_member.test.id
+}
+`
+
+	testAccAiConfigWithTeamMaintainer = `
+resource "launchdarkly_team_member" "test" {
+	email      = "%s+wbteste2e@launchdarkly.com"
+	first_name = "first"
+	last_name  = "last"
+	role       = "admin"
+	custom_roles = []
+}
+
+resource "launchdarkly_team" "test_team" {
+	key              = "%s"
+	name             = "test team"
+	description      = "Team to manage AI config"
+	member_ids       = [launchdarkly_team_member.test.id]
+	custom_role_keys = []
+}
+
+resource "launchdarkly_ai_config" "test" {
+	project_key         = launchdarkly_project.test.key
+	key                 = "test-ai-config-team"
+	name                = "AI Config With Team Maintainer"
+	maintainer_team_key = launchdarkly_team.test_team.key
+}
+`
+
+	testAccAiConfigWithEvaluationMetric = `
+resource "launchdarkly_metric" "test" {
+	project_key = launchdarkly_project.test.key
+	key         = "test-eval-metric"
+	name        = "Test Evaluation Metric"
+	kind        = "custom"
+	event_key   = "test-event"
+	is_numeric  = true
+	unit        = "score"
+	success_criteria = "HigherThanBaseline"
+}
+
+resource "launchdarkly_ai_config" "test" {
+	project_key           = launchdarkly_project.test.key
+	key                   = "test-ai-config-eval"
+	name                  = "AI Config With Evaluation Metric"
+	evaluation_metric_key = launchdarkly_metric.test.key
+	is_inverted           = true
+}
+`
+
+	testAccAiConfigUpdateEvaluationMetric = `
+resource "launchdarkly_metric" "test" {
+	project_key = launchdarkly_project.test.key
+	key         = "test-eval-metric"
+	name        = "Test Evaluation Metric"
+	kind        = "custom"
+	event_key   = "test-event"
+	is_numeric  = true
+	unit        = "score"
+	success_criteria = "HigherThanBaseline"
+}
+
+resource "launchdarkly_ai_config" "test" {
+	project_key           = launchdarkly_project.test.key
+	key                   = "test-ai-config-eval"
+	name                  = "AI Config With Evaluation Metric"
+	evaluation_metric_key = launchdarkly_metric.test.key
+	is_inverted           = false
+}
+`
 )
 
 func TestAccAiConfig_BasicCreateAndUpdate(t *testing.T) {
@@ -76,6 +162,7 @@ func TestAccAiConfig_BasicCreateAndUpdate(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, PROJECT_KEY, projectKey),
 					resource.TestCheckResourceAttr(resourceName, DESCRIPTION, "A test AI Config."),
 					resource.TestCheckResourceAttr(resourceName, "tags.#", "1"),
+					resource.TestCheckResourceAttrSet(resourceName, VERSION),
 				),
 			},
 			{
@@ -93,6 +180,7 @@ func TestAccAiConfig_BasicCreateAndUpdate(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, PROJECT_KEY, projectKey),
 					resource.TestCheckResourceAttr(resourceName, DESCRIPTION, "An updated test AI Config."),
 					resource.TestCheckResourceAttr(resourceName, "tags.#", "2"),
+					resource.TestCheckResourceAttrSet(resourceName, VERSION),
 				),
 			},
 			{
@@ -167,6 +255,115 @@ func TestAccAiConfig_RemoveOptionalFields(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, NAME, "AI Config With Optionals"),
 					resource.TestCheckResourceAttr(resourceName, DESCRIPTION, ""),
 					resource.TestCheckResourceAttr(resourceName, "tags.#", "0"),
+				),
+			},
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
+		},
+	})
+}
+
+func TestAccAiConfig_WithMaintainer(t *testing.T) {
+	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	randomName := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	resourceName := "launchdarkly_ai_config.test"
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck: func() {
+			testAccPreCheck(t)
+		},
+		Providers:    testAccProviders,
+		CheckDestroy: testAccCheckAiConfigDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config: withRandomProject(projectKey, fmt.Sprintf(testAccAiConfigWithMaintainer, randomName)),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckProjectExists("launchdarkly_project.test"),
+					testAccCheckMemberExists("launchdarkly_team_member.test"),
+					testAccCheckAiConfigExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, NAME, "AI Config With Maintainer"),
+					resource.TestCheckResourceAttr(resourceName, KEY, "test-ai-config-maintainer"),
+					resource.TestCheckResourceAttrPair(resourceName, MAINTAINER_ID, "launchdarkly_team_member.test", "id"),
+					resource.TestCheckResourceAttrSet(resourceName, VERSION),
+				),
+			},
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
+		},
+	})
+}
+
+func TestAccAiConfig_WithTeamMaintainer(t *testing.T) {
+	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	randomName := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	resourceName := "launchdarkly_ai_config.test"
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck: func() {
+			testAccPreCheck(t)
+		},
+		Providers:    testAccProviders,
+		CheckDestroy: testAccCheckAiConfigDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config: withRandomProject(projectKey, fmt.Sprintf(testAccAiConfigWithTeamMaintainer, randomName, randomName)),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckProjectExists("launchdarkly_project.test"),
+					testAccCheckMemberExists("launchdarkly_team_member.test"),
+					testAccCheckAiConfigExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, NAME, "AI Config With Team Maintainer"),
+					resource.TestCheckResourceAttr(resourceName, KEY, "test-ai-config-team"),
+					resource.TestCheckResourceAttrSet(resourceName, VERSION),
+				),
+			},
+			{
+				ResourceName:            resourceName,
+				ImportState:             true,
+				ImportStateVerify:       true,
+				ImportStateVerifyIgnore: []string{MAINTAINER_TEAM_KEY},
+			},
+		},
+	})
+}
+
+func TestAccAiConfig_WithEvaluationMetric(t *testing.T) {
+	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	resourceName := "launchdarkly_ai_config.test"
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck: func() {
+			testAccPreCheck(t)
+		},
+		Providers:    testAccProviders,
+		CheckDestroy: testAccCheckAiConfigDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config: withRandomProject(projectKey, testAccAiConfigWithEvaluationMetric),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckProjectExists("launchdarkly_project.test"),
+					testAccCheckAiConfigExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, NAME, "AI Config With Evaluation Metric"),
+					resource.TestCheckResourceAttr(resourceName, KEY, "test-ai-config-eval"),
+					resource.TestCheckResourceAttr(resourceName, EVALUATION_METRIC_KEY, "test-eval-metric"),
+					resource.TestCheckResourceAttr(resourceName, IS_INVERTED, "true"),
+					resource.TestCheckResourceAttrSet(resourceName, VERSION),
+				),
+			},
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
+			{
+				Config: withRandomProject(projectKey, testAccAiConfigUpdateEvaluationMetric),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckAiConfigExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, EVALUATION_METRIC_KEY, "test-eval-metric"),
+					resource.TestCheckResourceAttr(resourceName, IS_INVERTED, "false"),
+					resource.TestCheckResourceAttrSet(resourceName, VERSION),
 				),
 			},
 			{
