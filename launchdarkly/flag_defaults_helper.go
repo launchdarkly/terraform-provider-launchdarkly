@@ -24,8 +24,9 @@ func baseFlagDefaultsSchema(isDataSource bool) map[string]*schema.Schema {
 		TAGS: tagsSchema(tagsSchemaOptions{isDataSource: isDataSource}),
 		TEMPORARY: {
 			Type:        schema.TypeBool,
-			Required:    !isDataSource,
+			Optional:    !isDataSource,
 			Computed:    isDataSource,
+			Default:     false,
 			Description: "Whether new flags should be temporary by default.",
 		},
 		BOOLEAN_DEFAULTS: {
@@ -152,8 +153,9 @@ func getCurrentCSA(client *Client, projectKey string) (*ldapi.DefaultClientSideA
 		return nil, err
 	}
 
-	// Convert from the GET response type (pointer fields) to the PUT request type (value fields)
-	csa := ldapi.NewDefaultClientSideAvailability(false, false)
+	// Convert from the GET response type (pointer fields) to the PUT request type (value fields).
+	// Fallback defaults match LaunchDarkly's project defaults: using_environment_id=false, using_mobile_key=true.
+	csa := ldapi.NewDefaultClientSideAvailability(false, true)
 	if flagDefaults.DefaultClientSideAvailability != nil {
 		if flagDefaults.DefaultClientSideAvailability.UsingMobileKey != nil {
 			csa.UsingMobileKey = *flagDefaults.DefaultClientSideAvailability.UsingMobileKey

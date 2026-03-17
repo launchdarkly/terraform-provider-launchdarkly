@@ -42,11 +42,11 @@ resource "launchdarkly_flag_defaults" "example" {
 
 - `boolean_defaults` (Block List, Min: 1, Max: 1) A block describing the default boolean flag variation settings. (see [below for nested schema](#nestedblock--boolean_defaults))
 - `project_key` (String) The project key. A change in this field will force the destruction of the existing resource and the creation of a new one.
-- `temporary` (Boolean) Whether new flags should be temporary by default.
 
 ### Optional
 
 - `tags` (Set of String) Tags associated with your resource.
+- `temporary` (Boolean) Whether new flags should be temporary by default.
 
 ### Read-Only
 
