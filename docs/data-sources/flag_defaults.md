@@ -25,7 +25,6 @@ This data source allows you to retrieve the flag default settings for a LaunchDa
 ### Read-Only
 
 - `boolean_defaults` (List of Object) A block describing the default boolean flag variation settings. (see [below for nested schema](#nestedatt--boolean_defaults))
-- `default_client_side_availability` (List of Object) A block describing which client-side SDKs can use new flags by default. (see [below for nested schema](#nestedatt--default_client_side_availability))
 - `id` (String) The ID of this resource.
 - `tags` (Set of String) Tags associated with your resource.
 - `temporary` (Boolean) Whether new flags should be temporary by default.
@@ -41,12 +40,3 @@ Read-Only:
 - `on_variation` (Number)
 - `true_description` (String)
 - `true_display_name` (String)
-
-
-<a id="nestedatt--default_client_side_availability"></a>
-### Nested Schema for `default_client_side_availability`
-
-Read-Only:
-
-- `using_environment_id` (Boolean)
-- `using_mobile_key` (Boolean)

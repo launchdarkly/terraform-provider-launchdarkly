@@ -48,8 +48,6 @@ data "launchdarkly_flag_defaults" "test" {
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr(resourceName, PROJECT_KEY, projectKey),
 					resource.TestCheckResourceAttrSet(resourceName, TEMPORARY),
-					resource.TestCheckResourceAttrSet(resourceName, "default_client_side_availability.0.using_environment_id"),
-					resource.TestCheckResourceAttrSet(resourceName, "default_client_side_availability.0.using_mobile_key"),
 					resource.TestCheckResourceAttrSet(resourceName, "boolean_defaults.0.true_display_name"),
 					resource.TestCheckResourceAttrSet(resourceName, "boolean_defaults.0.false_display_name"),
 					resource.TestCheckResourceAttrSet(resourceName, "boolean_defaults.0.on_variation"),

@@ -28,27 +28,6 @@ func baseFlagDefaultsSchema(isDataSource bool) map[string]*schema.Schema {
 			Computed:    isDataSource,
 			Description: "Whether new flags should be temporary by default.",
 		},
-		DEFAULT_CLIENT_SIDE_AVAILABILITY: {
-			Type:        schema.TypeList,
-			Required:    !isDataSource,
-			Computed:    isDataSource,
-			MaxItems:    1,
-			Description: "A block describing which client-side SDKs can use new flags by default.",
-			Elem: &schema.Resource{
-				Schema: map[string]*schema.Schema{
-					USING_ENVIRONMENT_ID: {
-						Type:        schema.TypeBool,
-						Required:    true,
-						Description: "Whether new flags are available to client-side SDKs using the environment ID by default.",
-					},
-					USING_MOBILE_KEY: {
-						Type:        schema.TypeBool,
-						Required:    true,
-						Description: "Whether new flags are available to mobile SDKs using the mobile key by default.",
-					},
-				},
-			},
-		},
 		BOOLEAN_DEFAULTS: {
 			Type:        schema.TypeList,
 			Required:    !isDataSource,
@@ -138,24 +117,6 @@ func flagDefaultsRead(ctx context.Context, d *schema.ResourceData, meta interfac
 		_ = d.Set(TEMPORARY, *flagDefaults.Temporary)
 	}
 
-	if flagDefaults.DefaultClientSideAvailability != nil {
-		csa := flagDefaults.DefaultClientSideAvailability
-		csaMap := []map[string]interface{}{{
-			USING_ENVIRONMENT_ID: false,
-			USING_MOBILE_KEY:     false,
-		}}
-		if csa.UsingEnvironmentId != nil {
-			csaMap[0][USING_ENVIRONMENT_ID] = *csa.UsingEnvironmentId
-		}
-		if csa.UsingMobileKey != nil {
-			csaMap[0][USING_MOBILE_KEY] = *csa.UsingMobileKey
-		}
-		err = d.Set(DEFAULT_CLIENT_SIDE_AVAILABILITY, csaMap)
-		if err != nil {
-			return diag.Errorf("failed to set default_client_side_availability on flag defaults for project %q: %v", projectKey, err)
-		}
-	}
-
 	if flagDefaults.BooleanDefaults != nil {
 		bd := flagDefaults.BooleanDefaults
 		bdMap := []map[string]interface{}{{
@@ -175,12 +136,37 @@ func flagDefaultsRead(ctx context.Context, d *schema.ResourceData, meta interfac
 	return diags
 }
 
-func flagDefaultsPayloadFromResourceData(d *schema.ResourceData) ldapi.UpsertFlagDefaultsPayload {
+// getCurrentCSA reads the current default_client_side_availability from the API
+// so it can be passed through unchanged on PUT requests. This avoids conflicting
+// with the launchdarkly_project resource which owns CSA settings.
+func getCurrentCSA(client *Client, projectKey string) (*ldapi.DefaultClientSideAvailability, error) {
+	var flagDefaults *ldapi.FlagDefaultsRep
+	var err error
+	err = client.withConcurrency(client.ctx, func() error {
+		flagDefaults, _, err = client.ld.ProjectsApi.GetFlagDefaultsByProject(client.ctx, projectKey).Execute()
+		return err
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	// Convert from the GET response type (pointer fields) to the PUT request type (value fields)
+	csa := ldapi.NewDefaultClientSideAvailability(false, false)
+	if flagDefaults.DefaultClientSideAvailability != nil {
+		if flagDefaults.DefaultClientSideAvailability.UsingMobileKey != nil {
+			csa.UsingMobileKey = *flagDefaults.DefaultClientSideAvailability.UsingMobileKey
+		}
+		if flagDefaults.DefaultClientSideAvailability.UsingEnvironmentId != nil {
+			csa.UsingEnvironmentId = *flagDefaults.DefaultClientSideAvailability.UsingEnvironmentId
+		}
+	}
+
+	return csa, nil
+}
+
+func flagDefaultsPayloadFromResourceData(d *schema.ResourceData, csa ldapi.DefaultClientSideAvailability) ldapi.UpsertFlagDefaultsPayload {
 	tags := stringsFromResourceData(d, TAGS)
 	temporary := d.Get(TEMPORARY).(bool)
-
-	usingEnvironmentId := d.Get(fmt.Sprintf("%s.0.%s", DEFAULT_CLIENT_SIDE_AVAILABILITY, USING_ENVIRONMENT_ID)).(bool)
-	usingMobileKey := d.Get(fmt.Sprintf("%s.0.%s", DEFAULT_CLIENT_SIDE_AVAILABILITY, USING_MOBILE_KEY)).(bool)
 
 	trueDisplayName := d.Get(fmt.Sprintf("%s.0.%s", BOOLEAN_DEFAULTS, TRUE_DISPLAY_NAME)).(string)
 	falseDisplayName := d.Get(fmt.Sprintf("%s.0.%s", BOOLEAN_DEFAULTS, FALSE_DISPLAY_NAME)).(string)
@@ -200,9 +186,6 @@ func flagDefaultsPayloadFromResourceData(d *schema.ResourceData) ldapi.UpsertFla
 			onVariation,
 			offVariation,
 		),
-		*ldapi.NewDefaultClientSideAvailability(
-			usingMobileKey,
-			usingEnvironmentId,
-		),
+		csa,
 	)
 }

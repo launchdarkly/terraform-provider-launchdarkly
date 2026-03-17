@@ -34,9 +34,15 @@ This resource allows you to manage the default settings applied to new feature f
 func resourceFlagDefaultsCreate(ctx context.Context, d *schema.ResourceData, metaRaw interface{}) diag.Diagnostics {
 	client := metaRaw.(*Client)
 	projectKey := d.Get(PROJECT_KEY).(string)
-	payload := flagDefaultsPayloadFromResourceData(d)
 
-	var err error
+	// Read current CSA from the API so we pass it through unchanged.
+	// CSA is managed by the launchdarkly_project resource, not this one.
+	csa, err := getCurrentCSA(client, projectKey)
+	if err != nil {
+		return diag.Errorf("failed to read current client-side availability for project %q: %s", projectKey, handleLdapiErr(err))
+	}
+
+	payload := flagDefaultsPayloadFromResourceData(d, *csa)
 	err = client.withConcurrency(client.ctx, func() error {
 		_, _, err = client.ld.ProjectsApi.PutFlagDefaultsByProject(client.ctx, projectKey).UpsertFlagDefaultsPayload(payload).Execute()
 		return err
@@ -56,9 +62,14 @@ func resourceFlagDefaultsRead(ctx context.Context, d *schema.ResourceData, metaR
 func resourceFlagDefaultsUpdate(ctx context.Context, d *schema.ResourceData, metaRaw interface{}) diag.Diagnostics {
 	client := metaRaw.(*Client)
 	projectKey := d.Get(PROJECT_KEY).(string)
-	payload := flagDefaultsPayloadFromResourceData(d)
 
-	var err error
+	// Read current CSA from the API so we pass it through unchanged.
+	csa, err := getCurrentCSA(client, projectKey)
+	if err != nil {
+		return diag.Errorf("failed to read current client-side availability for project %q: %s", projectKey, handleLdapiErr(err))
+	}
+
+	payload := flagDefaultsPayloadFromResourceData(d, *csa)
 	err = client.withConcurrency(client.ctx, func() error {
 		_, _, err = client.ld.ProjectsApi.PutFlagDefaultsByProject(client.ctx, projectKey).UpsertFlagDefaultsPayload(payload).Execute()
 		return err

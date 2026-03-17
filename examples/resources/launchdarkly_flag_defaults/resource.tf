@@ -4,11 +4,6 @@ resource "launchdarkly_flag_defaults" "example" {
   tags      = ["terraform"]
   temporary = false
 
-  default_client_side_availability {
-    using_environment_id = false
-    using_mobile_key     = true
-  }
-
   boolean_defaults {
     true_display_name  = "True"
     false_display_name = "False"

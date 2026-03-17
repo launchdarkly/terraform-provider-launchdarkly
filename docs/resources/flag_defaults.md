@@ -24,11 +24,6 @@ resource "launchdarkly_flag_defaults" "example" {
   tags      = ["terraform"]
   temporary = false
 
-  default_client_side_availability {
-    using_environment_id = false
-    using_mobile_key     = true
-  }
-
   boolean_defaults {
     true_display_name  = "True"
     false_display_name = "False"
@@ -46,7 +41,6 @@ resource "launchdarkly_flag_defaults" "example" {
 ### Required
 
 - `boolean_defaults` (Block List, Min: 1, Max: 1) A block describing the default boolean flag variation settings. (see [below for nested schema](#nestedblock--boolean_defaults))
-- `default_client_side_availability` (Block List, Min: 1, Max: 1) A block describing which client-side SDKs can use new flags by default. (see [below for nested schema](#nestedblock--default_client_side_availability))
 - `project_key` (String) The project key. A change in this field will force the destruction of the existing resource and the creation of a new one.
 - `temporary` (Boolean) Whether new flags should be temporary by default.
 
@@ -69,15 +63,6 @@ Required:
 - `on_variation` (Number) The variation index of the boolean flag variation to serve when the flag's targeting is on.
 - `true_description` (String) The description for the true variation.
 - `true_display_name` (String) The display name for the true variation.
-
-
-<a id="nestedblock--default_client_side_availability"></a>
-### Nested Schema for `default_client_side_availability`
-
-Required:
-
-- `using_environment_id` (Boolean) Whether new flags are available to client-side SDKs using the environment ID by default.
-- `using_mobile_key` (Boolean) Whether new flags are available to mobile SDKs using the mobile key by default.
 
 ## Import
 

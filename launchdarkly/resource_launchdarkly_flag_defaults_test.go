@@ -30,11 +30,6 @@ resource "launchdarkly_flag_defaults" "test" {
 	tags      = ["terraform"]
 	temporary = false
 
-	default_client_side_availability {
-		using_environment_id = false
-		using_mobile_key     = true
-	}
-
 	boolean_defaults {
 		true_display_name  = "True"
 		false_display_name = "False"
@@ -68,11 +63,6 @@ resource "launchdarkly_flag_defaults" "test" {
 	tags      = ["terraform", "updated"]
 	temporary = true
 
-	default_client_side_availability {
-		using_environment_id = true
-		using_mobile_key     = false
-	}
-
 	boolean_defaults {
 		true_display_name  = "Enabled"
 		false_display_name = "Disabled"
@@ -102,8 +92,6 @@ func TestAccFlagDefaults_CreateAndUpdate(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, PROJECT_KEY, projectKey),
 					resource.TestCheckResourceAttr(resourceName, TEMPORARY, "false"),
 					resource.TestCheckResourceAttr(resourceName, "tags.#", "1"),
-					resource.TestCheckResourceAttr(resourceName, "default_client_side_availability.0.using_environment_id", "false"),
-					resource.TestCheckResourceAttr(resourceName, "default_client_side_availability.0.using_mobile_key", "true"),
 					resource.TestCheckResourceAttr(resourceName, "boolean_defaults.0.true_display_name", "True"),
 					resource.TestCheckResourceAttr(resourceName, "boolean_defaults.0.false_display_name", "False"),
 					resource.TestCheckResourceAttr(resourceName, "boolean_defaults.0.true_description", ""),
@@ -124,8 +112,6 @@ func TestAccFlagDefaults_CreateAndUpdate(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, PROJECT_KEY, projectKey),
 					resource.TestCheckResourceAttr(resourceName, TEMPORARY, "true"),
 					resource.TestCheckResourceAttr(resourceName, "tags.#", "2"),
-					resource.TestCheckResourceAttr(resourceName, "default_client_side_availability.0.using_environment_id", "true"),
-					resource.TestCheckResourceAttr(resourceName, "default_client_side_availability.0.using_mobile_key", "false"),
 					resource.TestCheckResourceAttr(resourceName, "boolean_defaults.0.true_display_name", "Enabled"),
 					resource.TestCheckResourceAttr(resourceName, "boolean_defaults.0.false_display_name", "Disabled"),
 					resource.TestCheckResourceAttr(resourceName, "boolean_defaults.0.true_description", "Flag is enabled"),
