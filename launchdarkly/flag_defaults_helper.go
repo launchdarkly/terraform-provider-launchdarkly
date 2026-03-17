@@ -106,11 +106,13 @@ func flagDefaultsRead(ctx context.Context, d *schema.ResourceData, meta interfac
 
 	_ = d.Set(PROJECT_KEY, projectKey)
 
-	if flagDefaults.Tags != nil {
-		err = d.Set(TAGS, flagDefaults.Tags)
-		if err != nil {
-			return diag.Errorf("failed to set tags on flag defaults for project %q: %v", projectKey, err)
-		}
+	tags := flagDefaults.Tags
+	if tags == nil {
+		tags = []string{}
+	}
+	err = d.Set(TAGS, tags)
+	if err != nil {
+		return diag.Errorf("failed to set tags on flag defaults for project %q: %v", projectKey, err)
 	}
 
 	if flagDefaults.Temporary != nil {
