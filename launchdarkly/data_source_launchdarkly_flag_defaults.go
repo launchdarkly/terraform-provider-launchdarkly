@@ -11,7 +11,7 @@ func dataSourceFlagDefaults() *schema.Resource {
 	schemaMap := baseFlagDefaultsSchema(true)
 	return &schema.Resource{
 		ReadContext: dataSourceFlagDefaultsRead,
-		Schema:     removeInvalidFieldsForDataSource(schemaMap),
+		Schema:      removeInvalidFieldsForDataSource(schemaMap),
 
 		Description: `Provides a LaunchDarkly flag defaults data source.
 
