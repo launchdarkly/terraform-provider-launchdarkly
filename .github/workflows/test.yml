@@ -82,6 +82,9 @@ jobs:
     strategy:
       matrix:
         test_case:
+          - TestAccAIConfig_
+          - TestAccAIConfigVariation
+          - TestAccAITool
           - TestAccDataSource
           - TestAccAccessToken
           - TestAccAuditLogSubscription
@@ -92,6 +95,7 @@ jobs:
           - TestAccFeatureFlagEnvironment
           - TestAccFlagTrigger
           - TestAccMetric
+          - TestAccModelConfig
           - TestAccProject
           - TestAccRelayProxy
           - TestAccSegment
