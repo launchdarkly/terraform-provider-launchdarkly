@@ -67,6 +67,7 @@ resource "launchdarkly_ai_config" "test" {
 	project_key = launchdarkly_project.test.key
 	key         = "%s"
 	name        = "Agent Mode Config"
+	description = "Agent mode AI config"
 	mode        = "agent"
 }
 `
@@ -86,6 +87,7 @@ resource "launchdarkly_ai_config" "test" {
 	project_key   = launchdarkly_project.test.key
 	key           = "%s"
 	name          = "Maintained AI Config"
+	description   = "AI config with member maintainer"
 	maintainer_id = "%s"
 }
 `
@@ -111,6 +113,7 @@ resource "launchdarkly_ai_config" "test" {
 	project_key         = launchdarkly_project.test.key
 	key                 = "%s"
 	name                = "Team Maintained AI Config"
+	description         = "AI config with team maintainer"
 	maintainer_team_key = launchdarkly_team.test.key
 }
 `
@@ -127,19 +130,21 @@ resource "launchdarkly_project" "test" {
 }
 
 resource "launchdarkly_metric" "test" {
-	project_key = launchdarkly_project.test.key
-	key         = "%s"
-	name        = "AI Eval Metric"
-	kind        = "custom"
-	event_key   = "ai-eval"
-	is_numeric  = true
-	unit        = "score"
+	project_key      = launchdarkly_project.test.key
+	key              = "%s"
+	name             = "AI Eval Metric"
+	kind             = "custom"
+	event_key        = "ai-eval"
+	is_numeric       = true
+	unit             = "score"
+	success_criteria = "HigherThanBaseline"
 }
 
 resource "launchdarkly_ai_config" "test" {
 	project_key           = launchdarkly_project.test.key
 	key                   = "%s"
 	name                  = "Evaluated AI Config"
+	description           = "AI config with evaluation metric"
 	evaluation_metric_key = launchdarkly_metric.test.key
 	is_inverted           = %t
 }

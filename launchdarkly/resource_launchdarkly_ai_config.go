@@ -38,6 +38,9 @@ func resourceAIConfigCreate(ctx context.Context, d *schema.ResourceData, metaRaw
 	name := d.Get(NAME).(string)
 
 	post := *ldapi.NewAIConfigPost(configKey, name)
+	// The constructor sets Description to "" by default, which the API rejects.
+	// Clear it so it's omitted from the JSON unless the user explicitly sets it.
+	post.Description = nil
 
 	if v, ok := d.GetOk(DESCRIPTION); ok {
 		description := v.(string)
