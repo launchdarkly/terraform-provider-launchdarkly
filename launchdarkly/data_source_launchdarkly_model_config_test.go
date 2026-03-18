@@ -72,7 +72,7 @@ resource "launchdarkly_model_config" "test" {
 	key         = "%s"
 	name        = "%s"
 	model_id    = "%s"
-	provider    = "%s"
+	model_provider = "%s"
 	tags        = ["test"]
 }
 

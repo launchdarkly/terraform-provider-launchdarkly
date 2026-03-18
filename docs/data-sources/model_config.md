@@ -39,8 +39,8 @@ data "launchdarkly_model_config" "example" {
 - `icon` (String) The icon for the model config.
 - `id` (String) The ID of this resource.
 - `model_id` (String) The model identifier (e.g. `gpt-4`, `claude-3`).
+- `model_provider` (String) The provider name for the model config (e.g. `openai`, `anthropic`).
 - `name` (String) The model config's human-readable name.
 - `params` (String) A JSON string representing the model parameters (e.g. `{"temperature": 0.7, "maxTokens": 4096}`).
-- `provider` (String) The provider name for the model config (e.g. `openai`, `anthropic`).
 - `tags` (Set of String) Tags associated with your resource.
 - `version` (Number) The version of the model config.

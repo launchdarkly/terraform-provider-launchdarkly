@@ -78,7 +78,13 @@ func baseModelConfigSchema(isDataSource bool) map[string]*schema.Schema {
 			ValidateFunc:     emptyValueIfDataSource(validateJsonStringFunc, isDataSource),
 			DiffSuppressFunc: emptyValueIfDataSource(suppressEquivalentJsonDiffs, isDataSource),
 		},
-		TAGS: tagsSchema(tagsSchemaOptions{isDataSource: isDataSource}),
+		TAGS: func() *schema.Schema {
+			s := tagsSchema(tagsSchemaOptions{isDataSource: isDataSource})
+			if !isDataSource {
+				s.ForceNew = true
+			}
+			return s
+		}(),
 		VERSION: {
 			Type:        schema.TypeInt,
 			Computed:    true,

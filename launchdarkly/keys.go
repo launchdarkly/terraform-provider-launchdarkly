@@ -112,7 +112,7 @@ const (
 	PROGRESSIVE_RELEASE_CONFIG                = "progressive_release_config"
 	PROJECT_KEY                               = "project_key"
 	PROJECT_KEYS                              = "project_keys"
-	PROVIDER_NAME                             = "provider"
+	PROVIDER_NAME                             = "model_provider"
 	RANDOMIZATION_UNITS                       = "randomization_units"
 	RECONCILE_ON_APPLY                        = "reconcile_on_apply"
 	RELEASE_METHOD                            = "release_method"

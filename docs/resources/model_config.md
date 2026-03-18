@@ -21,7 +21,7 @@ resource "launchdarkly_model_config" "example" {
   key                  = "gpt-4-turbo"
   name                 = "GPT-4 Turbo"
   model_id             = "gpt-4-turbo"
-  provider             = "openai"
+  model_provider       = "openai"
   cost_per_input_token = 0.00001
   tags                 = ["production"]
 }
@@ -43,8 +43,8 @@ resource "launchdarkly_model_config" "example" {
 - `cost_per_output_token` (Number) The cost per output token for the model. A change in this field will force the destruction of the existing resource and the creation of a new one.
 - `custom_parameters` (String) A JSON string representing custom parameters for the model config. A change in this field will force the destruction of the existing resource and the creation of a new one.
 - `icon` (String) The icon for the model config. A change in this field will force the destruction of the existing resource and the creation of a new one.
+- `model_provider` (String) The provider name for the model config (e.g. `openai`, `anthropic`). A change in this field will force the destruction of the existing resource and the creation of a new one.
 - `params` (String) A JSON string representing the model parameters (e.g. `{"temperature": 0.7, "maxTokens": 4096}`). A change in this field will force the destruction of the existing resource and the creation of a new one.
-- `provider` (String) The provider name for the model config (e.g. `openai`, `anthropic`). A change in this field will force the destruction of the existing resource and the creation of a new one.
 - `tags` (Set of String) Tags associated with your resource.
 
 ### Read-Only
