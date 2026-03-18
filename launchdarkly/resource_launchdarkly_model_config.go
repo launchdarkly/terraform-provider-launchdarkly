@@ -69,8 +69,9 @@ func resourceModelConfigCreate(ctx context.Context, d *schema.ResourceData, meta
 		}
 	}
 
-	tags := stringsFromResourceData(d, TAGS)
-	post.Tags = tags
+	if v, ok := d.GetOk(TAGS); ok {
+		post.Tags = interfaceSliceToStringSlice(v.(*schema.Set).List())
+	}
 
 	if v, ok := d.GetOk(COST_PER_INPUT_TOKEN); ok {
 		costPerInputToken := v.(float64)

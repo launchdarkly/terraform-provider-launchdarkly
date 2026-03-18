@@ -69,8 +69,9 @@ func resourceAIConfigCreate(ctx context.Context, d *schema.ResourceData, metaRaw
 		post.IsInverted = &isInverted
 	}
 
-	tags := stringsFromResourceData(d, TAGS)
-	post.Tags = tags
+	if v, ok := d.GetOk(TAGS); ok {
+		post.Tags = interfaceSliceToStringSlice(v.(*schema.Set).List())
+	}
 
 	var err error
 	err = client.withConcurrency(client.ctx, func() error {
