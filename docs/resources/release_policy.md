@@ -34,11 +34,11 @@ resource "launchdarkly_release_policy" "guarded_example" {
     min_sample_size        = 100
 
     stages {
-      allocation      = 50000
+      allocation      = 25000
       duration_millis = 60000
     }
     stages {
-      allocation      = 100000
+      allocation      = 50000
       duration_millis = 0
     }
   }

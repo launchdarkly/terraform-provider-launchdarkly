@@ -214,11 +214,11 @@ resource "launchdarkly_release_policy" "test" {
 		rollback_on_regression = true
 		min_sample_size        = 100
 		stages {
-			allocation      = 50000
+			allocation      = 25000
 			duration_millis = 60000
 		}
 		stages {
-			allocation      = 100000
+			allocation      = 50000
 			duration_millis = 0
 		}
 	}
@@ -694,9 +694,9 @@ func TestAccReleasePolicy_GuardedWithStages(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "guarded_release_config.0.rollback_on_regression", "true"),
 					resource.TestCheckResourceAttr(resourceName, "guarded_release_config.0.min_sample_size", "100"),
 					resource.TestCheckResourceAttr(resourceName, "guarded_release_config.0.stages.#", "2"),
-					resource.TestCheckResourceAttr(resourceName, "guarded_release_config.0.stages.0.allocation", "50000"),
+					resource.TestCheckResourceAttr(resourceName, "guarded_release_config.0.stages.0.allocation", "25000"),
 					resource.TestCheckResourceAttr(resourceName, "guarded_release_config.0.stages.0.duration_millis", "60000"),
-					resource.TestCheckResourceAttr(resourceName, "guarded_release_config.0.stages.1.allocation", "100000"),
+					resource.TestCheckResourceAttr(resourceName, "guarded_release_config.0.stages.1.allocation", "50000"),
 					resource.TestCheckResourceAttr(resourceName, "guarded_release_config.0.stages.1.duration_millis", "0"),
 				),
 			},
