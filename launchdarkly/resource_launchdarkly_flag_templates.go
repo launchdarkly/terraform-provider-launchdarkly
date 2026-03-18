@@ -23,7 +23,7 @@ func resourceFlagTemplates() *schema.Resource {
 
 		Description: `Provides a LaunchDarkly flag templates resource.
 
-This resource allows you to manage the flag template settings applied to new feature flags created within a LaunchDarkly project.
+This resource allows you to manage the "Custom" flag template settings applied to new feature flags created within a LaunchDarkly project. LaunchDarkly projects include several built-in flag templates (Release, Kill switch, Experiment, Custom, Migration); this resource manages the Custom template only.
 
 -> **Note:** Flag templates are a singleton per project. Destroying this resource only removes it from Terraform state; the flag templates will continue to exist in LaunchDarkly.`,
 

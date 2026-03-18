@@ -4,14 +4,14 @@ page_title: "launchdarkly_flag_templates Data Source - launchdarkly"
 subcategory: ""
 description: |-
   Provides a LaunchDarkly flag templates data source.
-  This data source allows you to retrieve the flag template settings for a LaunchDarkly project.
+  This data source allows you to retrieve the "Custom" flag template settings for a LaunchDarkly project. LaunchDarkly projects include several built-in flag templates (Release, Kill switch, Experiment, Custom, Migration); this data source reads the Custom template only.
 ---
 
 # launchdarkly_flag_templates (Data Source)
 
 Provides a LaunchDarkly flag templates data source.
 
-This data source allows you to retrieve the flag template settings for a LaunchDarkly project.
+This data source allows you to retrieve the "Custom" flag template settings for a LaunchDarkly project. LaunchDarkly projects include several built-in flag templates (Release, Kill switch, Experiment, Custom, Migration); this data source reads the Custom template only.
 
 
 
