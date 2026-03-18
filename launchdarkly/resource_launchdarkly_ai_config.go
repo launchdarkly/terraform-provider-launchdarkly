@@ -38,6 +38,8 @@ func resourceAIConfigCreate(ctx context.Context, d *schema.ResourceData, metaRaw
 	name := d.Get(NAME).(string)
 
 	post := *ldapi.NewAIConfigPost(configKey, name)
+	// Override constructor defaults — only send fields the user explicitly set
+	post.Description = nil
 
 	if v, ok := d.GetOk(DESCRIPTION); ok {
 		description := v.(string)
