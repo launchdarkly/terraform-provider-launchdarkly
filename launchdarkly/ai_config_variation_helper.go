@@ -192,7 +192,7 @@ func aiConfigVariationRead(ctx context.Context, d *schema.ResourceData, meta int
 	// The API returns a default model object (e.g. {"custom":{},"modelName":"","parameters":{}})
 	// even when no model was configured. Only write to state if the model has meaningful content
 	// or the user had previously set it.
-	if variation.Model != nil && len(variation.Model) > 0 && !isEmptyModelMap(variation.Model) {
+	if len(variation.Model) > 0 && !isEmptyModelMap(variation.Model) {
 		modelJSON, err := mapToJsonString(variation.Model)
 		if err != nil {
 			return diag.Errorf("failed to serialize model for AI config variation %q: %s", variationKey, err)
