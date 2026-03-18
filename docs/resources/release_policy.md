@@ -25,17 +25,24 @@ resource "launchdarkly_release_policy" "guarded_example" {
   name           = "Production Guarded Release"
   release_method = "guarded-release"
 
-  # Optional: Add scope configuration
   scope {
     environment_keys = ["production", "staging"]
   }
 
-  # Required for guarded-release method
   guarded_release_config {
     rollback_on_regression = true
     min_sample_size        = 100
     metric_keys            = ["http-errors", "latency"]
     metric_group_keys      = ["frontend-metrics"]
+
+    stages {
+      allocation      = 25000
+      duration_millis = 60000
+    }
+    stages {
+      allocation      = 50000
+      duration_millis = 0
+    }
   }
 }
 
@@ -44,6 +51,21 @@ resource "launchdarkly_release_policy" "progressive_example" {
   key            = "staging-progressive"
   name           = "Staging Progressive Release"
   release_method = "progressive-release"
+
+  progressive_release_config {
+    stages {
+      allocation      = 25000
+      duration_millis = 60000
+    }
+    stages {
+      allocation      = 50000
+      duration_millis = 120000
+    }
+    stages {
+      allocation      = 100000
+      duration_millis = 0
+    }
+  }
 }
 
 # To import an existing release policy, use:
@@ -63,6 +85,7 @@ resource "launchdarkly_release_policy" "progressive_example" {
 ### Optional
 
 - `guarded_release_config` (Block List, Max: 1) Configuration for guarded release. (see [below for nested schema](#nestedblock--guarded_release_config))
+- `progressive_release_config` (Block List, Max: 1) Configuration for progressive release. (see [below for nested schema](#nestedblock--progressive_release_config))
 - `scope` (Block List, Max: 1) The scope configuration for the release policy. (see [below for nested schema](#nestedblock--scope))
 
 ### Read-Only
@@ -81,6 +104,33 @@ Optional:
 - `metric_group_keys` (List of String) List of metric group keys to monitor during the guarded release.
 - `metric_keys` (List of String) List of metric keys to monitor during the guarded release.
 - `min_sample_size` (Number) The minimum sample size for the release policy.
+- `stages` (Block List) The stages for the guarded release. (see [below for nested schema](#nestedblock--guarded_release_config--stages))
+
+<a id="nestedblock--guarded_release_config--stages"></a>
+### Nested Schema for `guarded_release_config.stages`
+
+Required:
+
+- `allocation` (Number) The allocation for this stage (in thousandths, e.g. 25000 = 25%). Must be between 0 and 50000.
+- `duration_millis` (Number) The duration in milliseconds for this stage.
+
+
+
+<a id="nestedblock--progressive_release_config"></a>
+### Nested Schema for `progressive_release_config`
+
+Optional:
+
+- `stages` (Block List) The stages for the progressive release. (see [below for nested schema](#nestedblock--progressive_release_config--stages))
+
+<a id="nestedblock--progressive_release_config--stages"></a>
+### Nested Schema for `progressive_release_config.stages`
+
+Required:
+
+- `allocation` (Number) The allocation for this stage (in thousandths, e.g. 25000 = 25%). Must be between 0 and 100000.
+- `duration_millis` (Number) The duration in milliseconds for this stage.
+
 
 
 <a id="nestedblock--scope"></a>
