@@ -95,7 +95,7 @@ func flattenStages(stages []ReleasePolicyStage) []map[string]interface{} {
 	result := make([]map[string]interface{}, len(stages))
 	for i, stage := range stages {
 		result[i] = map[string]interface{}{
-			STAGE_ALLOCATION:     stage.Allocation,
+			STAGE_ALLOCATION:      stage.Allocation,
 			STAGE_DURATION_MILLIS: stage.DurationMillis,
 		}
 	}

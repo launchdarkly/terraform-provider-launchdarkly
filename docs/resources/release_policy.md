@@ -107,8 +107,9 @@ Optional:
 
 Required:
 
-- `allocation` (Number) The allocation for this stage (in thousandths, e.g. 25000 = 25%).
+- `allocation` (Number) The allocation for this stage (in thousandths, e.g. 25000 = 25%). Must be between 0 and 50000.
 - `duration_millis` (Number) The duration in milliseconds for this stage.
+
 
 
 <a id="nestedblock--progressive_release_config"></a>
@@ -123,8 +124,9 @@ Optional:
 
 Required:
 
-- `allocation` (Number) The allocation for this stage (in thousandths, e.g. 25000 = 25%).
+- `allocation` (Number) The allocation for this stage (in thousandths, e.g. 25000 = 25%). Must be between 0 and 100000.
 - `duration_millis` (Number) The duration in milliseconds for this stage.
+
 
 
 <a id="nestedblock--scope"></a>

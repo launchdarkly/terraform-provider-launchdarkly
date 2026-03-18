@@ -4,15 +4,22 @@ resource "launchdarkly_release_policy" "guarded_example" {
   name           = "Production Guarded Release"
   release_method = "guarded-release"
 
-  # Optional: Add scope configuration 
   scope {
     environment_keys = ["production", "staging"]
   }
 
-  # Required for guarded-release method
   guarded_release_config {
     rollback_on_regression = true
     min_sample_size        = 100
+
+    stages {
+      allocation      = 50000
+      duration_millis = 60000
+    }
+    stages {
+      allocation      = 100000
+      duration_millis = 0
+    }
   }
 }
 
@@ -21,6 +28,21 @@ resource "launchdarkly_release_policy" "progressive_example" {
   key            = "staging-progressive"
   name           = "Staging Progressive Release"
   release_method = "progressive-release"
+
+  progressive_release_config {
+    stages {
+      allocation      = 25000
+      duration_millis = 60000
+    }
+    stages {
+      allocation      = 50000
+      duration_millis = 120000
+    }
+    stages {
+      allocation      = 100000
+      duration_millis = 0
+    }
+  }
 }
 
 # To import an existing release policy, use:
