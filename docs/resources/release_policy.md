@@ -33,6 +33,15 @@ resource "launchdarkly_release_policy" "guarded_example" {
     rollback_on_regression = true
     min_sample_size        = 100
     rollout_context_kind   = "user"
+
+    stages {
+      allocation      = 25000
+      duration_millis = 60000
+    }
+    stages {
+      allocation      = 50000
+      duration_millis = 0
+    }
   }
 }
 
@@ -44,6 +53,18 @@ resource "launchdarkly_release_policy" "progressive_example" {
 
   progressive_release_config {
     rollout_context_kind = "user"
+    stages {
+      allocation      = 25000
+      duration_millis = 60000
+    }
+    stages {
+      allocation      = 50000
+      duration_millis = 120000
+    }
+    stages {
+      allocation      = 100000
+      duration_millis = 0
+    }
   }
 }
 
@@ -82,6 +103,16 @@ Optional:
 
 - `min_sample_size` (Number) The minimum sample size for the release policy.
 - `rollout_context_kind` (String) The context kind to use as the randomization unit for the rollout.
+- `stages` (Block List) The stages for the guarded release. (see [below for nested schema](#nestedblock--guarded_release_config--stages))
+
+<a id="nestedblock--guarded_release_config--stages"></a>
+### Nested Schema for `guarded_release_config.stages`
+
+Required:
+
+- `allocation` (Number) The allocation for this stage (in thousandths, e.g. 25000 = 25%). Must be between 0 and 50000.
+- `duration_millis` (Number) The duration in milliseconds for this stage.
+
 
 
 <a id="nestedblock--progressive_release_config"></a>
@@ -90,6 +121,16 @@ Optional:
 Optional:
 
 - `rollout_context_kind` (String) The context kind to use as the randomization unit for the rollout.
+- `stages` (Block List) The stages for the progressive release. (see [below for nested schema](#nestedblock--progressive_release_config--stages))
+
+<a id="nestedblock--progressive_release_config--stages"></a>
+### Nested Schema for `progressive_release_config.stages`
+
+Required:
+
+- `allocation` (Number) The allocation for this stage (in thousandths, e.g. 25000 = 25%). Must be between 0 and 100000.
+- `duration_millis` (Number) The duration in milliseconds for this stage.
+
 
 
 <a id="nestedblock--scope"></a>

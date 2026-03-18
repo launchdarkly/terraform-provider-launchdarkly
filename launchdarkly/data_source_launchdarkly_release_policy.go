@@ -7,6 +7,21 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
+var releasePolicyStageSchemaComputed = &schema.Resource{
+	Schema: map[string]*schema.Schema{
+		STAGE_ALLOCATION: {
+			Type:        schema.TypeInt,
+			Computed:    true,
+			Description: "The allocation for this stage (in thousandths, e.g. 25000 = 25%).",
+		},
+		STAGE_DURATION_MILLIS: {
+			Type:        schema.TypeInt,
+			Computed:    true,
+			Description: "The duration in milliseconds for this stage.",
+		},
+	},
+}
+
 func dataSourceReleasePolicy() *schema.Resource {
 	return &schema.Resource{
 		ReadContext: dataSourceReleasePolicyRead,
@@ -76,6 +91,12 @@ Learn more about [release policies here](https://launchdarkly.com/docs/home/rele
 							Computed:    true,
 							Description: "The context kind to use as the randomization unit for the rollout.",
 						},
+						STAGES: {
+							Type:        schema.TypeList,
+							Computed:    true,
+							Description: "The stages for the guarded release.",
+							Elem:        releasePolicyStageSchemaComputed,
+						},
 					},
 				},
 			},
@@ -89,6 +110,12 @@ Learn more about [release policies here](https://launchdarkly.com/docs/home/rele
 							Type:        schema.TypeString,
 							Computed:    true,
 							Description: "The context kind to use as the randomization unit for the rollout.",
+						},
+						STAGES: {
+							Type:        schema.TypeList,
+							Computed:    true,
+							Description: "The stages for the progressive release.",
+							Elem:        releasePolicyStageSchemaComputed,
 						},
 					},
 				},

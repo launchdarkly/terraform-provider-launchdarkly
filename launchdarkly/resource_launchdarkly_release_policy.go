@@ -9,6 +9,38 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 )
 
+var guardedReleaseStageSchema = &schema.Resource{
+	Schema: map[string]*schema.Schema{
+		STAGE_ALLOCATION: {
+			Type:             schema.TypeInt,
+			Required:         true,
+			Description:      "The allocation for this stage (in thousandths, e.g. 25000 = 25%). Must be between 0 and 50000.",
+			ValidateDiagFunc: validation.ToDiagFunc(validation.IntBetween(0, 50000)),
+		},
+		STAGE_DURATION_MILLIS: {
+			Type:        schema.TypeInt,
+			Required:    true,
+			Description: "The duration in milliseconds for this stage.",
+		},
+	},
+}
+
+var progressiveReleaseStageSchema = &schema.Resource{
+	Schema: map[string]*schema.Schema{
+		STAGE_ALLOCATION: {
+			Type:             schema.TypeInt,
+			Required:         true,
+			Description:      "The allocation for this stage (in thousandths, e.g. 25000 = 25%). Must be between 0 and 100000.",
+			ValidateDiagFunc: validation.ToDiagFunc(validation.IntBetween(0, 100000)),
+		},
+		STAGE_DURATION_MILLIS: {
+			Type:        schema.TypeInt,
+			Required:    true,
+			Description: "The duration in milliseconds for this stage.",
+		},
+	},
+}
+
 func resourceReleasePolicy() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: resourceReleasePolicyCreate,
@@ -99,6 +131,12 @@ Learn more about [release policies here](https://launchdarkly.com/docs/home/rele
 							Optional:    true,
 							Description: "The context kind to use as the randomization unit for the rollout.",
 						},
+						STAGES: {
+							Type:        schema.TypeList,
+							Optional:    true,
+							Description: "The stages for the guarded release.",
+							Elem:        guardedReleaseStageSchema,
+						},
 					},
 				},
 			},
@@ -113,6 +151,12 @@ Learn more about [release policies here](https://launchdarkly.com/docs/home/rele
 							Type:        schema.TypeString,
 							Optional:    true,
 							Description: "The context kind to use as the randomization unit for the rollout.",
+						},
+						STAGES: {
+							Type:        schema.TypeList,
+							Optional:    true,
+							Description: "The stages for the progressive release.",
+							Elem:        progressiveReleaseStageSchema,
 						},
 					},
 				},
@@ -234,6 +278,19 @@ func convertScopeToAPI(scopeData map[string]interface{}) map[string]interface{} 
 	return scopeAPI
 }
 
+// convertStagesToAPI converts Terraform stages data to API format
+func convertStagesToAPI(stagesRaw []interface{}) []map[string]interface{} {
+	stages := make([]map[string]interface{}, len(stagesRaw))
+	for i, stageRaw := range stagesRaw {
+		stage := stageRaw.(map[string]interface{})
+		stages[i] = map[string]interface{}{
+			"allocation":     stage[STAGE_ALLOCATION],
+			"durationMillis": stage[STAGE_DURATION_MILLIS],
+		}
+	}
+	return stages
+}
+
 // convertGuardedConfigToAPI converts Terraform guarded config data to API format
 func convertGuardedConfigToAPI(config map[string]interface{}) map[string]interface{} {
 	guardedConfigAPI := make(map[string]interface{})
@@ -255,6 +312,13 @@ func convertGuardedConfigToAPI(config map[string]interface{}) map[string]interfa
 		}
 	}
 
+	if stages, ok := config[STAGES]; ok {
+		stagesList := stages.([]interface{})
+		if len(stagesList) > 0 {
+			guardedConfigAPI["stages"] = convertStagesToAPI(stagesList)
+		}
+	}
+
 	return guardedConfigAPI
 }
 
@@ -265,6 +329,13 @@ func convertProgressiveConfigToAPI(config map[string]interface{}) map[string]int
 	if rolloutContextKind, ok := config[ROLLOUT_CONTEXT_KIND]; ok {
 		if rolloutContextKind.(string) != "" {
 			progressiveConfigAPI["rolloutContextKindKey"] = rolloutContextKind
+		}
+	}
+
+	if stages, ok := config[STAGES]; ok {
+		stagesList := stages.([]interface{})
+		if len(stagesList) > 0 {
+			progressiveConfigAPI["stages"] = convertStagesToAPI(stagesList)
 		}
 	}
 
