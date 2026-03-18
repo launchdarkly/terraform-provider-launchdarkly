@@ -3,7 +3,9 @@ package launchdarkly
 import (
 	"context"
 	"fmt"
+	"log"
 	"net/http"
+	"strings"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -171,12 +173,23 @@ func resourceAIConfigVariationDelete(ctx context.Context, d *schema.ResourceData
 	configKey := d.Get(AI_CONFIG_KEY).(string)
 	variationKey := d.Get(KEY).(string)
 
+	var res *http.Response
 	var err error
 	err = client.withConcurrency(client.ctx, func() error {
-		_, err = client.ld.AIConfigsApi.DeleteAIConfigVariation(client.ctx, projectKey, configKey, variationKey).Execute()
+		res, err = client.ld.AIConfigsApi.DeleteAIConfigVariation(client.ctx, projectKey, configKey, variationKey).Execute()
 		return err
 	})
 	if err != nil {
+		// The API returns 404 if the parent AI config was already deleted (cascading delete).
+		// The API returns 400 "Cannot delete the last variation" if this is the only variation —
+		// in that case the parent AI config delete will cascade, so we can safely ignore it.
+		if isStatusNotFound(res) {
+			return diags
+		}
+		if strings.Contains(err.Error(), "Cannot delete the last variation") {
+			log.Printf("[WARN] cannot delete last variation %q in config %q project %q — will be removed when parent AI config is deleted", variationKey, configKey, projectKey)
+			return diags
+		}
 		return diag.Errorf("failed to delete AI config variation with key %q in config %q project %q: %s", variationKey, configKey, projectKey, handleLdapiErr(err))
 	}
 

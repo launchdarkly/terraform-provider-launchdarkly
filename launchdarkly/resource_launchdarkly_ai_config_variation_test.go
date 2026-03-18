@@ -25,6 +25,8 @@ resource "launchdarkly_ai_config" "test" {
 	project_key = launchdarkly_project.test.key
 	key         = "%s"
 	name        = "Parent AI Config"
+	description = "Parent config for variation tests"
+	tags        = ["test"]
 }
 
 resource "launchdarkly_ai_config_variation" "test" {
@@ -54,6 +56,8 @@ resource "launchdarkly_ai_config" "test" {
 	project_key = launchdarkly_project.test.key
 	key         = "%s"
 	name        = "Parent AI Config"
+	description = "Parent config for variation tests"
+	tags        = ["test"]
 }
 
 resource "launchdarkly_ai_config_variation" "test" {

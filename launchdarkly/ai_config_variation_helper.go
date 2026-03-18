@@ -188,12 +188,19 @@ func aiConfigVariationRead(ctx context.Context, d *schema.ResourceData, meta int
 	}
 	_ = d.Set(STATE, state)
 
-	// Serialize model map to JSON string
-	modelJSON, err := mapToJsonString(variation.Model)
-	if err != nil {
-		return diag.Errorf("failed to serialize model for AI config variation %q: %s", variationKey, err)
+	// Serialize model map to JSON string.
+	// The API returns a default model object (e.g. {"custom":{},"modelName":"","parameters":{}})
+	// even when no model was configured. Only write to state if the model has meaningful content
+	// or the user had previously set it.
+	if variation.Model != nil && len(variation.Model) > 0 && !isEmptyModelMap(variation.Model) {
+		modelJSON, err := mapToJsonString(variation.Model)
+		if err != nil {
+			return diag.Errorf("failed to serialize model for AI config variation %q: %s", variationKey, err)
+		}
+		_ = d.Set(MODEL, modelJSON)
+	} else {
+		_ = d.Set(MODEL, nil)
 	}
-	_ = d.Set(MODEL, modelJSON)
 
 	// Flatten messages
 	_ = d.Set(MESSAGES, flattenMessages(variation.Messages))
@@ -227,6 +234,28 @@ func flattenMessages(messages []ldapi.Message) []map[string]interface{} {
 		}
 	}
 	return result
+}
+
+// isEmptyModelMap returns true if the model map only contains empty/zero values
+// (as returned by the API default: {"custom":{},"modelName":"","parameters":{}}).
+func isEmptyModelMap(m map[string]interface{}) bool {
+	for _, v := range m {
+		switch val := v.(type) {
+		case string:
+			if val != "" {
+				return false
+			}
+		case map[string]interface{}:
+			if len(val) > 0 {
+				return false
+			}
+		default:
+			if v != nil {
+				return false
+			}
+		}
+	}
+	return true
 }
 
 func variationIdToKeys(id string) (projectKey, configKey, variationKey string, err error) {
