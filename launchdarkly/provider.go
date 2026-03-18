@@ -62,6 +62,9 @@ func Provider() *schema.Provider {
 	return &schema.Provider{
 		Schema: providerSchema(),
 		ResourcesMap: map[string]*schema.Resource{
+			"launchdarkly_ai_config":                 resourceAIConfig(),
+			"launchdarkly_ai_config_variation":       resourceAIConfigVariation(),
+			"launchdarkly_ai_tool":                   resourceAITool(),
 			"launchdarkly_team":                      resourceTeam(),
 			"launchdarkly_project":                   resourceProject(),
 			"launchdarkly_view":                      resourceView(),
@@ -80,8 +83,11 @@ func Provider() *schema.Provider {
 			"launchdarkly_audit_log_subscription":    resourceAuditLogSubscription(),
 			"launchdarkly_relay_proxy_configuration": resourceRelayProxyConfig(),
 			"launchdarkly_metric":                    resourceMetric(),
+			"launchdarkly_model_config":              resourceModelConfig(),
 		},
 		DataSourcesMap: map[string]*schema.Resource{
+			"launchdarkly_ai_config":                 dataSourceAIConfig(),
+			"launchdarkly_ai_tool":                   dataSourceAITool(),
 			"launchdarkly_team":                      dataSourceTeam(),
 			"launchdarkly_team_member":               dataSourceTeamMember(),
 			"launchdarkly_team_members":              dataSourceTeamMembers(),
@@ -96,6 +102,7 @@ func Provider() *schema.Provider {
 			"launchdarkly_audit_log_subscription":    dataSourceAuditLogSubscription(),
 			"launchdarkly_relay_proxy_configuration": dataSourceRelayProxyConfig(),
 			"launchdarkly_metric":                    dataSourceMetric(),
+			"launchdarkly_model_config":              dataSourceModelConfig(),
 		},
 		ConfigureContextFunc: providerConfigure,
 	}
