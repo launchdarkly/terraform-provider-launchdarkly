@@ -6,13 +6,7 @@ import (
 	"reflect"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 )
-
-// validateJsonString returns a SchemaValidateDiagFunc that validates a string is valid JSON.
-func validateJsonString() schema.SchemaValidateDiagFunc {
-	return validation.ToDiagFunc(validateJsonStringFunc)
-}
 
 // validateJsonStringFunc returns a ValidateFunc that validates a string is valid JSON.
 func validateJsonStringFunc(v interface{}, k string) (warns []string, errs []error) {
