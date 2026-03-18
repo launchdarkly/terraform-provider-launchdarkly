@@ -693,6 +693,88 @@ func TestAccReleasePolicy_WithFlagTagKeys(t *testing.T) {
 	})
 }
 
+func TestAccReleasePolicy_ProgressiveWithStages(t *testing.T) {
+	accTest := os.Getenv("TF_ACC")
+	if accTest == "" {
+		t.SkipNow()
+	}
+
+	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	policyKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	policyName := "Test Progressive Release With Stages"
+	resourceName := "launchdarkly_release_policy.test"
+
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck: func() {
+			testAccPreCheck(t)
+		},
+		Providers:    testAccProviders,
+		CheckDestroy: testAccCheckReleasePolicyDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config: fmt.Sprintf(testAccReleasePolicyProgressiveWithStages, projectKey, policyKey, policyName),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckReleasePolicyExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, RELEASE_METHOD, "progressive-release"),
+					resource.TestCheckResourceAttr(resourceName, "progressive_release_config.0.stages.#", "3"),
+					resource.TestCheckResourceAttr(resourceName, "progressive_release_config.0.stages.0.allocation", "25000"),
+					resource.TestCheckResourceAttr(resourceName, "progressive_release_config.0.stages.0.duration_millis", "60000"),
+					resource.TestCheckResourceAttr(resourceName, "progressive_release_config.0.stages.1.allocation", "50000"),
+					resource.TestCheckResourceAttr(resourceName, "progressive_release_config.0.stages.1.duration_millis", "120000"),
+					resource.TestCheckResourceAttr(resourceName, "progressive_release_config.0.stages.2.allocation", "100000"),
+					resource.TestCheckResourceAttr(resourceName, "progressive_release_config.0.stages.2.duration_millis", "0"),
+				),
+			},
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
+		},
+	})
+}
+
+func TestAccReleasePolicy_GuardedWithStages(t *testing.T) {
+	accTest := os.Getenv("TF_ACC")
+	if accTest == "" {
+		t.SkipNow()
+	}
+
+	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	policyKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	policyName := "Test Guarded Release With Stages"
+	resourceName := "launchdarkly_release_policy.test"
+
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck: func() {
+			testAccPreCheck(t)
+		},
+		Providers:    testAccProviders,
+		CheckDestroy: testAccCheckReleasePolicyDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config: fmt.Sprintf(testAccReleasePolicyGuardedWithStages, projectKey, policyKey, policyName),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckReleasePolicyExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, RELEASE_METHOD, "guarded-release"),
+					resource.TestCheckResourceAttr(resourceName, "guarded_release_config.0.rollback_on_regression", "true"),
+					resource.TestCheckResourceAttr(resourceName, "guarded_release_config.0.min_sample_size", "100"),
+					resource.TestCheckResourceAttr(resourceName, "guarded_release_config.0.stages.#", "2"),
+					resource.TestCheckResourceAttr(resourceName, "guarded_release_config.0.stages.0.allocation", "25000"),
+					resource.TestCheckResourceAttr(resourceName, "guarded_release_config.0.stages.0.duration_millis", "60000"),
+					resource.TestCheckResourceAttr(resourceName, "guarded_release_config.0.stages.1.allocation", "50000"),
+					resource.TestCheckResourceAttr(resourceName, "guarded_release_config.0.stages.1.duration_millis", "0"),
+				),
+			},
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
+		},
+	})
+}
+
 func testAccCheckReleasePolicyExists(resourceName string) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
 		rs, ok := s.RootModule().Resources[resourceName]
