@@ -12,7 +12,7 @@ import (
 	ldapi "github.com/launchdarkly/api-client-go/v22"
 )
 
-func baseFlagDefaultsSchema(isDataSource bool) map[string]*schema.Schema {
+func baseFlagTemplatesSchema(isDataSource bool) map[string]*schema.Schema {
 	return map[string]*schema.Schema{
 		PROJECT_KEY: {
 			Type:             schema.TypeString,
@@ -75,7 +75,7 @@ func baseFlagDefaultsSchema(isDataSource bool) map[string]*schema.Schema {
 	}
 }
 
-func flagDefaultsRead(ctx context.Context, d *schema.ResourceData, meta interface{}, isDataSource bool) diag.Diagnostics {
+func flagTemplatesRead(ctx context.Context, d *schema.ResourceData, meta interface{}, isDataSource bool) diag.Diagnostics {
 	var diags diag.Diagnostics
 	client := meta.(*Client)
 	projectKey := d.Get(PROJECT_KEY).(string)
@@ -89,16 +89,16 @@ func flagDefaultsRead(ctx context.Context, d *schema.ResourceData, meta interfac
 	})
 
 	if isStatusNotFound(res) && !isDataSource {
-		log.Printf("[WARN] failed to find flag defaults for project %q, removing from state if present", projectKey)
+		log.Printf("[WARN] failed to find flag templates for project %q, removing from state if present", projectKey)
 		diags = append(diags, diag.Diagnostic{
 			Severity: diag.Warning,
-			Summary:  fmt.Sprintf("[WARN] failed to find flag defaults for project %q, removing from state if present", projectKey),
+			Summary:  fmt.Sprintf("[WARN] failed to find flag templates for project %q, removing from state if present", projectKey),
 		})
 		d.SetId("")
 		return diags
 	}
 	if err != nil {
-		return diag.Errorf("failed to get flag defaults for project %q: %s", projectKey, handleLdapiErr(err))
+		return diag.Errorf("failed to get flag templates for project %q: %s", projectKey, handleLdapiErr(err))
 	}
 
 	if isDataSource {
@@ -113,7 +113,7 @@ func flagDefaultsRead(ctx context.Context, d *schema.ResourceData, meta interfac
 	}
 	err = d.Set(TAGS, tags)
 	if err != nil {
-		return diag.Errorf("failed to set tags on flag defaults for project %q: %v", projectKey, err)
+		return diag.Errorf("failed to set tags on flag templates for project %q: %v", projectKey, err)
 	}
 
 	if flagDefaults.Temporary != nil {
@@ -132,7 +132,7 @@ func flagDefaultsRead(ctx context.Context, d *schema.ResourceData, meta interfac
 		}}
 		err = d.Set(BOOLEAN_DEFAULTS, bdMap)
 		if err != nil {
-			return diag.Errorf("failed to set boolean_defaults on flag defaults for project %q: %v", projectKey, err)
+			return diag.Errorf("failed to set boolean_defaults on flag templates for project %q: %v", projectKey, err)
 		}
 	}
 
@@ -168,7 +168,7 @@ func getCurrentCSA(client *Client, projectKey string) (*ldapi.DefaultClientSideA
 	return csa, nil
 }
 
-func flagDefaultsPayloadFromResourceData(d *schema.ResourceData, csa ldapi.DefaultClientSideAvailability) ldapi.UpsertFlagDefaultsPayload {
+func flagTemplatesPayloadFromResourceData(d *schema.ResourceData, csa ldapi.DefaultClientSideAvailability) ldapi.UpsertFlagDefaultsPayload {
 	tags := stringsFromResourceData(d, TAGS)
 	temporary := d.Get(TEMPORARY).(bool)
 

@@ -1,24 +1,24 @@
 ---
-page_title: "launchdarkly_flag_defaults Resource - launchdarkly"
+page_title: "launchdarkly_flag_templates Resource - launchdarkly"
 subcategory: ""
 description: |-
-  Provides a LaunchDarkly flag defaults resource.
-  This resource allows you to manage the default settings applied to new feature flags created within a LaunchDarkly project.
-  -> Note: Flag defaults are a singleton per project. Destroying this resource only removes it from Terraform state; the flag defaults will continue to exist in LaunchDarkly.
+  Provides a LaunchDarkly flag templates resource.
+  This resource allows you to manage the flag template settings applied to new feature flags created within a LaunchDarkly project.
+  -> Note: Flag templates are a singleton per project. Destroying this resource only removes it from Terraform state; the flag templates will continue to exist in LaunchDarkly.
 ---
 
-# launchdarkly_flag_defaults (Resource)
+# launchdarkly_flag_templates (Resource)
 
-Provides a LaunchDarkly flag defaults resource.
+Provides a LaunchDarkly flag templates resource.
 
-This resource allows you to manage the default settings applied to new feature flags created within a LaunchDarkly project.
+This resource allows you to manage the flag template settings applied to new feature flags created within a LaunchDarkly project.
 
--> **Note:** Flag defaults are a singleton per project. Destroying this resource only removes it from Terraform state; the flag defaults will continue to exist in LaunchDarkly.
+-> **Note:** Flag templates are a singleton per project. Destroying this resource only removes it from Terraform state; the flag templates will continue to exist in LaunchDarkly.
 
 ## Example Usage
 
 ```terraform
-resource "launchdarkly_flag_defaults" "example" {
+resource "launchdarkly_flag_templates" "example" {
   project_key = "my-project"
 
   tags      = ["terraform"]
@@ -69,6 +69,6 @@ Required:
 Import is supported using the following syntax:
 
 ```sh
-# LaunchDarkly flag defaults can be imported using the project key
-terraform import launchdarkly_flag_defaults.example my-project
+# LaunchDarkly flag templates can be imported using the project key
+terraform import launchdarkly_flag_templates.example my-project
 ```

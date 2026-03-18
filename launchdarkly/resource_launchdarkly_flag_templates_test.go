@@ -9,13 +9,13 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 )
 
-func testAccFlagDefaultsConfig(projectKey string) string {
+func testAccFlagTemplatesConfig(projectKey string) string {
 	return fmt.Sprintf(`
 resource "launchdarkly_project" "test" {
 	lifecycle {
 		ignore_changes = [environments]
 	}
-	name = "Flag Defaults Test Project"
+	name = "Flag Templates Test Project"
 	key  = "%s"
 	environments {
 		name  = "testEnvironment"
@@ -24,7 +24,7 @@ resource "launchdarkly_project" "test" {
 	}
 }
 
-resource "launchdarkly_flag_defaults" "test" {
+resource "launchdarkly_flag_templates" "test" {
 	project_key = launchdarkly_project.test.key
 
 	tags      = ["terraform"]
@@ -42,13 +42,13 @@ resource "launchdarkly_flag_defaults" "test" {
 `, projectKey)
 }
 
-func testAccFlagDefaultsConfigUpdate(projectKey string) string {
+func testAccFlagTemplatesConfigUpdate(projectKey string) string {
 	return fmt.Sprintf(`
 resource "launchdarkly_project" "test" {
 	lifecycle {
 		ignore_changes = [environments]
 	}
-	name = "Flag Defaults Test Project"
+	name = "Flag Templates Test Project"
 	key  = "%s"
 	environments {
 		name  = "testEnvironment"
@@ -57,7 +57,7 @@ resource "launchdarkly_project" "test" {
 	}
 }
 
-resource "launchdarkly_flag_defaults" "test" {
+resource "launchdarkly_flag_templates" "test" {
 	project_key = launchdarkly_project.test.key
 
 	tags      = ["terraform", "updated"]
@@ -75,9 +75,9 @@ resource "launchdarkly_flag_defaults" "test" {
 `, projectKey)
 }
 
-func TestAccFlagDefaults_CreateAndUpdate(t *testing.T) {
+func TestAccFlagTemplates_CreateAndUpdate(t *testing.T) {
 	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
-	resourceName := "launchdarkly_flag_defaults.test"
+	resourceName := "launchdarkly_flag_templates.test"
 
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
@@ -86,9 +86,9 @@ func TestAccFlagDefaults_CreateAndUpdate(t *testing.T) {
 		Providers: testAccProviders,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccFlagDefaultsConfig(projectKey),
+				Config: testAccFlagTemplatesConfig(projectKey),
 				Check: resource.ComposeTestCheckFunc(
-					testAccCheckFlagDefaultsExists(resourceName),
+					testAccCheckFlagTemplatesExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, PROJECT_KEY, projectKey),
 					resource.TestCheckResourceAttr(resourceName, TEMPORARY, "false"),
 					resource.TestCheckResourceAttr(resourceName, "tags.#", "1"),
@@ -106,9 +106,9 @@ func TestAccFlagDefaults_CreateAndUpdate(t *testing.T) {
 				ImportStateVerify: true,
 			},
 			{
-				Config: testAccFlagDefaultsConfigUpdate(projectKey),
+				Config: testAccFlagTemplatesConfigUpdate(projectKey),
 				Check: resource.ComposeTestCheckFunc(
-					testAccCheckFlagDefaultsExists(resourceName),
+					testAccCheckFlagTemplatesExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, PROJECT_KEY, projectKey),
 					resource.TestCheckResourceAttr(resourceName, TEMPORARY, "true"),
 					resource.TestCheckResourceAttr(resourceName, "tags.#", "2"),
@@ -124,19 +124,19 @@ func TestAccFlagDefaults_CreateAndUpdate(t *testing.T) {
 	})
 }
 
-func testAccCheckFlagDefaultsExists(resourceName string) resource.TestCheckFunc {
+func testAccCheckFlagTemplatesExists(resourceName string) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
 		rs, ok := s.RootModule().Resources[resourceName]
 		if !ok {
 			return fmt.Errorf("not found: %s", resourceName)
 		}
 		if rs.Primary.ID == "" {
-			return fmt.Errorf("flag defaults ID is not set")
+			return fmt.Errorf("flag templates ID is not set")
 		}
 		client := testAccProvider.Meta().(*Client)
 		_, _, err := client.ld.ProjectsApi.GetFlagDefaultsByProject(client.ctx, rs.Primary.ID).Execute()
 		if err != nil {
-			return fmt.Errorf("received an error getting flag defaults: %s", err)
+			return fmt.Errorf("received an error getting flag templates: %s", err)
 		}
 		return nil
 	}

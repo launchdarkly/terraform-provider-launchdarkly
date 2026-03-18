@@ -90,7 +90,7 @@ jobs:
           - TestAccEnvironment
           - TestAccFeatureFlag_
           - TestAccFeatureFlagEnvironment
-          - TestAccFlagDefaults
+          - TestAccFlagTemplates
           - TestAccFlagTrigger
           - TestAccMetric
           - TestAccProject

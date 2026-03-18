@@ -1,4 +1,4 @@
-resource "launchdarkly_flag_defaults" "example" {
+resource "launchdarkly_flag_templates" "example" {
   project_key = "my-project"
 
   tags      = ["terraform"]

@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestAccDataSourceFlagDefaults_exists(t *testing.T) {
+func TestAccDataSourceFlagTemplates_exists(t *testing.T) {
 	accTest := os.Getenv("TF_ACC")
 	if accTest == "" {
 		t.SkipNow()
@@ -22,7 +22,7 @@ func TestAccDataSourceFlagDefaults_exists(t *testing.T) {
 	require.NoError(t, err)
 
 	projectBody := ldapi.ProjectPost{
-		Name: "Flag Defaults DS Test",
+		Name: "Flag Templates DS Test",
 		Key:  projectKey,
 	}
 	_, err = testAccProjectScaffoldCreate(client, projectBody)
@@ -32,7 +32,7 @@ func TestAccDataSourceFlagDefaults_exists(t *testing.T) {
 		require.NoError(t, err)
 	}()
 
-	resourceName := "data.launchdarkly_flag_defaults.test"
+	resourceName := "data.launchdarkly_flag_templates.test"
 	resource.Test(t, resource.TestCase{
 		PreCheck: func() {
 			testAccPreCheck(t)
@@ -41,7 +41,7 @@ func TestAccDataSourceFlagDefaults_exists(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: fmt.Sprintf(`
-data "launchdarkly_flag_defaults" "test" {
+data "launchdarkly_flag_templates" "test" {
 	project_key = "%s"
 }
 `, projectKey),
