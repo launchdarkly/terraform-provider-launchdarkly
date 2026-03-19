@@ -15,7 +15,7 @@ func dataSourceFlagTemplates() *schema.Resource {
 
 		Description: `Provides a LaunchDarkly flag templates data source.
 
-This data source allows you to retrieve the "Custom" flag template settings for a LaunchDarkly project. LaunchDarkly projects include several built-in flag templates (Release, Kill switch, Experiment, Custom, Migration); this data source reads the Custom template only.`,
+This data source allows you to retrieve the "Custom" flag template settings for a LaunchDarkly project. LaunchDarkly projects include several built-in flag templates (Release, Kill switch, Experiment, Custom, Migration). This data source reads the Custom template only.`,
 	}
 }
 

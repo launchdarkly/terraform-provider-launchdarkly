@@ -3,17 +3,17 @@ page_title: "launchdarkly_flag_templates Resource - launchdarkly"
 subcategory: ""
 description: |-
   Provides a LaunchDarkly flag templates resource.
-  This resource allows you to manage the "Custom" flag template settings applied to new feature flags created within a LaunchDarkly project. LaunchDarkly projects include several built-in flag templates (Release, Kill switch, Experiment, Custom, Migration); this resource manages the Custom template only.
-  -> Note: Flag templates are a singleton per project. Destroying this resource only removes it from Terraform state; the flag templates will continue to exist in LaunchDarkly.
+  This resource allows you to manage the "Custom" flag template settings applied to new feature flags created within a LaunchDarkly project. LaunchDarkly projects include several built-in flag templates (Release, Kill switch, Experiment, Custom, Migration). This resource manages the Custom template only.
+  -> Note: Flag templates are a singleton per project. Destroying this resource only removes it from Terraform state. The flag templates will continue to exist in LaunchDarkly.
 ---
 
 # launchdarkly_flag_templates (Resource)
 
 Provides a LaunchDarkly flag templates resource.
 
-This resource allows you to manage the "Custom" flag template settings applied to new feature flags created within a LaunchDarkly project. LaunchDarkly projects include several built-in flag templates (Release, Kill switch, Experiment, Custom, Migration); this resource manages the Custom template only.
+This resource allows you to manage the "Custom" flag template settings applied to new feature flags created within a LaunchDarkly project. LaunchDarkly projects include several built-in flag templates (Release, Kill switch, Experiment, Custom, Migration). This resource manages the Custom template only.
 
--> **Note:** Flag templates are a singleton per project. Destroying this resource only removes it from Terraform state; the flag templates will continue to exist in LaunchDarkly.
+-> **Note:** Flag templates are a singleton per project. Destroying this resource only removes it from Terraform state. The flag templates will continue to exist in LaunchDarkly.
 
 ## Example Usage
 
@@ -40,7 +40,7 @@ resource "launchdarkly_flag_templates" "example" {
 
 ### Required
 
-- `boolean_defaults` (Block List, Min: 1, Max: 1) A block describing the default boolean flag variation settings. (see [below for nested schema](#nestedblock--boolean_defaults))
+- `boolean_defaults` (Block List, Min: 1, Max: 1) A block describing the default boolean flag variation settings. (See [below for nested schema](#nestedblock--boolean_defaults))
 - `project_key` (String) The project key. A change in this field will force the destruction of the existing resource and the creation of a new one.
 
 ### Optional

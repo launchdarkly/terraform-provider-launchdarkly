@@ -23,15 +23,27 @@ func resourceFlagTemplates() *schema.Resource {
 
 		Description: `Provides a LaunchDarkly flag templates resource.
 
-This resource allows you to manage the "Custom" flag template settings applied to new feature flags created within a LaunchDarkly project. LaunchDarkly projects include several built-in flag templates (Release, Kill switch, Experiment, Custom, Migration); this resource manages the Custom template only.
+This resource allows you to manage the "Custom" flag template settings applied to new feature flags created within a LaunchDarkly project. LaunchDarkly projects include several built-in flag templates (Release, Kill switch, Experiment, Custom, Migration). This resource manages the Custom template only.
 
--> **Note:** Flag templates are a singleton per project. Destroying this resource only removes it from Terraform state; the flag templates will continue to exist in LaunchDarkly.`,
+-> **Note:** Flag templates are a singleton per project. Destroying this resource only removes it from Terraform state. The flag templates will continue to exist in LaunchDarkly.`,
 
 		Schema: baseFlagTemplatesSchema(false),
 	}
 }
 
 func resourceFlagTemplatesCreate(ctx context.Context, d *schema.ResourceData, metaRaw interface{}) diag.Diagnostics {
+	return resourceFlagTemplatesUpsert(ctx, d, metaRaw, "create")
+}
+
+func resourceFlagTemplatesRead(ctx context.Context, d *schema.ResourceData, metaRaw interface{}) diag.Diagnostics {
+	return flagTemplatesRead(ctx, d, metaRaw, false)
+}
+
+func resourceFlagTemplatesUpdate(ctx context.Context, d *schema.ResourceData, metaRaw interface{}) diag.Diagnostics {
+	return resourceFlagTemplatesUpsert(ctx, d, metaRaw, "update")
+}
+
+func resourceFlagTemplatesUpsert(ctx context.Context, d *schema.ResourceData, metaRaw interface{}, operation string) diag.Diagnostics {
 	client := metaRaw.(*Client)
 	projectKey := d.Get(PROJECT_KEY).(string)
 
@@ -48,34 +60,11 @@ func resourceFlagTemplatesCreate(ctx context.Context, d *schema.ResourceData, me
 		return err
 	})
 	if err != nil {
-		return diag.Errorf("failed to create flag templates for project %q: %s", projectKey, handleLdapiErr(err))
+		return diag.Errorf("failed to %s flag templates for project %q: %s", operation, projectKey, handleLdapiErr(err))
 	}
 
-	d.SetId(projectKey)
-	return resourceFlagTemplatesRead(ctx, d, metaRaw)
-}
-
-func resourceFlagTemplatesRead(ctx context.Context, d *schema.ResourceData, metaRaw interface{}) diag.Diagnostics {
-	return flagTemplatesRead(ctx, d, metaRaw, false)
-}
-
-func resourceFlagTemplatesUpdate(ctx context.Context, d *schema.ResourceData, metaRaw interface{}) diag.Diagnostics {
-	client := metaRaw.(*Client)
-	projectKey := d.Get(PROJECT_KEY).(string)
-
-	// Read current CSA from the API so we pass it through unchanged.
-	csa, err := getCurrentCSA(client, projectKey)
-	if err != nil {
-		return diag.Errorf("failed to read current client-side availability for project %q: %s", projectKey, handleLdapiErr(err))
-	}
-
-	payload := flagTemplatesPayloadFromResourceData(d, *csa)
-	err = client.withConcurrency(client.ctx, func() error {
-		_, _, err = client.ld.ProjectsApi.PutFlagDefaultsByProject(client.ctx, projectKey).UpsertFlagDefaultsPayload(payload).Execute()
-		return err
-	})
-	if err != nil {
-		return diag.Errorf("failed to update flag templates for project %q: %s", projectKey, handleLdapiErr(err))
+	if operation == "create" {
+		d.SetId(projectKey)
 	}
 
 	return resourceFlagTemplatesRead(ctx, d, metaRaw)
