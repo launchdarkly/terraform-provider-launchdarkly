@@ -129,23 +129,13 @@ resource "launchdarkly_project" "test" {
 	}
 }
 
-resource "launchdarkly_metric" "test" {
-	project_key      = launchdarkly_project.test.key
-	key              = "%s"
-	name             = "AI Eval Metric"
-	kind             = "custom"
-	event_key        = "ai-eval"
-	is_numeric       = true
-	unit             = "score"
-	success_criteria = "HigherThanBaseline"
-}
-
 resource "launchdarkly_ai_config" "test" {
 	project_key           = launchdarkly_project.test.key
 	key                   = "%s"
 	name                  = "Evaluated AI Config"
 	description           = "AI config with evaluation metric"
-	evaluation_metric_key = launchdarkly_metric.test.key
+	mode                  = "judge"
+	evaluation_metric_key = "$ld:ai:judge:%s"
 	is_inverted           = %t
 }
 `
@@ -311,7 +301,8 @@ func TestAccAIConfig_WithTeamMaintainer(t *testing.T) {
 func TestAccAIConfig_WithEvaluationMetric(t *testing.T) {
 	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	configKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
-	metricKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	metricSuffix := acctest.RandStringFromCharSet(10, acctest.CharSetAlpha)
+	evalMetricKey := "$ld:ai:judge:" + metricSuffix
 	resourceName := "launchdarkly_ai_config.test"
 
 	resource.ParallelTest(t, resource.TestCase{
@@ -320,10 +311,10 @@ func TestAccAIConfig_WithEvaluationMetric(t *testing.T) {
 		CheckDestroy: testAccCheckAIConfigDestroy,
 		Steps: []resource.TestStep{
 			{
-				Config: fmt.Sprintf(testAccAIConfigWithEvaluationMetric, projectKey, metricKey, configKey, false),
+				Config: fmt.Sprintf(testAccAIConfigWithEvaluationMetric, projectKey, configKey, metricSuffix, false),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckAIConfigExists(resourceName),
-					resource.TestCheckResourceAttr(resourceName, EVALUATION_METRIC_KEY, metricKey),
+					resource.TestCheckResourceAttr(resourceName, EVALUATION_METRIC_KEY, evalMetricKey),
 					resource.TestCheckResourceAttr(resourceName, IS_INVERTED, "false"),
 				),
 			},
@@ -333,7 +324,7 @@ func TestAccAIConfig_WithEvaluationMetric(t *testing.T) {
 				ImportStateVerify: true,
 			},
 			{
-				Config: fmt.Sprintf(testAccAIConfigWithEvaluationMetric, projectKey, metricKey, configKey, true),
+				Config: fmt.Sprintf(testAccAIConfigWithEvaluationMetric, projectKey, configKey, metricSuffix, true),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckAIConfigExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, IS_INVERTED, "true"),

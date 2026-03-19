@@ -46,8 +46,8 @@ func baseAIConfigSchema(isDataSource bool) map[string]*schema.Schema {
 			Computed:         isDataSource,
 			ForceNew:         !isDataSource,
 			Default:          emptyValueIfDataSource("completion", isDataSource),
-			Description:      addForceNewDescription("The AI config's mode. Must be either `completion` or `agent`. Defaults to `completion`.", !isDataSource),
-			ValidateDiagFunc: validation.ToDiagFunc(validation.StringInSlice([]string{"completion", "agent"}, false)),
+			Description:      addForceNewDescription("The AI config's mode. Must be `completion`, `agent`, or `judge`. Defaults to `completion`.", !isDataSource),
+			ValidateDiagFunc: validation.ToDiagFunc(validation.StringInSlice([]string{"completion", "agent", "judge"}, false)),
 		},
 		TAGS: tagsSchema(tagsSchemaOptions{isDataSource: isDataSource}),
 		MAINTAINER_ID: {
@@ -167,9 +167,11 @@ func aiConfigRead(ctx context.Context, d *schema.ResourceData, meta interface{},
 		_ = d.Set(EVALUATION_METRIC_KEY, *aiConfig.EvaluationMetricKey)
 	}
 
+	isInverted := false
 	if aiConfig.IsInverted != nil {
-		_ = d.Set(IS_INVERTED, *aiConfig.IsInverted)
+		isInverted = *aiConfig.IsInverted
 	}
+	_ = d.Set(IS_INVERTED, isInverted)
 
 	// Set maintainer fields based on union type in API response
 	maintainer := aiConfig.GetMaintainer()
