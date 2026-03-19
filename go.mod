@@ -16,7 +16,7 @@ require (
 )
 
 require (
-	github.com/launchdarkly/api-client-go/v22 v22.0.0
+	github.com/launchdarkly/api-client-go/v22 v22.0.1-0.20260305104810-a434796e8e64
 	golang.org/x/sync v0.18.0
 )
 
