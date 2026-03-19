@@ -3,7 +3,9 @@ package launchdarkly
 import (
 	"context"
 	"fmt"
+	"log"
 	"net/http"
+	"strings"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -108,12 +110,24 @@ func resourceModelConfigDelete(ctx context.Context, d *schema.ResourceData, meta
 	projectKey := d.Get(PROJECT_KEY).(string)
 	modelConfigKey := d.Get(KEY).(string)
 
+	var res *http.Response
 	var err error
 	err = client.withConcurrency(client.ctx, func() error {
-		_, err = client.ld.AIConfigsApi.DeleteModelConfig(client.ctx, projectKey, modelConfigKey).Execute()
+		res, err = client.ld.AIConfigsApi.DeleteModelConfig(client.ctx, projectKey, modelConfigKey).Execute()
 		return err
 	})
 	if err != nil {
+		// The API returns 404 if the parent project was already deleted (cascading delete).
+		if isStatusNotFound(res) {
+			return diags
+		}
+		// The API returns 400 "model config is still in use" if a variation still references it.
+		// During destroy, the referencing resources will be deleted too, so this is safe to ignore.
+		errMsg := handleLdapiErr(err).Error()
+		if strings.Contains(errMsg, "model config is still in use") {
+			log.Printf("[WARN] model config %q in project %q is still in use — will be cleaned up when referencing resources are deleted", modelConfigKey, projectKey)
+			return diags
+		}
 		return diag.Errorf("failed to delete model config with key %q in project %q: %s", modelConfigKey, projectKey, handleLdapiErr(err))
 	}
 

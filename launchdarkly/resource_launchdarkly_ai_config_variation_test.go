@@ -135,12 +135,10 @@ resource "launchdarkly_ai_config" "test" {
 }
 
 resource "launchdarkly_ai_config_variation" "test" {
-	project_key  = launchdarkly_project.test.key
-	config_key   = launchdarkly_ai_config.test.key
-	key          = "%s"
-	name         = "Agent Variation"
-	description  = "%s"
-	instructions = "%s"
+	project_key = launchdarkly_project.test.key
+	config_key  = launchdarkly_ai_config.test.key
+	key         = "%s"
+	name        = "%s"
 }
 `
 
@@ -274,17 +272,16 @@ func TestAccAIConfigVariation_WithModelConfigKey(t *testing.T) {
 	})
 }
 
-// TestAccAIConfigVariation_AgentMode tests creating an agent-mode variation with
-// description and instructions. The POST creates version 1, then the first plan
-// detects drift because the API doesn't persist these fields on create. The second
-// apply patches them in (creating version 2). This is expected behavior due to
-// AI Config variation versioning.
+// TestAccAIConfigVariation_AgentMode tests creating a variation under an agent-mode AI config.
+// Note: The API does not support description/instructions fields on variation create/update —
+// those are read-only fields populated server-side. This test verifies that a basic variation
+// can be created and updated under an agent-mode parent config.
 func TestAccAIConfigVariation_AgentMode(t *testing.T) {
 	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	configKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	variationKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
-	description := "Agent variation description"
-	instructions := "Follow these steps to help the user"
+	variationName := "Agent Variation"
+	updatedName := "Updated Agent Variation"
 	resourceName := "launchdarkly_ai_config_variation.test"
 
 	resource.ParallelTest(t, resource.TestCase{
@@ -293,22 +290,28 @@ func TestAccAIConfigVariation_AgentMode(t *testing.T) {
 		CheckDestroy: testAccCheckAIConfigVariationDestroy,
 		Steps: []resource.TestStep{
 			{
-				// First apply: POST creates variation (v1) but may not persist description/instructions
-				Config:             fmt.Sprintf(testAccAIConfigVariationAgentMode, projectKey, configKey, variationKey, description, instructions),
-				ExpectNonEmptyPlan: true,
+				Config: fmt.Sprintf(testAccAIConfigVariationAgentMode, projectKey, configKey, variationKey, variationName),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckAIConfigVariationExists(resourceName),
-					resource.TestCheckResourceAttr(resourceName, NAME, "Agent Variation"),
+					resource.TestCheckResourceAttr(resourceName, NAME, variationName),
 				),
 			},
 			{
-				// Second apply: PATCH sets description/instructions (creates v2).
-				// The GET may still return v1 due to eventual consistency, so allow non-empty plan.
-				Config:             fmt.Sprintf(testAccAIConfigVariationAgentMode, projectKey, configKey, variationKey, description, instructions),
-				ExpectNonEmptyPlan: true,
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
+			{
+				Config: fmt.Sprintf(testAccAIConfigVariationAgentMode, projectKey, configKey, variationKey, updatedName),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckAIConfigVariationExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, NAME, updatedName),
 				),
+			},
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
 			},
 		},
 	})
