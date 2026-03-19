@@ -2,6 +2,13 @@
 
 All notable changes to the LaunchDarkly Terraform Provider will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org).
 
+## [2.28.0](https://github.com/launchdarkly/terraform-provider-launchdarkly/compare/v2.27.0...v2.28.0) (2026-03-19)
+
+
+### Features
+
+* [REL-12731] - add support for flag templates ([#403](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/403)) ([927d50b](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/927d50b7113dc21d3a2a4cc48ef686be2d7b49c5))
+
 ## [2.27.0](https://github.com/launchdarkly/terraform-provider-launchdarkly/compare/v2.26.2...v2.27.0) (2026-03-05)
 
 
