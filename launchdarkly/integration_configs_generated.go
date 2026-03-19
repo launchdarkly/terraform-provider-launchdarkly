@@ -74,6 +74,32 @@ var SUBSCRIPTION_CONFIGURATION_FIELDS = map[string]IntegrationConfig{
 			Type:          "enum",
 		},
 	},
+	"datadog-private": {
+		"apiKey": {
+			AllowedValues: []string{},
+			DefaultValue:  nil,
+			Description:   "Enter your Datadog [API key](https://app.datadoghq.com/organization-settings/api-keys).",
+			IsOptional:    false,
+			IsSecret:      true,
+			Type:          "string",
+		},
+		"hideMemberDetails": {
+			AllowedValues: []string{},
+			DefaultValue:  false,
+			Description:   "Don't send related member email and names.",
+			IsOptional:    true,
+			IsSecret:      false,
+			Type:          "boolean",
+		},
+		"hostURL": {
+			AllowedValues: []string{},
+			DefaultValue:  nil,
+			Description:   "Your Datadog host URL. Read [How do I tell which Datadog site I am on?](https://docs.datadoghq.com/getting_started/site/#how-do-i-tell-which-datadog-site-i-am-on) if you are unsure which host URL to select.",
+			IsOptional:    false,
+			IsSecret:      false,
+			Type:          "string",
+		},
+	},
 	"dynatrace": {
 		"apiToken": {
 			AllowedValues: []string{},

@@ -39,7 +39,7 @@ data "launchdarkly_ai_config" "example" {
 - `is_inverted` (Boolean) Whether the evaluation metric is inverted.
 - `maintainer_id` (String) The member ID of the maintainer for this AI config. Conflicts with `maintainer_team_key`.
 - `maintainer_team_key` (String) The team key of the maintainer team for this AI config. Conflicts with `maintainer_id`.
-- `mode` (String) The AI config's mode. Must be either `completion` or `agent`. Defaults to `completion`.
+- `mode` (String) The AI config's mode. Must be `completion`, `agent`, or `judge`. Defaults to `completion`.
 - `name` (String) The AI config's human-readable name.
 - `tags` (Set of String) Tags associated with your resource.
 - `variations` (List of Object) A list of variation summaries for this AI config. (see [below for nested schema](#nestedatt--variations))
