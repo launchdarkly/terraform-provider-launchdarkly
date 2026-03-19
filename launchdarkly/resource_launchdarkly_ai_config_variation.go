@@ -186,7 +186,8 @@ func resourceAIConfigVariationDelete(ctx context.Context, d *schema.ResourceData
 		if isStatusNotFound(res) {
 			return diags
 		}
-		if strings.Contains(err.Error(), "Cannot delete the last variation") {
+		errMsg := handleLdapiErr(err).Error()
+		if strings.Contains(errMsg, "Cannot delete the last variation") {
 			log.Printf("[WARN] cannot delete last variation %q in config %q project %q — will be removed when parent AI config is deleted", variationKey, configKey, projectKey)
 			return diags
 		}
