@@ -107,6 +107,7 @@ resource "launchdarkly_team" "test" {
 	key              = "%s"
 	name             = "AI Config Test Team"
 	custom_role_keys = []
+	depends_on       = [launchdarkly_project.test]
 }
 
 resource "launchdarkly_ai_config" "test" {

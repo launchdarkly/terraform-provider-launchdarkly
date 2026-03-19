@@ -100,6 +100,7 @@ resource "launchdarkly_ai_config" "test" {
 	name        = "Parent AI Config"
 	description = "Parent config for variation tests"
 	tags        = ["test"]
+	depends_on  = [launchdarkly_model_config.test]
 }
 
 resource "launchdarkly_ai_config_variation" "test" {
@@ -170,6 +171,7 @@ resource "launchdarkly_ai_config" "test" {
 	key         = "%s"
 	name        = "Parent AI Config"
 	description = "Parent for tool keys test"
+	depends_on  = [launchdarkly_ai_tool.test]
 }
 
 resource "launchdarkly_ai_config_variation" "test" {
