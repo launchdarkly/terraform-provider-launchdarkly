@@ -4,12 +4,21 @@ import (
 	"fmt"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 	"github.com/stretchr/testify/require"
 )
+
+// aiConfigTestCooldown adds a brief delay between AI config tests to avoid
+// hitting rate limits. The AI config API creates feature flags internally,
+// which have a tight rate limit that returns 429 — but the outer handler
+// translates this to a 400, bypassing the retry client.
+func aiConfigTestCooldown() {
+	time.Sleep(2 * time.Second)
+}
 
 const (
 	testAccAIConfigCreate = `
@@ -161,6 +170,7 @@ resource "launchdarkly_ai_config" "test" {
 )
 
 func TestAccAIConfig_CreateAndUpdate(t *testing.T) {
+	aiConfigTestCooldown()
 	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	configKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	configName := "Test AI Config"
@@ -214,6 +224,7 @@ func TestAccAIConfig_CreateAndUpdate(t *testing.T) {
 }
 
 func TestAccAIConfig_WithMode(t *testing.T) {
+	aiConfigTestCooldown()
 	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	configKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	resourceName := "launchdarkly_ai_config.test"
@@ -241,6 +252,7 @@ func TestAccAIConfig_WithMode(t *testing.T) {
 }
 
 func TestAccAIConfig_WithMaintainer(t *testing.T) {
+	aiConfigTestCooldown()
 	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	configKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	resourceName := "launchdarkly_ai_config.test"
@@ -275,6 +287,7 @@ func TestAccAIConfig_WithMaintainer(t *testing.T) {
 }
 
 func TestAccAIConfig_WithTeamMaintainer(t *testing.T) {
+	aiConfigTestCooldown()
 	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	configKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	teamKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
@@ -303,6 +316,7 @@ func TestAccAIConfig_WithTeamMaintainer(t *testing.T) {
 }
 
 func TestAccAIConfig_WithEvaluationMetric(t *testing.T) {
+	aiConfigTestCooldown()
 	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	configKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	metricSuffix := acctest.RandStringFromCharSet(10, acctest.CharSetAlpha)
@@ -344,6 +358,7 @@ func TestAccAIConfig_WithEvaluationMetric(t *testing.T) {
 }
 
 func TestAccAIConfig_RemoveOptionalFields(t *testing.T) {
+	aiConfigTestCooldown()
 	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	configKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	resourceName := "launchdarkly_ai_config.test"

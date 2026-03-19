@@ -76,9 +76,8 @@ func resourceAIConfigCreate(ctx context.Context, d *schema.ResourceData, metaRaw
 		post.Tags = interfaceSliceToStringSlice(v.(*schema.Set).List())
 	}
 
-	var err error
-	err = client.withConcurrency(client.ctx, func() error {
-		_, _, err = client.ld.AIConfigsApi.PostAIConfig(client.ctx, projectKey).AIConfigPost(post).Execute()
+	err := retryOnTransient400(client, 3, func() error {
+		_, _, err := client.ld.AIConfigsApi.PostAIConfig(client.ctx, projectKey).AIConfigPost(post).Execute()
 		return err
 	})
 	if err != nil {

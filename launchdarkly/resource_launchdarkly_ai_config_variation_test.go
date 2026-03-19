@@ -3,11 +3,16 @@ package launchdarkly
 import (
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 )
+
+func aiConfigVariationTestCooldown() {
+	time.Sleep(2 * time.Second)
+}
 
 const (
 	testAccAIConfigVariationCreate = `
@@ -189,6 +194,7 @@ resource "launchdarkly_ai_config_variation" "test" {
 )
 
 func TestAccAIConfigVariation_CreateAndUpdate(t *testing.T) {
+	aiConfigVariationTestCooldown()
 	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	configKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	variationKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
@@ -243,6 +249,7 @@ func TestAccAIConfigVariation_CreateAndUpdate(t *testing.T) {
 }
 
 func TestAccAIConfigVariation_WithModelConfigKey(t *testing.T) {
+	aiConfigVariationTestCooldown()
 	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	configKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	modelConfigKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
@@ -279,6 +286,7 @@ func TestAccAIConfigVariation_WithModelConfigKey(t *testing.T) {
 // those are read-only fields populated server-side. This test verifies that a basic variation
 // can be created and updated under an agent-mode parent config.
 func TestAccAIConfigVariation_AgentMode(t *testing.T) {
+	aiConfigVariationTestCooldown()
 	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	configKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	variationKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
@@ -322,6 +330,7 @@ func TestAccAIConfigVariation_AgentMode(t *testing.T) {
 // TestAccAIConfigVariation_WithToolKeys tests creating a variation with tool_keys.
 // Same two-apply pattern as AgentMode: POST doesn't persist tool_keys, PATCH does.
 func TestAccAIConfigVariation_WithToolKeys(t *testing.T) {
+	aiConfigVariationTestCooldown()
 	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	configKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	toolKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
