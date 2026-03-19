@@ -34,6 +34,35 @@ resource "launchdarkly_model_config" "test" {
 	})
 }
 `
+	testAccModelConfigWithAllFields = `
+resource "launchdarkly_project" "test" {
+	key  = "%s"
+	name = "Model Config Test Project"
+	environments {
+		name  = "Test Environment"
+		key   = "test-env"
+		color = "000000"
+	}
+}
+
+resource "launchdarkly_model_config" "test" {
+	project_key          = launchdarkly_project.test.key
+	key                  = "%s"
+	name                 = "%s"
+	model_id             = "%s"
+	model_provider       = "%s"
+	cost_per_input_token  = %f
+	cost_per_output_token = %f
+	custom_parameters    = jsonencode({
+		api_version = "2024-01"
+	})
+	tags                 = ["test", "full"]
+	params               = jsonencode({
+		temperature = 0.7
+		maxTokens   = 4096
+	})
+}
+`
 )
 
 func TestAccModelConfig_CreateAndImport(t *testing.T) {
@@ -61,6 +90,45 @@ func TestAccModelConfig_CreateAndImport(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, MODEL_ID, modelID),
 					resource.TestCheckResourceAttr(resourceName, PROVIDER_NAME, providerName),
 					resource.TestCheckResourceAttr(resourceName, "tags.#", "1"),
+				),
+			},
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
+		},
+	})
+}
+
+func TestAccModelConfig_WithAllFields(t *testing.T) {
+	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	modelConfigKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	modelConfigName := "Full Model Config"
+	modelID := "claude-3-opus"
+	providerName := "anthropic"
+	costInput := 0.000015
+	costOutput := 0.000075
+	resourceName := "launchdarkly_model_config.test"
+
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck:     func() { testAccPreCheck(t) },
+		Providers:    testAccProviders,
+		CheckDestroy: testAccCheckModelConfigDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config: fmt.Sprintf(testAccModelConfigWithAllFields, projectKey, modelConfigKey, modelConfigName, modelID, providerName, costInput, costOutput),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckModelConfigExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, NAME, modelConfigName),
+					resource.TestCheckResourceAttr(resourceName, MODEL_ID, modelID),
+					resource.TestCheckResourceAttr(resourceName, PROVIDER_NAME, providerName),
+					resource.TestCheckResourceAttrSet(resourceName, COST_PER_INPUT_TOKEN),
+					resource.TestCheckResourceAttrSet(resourceName, COST_PER_OUTPUT_TOKEN),
+					resource.TestCheckResourceAttrSet(resourceName, CUSTOM_PARAMETERS),
+					resource.TestCheckResourceAttrSet(resourceName, PARAMS),
+					resource.TestCheckResourceAttr(resourceName, "tags.#", "2"),
+					resource.TestCheckResourceAttrSet(resourceName, VERSION),
 				),
 			},
 			{

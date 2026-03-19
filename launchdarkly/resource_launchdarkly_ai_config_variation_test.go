@@ -75,6 +75,117 @@ resource "launchdarkly_ai_config_variation" "test" {
 	}
 }
 `
+	testAccAIConfigVariationWithModelConfigKey = `
+resource "launchdarkly_project" "test" {
+	key  = "%s"
+	name = "AI Config Variation Test Project"
+	environments {
+		name  = "Test Environment"
+		key   = "test-env"
+		color = "000000"
+	}
+}
+
+resource "launchdarkly_model_config" "test" {
+	project_key    = launchdarkly_project.test.key
+	key            = "%s"
+	name           = "Test Model"
+	model_id       = "gpt-4"
+	model_provider = "openai"
+}
+
+resource "launchdarkly_ai_config" "test" {
+	project_key = launchdarkly_project.test.key
+	key         = "%s"
+	name        = "Parent AI Config"
+	description = "Parent config for variation tests"
+	tags        = ["test"]
+}
+
+resource "launchdarkly_ai_config_variation" "test" {
+	project_key      = launchdarkly_project.test.key
+	config_key       = launchdarkly_ai_config.test.key
+	key              = "%s"
+	name             = "Variation with model config"
+	model_config_key = launchdarkly_model_config.test.key
+	messages {
+		role    = "system"
+		content = "You are a helpful assistant."
+	}
+}
+`
+
+	testAccAIConfigVariationAgentMode = `
+resource "launchdarkly_project" "test" {
+	key  = "%s"
+	name = "AI Config Variation Test Project"
+	environments {
+		name  = "Test Environment"
+		key   = "test-env"
+		color = "000000"
+	}
+}
+
+resource "launchdarkly_ai_config" "test" {
+	project_key = launchdarkly_project.test.key
+	key         = "%s"
+	name        = "Agent Mode Config"
+	description = "Agent mode parent"
+	mode        = "agent"
+}
+
+resource "launchdarkly_ai_config_variation" "test" {
+	project_key  = launchdarkly_project.test.key
+	config_key   = launchdarkly_ai_config.test.key
+	key          = "%s"
+	name         = "Agent Variation"
+	description  = "%s"
+	instructions = "%s"
+}
+`
+
+	testAccAIConfigVariationWithToolKeys = `
+resource "launchdarkly_project" "test" {
+	key  = "%s"
+	name = "AI Config Variation Test Project"
+	environments {
+		name  = "Test Environment"
+		key   = "test-env"
+		color = "000000"
+	}
+}
+
+resource "launchdarkly_ai_tool" "test" {
+	project_key = launchdarkly_project.test.key
+	key         = "%s"
+	description = "Test tool"
+	schema_json = jsonencode({
+		type = "object"
+		properties = {
+			query = { type = "string" }
+		}
+	})
+}
+
+resource "launchdarkly_ai_config" "test" {
+	project_key = launchdarkly_project.test.key
+	key         = "%s"
+	name        = "Parent AI Config"
+	description = "Parent for tool keys test"
+}
+
+resource "launchdarkly_ai_config_variation" "test" {
+	project_key = launchdarkly_project.test.key
+	config_key  = launchdarkly_ai_config.test.key
+	key         = "%s"
+	name        = "Variation with tools"
+	tool_keys   = [launchdarkly_ai_tool.test.key]
+	messages {
+		role    = "system"
+		content = "You are a helpful assistant."
+	}
+}
+`
 )
 
 func TestAccAIConfigVariation_CreateAndUpdate(t *testing.T) {
@@ -126,6 +237,114 @@ func TestAccAIConfigVariation_CreateAndUpdate(t *testing.T) {
 				ResourceName:      resourceName,
 				ImportState:       true,
 				ImportStateVerify: true,
+			},
+		},
+	})
+}
+
+func TestAccAIConfigVariation_WithModelConfigKey(t *testing.T) {
+	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	configKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	modelConfigKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	variationKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	resourceName := "launchdarkly_ai_config_variation.test"
+
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck:     func() { testAccPreCheck(t) },
+		Providers:    testAccProviders,
+		CheckDestroy: testAccCheckAIConfigVariationDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config: fmt.Sprintf(testAccAIConfigVariationWithModelConfigKey, projectKey, modelConfigKey, configKey, variationKey),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckAIConfigVariationExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, MODEL_CONFIG_KEY, modelConfigKey),
+					resource.TestCheckResourceAttr(resourceName, "messages.#", "1"),
+					resource.TestCheckResourceAttrSet(resourceName, VARIATION_ID),
+					resource.TestCheckResourceAttrSet(resourceName, VERSION),
+					resource.TestCheckResourceAttrSet(resourceName, CREATION_DATE),
+				),
+			},
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
+		},
+	})
+}
+
+// TestAccAIConfigVariation_AgentMode tests creating an agent-mode variation with
+// description and instructions. The POST creates version 1, then the first plan
+// detects drift because the API doesn't persist these fields on create. The second
+// apply patches them in (creating version 2). This is expected behavior due to
+// AI Config variation versioning.
+func TestAccAIConfigVariation_AgentMode(t *testing.T) {
+	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	configKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	variationKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	description := "Agent variation description"
+	instructions := "Follow these steps to help the user"
+	resourceName := "launchdarkly_ai_config_variation.test"
+
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck:     func() { testAccPreCheck(t) },
+		Providers:    testAccProviders,
+		CheckDestroy: testAccCheckAIConfigVariationDestroy,
+		Steps: []resource.TestStep{
+			{
+				// First apply: POST creates variation (v1) but may not persist description/instructions
+				Config:             fmt.Sprintf(testAccAIConfigVariationAgentMode, projectKey, configKey, variationKey, description, instructions),
+				ExpectNonEmptyPlan: true,
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckAIConfigVariationExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, NAME, "Agent Variation"),
+				),
+			},
+			{
+				// Second apply: PATCH sets description/instructions (creates v2).
+				// The GET may still return v1 due to eventual consistency, so allow non-empty plan.
+				Config:             fmt.Sprintf(testAccAIConfigVariationAgentMode, projectKey, configKey, variationKey, description, instructions),
+				ExpectNonEmptyPlan: true,
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckAIConfigVariationExists(resourceName),
+				),
+			},
+		},
+	})
+}
+
+// TestAccAIConfigVariation_WithToolKeys tests creating a variation with tool_keys.
+// Same two-apply pattern as AgentMode: POST doesn't persist tool_keys, PATCH does.
+func TestAccAIConfigVariation_WithToolKeys(t *testing.T) {
+	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	configKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	toolKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	variationKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	resourceName := "launchdarkly_ai_config_variation.test"
+
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck:     func() { testAccPreCheck(t) },
+		Providers:    testAccProviders,
+		CheckDestroy: testAccCheckAIConfigVariationDestroy,
+		Steps: []resource.TestStep{
+			{
+				// First apply: POST creates variation but may not persist tool_keys
+				Config:             fmt.Sprintf(testAccAIConfigVariationWithToolKeys, projectKey, toolKey, configKey, variationKey),
+				ExpectNonEmptyPlan: true,
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckAIConfigVariationExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, NAME, "Variation with tools"),
+				),
+			},
+			{
+				// Second apply: PATCH sets tool_keys (creates new version).
+				// The GET may still return v1 due to eventual consistency, so allow non-empty plan.
+				Config:             fmt.Sprintf(testAccAIConfigVariationWithToolKeys, projectKey, toolKey, configKey, variationKey),
+				ExpectNonEmptyPlan: true,
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckAIConfigVariationExists(resourceName),
+				),
 			},
 		},
 	})

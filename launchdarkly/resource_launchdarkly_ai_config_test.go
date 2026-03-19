@@ -183,7 +183,10 @@ func TestAccAIConfig_CreateAndUpdate(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, KEY, configKey),
 					resource.TestCheckResourceAttr(resourceName, NAME, configName),
 					resource.TestCheckResourceAttr(resourceName, DESCRIPTION, configDescription),
+					resource.TestCheckResourceAttr(resourceName, MODE, "completion"),
 					resource.TestCheckResourceAttr(resourceName, "tags.#", "1"),
+					resource.TestCheckResourceAttrSet(resourceName, VERSION),
+					resource.TestCheckResourceAttrSet(resourceName, CREATION_DATE),
 				),
 			},
 			{

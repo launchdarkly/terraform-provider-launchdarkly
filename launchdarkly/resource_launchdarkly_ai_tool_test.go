@@ -69,6 +69,33 @@ resource "launchdarkly_ai_tool" "test" {
 	})
 }
 `
+	testAccAIToolWithCustomParams = `
+resource "launchdarkly_project" "test" {
+	key  = "%s"
+	name = "AI Tool Test Project"
+	environments {
+		name  = "Test Environment"
+		key   = "test-env"
+		color = "000000"
+	}
+}
+
+resource "launchdarkly_ai_tool" "test" {
+	project_key       = launchdarkly_project.test.key
+	key               = "%s"
+	description       = "Tool with custom params"
+	schema_json       = jsonencode({
+		type = "object"
+		properties = {
+			query = { type = "string" }
+		}
+	})
+	custom_parameters = jsonencode({
+		endpoint = "https://api.example.com/search"
+		timeout  = 30
+	})
+}
+`
 )
 
 func TestAccAITool_CreateAndUpdate(t *testing.T) {
@@ -106,6 +133,36 @@ func TestAccAITool_CreateAndUpdate(t *testing.T) {
 					testAccCheckAIToolExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, DESCRIPTION, updatedToolDescription),
 					resource.TestCheckResourceAttrSet(resourceName, SCHEMA_JSON),
+				),
+			},
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
+		},
+	})
+}
+
+func TestAccAITool_WithCustomParameters(t *testing.T) {
+	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	toolKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	resourceName := "launchdarkly_ai_tool.test"
+
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck:     func() { testAccPreCheck(t) },
+		Providers:    testAccProviders,
+		CheckDestroy: testAccCheckAIToolDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config: fmt.Sprintf(testAccAIToolWithCustomParams, projectKey, toolKey),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckAIToolExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, DESCRIPTION, "Tool with custom params"),
+					resource.TestCheckResourceAttrSet(resourceName, SCHEMA_JSON),
+					resource.TestCheckResourceAttrSet(resourceName, CUSTOM_PARAMETERS),
+					resource.TestCheckResourceAttrSet(resourceName, VERSION),
+					resource.TestCheckResourceAttrSet(resourceName, CREATION_DATE),
 				),
 			},
 			{

@@ -91,6 +91,7 @@ data "launchdarkly_model_config" "test" {
 					resource.TestCheckResourceAttr(resourceName, MODEL_ID, modelID),
 					resource.TestCheckResourceAttr(resourceName, PROVIDER_NAME, providerName),
 					resource.TestCheckResourceAttrSet(resourceName, ID),
+					resource.TestCheckResourceAttrSet(resourceName, VERSION),
 					resource.TestCheckResourceAttr(resourceName, "tags.#", "1"),
 				),
 			},

@@ -94,6 +94,8 @@ data "launchdarkly_ai_tool" "test" {
 					resource.TestCheckResourceAttr(resourceName, DESCRIPTION, toolDescription),
 					resource.TestCheckResourceAttrSet(resourceName, SCHEMA_JSON),
 					resource.TestCheckResourceAttrSet(resourceName, ID),
+					resource.TestCheckResourceAttrSet(resourceName, VERSION),
+					resource.TestCheckResourceAttrSet(resourceName, CREATION_DATE),
 				),
 			},
 		},

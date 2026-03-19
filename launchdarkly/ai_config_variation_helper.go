@@ -152,8 +152,14 @@ func aiConfigVariationRead(ctx context.Context, d *schema.ResourceData, meta int
 		return diags
 	}
 
-	// Items[0] is the latest version of the variation
+	// Items contains all versions of the variation. Find the one with the highest version number.
 	variation := variationsResp.Items[0]
+	for _, v := range variationsResp.Items[1:] {
+		if v.Version > variation.Version {
+			variation = v
+		}
+	}
+	log.Printf("[DEBUG] AI config variation %q: found %d versions, using version %d", variationKey, len(variationsResp.Items), variation.Version)
 
 	_ = d.Set(PROJECT_KEY, projectKey)
 	_ = d.Set(AI_CONFIG_KEY, configKey)
