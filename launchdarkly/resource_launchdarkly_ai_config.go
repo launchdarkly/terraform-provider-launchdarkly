@@ -22,9 +22,9 @@ func resourceAIConfig() *schema.Resource {
 			StateContext: resourceAIConfigImport,
 		},
 
-		Description: `Provides a LaunchDarkly AI config resource.
+		Description: `Provides a LaunchDarkly AI Config resource.
 
-This resource allows you to create and manage AI configurations within your LaunchDarkly project.`,
+This resource allows you to create and manage AI Configurations within your LaunchDarkly project.`,
 
 		Schema: baseAIConfigSchema(false),
 	}

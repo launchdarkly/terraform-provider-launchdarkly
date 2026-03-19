@@ -24,7 +24,7 @@ func baseAIConfigSchema(isDataSource bool) map[string]*schema.Schema {
 		KEY: {
 			Type:             schema.TypeString,
 			Required:         true,
-			Description:      addForceNewDescription("The AI config's unique key.", !isDataSource),
+			Description:      addForceNewDescription("The AI Config's unique key.", !isDataSource),
 			ForceNew:         !isDataSource,
 			ValidateDiagFunc: validateKey(),
 		},
@@ -32,13 +32,13 @@ func baseAIConfigSchema(isDataSource bool) map[string]*schema.Schema {
 			Type:        schema.TypeString,
 			Required:    !isDataSource,
 			Computed:    isDataSource,
-			Description: "The AI config's human-readable name.",
+			Description: "The AI Config's human-readable name.",
 		},
 		DESCRIPTION: {
 			Type:        schema.TypeString,
 			Optional:    !isDataSource,
 			Computed:    isDataSource,
-			Description: "The AI config's description.",
+			Description: "The AI Config's description.",
 		},
 		MODE: {
 			Type:             schema.TypeString,
@@ -46,7 +46,7 @@ func baseAIConfigSchema(isDataSource bool) map[string]*schema.Schema {
 			Computed:         isDataSource,
 			ForceNew:         !isDataSource,
 			Default:          emptyValueIfDataSource("completion", isDataSource),
-			Description:      addForceNewDescription("The AI config's mode. Must be `completion`, `agent`, or `judge`. Defaults to `completion`.", !isDataSource),
+			Description:      addForceNewDescription("The AI Config's mode. Must be `completion`, `agent`, or `judge`. Defaults to `completion`.", !isDataSource),
 			ValidateDiagFunc: validation.ToDiagFunc(validation.StringInSlice([]string{"completion", "agent", "judge"}, false)),
 		},
 		TAGS: tagsSchema(tagsSchemaOptions{isDataSource: isDataSource}),
@@ -54,7 +54,7 @@ func baseAIConfigSchema(isDataSource bool) map[string]*schema.Schema {
 			Type:             schema.TypeString,
 			Optional:         !isDataSource,
 			Computed:         true,
-			Description:      "The member ID of the maintainer for this AI config. Conflicts with `maintainer_team_key`.",
+			Description:      "The member ID of the maintainer for this AI Config. Conflicts with `maintainer_team_key`.",
 			ConflictsWith:    []string{MAINTAINER_TEAM_KEY},
 			ValidateDiagFunc: validateID(),
 		},
@@ -62,14 +62,14 @@ func baseAIConfigSchema(isDataSource bool) map[string]*schema.Schema {
 			Type:          schema.TypeString,
 			Optional:      !isDataSource,
 			Computed:      true,
-			Description:   "The team key of the maintainer team for this AI config. Conflicts with `maintainer_id`.",
+			Description:   "The team key of the maintainer team for this AI Config. Conflicts with `maintainer_id`.",
 			ConflictsWith: []string{MAINTAINER_ID},
 		},
 		EVALUATION_METRIC_KEY: {
 			Type:        schema.TypeString,
 			Optional:    !isDataSource,
 			Computed:    isDataSource,
-			Description: "The key of the evaluation metric associated with this AI config.",
+			Description: "The key of the evaluation metric associated with this AI Config.",
 		},
 		IS_INVERTED: {
 			Type:        schema.TypeBool,
@@ -80,17 +80,17 @@ func baseAIConfigSchema(isDataSource bool) map[string]*schema.Schema {
 		VERSION: {
 			Type:        schema.TypeInt,
 			Computed:    true,
-			Description: "The version of the AI config.",
+			Description: "The version of the AI Config.",
 		},
 		CREATION_DATE: {
 			Type:        schema.TypeInt,
 			Computed:    true,
-			Description: "A timestamp of when the AI config was created.",
+			Description: "A timestamp of when the AI Config was created.",
 		},
 		VARIATIONS: {
 			Type:        schema.TypeList,
 			Computed:    true,
-			Description: "A list of variation summaries for this AI config.",
+			Description: "A list of variation summaries for this AI Config.",
 			Elem: &schema.Resource{
 				Schema: map[string]*schema.Schema{
 					KEY: {

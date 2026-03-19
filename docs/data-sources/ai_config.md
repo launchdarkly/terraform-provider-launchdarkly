@@ -3,13 +3,13 @@
 page_title: "launchdarkly_ai_config Data Source - launchdarkly"
 subcategory: ""
 description: |-
-  Provides a LaunchDarkly AI config data source.
+  Provides a LaunchDarkly AI Config data source.
   This data source allows you to retrieve AI configuration information from your LaunchDarkly project.
 ---
 
 # launchdarkly_ai_config (Data Source)
 
-Provides a LaunchDarkly AI config data source.
+Provides a LaunchDarkly AI Config data source.
 
 This data source allows you to retrieve AI configuration information from your LaunchDarkly project.
 
@@ -27,23 +27,23 @@ data "launchdarkly_ai_config" "example" {
 
 ### Required
 
-- `key` (String) The AI config's unique key.
+- `key` (String) The AI Config's unique key.
 - `project_key` (String) The project key.
 
 ### Read-Only
 
-- `creation_date` (Number) A timestamp of when the AI config was created.
-- `description` (String) The AI config's description.
-- `evaluation_metric_key` (String) The key of the evaluation metric associated with this AI config.
+- `creation_date` (Number) A timestamp of when the AI Config was created.
+- `description` (String) The AI Config's description.
+- `evaluation_metric_key` (String) The key of the evaluation metric associated with this AI Config.
 - `id` (String) The ID of this resource.
 - `is_inverted` (Boolean) Whether the evaluation metric is inverted.
-- `maintainer_id` (String) The member ID of the maintainer for this AI config. Conflicts with `maintainer_team_key`.
-- `maintainer_team_key` (String) The team key of the maintainer team for this AI config. Conflicts with `maintainer_id`.
-- `mode` (String) The AI config's mode. Must be `completion`, `agent`, or `judge`. Defaults to `completion`.
-- `name` (String) The AI config's human-readable name.
+- `maintainer_id` (String) The member ID of the maintainer for this AI Config. Conflicts with `maintainer_team_key`.
+- `maintainer_team_key` (String) The team key of the maintainer team for this AI Config. Conflicts with `maintainer_id`.
+- `mode` (String) The AI Config's mode. Must be `completion`, `agent`, or `judge`. Defaults to `completion`.
+- `name` (String) The AI Config's human-readable name.
 - `tags` (Set of String) Tags associated with your resource.
-- `variations` (List of Object) A list of variation summaries for this AI config. (see [below for nested schema](#nestedatt--variations))
-- `version` (Number) The version of the AI config.
+- `variations` (List of Object) A list of variation summaries for this AI Config. (see [below for nested schema](#nestedatt--variations))
+- `version` (Number) The version of the AI Config.
 
 <a id="nestedatt--variations"></a>
 ### Nested Schema for `variations`

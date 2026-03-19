@@ -24,9 +24,9 @@ func resourceAIConfigVariation() *schema.Resource {
 			StateContext: resourceAIConfigVariationImport,
 		},
 
-		Description: `Provides a LaunchDarkly AI config variation resource.
+		Description: `Provides a LaunchDarkly AI Config variation resource.
 
-This resource allows you to create and manage AI config variations within your LaunchDarkly project.`,
+This resource allows you to create and manage AI Config variations within your LaunchDarkly project.`,
 
 		Schema: aiConfigVariationSchema(),
 	}

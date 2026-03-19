@@ -24,7 +24,7 @@ func aiConfigVariationSchema() map[string]*schema.Schema {
 		AI_CONFIG_KEY: {
 			Type:             schema.TypeString,
 			Required:         true,
-			Description:      addForceNewDescription("The AI config key that this variation belongs to.", true),
+			Description:      addForceNewDescription("The AI Config key that this variation belongs to.", true),
 			ForceNew:         true,
 			ValidateDiagFunc: validateKey(),
 		},

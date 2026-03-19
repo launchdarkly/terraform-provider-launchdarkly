@@ -11,7 +11,7 @@ func dataSourceAIConfig() *schema.Resource {
 	return &schema.Resource{
 		ReadContext: dataSourceAIConfigRead,
 
-		Description: "Provides a LaunchDarkly AI config data source.\n\nThis data source allows you to retrieve AI configuration information from your LaunchDarkly project.",
+		Description: "Provides a LaunchDarkly AI Config data source.\n\nThis data source allows you to retrieve AI configuration information from your LaunchDarkly project.",
 
 		Schema: baseAIConfigSchema(true),
 	}

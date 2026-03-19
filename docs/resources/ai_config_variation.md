@@ -3,15 +3,15 @@
 page_title: "launchdarkly_ai_config_variation Resource - launchdarkly"
 subcategory: ""
 description: |-
-  Provides a LaunchDarkly AI config variation resource.
-  This resource allows you to create and manage AI config variations within your LaunchDarkly project.
+  Provides a LaunchDarkly AI Config variation resource.
+  This resource allows you to create and manage AI Config variations within your LaunchDarkly project.
 ---
 
 # launchdarkly_ai_config_variation (Resource)
 
-Provides a LaunchDarkly AI config variation resource.
+Provides a LaunchDarkly AI Config variation resource.
 
-This resource allows you to create and manage AI config variations within your LaunchDarkly project.
+This resource allows you to create and manage AI Config variations within your LaunchDarkly project.
 
 ## Example Usage
 
@@ -40,7 +40,7 @@ resource "launchdarkly_ai_config_variation" "example" {
 
 ### Required
 
-- `config_key` (String) The AI config key that this variation belongs to. A change in this field will force the destruction of the existing resource and the creation of a new one.
+- `config_key` (String) The AI Config key that this variation belongs to. A change in this field will force the destruction of the existing resource and the creation of a new one.
 - `key` (String) The variation's unique key. A change in this field will force the destruction of the existing resource and the creation of a new one.
 - `name` (String) The variation's human-readable name.
 - `project_key` (String) The project key. A change in this field will force the destruction of the existing resource and the creation of a new one.
@@ -75,6 +75,6 @@ Required:
 Import is supported using the following syntax:
 
 ```shell
-# LaunchDarkly AI config variations can be imported using the format `project_key/config_key/variation_key`
+# LaunchDarkly AI Config variations can be imported using the format `project_key/config_key/variation_key`
 terraform import launchdarkly_ai_config_variation.example example-project/customer-assistant/helpful-v1
 ```
