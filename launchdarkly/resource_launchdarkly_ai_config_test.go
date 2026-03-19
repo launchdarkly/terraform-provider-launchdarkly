@@ -168,7 +168,7 @@ func TestAccAIConfig_CreateAndUpdate(t *testing.T) {
 	updatedConfigDescription := "Updated AI config description"
 	resourceName := "launchdarkly_ai_config.test"
 
-	resource.ParallelTest(t, resource.TestCase{
+	resource.Test(t, resource.TestCase{
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
@@ -217,7 +217,7 @@ func TestAccAIConfig_WithMode(t *testing.T) {
 	configKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	resourceName := "launchdarkly_ai_config.test"
 
-	resource.ParallelTest(t, resource.TestCase{
+	resource.Test(t, resource.TestCase{
 		PreCheck:     func() { testAccPreCheck(t) },
 		Providers:    testAccProviders,
 		CheckDestroy: testAccCheckAIConfigDestroy,
@@ -252,7 +252,7 @@ func TestAccAIConfig_WithMaintainer(t *testing.T) {
 	require.True(t, len(members.Items) > 0, "This test requires at least one member in the account")
 	maintainerId := members.Items[0].Id
 
-	resource.ParallelTest(t, resource.TestCase{
+	resource.Test(t, resource.TestCase{
 		PreCheck:     func() { testAccPreCheck(t) },
 		Providers:    testAccProviders,
 		CheckDestroy: testAccCheckAIConfigDestroy,
@@ -279,7 +279,7 @@ func TestAccAIConfig_WithTeamMaintainer(t *testing.T) {
 	teamKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	resourceName := "launchdarkly_ai_config.test"
 
-	resource.ParallelTest(t, resource.TestCase{
+	resource.Test(t, resource.TestCase{
 		PreCheck:     func() { testAccPreCheck(t) },
 		Providers:    testAccProviders,
 		CheckDestroy: testAccCheckAIConfigDestroy,
@@ -308,7 +308,7 @@ func TestAccAIConfig_WithEvaluationMetric(t *testing.T) {
 	evalMetricKey := "$ld:ai:judge:" + metricSuffix
 	resourceName := "launchdarkly_ai_config.test"
 
-	resource.ParallelTest(t, resource.TestCase{
+	resource.Test(t, resource.TestCase{
 		PreCheck:     func() { testAccPreCheck(t) },
 		Providers:    testAccProviders,
 		CheckDestroy: testAccCheckAIConfigDestroy,
@@ -347,7 +347,7 @@ func TestAccAIConfig_RemoveOptionalFields(t *testing.T) {
 	configKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	resourceName := "launchdarkly_ai_config.test"
 
-	resource.ParallelTest(t, resource.TestCase{
+	resource.Test(t, resource.TestCase{
 		PreCheck:     func() { testAccPreCheck(t) },
 		Providers:    testAccProviders,
 		CheckDestroy: testAccCheckAIConfigDestroy,

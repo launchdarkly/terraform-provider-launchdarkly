@@ -22,7 +22,7 @@ data "launchdarkly_ai_config" "test" {
 func TestAccDataSourceAIConfig_noMatchReturnsError(t *testing.T) {
 	projectKey := "nonexistent-project-key"
 	configKey := "nonexistent-config-key"
-	resource.ParallelTest(t, resource.TestCase{
+	resource.Test(t, resource.TestCase{
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
@@ -48,7 +48,7 @@ func TestAccDataSourceAIConfig_exists(t *testing.T) {
 	configDescription := "Test AI config for data source"
 
 	resourceName := "data.launchdarkly_ai_config.test"
-	resource.ParallelTest(t, resource.TestCase{
+	resource.Test(t, resource.TestCase{
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},

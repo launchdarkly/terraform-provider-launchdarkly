@@ -194,7 +194,7 @@ func TestAccAIConfigVariation_CreateAndUpdate(t *testing.T) {
 	updatedVariationName := "Updated Variation"
 	resourceName := "launchdarkly_ai_config_variation.test"
 
-	resource.ParallelTest(t, resource.TestCase{
+	resource.Test(t, resource.TestCase{
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
@@ -247,7 +247,7 @@ func TestAccAIConfigVariation_WithModelConfigKey(t *testing.T) {
 	variationKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	resourceName := "launchdarkly_ai_config_variation.test"
 
-	resource.ParallelTest(t, resource.TestCase{
+	resource.Test(t, resource.TestCase{
 		PreCheck:     func() { testAccPreCheck(t) },
 		Providers:    testAccProviders,
 		CheckDestroy: testAccCheckAIConfigVariationDestroy,
@@ -284,7 +284,7 @@ func TestAccAIConfigVariation_AgentMode(t *testing.T) {
 	updatedName := "Updated Agent Variation"
 	resourceName := "launchdarkly_ai_config_variation.test"
 
-	resource.ParallelTest(t, resource.TestCase{
+	resource.Test(t, resource.TestCase{
 		PreCheck:     func() { testAccPreCheck(t) },
 		Providers:    testAccProviders,
 		CheckDestroy: testAccCheckAIConfigVariationDestroy,
@@ -326,7 +326,7 @@ func TestAccAIConfigVariation_WithToolKeys(t *testing.T) {
 	variationKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	resourceName := "launchdarkly_ai_config_variation.test"
 
-	resource.ParallelTest(t, resource.TestCase{
+	resource.Test(t, resource.TestCase{
 		PreCheck:     func() { testAccPreCheck(t) },
 		Providers:    testAccProviders,
 		CheckDestroy: testAccCheckAIConfigVariationDestroy,
