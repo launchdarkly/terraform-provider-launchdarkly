@@ -3,7 +3,6 @@ package launchdarkly
 import (
 	"context"
 	"fmt"
-	"log"
 	"net/http"
 	"strings"
 
@@ -121,12 +120,15 @@ func resourceModelConfigDelete(ctx context.Context, d *schema.ResourceData, meta
 		if isStatusNotFound(res) {
 			return diags
 		}
-		// The API returns 400 "model config is still in use" if a variation still references it.
-		// During destroy, the referencing resources will be deleted too, so this is safe to ignore.
+		// Return a helpful error if the model config is still referenced by a variation.
+		// When model_config_key uses a Terraform resource reference, the dependency graph
+		// ensures the variation is destroyed first and this error never fires. This only
+		// occurs with literal string references where Terraform can't infer the dependency.
 		errMsg := handleLdapiErr(err).Error()
 		if strings.Contains(errMsg, "model config is still in use") {
-			log.Printf("[WARN] model config %q in project %q is still in use — will be cleaned up when referencing resources are deleted", modelConfigKey, projectKey)
-			return diags
+			return diag.Errorf("failed to delete model config %q in project %q: still in use by one or more AI config variations. "+
+				"Use a Terraform resource reference for model_config_key (not a literal string) so Terraform can order destruction correctly, "+
+				"or delete referencing resources first.", modelConfigKey, projectKey)
 		}
 		return diag.Errorf("failed to delete model config with key %q in project %q: %s", modelConfigKey, projectKey, handleLdapiErr(err))
 	}

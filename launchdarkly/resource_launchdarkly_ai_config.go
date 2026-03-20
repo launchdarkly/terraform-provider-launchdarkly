@@ -125,19 +125,17 @@ func resourceAIConfigUpdate(ctx context.Context, d *schema.ResourceData, metaRaw
 		hasChanges = true
 	}
 
+	// Use d.Get() instead of d.GetOk() so removing a maintainer from config
+	// sends an empty string to the API, clearing it server-side.
 	if d.HasChange(MAINTAINER_ID) {
-		if v, ok := d.GetOk(MAINTAINER_ID); ok {
-			maintainerId := v.(string)
-			patch.MaintainerId = &maintainerId
-		}
+		maintainerId := d.Get(MAINTAINER_ID).(string)
+		patch.MaintainerId = &maintainerId
 		hasChanges = true
 	}
 
 	if d.HasChange(MAINTAINER_TEAM_KEY) {
-		if v, ok := d.GetOk(MAINTAINER_TEAM_KEY); ok {
-			maintainerTeamKey := v.(string)
-			patch.MaintainerTeamKey = &maintainerTeamKey
-		}
+		maintainerTeamKey := d.Get(MAINTAINER_TEAM_KEY).(string)
+		patch.MaintainerTeamKey = &maintainerTeamKey
 		hasChanges = true
 	}
 

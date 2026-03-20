@@ -110,16 +110,14 @@ func resourceAIToolUpdate(ctx context.Context, d *schema.ResourceData, metaRaw i
 		patch.CustomParameters = customParamsMap
 	}
 
+	// Use d.Get() instead of d.GetOk() so removing a maintainer from config
+	// sends an empty string to the API, clearing it server-side.
 	if d.HasChange(MAINTAINER_ID) {
-		if maintainerId, ok := d.GetOk(MAINTAINER_ID); ok {
-			patch.MaintainerId = ldapi.PtrString(maintainerId.(string))
-		}
+		patch.MaintainerId = ldapi.PtrString(d.Get(MAINTAINER_ID).(string))
 	}
 
 	if d.HasChange(MAINTAINER_TEAM_KEY) {
-		if maintainerTeamKey, ok := d.GetOk(MAINTAINER_TEAM_KEY); ok {
-			patch.MaintainerTeamKey = ldapi.PtrString(maintainerTeamKey.(string))
-		}
+		patch.MaintainerTeamKey = ldapi.PtrString(d.Get(MAINTAINER_TEAM_KEY).(string))
 	}
 
 	var err error

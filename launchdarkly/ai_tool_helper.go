@@ -138,7 +138,10 @@ func aiToolRead(ctx context.Context, d *schema.ResourceData, meta interface{}, i
 	_ = d.Set(VERSION, tool.GetVersion())
 	_ = d.Set(CREATION_DATE, tool.GetCreatedAt())
 
-	// Handle maintainer union type
+	// Clear both maintainer fields first, then set the one returned by the API.
+	// This prevents stale values from persisting when the maintainer kind changes.
+	_ = d.Set(MAINTAINER_ID, "")
+	_ = d.Set(MAINTAINER_TEAM_KEY, "")
 	maintainer := tool.GetMaintainer()
 	if maintainer.MaintainerMember != nil {
 		_ = d.Set(MAINTAINER_ID, maintainer.MaintainerMember.GetId())

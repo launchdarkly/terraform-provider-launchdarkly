@@ -161,13 +161,19 @@ func aiConfigRead(ctx context.Context, d *schema.ResourceData, meta interface{},
 	_ = d.Set(VERSION, aiConfig.Version)
 	_ = d.Set(CREATION_DATE, aiConfig.CreatedAt)
 
+	// Always set mode, defaulting to "completion" when the API field is nil.
+	mode := "completion"
 	if aiConfig.Mode != nil {
-		_ = d.Set(MODE, *aiConfig.Mode)
+		mode = *aiConfig.Mode
 	}
+	_ = d.Set(MODE, mode)
 
+	// Always set evaluation_metric_key, defaulting to empty string when nil.
+	evaluationMetricKey := ""
 	if aiConfig.EvaluationMetricKey != nil {
-		_ = d.Set(EVALUATION_METRIC_KEY, *aiConfig.EvaluationMetricKey)
+		evaluationMetricKey = *aiConfig.EvaluationMetricKey
 	}
+	_ = d.Set(EVALUATION_METRIC_KEY, evaluationMetricKey)
 
 	isInverted := false
 	if aiConfig.IsInverted != nil {
@@ -175,7 +181,10 @@ func aiConfigRead(ctx context.Context, d *schema.ResourceData, meta interface{},
 	}
 	_ = d.Set(IS_INVERTED, isInverted)
 
-	// Set maintainer fields based on union type in API response
+	// Clear both maintainer fields first, then set the one returned by the API.
+	// This prevents stale values from persisting when the maintainer kind changes.
+	_ = d.Set(MAINTAINER_ID, "")
+	_ = d.Set(MAINTAINER_TEAM_KEY, "")
 	maintainer := aiConfig.GetMaintainer()
 	if maintainer.MaintainerMember != nil {
 		_ = d.Set(MAINTAINER_ID, maintainer.MaintainerMember.GetId())
