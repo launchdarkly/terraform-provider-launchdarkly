@@ -38,7 +38,7 @@ func baseAIToolSchema(isDataSource bool) map[string]*schema.Schema {
 			Required:         !isDataSource,
 			Computed:         isDataSource,
 			Description:      "A JSON string representing the JSON Schema for the tool's parameters.",
-			ValidateFunc:     emptyValueIfDataSource(validateJsonStringFunc, isDataSource),
+			ValidateDiagFunc: emptyValueIfDataSource(validateJsonStringDiagFunc(), isDataSource),
 			DiffSuppressFunc: emptyValueIfDataSource(suppressEquivalentJsonDiffs, isDataSource),
 		},
 		CUSTOM_PARAMETERS: {
@@ -46,7 +46,7 @@ func baseAIToolSchema(isDataSource bool) map[string]*schema.Schema {
 			Optional:         !isDataSource,
 			Computed:         isDataSource,
 			Description:      "A JSON string representing custom application-level metadata for the AI tool.",
-			ValidateFunc:     emptyValueIfDataSource(validateJsonStringFunc, isDataSource),
+			ValidateDiagFunc: emptyValueIfDataSource(validateJsonStringDiagFunc(), isDataSource),
 			DiffSuppressFunc: emptyValueIfDataSource(suppressEquivalentJsonDiffs, isDataSource),
 		},
 		MAINTAINER_ID: {

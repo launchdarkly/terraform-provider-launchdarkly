@@ -66,7 +66,7 @@ func baseModelConfigSchema(isDataSource bool) map[string]*schema.Schema {
 			Computed:         isDataSource,
 			Description:      addForceNewDescription("A JSON string representing the model parameters (e.g. `{\"temperature\": 0.7, \"maxTokens\": 4096}`).", !isDataSource),
 			ForceNew:         !isDataSource,
-			ValidateFunc:     emptyValueIfDataSource(validateJsonStringFunc, isDataSource),
+			ValidateDiagFunc: emptyValueIfDataSource(validateJsonStringDiagFunc(), isDataSource),
 			DiffSuppressFunc: emptyValueIfDataSource(suppressEquivalentJsonDiffs, isDataSource),
 		},
 		CUSTOM_PARAMETERS: {
@@ -75,7 +75,7 @@ func baseModelConfigSchema(isDataSource bool) map[string]*schema.Schema {
 			Computed:         isDataSource,
 			Description:      addForceNewDescription("A JSON string representing custom parameters for the model config.", !isDataSource),
 			ForceNew:         !isDataSource,
-			ValidateFunc:     emptyValueIfDataSource(validateJsonStringFunc, isDataSource),
+			ValidateDiagFunc: emptyValueIfDataSource(validateJsonStringDiagFunc(), isDataSource),
 			DiffSuppressFunc: emptyValueIfDataSource(suppressEquivalentJsonDiffs, isDataSource),
 		},
 		TAGS: func() *schema.Schema {

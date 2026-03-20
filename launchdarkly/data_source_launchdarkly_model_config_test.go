@@ -26,7 +26,8 @@ func TestAccDataSourceModelConfig_noMatchReturnsError(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		Providers:    testAccProviders,
+		CheckDestroy: testAccCheckModelConfigDestroy,
 		Steps: []resource.TestStep{
 			{
 				Config:      fmt.Sprintf(testAccDataSourceModelConfigBasic, projectKey, modelConfigKey),
@@ -53,34 +54,25 @@ func TestAccDataSourceModelConfig_exists(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		Providers:    testAccProviders,
+		CheckDestroy: testAccCheckModelConfigDestroy,
 		Steps: []resource.TestStep{
 			{
-				Config: fmt.Sprintf(`
-resource "launchdarkly_project" "test" {
-	name = "Model Config DS Test"
-	key  = "%s"
-	environments {
-		name  = "Test Environment"
-		key   = "test-env"
-		color = "000000"
-	}
-}
-
+				Config: withAITestProject(projectKey, fmt.Sprintf(`
 resource "launchdarkly_model_config" "test" {
-	project_key = launchdarkly_project.test.key
-	key         = "%s"
-	name        = "%s"
-	model_id    = "%s"
+	project_key    = launchdarkly_project.test.key
+	key            = "%s"
+	name           = "%s"
+	model_id       = "%s"
 	model_provider = "%s"
-	tags        = ["test"]
+	tags           = ["test"]
 }
 
 data "launchdarkly_model_config" "test" {
 	project_key = launchdarkly_project.test.key
 	key         = launchdarkly_model_config.test.key
 }
-`, projectKey, modelConfigKey, modelConfigName, modelID, providerName),
+`, modelConfigKey, modelConfigName, modelID, providerName)),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttrSet(resourceName, PROJECT_KEY),
 					resource.TestCheckResourceAttrSet(resourceName, KEY),
@@ -97,5 +89,4 @@ data "launchdarkly_model_config" "test" {
 			},
 		},
 	})
-
 }

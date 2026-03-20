@@ -11,16 +11,6 @@ import (
 
 const (
 	testAccAIToolCreate = `
-resource "launchdarkly_project" "test" {
-	key  = "%s"
-	name = "AI Tool Test Project"
-	environments {
-		name  = "Test Environment"
-		key   = "test-env"
-		color = "000000"
-	}
-}
-
 resource "launchdarkly_ai_tool" "test" {
 	project_key = launchdarkly_project.test.key
 	key         = "%s"
@@ -39,16 +29,6 @@ resource "launchdarkly_ai_tool" "test" {
 `
 
 	testAccAIToolUpdate = `
-resource "launchdarkly_project" "test" {
-	key  = "%s"
-	name = "AI Tool Test Project"
-	environments {
-		name  = "Test Environment"
-		key   = "test-env"
-		color = "000000"
-	}
-}
-
 resource "launchdarkly_ai_tool" "test" {
 	project_key = launchdarkly_project.test.key
 	key         = "%s"
@@ -70,16 +50,6 @@ resource "launchdarkly_ai_tool" "test" {
 }
 `
 	testAccAIToolWithCustomParams = `
-resource "launchdarkly_project" "test" {
-	key  = "%s"
-	name = "AI Tool Test Project"
-	environments {
-		name  = "Test Environment"
-		key   = "test-env"
-		color = "000000"
-	}
-}
-
 resource "launchdarkly_ai_tool" "test" {
 	project_key       = launchdarkly_project.test.key
 	key               = "%s"
@@ -113,7 +83,7 @@ func TestAccAITool_CreateAndUpdate(t *testing.T) {
 		CheckDestroy: testAccCheckAIToolDestroy,
 		Steps: []resource.TestStep{
 			{
-				Config: fmt.Sprintf(testAccAIToolCreate, projectKey, toolKey, toolDescription),
+				Config: withAITestProject(projectKey, fmt.Sprintf(testAccAIToolCreate, toolKey, toolDescription)),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckAIToolExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, PROJECT_KEY, projectKey),
@@ -128,7 +98,7 @@ func TestAccAITool_CreateAndUpdate(t *testing.T) {
 				ImportStateVerify: true,
 			},
 			{
-				Config: fmt.Sprintf(testAccAIToolUpdate, projectKey, toolKey, updatedToolDescription),
+				Config: withAITestProject(projectKey, fmt.Sprintf(testAccAIToolUpdate, toolKey, updatedToolDescription)),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckAIToolExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, DESCRIPTION, updatedToolDescription),
@@ -155,7 +125,7 @@ func TestAccAITool_WithCustomParameters(t *testing.T) {
 		CheckDestroy: testAccCheckAIToolDestroy,
 		Steps: []resource.TestStep{
 			{
-				Config: fmt.Sprintf(testAccAIToolWithCustomParams, projectKey, toolKey),
+				Config: withAITestProject(projectKey, fmt.Sprintf(testAccAIToolWithCustomParams, toolKey)),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckAIToolExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, DESCRIPTION, "Tool with custom params"),

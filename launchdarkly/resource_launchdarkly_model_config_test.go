@@ -11,16 +11,6 @@ import (
 
 const (
 	testAccModelConfigCreate = `
-resource "launchdarkly_project" "test" {
-	key  = "%s"
-	name = "Model Config Test Project"
-	environments {
-		name  = "Test Environment"
-		key   = "test-env"
-		color = "000000"
-	}
-}
-
 resource "launchdarkly_model_config" "test" {
 	project_key = launchdarkly_project.test.key
 	key         = "%s"
@@ -35,16 +25,6 @@ resource "launchdarkly_model_config" "test" {
 }
 `
 	testAccModelConfigWithAllFields = `
-resource "launchdarkly_project" "test" {
-	key  = "%s"
-	name = "Model Config Test Project"
-	environments {
-		name  = "Test Environment"
-		key   = "test-env"
-		color = "000000"
-	}
-}
-
 resource "launchdarkly_model_config" "test" {
 	project_key          = launchdarkly_project.test.key
 	key                  = "%s"
@@ -81,7 +61,7 @@ func TestAccModelConfig_CreateAndImport(t *testing.T) {
 		CheckDestroy: testAccCheckModelConfigDestroy,
 		Steps: []resource.TestStep{
 			{
-				Config: fmt.Sprintf(testAccModelConfigCreate, projectKey, modelConfigKey, modelConfigName, modelID, providerName),
+				Config: withAITestProject(projectKey, fmt.Sprintf(testAccModelConfigCreate, modelConfigKey, modelConfigName, modelID, providerName)),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckModelConfigExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, PROJECT_KEY, projectKey),
@@ -117,7 +97,7 @@ func TestAccModelConfig_WithAllFields(t *testing.T) {
 		CheckDestroy: testAccCheckModelConfigDestroy,
 		Steps: []resource.TestStep{
 			{
-				Config: fmt.Sprintf(testAccModelConfigWithAllFields, projectKey, modelConfigKey, modelConfigName, modelID, providerName, costInput, costOutput),
+				Config: withAITestProject(projectKey, fmt.Sprintf(testAccModelConfigWithAllFields, modelConfigKey, modelConfigName, modelID, providerName, costInput, costOutput)),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckModelConfigExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, NAME, modelConfigName),

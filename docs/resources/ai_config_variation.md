@@ -50,8 +50,8 @@ resource "launchdarkly_ai_config_variation" "example" {
 - `description` (String) The variation's description (used in agent mode).
 - `instructions` (String) The variation's instructions (used in agent mode).
 - `messages` (Block List) A list of messages for completion mode. Each message has a `role` and `content`. (see [below for nested schema](#nestedblock--messages))
-- `model` (String) A JSON string representing the inline model configuration for the variation.
-- `model_config_key` (String) The key of a model config resource to use for this variation.
+- `model` (String) A JSON string representing the inline model configuration for the variation. Conflicts with `model_config_key`.
+- `model_config_key` (String) The key of a model config resource to use for this variation. Conflicts with `model`.
 - `state` (String) The state of the variation. Must be `archived` or `published`.
 - `tool_keys` (Set of String) A set of AI tool keys to associate with this variation.
 

@@ -26,7 +26,8 @@ func TestAccDataSourceAITool_noMatchReturnsError(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		Providers:    testAccProviders,
+		CheckDestroy: testAccCheckAIToolDestroy,
 		Steps: []resource.TestStep{
 			{
 				Config:      fmt.Sprintf(testAccDataSourceAIToolBasic, projectKey, toolKey),
@@ -51,20 +52,11 @@ func TestAccDataSourceAITool_exists(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		Providers:    testAccProviders,
+		CheckDestroy: testAccCheckAIToolDestroy,
 		Steps: []resource.TestStep{
 			{
-				Config: fmt.Sprintf(`
-resource "launchdarkly_project" "test" {
-	name = "AI Tool DS Test"
-	key  = "%s"
-	environments {
-		name  = "Test Environment"
-		key   = "test-env"
-		color = "000000"
-	}
-}
-
+				Config: withAITestProject(projectKey, fmt.Sprintf(`
 resource "launchdarkly_ai_tool" "test" {
 	project_key = launchdarkly_project.test.key
 	key         = "%s"
@@ -85,7 +77,7 @@ data "launchdarkly_ai_tool" "test" {
 	project_key = launchdarkly_project.test.key
 	key         = launchdarkly_ai_tool.test.key
 }
-`, projectKey, toolKey, toolDescription),
+`, toolKey, toolDescription)),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttrSet(resourceName, PROJECT_KEY),
 					resource.TestCheckResourceAttrSet(resourceName, KEY),
@@ -100,5 +92,4 @@ data "launchdarkly_ai_tool" "test" {
 			},
 		},
 	})
-
 }

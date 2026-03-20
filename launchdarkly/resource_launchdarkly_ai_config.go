@@ -22,6 +22,15 @@ func resourceAIConfig() *schema.Resource {
 			StateContext: resourceAIConfigImport,
 		},
 
+		CustomizeDiff: func(ctx context.Context, diff *schema.ResourceDiff, meta interface{}) error {
+			isInverted := diff.Get(IS_INVERTED).(bool)
+			metricKey := diff.Get(EVALUATION_METRIC_KEY).(string)
+			if isInverted && metricKey == "" {
+				return fmt.Errorf("is_inverted requires evaluation_metric_key to be set")
+			}
+			return nil
+		},
+
 		Description: `Provides a LaunchDarkly AI Config resource.
 
 This resource allows you to create and manage AI Configurations within your LaunchDarkly project.`,
@@ -65,10 +74,12 @@ func resourceAIConfigCreate(ctx context.Context, d *schema.ResourceData, metaRaw
 	if v, ok := d.GetOk(EVALUATION_METRIC_KEY); ok {
 		evaluationMetricKey := v.(string)
 		post.EvaluationMetricKey = &evaluationMetricKey
-	}
 
-	if v, ok := d.GetOk(IS_INVERTED); ok {
-		isInverted := v.(bool)
+		// Only send is_inverted when evaluation_metric_key is set, since it's
+		// meaningless without a metric. Use d.Get() instead of d.GetOk() because
+		// GetOk returns ok=false for bool(false), which would silently drop an
+		// explicit is_inverted = false.
+		isInverted := d.Get(IS_INVERTED).(bool)
 		post.IsInverted = &isInverted
 	}
 
@@ -137,18 +148,17 @@ func resourceAIConfigUpdate(ctx context.Context, d *schema.ResourceData, metaRaw
 	}
 
 	if d.HasChange(EVALUATION_METRIC_KEY) {
-		if v, ok := d.GetOk(EVALUATION_METRIC_KEY); ok {
-			evaluationMetricKey := v.(string)
-			patch.EvaluationMetricKey = &evaluationMetricKey
-		}
+		// Use d.Get() instead of d.GetOk() so users can unset to empty string.
+		evaluationMetricKey := d.Get(EVALUATION_METRIC_KEY).(string)
+		patch.EvaluationMetricKey = &evaluationMetricKey
 		hasChanges = true
 	}
 
 	if d.HasChange(IS_INVERTED) {
-		if v, ok := d.GetOk(IS_INVERTED); ok {
-			isInverted := v.(bool)
-			patch.IsInverted = &isInverted
-		}
+		// Use d.Get() instead of d.GetOk() because GetOk returns ok=false
+		// for bool(false), silently dropping true→false changes.
+		isInverted := d.Get(IS_INVERTED).(bool)
+		patch.IsInverted = &isInverted
 		hasChanges = true
 	}
 

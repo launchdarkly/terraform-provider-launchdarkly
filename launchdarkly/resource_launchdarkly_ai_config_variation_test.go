@@ -3,29 +3,14 @@ package launchdarkly
 import (
 	"fmt"
 	"testing"
-	"time"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 )
 
-func aiConfigVariationTestCooldown() {
-	time.Sleep(2 * time.Second)
-}
-
 const (
 	testAccAIConfigVariationCreate = `
-resource "launchdarkly_project" "test" {
-	key  = "%s"
-	name = "AI Config Variation Test Project"
-	environments {
-		name  = "Test Environment"
-		key   = "test-env"
-		color = "000000"
-	}
-}
-
 resource "launchdarkly_ai_config" "test" {
 	project_key = launchdarkly_project.test.key
 	key         = "%s"
@@ -47,16 +32,6 @@ resource "launchdarkly_ai_config_variation" "test" {
 `
 
 	testAccAIConfigVariationUpdate = `
-resource "launchdarkly_project" "test" {
-	key  = "%s"
-	name = "AI Config Variation Test Project"
-	environments {
-		name  = "Test Environment"
-		key   = "test-env"
-		color = "000000"
-	}
-}
-
 resource "launchdarkly_ai_config" "test" {
 	project_key = launchdarkly_project.test.key
 	key         = "%s"
@@ -81,16 +56,6 @@ resource "launchdarkly_ai_config_variation" "test" {
 }
 `
 	testAccAIConfigVariationWithModelConfigKey = `
-resource "launchdarkly_project" "test" {
-	key  = "%s"
-	name = "AI Config Variation Test Project"
-	environments {
-		name  = "Test Environment"
-		key   = "test-env"
-		color = "000000"
-	}
-}
-
 resource "launchdarkly_model_config" "test" {
 	project_key    = launchdarkly_project.test.key
 	key            = "%s"
@@ -122,16 +87,6 @@ resource "launchdarkly_ai_config_variation" "test" {
 `
 
 	testAccAIConfigVariationAgentMode = `
-resource "launchdarkly_project" "test" {
-	key  = "%s"
-	name = "AI Config Variation Test Project"
-	environments {
-		name  = "Test Environment"
-		key   = "test-env"
-		color = "000000"
-	}
-}
-
 resource "launchdarkly_ai_config" "test" {
 	project_key = launchdarkly_project.test.key
 	key         = "%s"
@@ -148,17 +103,32 @@ resource "launchdarkly_ai_config_variation" "test" {
 }
 `
 
-	testAccAIConfigVariationWithToolKeys = `
-resource "launchdarkly_project" "test" {
-	key  = "%s"
-	name = "AI Config Variation Test Project"
-	environments {
-		name  = "Test Environment"
-		key   = "test-env"
-		color = "000000"
-	}
+	testAccAIConfigVariationWithInlineModel = `
+resource "launchdarkly_ai_config" "test" {
+	project_key = launchdarkly_project.test.key
+	key         = "%s"
+	name        = "Parent AI Config"
+	description = "Parent for inline model test"
+	tags        = ["test"]
 }
 
+resource "launchdarkly_ai_config_variation" "test" {
+	project_key = launchdarkly_project.test.key
+	config_key  = launchdarkly_ai_config.test.key
+	key         = "%s"
+	name        = "Variation with inline model"
+	model       = jsonencode({
+		modelName  = "gpt-4"
+		parameters = { temperature = 0.7 }
+	})
+	messages {
+		role    = "system"
+		content = "You are a helpful assistant."
+	}
+}
+`
+
+	testAccAIConfigVariationWithToolKeys = `
 resource "launchdarkly_ai_tool" "test" {
 	project_key = launchdarkly_project.test.key
 	key         = "%s"
@@ -194,7 +164,7 @@ resource "launchdarkly_ai_config_variation" "test" {
 )
 
 func TestAccAIConfigVariation_CreateAndUpdate(t *testing.T) {
-	aiConfigVariationTestCooldown()
+	aiTestCooldown()
 	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	configKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	variationKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
@@ -210,7 +180,7 @@ func TestAccAIConfigVariation_CreateAndUpdate(t *testing.T) {
 		CheckDestroy: testAccCheckAIConfigVariationDestroy,
 		Steps: []resource.TestStep{
 			{
-				Config: fmt.Sprintf(testAccAIConfigVariationCreate, projectKey, configKey, variationKey, variationName),
+				Config: withAITestProject(projectKey, fmt.Sprintf(testAccAIConfigVariationCreate, configKey, variationKey, variationName)),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckAIConfigVariationExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, PROJECT_KEY, projectKey),
@@ -228,7 +198,7 @@ func TestAccAIConfigVariation_CreateAndUpdate(t *testing.T) {
 				ImportStateVerify: true,
 			},
 			{
-				Config: fmt.Sprintf(testAccAIConfigVariationUpdate, projectKey, configKey, variationKey, updatedVariationName),
+				Config: withAITestProject(projectKey, fmt.Sprintf(testAccAIConfigVariationUpdate, configKey, variationKey, updatedVariationName)),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckAIConfigVariationExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, NAME, updatedVariationName),
@@ -249,7 +219,7 @@ func TestAccAIConfigVariation_CreateAndUpdate(t *testing.T) {
 }
 
 func TestAccAIConfigVariation_WithModelConfigKey(t *testing.T) {
-	aiConfigVariationTestCooldown()
+	aiTestCooldown()
 	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	configKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	modelConfigKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
@@ -262,7 +232,7 @@ func TestAccAIConfigVariation_WithModelConfigKey(t *testing.T) {
 		CheckDestroy: testAccCheckAIConfigVariationDestroy,
 		Steps: []resource.TestStep{
 			{
-				Config: fmt.Sprintf(testAccAIConfigVariationWithModelConfigKey, projectKey, modelConfigKey, configKey, variationKey),
+				Config: withAITestProject(projectKey, fmt.Sprintf(testAccAIConfigVariationWithModelConfigKey, modelConfigKey, configKey, variationKey)),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckAIConfigVariationExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, MODEL_CONFIG_KEY, modelConfigKey),
@@ -282,11 +252,11 @@ func TestAccAIConfigVariation_WithModelConfigKey(t *testing.T) {
 }
 
 // TestAccAIConfigVariation_AgentMode tests creating a variation under an agent-mode AI config.
-// Note: The API does not support description/instructions fields on variation create/update —
+// Note: The API does not support description/instructions fields on variation create/update --
 // those are read-only fields populated server-side. This test verifies that a basic variation
 // can be created and updated under an agent-mode parent config.
 func TestAccAIConfigVariation_AgentMode(t *testing.T) {
-	aiConfigVariationTestCooldown()
+	aiTestCooldown()
 	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	configKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	variationKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
@@ -300,7 +270,7 @@ func TestAccAIConfigVariation_AgentMode(t *testing.T) {
 		CheckDestroy: testAccCheckAIConfigVariationDestroy,
 		Steps: []resource.TestStep{
 			{
-				Config: fmt.Sprintf(testAccAIConfigVariationAgentMode, projectKey, configKey, variationKey, variationName),
+				Config: withAITestProject(projectKey, fmt.Sprintf(testAccAIConfigVariationAgentMode, configKey, variationKey, variationName)),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckAIConfigVariationExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, NAME, variationName),
@@ -312,7 +282,7 @@ func TestAccAIConfigVariation_AgentMode(t *testing.T) {
 				ImportStateVerify: true,
 			},
 			{
-				Config: fmt.Sprintf(testAccAIConfigVariationAgentMode, projectKey, configKey, variationKey, updatedName),
+				Config: withAITestProject(projectKey, fmt.Sprintf(testAccAIConfigVariationAgentMode, configKey, variationKey, updatedName)),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckAIConfigVariationExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, NAME, updatedName),
@@ -328,9 +298,8 @@ func TestAccAIConfigVariation_AgentMode(t *testing.T) {
 }
 
 // TestAccAIConfigVariation_WithToolKeys tests creating a variation with tool_keys.
-// Same two-apply pattern as AgentMode: POST doesn't persist tool_keys, PATCH does.
 func TestAccAIConfigVariation_WithToolKeys(t *testing.T) {
-	aiConfigVariationTestCooldown()
+	aiTestCooldown()
 	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	configKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	toolKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
@@ -343,22 +312,46 @@ func TestAccAIConfigVariation_WithToolKeys(t *testing.T) {
 		CheckDestroy: testAccCheckAIConfigVariationDestroy,
 		Steps: []resource.TestStep{
 			{
-				// First apply: POST creates variation but may not persist tool_keys
-				Config:             fmt.Sprintf(testAccAIConfigVariationWithToolKeys, projectKey, toolKey, configKey, variationKey),
-				ExpectNonEmptyPlan: true,
+				Config: withAITestProject(projectKey, fmt.Sprintf(testAccAIConfigVariationWithToolKeys, toolKey, configKey, variationKey)),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckAIConfigVariationExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, NAME, "Variation with tools"),
+					resource.TestCheckResourceAttr(resourceName, "tool_keys.#", "1"),
 				),
 			},
 			{
-				// Second apply: PATCH sets tool_keys (creates new version).
-				// The GET may still return v1 due to eventual consistency, so allow non-empty plan.
-				Config:             fmt.Sprintf(testAccAIConfigVariationWithToolKeys, projectKey, toolKey, configKey, variationKey),
-				ExpectNonEmptyPlan: true,
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
+		},
+	})
+}
+
+func TestAccAIConfigVariation_WithInlineModel(t *testing.T) {
+	aiTestCooldown()
+	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	configKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	variationKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	resourceName := "launchdarkly_ai_config_variation.test"
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:     func() { testAccPreCheck(t) },
+		Providers:    testAccProviders,
+		CheckDestroy: testAccCheckAIConfigVariationDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config: withAITestProject(projectKey, fmt.Sprintf(testAccAIConfigVariationWithInlineModel, configKey, variationKey)),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckAIConfigVariationExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, NAME, "Variation with inline model"),
+					resource.TestCheckResourceAttrSet(resourceName, MODEL),
 				),
+			},
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
 			},
 		},
 	})

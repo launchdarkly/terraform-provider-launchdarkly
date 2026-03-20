@@ -12,49 +12,53 @@ import (
 	ldapi "github.com/launchdarkly/api-client-go/v22"
 )
 
-func aiConfigVariationSchema() map[string]*schema.Schema {
-	return map[string]*schema.Schema{
+func aiConfigVariationSchema(isDataSource bool) map[string]*schema.Schema {
+	schemaMap := map[string]*schema.Schema{
 		PROJECT_KEY: {
 			Type:             schema.TypeString,
 			Required:         true,
-			Description:      addForceNewDescription("The project key.", true),
-			ForceNew:         true,
+			Description:      addForceNewDescription("The project key.", !isDataSource),
+			ForceNew:         !isDataSource,
 			ValidateDiagFunc: validateKey(),
 		},
 		AI_CONFIG_KEY: {
 			Type:             schema.TypeString,
 			Required:         true,
-			Description:      addForceNewDescription("The AI Config key that this variation belongs to.", true),
-			ForceNew:         true,
+			Description:      addForceNewDescription("The AI Config key that this variation belongs to.", !isDataSource),
+			ForceNew:         !isDataSource,
 			ValidateDiagFunc: validateKey(),
 		},
 		KEY: {
 			Type:             schema.TypeString,
 			Required:         true,
-			Description:      addForceNewDescription("The variation's unique key.", true),
-			ForceNew:         true,
+			Description:      addForceNewDescription("The variation's unique key.", !isDataSource),
+			ForceNew:         !isDataSource,
 			ValidateDiagFunc: validateKey(),
 		},
 		NAME: {
 			Type:        schema.TypeString,
-			Required:    true,
+			Required:    !isDataSource,
+			Computed:    isDataSource,
 			Description: "The variation's human-readable name.",
 		},
 		MESSAGES: {
 			Type:        schema.TypeList,
-			Optional:    true,
+			Optional:    !isDataSource,
+			Computed:    isDataSource,
 			Description: "A list of messages for completion mode. Each message has a `role` and `content`.",
 			Elem: &schema.Resource{
 				Schema: map[string]*schema.Schema{
 					ROLE: {
 						Type:             schema.TypeString,
-						Required:         true,
+						Required:         !isDataSource,
+						Computed:         isDataSource,
 						Description:      "The role of the message. Must be one of `system`, `user`, `assistant`, or `developer`.",
 						ValidateDiagFunc: validation.ToDiagFunc(validation.StringInSlice([]string{"system", "user", "assistant", "developer"}, false)),
 					},
 					CONTENT: {
 						Type:        schema.TypeString,
-						Required:    true,
+						Required:    !isDataSource,
+						Computed:    isDataSource,
 						Description: "The content of the message.",
 					},
 				},
@@ -62,29 +66,36 @@ func aiConfigVariationSchema() map[string]*schema.Schema {
 		},
 		MODEL: {
 			Type:             schema.TypeString,
-			Optional:         true,
-			Description:      "A JSON string representing the inline model configuration for the variation.",
-			ValidateFunc:     validateJsonStringFunc,
+			Optional:         !isDataSource,
+			Computed:         isDataSource,
+			Description:      "A JSON string representing the inline model configuration for the variation. Conflicts with `model_config_key`.",
+			ValidateDiagFunc: validateJsonStringDiagFunc(),
 			DiffSuppressFunc: suppressEquivalentJsonDiffs,
+			ConflictsWith:    []string{MODEL_CONFIG_KEY},
 		},
 		MODEL_CONFIG_KEY: {
-			Type:        schema.TypeString,
-			Optional:    true,
-			Description: "The key of a model config resource to use for this variation.",
+			Type:          schema.TypeString,
+			Optional:      !isDataSource,
+			Computed:      isDataSource,
+			Description:   "The key of a model config resource to use for this variation. Conflicts with `model`.",
+			ConflictsWith: []string{MODEL},
 		},
 		DESCRIPTION: {
 			Type:        schema.TypeString,
-			Optional:    true,
+			Optional:    !isDataSource,
+			Computed:    isDataSource,
 			Description: "The variation's description (used in agent mode).",
 		},
 		INSTRUCTIONS: {
 			Type:        schema.TypeString,
-			Optional:    true,
+			Optional:    !isDataSource,
+			Computed:    isDataSource,
 			Description: "The variation's instructions (used in agent mode).",
 		},
 		TOOL_KEYS: {
 			Type:        schema.TypeSet,
-			Optional:    true,
+			Optional:    !isDataSource,
+			Computed:    isDataSource,
 			Description: "A set of AI tool keys to associate with this variation.",
 			Elem: &schema.Schema{
 				Type: schema.TypeString,
@@ -92,7 +103,7 @@ func aiConfigVariationSchema() map[string]*schema.Schema {
 		},
 		STATE: {
 			Type:        schema.TypeString,
-			Optional:    true,
+			Optional:    !isDataSource,
 			Computed:    true,
 			Description: "The state of the variation. Must be `archived` or `published`.",
 			ValidateDiagFunc: validation.ToDiagFunc(validation.StringInSlice(
@@ -115,9 +126,15 @@ func aiConfigVariationSchema() map[string]*schema.Schema {
 			Description: "The creation timestamp of the variation.",
 		},
 	}
+
+	if isDataSource {
+		schemaMap = removeInvalidFieldsForDataSource(schemaMap)
+	}
+
+	return schemaMap
 }
 
-func aiConfigVariationRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+func aiConfigVariationRead(ctx context.Context, d *schema.ResourceData, meta interface{}, isDataSource bool) diag.Diagnostics {
 	var diags diag.Diagnostics
 	client := meta.(*Client)
 
@@ -133,7 +150,7 @@ func aiConfigVariationRead(ctx context.Context, d *schema.ResourceData, meta int
 		return err
 	})
 
-	if isStatusNotFound(res) {
+	if isStatusNotFound(res) && !isDataSource {
 		log.Printf("[WARN] failed to find AI config variation with key %q in config %q project %q, removing from state if present", variationKey, configKey, projectKey)
 		diags = append(diags, diag.Diagnostic{
 			Severity: diag.Warning,
@@ -150,6 +167,10 @@ func aiConfigVariationRead(ctx context.Context, d *schema.ResourceData, meta int
 		log.Printf("[WARN] AI config variation with key %q in config %q project %q returned no items, removing from state", variationKey, configKey, projectKey)
 		d.SetId("")
 		return diags
+	}
+
+	if isDataSource {
+		d.SetId(fmt.Sprintf("%s/%s/%s", projectKey, configKey, variationKey))
 	}
 
 	// Items contains all versions of the variation. Find the one with the highest version number.

@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 	"testing"
-	"time"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
@@ -12,26 +11,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// aiConfigTestCooldown adds a brief delay between AI config tests to avoid
-// hitting rate limits. The AI config API creates feature flags internally,
-// which have a tight rate limit that returns 429 — but the outer handler
-// translates this to a 400, bypassing the retry client.
-func aiConfigTestCooldown() {
-	time.Sleep(2 * time.Second)
-}
-
 const (
 	testAccAIConfigCreate = `
-resource "launchdarkly_project" "test" {
-	key  = "%s"
-	name = "AI Config Test Project"
-	environments {
-		name  = "Test Environment"
-		key   = "test-env"
-		color = "000000"
-	}
-}
-
 resource "launchdarkly_ai_config" "test" {
 	project_key = launchdarkly_project.test.key
 	key         = "%s"
@@ -42,16 +23,6 @@ resource "launchdarkly_ai_config" "test" {
 `
 
 	testAccAIConfigUpdate = `
-resource "launchdarkly_project" "test" {
-	key  = "%s"
-	name = "AI Config Test Project"
-	environments {
-		name  = "Test Environment"
-		key   = "test-env"
-		color = "000000"
-	}
-}
-
 resource "launchdarkly_ai_config" "test" {
 	project_key = launchdarkly_project.test.key
 	key         = "%s"
@@ -62,16 +33,6 @@ resource "launchdarkly_ai_config" "test" {
 `
 
 	testAccAIConfigWithMode = `
-resource "launchdarkly_project" "test" {
-	key  = "%s"
-	name = "AI Config Test Project"
-	environments {
-		name  = "Test Environment"
-		key   = "test-env"
-		color = "000000"
-	}
-}
-
 resource "launchdarkly_ai_config" "test" {
 	project_key = launchdarkly_project.test.key
 	key         = "%s"
@@ -82,16 +43,6 @@ resource "launchdarkly_ai_config" "test" {
 `
 
 	testAccAIConfigWithMaintainer = `
-resource "launchdarkly_project" "test" {
-	key  = "%s"
-	name = "AI Config Test Project"
-	environments {
-		name  = "Test Environment"
-		key   = "test-env"
-		color = "000000"
-	}
-}
-
 resource "launchdarkly_ai_config" "test" {
 	project_key   = launchdarkly_project.test.key
 	key           = "%s"
@@ -102,16 +53,6 @@ resource "launchdarkly_ai_config" "test" {
 `
 
 	testAccAIConfigWithTeamMaintainer = `
-resource "launchdarkly_project" "test" {
-	key  = "%s"
-	name = "AI Config Test Project"
-	environments {
-		name  = "Test Environment"
-		key   = "test-env"
-		color = "000000"
-	}
-}
-
 resource "launchdarkly_team" "test" {
 	key              = "%s"
 	name             = "AI Config Test Team"
@@ -129,16 +70,6 @@ resource "launchdarkly_ai_config" "test" {
 `
 
 	testAccAIConfigWithEvaluationMetric = `
-resource "launchdarkly_project" "test" {
-	key  = "%s"
-	name = "AI Config Test Project"
-	environments {
-		name  = "Test Environment"
-		key   = "test-env"
-		color = "000000"
-	}
-}
-
 resource "launchdarkly_ai_config" "test" {
 	project_key           = launchdarkly_project.test.key
 	key                   = "%s"
@@ -151,16 +82,6 @@ resource "launchdarkly_ai_config" "test" {
 `
 
 	testAccAIConfigRemoveOptionals = `
-resource "launchdarkly_project" "test" {
-	key  = "%s"
-	name = "AI Config Test Project"
-	environments {
-		name  = "Test Environment"
-		key   = "test-env"
-		color = "000000"
-	}
-}
-
 resource "launchdarkly_ai_config" "test" {
 	project_key = launchdarkly_project.test.key
 	key         = "%s"
@@ -170,7 +91,7 @@ resource "launchdarkly_ai_config" "test" {
 )
 
 func TestAccAIConfig_CreateAndUpdate(t *testing.T) {
-	aiConfigTestCooldown()
+	aiTestCooldown()
 	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	configKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	configName := "Test AI Config"
@@ -187,7 +108,7 @@ func TestAccAIConfig_CreateAndUpdate(t *testing.T) {
 		CheckDestroy: testAccCheckAIConfigDestroy,
 		Steps: []resource.TestStep{
 			{
-				Config: fmt.Sprintf(testAccAIConfigCreate, projectKey, configKey, configName, configDescription),
+				Config: withAITestProject(projectKey, fmt.Sprintf(testAccAIConfigCreate, configKey, configName, configDescription)),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckAIConfigExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, PROJECT_KEY, projectKey),
@@ -206,7 +127,7 @@ func TestAccAIConfig_CreateAndUpdate(t *testing.T) {
 				ImportStateVerify: true,
 			},
 			{
-				Config: fmt.Sprintf(testAccAIConfigUpdate, projectKey, configKey, updatedConfigName, updatedConfigDescription),
+				Config: withAITestProject(projectKey, fmt.Sprintf(testAccAIConfigUpdate, configKey, updatedConfigName, updatedConfigDescription)),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckAIConfigExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, NAME, updatedConfigName),
@@ -224,7 +145,7 @@ func TestAccAIConfig_CreateAndUpdate(t *testing.T) {
 }
 
 func TestAccAIConfig_WithMode(t *testing.T) {
-	aiConfigTestCooldown()
+	aiTestCooldown()
 	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	configKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	resourceName := "launchdarkly_ai_config.test"
@@ -235,7 +156,7 @@ func TestAccAIConfig_WithMode(t *testing.T) {
 		CheckDestroy: testAccCheckAIConfigDestroy,
 		Steps: []resource.TestStep{
 			{
-				Config: fmt.Sprintf(testAccAIConfigWithMode, projectKey, configKey),
+				Config: withAITestProject(projectKey, fmt.Sprintf(testAccAIConfigWithMode, configKey)),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckAIConfigExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, MODE, "agent"),
@@ -252,7 +173,7 @@ func TestAccAIConfig_WithMode(t *testing.T) {
 }
 
 func TestAccAIConfig_WithMaintainer(t *testing.T) {
-	aiConfigTestCooldown()
+	aiTestCooldown()
 	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	configKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	resourceName := "launchdarkly_ai_config.test"
@@ -271,7 +192,7 @@ func TestAccAIConfig_WithMaintainer(t *testing.T) {
 		CheckDestroy: testAccCheckAIConfigDestroy,
 		Steps: []resource.TestStep{
 			{
-				Config: fmt.Sprintf(testAccAIConfigWithMaintainer, projectKey, configKey, maintainerId),
+				Config: withAITestProject(projectKey, fmt.Sprintf(testAccAIConfigWithMaintainer, configKey, maintainerId)),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckAIConfigExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, MAINTAINER_ID, maintainerId),
@@ -287,7 +208,7 @@ func TestAccAIConfig_WithMaintainer(t *testing.T) {
 }
 
 func TestAccAIConfig_WithTeamMaintainer(t *testing.T) {
-	aiConfigTestCooldown()
+	aiTestCooldown()
 	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	configKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	teamKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
@@ -299,7 +220,7 @@ func TestAccAIConfig_WithTeamMaintainer(t *testing.T) {
 		CheckDestroy: testAccCheckAIConfigDestroy,
 		Steps: []resource.TestStep{
 			{
-				Config: fmt.Sprintf(testAccAIConfigWithTeamMaintainer, projectKey, teamKey, configKey),
+				Config: withAITestProject(projectKey, fmt.Sprintf(testAccAIConfigWithTeamMaintainer, teamKey, configKey)),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckAIConfigExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, MAINTAINER_TEAM_KEY, teamKey),
@@ -316,7 +237,7 @@ func TestAccAIConfig_WithTeamMaintainer(t *testing.T) {
 }
 
 func TestAccAIConfig_WithEvaluationMetric(t *testing.T) {
-	aiConfigTestCooldown()
+	aiTestCooldown()
 	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	configKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	metricSuffix := acctest.RandStringFromCharSet(10, acctest.CharSetAlpha)
@@ -329,7 +250,7 @@ func TestAccAIConfig_WithEvaluationMetric(t *testing.T) {
 		CheckDestroy: testAccCheckAIConfigDestroy,
 		Steps: []resource.TestStep{
 			{
-				Config: fmt.Sprintf(testAccAIConfigWithEvaluationMetric, projectKey, configKey, metricSuffix, false),
+				Config: withAITestProject(projectKey, fmt.Sprintf(testAccAIConfigWithEvaluationMetric, configKey, metricSuffix, false)),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckAIConfigExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, EVALUATION_METRIC_KEY, evalMetricKey),
@@ -342,7 +263,7 @@ func TestAccAIConfig_WithEvaluationMetric(t *testing.T) {
 				ImportStateVerify: true,
 			},
 			{
-				Config: fmt.Sprintf(testAccAIConfigWithEvaluationMetric, projectKey, configKey, metricSuffix, true),
+				Config: withAITestProject(projectKey, fmt.Sprintf(testAccAIConfigWithEvaluationMetric, configKey, metricSuffix, true)),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckAIConfigExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, IS_INVERTED, "true"),
@@ -358,7 +279,7 @@ func TestAccAIConfig_WithEvaluationMetric(t *testing.T) {
 }
 
 func TestAccAIConfig_RemoveOptionalFields(t *testing.T) {
-	aiConfigTestCooldown()
+	aiTestCooldown()
 	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	configKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	resourceName := "launchdarkly_ai_config.test"
@@ -369,7 +290,7 @@ func TestAccAIConfig_RemoveOptionalFields(t *testing.T) {
 		CheckDestroy: testAccCheckAIConfigDestroy,
 		Steps: []resource.TestStep{
 			{
-				Config: fmt.Sprintf(testAccAIConfigCreate, projectKey, configKey, "Full Config", "A description"),
+				Config: withAITestProject(projectKey, fmt.Sprintf(testAccAIConfigCreate, configKey, "Full Config", "A description")),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckAIConfigExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, DESCRIPTION, "A description"),
@@ -377,7 +298,7 @@ func TestAccAIConfig_RemoveOptionalFields(t *testing.T) {
 				),
 			},
 			{
-				Config: fmt.Sprintf(testAccAIConfigRemoveOptionals, projectKey, configKey, "Full Config"),
+				Config: withAITestProject(projectKey, fmt.Sprintf(testAccAIConfigRemoveOptionals, configKey, "Full Config")),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckAIConfigExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, DESCRIPTION, ""),
