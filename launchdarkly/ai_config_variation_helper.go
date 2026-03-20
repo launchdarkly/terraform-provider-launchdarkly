@@ -217,10 +217,11 @@ func aiConfigVariationRead(ctx context.Context, d *schema.ResourceData, meta int
 
 	// Serialize model map to JSON string.
 	// The API returns a default model object (e.g. {"custom":{},"modelName":"","parameters":{}})
-	// even when no model was configured. Only write to state if the model has meaningful content
-	// or the user had previously set it.
-	if len(variation.Model) > 0 && !isEmptyModelMap(variation.Model) {
-		modelJSON, err := mapToJsonString(variation.Model)
+	// even when no model was configured. Strip empty defaults before storing so the state
+	// matches the user's config and doesn't produce a diff on refresh.
+	cleanedModel := stripEmptyMapValues(variation.Model)
+	if len(cleanedModel) > 0 && !isEmptyModelMap(cleanedModel) {
+		modelJSON, err := mapToJsonString(cleanedModel)
 		if err != nil {
 			return diag.Errorf("failed to serialize model for AI config variation %q: %s", variationKey, err)
 		}
@@ -258,6 +259,33 @@ func flattenMessages(messages []ldapi.Message) []map[string]interface{} {
 		result[i] = map[string]interface{}{
 			ROLE:    m.Role,
 			CONTENT: m.Content,
+		}
+	}
+	return result
+}
+
+// stripEmptyMapValues removes keys whose values are empty maps or empty strings
+// from a top-level map. This prevents API-added defaults (e.g. "custom":{}) from
+// creating spurious diffs between the user's config and the API response.
+func stripEmptyMapValues(m map[string]interface{}) map[string]interface{} {
+	if m == nil {
+		return nil
+	}
+	result := make(map[string]interface{}, len(m))
+	for k, v := range m {
+		switch val := v.(type) {
+		case map[string]interface{}:
+			if len(val) > 0 {
+				result[k] = val
+			}
+		case string:
+			if val != "" {
+				result[k] = val
+			}
+		default:
+			if v != nil {
+				result[k] = v
+			}
 		}
 	}
 	return result
