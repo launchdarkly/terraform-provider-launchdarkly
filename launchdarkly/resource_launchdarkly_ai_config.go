@@ -181,9 +181,8 @@ func resourceAIConfigDelete(ctx context.Context, d *schema.ResourceData, metaRaw
 	projectKey := d.Get(PROJECT_KEY).(string)
 	configKey := d.Get(KEY).(string)
 
-	var err error
-	err = client.withConcurrency(client.ctx, func() error {
-		_, err = client.ld.AIConfigsApi.DeleteAIConfig(client.ctx, projectKey, configKey).Execute()
+	err := retryOnTransient400(client, 3, func() error {
+		_, err := client.ld.AIConfigsApi.DeleteAIConfig(client.ctx, projectKey, configKey).Execute()
 		return err
 	})
 	if err != nil {

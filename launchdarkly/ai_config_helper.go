@@ -213,9 +213,9 @@ func aiConfigRead(ctx context.Context, d *schema.ResourceData, meta interface{},
 }
 
 // retryOnTransient400 retries a function that may return a transient 400 error.
-// The AI Config API returns 400 "could not create AI Config" when an internal
-// rate limit is hit (the underlying flag creation returns 429, but the outer
-// handler translates it to 400). We retry these specific errors with backoff.
+// The AI Config API returns 400 "could not create/delete AI Config" when an
+// internal rate limit is hit (the underlying flag operation returns 429, but the
+// outer handler translates it to 400). We retry these specific errors with backoff.
 func retryOnTransient400(client *Client, maxRetries int, fn func() error) error {
 	var err error
 	for attempt := 0; attempt <= maxRetries; attempt++ {
@@ -225,7 +225,8 @@ func retryOnTransient400(client *Client, maxRetries int, fn func() error) error 
 		}
 		errMsg := handleLdapiErr(err).Error()
 		if !strings.Contains(errMsg, "could not create AI Config") &&
-			!strings.Contains(errMsg, "could not create AI Config variations") {
+			!strings.Contains(errMsg, "could not create AI Config variations") &&
+			!strings.Contains(errMsg, "could not delete AI Config") {
 			return err
 		}
 		if attempt < maxRetries {
