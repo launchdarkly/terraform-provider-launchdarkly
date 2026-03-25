@@ -245,13 +245,14 @@ resource "launchdarkly_metric" "http_errors" {
 }
 
 resource "launchdarkly_metric" "latency" {
-	project_key = launchdarkly_project.test.key
-	key         = "latency"
-	name        = "Latency"
-	kind        = "custom"
-	event_key   = "latency"
-	is_numeric  = true
-	unit        = "ms"
+	project_key      = launchdarkly_project.test.key
+	key              = "latency"
+	name             = "Latency"
+	kind             = "custom"
+	event_key        = "latency"
+	is_numeric       = true
+	unit             = "ms"
+	success_criteria = "LowerThanBaseline"
 }
 
 resource "launchdarkly_release_policy" "test" {
