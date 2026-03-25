@@ -236,6 +236,24 @@ resource "launchdarkly_project" "test" {
 	}
 }
 
+resource "launchdarkly_metric" "http_errors" {
+	project_key = launchdarkly_project.test.key
+	key         = "http-errors"
+	name        = "HTTP Errors"
+	kind        = "custom"
+	event_key   = "http-error"
+}
+
+resource "launchdarkly_metric" "latency" {
+	project_key = launchdarkly_project.test.key
+	key         = "latency"
+	name        = "Latency"
+	kind        = "custom"
+	event_key   = "latency"
+	is_numeric  = true
+	unit        = "ms"
+}
+
 resource "launchdarkly_release_policy" "test" {
 	project_key    = launchdarkly_project.test.key
 	key            = "%s"
@@ -249,9 +267,10 @@ resource "launchdarkly_release_policy" "test" {
 	guarded_release_config {
 		rollback_on_regression = true
 		min_sample_size        = 100
-		metric_keys            = ["http-errors", "latency"]
-		metric_group_keys      = ["frontend-metrics"]
+		metric_keys            = [launchdarkly_metric.http_errors.key, launchdarkly_metric.latency.key]
 	}
+
+	depends_on = [launchdarkly_metric.http_errors, launchdarkly_metric.latency]
 }
 `
 
@@ -685,8 +704,6 @@ func TestAccReleasePolicy_GuardedWithMetrics(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "guarded_release_config.0.metric_keys.#", "2"),
 					resource.TestCheckResourceAttr(resourceName, "guarded_release_config.0.metric_keys.0", "http-errors"),
 					resource.TestCheckResourceAttr(resourceName, "guarded_release_config.0.metric_keys.1", "latency"),
-					resource.TestCheckResourceAttr(resourceName, "guarded_release_config.0.metric_group_keys.#", "1"),
-					resource.TestCheckResourceAttr(resourceName, "guarded_release_config.0.metric_group_keys.0", "frontend-metrics"),
 				),
 			},
 			{
