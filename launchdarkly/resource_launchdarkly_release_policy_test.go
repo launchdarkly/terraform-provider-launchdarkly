@@ -374,7 +374,6 @@ resource "launchdarkly_release_policy" "test" {
 	release_method = "guarded-release"
 
 	scope {
-		environment_keys = ["test-env"]
 		flag_tag_keys    = ["frontend", "backend"]
 	}
 
