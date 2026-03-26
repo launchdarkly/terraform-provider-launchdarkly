@@ -137,7 +137,7 @@ Learn more about [release policies here](https://launchdarkly.com/docs/home/rele
 						METRIC_KEYS: {
 							Type:        schema.TypeSet,
 							Optional:    true,
-							Description: "List of metric keys to monitor during the guarded release.",
+							Description: "Set of metric keys to monitor during the guarded release.",
 							Elem: &schema.Schema{
 								Type: schema.TypeString,
 							},
@@ -145,7 +145,7 @@ Learn more about [release policies here](https://launchdarkly.com/docs/home/rele
 						METRIC_GROUP_KEYS: {
 							Type:        schema.TypeSet,
 							Optional:    true,
-							Description: "List of metric group keys to monitor during the guarded release.",
+							Description: "Set of metric group keys to monitor during the guarded release.",
 							Elem: &schema.Schema{
 								Type: schema.TypeString,
 							},
