@@ -135,7 +135,7 @@ Learn more about [release policies here](https://launchdarkly.com/docs/home/rele
 							ValidateDiagFunc: validation.ToDiagFunc(validation.IntAtLeast(5)),
 						},
 						METRIC_KEYS: {
-							Type:        schema.TypeList,
+							Type:        schema.TypeSet,
 							Optional:    true,
 							Description: "List of metric keys to monitor during the guarded release.",
 							Elem: &schema.Schema{
@@ -143,7 +143,7 @@ Learn more about [release policies here](https://launchdarkly.com/docs/home/rele
 							},
 						},
 						METRIC_GROUP_KEYS: {
-							Type:        schema.TypeList,
+							Type:        schema.TypeSet,
 							Optional:    true,
 							Description: "List of metric group keys to monitor during the guarded release.",
 							Elem: &schema.Schema{
@@ -334,14 +334,14 @@ func convertGuardedConfigToAPI(config map[string]interface{}) map[string]interfa
 	}
 
 	if metricKeys, ok := config[METRIC_KEYS]; ok {
-		keys := metricKeys.([]interface{})
+		keys := metricKeys.(*schema.Set).List()
 		if len(keys) > 0 {
 			guardedConfigAPI["metricKeys"] = keys
 		}
 	}
 
 	if metricGroupKeys, ok := config[METRIC_GROUP_KEYS]; ok {
-		keys := metricGroupKeys.([]interface{})
+		keys := metricGroupKeys.(*schema.Set).List()
 		if len(keys) > 0 {
 			guardedConfigAPI["metricGroupKeys"] = keys
 		}

@@ -785,8 +785,8 @@ func TestAccReleasePolicy_GuardedWithMetrics(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "guarded_release_config.0.rollback_on_regression", "true"),
 					resource.TestCheckResourceAttr(resourceName, "guarded_release_config.0.min_sample_size", "100"),
 					resource.TestCheckResourceAttr(resourceName, "guarded_release_config.0.metric_keys.#", "2"),
-					resource.TestCheckResourceAttr(resourceName, "guarded_release_config.0.metric_keys.0", "http-errors"),
-					resource.TestCheckResourceAttr(resourceName, "guarded_release_config.0.metric_keys.1", "latency"),
+					resource.TestCheckTypeSetElemAttr(resourceName, "guarded_release_config.0.metric_keys.*", "http-errors"),
+					resource.TestCheckTypeSetElemAttr(resourceName, "guarded_release_config.0.metric_keys.*", "latency"),
 				),
 			},
 			{

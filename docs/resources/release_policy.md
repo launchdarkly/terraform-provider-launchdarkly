@@ -32,8 +32,6 @@ resource "launchdarkly_release_policy" "guarded_example" {
   guarded_release_config {
     rollback_on_regression = true
     min_sample_size        = 100
-    metric_keys            = ["http-errors", "latency"]
-    metric_group_keys      = ["frontend-metrics"]
 
     stages {
       allocation      = 25000
@@ -101,8 +99,8 @@ Required:
 
 Optional:
 
-- `metric_group_keys` (List of String) List of metric group keys to monitor during the guarded release.
-- `metric_keys` (List of String) List of metric keys to monitor during the guarded release.
+- `metric_group_keys` (Set of String) List of metric group keys to monitor during the guarded release.
+- `metric_keys` (Set of String) List of metric keys to monitor during the guarded release.
 - `min_sample_size` (Number) The minimum sample size for the release policy.
 - `rollout_context_kind` (String) The context kind to use as the randomization unit for the rollout.
 - `stages` (Block List) The stages for the guarded release. (see [below for nested schema](#nestedblock--guarded_release_config--stages))

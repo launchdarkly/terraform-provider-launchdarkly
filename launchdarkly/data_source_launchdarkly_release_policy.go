@@ -95,7 +95,7 @@ Learn more about [release policies here](https://launchdarkly.com/docs/home/rele
 							Description: "The minimum sample size for the release policy.",
 						},
 						METRIC_KEYS: {
-							Type:        schema.TypeList,
+							Type:        schema.TypeSet,
 							Computed:    true,
 							Description: "List of metric keys to monitor during the guarded release.",
 							Elem: &schema.Schema{
@@ -103,7 +103,7 @@ Learn more about [release policies here](https://launchdarkly.com/docs/home/rele
 							},
 						},
 						METRIC_GROUP_KEYS: {
-							Type:        schema.TypeList,
+							Type:        schema.TypeSet,
 							Computed:    true,
 							Description: "List of metric group keys to monitor during the guarded release.",
 							Elem: &schema.Schema{
