@@ -43,11 +43,14 @@ func releasePolicyRead(ctx context.Context, d *schema.ResourceData, meta interfa
 
 	// Set scope if it exists
 	if policy.Scope != nil {
-		scopeList := []map[string]interface{}{
-			{
-				SCOPE_ENVIRONMENT_KEYS: policy.Scope.EnvironmentKeys,
-			},
+		scopeMap := map[string]interface{}{}
+		if len(policy.Scope.EnvironmentKeys) > 0 {
+			scopeMap[SCOPE_ENVIRONMENT_KEYS] = policy.Scope.EnvironmentKeys
 		}
+		if len(policy.Scope.FlagTagKeys) > 0 {
+			scopeMap[SCOPE_FLAG_TAG_KEYS] = policy.Scope.FlagTagKeys
+		}
+		scopeList := []map[string]interface{}{scopeMap}
 		err = d.Set(SCOPE, scopeList)
 		if err != nil {
 			return diag.Errorf("could not set scope on release policy with key %q: %v", policy.Key, err)
@@ -71,6 +74,9 @@ func releasePolicyRead(ctx context.Context, d *schema.ResourceData, meta interfa
 		if len(policy.GuardedReleaseConfig.MetricGroupKeys) > 0 {
 			configList[0][METRIC_GROUP_KEYS] = policy.GuardedReleaseConfig.MetricGroupKeys
 		}
+		if policy.GuardedReleaseConfig.RolloutContextKindKey != "" {
+			configList[0][ROLLOUT_CONTEXT_KIND] = policy.GuardedReleaseConfig.RolloutContextKindKey
+		}
 		if len(policy.GuardedReleaseConfig.Stages) > 0 {
 			configList[0][STAGES] = flattenStages(policy.GuardedReleaseConfig.Stages)
 		}
@@ -84,6 +90,9 @@ func releasePolicyRead(ctx context.Context, d *schema.ResourceData, meta interfa
 	// Set progressive release config if it exists
 	if policy.ProgressiveReleaseConfig != nil && policy.ReleaseMethod == "progressive-release" {
 		configList := []map[string]interface{}{{}}
+		if policy.ProgressiveReleaseConfig.RolloutContextKindKey != "" {
+			configList[0][ROLLOUT_CONTEXT_KIND] = policy.ProgressiveReleaseConfig.RolloutContextKindKey
+		}
 		if len(policy.ProgressiveReleaseConfig.Stages) > 0 {
 			configList[0][STAGES] = flattenStages(policy.ProgressiveReleaseConfig.Stages)
 		}
@@ -123,20 +132,23 @@ type ReleasePolicy struct {
 // ReleasePolicyScope represents the scope configuration for a release policy
 type ReleasePolicyScope struct {
 	EnvironmentKeys []string `json:"environmentKeys"`
+	FlagTagKeys     []string `json:"flagTagKeys"`
 }
 
 // GuardedReleaseConfig represents the configuration for guarded release
 type GuardedReleaseConfig struct {
-	RollbackOnRegression bool                 `json:"rollbackOnRegression"`
-	MinSampleSize        *int                 `json:"minSampleSize,omitempty"`
-	MetricKeys           []string             `json:"metricKeys,omitempty"`
-	MetricGroupKeys      []string             `json:"metricGroupKeys,omitempty"`
-	Stages               []ReleasePolicyStage `json:"stages,omitempty"`
+	RollbackOnRegression  bool                 `json:"rollbackOnRegression"`
+	MinSampleSize         *int                 `json:"minSampleSize,omitempty"`
+	MetricKeys            []string             `json:"metricKeys,omitempty"`
+	MetricGroupKeys       []string             `json:"metricGroupKeys,omitempty"`
+	RolloutContextKindKey string               `json:"rolloutContextKindKey,omitempty"`
+	Stages                []ReleasePolicyStage `json:"stages,omitempty"`
 }
 
 // ProgressiveReleaseConfig represents the configuration for progressive release
 type ProgressiveReleaseConfig struct {
-	Stages []ReleasePolicyStage `json:"stages,omitempty"`
+	RolloutContextKindKey string               `json:"rolloutContextKindKey,omitempty"`
+	Stages                []ReleasePolicyStage `json:"stages,omitempty"`
 }
 
 // ReleasePolicyStage represents a stage in a release policy

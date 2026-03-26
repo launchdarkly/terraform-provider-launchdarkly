@@ -60,9 +60,17 @@ Learn more about [release policies here](https://launchdarkly.com/docs/home/rele
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
 						SCOPE_ENVIRONMENT_KEYS: {
-							Type:        schema.TypeList,
+							Type:        schema.TypeSet,
 							Computed:    true,
 							Description: "The environment keys for environments the release policy is applied to.",
+							Elem: &schema.Schema{
+								Type: schema.TypeString,
+							},
+						},
+						SCOPE_FLAG_TAG_KEYS: {
+							Type:        schema.TypeSet,
+							Computed:    true,
+							Description: "The flag tag keys that the release policy is applied to.",
 							Elem: &schema.Schema{
 								Type: schema.TypeString,
 							},
@@ -102,6 +110,11 @@ Learn more about [release policies here](https://launchdarkly.com/docs/home/rele
 								Type: schema.TypeString,
 							},
 						},
+						ROLLOUT_CONTEXT_KIND: {
+							Type:        schema.TypeString,
+							Computed:    true,
+							Description: "The context kind to use as the randomization unit for the rollout.",
+						},
 						STAGES: {
 							Type:        schema.TypeList,
 							Computed:    true,
@@ -117,6 +130,11 @@ Learn more about [release policies here](https://launchdarkly.com/docs/home/rele
 				Description: "Configuration for progressive release.",
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
+						ROLLOUT_CONTEXT_KIND: {
+							Type:        schema.TypeString,
+							Computed:    true,
+							Description: "The context kind to use as the randomization unit for the rollout.",
+						},
 						STAGES: {
 							Type:        schema.TypeList,
 							Computed:    true,

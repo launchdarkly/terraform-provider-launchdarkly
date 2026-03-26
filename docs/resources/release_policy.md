@@ -104,6 +104,7 @@ Optional:
 - `metric_group_keys` (List of String) List of metric group keys to monitor during the guarded release.
 - `metric_keys` (List of String) List of metric keys to monitor during the guarded release.
 - `min_sample_size` (Number) The minimum sample size for the release policy.
+- `rollout_context_kind` (String) The context kind to use as the randomization unit for the rollout.
 - `stages` (Block List) The stages for the guarded release. (see [below for nested schema](#nestedblock--guarded_release_config--stages))
 
 <a id="nestedblock--guarded_release_config--stages"></a>
@@ -121,6 +122,7 @@ Required:
 
 Optional:
 
+- `rollout_context_kind` (String) The context kind to use as the randomization unit for the rollout.
 - `stages` (Block List) The stages for the progressive release. (see [below for nested schema](#nestedblock--progressive_release_config--stages))
 
 <a id="nestedblock--progressive_release_config--stages"></a>
@@ -138,4 +140,5 @@ Required:
 
 Optional:
 
-- `environment_keys` (List of String) The environment keys for environments the release policy will be applied to.
+- `environment_keys` (Set of String) The environment keys for environments the release policy will be applied to.
+- `flag_tag_keys` (Set of String) The flag tag keys that the release policy will be applied to.
