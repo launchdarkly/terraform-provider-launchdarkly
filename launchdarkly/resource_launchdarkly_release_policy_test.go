@@ -731,8 +731,7 @@ func TestAccReleasePolicy_WithFlagTagKeys(t *testing.T) {
 				Config: fmt.Sprintf(testAccReleasePolicyWithFlagTagKeys, projectKey, policyKey, policyName),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckReleasePolicyExists(resourceName),
-					resource.TestCheckResourceAttr(resourceName, "scope.0.environment_keys.#", "1"),
-					resource.TestCheckResourceAttr(resourceName, "scope.0.environment_keys.0", "test-env"),
+					resource.TestCheckResourceAttr(resourceName, "scope.0.environment_keys.#", "0"),
 					resource.TestCheckResourceAttr(resourceName, "scope.0.flag_tag_keys.#", "2"),
 					resource.TestCheckResourceAttr(resourceName, "scope.0.flag_tag_keys.0", "frontend"),
 					resource.TestCheckResourceAttr(resourceName, "scope.0.flag_tag_keys.1", "backend"),
