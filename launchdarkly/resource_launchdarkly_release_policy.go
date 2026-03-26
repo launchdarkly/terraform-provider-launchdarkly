@@ -281,16 +281,10 @@ func releasePolicyID(projectKey, policyKey string) string {
 func convertScopeToAPI(scopeData map[string]interface{}) map[string]interface{} {
 	scopeAPI := make(map[string]interface{})
 	if envKeys, ok := scopeData[SCOPE_ENVIRONMENT_KEYS]; ok {
-		keys := envKeys.(*schema.Set).List()
-		if len(keys) > 0 {
-			scopeAPI["environmentKeys"] = keys
-		}
+		scopeAPI["environmentKeys"] = envKeys.(*schema.Set).List()
 	}
 	if flagTagKeys, ok := scopeData[SCOPE_FLAG_TAG_KEYS]; ok {
-		keys := flagTagKeys.(*schema.Set).List()
-		if len(keys) > 0 {
-			scopeAPI["flagTagKeys"] = keys
-		}
+		scopeAPI["flagTagKeys"] = flagTagKeys.(*schema.Set).List()
 	}
 	return scopeAPI
 }
