@@ -45,7 +45,7 @@ func releasePolicyRead(ctx context.Context, d *schema.ResourceData, meta interfa
 	if policy.Scope != nil {
 		scopeMap := map[string]interface{}{}
 		if len(policy.Scope.EnvironmentKeys) > 0 {
-			SCOPE_ENVIRONMENT_KEYS: policy.Scope.EnvironmentKeys,
+			scopeMap[SCOPE_ENVIRONMENT_KEYS] = policy.Scope.EnvironmentKeys
 		}
 		if len(policy.Scope.FlagTagKeys) > 0 {
 			scopeMap[SCOPE_FLAG_TAG_KEYS] = policy.Scope.FlagTagKeys
