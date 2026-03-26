@@ -2,6 +2,21 @@
 
 All notable changes to the LaunchDarkly Terraform Provider will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org).
 
+## [2.27.0-beta.4](https://github.com/launchdarkly/terraform-provider-launchdarkly/compare/v2.27.0-beta.3...v2.27.0-beta.4) (2026-03-26)
+
+
+### Features
+
+* [RO-2104] Add stages to release policies ([#396](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/396)) ([09311e5](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/09311e52e25a4b1b63d0c5306c85a4783277b67b))
+* [RO-2106] Add metrics and metric groups to release policies ([#394](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/394)) ([308a420](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/308a4208067d3c4a929b2bafbee48081fc9962ac))
+* [RO-2129] Add flag tag keys scope to release policies ([#393](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/393)) ([729484b](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/729484b7bde9d320fa6a7f33c54b312fb964cff2))
+* [RO-2130] Add context kinds to release policies ([#395](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/395)) ([1328491](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/1328491649c8d0db303ef3cafbeaa5ad805df42a))
+
+
+### Bug Fixes
+
+* [RO-2946] Update generated code to match expectation ([#406](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/406)) ([97fb2c2](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/97fb2c2bd2c9175b3f8ea6aca77e3ec936b4896f))
+
 ## [2.27.0-beta.3](https://github.com/launchdarkly/terraform-provider-launchdarkly/compare/v2.27.0-beta.2...v2.27.0-beta.3) (2026-02-18)
 
 
