@@ -43,7 +43,8 @@ func releasePolicyRead(ctx context.Context, d *schema.ResourceData, meta interfa
 
 	// Set scope if it exists
 	if policy.Scope != nil {
-		scopeMap := map[string]interface{}{
+		scopeMap := map[string]interface{}{}
+		if len(policy.Scope.EnvironmentKeys) > 0 {
 			SCOPE_ENVIRONMENT_KEYS: policy.Scope.EnvironmentKeys,
 		}
 		if len(policy.Scope.FlagTagKeys) > 0 {
