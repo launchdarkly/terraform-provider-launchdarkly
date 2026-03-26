@@ -101,6 +101,7 @@ Required:
 Optional:
 
 - `min_sample_size` (Number) The minimum sample size for the release policy.
+- `rollout_context_kind` (String) The context kind to use as the randomization unit for the rollout.
 - `stages` (Block List) The stages for the guarded release. (see [below for nested schema](#nestedblock--guarded_release_config--stages))
 
 <a id="nestedblock--guarded_release_config--stages"></a>
@@ -118,6 +119,7 @@ Required:
 
 Optional:
 
+- `rollout_context_kind` (String) The context kind to use as the randomization unit for the rollout.
 - `stages` (Block List) The stages for the progressive release. (see [below for nested schema](#nestedblock--progressive_release_config--stages))
 
 <a id="nestedblock--progressive_release_config--stages"></a>

@@ -67,6 +67,9 @@ func releasePolicyRead(ctx context.Context, d *schema.ResourceData, meta interfa
 		if policy.GuardedReleaseConfig.MinSampleSize != nil && *policy.GuardedReleaseConfig.MinSampleSize > 0 {
 			configList[0][MIN_SAMPLE_SIZE] = policy.GuardedReleaseConfig.MinSampleSize
 		}
+		if policy.GuardedReleaseConfig.RolloutContextKindKey != "" {
+			configList[0][ROLLOUT_CONTEXT_KIND] = policy.GuardedReleaseConfig.RolloutContextKindKey
+		}
 		if len(policy.GuardedReleaseConfig.Stages) > 0 {
 			configList[0][STAGES] = flattenStages(policy.GuardedReleaseConfig.Stages)
 		}
@@ -80,6 +83,9 @@ func releasePolicyRead(ctx context.Context, d *schema.ResourceData, meta interfa
 	// Set progressive release config if it exists
 	if policy.ProgressiveReleaseConfig != nil && policy.ReleaseMethod == "progressive-release" {
 		configList := []map[string]interface{}{{}}
+		if policy.ProgressiveReleaseConfig.RolloutContextKindKey != "" {
+			configList[0][ROLLOUT_CONTEXT_KIND] = policy.ProgressiveReleaseConfig.RolloutContextKindKey
+		}
 		if len(policy.ProgressiveReleaseConfig.Stages) > 0 {
 			configList[0][STAGES] = flattenStages(policy.ProgressiveReleaseConfig.Stages)
 		}
@@ -124,14 +130,16 @@ type ReleasePolicyScope struct {
 
 // GuardedReleaseConfig represents the configuration for guarded release
 type GuardedReleaseConfig struct {
-	RollbackOnRegression bool                 `json:"rollbackOnRegression"`
-	MinSampleSize        *int                 `json:"minSampleSize,omitempty"`
-	Stages               []ReleasePolicyStage `json:"stages,omitempty"`
+	RollbackOnRegression  bool                 `json:"rollbackOnRegression"`
+	MinSampleSize         *int                 `json:"minSampleSize,omitempty"`
+	RolloutContextKindKey string               `json:"rolloutContextKindKey,omitempty"`
+	Stages                []ReleasePolicyStage `json:"stages,omitempty"`
 }
 
 // ProgressiveReleaseConfig represents the configuration for progressive release
 type ProgressiveReleaseConfig struct {
-	Stages []ReleasePolicyStage `json:"stages,omitempty"`
+	RolloutContextKindKey string               `json:"rolloutContextKindKey,omitempty"`
+	Stages                []ReleasePolicyStage `json:"stages,omitempty"`
 }
 
 // ReleasePolicyStage represents a stage in a release policy

@@ -94,6 +94,11 @@ Learn more about [release policies here](https://launchdarkly.com/docs/home/rele
 							Computed:    true,
 							Description: "The minimum sample size for the release policy.",
 						},
+						ROLLOUT_CONTEXT_KIND: {
+							Type:        schema.TypeString,
+							Computed:    true,
+							Description: "The context kind to use as the randomization unit for the rollout.",
+						},
 						STAGES: {
 							Type:        schema.TypeList,
 							Computed:    true,
@@ -109,6 +114,11 @@ Learn more about [release policies here](https://launchdarkly.com/docs/home/rele
 				Description: "Configuration for progressive release.",
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
+						ROLLOUT_CONTEXT_KIND: {
+							Type:        schema.TypeString,
+							Computed:    true,
+							Description: "The context kind to use as the randomization unit for the rollout.",
+						},
 						STAGES: {
 							Type:        schema.TypeList,
 							Computed:    true,
