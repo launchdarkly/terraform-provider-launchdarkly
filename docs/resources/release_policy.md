@@ -136,4 +136,5 @@ Required:
 
 Optional:
 
-- `environment_keys` (List of String) The environment keys for environments the release policy will be applied to.
+- `environment_keys` (Set of String) The environment keys for environments the release policy will be applied to.
+- `flag_tag_keys` (Set of String) The flag tag keys that the release policy will be applied to.

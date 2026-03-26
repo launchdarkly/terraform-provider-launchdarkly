@@ -115,4 +115,5 @@ Read-Only:
 
 Read-Only:
 
-- `environment_keys` (List of String)
+- `environment_keys` (Set of String)
+- `flag_tag_keys` (Set of String)

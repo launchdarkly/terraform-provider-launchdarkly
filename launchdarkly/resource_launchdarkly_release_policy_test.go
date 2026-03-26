@@ -356,6 +356,33 @@ resource "launchdarkly_release_policy" "test" {
 }
 `
 
+	testAccReleasePolicyWithFlagTagKeys = `
+resource "launchdarkly_project" "test" {
+	key  = "%s"
+	name = "Test project"
+	environments {
+		name  = "Test Environment"
+		key   = "test-env"
+		color = "000000"
+	}
+}
+
+resource "launchdarkly_release_policy" "test" {
+	project_key    = launchdarkly_project.test.key
+	key            = "%s"
+	name           = "%s"
+	release_method = "guarded-release"
+
+	scope {
+		flag_tag_keys    = ["frontend", "backend"]
+	}
+
+	guarded_release_config {
+		rollback_on_regression = true
+	}
+}
+`
+
 	testAccReleasePolicyInvalidMinSampleSize = `
 resource "launchdarkly_project" "test" {
 	key  = "%s"
@@ -409,8 +436,8 @@ func TestAccReleasePolicy_GuardedRelease(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, NAME, policyName),
 					resource.TestCheckResourceAttr(resourceName, RELEASE_METHOD, "guarded-release"),
 					resource.TestCheckResourceAttr(resourceName, "scope.0.environment_keys.#", "2"),
-					resource.TestCheckResourceAttr(resourceName, "scope.0.environment_keys.0", "test-env"),
-					resource.TestCheckResourceAttr(resourceName, "scope.0.environment_keys.1", "production"),
+					resource.TestCheckTypeSetElemAttr(resourceName, "scope.0.environment_keys.*", "test-env"),
+					resource.TestCheckTypeSetElemAttr(resourceName, "scope.0.environment_keys.*", "production"),
 					resource.TestCheckResourceAttr(resourceName, "guarded_release_config.0.rollback_on_regression", "true"),
 					resource.TestCheckResourceAttr(resourceName, "guarded_release_config.0.min_sample_size", "100"),
 				),
@@ -429,7 +456,7 @@ func TestAccReleasePolicy_GuardedRelease(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, NAME, policyNameUpdated),
 					resource.TestCheckResourceAttr(resourceName, RELEASE_METHOD, "guarded-release"),
 					resource.TestCheckResourceAttr(resourceName, "scope.0.environment_keys.#", "1"),
-					resource.TestCheckResourceAttr(resourceName, "scope.0.environment_keys.0", "production"),
+					resource.TestCheckTypeSetElemAttr(resourceName, "scope.0.environment_keys.*", "production"),
 					resource.TestCheckResourceAttr(resourceName, "guarded_release_config.0.rollback_on_regression", "false"),
 					resource.TestCheckResourceAttr(resourceName, "guarded_release_config.0.min_sample_size", "200"),
 				),
@@ -470,7 +497,7 @@ func TestAccReleasePolicy_ProgressiveRelease(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, NAME, policyName),
 					resource.TestCheckResourceAttr(resourceName, RELEASE_METHOD, "progressive-release"),
 					resource.TestCheckResourceAttr(resourceName, "scope.0.environment_keys.#", "1"),
-					resource.TestCheckResourceAttr(resourceName, "scope.0.environment_keys.0", "test-env"),
+					resource.TestCheckTypeSetElemAttr(resourceName, "scope.0.environment_keys.*", "test-env"),
 				),
 			},
 			{
@@ -509,7 +536,7 @@ func TestAccReleasePolicy_GuardedWithoutMinSampleSize(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, NAME, policyName),
 					resource.TestCheckResourceAttr(resourceName, RELEASE_METHOD, "guarded-release"),
 					resource.TestCheckResourceAttr(resourceName, "scope.0.environment_keys.#", "1"),
-					resource.TestCheckResourceAttr(resourceName, "scope.0.environment_keys.0", "test-env"),
+					resource.TestCheckTypeSetElemAttr(resourceName, "scope.0.environment_keys.*", "test-env"),
 					resource.TestCheckResourceAttr(resourceName, "guarded_release_config.0.rollback_on_regression", "true"),
 					// min_sample_size should not be set in the configuration, so it should use the default (0)
 					resource.TestCheckResourceAttr(resourceName, "guarded_release_config.0.min_sample_size", "0"),
@@ -677,6 +704,43 @@ func TestAccReleasePolicy_InvalidKey(t *testing.T) {
 			{
 				Config:      fmt.Sprintf(testAccReleasePolicyMinimal, projectKey, invalidPolicyKey, policyName),
 				ExpectError: regexp.MustCompile(`Must contain only letters, numbers, '.', '-', or '_' and must start with an alphanumeric`),
+			},
+		},
+	})
+}
+
+func TestAccReleasePolicy_WithFlagTagKeys(t *testing.T) {
+	accTest := os.Getenv("TF_ACC")
+	if accTest == "" {
+		t.SkipNow()
+	}
+
+	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	policyKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	policyName := "Test Release Policy With Flag Tag Keys"
+	resourceName := "launchdarkly_release_policy.test"
+
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck: func() {
+			testAccPreCheck(t)
+		},
+		Providers:    testAccProviders,
+		CheckDestroy: testAccCheckReleasePolicyDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config: fmt.Sprintf(testAccReleasePolicyWithFlagTagKeys, projectKey, policyKey, policyName),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckReleasePolicyExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, "scope.0.environment_keys.#", "0"),
+					resource.TestCheckResourceAttr(resourceName, "scope.0.flag_tag_keys.#", "2"),
+					resource.TestCheckTypeSetElemAttr(resourceName, "scope.0.flag_tag_keys.*", "frontend"),
+					resource.TestCheckTypeSetElemAttr(resourceName, "scope.0.flag_tag_keys.*", "backend"),
+				),
+			},
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
 			},
 		},
 	})

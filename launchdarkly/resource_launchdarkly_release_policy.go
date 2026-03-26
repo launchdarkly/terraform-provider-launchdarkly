@@ -94,12 +94,20 @@ Learn more about [release policies here](https://launchdarkly.com/docs/home/rele
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
 						SCOPE_ENVIRONMENT_KEYS: {
-							Type:        schema.TypeList,
+							Type:        schema.TypeSet,
 							Optional:    true,
 							Description: "The environment keys for environments the release policy will be applied to.",
 							Elem: &schema.Schema{
 								Type:             schema.TypeString,
 								ValidateDiagFunc: validateKeyAndLength(1, 100),
+							},
+						},
+						SCOPE_FLAG_TAG_KEYS: {
+							Type:        schema.TypeSet,
+							Optional:    true,
+							Description: "The flag tag keys that the release policy will be applied to.",
+							Elem: &schema.Schema{
+								Type: schema.TypeString,
 							},
 						},
 					},
@@ -273,7 +281,10 @@ func releasePolicyID(projectKey, policyKey string) string {
 func convertScopeToAPI(scopeData map[string]interface{}) map[string]interface{} {
 	scopeAPI := make(map[string]interface{})
 	if envKeys, ok := scopeData[SCOPE_ENVIRONMENT_KEYS]; ok {
-		scopeAPI["environmentKeys"] = envKeys
+		scopeAPI["environmentKeys"] = envKeys.(*schema.Set).List()
+	}
+	if flagTagKeys, ok := scopeData[SCOPE_FLAG_TAG_KEYS]; ok {
+		scopeAPI["flagTagKeys"] = flagTagKeys.(*schema.Set).List()
 	}
 	return scopeAPI
 }
