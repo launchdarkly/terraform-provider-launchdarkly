@@ -68,6 +68,12 @@ func releasePolicyRead(ctx context.Context, d *schema.ResourceData, meta interfa
 		if policy.GuardedReleaseConfig.MinSampleSize != nil && *policy.GuardedReleaseConfig.MinSampleSize > 0 {
 			configList[0][MIN_SAMPLE_SIZE] = policy.GuardedReleaseConfig.MinSampleSize
 		}
+		if len(policy.GuardedReleaseConfig.MetricKeys) > 0 {
+			configList[0][METRIC_KEYS] = policy.GuardedReleaseConfig.MetricKeys
+		}
+		if len(policy.GuardedReleaseConfig.MetricGroupKeys) > 0 {
+			configList[0][METRIC_GROUP_KEYS] = policy.GuardedReleaseConfig.MetricGroupKeys
+		}
 		if policy.GuardedReleaseConfig.RolloutContextKindKey != "" {
 			configList[0][ROLLOUT_CONTEXT_KIND] = policy.GuardedReleaseConfig.RolloutContextKindKey
 		}
@@ -133,6 +139,8 @@ type ReleasePolicyScope struct {
 type GuardedReleaseConfig struct {
 	RollbackOnRegression  bool                 `json:"rollbackOnRegression"`
 	MinSampleSize         *int                 `json:"minSampleSize,omitempty"`
+	MetricKeys            []string             `json:"metricKeys,omitempty"`
+	MetricGroupKeys       []string             `json:"metricGroupKeys,omitempty"`
 	RolloutContextKindKey string               `json:"rolloutContextKindKey,omitempty"`
 	Stages                []ReleasePolicyStage `json:"stages,omitempty"`
 }
