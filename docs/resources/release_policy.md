@@ -27,7 +27,6 @@ resource "launchdarkly_release_policy" "guarded_example" {
 
   scope {
     environment_keys = ["production", "staging"]
-    flag_tag_keys    = ["frontend", "backend"]
   }
 
   guarded_release_config {
