@@ -125,7 +125,7 @@ type ReleasePolicy struct {
 
 // ReleasePolicyScope represents the scope configuration for a release policy
 type ReleasePolicyScope struct {
-	EnvironmentKeys []string `json:"environmentKeys"`
+	EnvironmentKeys []string `json:"environmentKeys,omitempty"`
 	FlagTagKeys     []string `json:"flagTagKeys,omitempty"`
 }
 
