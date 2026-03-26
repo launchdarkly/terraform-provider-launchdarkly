@@ -32,7 +32,6 @@ resource "launchdarkly_release_policy" "guarded_example" {
   guarded_release_config {
     rollback_on_regression = true
     min_sample_size        = 100
-    rollout_context_kind   = "user"
 
     stages {
       allocation      = 25000
@@ -52,7 +51,6 @@ resource "launchdarkly_release_policy" "progressive_example" {
   release_method = "progressive-release"
 
   progressive_release_config {
-    rollout_context_kind = "user"
     stages {
       allocation      = 25000
       duration_millis = 60000
