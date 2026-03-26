@@ -126,6 +126,11 @@ Learn more about [release policies here](https://launchdarkly.com/docs/home/rele
 							Description:      "The minimum sample size for the release policy.",
 							ValidateDiagFunc: validation.ToDiagFunc(validation.IntAtLeast(5)),
 						},
+						ROLLOUT_CONTEXT_KIND: {
+							Type:        schema.TypeString,
+							Optional:    true,
+							Description: "The context kind to use as the randomization unit for the rollout.",
+						},
 						STAGES: {
 							Type:        schema.TypeList,
 							Optional:    true,
@@ -142,6 +147,11 @@ Learn more about [release policies here](https://launchdarkly.com/docs/home/rele
 				Description: "Configuration for progressive release.",
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
+						ROLLOUT_CONTEXT_KIND: {
+							Type:        schema.TypeString,
+							Optional:    true,
+							Description: "The context kind to use as the randomization unit for the rollout.",
+						},
 						STAGES: {
 							Type:        schema.TypeList,
 							Optional:    true,
@@ -296,6 +306,12 @@ func convertGuardedConfigToAPI(config map[string]interface{}) map[string]interfa
 		}
 	}
 
+	if rolloutContextKind, ok := config[ROLLOUT_CONTEXT_KIND]; ok {
+		if rolloutContextKind.(string) != "" {
+			guardedConfigAPI["rolloutContextKindKey"] = rolloutContextKind
+		}
+	}
+
 	if stages, ok := config[STAGES]; ok {
 		stagesList := stages.([]interface{})
 		if len(stagesList) > 0 {
@@ -309,6 +325,12 @@ func convertGuardedConfigToAPI(config map[string]interface{}) map[string]interfa
 // convertProgressiveConfigToAPI converts Terraform progressive config data to API format
 func convertProgressiveConfigToAPI(config map[string]interface{}) map[string]interface{} {
 	progressiveConfigAPI := make(map[string]interface{})
+
+	if rolloutContextKind, ok := config[ROLLOUT_CONTEXT_KIND]; ok {
+		if rolloutContextKind.(string) != "" {
+			progressiveConfigAPI["rolloutContextKindKey"] = rolloutContextKind
+		}
+	}
 
 	if stages, ok := config[STAGES]; ok {
 		stagesList := stages.([]interface{})

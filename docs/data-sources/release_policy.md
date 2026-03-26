@@ -79,6 +79,7 @@ Read-Only:
 
 - `min_sample_size` (Number)
 - `rollback_on_regression` (Boolean)
+- `rollout_context_kind` (String)
 - `stages` (List of Object) (see [below for nested schema](#nestedobjatt--guarded_release_config--stages))
 
 <a id="nestedobjatt--guarded_release_config--stages"></a>
@@ -96,6 +97,7 @@ Read-Only:
 
 Read-Only:
 
+- `rollout_context_kind` (String)
 - `stages` (List of Object) (see [below for nested schema](#nestedobjatt--progressive_release_config--stages))
 
 <a id="nestedobjatt--progressive_release_config--stages"></a>
