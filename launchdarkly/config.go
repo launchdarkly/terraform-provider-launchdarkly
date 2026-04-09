@@ -164,7 +164,14 @@ func backOff(min, max time.Duration, attemptNum int, resp *http.Response) time.D
 }
 
 func standardRetryPolicy(ctx context.Context, resp *http.Response, err error) (bool, error) {
-	return retryablehttp.DefaultRetryPolicy(ctx, resp, err)
+	retry, retryErr := retryablehttp.DefaultRetryPolicy(ctx, resp, err)
+	// Also retry on 409 Conflict — the AI Config API returns 409 when an internal
+	// flag creation is rate-limited. This mirrors the flag resource's rate-limit behavior.
+	if !retry && retryErr == nil && err == nil && resp != nil && resp.StatusCode == http.StatusConflict {
+		log.Println("[DEBUG] received a 409 Conflict from LaunchDarkly. Retrying.")
+		return true, nil
+	}
+	return retry, retryErr
 }
 
 // retryPolicyWith404Retries extends our standard retryPolicy but also retries 404s (with exponential backoff).

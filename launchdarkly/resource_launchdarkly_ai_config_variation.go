@@ -84,8 +84,9 @@ func resourceAIConfigVariationCreate(ctx context.Context, d *schema.ResourceData
 		post.ToolKeys = toolKeys
 	}
 
-	err := retryOnTransient400(client, 5, func() error {
-		_, _, err := client.ld.AIConfigsApi.PostAIConfigVariation(client.ctx, projectKey, configKey).AIConfigVariationPost(*post).Execute()
+	var err error
+	err = client.withConcurrency(client.ctx, func() error {
+		_, _, err = client.ld.AIConfigsApi.PostAIConfigVariation(client.ctx, projectKey, configKey).AIConfigVariationPost(*post).Execute()
 		return err
 	})
 	if err != nil {

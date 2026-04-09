@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"strings"
-	"time"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -210,32 +208,6 @@ func aiConfigRead(ctx context.Context, d *schema.ResourceData, meta interface{},
 	_ = d.Set(VARIATIONS, variations)
 
 	return diags
-}
-
-// retryOnTransient400 retries a function that may return a transient 400 error.
-// The AI Config API returns 400 "could not create/delete AI Config" when an
-// internal rate limit is hit (the underlying flag operation returns 429, but the
-// outer handler translates it to 400). We retry these specific errors with backoff.
-func retryOnTransient400(client *Client, maxRetries int, fn func() error) error {
-	var err error
-	for attempt := 0; attempt <= maxRetries; attempt++ {
-		err = client.withConcurrency(client.ctx, fn)
-		if err == nil {
-			return nil
-		}
-		errMsg := handleLdapiErr(err).Error()
-		if !strings.Contains(errMsg, "could not create AI Config") &&
-			!strings.Contains(errMsg, "could not create AI Config variations") &&
-			!strings.Contains(errMsg, "could not delete AI Config") {
-			return err
-		}
-		if attempt < maxRetries {
-			sleepDuration := time.Duration(1<<uint(attempt)) * time.Second
-			log.Printf("[DEBUG] AI config create returned transient 400, retrying in %s (attempt %d/%d)", sleepDuration, attempt+1, maxRetries)
-			time.Sleep(sleepDuration)
-		}
-	}
-	return err
 }
 
 func aiConfigIdToKeys(id string) (projectKey, configKey string, err error) {

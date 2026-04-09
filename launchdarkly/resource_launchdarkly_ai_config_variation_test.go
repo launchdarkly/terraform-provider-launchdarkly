@@ -96,10 +96,12 @@ resource "launchdarkly_ai_config" "test" {
 }
 
 resource "launchdarkly_ai_config_variation" "test" {
-	project_key = launchdarkly_project.test.key
-	config_key  = launchdarkly_ai_config.test.key
-	key         = "%s"
-	name        = "%s"
+	project_key  = launchdarkly_project.test.key
+	config_key   = launchdarkly_ai_config.test.key
+	key          = "%s"
+	name         = "%s"
+	description  = "%s"
+	instructions = "%s"
 }
 `
 
@@ -251,17 +253,19 @@ func TestAccAIConfigVariation_WithModelConfigKey(t *testing.T) {
 	})
 }
 
-// TestAccAIConfigVariation_AgentMode tests creating a variation under an agent-mode AI config.
-// Note: The API does not support description/instructions fields on variation create/update --
-// those are read-only fields populated server-side. This test verifies that a basic variation
-// can be created and updated under an agent-mode parent config.
+// TestAccAIConfigVariation_AgentMode tests creating a variation under an agent-mode AI config
+// with description and instructions fields.
 func TestAccAIConfigVariation_AgentMode(t *testing.T) {
 	aiTestCooldown()
 	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	configKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	variationKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	variationName := "Agent Variation"
+	description := "Agent variation description"
+	instructions := "Follow these steps to help the user"
 	updatedName := "Updated Agent Variation"
+	updatedDescription := "Updated agent description"
+	updatedInstructions := "Updated instructions for the agent"
 	resourceName := "launchdarkly_ai_config_variation.test"
 
 	resource.Test(t, resource.TestCase{
@@ -270,10 +274,12 @@ func TestAccAIConfigVariation_AgentMode(t *testing.T) {
 		CheckDestroy: testAccCheckAIConfigVariationDestroy,
 		Steps: []resource.TestStep{
 			{
-				Config: withAITestProject(projectKey, fmt.Sprintf(testAccAIConfigVariationAgentMode, configKey, variationKey, variationName)),
+				Config: withAITestProject(projectKey, fmt.Sprintf(testAccAIConfigVariationAgentMode, configKey, variationKey, variationName, description, instructions)),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckAIConfigVariationExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, NAME, variationName),
+					resource.TestCheckResourceAttr(resourceName, DESCRIPTION, description),
+					resource.TestCheckResourceAttr(resourceName, INSTRUCTIONS, instructions),
 				),
 			},
 			{
@@ -282,10 +288,12 @@ func TestAccAIConfigVariation_AgentMode(t *testing.T) {
 				ImportStateVerify: true,
 			},
 			{
-				Config: withAITestProject(projectKey, fmt.Sprintf(testAccAIConfigVariationAgentMode, configKey, variationKey, updatedName)),
+				Config: withAITestProject(projectKey, fmt.Sprintf(testAccAIConfigVariationAgentMode, configKey, variationKey, updatedName, updatedDescription, updatedInstructions)),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckAIConfigVariationExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, NAME, updatedName),
+					resource.TestCheckResourceAttr(resourceName, DESCRIPTION, updatedDescription),
+					resource.TestCheckResourceAttr(resourceName, INSTRUCTIONS, updatedInstructions),
 				),
 			},
 			{
