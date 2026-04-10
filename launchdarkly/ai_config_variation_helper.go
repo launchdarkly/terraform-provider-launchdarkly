@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/retry"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 	ldapi "github.com/launchdarkly/api-client-go/v22"
@@ -96,7 +98,7 @@ func aiConfigVariationSchema(isDataSource bool) map[string]*schema.Schema {
 			Type:        schema.TypeSet,
 			Optional:    !isDataSource,
 			Computed:    isDataSource,
-			Description: "A set of AI tool keys to associate with this variation.",
+			Description: "A set of AI tool keys to associate with this variation. **Note:** The API does not currently return tool associations on read, so Terraform cannot detect drift for this field. Changes made outside of Terraform will not be reflected in state.",
 			Elem: &schema.Schema{
 				Type: schema.TypeString,
 			},
@@ -311,6 +313,31 @@ func isEmptyModelMap(m map[string]interface{}) bool {
 		}
 	}
 	return true
+}
+
+// resourceAIConfigVariationReadWithRetry reads the variation using a retry loop to wait
+// for the latest version to propagate. The API creates a new version on each write;
+// the GET endpoint may briefly return a stale version due to eventual consistency.
+func resourceAIConfigVariationReadWithRetry(ctx context.Context, d *schema.ResourceData, metaRaw interface{}) diag.Diagnostics {
+	previousVersion := d.Get(VERSION).(int)
+
+	return diag.FromErr(retry.RetryContext(ctx, 30*time.Second, func() *retry.RetryError {
+		diags := aiConfigVariationRead(ctx, d, metaRaw, false)
+		if diags.HasError() {
+			// Non-retryable: the read itself failed.
+			return retry.NonRetryableError(fmt.Errorf("%s", diags[0].Summary))
+		}
+
+		// On create, previousVersion is 0 (zero value) — any version from the API is fine.
+		// On update, wait until the version advances past what we had before the write.
+		currentVersion := d.Get(VERSION).(int)
+		if previousVersion > 0 && currentVersion <= previousVersion {
+			log.Printf("[DEBUG] AI config variation %q: version %d has not advanced past %d, retrying read", d.Get(KEY).(string), currentVersion, previousVersion)
+			return retry.RetryableError(fmt.Errorf("waiting for variation version to advance past %d (currently %d)", previousVersion, currentVersion))
+		}
+
+		return nil
+	}))
 }
 
 func variationIdToKeys(id string) (projectKey, configKey, variationKey string, err error) {

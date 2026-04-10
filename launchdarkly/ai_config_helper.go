@@ -160,9 +160,14 @@ func aiConfigRead(ctx context.Context, d *schema.ResourceData, meta interface{},
 	_ = d.Set(CREATION_DATE, aiConfig.CreatedAt)
 
 	// Always set mode, defaulting to "completion" when the API field is nil.
+	// The schema already defaults to "completion" on create, so a nil response
+	// here likely means the API omitted the field. Log a warning so this doesn't
+	// silently mask a non-completion config returning nil.
 	mode := "completion"
 	if aiConfig.Mode != nil {
 		mode = *aiConfig.Mode
+	} else {
+		log.Printf("[WARN] AI config %q in project %q returned nil mode, defaulting to %q", configKey, projectKey, mode)
 	}
 	_ = d.Set(MODE, mode)
 

@@ -6,7 +6,6 @@ import (
 	"log"
 	"net/http"
 	"strings"
-	"time"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -95,12 +94,7 @@ func resourceAIConfigVariationCreate(ctx context.Context, d *schema.ResourceData
 
 	d.SetId(fmt.Sprintf("%s/%s/%s", projectKey, configKey, variationKey))
 
-	// Brief pause to allow the new variation version to propagate before reading.
-	// The API creates a new version on each write; the GET endpoint may not
-	// immediately return the latest version due to eventual consistency.
-	time.Sleep(2 * time.Second)
-
-	return resourceAIConfigVariationRead(ctx, d, metaRaw)
+	return resourceAIConfigVariationReadWithRetry(ctx, d, metaRaw)
 }
 
 func resourceAIConfigVariationRead(ctx context.Context, d *schema.ResourceData, metaRaw interface{}) diag.Diagnostics {
@@ -167,10 +161,7 @@ func resourceAIConfigVariationUpdate(ctx context.Context, d *schema.ResourceData
 		return diag.Errorf("failed to update AI config variation with key %q in config %q project %q: %s", variationKey, configKey, projectKey, handleLdapiErr(err))
 	}
 
-	// Brief pause to allow the new variation version to propagate before reading.
-	time.Sleep(2 * time.Second)
-
-	return resourceAIConfigVariationRead(ctx, d, metaRaw)
+	return resourceAIConfigVariationReadWithRetry(ctx, d, metaRaw)
 }
 
 func resourceAIConfigVariationDelete(ctx context.Context, d *schema.ResourceData, metaRaw interface{}) diag.Diagnostics {

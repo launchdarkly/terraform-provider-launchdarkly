@@ -4,14 +4,17 @@ page_title: "launchdarkly_model_config Resource - launchdarkly"
 subcategory: ""
 description: |-
   Provides a LaunchDarkly model config resource.
-  This resource allows you to create and manage AI model configurations within your LaunchDarkly project. Since the API does not support updates, all mutable fields will force recreation of the resource when changed.
+  This resource allows you to create and manage AI model configurations within your LaunchDarkly project. Since the API does not support updates, any field change will force recreation of the resource.
+  ~> Important: If an launchdarkly_ai_config_variation references this model config via model_config_key, use a Terraform resource reference (e.g. launchdarkly_model_config.example.key) so Terraform can order destruction correctly. A literal string key will cause the delete to fail because the API rejects deleting a model config that is still in use.
 ---
 
 # launchdarkly_model_config (Resource)
 
 Provides a LaunchDarkly model config resource.
 
-This resource allows you to create and manage AI model configurations within your LaunchDarkly project. Since the API does not support updates, all mutable fields will force recreation of the resource when changed.
+This resource allows you to create and manage AI model configurations within your LaunchDarkly project. Since the API does not support updates, any field change will force recreation of the resource.
+
+~> **Important:** If an `launchdarkly_ai_config_variation` references this model config via `model_config_key`, use a Terraform resource reference (e.g. `launchdarkly_model_config.example.key`) so Terraform can order destruction correctly. A literal string key will cause the delete to fail because the API rejects deleting a model config that is still in use.
 
 ## Example Usage
 

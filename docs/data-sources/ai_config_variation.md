@@ -43,7 +43,7 @@ data "launchdarkly_ai_config_variation" "example" {
 - `model_config_key` (String) The key of a model config resource to use for this variation. Conflicts with `model`.
 - `name` (String) The variation's human-readable name.
 - `state` (String) The state of the variation. Must be `archived` or `published`.
-- `tool_keys` (Set of String) A set of AI tool keys to associate with this variation.
+- `tool_keys` (Set of String) A set of AI tool keys to associate with this variation. **Note:** The API does not currently return tool associations on read, so Terraform cannot detect drift for this field. Changes made outside of Terraform will not be reflected in state.
 - `variation_id` (String) The internal ID of the variation.
 - `version` (Number) The version number of the variation.
 
