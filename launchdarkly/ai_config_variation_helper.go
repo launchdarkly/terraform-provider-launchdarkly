@@ -235,12 +235,18 @@ func aiConfigVariationRead(ctx context.Context, d *schema.ResourceData, meta int
 	// Flatten messages
 	_ = d.Set(MESSAGES, flattenMessages(variation.Messages))
 
-	// Extract tool keys from Tools
-	toolKeys := make([]string, len(variation.Tools))
-	for i, t := range variation.Tools {
-		toolKeys[i] = t.Key
+	// Extract tool keys from Tools.
+	// The API does not currently return tool associations on GET, so variation.Tools
+	// is always empty. Skip setting tool_keys when empty to preserve the value from
+	// config/state and avoid a persistent diff on every plan. When the API starts
+	// returning tools, this block will activate automatically.
+	if len(variation.Tools) > 0 {
+		toolKeys := make([]string, len(variation.Tools))
+		for i, t := range variation.Tools {
+			toolKeys[i] = t.Key
+		}
+		_ = d.Set(TOOL_KEYS, toolKeys)
 	}
-	_ = d.Set(TOOL_KEYS, toolKeys)
 
 	return diags
 }
