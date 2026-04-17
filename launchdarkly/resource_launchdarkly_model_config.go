@@ -15,7 +15,6 @@ func resourceModelConfig() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: resourceModelConfigCreate,
 		ReadContext:   resourceModelConfigRead,
-		UpdateContext: resourceModelConfigUpdate,
 		DeleteContext: resourceModelConfigDelete,
 		Exists:        resourceModelConfigExists,
 
@@ -103,10 +102,6 @@ func resourceModelConfigCreate(ctx context.Context, d *schema.ResourceData, meta
 
 func resourceModelConfigRead(ctx context.Context, d *schema.ResourceData, metaRaw interface{}) diag.Diagnostics {
 	return modelConfigRead(ctx, d, metaRaw, false)
-}
-
-func resourceModelConfigUpdate(ctx context.Context, d *schema.ResourceData, metaRaw interface{}) diag.Diagnostics {
-	return diag.Errorf("model configs are immutable; delete and recreate this resource")
 }
 
 func resourceModelConfigDelete(ctx context.Context, d *schema.ResourceData, metaRaw interface{}) diag.Diagnostics {
