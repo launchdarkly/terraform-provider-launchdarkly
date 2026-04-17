@@ -3,12 +3,18 @@ package launchdarkly
 import (
 	"context"
 	"fmt"
+	"log"
 	"net/http"
+	"strings"
+	"time"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/retry"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	ldapi "github.com/launchdarkly/api-client-go/v22"
 )
+
+const aiConfigDeleteRetryTimeout = 45 * time.Second
 
 func resourceAIConfig() *schema.Resource {
 	return &schema.Resource{
@@ -182,16 +188,45 @@ func resourceAIConfigDelete(ctx context.Context, d *schema.ResourceData, metaRaw
 	projectKey := d.Get(PROJECT_KEY).(string)
 	configKey := d.Get(KEY).(string)
 
-	var err error
-	err = client.withConcurrency(client.ctx, func() error {
-		_, err = client.ld.AIConfigsApi.DeleteAIConfig(client.ctx, projectKey, configKey).Execute()
-		return err
+	var lastErr error
+	err := retry.RetryContext(ctx, aiConfigDeleteRetryTimeout, func() *retry.RetryError {
+		var res *http.Response
+		deleteErr := client.withConcurrency(client.ctx, func() error {
+			var err error
+			res, err = client.ld.AIConfigsApi.DeleteAIConfig(client.ctx, projectKey, configKey).Execute()
+			return err
+		})
+
+		if deleteErr == nil || isStatusNotFound(res) {
+			return nil
+		}
+
+		if shouldRetryAIConfigDelete(res, deleteErr) {
+			lastErr = deleteErr
+			log.Printf("[DEBUG] retrying AI config delete for %q in project %q after transient 400: %s", configKey, projectKey, handleLdapiErr(deleteErr))
+			return retry.RetryableError(deleteErr)
+		}
+
+		lastErr = deleteErr
+		return retry.NonRetryableError(deleteErr)
 	})
 	if err != nil {
+		if lastErr != nil {
+			err = lastErr
+		}
 		return diag.Errorf("failed to delete AI config with key %q in project %q: %s", configKey, projectKey, handleLdapiErr(err))
 	}
 
 	return diags
+}
+
+func shouldRetryAIConfigDelete(res *http.Response, err error) bool {
+	if err == nil || res == nil || res.StatusCode != http.StatusBadRequest {
+		return false
+	}
+
+	errMsg := strings.ToLower(handleLdapiErr(err).Error())
+	return strings.Contains(errMsg, "could not delete ai config")
 }
 
 func resourceAIConfigExists(d *schema.ResourceData, metaRaw interface{}) (bool, error) {

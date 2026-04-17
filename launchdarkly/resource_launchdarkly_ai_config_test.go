@@ -1,7 +1,9 @@
 package launchdarkly
 
 import (
+	"errors"
 	"fmt"
+	"net/http"
 	"os"
 	"testing"
 
@@ -312,6 +314,59 @@ func TestAccAIConfig_RemoveOptionalFields(t *testing.T) {
 			},
 		},
 	})
+}
+
+func TestShouldRetryAIConfigDelete(t *testing.T) {
+	tests := []struct {
+		name string
+		res  *http.Response
+		err  error
+		want bool
+	}{
+		{
+			name: "retries known transient ai config delete error",
+			res:  &http.Response{StatusCode: http.StatusBadRequest},
+			err:  errors.New(`400 Bad Request: {"code":"invalid_request","message":"could not delete AI Config: abc123"}`),
+			want: true,
+		},
+		{
+			name: "handles case-insensitive message",
+			res:  &http.Response{StatusCode: http.StatusBadRequest},
+			err:  errors.New(`400 Bad Request: {"code":"invalid_request","message":"Could Not Delete Ai Config: abc123"}`),
+			want: true,
+		},
+		{
+			name: "does not retry unrelated bad request",
+			res:  &http.Response{StatusCode: http.StatusBadRequest},
+			err:  errors.New(`400 Bad Request: {"code":"invalid_request","message":"validation failed"}`),
+			want: false,
+		},
+		{
+			name: "does not retry non-400 response",
+			res:  &http.Response{StatusCode: http.StatusConflict},
+			err:  errors.New(`409 Conflict: {"code":"conflict","message":"resource conflict"}`),
+			want: false,
+		},
+		{
+			name: "does not retry without response",
+			err:  errors.New("request failed"),
+			want: false,
+		},
+		{
+			name: "does not retry nil error",
+			res:  &http.Response{StatusCode: http.StatusBadRequest},
+			want: false,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got := shouldRetryAIConfigDelete(tc.res, tc.err)
+			if got != tc.want {
+				t.Fatalf("shouldRetryAIConfigDelete() = %v, want %v", got, tc.want)
+			}
+		})
+	}
 }
 
 func testAccCheckAIConfigExists(resourceName string) resource.TestCheckFunc {
