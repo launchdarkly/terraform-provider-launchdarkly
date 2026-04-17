@@ -136,7 +136,7 @@ func aiConfigRead(ctx context.Context, d *schema.ResourceData, meta interface{},
 	})
 
 	if isStatusNotFound(res) && !isDataSource {
-		log.Printf("[WARN] failed to find AI config with key %q in project %q, removing from state if present", configKey, projectKey)
+		log.Printf("[DEBUG] failed to find AI config with key %q in project %q, removing from state if present", configKey, projectKey)
 		diags = append(diags, diag.Diagnostic{
 			Severity: diag.Warning,
 			Summary:  fmt.Sprintf("[WARN] failed to find AI config with key %q in project %q, removing from state if present", configKey, projectKey),
@@ -167,7 +167,7 @@ func aiConfigRead(ctx context.Context, d *schema.ResourceData, meta interface{},
 	if aiConfig.Mode != nil {
 		mode = *aiConfig.Mode
 	} else {
-		log.Printf("[WARN] AI config %q in project %q returned nil mode, defaulting to %q", configKey, projectKey, mode)
+		log.Printf("[DEBUG] AI config %q in project %q returned nil mode, defaulting to %q", configKey, projectKey, mode)
 	}
 	_ = d.Set(MODE, mode)
 

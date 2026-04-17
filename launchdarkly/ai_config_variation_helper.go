@@ -251,14 +251,36 @@ func aiConfigVariationRead(ctx context.Context, d *schema.ResourceData, meta int
 	return diags
 }
 
-func messagesFromResourceData(d *schema.ResourceData) []ldapi.Message {
+func messagesFromResourceData(d *schema.ResourceData) ([]ldapi.Message, error) {
 	raw := d.Get(MESSAGES).([]interface{})
 	messages := make([]ldapi.Message, len(raw))
 	for i, v := range raw {
-		m := v.(map[string]interface{})
-		messages[i] = *ldapi.NewMessage(m[CONTENT].(string), m[ROLE].(string))
+		m, ok := v.(map[string]interface{})
+		if !ok {
+			return nil, fmt.Errorf("invalid %q[%d] value type %T", MESSAGES, i, v)
+		}
+
+		contentRaw, ok := m[CONTENT]
+		if !ok {
+			return nil, fmt.Errorf("missing %q in %q[%d]", CONTENT, MESSAGES, i)
+		}
+		content, ok := contentRaw.(string)
+		if !ok {
+			return nil, fmt.Errorf("invalid %q type in %q[%d]: %T", CONTENT, MESSAGES, i, contentRaw)
+		}
+
+		roleRaw, ok := m[ROLE]
+		if !ok {
+			return nil, fmt.Errorf("missing %q in %q[%d]", ROLE, MESSAGES, i)
+		}
+		role, ok := roleRaw.(string)
+		if !ok {
+			return nil, fmt.Errorf("invalid %q type in %q[%d]: %T", ROLE, MESSAGES, i, roleRaw)
+		}
+
+		messages[i] = *ldapi.NewMessage(content, role)
 	}
-	return messages
+	return messages, nil
 }
 
 func flattenMessages(messages []ldapi.Message) []map[string]interface{} {
@@ -324,10 +346,15 @@ func isEmptyModelMap(m map[string]interface{}) bool {
 // resourceAIConfigVariationReadWithRetry reads the variation using a retry loop to wait
 // for the latest version to propagate. The API creates a new version on each write;
 // the GET endpoint may briefly return a stale version due to eventual consistency.
+// This relies on the API eventually returning a version greater than the previous one.
+// A fixed max read-attempt cap acts as a safety valve in case that assumption does not hold.
 func resourceAIConfigVariationReadWithRetry(ctx context.Context, d *schema.ResourceData, metaRaw interface{}) diag.Diagnostics {
 	previousVersion := d.Get(VERSION).(int)
+	const maxVersionAdvanceReadRetries = 10
+	attempt := 0
 
 	return diag.FromErr(retry.RetryContext(ctx, 30*time.Second, func() *retry.RetryError {
+		attempt++
 		diags := aiConfigVariationRead(ctx, d, metaRaw, false)
 		if diags.HasError() {
 			// Non-retryable: the read itself failed.
@@ -338,7 +365,11 @@ func resourceAIConfigVariationReadWithRetry(ctx context.Context, d *schema.Resou
 		// On update, wait until the version advances past what we had before the write.
 		currentVersion := d.Get(VERSION).(int)
 		if previousVersion > 0 && currentVersion <= previousVersion {
-			log.Printf("[DEBUG] AI config variation %q: version %d has not advanced past %d, retrying read", d.Get(KEY).(string), currentVersion, previousVersion)
+			if attempt >= maxVersionAdvanceReadRetries {
+				return retry.NonRetryableError(fmt.Errorf("AI config variation %q: version did not advance past %d after %d reads (current %d)", d.Get(KEY).(string), previousVersion, maxVersionAdvanceReadRetries, currentVersion))
+			}
+
+			log.Printf("[DEBUG] AI config variation %q: version %d has not advanced past %d, retrying read (%d/%d)", d.Get(KEY).(string), currentVersion, previousVersion, attempt, maxVersionAdvanceReadRetries)
 			return retry.RetryableError(fmt.Errorf("waiting for variation version to advance past %d (currently %d)", previousVersion, currentVersion))
 		}
 

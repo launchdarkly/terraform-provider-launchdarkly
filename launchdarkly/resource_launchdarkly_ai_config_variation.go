@@ -74,7 +74,11 @@ func resourceAIConfigVariationCreate(ctx context.Context, d *schema.ResourceData
 	if v, ok := d.GetOk(MESSAGES); ok {
 		raw := v.([]interface{})
 		if len(raw) > 0 {
-			post.Messages = messagesFromResourceData(d)
+			messages, err := messagesFromResourceData(d)
+			if err != nil {
+				return diag.Errorf("failed to parse messages: %s", err)
+			}
+			post.Messages = messages
 		}
 	}
 
@@ -139,7 +143,11 @@ func resourceAIConfigVariationUpdate(ctx context.Context, d *schema.ResourceData
 	}
 
 	if d.HasChange(MESSAGES) {
-		patch.Messages = messagesFromResourceData(d)
+		messages, err := messagesFromResourceData(d)
+		if err != nil {
+			return diag.Errorf("failed to parse messages: %s", err)
+		}
+		patch.Messages = messages
 	}
 
 	if d.HasChange(STATE) {

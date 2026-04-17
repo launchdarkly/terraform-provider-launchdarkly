@@ -7,6 +7,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
+	"github.com/xeipuuv/gojsonschema"
 )
 
 // validateJsonStringFunc returns a ValidateFunc that validates a string is valid JSON.
@@ -28,6 +29,30 @@ func validateJsonStringFunc(v interface{}, k string) (warns []string, errs []err
 // validateJsonStringDiagFunc returns a ValidateDiagFunc that validates a string is valid JSON.
 func validateJsonStringDiagFunc() schema.SchemaValidateDiagFunc {
 	return validation.ToDiagFunc(validateJsonStringFunc)
+}
+
+// validateJsonSchemaStringFunc returns a ValidateFunc that validates a string is valid JSON Schema.
+func validateJsonSchemaStringFunc(v interface{}, k string) (warns []string, errs []error) {
+	if _, errs = validateJsonStringFunc(v, k); len(errs) > 0 {
+		return nil, errs
+	}
+
+	s := v.(string)
+	if s == "" {
+		return nil, nil
+	}
+
+	loader := gojsonschema.NewStringLoader(s)
+	if _, err := gojsonschema.NewSchema(loader); err != nil {
+		return nil, []error{fmt.Errorf("%q: invalid JSON Schema: %s", k, err)}
+	}
+
+	return nil, nil
+}
+
+// validateJsonSchemaStringDiagFunc returns a ValidateDiagFunc that validates a string is valid JSON Schema.
+func validateJsonSchemaStringDiagFunc() schema.SchemaValidateDiagFunc {
+	return validation.ToDiagFunc(validateJsonSchemaStringFunc)
 }
 
 // suppressEquivalentJsonDiffs suppresses diffs caused by semantically equivalent JSON values
