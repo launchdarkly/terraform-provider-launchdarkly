@@ -127,6 +127,11 @@ jobs:
         with:
           go-version-file: "go.mod"
       - run: go mod download
+      - uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3.1.2
+        with:
+          terraform_wrapper: false
+      - name: Set Terraform path for acceptance tests
+        run: echo "TF_ACC_TERRAFORM_PATH=$(command -v terraform)" >> "$GITHUB_ENV"
       - name: Run Test
         run: |
           echo "Running test case: ${{ matrix.test_case }}"
