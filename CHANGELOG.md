@@ -10,14 +10,6 @@ All notable changes to the LaunchDarkly Terraform Provider will be documented in
 * [REL-12731] - add support for flag templates ([#403](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/403)) ([927d50b](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/927d50b7113dc21d3a2a4cc48ef686be2d7b49c5))
 * add ai configs resources ([#404](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/404)) ([874bdec](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/874bdecc599212808089b9d5a0d6cced593d20c3))
 
-## [2.28.0](https://github.com/launchdarkly/terraform-provider-launchdarkly/compare/v2.27.0...v2.28.0) (2026-04-17)
-
-
-### Features
-
-* [REL-12731] - add support for flag templates ([#403](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/403)) ([927d50b](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/927d50b7113dc21d3a2a4cc48ef686be2d7b49c5))
-* add ai configs resources ([#404](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/404)) ([874bdec](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/874bdecc599212808089b9d5a0d6cced593d20c3))
-
 ## [2.27.0](https://github.com/launchdarkly/terraform-provider-launchdarkly/compare/v2.26.2...v2.27.0) (2026-03-05)
 
 
