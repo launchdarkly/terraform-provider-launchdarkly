@@ -2,7 +2,7 @@
 
 All notable changes to the LaunchDarkly Terraform Provider will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org).
 
-## [2.28.0](https://github.com/launchdarkly/terraform-provider-launchdarkly/compare/v2.27.0...v2.28.0) (2026-04-17)
+## [2.28.0](https://github.com/launchdarkly/terraform-provider-launchdarkly/compare/v2.27.0...v2.28.0) (2026-04-20)
 
 
 ### Features
