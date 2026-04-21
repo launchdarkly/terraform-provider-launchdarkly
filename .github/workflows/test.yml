@@ -106,6 +106,9 @@ jobs:
           - TestAccTeamMember_UpdateWithCustomRole
           - TestAccTeam_
           - TestAccTeamRoleMapping_
+          - TestAccGeneratedTeam_
+          - TestAccGeneratedTeamRoleMapping_
+          - TestAccGeneratedProject_
           - TestAccView
           - TestAccWebhook
     steps:

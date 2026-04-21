@@ -1,0 +1,91 @@
+{
+  "version": "v1",
+  "provider": {
+    "name": "launchdarkly",
+    "openapi_url": "https://app.launchdarkly.com/api/v2/openapi.json"
+  },
+  "framework": {
+    "resources": [
+      {
+        "terraform_name": "team",
+        "framework_type_name": "generated_team",
+        "constructor": "NewGeneratedTeamResource",
+        "implementation": "team",
+        "register_framework": true,
+        "identity_fields": ["key"],
+        "mutable_fields": ["description", "name", "member_ids", "maintainers", "custom_role_keys", "role_attributes"],
+        "import_ignore": [],
+        "operations": {
+          "create": {"method": "POST", "path": "/api/v2/teams"},
+          "read": {"method": "GET", "path": "/api/v2/teams/{teamKey}"},
+          "update": {"method": "PATCH", "path": "/api/v2/teams/{teamKey}"},
+          "delete": {"method": "DELETE", "path": "/api/v2/teams/{teamKey}"}
+        },
+        "test": {
+          "enabled": true,
+          "scenario": "team"
+        }
+      },
+      {
+        "terraform_name": "project",
+        "framework_type_name": "generated_project",
+        "constructor": "NewGeneratedProjectResource",
+        "implementation": "project_basic",
+        "register_framework": true,
+        "identity_fields": ["key"],
+        "mutable_fields": ["name", "include_in_snippet", "default_client_side_availability", "tags", "environments", "require_view_association_for_new_flags", "require_view_association_for_new_segments"],
+        "import_ignore": [],
+        "operations": {
+          "create": {"method": "POST", "path": "/api/v2/projects"},
+          "read": {"method": "GET", "path": "/api/v2/projects/{projectKey}"},
+          "update": {"method": "PATCH", "path": "/api/v2/projects/{projectKey}"},
+          "delete": {"method": "DELETE", "path": "/api/v2/projects/{projectKey}"}
+        },
+        "test": {
+          "enabled": true,
+          "scenario": "project"
+        }
+      },
+      {
+        "terraform_name": "team_role_mapping",
+        "framework_type_name": "generated_team_role_mapping",
+        "constructor": "NewGeneratedTeamRoleMappingResource",
+        "implementation": "team_role_mapping",
+        "register_framework": true,
+        "identity_fields": ["team_key"],
+        "mutable_fields": ["custom_role_keys"],
+        "import_ignore": [],
+        "operations": {
+          "create": {"method": "PATCH", "path": "/api/v2/teams/{teamKey}"},
+          "read": {"method": "GET", "path": "/api/v2/teams/{teamKey}/roles"},
+          "update": {"method": "PATCH", "path": "/api/v2/teams/{teamKey}"},
+          "delete": {"method": "PATCH", "path": "/api/v2/teams/{teamKey}"}
+        },
+        "test": {
+          "enabled": true,
+          "scenario": "team_role_mapping"
+        }
+      },
+      {
+        "terraform_name": "team_role_mapping",
+        "framework_type_name": "team_role_mapping",
+        "constructor": "NewTeamRoleMappingResource",
+        "implementation": "",
+        "register_framework": true,
+        "identity_fields": ["team_key"],
+        "mutable_fields": ["custom_role_keys"],
+        "import_ignore": [],
+        "operations": {
+          "create": {"method": "PATCH", "path": "/api/v2/teams/{teamKey}"},
+          "read": {"method": "GET", "path": "/api/v2/teams/{teamKey}/roles"},
+          "update": {"method": "PATCH", "path": "/api/v2/teams/{teamKey}"},
+          "delete": {"method": "PATCH", "path": "/api/v2/teams/{teamKey}"}
+        },
+        "test": {
+          "enabled": false,
+          "scenario": ""
+        }
+      }
+    ]
+  }
+}

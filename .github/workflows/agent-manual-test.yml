@@ -1,0 +1,157 @@
+name: Agent Manual Test Review
+
+on:
+  workflow_dispatch:
+    inputs:
+      test_regex:
+        description: Go test regex used for targeted acceptance tests
+        required: true
+        default: TestAccGenerated(Team|TeamRoleMapping)_
+      resource:
+        description: Primary resource under manual review
+        required: true
+        default: team
+      scenario:
+        description: Scenario label (for review context)
+        required: true
+        default: basic
+      dry_run:
+        description: Skip test execution and run review on existing context only
+        required: true
+        type: boolean
+        default: true
+      pr_number:
+        description: Optional PR number to post the review comment
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+jobs:
+  manual-tests:
+    name: Run Targeted Tests
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      test_exit_code: ${{ steps.run_tests.outputs.exit_code }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0
+        with:
+          go-version-file: go.mod
+
+      - uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3.1.2
+        with:
+          terraform_wrapper: false
+
+      - name: Prepare summary
+        run: |
+          mkdir -p manual-agent-output
+          {
+            echo "# Manual Agent Test Input"
+            echo ""
+            echo "- resource: ${{ inputs.resource }}"
+            echo "- scenario: ${{ inputs.scenario }}"
+            echo "- test_regex: ${{ inputs.test_regex }}"
+            echo "- dry_run: ${{ inputs.dry_run }}"
+          } > manual-agent-output/manual-test-summary.md
+
+      - name: Run targeted acceptance tests
+        id: run_tests
+        env:
+          DRY_RUN: ${{ inputs.dry_run }}
+          TEST_REGEX: ${{ inputs.test_regex }}
+          TF_ACC: "1"
+          LAUNCHDARKLY_ACCESS_TOKEN: ${{ secrets.LAUNCHDARKLY_ACCESS_TOKEN }}
+        run: |
+          if [ "$DRY_RUN" = "true" ]; then
+            echo "Dry run requested; skipped acceptance tests." | tee -a manual-agent-output/manual-test-summary.md
+            echo "exit_code=0" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          set +e
+          TESTARGS="-run $TEST_REGEX" make testacc-with-retry 2>&1 | tee manual-agent-output/testacc.log
+          status=${PIPESTATUS[0]}
+          set -e
+
+          {
+            echo ""
+            echo "## Test Exit Code"
+            echo "- exit_code: $status"
+          } >> manual-agent-output/manual-test-summary.md
+
+          echo "exit_code=$status" >> "$GITHUB_OUTPUT"
+
+      - name: Upload manual test artifacts
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: manual-agent-output
+          path: manual-agent-output
+
+  agent-analysis:
+    name: Agent Manual Review
+    needs: manual-tests
+    if: secrets.OPENAI_API_KEY != ''
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      final_message: ${{ steps.run_codex.outputs.final-message }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Download manual test artifacts
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: manual-agent-output
+          path: manual-agent-output
+
+      - name: Build Codex prompt
+        run: |
+          cp .github/agent-prompts/manual-test-review.md .github/agent-prompts/manual-test-review.runtime.md
+          {
+            echo ""
+            echo "Run context:"
+            echo "- resource: ${{ inputs.resource }}"
+            echo "- scenario: ${{ inputs.scenario }}"
+            echo "- test_regex: ${{ inputs.test_regex }}"
+            echo "- dry_run: ${{ inputs.dry_run }}"
+            echo "- test_exit_code: ${{ needs.manual-tests.outputs.test_exit_code }}"
+          } >> .github/agent-prompts/manual-test-review.runtime.md
+
+      - name: Run Codex Manual Review
+        id: run_codex
+        uses: openai/codex-action@0b91f4a2703c23df3102c3f0967d3c6db34eedef # v1
+        with:
+          openai-api-key: ${{ secrets.OPENAI_API_KEY }}
+          safety-strategy: drop-sudo
+          sandbox: read-only
+          prompt-file: .github/agent-prompts/manual-test-review.runtime.md
+
+  post-manual-feedback:
+    name: Post Manual Review Comment
+    needs: agent-analysis
+    if: needs.agent-analysis.outputs.final_message != '' && inputs.pr_number != ''
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      pull-requests: write
+    steps:
+      - name: Publish manual review comment
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
+        env:
+          CODEX_FINAL_MESSAGE: ${{ needs.agent-analysis.outputs.final_message }}
+          PR_NUMBER: ${{ inputs.pr_number }}
+        with:
+          github-token: ${{ github.token }}
+          script: |
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: Number(process.env.PR_NUMBER),
+              body: process.env.CODEX_FINAL_MESSAGE,
+            });

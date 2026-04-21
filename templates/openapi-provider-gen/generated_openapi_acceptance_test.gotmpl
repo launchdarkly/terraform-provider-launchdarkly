@@ -1,0 +1,262 @@
+package tests
+
+import (
+	"context"
+	"fmt"
+	"testing"
+
+	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
+	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+)
+
+{{- range .Resources }}
+{{- if isScenario . "team" }}
+func testAcc{{ .GoName }}ConfigBasic(teamKey string) string {
+	return fmt.Sprintf(`
+resource "launchdarkly_{{ .FrameworkTypeName }}" "generated" {
+  key         = %q
+  name        = "Generated Team"
+  description = "generated-team-basic"
+}
+`, teamKey)
+}
+
+func testAcc{{ .GoName }}ConfigUpdate(teamKey string) string {
+	return fmt.Sprintf(`
+resource "launchdarkly_{{ .FrameworkTypeName }}" "generated" {
+  key         = %q
+  name        = "Generated Team"
+  description = "generated-team-update"
+}
+`, teamKey)
+}
+
+func TestAcc{{ .GoName }}_basic(t *testing.T) {
+	t.Parallel()
+
+	resourceName := "launchdarkly_{{ .FrameworkTypeName }}.generated"
+	teamKey := "gen-team-" + acctest.RandStringFromCharSet(12, acctest.CharSetAlphaNum)
+
+	resource.Test(t, resource.TestCase{
+		ProtoV5ProviderFactories: testAccFrameworkMuxProviders(context.Background(), t),
+		PreCheck:                 func() { testAccPreCheck(t) },
+		Steps: []resource.TestStep{
+			{
+				Config: testAcc{{ .GoName }}ConfigBasic(teamKey),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(resourceName, "key", teamKey),
+					resource.TestCheckResourceAttr(resourceName, "name", "Generated Team"),
+					resource.TestCheckResourceAttr(resourceName, "description", "generated-team-basic"),
+				),
+			},
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
+				{{- if .ImportIgnore }}
+				ImportStateVerifyIgnore: []string{ {{ quoteSlice .ImportIgnore }} },
+				{{- end }}
+			},
+			{
+				Config: testAcc{{ .GoName }}ConfigUpdate(teamKey),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(resourceName, "description", "generated-team-update"),
+				),
+			},
+		},
+	})
+}
+{{- end }}
+{{- if isScenario . "team_role_mapping" }}
+func TestAcc{{ .GoName }}_basic(t *testing.T) {
+	t.Parallel()
+
+	resourceName := "launchdarkly_{{ .FrameworkTypeName }}.generated"
+	role0 := "gen-role-0-" + acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	role1 := "gen-role-1-" + acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	teamKey := "gen-team-" + acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+
+	resource.Test(t, resource.TestCase{
+		ProtoV5ProviderFactories: testAccFrameworkMuxProviders(context.Background(), t),
+		PreCheck:                 func() { testAccPreCheck(t) },
+		Steps: []resource.TestStep{
+			{
+				Config: fmt.Sprintf(`
+%s
+resource "launchdarkly_{{ .FrameworkTypeName }}" "generated" {
+  team_key = launchdarkly_team.test_team.key
+  custom_role_keys = [
+    launchdarkly_custom_role.role_0.key,
+    launchdarkly_custom_role.role_1.key,
+  ]
+}
+`, testAccTeamRoleMappingSetup(role0, role1, teamKey)),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(resourceName, "team_key", teamKey),
+					resource.TestCheckResourceAttr(resourceName, "custom_role_keys.0", role0),
+					resource.TestCheckResourceAttr(resourceName, "custom_role_keys.1", role1),
+				),
+			},
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
+				{{- if .ImportIgnore }}
+				ImportStateVerifyIgnore: []string{ {{ quoteSlice .ImportIgnore }} },
+				{{- end }}
+			},
+			{
+				Config: fmt.Sprintf(`
+%s
+resource "launchdarkly_{{ .FrameworkTypeName }}" "generated" {
+  team_key = launchdarkly_team.test_team.key
+  custom_role_keys = [launchdarkly_custom_role.role_1.key]
+}
+`, testAccTeamRoleMappingSetup(role0, role1, teamKey)),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(resourceName, "team_key", teamKey),
+					resource.TestCheckResourceAttr(resourceName, "custom_role_keys.0", role1),
+				),
+			},
+		},
+	})
+}
+{{- end }}
+{{- if isScenario . "project" }}
+func testAcc{{ .GoName }}ConfigBasic(projectKey string) string {
+	return fmt.Sprintf(`
+resource "launchdarkly_{{ .FrameworkTypeName }}" "generated" {
+  key                = %q
+  name               = "Generated Project"
+  include_in_snippet = false
+  tags               = ["generated", "baseline"]
+
+  environments {
+    key   = "generated-env"
+    name  = "Generated Env"
+    color = "010101"
+  }
+}
+`, projectKey)
+}
+
+func testAcc{{ .GoName }}ConfigUpdate(projectKey string) string {
+	return fmt.Sprintf(`
+resource "launchdarkly_{{ .FrameworkTypeName }}" "generated" {
+  key                = %q
+  name               = "Generated Project Updated"
+  include_in_snippet = true
+  tags               = ["generated", "updated"]
+
+  environments {
+    key                  = "generated-env"
+    name                 = "Generated Env Updated"
+    color                = "020202"
+    default_ttl          = 30
+    secure_mode          = true
+    default_track_events = true
+    require_comments     = true
+    confirm_changes      = true
+  }
+}
+`, projectKey)
+}
+
+func testAcc{{ .GoName }}ConfigRevert(projectKey string) string {
+	return fmt.Sprintf(`
+resource "launchdarkly_{{ .FrameworkTypeName }}" "generated" {
+  key  = %q
+  name = "Generated Project Updated"
+
+  environments {
+    key   = "generated-env"
+    name  = "Generated Env Updated"
+    color = "020202"
+  }
+}
+`, projectKey)
+}
+
+func TestAcc{{ .GoName }}_basic(t *testing.T) {
+	t.Parallel()
+
+	resourceName := "launchdarkly_{{ .FrameworkTypeName }}.generated"
+	projectKey := "gen-project-" + acctest.RandStringFromCharSet(12, acctest.CharSetAlphaNum)
+
+	resource.Test(t, resource.TestCase{
+		ProtoV5ProviderFactories: testAccFrameworkMuxProviders(context.Background(), t),
+		PreCheck:                 func() { testAccPreCheck(t) },
+		Steps: []resource.TestStep{
+				{
+					Config: testAcc{{ .GoName }}ConfigBasic(projectKey),
+					Check: resource.ComposeTestCheckFunc(
+						resource.TestCheckResourceAttr(resourceName, "key", projectKey),
+						resource.TestCheckResourceAttr(resourceName, "name", "Generated Project"),
+						resource.TestCheckResourceAttr(resourceName, "include_in_snippet", "false"),
+						resource.TestCheckResourceAttr(resourceName, "default_client_side_availability.0.using_environment_id", "false"),
+						resource.TestCheckResourceAttr(resourceName, "default_client_side_availability.0.using_mobile_key", "true"),
+						resource.TestCheckResourceAttr(resourceName, "tags.#", "2"),
+						resource.TestCheckResourceAttr(resourceName, "environments.#", "1"),
+						resource.TestCheckResourceAttr(resourceName, "environments.0.name", "Generated Env"),
+					),
+				},
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
+				{{- if .ImportIgnore }}
+				ImportStateVerifyIgnore: []string{ {{ quoteSlice .ImportIgnore }} },
+				{{- end }}
+			},
+				{
+					Config: testAcc{{ .GoName }}ConfigUpdate(projectKey),
+					Check: resource.ComposeTestCheckFunc(
+						resource.TestCheckResourceAttr(resourceName, "name", "Generated Project Updated"),
+						resource.TestCheckResourceAttr(resourceName, "include_in_snippet", "true"),
+						resource.TestCheckResourceAttr(resourceName, "default_client_side_availability.0.using_environment_id", "true"),
+						resource.TestCheckResourceAttr(resourceName, "default_client_side_availability.0.using_mobile_key", "true"),
+						resource.TestCheckResourceAttr(resourceName, "tags.#", "2"),
+						resource.TestCheckResourceAttr(resourceName, "environments.0.name", "Generated Env Updated"),
+						resource.TestCheckResourceAttr(resourceName, "environments.0.default_ttl", "30"),
+						resource.TestCheckResourceAttr(resourceName, "environments.0.secure_mode", "true"),
+					),
+				},
+				{
+					Config: testAcc{{ .GoName }}ConfigRevert(projectKey),
+					Check: resource.ComposeTestCheckFunc(
+						resource.TestCheckResourceAttr(resourceName, "include_in_snippet", "false"),
+						resource.TestCheckResourceAttr(resourceName, "default_client_side_availability.0.using_environment_id", "false"),
+						resource.TestCheckResourceAttr(resourceName, "default_client_side_availability.0.using_mobile_key", "true"),
+						resource.TestCheckNoResourceAttr(resourceName, "tags.#"),
+						resource.TestCheckResourceAttr(resourceName, "environments.0.default_ttl", "0"),
+						resource.TestCheckResourceAttr(resourceName, "environments.0.secure_mode", "false"),
+					),
+				},
+		},
+	})
+}
+{{- end }}
+{{- if isScenario . "generic" }}
+func TestAcc{{ .GoName }}_generic(t *testing.T) {
+	t.Parallel()
+	{{- if .TestFixture }}
+	resourceName := "launchdarkly_{{ .FrameworkTypeName }}.generated"
+
+	resource.Test(t, resource.TestCase{
+		ProtoV5ProviderFactories: testAccFrameworkMuxProviders(context.Background(), t),
+		PreCheck:                 func() { testAccPreCheck(t) },
+		Steps: []resource.TestStep{
+			{
+				Config: {{ .TestFixture }},
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttrSet(resourceName, "id"),
+				),
+			},
+		},
+	})
+	{{- else }}
+	t.Skip("Generic generated acceptance test requires test.fixture overlay for launchdarkly_{{ .FrameworkTypeName }}.")
+	{{- end }}
+}
+{{- end }}
+{{- end }}

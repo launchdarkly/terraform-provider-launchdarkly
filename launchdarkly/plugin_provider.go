@@ -14,6 +14,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
+//go:generate go run ../scripts/openapi-provider-gen --overlay ../templates/openapi-provider-gen/config.json --catalog ../templates/openapi-provider-gen/catalog.auto.json --template-dir ../templates/openapi-provider-gen --out-dir . --tests-out-dir ./tests
+
 var (
 	_ provider.Provider = &launchdarklyProvider{}
 )
@@ -125,9 +127,7 @@ func (p *launchdarklyProvider) DataSources(_ context.Context) []func() datasourc
 
 // Resources defines the resources implemented in the provider.
 func (p *launchdarklyProvider) Resources(_ context.Context) []func() resource.Resource {
-	return []func() resource.Resource{
-		NewTeamRoleMappingResource,
-	}
+	return generatedFrameworkResources()
 }
 
 func NewPluginProvider(version string) func() provider.Provider {

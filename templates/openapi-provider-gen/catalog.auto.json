@@ -1,0 +1,2371 @@
+{
+  "version": "v1",
+  "provider": {
+    "name": "launchdarkly",
+    "openapi_url": "https://app.launchdarkly.com/api/v2/openapi.json"
+  },
+  "framework": {
+    "resources": [
+      {
+        "terraform_name": "account_relay_auto_config",
+        "framework_type_name": "generated_account_relay_auto_config",
+        "constructor": "NewGeneratedAccountRelayAutoConfigResource",
+        "implementation": "generic",
+        "register_framework": true,
+        "enabled": false,
+        "experimental": true,
+        "rollout_phase": "read_import",
+        "modify_plan_hook": "",
+        "identity_fields": [
+          "id"
+        ],
+        "mutable_fields": null,
+        "import_ignore": null,
+        "operations": {
+          "create": {
+            "path": "/api/v2/account/relay-auto-configs",
+            "method": "POST"
+          },
+          "read": {
+            "path": "/api/v2/account/relay-auto-configs/{id}",
+            "method": "GET"
+          },
+          "update": {
+            "path": "/api/v2/account/relay-auto-configs/{id}",
+            "method": "PATCH"
+          },
+          "delete": {
+            "path": "/api/v2/account/relay-auto-configs/{id}",
+            "method": "DELETE"
+          }
+        },
+        "test": {
+          "enabled": true,
+          "scenario": "generic",
+          "fixture": ""
+        }
+      },
+      {
+        "terraform_name": "application",
+        "framework_type_name": "generated_application",
+        "constructor": "NewGeneratedApplicationResource",
+        "implementation": "generic",
+        "register_framework": true,
+        "enabled": false,
+        "experimental": true,
+        "rollout_phase": "read_import",
+        "modify_plan_hook": "",
+        "identity_fields": [
+          "application_key"
+        ],
+        "mutable_fields": null,
+        "import_ignore": null,
+        "operations": {
+          "create": {
+            "path": "/api/v2/applications/{applicationKey}",
+            "method": "PATCH"
+          },
+          "read": {
+            "path": "/api/v2/applications/{applicationKey}",
+            "method": "GET"
+          },
+          "update": {
+            "path": "/api/v2/applications/{applicationKey}",
+            "method": "PATCH"
+          },
+          "delete": {
+            "path": "/api/v2/applications/{applicationKey}",
+            "method": "DELETE"
+          }
+        },
+        "test": {
+          "enabled": true,
+          "scenario": "generic",
+          "fixture": ""
+        }
+      },
+      {
+        "terraform_name": "approval_request",
+        "framework_type_name": "generated_approval_request",
+        "constructor": "NewGeneratedApprovalRequestResource",
+        "implementation": "generic",
+        "register_framework": true,
+        "enabled": false,
+        "experimental": true,
+        "rollout_phase": "read_import",
+        "modify_plan_hook": "",
+        "identity_fields": [
+          "id"
+        ],
+        "mutable_fields": null,
+        "import_ignore": null,
+        "operations": {
+          "create": {
+            "path": "/api/v2/approval-requests",
+            "method": "POST"
+          },
+          "read": {
+            "path": "/api/v2/approval-requests/{id}",
+            "method": "GET"
+          },
+          "update": {
+            "path": "/api/v2/approval-requests/{id}",
+            "method": "PATCH"
+          },
+          "delete": {
+            "path": "/api/v2/approval-requests/{id}",
+            "method": "DELETE"
+          }
+        },
+        "test": {
+          "enabled": true,
+          "scenario": "generic",
+          "fixture": ""
+        }
+      },
+      {
+        "terraform_name": "approval_request_project_setting",
+        "framework_type_name": "generated_approval_request_project_setting",
+        "constructor": "NewGeneratedApprovalRequestProjectSettingResource",
+        "implementation": "generic",
+        "register_framework": true,
+        "enabled": false,
+        "experimental": true,
+        "rollout_phase": "read_import",
+        "modify_plan_hook": "",
+        "identity_fields": [
+          "project_key"
+        ],
+        "mutable_fields": null,
+        "import_ignore": null,
+        "operations": {
+          "create": {
+            "path": "/api/v2/approval-requests/projects/{projectKey}/settings",
+            "method": "PATCH"
+          },
+          "read": {
+            "path": "/api/v2/approval-requests/projects/{projectKey}/settings",
+            "method": "GET"
+          },
+          "update": {
+            "path": "/api/v2/approval-requests/projects/{projectKey}/settings",
+            "method": "PATCH"
+          },
+          "delete": {
+            "path": "",
+            "method": ""
+          }
+        },
+        "test": {
+          "enabled": true,
+          "scenario": "generic",
+          "fixture": ""
+        }
+      },
+      {
+        "terraform_name": "auditlog",
+        "framework_type_name": "generated_auditlog",
+        "constructor": "NewGeneratedAuditlogResource",
+        "implementation": "generic",
+        "register_framework": true,
+        "enabled": false,
+        "experimental": true,
+        "rollout_phase": "read_import",
+        "modify_plan_hook": "",
+        "identity_fields": [
+          "id"
+        ],
+        "mutable_fields": null,
+        "import_ignore": null,
+        "operations": {
+          "create": {
+            "path": "/api/v2/auditlog",
+            "method": "POST"
+          },
+          "read": {
+            "path": "/api/v2/auditlog/{id}",
+            "method": "GET"
+          },
+          "update": {
+            "path": "",
+            "method": ""
+          },
+          "delete": {
+            "path": "",
+            "method": ""
+          }
+        },
+        "test": {
+          "enabled": true,
+          "scenario": "generic",
+          "fixture": ""
+        }
+      },
+      {
+        "terraform_name": "code_ref_repository",
+        "framework_type_name": "generated_code_ref_repository",
+        "constructor": "NewGeneratedCodeRefRepositoryResource",
+        "implementation": "generic",
+        "register_framework": true,
+        "enabled": false,
+        "experimental": true,
+        "rollout_phase": "read_import",
+        "modify_plan_hook": "",
+        "identity_fields": [
+          "repo"
+        ],
+        "mutable_fields": null,
+        "import_ignore": null,
+        "operations": {
+          "create": {
+            "path": "/api/v2/code-refs/repositories",
+            "method": "POST"
+          },
+          "read": {
+            "path": "/api/v2/code-refs/repositories/{repo}",
+            "method": "GET"
+          },
+          "update": {
+            "path": "/api/v2/code-refs/repositories/{repo}",
+            "method": "PATCH"
+          },
+          "delete": {
+            "path": "/api/v2/code-refs/repositories/{repo}",
+            "method": "DELETE"
+          }
+        },
+        "test": {
+          "enabled": true,
+          "scenario": "generic",
+          "fixture": ""
+        }
+      },
+      {
+        "terraform_name": "code_ref_repository_branche",
+        "framework_type_name": "generated_code_ref_repository_branche",
+        "constructor": "NewGeneratedCodeRefRepositoryBrancheResource",
+        "implementation": "generic",
+        "register_framework": true,
+        "enabled": false,
+        "experimental": true,
+        "rollout_phase": "read_import",
+        "modify_plan_hook": "",
+        "identity_fields": [
+          "branch",
+          "repo"
+        ],
+        "mutable_fields": null,
+        "import_ignore": null,
+        "operations": {
+          "create": {
+            "path": "/api/v2/code-refs/repositories/{repo}/branches/{branch}",
+            "method": "PUT"
+          },
+          "read": {
+            "path": "/api/v2/code-refs/repositories/{repo}/branches/{branch}",
+            "method": "GET"
+          },
+          "update": {
+            "path": "/api/v2/code-refs/repositories/{repo}/branches/{branch}",
+            "method": "PUT"
+          },
+          "delete": {
+            "path": "",
+            "method": ""
+          }
+        },
+        "test": {
+          "enabled": true,
+          "scenario": "generic",
+          "fixture": ""
+        }
+      },
+      {
+        "terraform_name": "destination",
+        "framework_type_name": "generated_destination",
+        "constructor": "NewGeneratedDestinationResource",
+        "implementation": "generic",
+        "register_framework": true,
+        "enabled": false,
+        "experimental": true,
+        "rollout_phase": "read_import",
+        "modify_plan_hook": "",
+        "identity_fields": [
+          "id"
+        ],
+        "mutable_fields": null,
+        "import_ignore": null,
+        "operations": {
+          "create": {
+            "path": "/api/v2/destinations/{projectKey}/{environmentKey}",
+            "method": "POST"
+          },
+          "read": {
+            "path": "/api/v2/destinations/{projectKey}/{environmentKey}/{id}",
+            "method": "GET"
+          },
+          "update": {
+            "path": "/api/v2/destinations/{projectKey}/{environmentKey}/{id}",
+            "method": "PATCH"
+          },
+          "delete": {
+            "path": "/api/v2/destinations/{projectKey}/{environmentKey}/{id}",
+            "method": "DELETE"
+          }
+        },
+        "test": {
+          "enabled": true,
+          "scenario": "generic",
+          "fixture": ""
+        }
+      },
+      {
+        "terraform_name": "engineering_insight_deployment",
+        "framework_type_name": "generated_engineering_insight_deployment",
+        "constructor": "NewGeneratedEngineeringInsightDeploymentResource",
+        "implementation": "generic",
+        "register_framework": true,
+        "enabled": false,
+        "experimental": true,
+        "rollout_phase": "read_import",
+        "modify_plan_hook": "",
+        "identity_fields": [
+          "deployment_i_d"
+        ],
+        "mutable_fields": null,
+        "import_ignore": null,
+        "operations": {
+          "create": {
+            "path": "/api/v2/engineering-insights/deployments/{deploymentID}",
+            "method": "PATCH"
+          },
+          "read": {
+            "path": "/api/v2/engineering-insights/deployments/{deploymentID}",
+            "method": "GET"
+          },
+          "update": {
+            "path": "/api/v2/engineering-insights/deployments/{deploymentID}",
+            "method": "PATCH"
+          },
+          "delete": {
+            "path": "",
+            "method": ""
+          }
+        },
+        "test": {
+          "enabled": true,
+          "scenario": "generic",
+          "fixture": ""
+        }
+      },
+      {
+        "terraform_name": "engineering_insight_insight_group",
+        "framework_type_name": "generated_engineering_insight_insight_group",
+        "constructor": "NewGeneratedEngineeringInsightInsightGroupResource",
+        "implementation": "generic",
+        "register_framework": true,
+        "enabled": false,
+        "experimental": true,
+        "rollout_phase": "read_import",
+        "modify_plan_hook": "",
+        "identity_fields": [
+          "insight_group_key"
+        ],
+        "mutable_fields": null,
+        "import_ignore": null,
+        "operations": {
+          "create": {
+            "path": "/api/v2/engineering-insights/insights/groups/{insightGroupKey}",
+            "method": "PATCH"
+          },
+          "read": {
+            "path": "/api/v2/engineering-insights/insights/groups/{insightGroupKey}",
+            "method": "GET"
+          },
+          "update": {
+            "path": "/api/v2/engineering-insights/insights/groups/{insightGroupKey}",
+            "method": "PATCH"
+          },
+          "delete": {
+            "path": "/api/v2/engineering-insights/insights/groups/{insightGroupKey}",
+            "method": "DELETE"
+          }
+        },
+        "test": {
+          "enabled": true,
+          "scenario": "generic",
+          "fixture": ""
+        }
+      },
+      {
+        "terraform_name": "flag",
+        "framework_type_name": "generated_flag",
+        "constructor": "NewGeneratedFlagResource",
+        "implementation": "generic",
+        "register_framework": true,
+        "enabled": false,
+        "experimental": true,
+        "rollout_phase": "read_import",
+        "modify_plan_hook": "",
+        "identity_fields": [
+          "feature_flag_key"
+        ],
+        "mutable_fields": null,
+        "import_ignore": null,
+        "operations": {
+          "create": {
+            "path": "/api/v2/flags/{projectKey}",
+            "method": "POST"
+          },
+          "read": {
+            "path": "/api/v2/flags/{projectKey}/{featureFlagKey}",
+            "method": "GET"
+          },
+          "update": {
+            "path": "/api/v2/flags/{projectKey}/{featureFlagKey}",
+            "method": "PATCH"
+          },
+          "delete": {
+            "path": "/api/v2/flags/{projectKey}/{featureFlagKey}",
+            "method": "DELETE"
+          }
+        },
+        "test": {
+          "enabled": true,
+          "scenario": "generic",
+          "fixture": ""
+        }
+      },
+      {
+        "terraform_name": "flag_expiring_target",
+        "framework_type_name": "generated_flag_expiring_target",
+        "constructor": "NewGeneratedFlagExpiringTargetResource",
+        "implementation": "generic",
+        "register_framework": true,
+        "enabled": false,
+        "experimental": true,
+        "rollout_phase": "read_import",
+        "modify_plan_hook": "",
+        "identity_fields": [
+          "environment_key",
+          "feature_flag_key",
+          "project_key"
+        ],
+        "mutable_fields": null,
+        "import_ignore": null,
+        "operations": {
+          "create": {
+            "path": "/api/v2/flags/{projectKey}/{featureFlagKey}/expiring-targets/{environmentKey}",
+            "method": "PATCH"
+          },
+          "read": {
+            "path": "/api/v2/flags/{projectKey}/{featureFlagKey}/expiring-targets/{environmentKey}",
+            "method": "GET"
+          },
+          "update": {
+            "path": "/api/v2/flags/{projectKey}/{featureFlagKey}/expiring-targets/{environmentKey}",
+            "method": "PATCH"
+          },
+          "delete": {
+            "path": "",
+            "method": ""
+          }
+        },
+        "test": {
+          "enabled": true,
+          "scenario": "generic",
+          "fixture": ""
+        }
+      },
+      {
+        "terraform_name": "flag_expiring_user_target",
+        "framework_type_name": "generated_flag_expiring_user_target",
+        "constructor": "NewGeneratedFlagExpiringUserTargetResource",
+        "implementation": "generic",
+        "register_framework": true,
+        "enabled": false,
+        "experimental": true,
+        "rollout_phase": "read_import",
+        "modify_plan_hook": "",
+        "identity_fields": [
+          "environment_key",
+          "feature_flag_key",
+          "project_key"
+        ],
+        "mutable_fields": null,
+        "import_ignore": null,
+        "operations": {
+          "create": {
+            "path": "/api/v2/flags/{projectKey}/{featureFlagKey}/expiring-user-targets/{environmentKey}",
+            "method": "PATCH"
+          },
+          "read": {
+            "path": "/api/v2/flags/{projectKey}/{featureFlagKey}/expiring-user-targets/{environmentKey}",
+            "method": "GET"
+          },
+          "update": {
+            "path": "/api/v2/flags/{projectKey}/{featureFlagKey}/expiring-user-targets/{environmentKey}",
+            "method": "PATCH"
+          },
+          "delete": {
+            "path": "",
+            "method": ""
+          }
+        },
+        "test": {
+          "enabled": true,
+          "scenario": "generic",
+          "fixture": ""
+        }
+      },
+      {
+        "terraform_name": "flag_release",
+        "framework_type_name": "generated_flag_release",
+        "constructor": "NewGeneratedFlagReleaseResource",
+        "implementation": "generic",
+        "register_framework": true,
+        "enabled": false,
+        "experimental": true,
+        "rollout_phase": "read_import",
+        "modify_plan_hook": "",
+        "identity_fields": [
+          "flag_key",
+          "project_key"
+        ],
+        "mutable_fields": null,
+        "import_ignore": null,
+        "operations": {
+          "create": {
+            "path": "/api/v2/flags/{projectKey}/{flagKey}/release",
+            "method": "PATCH"
+          },
+          "read": {
+            "path": "/api/v2/flags/{projectKey}/{flagKey}/release",
+            "method": "GET"
+          },
+          "update": {
+            "path": "/api/v2/flags/{projectKey}/{flagKey}/release",
+            "method": "PATCH"
+          },
+          "delete": {
+            "path": "/api/v2/flags/{projectKey}/{flagKey}/release",
+            "method": "DELETE"
+          }
+        },
+        "test": {
+          "enabled": true,
+          "scenario": "generic",
+          "fixture": ""
+        }
+      },
+      {
+        "terraform_name": "flag_trigger",
+        "framework_type_name": "generated_flag_trigger",
+        "constructor": "NewGeneratedFlagTriggerResource",
+        "implementation": "generic",
+        "register_framework": true,
+        "enabled": false,
+        "experimental": true,
+        "rollout_phase": "read_import",
+        "modify_plan_hook": "",
+        "identity_fields": [
+          "id"
+        ],
+        "mutable_fields": null,
+        "import_ignore": null,
+        "operations": {
+          "create": {
+            "path": "/api/v2/flags/{projectKey}/{featureFlagKey}/triggers/{environmentKey}",
+            "method": "POST"
+          },
+          "read": {
+            "path": "/api/v2/flags/{projectKey}/{featureFlagKey}/triggers/{environmentKey}/{id}",
+            "method": "GET"
+          },
+          "update": {
+            "path": "/api/v2/flags/{projectKey}/{featureFlagKey}/triggers/{environmentKey}/{id}",
+            "method": "PATCH"
+          },
+          "delete": {
+            "path": "/api/v2/flags/{projectKey}/{featureFlagKey}/triggers/{environmentKey}/{id}",
+            "method": "DELETE"
+          }
+        },
+        "test": {
+          "enabled": true,
+          "scenario": "generic",
+          "fixture": ""
+        }
+      },
+      {
+        "terraform_name": "integration",
+        "framework_type_name": "generated_integration",
+        "constructor": "NewGeneratedIntegrationResource",
+        "implementation": "generic",
+        "register_framework": true,
+        "enabled": false,
+        "experimental": true,
+        "rollout_phase": "read_import",
+        "modify_plan_hook": "",
+        "identity_fields": [
+          "id"
+        ],
+        "mutable_fields": null,
+        "import_ignore": null,
+        "operations": {
+          "create": {
+            "path": "/api/v2/integrations/{integrationKey}",
+            "method": "POST"
+          },
+          "read": {
+            "path": "/api/v2/integrations/{integrationKey}/{id}",
+            "method": "GET"
+          },
+          "update": {
+            "path": "/api/v2/integrations/{integrationKey}/{id}",
+            "method": "PATCH"
+          },
+          "delete": {
+            "path": "/api/v2/integrations/{integrationKey}/{id}",
+            "method": "DELETE"
+          }
+        },
+        "test": {
+          "enabled": true,
+          "scenario": "generic",
+          "fixture": ""
+        }
+      },
+      {
+        "terraform_name": "integration_capability_big_segment_store",
+        "framework_type_name": "generated_integration_capability_big_segment_store",
+        "constructor": "NewGeneratedIntegrationCapabilityBigSegmentStoreResource",
+        "implementation": "generic",
+        "register_framework": true,
+        "enabled": false,
+        "experimental": true,
+        "rollout_phase": "read_import",
+        "modify_plan_hook": "",
+        "identity_fields": [
+          "integration_id"
+        ],
+        "mutable_fields": null,
+        "import_ignore": null,
+        "operations": {
+          "create": {
+            "path": "/api/v2/integration-capabilities/big-segment-store/{projectKey}/{environmentKey}/{integrationKey}",
+            "method": "POST"
+          },
+          "read": {
+            "path": "/api/v2/integration-capabilities/big-segment-store/{projectKey}/{environmentKey}/{integrationKey}/{integrationId}",
+            "method": "GET"
+          },
+          "update": {
+            "path": "/api/v2/integration-capabilities/big-segment-store/{projectKey}/{environmentKey}/{integrationKey}/{integrationId}",
+            "method": "PATCH"
+          },
+          "delete": {
+            "path": "/api/v2/integration-capabilities/big-segment-store/{projectKey}/{environmentKey}/{integrationKey}/{integrationId}",
+            "method": "DELETE"
+          }
+        },
+        "test": {
+          "enabled": true,
+          "scenario": "generic",
+          "fixture": ""
+        }
+      },
+      {
+        "terraform_name": "integration_capability_feature_store",
+        "framework_type_name": "generated_integration_capability_feature_store",
+        "constructor": "NewGeneratedIntegrationCapabilityFeatureStoreResource",
+        "implementation": "generic",
+        "register_framework": true,
+        "enabled": false,
+        "experimental": true,
+        "rollout_phase": "read_import",
+        "modify_plan_hook": "",
+        "identity_fields": [
+          "id"
+        ],
+        "mutable_fields": null,
+        "import_ignore": null,
+        "operations": {
+          "create": {
+            "path": "/api/v2/integration-capabilities/featureStore/{projectKey}/{environmentKey}/{integrationKey}",
+            "method": "POST"
+          },
+          "read": {
+            "path": "/api/v2/integration-capabilities/featureStore/{projectKey}/{environmentKey}/{integrationKey}/{id}",
+            "method": "GET"
+          },
+          "update": {
+            "path": "/api/v2/integration-capabilities/featureStore/{projectKey}/{environmentKey}/{integrationKey}/{id}",
+            "method": "PATCH"
+          },
+          "delete": {
+            "path": "/api/v2/integration-capabilities/featureStore/{projectKey}/{environmentKey}/{integrationKey}/{id}",
+            "method": "DELETE"
+          }
+        },
+        "test": {
+          "enabled": true,
+          "scenario": "generic",
+          "fixture": ""
+        }
+      },
+      {
+        "terraform_name": "integration_capability_flag_import",
+        "framework_type_name": "generated_integration_capability_flag_import",
+        "constructor": "NewGeneratedIntegrationCapabilityFlagImportResource",
+        "implementation": "generic",
+        "register_framework": true,
+        "enabled": false,
+        "experimental": true,
+        "rollout_phase": "read_import",
+        "modify_plan_hook": "",
+        "identity_fields": [
+          "integration_id"
+        ],
+        "mutable_fields": null,
+        "import_ignore": null,
+        "operations": {
+          "create": {
+            "path": "/api/v2/integration-capabilities/flag-import/{projectKey}/{integrationKey}",
+            "method": "POST"
+          },
+          "read": {
+            "path": "/api/v2/integration-capabilities/flag-import/{projectKey}/{integrationKey}/{integrationId}",
+            "method": "GET"
+          },
+          "update": {
+            "path": "/api/v2/integration-capabilities/flag-import/{projectKey}/{integrationKey}/{integrationId}",
+            "method": "PATCH"
+          },
+          "delete": {
+            "path": "/api/v2/integration-capabilities/flag-import/{projectKey}/{integrationKey}/{integrationId}",
+            "method": "DELETE"
+          }
+        },
+        "test": {
+          "enabled": true,
+          "scenario": "generic",
+          "fixture": ""
+        }
+      },
+      {
+        "terraform_name": "integration_configuration",
+        "framework_type_name": "generated_integration_configuration",
+        "constructor": "NewGeneratedIntegrationConfigurationResource",
+        "implementation": "generic",
+        "register_framework": true,
+        "enabled": false,
+        "experimental": true,
+        "rollout_phase": "read_import",
+        "modify_plan_hook": "",
+        "identity_fields": [
+          "integration_configuration_id"
+        ],
+        "mutable_fields": null,
+        "import_ignore": null,
+        "operations": {
+          "create": {
+            "path": "/api/v2/integration-configurations/{integrationConfigurationId}",
+            "method": "PATCH"
+          },
+          "read": {
+            "path": "/api/v2/integration-configurations/{integrationConfigurationId}",
+            "method": "GET"
+          },
+          "update": {
+            "path": "/api/v2/integration-configurations/{integrationConfigurationId}",
+            "method": "PATCH"
+          },
+          "delete": {
+            "path": "/api/v2/integration-configurations/{integrationConfigurationId}",
+            "method": "DELETE"
+          }
+        },
+        "test": {
+          "enabled": true,
+          "scenario": "generic",
+          "fixture": ""
+        }
+      },
+      {
+        "terraform_name": "integration_configuration_key",
+        "framework_type_name": "generated_integration_configuration_key",
+        "constructor": "NewGeneratedIntegrationConfigurationKeyResource",
+        "implementation": "generic",
+        "register_framework": true,
+        "enabled": false,
+        "experimental": true,
+        "rollout_phase": "read_import",
+        "modify_plan_hook": "",
+        "identity_fields": [
+          "integration_key"
+        ],
+        "mutable_fields": null,
+        "import_ignore": null,
+        "operations": {
+          "create": {
+            "path": "/api/v2/integration-configurations/keys/{integrationKey}",
+            "method": "POST"
+          },
+          "read": {
+            "path": "/api/v2/integration-configurations/keys/{integrationKey}",
+            "method": "GET"
+          },
+          "update": {
+            "path": "",
+            "method": ""
+          },
+          "delete": {
+            "path": "",
+            "method": ""
+          }
+        },
+        "test": {
+          "enabled": true,
+          "scenario": "generic",
+          "fixture": ""
+        }
+      },
+      {
+        "terraform_name": "member",
+        "framework_type_name": "generated_member",
+        "constructor": "NewGeneratedMemberResource",
+        "implementation": "generic",
+        "register_framework": true,
+        "enabled": false,
+        "experimental": true,
+        "rollout_phase": "read_import",
+        "modify_plan_hook": "",
+        "identity_fields": [
+          "id"
+        ],
+        "mutable_fields": null,
+        "import_ignore": null,
+        "operations": {
+          "create": {
+            "path": "/api/v2/members",
+            "method": "POST"
+          },
+          "read": {
+            "path": "/api/v2/members/{id}",
+            "method": "GET"
+          },
+          "update": {
+            "path": "/api/v2/members/{id}",
+            "method": "PATCH"
+          },
+          "delete": {
+            "path": "/api/v2/members/{id}",
+            "method": "DELETE"
+          }
+        },
+        "test": {
+          "enabled": true,
+          "scenario": "generic",
+          "fixture": ""
+        }
+      },
+      {
+        "terraform_name": "metric",
+        "framework_type_name": "generated_metric",
+        "constructor": "NewGeneratedMetricResource",
+        "implementation": "generic",
+        "register_framework": true,
+        "enabled": false,
+        "experimental": true,
+        "rollout_phase": "read_import",
+        "modify_plan_hook": "",
+        "identity_fields": [
+          "metric_key"
+        ],
+        "mutable_fields": null,
+        "import_ignore": null,
+        "operations": {
+          "create": {
+            "path": "/api/v2/metrics/{projectKey}",
+            "method": "POST"
+          },
+          "read": {
+            "path": "/api/v2/metrics/{projectKey}/{metricKey}",
+            "method": "GET"
+          },
+          "update": {
+            "path": "/api/v2/metrics/{projectKey}/{metricKey}",
+            "method": "PATCH"
+          },
+          "delete": {
+            "path": "/api/v2/metrics/{projectKey}/{metricKey}",
+            "method": "DELETE"
+          }
+        },
+        "test": {
+          "enabled": true,
+          "scenario": "generic",
+          "fixture": ""
+        }
+      },
+      {
+        "terraform_name": "oauth_client",
+        "framework_type_name": "generated_oauth_client",
+        "constructor": "NewGeneratedOauthClientResource",
+        "implementation": "generic",
+        "register_framework": true,
+        "enabled": false,
+        "experimental": true,
+        "rollout_phase": "read_import",
+        "modify_plan_hook": "",
+        "identity_fields": [
+          "client_id"
+        ],
+        "mutable_fields": null,
+        "import_ignore": null,
+        "operations": {
+          "create": {
+            "path": "/api/v2/oauth/clients",
+            "method": "POST"
+          },
+          "read": {
+            "path": "/api/v2/oauth/clients/{clientId}",
+            "method": "GET"
+          },
+          "update": {
+            "path": "/api/v2/oauth/clients/{clientId}",
+            "method": "PATCH"
+          },
+          "delete": {
+            "path": "/api/v2/oauth/clients/{clientId}",
+            "method": "DELETE"
+          }
+        },
+        "test": {
+          "enabled": true,
+          "scenario": "generic",
+          "fixture": ""
+        }
+      },
+      {
+        "terraform_name": "project",
+        "framework_type_name": "generated_project",
+        "constructor": "NewGeneratedProjectResource",
+        "implementation": "generic",
+        "register_framework": true,
+        "enabled": false,
+        "experimental": true,
+        "rollout_phase": "read_import",
+        "modify_plan_hook": "",
+        "identity_fields": [
+          "project_key"
+        ],
+        "mutable_fields": null,
+        "import_ignore": null,
+        "operations": {
+          "create": {
+            "path": "/api/v2/projects",
+            "method": "POST"
+          },
+          "read": {
+            "path": "/api/v2/projects/{projectKey}",
+            "method": "GET"
+          },
+          "update": {
+            "path": "/api/v2/projects/{projectKey}",
+            "method": "PATCH"
+          },
+          "delete": {
+            "path": "/api/v2/projects/{projectKey}",
+            "method": "DELETE"
+          }
+        },
+        "test": {
+          "enabled": true,
+          "scenario": "generic",
+          "fixture": ""
+        }
+      },
+      {
+        "terraform_name": "project_agent_graph",
+        "framework_type_name": "generated_project_agent_graph",
+        "constructor": "NewGeneratedProjectAgentGraphResource",
+        "implementation": "generic",
+        "register_framework": true,
+        "enabled": false,
+        "experimental": true,
+        "rollout_phase": "read_import",
+        "modify_plan_hook": "",
+        "identity_fields": [
+          "graph_key"
+        ],
+        "mutable_fields": null,
+        "import_ignore": null,
+        "operations": {
+          "create": {
+            "path": "/api/v2/projects/{projectKey}/agent-graphs",
+            "method": "POST"
+          },
+          "read": {
+            "path": "/api/v2/projects/{projectKey}/agent-graphs/{graphKey}",
+            "method": "GET"
+          },
+          "update": {
+            "path": "/api/v2/projects/{projectKey}/agent-graphs/{graphKey}",
+            "method": "PATCH"
+          },
+          "delete": {
+            "path": "/api/v2/projects/{projectKey}/agent-graphs/{graphKey}",
+            "method": "DELETE"
+          }
+        },
+        "test": {
+          "enabled": true,
+          "scenario": "generic",
+          "fixture": ""
+        }
+      },
+      {
+        "terraform_name": "project_agent_optimization",
+        "framework_type_name": "generated_project_agent_optimization",
+        "constructor": "NewGeneratedProjectAgentOptimizationResource",
+        "implementation": "generic",
+        "register_framework": true,
+        "enabled": false,
+        "experimental": true,
+        "rollout_phase": "read_import",
+        "modify_plan_hook": "",
+        "identity_fields": [
+          "optimization_key"
+        ],
+        "mutable_fields": null,
+        "import_ignore": null,
+        "operations": {
+          "create": {
+            "path": "/api/v2/projects/{projectKey}/agent-optimizations",
+            "method": "POST"
+          },
+          "read": {
+            "path": "/api/v2/projects/{projectKey}/agent-optimizations/{optimizationKey}",
+            "method": "GET"
+          },
+          "update": {
+            "path": "/api/v2/projects/{projectKey}/agent-optimizations/{optimizationKey}",
+            "method": "PATCH"
+          },
+          "delete": {
+            "path": "/api/v2/projects/{projectKey}/agent-optimizations/{optimizationKey}",
+            "method": "DELETE"
+          }
+        },
+        "test": {
+          "enabled": true,
+          "scenario": "generic",
+          "fixture": ""
+        }
+      },
+      {
+        "terraform_name": "project_ai_config",
+        "framework_type_name": "generated_project_ai_config",
+        "constructor": "NewGeneratedProjectAiConfigResource",
+        "implementation": "generic",
+        "register_framework": true,
+        "enabled": false,
+        "experimental": true,
+        "rollout_phase": "read_import",
+        "modify_plan_hook": "",
+        "identity_fields": [
+          "config_key"
+        ],
+        "mutable_fields": null,
+        "import_ignore": null,
+        "operations": {
+          "create": {
+            "path": "/api/v2/projects/{projectKey}/ai-configs",
+            "method": "POST"
+          },
+          "read": {
+            "path": "/api/v2/projects/{projectKey}/ai-configs/{configKey}",
+            "method": "GET"
+          },
+          "update": {
+            "path": "/api/v2/projects/{projectKey}/ai-configs/{configKey}",
+            "method": "PATCH"
+          },
+          "delete": {
+            "path": "/api/v2/projects/{projectKey}/ai-configs/{configKey}",
+            "method": "DELETE"
+          }
+        },
+        "test": {
+          "enabled": true,
+          "scenario": "generic",
+          "fixture": ""
+        }
+      },
+      {
+        "terraform_name": "project_ai_config_model_config",
+        "framework_type_name": "generated_project_ai_config_model_config",
+        "constructor": "NewGeneratedProjectAiConfigModelConfigResource",
+        "implementation": "generic",
+        "register_framework": true,
+        "enabled": false,
+        "experimental": true,
+        "rollout_phase": "read_import",
+        "modify_plan_hook": "",
+        "identity_fields": [
+          "model_config_key"
+        ],
+        "mutable_fields": null,
+        "import_ignore": null,
+        "operations": {
+          "create": {
+            "path": "/api/v2/projects/{projectKey}/ai-configs/model-configs",
+            "method": "POST"
+          },
+          "read": {
+            "path": "/api/v2/projects/{projectKey}/ai-configs/model-configs/{modelConfigKey}",
+            "method": "GET"
+          },
+          "update": {
+            "path": "",
+            "method": ""
+          },
+          "delete": {
+            "path": "/api/v2/projects/{projectKey}/ai-configs/model-configs/{modelConfigKey}",
+            "method": "DELETE"
+          }
+        },
+        "test": {
+          "enabled": true,
+          "scenario": "generic",
+          "fixture": ""
+        }
+      },
+      {
+        "terraform_name": "project_ai_config_prompt_snippet",
+        "framework_type_name": "generated_project_ai_config_prompt_snippet",
+        "constructor": "NewGeneratedProjectAiConfigPromptSnippetResource",
+        "implementation": "generic",
+        "register_framework": true,
+        "enabled": false,
+        "experimental": true,
+        "rollout_phase": "read_import",
+        "modify_plan_hook": "",
+        "identity_fields": [
+          "snippet_key"
+        ],
+        "mutable_fields": null,
+        "import_ignore": null,
+        "operations": {
+          "create": {
+            "path": "/api/v2/projects/{projectKey}/ai-configs/prompt-snippets",
+            "method": "POST"
+          },
+          "read": {
+            "path": "/api/v2/projects/{projectKey}/ai-configs/prompt-snippets/{snippetKey}",
+            "method": "GET"
+          },
+          "update": {
+            "path": "/api/v2/projects/{projectKey}/ai-configs/prompt-snippets/{snippetKey}",
+            "method": "PATCH"
+          },
+          "delete": {
+            "path": "/api/v2/projects/{projectKey}/ai-configs/prompt-snippets/{snippetKey}",
+            "method": "DELETE"
+          }
+        },
+        "test": {
+          "enabled": true,
+          "scenario": "generic",
+          "fixture": ""
+        }
+      },
+      {
+        "terraform_name": "project_ai_config_targeting",
+        "framework_type_name": "generated_project_ai_config_targeting",
+        "constructor": "NewGeneratedProjectAiConfigTargetingResource",
+        "implementation": "generic",
+        "register_framework": true,
+        "enabled": false,
+        "experimental": true,
+        "rollout_phase": "read_import",
+        "modify_plan_hook": "",
+        "identity_fields": [
+          "config_key",
+          "project_key"
+        ],
+        "mutable_fields": null,
+        "import_ignore": null,
+        "operations": {
+          "create": {
+            "path": "/api/v2/projects/{projectKey}/ai-configs/{configKey}/targeting",
+            "method": "PATCH"
+          },
+          "read": {
+            "path": "/api/v2/projects/{projectKey}/ai-configs/{configKey}/targeting",
+            "method": "GET"
+          },
+          "update": {
+            "path": "/api/v2/projects/{projectKey}/ai-configs/{configKey}/targeting",
+            "method": "PATCH"
+          },
+          "delete": {
+            "path": "",
+            "method": ""
+          }
+        },
+        "test": {
+          "enabled": true,
+          "scenario": "generic",
+          "fixture": ""
+        }
+      },
+      {
+        "terraform_name": "project_ai_config_variation",
+        "framework_type_name": "generated_project_ai_config_variation",
+        "constructor": "NewGeneratedProjectAiConfigVariationResource",
+        "implementation": "generic",
+        "register_framework": true,
+        "enabled": false,
+        "experimental": true,
+        "rollout_phase": "read_import",
+        "modify_plan_hook": "",
+        "identity_fields": [
+          "variation_key"
+        ],
+        "mutable_fields": null,
+        "import_ignore": null,
+        "operations": {
+          "create": {
+            "path": "/api/v2/projects/{projectKey}/ai-configs/{configKey}/variations",
+            "method": "POST"
+          },
+          "read": {
+            "path": "/api/v2/projects/{projectKey}/ai-configs/{configKey}/variations/{variationKey}",
+            "method": "GET"
+          },
+          "update": {
+            "path": "/api/v2/projects/{projectKey}/ai-configs/{configKey}/variations/{variationKey}",
+            "method": "PATCH"
+          },
+          "delete": {
+            "path": "/api/v2/projects/{projectKey}/ai-configs/{configKey}/variations/{variationKey}",
+            "method": "DELETE"
+          }
+        },
+        "test": {
+          "enabled": true,
+          "scenario": "generic",
+          "fixture": ""
+        }
+      },
+      {
+        "terraform_name": "project_ai_tool",
+        "framework_type_name": "generated_project_ai_tool",
+        "constructor": "NewGeneratedProjectAiToolResource",
+        "implementation": "generic",
+        "register_framework": true,
+        "enabled": false,
+        "experimental": true,
+        "rollout_phase": "read_import",
+        "modify_plan_hook": "",
+        "identity_fields": [
+          "tool_key"
+        ],
+        "mutable_fields": null,
+        "import_ignore": null,
+        "operations": {
+          "create": {
+            "path": "/api/v2/projects/{projectKey}/ai-tools",
+            "method": "POST"
+          },
+          "read": {
+            "path": "/api/v2/projects/{projectKey}/ai-tools/{toolKey}",
+            "method": "GET"
+          },
+          "update": {
+            "path": "/api/v2/projects/{projectKey}/ai-tools/{toolKey}",
+            "method": "PATCH"
+          },
+          "delete": {
+            "path": "/api/v2/projects/{projectKey}/ai-tools/{toolKey}",
+            "method": "DELETE"
+          }
+        },
+        "test": {
+          "enabled": true,
+          "scenario": "generic",
+          "fixture": ""
+        }
+      },
+      {
+        "terraform_name": "project_environment",
+        "framework_type_name": "generated_project_environment",
+        "constructor": "NewGeneratedProjectEnvironmentResource",
+        "implementation": "generic",
+        "register_framework": true,
+        "enabled": false,
+        "experimental": true,
+        "rollout_phase": "read_import",
+        "modify_plan_hook": "",
+        "identity_fields": [
+          "environment_key"
+        ],
+        "mutable_fields": null,
+        "import_ignore": null,
+        "operations": {
+          "create": {
+            "path": "/api/v2/projects/{projectKey}/environments",
+            "method": "POST"
+          },
+          "read": {
+            "path": "/api/v2/projects/{projectKey}/environments/{environmentKey}",
+            "method": "GET"
+          },
+          "update": {
+            "path": "/api/v2/projects/{projectKey}/environments/{environmentKey}",
+            "method": "PATCH"
+          },
+          "delete": {
+            "path": "/api/v2/projects/{projectKey}/environments/{environmentKey}",
+            "method": "DELETE"
+          }
+        },
+        "test": {
+          "enabled": true,
+          "scenario": "generic",
+          "fixture": ""
+        }
+      },
+      {
+        "terraform_name": "project_environment_context_instance",
+        "framework_type_name": "generated_project_environment_context_instance",
+        "constructor": "NewGeneratedProjectEnvironmentContextInstanceResource",
+        "implementation": "generic",
+        "register_framework": true,
+        "enabled": false,
+        "experimental": true,
+        "rollout_phase": "read_import",
+        "modify_plan_hook": "",
+        "identity_fields": [
+          "environment_key",
+          "id",
+          "project_key"
+        ],
+        "mutable_fields": null,
+        "import_ignore": null,
+        "operations": {
+          "create": {
+            "path": "",
+            "method": ""
+          },
+          "read": {
+            "path": "/api/v2/projects/{projectKey}/environments/{environmentKey}/context-instances/{id}",
+            "method": "GET"
+          },
+          "update": {
+            "path": "",
+            "method": ""
+          },
+          "delete": {
+            "path": "/api/v2/projects/{projectKey}/environments/{environmentKey}/context-instances/{id}",
+            "method": "DELETE"
+          }
+        },
+        "test": {
+          "enabled": true,
+          "scenario": "generic",
+          "fixture": ""
+        }
+      },
+      {
+        "terraform_name": "project_environment_experiment",
+        "framework_type_name": "generated_project_environment_experiment",
+        "constructor": "NewGeneratedProjectEnvironmentExperimentResource",
+        "implementation": "generic",
+        "register_framework": true,
+        "enabled": false,
+        "experimental": true,
+        "rollout_phase": "read_import",
+        "modify_plan_hook": "",
+        "identity_fields": [
+          "experiment_key"
+        ],
+        "mutable_fields": null,
+        "import_ignore": null,
+        "operations": {
+          "create": {
+            "path": "/api/v2/projects/{projectKey}/environments/{environmentKey}/experiments",
+            "method": "POST"
+          },
+          "read": {
+            "path": "/api/v2/projects/{projectKey}/environments/{environmentKey}/experiments/{experimentKey}",
+            "method": "GET"
+          },
+          "update": {
+            "path": "/api/v2/projects/{projectKey}/environments/{environmentKey}/experiments/{experimentKey}",
+            "method": "PATCH"
+          },
+          "delete": {
+            "path": "",
+            "method": ""
+          }
+        },
+        "test": {
+          "enabled": true,
+          "scenario": "generic",
+          "fixture": ""
+        }
+      },
+      {
+        "terraform_name": "project_environment_holdout",
+        "framework_type_name": "generated_project_environment_holdout",
+        "constructor": "NewGeneratedProjectEnvironmentHoldoutResource",
+        "implementation": "generic",
+        "register_framework": true,
+        "enabled": false,
+        "experimental": true,
+        "rollout_phase": "read_import",
+        "modify_plan_hook": "",
+        "identity_fields": [
+          "holdout_key"
+        ],
+        "mutable_fields": null,
+        "import_ignore": null,
+        "operations": {
+          "create": {
+            "path": "/api/v2/projects/{projectKey}/environments/{environmentKey}/holdouts",
+            "method": "POST"
+          },
+          "read": {
+            "path": "/api/v2/projects/{projectKey}/environments/{environmentKey}/holdouts/{holdoutKey}",
+            "method": "GET"
+          },
+          "update": {
+            "path": "/api/v2/projects/{projectKey}/environments/{environmentKey}/holdouts/{holdoutKey}",
+            "method": "PATCH"
+          },
+          "delete": {
+            "path": "",
+            "method": ""
+          }
+        },
+        "test": {
+          "enabled": true,
+          "scenario": "generic",
+          "fixture": ""
+        }
+      },
+      {
+        "terraform_name": "project_experimentation_setting",
+        "framework_type_name": "generated_project_experimentation_setting",
+        "constructor": "NewGeneratedProjectExperimentationSettingResource",
+        "implementation": "generic",
+        "register_framework": true,
+        "enabled": false,
+        "experimental": true,
+        "rollout_phase": "read_import",
+        "modify_plan_hook": "",
+        "identity_fields": [
+          "project_key"
+        ],
+        "mutable_fields": null,
+        "import_ignore": null,
+        "operations": {
+          "create": {
+            "path": "/api/v2/projects/{projectKey}/experimentation-settings",
+            "method": "PUT"
+          },
+          "read": {
+            "path": "/api/v2/projects/{projectKey}/experimentation-settings",
+            "method": "GET"
+          },
+          "update": {
+            "path": "/api/v2/projects/{projectKey}/experimentation-settings",
+            "method": "PUT"
+          },
+          "delete": {
+            "path": "",
+            "method": ""
+          }
+        },
+        "test": {
+          "enabled": true,
+          "scenario": "generic",
+          "fixture": ""
+        }
+      },
+      {
+        "terraform_name": "project_flag_default",
+        "framework_type_name": "generated_project_flag_default",
+        "constructor": "NewGeneratedProjectFlagDefaultResource",
+        "implementation": "generic",
+        "register_framework": true,
+        "enabled": false,
+        "experimental": true,
+        "rollout_phase": "read_import",
+        "modify_plan_hook": "",
+        "identity_fields": [
+          "project_key"
+        ],
+        "mutable_fields": null,
+        "import_ignore": null,
+        "operations": {
+          "create": {
+            "path": "/api/v2/projects/{projectKey}/flag-defaults",
+            "method": "PATCH"
+          },
+          "read": {
+            "path": "/api/v2/projects/{projectKey}/flag-defaults",
+            "method": "GET"
+          },
+          "update": {
+            "path": "/api/v2/projects/{projectKey}/flag-defaults",
+            "method": "PATCH"
+          },
+          "delete": {
+            "path": "",
+            "method": ""
+          }
+        },
+        "test": {
+          "enabled": true,
+          "scenario": "generic",
+          "fixture": ""
+        }
+      },
+      {
+        "terraform_name": "project_flag_environment_approval_request",
+        "framework_type_name": "generated_project_flag_environment_approval_request",
+        "constructor": "NewGeneratedProjectFlagEnvironmentApprovalRequestResource",
+        "implementation": "generic",
+        "register_framework": true,
+        "enabled": false,
+        "experimental": true,
+        "rollout_phase": "read_import",
+        "modify_plan_hook": "",
+        "identity_fields": [
+          "id"
+        ],
+        "mutable_fields": null,
+        "import_ignore": null,
+        "operations": {
+          "create": {
+            "path": "/api/v2/projects/{projectKey}/flags/{featureFlagKey}/environments/{environmentKey}/approval-requests",
+            "method": "POST"
+          },
+          "read": {
+            "path": "/api/v2/projects/{projectKey}/flags/{featureFlagKey}/environments/{environmentKey}/approval-requests/{id}",
+            "method": "GET"
+          },
+          "update": {
+            "path": "/api/v2/projects/{projectKey}/flags/{featureFlagKey}/environments/{environmentKey}/approval-requests/{id}",
+            "method": "PATCH"
+          },
+          "delete": {
+            "path": "/api/v2/projects/{projectKey}/flags/{featureFlagKey}/environments/{environmentKey}/approval-requests/{id}",
+            "method": "DELETE"
+          }
+        },
+        "test": {
+          "enabled": true,
+          "scenario": "generic",
+          "fixture": ""
+        }
+      },
+      {
+        "terraform_name": "project_flag_environment_scheduled_change",
+        "framework_type_name": "generated_project_flag_environment_scheduled_change",
+        "constructor": "NewGeneratedProjectFlagEnvironmentScheduledChangeResource",
+        "implementation": "generic",
+        "register_framework": true,
+        "enabled": false,
+        "experimental": true,
+        "rollout_phase": "read_import",
+        "modify_plan_hook": "",
+        "identity_fields": [
+          "id"
+        ],
+        "mutable_fields": null,
+        "import_ignore": null,
+        "operations": {
+          "create": {
+            "path": "/api/v2/projects/{projectKey}/flags/{featureFlagKey}/environments/{environmentKey}/scheduled-changes",
+            "method": "POST"
+          },
+          "read": {
+            "path": "/api/v2/projects/{projectKey}/flags/{featureFlagKey}/environments/{environmentKey}/scheduled-changes/{id}",
+            "method": "GET"
+          },
+          "update": {
+            "path": "/api/v2/projects/{projectKey}/flags/{featureFlagKey}/environments/{environmentKey}/scheduled-changes/{id}",
+            "method": "PATCH"
+          },
+          "delete": {
+            "path": "/api/v2/projects/{projectKey}/flags/{featureFlagKey}/environments/{environmentKey}/scheduled-changes/{id}",
+            "method": "DELETE"
+          }
+        },
+        "test": {
+          "enabled": true,
+          "scenario": "generic",
+          "fixture": ""
+        }
+      },
+      {
+        "terraform_name": "project_flag_environment_workflow",
+        "framework_type_name": "generated_project_flag_environment_workflow",
+        "constructor": "NewGeneratedProjectFlagEnvironmentWorkflowResource",
+        "implementation": "generic",
+        "register_framework": true,
+        "enabled": false,
+        "experimental": true,
+        "rollout_phase": "read_import",
+        "modify_plan_hook": "",
+        "identity_fields": [
+          "workflow_id"
+        ],
+        "mutable_fields": null,
+        "import_ignore": null,
+        "operations": {
+          "create": {
+            "path": "/api/v2/projects/{projectKey}/flags/{featureFlagKey}/environments/{environmentKey}/workflows",
+            "method": "POST"
+          },
+          "read": {
+            "path": "/api/v2/projects/{projectKey}/flags/{featureFlagKey}/environments/{environmentKey}/workflows/{workflowId}",
+            "method": "GET"
+          },
+          "update": {
+            "path": "",
+            "method": ""
+          },
+          "delete": {
+            "path": "/api/v2/projects/{projectKey}/flags/{featureFlagKey}/environments/{environmentKey}/workflows/{workflowId}",
+            "method": "DELETE"
+          }
+        },
+        "test": {
+          "enabled": true,
+          "scenario": "generic",
+          "fixture": ""
+        }
+      },
+      {
+        "terraform_name": "project_metric_group",
+        "framework_type_name": "generated_project_metric_group",
+        "constructor": "NewGeneratedProjectMetricGroupResource",
+        "implementation": "generic",
+        "register_framework": true,
+        "enabled": false,
+        "experimental": true,
+        "rollout_phase": "read_import",
+        "modify_plan_hook": "",
+        "identity_fields": [
+          "metric_group_key"
+        ],
+        "mutable_fields": null,
+        "import_ignore": null,
+        "operations": {
+          "create": {
+            "path": "/api/v2/projects/{projectKey}/metric-groups",
+            "method": "POST"
+          },
+          "read": {
+            "path": "/api/v2/projects/{projectKey}/metric-groups/{metricGroupKey}",
+            "method": "GET"
+          },
+          "update": {
+            "path": "/api/v2/projects/{projectKey}/metric-groups/{metricGroupKey}",
+            "method": "PATCH"
+          },
+          "delete": {
+            "path": "/api/v2/projects/{projectKey}/metric-groups/{metricGroupKey}",
+            "method": "DELETE"
+          }
+        },
+        "test": {
+          "enabled": true,
+          "scenario": "generic",
+          "fixture": ""
+        }
+      },
+      {
+        "terraform_name": "project_release_pipeline",
+        "framework_type_name": "generated_project_release_pipeline",
+        "constructor": "NewGeneratedProjectReleasePipelineResource",
+        "implementation": "generic",
+        "register_framework": true,
+        "enabled": false,
+        "experimental": true,
+        "rollout_phase": "read_import",
+        "modify_plan_hook": "",
+        "identity_fields": [
+          "pipeline_key"
+        ],
+        "mutable_fields": null,
+        "import_ignore": null,
+        "operations": {
+          "create": {
+            "path": "/api/v2/projects/{projectKey}/release-pipelines",
+            "method": "POST"
+          },
+          "read": {
+            "path": "/api/v2/projects/{projectKey}/release-pipelines/{pipelineKey}",
+            "method": "GET"
+          },
+          "update": {
+            "path": "/api/v2/projects/{projectKey}/release-pipelines/{pipelineKey}",
+            "method": "PUT"
+          },
+          "delete": {
+            "path": "/api/v2/projects/{projectKey}/release-pipelines/{pipelineKey}",
+            "method": "DELETE"
+          }
+        },
+        "test": {
+          "enabled": true,
+          "scenario": "generic",
+          "fixture": ""
+        }
+      },
+      {
+        "terraform_name": "project_release_policy",
+        "framework_type_name": "generated_project_release_policy",
+        "constructor": "NewGeneratedProjectReleasePolicyResource",
+        "implementation": "generic",
+        "register_framework": true,
+        "enabled": false,
+        "experimental": true,
+        "rollout_phase": "read_import",
+        "modify_plan_hook": "",
+        "identity_fields": [
+          "policy_key"
+        ],
+        "mutable_fields": null,
+        "import_ignore": null,
+        "operations": {
+          "create": {
+            "path": "/api/v2/projects/{projectKey}/release-policies",
+            "method": "POST"
+          },
+          "read": {
+            "path": "/api/v2/projects/{projectKey}/release-policies/{policyKey}",
+            "method": "GET"
+          },
+          "update": {
+            "path": "/api/v2/projects/{projectKey}/release-policies/{policyKey}",
+            "method": "PUT"
+          },
+          "delete": {
+            "path": "/api/v2/projects/{projectKey}/release-policies/{policyKey}",
+            "method": "DELETE"
+          }
+        },
+        "test": {
+          "enabled": true,
+          "scenario": "generic",
+          "fixture": ""
+        }
+      },
+      {
+        "terraform_name": "project_view",
+        "framework_type_name": "generated_project_view",
+        "constructor": "NewGeneratedProjectViewResource",
+        "implementation": "generic",
+        "register_framework": true,
+        "enabled": false,
+        "experimental": true,
+        "rollout_phase": "read_import",
+        "modify_plan_hook": "",
+        "identity_fields": [
+          "view_key"
+        ],
+        "mutable_fields": null,
+        "import_ignore": null,
+        "operations": {
+          "create": {
+            "path": "/api/v2/projects/{projectKey}/views",
+            "method": "POST"
+          },
+          "read": {
+            "path": "/api/v2/projects/{projectKey}/views/{viewKey}",
+            "method": "GET"
+          },
+          "update": {
+            "path": "/api/v2/projects/{projectKey}/views/{viewKey}",
+            "method": "PATCH"
+          },
+          "delete": {
+            "path": "/api/v2/projects/{projectKey}/views/{viewKey}",
+            "method": "DELETE"
+          }
+        },
+        "test": {
+          "enabled": true,
+          "scenario": "generic",
+          "fixture": ""
+        }
+      },
+      {
+        "terraform_name": "role",
+        "framework_type_name": "generated_role",
+        "constructor": "NewGeneratedRoleResource",
+        "implementation": "generic",
+        "register_framework": true,
+        "enabled": false,
+        "experimental": true,
+        "rollout_phase": "read_import",
+        "modify_plan_hook": "",
+        "identity_fields": [
+          "custom_role_key"
+        ],
+        "mutable_fields": null,
+        "import_ignore": null,
+        "operations": {
+          "create": {
+            "path": "/api/v2/roles",
+            "method": "POST"
+          },
+          "read": {
+            "path": "/api/v2/roles/{customRoleKey}",
+            "method": "GET"
+          },
+          "update": {
+            "path": "/api/v2/roles/{customRoleKey}",
+            "method": "PATCH"
+          },
+          "delete": {
+            "path": "/api/v2/roles/{customRoleKey}",
+            "method": "DELETE"
+          }
+        },
+        "test": {
+          "enabled": true,
+          "scenario": "generic",
+          "fixture": ""
+        }
+      },
+      {
+        "terraform_name": "segment",
+        "framework_type_name": "generated_segment",
+        "constructor": "NewGeneratedSegmentResource",
+        "implementation": "generic",
+        "register_framework": true,
+        "enabled": false,
+        "experimental": true,
+        "rollout_phase": "read_import",
+        "modify_plan_hook": "",
+        "identity_fields": [
+          "segment_key"
+        ],
+        "mutable_fields": null,
+        "import_ignore": null,
+        "operations": {
+          "create": {
+            "path": "/api/v2/segments/{projectKey}/{environmentKey}",
+            "method": "POST"
+          },
+          "read": {
+            "path": "/api/v2/segments/{projectKey}/{environmentKey}/{segmentKey}",
+            "method": "GET"
+          },
+          "update": {
+            "path": "/api/v2/segments/{projectKey}/{environmentKey}/{segmentKey}",
+            "method": "PATCH"
+          },
+          "delete": {
+            "path": "/api/v2/segments/{projectKey}/{environmentKey}/{segmentKey}",
+            "method": "DELETE"
+          }
+        },
+        "test": {
+          "enabled": true,
+          "scenario": "generic",
+          "fixture": ""
+        }
+      },
+      {
+        "terraform_name": "segment_context",
+        "framework_type_name": "generated_segment_context",
+        "constructor": "NewGeneratedSegmentContextResource",
+        "implementation": "generic",
+        "register_framework": true,
+        "enabled": false,
+        "experimental": true,
+        "rollout_phase": "read_import",
+        "modify_plan_hook": "",
+        "identity_fields": [
+          "context_key"
+        ],
+        "mutable_fields": null,
+        "import_ignore": null,
+        "operations": {
+          "create": {
+            "path": "/api/v2/segments/{projectKey}/{environmentKey}/{segmentKey}/contexts",
+            "method": "POST"
+          },
+          "read": {
+            "path": "/api/v2/segments/{projectKey}/{environmentKey}/{segmentKey}/contexts/{contextKey}",
+            "method": "GET"
+          },
+          "update": {
+            "path": "",
+            "method": ""
+          },
+          "delete": {
+            "path": "",
+            "method": ""
+          }
+        },
+        "test": {
+          "enabled": true,
+          "scenario": "generic",
+          "fixture": ""
+        }
+      },
+      {
+        "terraform_name": "segment_expiring_target",
+        "framework_type_name": "generated_segment_expiring_target",
+        "constructor": "NewGeneratedSegmentExpiringTargetResource",
+        "implementation": "generic",
+        "register_framework": true,
+        "enabled": false,
+        "experimental": true,
+        "rollout_phase": "read_import",
+        "modify_plan_hook": "",
+        "identity_fields": [
+          "environment_key",
+          "project_key",
+          "segment_key"
+        ],
+        "mutable_fields": null,
+        "import_ignore": null,
+        "operations": {
+          "create": {
+            "path": "/api/v2/segments/{projectKey}/{segmentKey}/expiring-targets/{environmentKey}",
+            "method": "PATCH"
+          },
+          "read": {
+            "path": "/api/v2/segments/{projectKey}/{segmentKey}/expiring-targets/{environmentKey}",
+            "method": "GET"
+          },
+          "update": {
+            "path": "/api/v2/segments/{projectKey}/{segmentKey}/expiring-targets/{environmentKey}",
+            "method": "PATCH"
+          },
+          "delete": {
+            "path": "",
+            "method": ""
+          }
+        },
+        "test": {
+          "enabled": true,
+          "scenario": "generic",
+          "fixture": ""
+        }
+      },
+      {
+        "terraform_name": "segment_expiring_user_target",
+        "framework_type_name": "generated_segment_expiring_user_target",
+        "constructor": "NewGeneratedSegmentExpiringUserTargetResource",
+        "implementation": "generic",
+        "register_framework": true,
+        "enabled": false,
+        "experimental": true,
+        "rollout_phase": "read_import",
+        "modify_plan_hook": "",
+        "identity_fields": [
+          "environment_key",
+          "project_key",
+          "segment_key"
+        ],
+        "mutable_fields": null,
+        "import_ignore": null,
+        "operations": {
+          "create": {
+            "path": "/api/v2/segments/{projectKey}/{segmentKey}/expiring-user-targets/{environmentKey}",
+            "method": "PATCH"
+          },
+          "read": {
+            "path": "/api/v2/segments/{projectKey}/{segmentKey}/expiring-user-targets/{environmentKey}",
+            "method": "GET"
+          },
+          "update": {
+            "path": "/api/v2/segments/{projectKey}/{segmentKey}/expiring-user-targets/{environmentKey}",
+            "method": "PATCH"
+          },
+          "delete": {
+            "path": "",
+            "method": ""
+          }
+        },
+        "test": {
+          "enabled": true,
+          "scenario": "generic",
+          "fixture": ""
+        }
+      },
+      {
+        "terraform_name": "segment_export",
+        "framework_type_name": "generated_segment_export",
+        "constructor": "NewGeneratedSegmentExportResource",
+        "implementation": "generic",
+        "register_framework": true,
+        "enabled": false,
+        "experimental": true,
+        "rollout_phase": "read_import",
+        "modify_plan_hook": "",
+        "identity_fields": [
+          "export_i_d"
+        ],
+        "mutable_fields": null,
+        "import_ignore": null,
+        "operations": {
+          "create": {
+            "path": "/api/v2/segments/{projectKey}/{environmentKey}/{segmentKey}/exports",
+            "method": "POST"
+          },
+          "read": {
+            "path": "/api/v2/segments/{projectKey}/{environmentKey}/{segmentKey}/exports/{exportID}",
+            "method": "GET"
+          },
+          "update": {
+            "path": "",
+            "method": ""
+          },
+          "delete": {
+            "path": "",
+            "method": ""
+          }
+        },
+        "test": {
+          "enabled": true,
+          "scenario": "generic",
+          "fixture": ""
+        }
+      },
+      {
+        "terraform_name": "segment_import",
+        "framework_type_name": "generated_segment_import",
+        "constructor": "NewGeneratedSegmentImportResource",
+        "implementation": "generic",
+        "register_framework": true,
+        "enabled": false,
+        "experimental": true,
+        "rollout_phase": "read_import",
+        "modify_plan_hook": "",
+        "identity_fields": [
+          "import_i_d"
+        ],
+        "mutable_fields": null,
+        "import_ignore": null,
+        "operations": {
+          "create": {
+            "path": "/api/v2/segments/{projectKey}/{environmentKey}/{segmentKey}/imports",
+            "method": "POST"
+          },
+          "read": {
+            "path": "/api/v2/segments/{projectKey}/{environmentKey}/{segmentKey}/imports/{importID}",
+            "method": "GET"
+          },
+          "update": {
+            "path": "",
+            "method": ""
+          },
+          "delete": {
+            "path": "",
+            "method": ""
+          }
+        },
+        "test": {
+          "enabled": true,
+          "scenario": "generic",
+          "fixture": ""
+        }
+      },
+      {
+        "terraform_name": "segment_user",
+        "framework_type_name": "generated_segment_user",
+        "constructor": "NewGeneratedSegmentUserResource",
+        "implementation": "generic",
+        "register_framework": true,
+        "enabled": false,
+        "experimental": true,
+        "rollout_phase": "read_import",
+        "modify_plan_hook": "",
+        "identity_fields": [
+          "user_key"
+        ],
+        "mutable_fields": null,
+        "import_ignore": null,
+        "operations": {
+          "create": {
+            "path": "/api/v2/segments/{projectKey}/{environmentKey}/{segmentKey}/users",
+            "method": "POST"
+          },
+          "read": {
+            "path": "/api/v2/segments/{projectKey}/{environmentKey}/{segmentKey}/users/{userKey}",
+            "method": "GET"
+          },
+          "update": {
+            "path": "",
+            "method": ""
+          },
+          "delete": {
+            "path": "",
+            "method": ""
+          }
+        },
+        "test": {
+          "enabled": true,
+          "scenario": "generic",
+          "fixture": ""
+        }
+      },
+      {
+        "terraform_name": "team",
+        "framework_type_name": "generated_team",
+        "constructor": "NewGeneratedTeamResource",
+        "implementation": "generic",
+        "register_framework": true,
+        "enabled": false,
+        "experimental": true,
+        "rollout_phase": "read_import",
+        "modify_plan_hook": "",
+        "identity_fields": [
+          "team_key"
+        ],
+        "mutable_fields": null,
+        "import_ignore": null,
+        "operations": {
+          "create": {
+            "path": "/api/v2/teams",
+            "method": "POST"
+          },
+          "read": {
+            "path": "/api/v2/teams/{teamKey}",
+            "method": "GET"
+          },
+          "update": {
+            "path": "/api/v2/teams/{teamKey}",
+            "method": "PATCH"
+          },
+          "delete": {
+            "path": "/api/v2/teams/{teamKey}",
+            "method": "DELETE"
+          }
+        },
+        "test": {
+          "enabled": true,
+          "scenario": "generic",
+          "fixture": ""
+        }
+      },
+      {
+        "terraform_name": "token",
+        "framework_type_name": "generated_token",
+        "constructor": "NewGeneratedTokenResource",
+        "implementation": "generic",
+        "register_framework": true,
+        "enabled": false,
+        "experimental": true,
+        "rollout_phase": "read_import",
+        "modify_plan_hook": "",
+        "identity_fields": [
+          "id"
+        ],
+        "mutable_fields": null,
+        "import_ignore": null,
+        "operations": {
+          "create": {
+            "path": "/api/v2/tokens",
+            "method": "POST"
+          },
+          "read": {
+            "path": "/api/v2/tokens/{id}",
+            "method": "GET"
+          },
+          "update": {
+            "path": "/api/v2/tokens/{id}",
+            "method": "PATCH"
+          },
+          "delete": {
+            "path": "/api/v2/tokens/{id}",
+            "method": "DELETE"
+          }
+        },
+        "test": {
+          "enabled": true,
+          "scenario": "generic",
+          "fixture": ""
+        }
+      },
+      {
+        "terraform_name": "user",
+        "framework_type_name": "generated_user",
+        "constructor": "NewGeneratedUserResource",
+        "implementation": "generic",
+        "register_framework": true,
+        "enabled": false,
+        "experimental": true,
+        "rollout_phase": "read_import",
+        "modify_plan_hook": "",
+        "identity_fields": [
+          "environment_key",
+          "project_key",
+          "user_key"
+        ],
+        "mutable_fields": null,
+        "import_ignore": null,
+        "operations": {
+          "create": {
+            "path": "",
+            "method": ""
+          },
+          "read": {
+            "path": "/api/v2/users/{projectKey}/{environmentKey}/{userKey}",
+            "method": "GET"
+          },
+          "update": {
+            "path": "",
+            "method": ""
+          },
+          "delete": {
+            "path": "/api/v2/users/{projectKey}/{environmentKey}/{userKey}",
+            "method": "DELETE"
+          }
+        },
+        "test": {
+          "enabled": true,
+          "scenario": "generic",
+          "fixture": ""
+        }
+      },
+      {
+        "terraform_name": "user_expiring_user_target",
+        "framework_type_name": "generated_user_expiring_user_target",
+        "constructor": "NewGeneratedUserExpiringUserTargetResource",
+        "implementation": "generic",
+        "register_framework": true,
+        "enabled": false,
+        "experimental": true,
+        "rollout_phase": "read_import",
+        "modify_plan_hook": "",
+        "identity_fields": [
+          "environment_key",
+          "project_key",
+          "user_key"
+        ],
+        "mutable_fields": null,
+        "import_ignore": null,
+        "operations": {
+          "create": {
+            "path": "/api/v2/users/{projectKey}/{userKey}/expiring-user-targets/{environmentKey}",
+            "method": "PATCH"
+          },
+          "read": {
+            "path": "/api/v2/users/{projectKey}/{userKey}/expiring-user-targets/{environmentKey}",
+            "method": "GET"
+          },
+          "update": {
+            "path": "/api/v2/users/{projectKey}/{userKey}/expiring-user-targets/{environmentKey}",
+            "method": "PATCH"
+          },
+          "delete": {
+            "path": "",
+            "method": ""
+          }
+        },
+        "test": {
+          "enabled": true,
+          "scenario": "generic",
+          "fixture": ""
+        }
+      },
+      {
+        "terraform_name": "user_flag",
+        "framework_type_name": "generated_user_flag",
+        "constructor": "NewGeneratedUserFlagResource",
+        "implementation": "generic",
+        "register_framework": true,
+        "enabled": false,
+        "experimental": true,
+        "rollout_phase": "read_import",
+        "modify_plan_hook": "",
+        "identity_fields": [
+          "environment_key",
+          "feature_flag_key",
+          "project_key",
+          "user_key"
+        ],
+        "mutable_fields": null,
+        "import_ignore": null,
+        "operations": {
+          "create": {
+            "path": "/api/v2/users/{projectKey}/{environmentKey}/{userKey}/flags/{featureFlagKey}",
+            "method": "PUT"
+          },
+          "read": {
+            "path": "/api/v2/users/{projectKey}/{environmentKey}/{userKey}/flags/{featureFlagKey}",
+            "method": "GET"
+          },
+          "update": {
+            "path": "/api/v2/users/{projectKey}/{environmentKey}/{userKey}/flags/{featureFlagKey}",
+            "method": "PUT"
+          },
+          "delete": {
+            "path": "",
+            "method": ""
+          }
+        },
+        "test": {
+          "enabled": true,
+          "scenario": "generic",
+          "fixture": ""
+        }
+      },
+      {
+        "terraform_name": "webhook",
+        "framework_type_name": "generated_webhook",
+        "constructor": "NewGeneratedWebhookResource",
+        "implementation": "generic",
+        "register_framework": true,
+        "enabled": false,
+        "experimental": true,
+        "rollout_phase": "read_import",
+        "modify_plan_hook": "",
+        "identity_fields": [
+          "id"
+        ],
+        "mutable_fields": null,
+        "import_ignore": null,
+        "operations": {
+          "create": {
+            "path": "/api/v2/webhooks",
+            "method": "POST"
+          },
+          "read": {
+            "path": "/api/v2/webhooks/{id}",
+            "method": "GET"
+          },
+          "update": {
+            "path": "/api/v2/webhooks/{id}",
+            "method": "PATCH"
+          },
+          "delete": {
+            "path": "/api/v2/webhooks/{id}",
+            "method": "DELETE"
+          }
+        },
+        "test": {
+          "enabled": true,
+          "scenario": "generic",
+          "fixture": ""
+        }
+      }
+    ]
+  }
+}
