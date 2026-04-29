@@ -230,6 +230,7 @@ func featureFlagUpdate(ctx context.Context, d *schema.ResourceData, metaRaw inte
 	temporary := d.Get(TEMPORARY).(bool)
 	customProperties := customPropertiesFromResourceData(d)
 	archived := d.Get(ARCHIVED).(bool)
+	deprecated := d.Get(DEPRECATED).(bool)
 	clientSideAvailability := &ldapi.ClientSideAvailabilityPost{
 		UsingEnvironmentId: d.Get("client_side_availability.0.using_environment_id").(bool),
 		UsingMobileKey:     d.Get("client_side_availability.0.using_mobile_key").(bool),
@@ -245,6 +246,7 @@ func featureFlagUpdate(ctx context.Context, d *schema.ResourceData, metaRaw inte
 			patchReplace("/temporary", temporary),
 			patchReplace("/customProperties", customProperties),
 			patchReplace("/archived", archived),
+			patchReplace("/deprecated", deprecated),
 		}}
 
 	// if it was previously set and then removed, we don't want to update it or revert to project defaults in this case

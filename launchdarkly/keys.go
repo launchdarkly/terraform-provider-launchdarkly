@@ -42,6 +42,7 @@ const (
 	DEFAULT_ON_VARIATION                      = "default_on_variation"
 	DEFAULT_TRACK_EVENTS                      = "default_track_events"
 	DEFAULT_TTL                               = "default_ttl"
+	DEPRECATED                                = "deprecated"
 	DESCRIPTION                               = "description"
 	DISPLAY_KEY                               = "display_key"
 	EFFECT                                    = "effect"
