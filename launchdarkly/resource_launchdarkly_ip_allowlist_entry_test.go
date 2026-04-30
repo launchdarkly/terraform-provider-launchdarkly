@@ -88,7 +88,7 @@ func TestAccIpAllowlistEntry_CreateAndUpdate(t *testing.T) {
 				Config: testAccIpAllowlistEntryNoDescription,
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckIpAllowlistEntryExists(resourceName),
-					resource.TestCheckResourceAttr(resourceName, IP_ADDRESS, "52.2.2.2"),
+					resource.TestCheckResourceAttr(resourceName, IP_ADDRESS, "52.1.1.1"),
 				),
 			},
 			{
