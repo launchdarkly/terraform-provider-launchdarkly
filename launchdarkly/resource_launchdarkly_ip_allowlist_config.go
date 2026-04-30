@@ -45,10 +45,23 @@ This resource allows you to manage the IP allowlist configuration for your Launc
 func resourceIpAllowlistConfigCreate(ctx context.Context, d *schema.ResourceData, metaRaw interface{}) diag.Diagnostics {
 	client := metaRaw.(*Client)
 
+	existing, err := getIpAllowlist(client)
+	if err != nil {
+		return diag.Errorf("failed to read IP allowlist config: %s", err)
+	}
+	if existing.SessionAllowlistEnabled || existing.ApiTokenAllowlistEnabled {
+		return diag.Errorf(
+			"IP allowlist config is already managed (sessionAllowlistEnabled=%t, apiTokenAllowlistEnabled=%t). " +
+				"Only one launchdarkly_ip_allowlist_config resource should exist per account. " +
+				"Use `terraform import` to adopt the existing configuration.",
+			existing.SessionAllowlistEnabled, existing.ApiTokenAllowlistEnabled,
+		)
+	}
+
 	sessionEnabled := d.Get(SESSION_ALLOWLIST_ENABLED).(bool)
 	scopedEnabled := d.Get(SCOPED_ALLOWLIST_ENABLED).(bool)
 
-	_, err := patchIpAllowlistConfig(client, &sessionEnabled, &scopedEnabled)
+	_, err = patchIpAllowlistConfig(client, &sessionEnabled, &scopedEnabled)
 	if err != nil {
 		return diag.Errorf("failed to create IP allowlist config: %s", err)
 	}

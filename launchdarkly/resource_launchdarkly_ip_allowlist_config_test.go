@@ -2,6 +2,7 @@ package launchdarkly
 
 import (
 	"fmt"
+	"regexp"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
@@ -33,9 +34,25 @@ resource "launchdarkly_ip_allowlist_config" "test" {
 	scoped_allowlist_enabled  = false
 }
 `
+
+	testAccIpAllowlistConfigDuplicateFirst = `
+resource "launchdarkly_ip_allowlist_config" "first" {
+	session_allowlist_enabled = true
+}
+`
+
+	testAccIpAllowlistConfigDuplicateSecond = `
+resource "launchdarkly_ip_allowlist_config" "first" {
+	session_allowlist_enabled = true
+}
+
+resource "launchdarkly_ip_allowlist_config" "second" {
+	scoped_allowlist_enabled = true
+}
+`
 )
 
-func TestAccIpAllowlistConfig_Defaults(t *testing.T) {
+func TestAccIpAllowlistConfig(t *testing.T) {
 	resourceName := "launchdarkly_ip_allowlist_config.test"
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
@@ -57,18 +74,6 @@ func TestAccIpAllowlistConfig_Defaults(t *testing.T) {
 				ImportStateId:     ipAllowlistConfigID,
 				ImportStateVerify: true,
 			},
-		},
-	})
-}
-
-func TestAccIpAllowlistConfig_EnableSession(t *testing.T) {
-	resourceName := "launchdarkly_ip_allowlist_config.test"
-	resource.ParallelTest(t, resource.TestCase{
-		PreCheck: func() {
-			testAccPreCheck(t)
-		},
-		Providers: testAccProviders,
-		Steps: []resource.TestStep{
 			{
 				Config: testAccIpAllowlistConfigSessionEnabled,
 				Check: resource.ComposeTestCheckFunc(
@@ -77,18 +82,26 @@ func TestAccIpAllowlistConfig_EnableSession(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, SCOPED_ALLOWLIST_ENABLED, "false"),
 				),
 			},
-		},
-	})
-}
-
-func TestAccIpAllowlistConfig_EnableBothThenDisable(t *testing.T) {
-	resourceName := "launchdarkly_ip_allowlist_config.test"
-	resource.ParallelTest(t, resource.TestCase{
-		PreCheck: func() {
-			testAccPreCheck(t)
-		},
-		Providers: testAccProviders,
-		Steps: []resource.TestStep{
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateId:     ipAllowlistConfigID,
+				ImportStateVerify: true,
+			},
+			{
+				Config: testAccIpAllowlistConfigBothDisabled,
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckIpAllowlistConfigExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, SESSION_ALLOWLIST_ENABLED, "false"),
+					resource.TestCheckResourceAttr(resourceName, SCOPED_ALLOWLIST_ENABLED, "false"),
+				),
+			},
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateId:     ipAllowlistConfigID,
+				ImportStateVerify: true,
+			},
 			{
 				Config: testAccIpAllowlistConfigBothEnabled,
 				Check: resource.ComposeTestCheckFunc(
@@ -98,12 +111,46 @@ func TestAccIpAllowlistConfig_EnableBothThenDisable(t *testing.T) {
 				),
 			},
 			{
-				Config: testAccIpAllowlistConfigBothDisabled,
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateId:     ipAllowlistConfigID,
+				ImportStateVerify: true,
+			},
+			{
+				Config: testAccIpAllowlistConfigDefaults,
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckIpAllowlistConfigExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, SESSION_ALLOWLIST_ENABLED, "false"),
 					resource.TestCheckResourceAttr(resourceName, SCOPED_ALLOWLIST_ENABLED, "false"),
 				),
+			},
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateId:     ipAllowlistConfigID,
+				ImportStateVerify: true,
+			},
+		},
+	})
+}
+
+func TestAccIpAllowlistConfig_DuplicateErrors(t *testing.T) {
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck: func() {
+			testAccPreCheck(t)
+		},
+		Providers: testAccProviders,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccIpAllowlistConfigDuplicateFirst,
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckIpAllowlistConfigExists("launchdarkly_ip_allowlist_config.first"),
+					resource.TestCheckResourceAttr("launchdarkly_ip_allowlist_config.first", SESSION_ALLOWLIST_ENABLED, "true"),
+				),
+			},
+			{
+				Config:      testAccIpAllowlistConfigDuplicateSecond,
+				ExpectError: regexp.MustCompile(`Only one launchdarkly_ip_allowlist_config resource should exist per account`),
 			},
 		},
 	})
