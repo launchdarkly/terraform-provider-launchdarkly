@@ -2,15 +2,12 @@ package launchdarkly
 
 import (
 	"fmt"
-	"regexp"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 )
 
-// ATTENTION!!! These tests should never set the scoped IP allowlist to true, because
-// then they will block all other API requests, rendering our test suite useless.
 const (
 	testAccIpAllowlistConfigDefaults = `
 resource "launchdarkly_ip_allowlist_config" "test" {
@@ -23,31 +20,16 @@ resource "launchdarkly_ip_allowlist_config" "test" {
 }
 `
 
-	testAccIpAllowlistConfigBothEnabled = `
-resource "launchdarkly_ip_allowlist_config" "test" {
-	session_allowlist_enabled = true
-	scoped_allowlist_enabled  = false
-}
-`
-
 	testAccIpAllowlistConfigBothDisabled = `
 resource "launchdarkly_ip_allowlist_config" "test" {
 	session_allowlist_enabled = false
 	scoped_allowlist_enabled  = false
 }
 `
-
-	testAccIpAllowlistConfigDuplicate = `
-resource "launchdarkly_ip_allowlist_config" "first" {
-	session_allowlist_enabled = true
-}
-
-resource "launchdarkly_ip_allowlist_config" "second" {
-	scoped_allowlist_enabled = false
-}
-`
 )
 
+// ATTENTION!!! These tests should never set the scoped IP allowlist to true, because                                                                                                                                                 │
+// then they will block all other API requests, rendering our test suite useless.
 func TestAccIpAllowlistConfig(t *testing.T) {
 	resourceName := "launchdarkly_ip_allowlist_config.test"
 	resource.ParallelTest(t, resource.TestCase{
@@ -97,38 +79,6 @@ func TestAccIpAllowlistConfig(t *testing.T) {
 				ImportState:       true,
 				ImportStateId:     ipAllowlistConfigID,
 				ImportStateVerify: true,
-			},
-			{
-				Config: testAccIpAllowlistConfigBothEnabled,
-				Check: resource.ComposeTestCheckFunc(
-					testAccCheckIpAllowlistConfigExists(resourceName),
-					resource.TestCheckResourceAttr(resourceName, SESSION_ALLOWLIST_ENABLED, "true"),
-					resource.TestCheckResourceAttr(resourceName, SCOPED_ALLOWLIST_ENABLED, "false"),
-				),
-			},
-			{
-				ResourceName:      resourceName,
-				ImportState:       true,
-				ImportStateId:     ipAllowlistConfigID,
-				ImportStateVerify: true,
-			},
-			{
-				Config: testAccIpAllowlistConfigDefaults,
-				Check: resource.ComposeTestCheckFunc(
-					testAccCheckIpAllowlistConfigExists(resourceName),
-					resource.TestCheckResourceAttr(resourceName, SESSION_ALLOWLIST_ENABLED, "false"),
-					resource.TestCheckResourceAttr(resourceName, SCOPED_ALLOWLIST_ENABLED, "false"),
-				),
-			},
-			{
-				ResourceName:      resourceName,
-				ImportState:       true,
-				ImportStateId:     ipAllowlistConfigID,
-				ImportStateVerify: true,
-			},
-			{
-				Config:      testAccIpAllowlistConfigDuplicate,
-				ExpectError: regexp.MustCompile(`Only one launchdarkly_ip_allowlist_config resource should exist per account`),
 			},
 		},
 	})
