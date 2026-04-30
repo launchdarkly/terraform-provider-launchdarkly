@@ -51,8 +51,8 @@ func resourceIpAllowlistConfigCreate(ctx context.Context, d *schema.ResourceData
 	}
 	if existing.SessionAllowlistEnabled || existing.ApiTokenAllowlistEnabled {
 		return diag.Errorf(
-			"IP allowlist config is already managed (sessionAllowlistEnabled=%t, apiTokenAllowlistEnabled=%t). " +
-				"Only one launchdarkly_ip_allowlist_config resource should exist per account. " +
+			"IP allowlist config is already managed (sessionAllowlistEnabled=%t, apiTokenAllowlistEnabled=%t). "+
+				"Only one launchdarkly_ip_allowlist_config resource should exist per account. "+
 				"Use `terraform import` to adopt the existing configuration.",
 			existing.SessionAllowlistEnabled, existing.ApiTokenAllowlistEnabled,
 		)
