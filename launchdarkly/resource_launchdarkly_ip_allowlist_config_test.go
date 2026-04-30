@@ -24,7 +24,7 @@ resource "launchdarkly_ip_allowlist_config" "test" {
 	testAccIpAllowlistConfigBothEnabled = `
 resource "launchdarkly_ip_allowlist_config" "test" {
 	session_allowlist_enabled = true
-	scoped_allowlist_enabled  = true
+	scoped_allowlist_enabled  = false
 }
 `
 
@@ -47,7 +47,7 @@ resource "launchdarkly_ip_allowlist_config" "first" {
 }
 
 resource "launchdarkly_ip_allowlist_config" "second" {
-	scoped_allowlist_enabled = true
+	scoped_allowlist_enabled = false
 }
 `
 )
@@ -107,7 +107,7 @@ func TestAccIpAllowlistConfig(t *testing.T) {
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckIpAllowlistConfigExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, SESSION_ALLOWLIST_ENABLED, "true"),
-					resource.TestCheckResourceAttr(resourceName, SCOPED_ALLOWLIST_ENABLED, "true"),
+					resource.TestCheckResourceAttr(resourceName, SCOPED_ALLOWLIST_ENABLED, "false"),
 				),
 			},
 			{
