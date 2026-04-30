@@ -37,13 +37,7 @@ resource "launchdarkly_ip_allowlist_config" "test" {
 }
 `
 
-	testAccIpAllowlistConfigDuplicateFirst = `
-resource "launchdarkly_ip_allowlist_config" "first" {
-	session_allowlist_enabled = true
-}
-`
-
-	testAccIpAllowlistConfigDuplicateSecond = `
+	testAccIpAllowlistConfigDuplicate = `
 resource "launchdarkly_ip_allowlist_config" "first" {
 	session_allowlist_enabled = true
 }
@@ -132,26 +126,8 @@ func TestAccIpAllowlistConfig(t *testing.T) {
 				ImportStateId:     ipAllowlistConfigID,
 				ImportStateVerify: true,
 			},
-		},
-	})
-}
-
-func TestAccIpAllowlistConfig_DuplicateErrors(t *testing.T) {
-	resource.ParallelTest(t, resource.TestCase{
-		PreCheck: func() {
-			testAccPreCheck(t)
-		},
-		Providers: testAccProviders,
-		Steps: []resource.TestStep{
 			{
-				Config: testAccIpAllowlistConfigDuplicateFirst,
-				Check: resource.ComposeTestCheckFunc(
-					testAccCheckIpAllowlistConfigExists("launchdarkly_ip_allowlist_config.first"),
-					resource.TestCheckResourceAttr("launchdarkly_ip_allowlist_config.first", SESSION_ALLOWLIST_ENABLED, "true"),
-				),
-			},
-			{
-				Config:      testAccIpAllowlistConfigDuplicateSecond,
+				Config:      testAccIpAllowlistConfigDuplicate,
 				ExpectError: regexp.MustCompile(`Only one launchdarkly_ip_allowlist_config resource should exist per account`),
 			},
 		},
