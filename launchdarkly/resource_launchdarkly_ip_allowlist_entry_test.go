@@ -11,28 +11,28 @@ import (
 const (
 	testAccIpAllowlistEntryCreate = `
 resource "launchdarkly_ip_allowlist_entry" "test" {
-	ip_address  = "203.0.113.42"
+	ip_address  = "52.1.1.1"
 	description = "Test IP allowlist entry"
 }
 `
 
 	testAccIpAllowlistEntryUpdateDescription = `
 resource "launchdarkly_ip_allowlist_entry" "test" {
-	ip_address  = "203.0.113.42"
+	ip_address  = "52.1.1.1"
 	description = "Updated description"
+}
+`
+
+	testAccIpAllowlistEntryNoDescription = `
+resource "launchdarkly_ip_allowlist_entry" "test" {
+	ip_address = "52.1.1.1"
 }
 `
 
 	testAccIpAllowlistEntryCIDR = `
 resource "launchdarkly_ip_allowlist_entry" "cidr" {
-	ip_address  = "10.0.0.0/24"
+	ip_address  = "54.0.0.0/24"
 	description = "CIDR block entry"
-}
-`
-
-	testAccIpAllowlistEntryNoDescription = `
-resource "launchdarkly_ip_allowlist_entry" "no_desc" {
-	ip_address = "198.51.100.1"
 }
 `
 )
@@ -49,7 +49,7 @@ func TestAccIpAllowlistEntry_CreateAndUpdate(t *testing.T) {
 				Config: testAccIpAllowlistEntryCreate,
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckIpAllowlistEntryExists(resourceName),
-					resource.TestCheckResourceAttr(resourceName, IP_ADDRESS, "203.0.113.42"),
+					resource.TestCheckResourceAttr(resourceName, IP_ADDRESS, "52.1.1.1"),
 					resource.TestCheckResourceAttr(resourceName, DESCRIPTION, "Test IP allowlist entry"),
 				),
 			},
@@ -59,9 +59,10 @@ func TestAccIpAllowlistEntry_CreateAndUpdate(t *testing.T) {
 				ImportStateVerify: true,
 			},
 			{
-				Config: testAccIpAllowlistEntryCreate,
+				Config: testAccIpAllowlistEntryCreate, // should not change
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckIpAllowlistEntryExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, IP_ADDRESS, "52.1.1.1"),
 					resource.TestCheckResourceAttr(resourceName, DESCRIPTION, "Test IP allowlist entry"),
 				),
 			},
@@ -74,8 +75,20 @@ func TestAccIpAllowlistEntry_CreateAndUpdate(t *testing.T) {
 				Config: testAccIpAllowlistEntryUpdateDescription,
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckIpAllowlistEntryExists(resourceName),
-					resource.TestCheckResourceAttr(resourceName, IP_ADDRESS, "203.0.113.42"),
+					resource.TestCheckResourceAttr(resourceName, IP_ADDRESS, "52.1.1.1"),
 					resource.TestCheckResourceAttr(resourceName, DESCRIPTION, "Updated description"),
+				),
+			},
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
+			{
+				Config: testAccIpAllowlistEntryNoDescription,
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckIpAllowlistEntryExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, IP_ADDRESS, "52.2.2.2"),
 				),
 			},
 			{
@@ -99,27 +112,8 @@ func TestAccIpAllowlistEntry_CIDRBlock(t *testing.T) {
 				Config: testAccIpAllowlistEntryCIDR,
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckIpAllowlistEntryExists(resourceName),
-					resource.TestCheckResourceAttr(resourceName, IP_ADDRESS, "10.0.0.0/24"),
+					resource.TestCheckResourceAttr(resourceName, IP_ADDRESS, "54.0.0.0/24"),
 					resource.TestCheckResourceAttr(resourceName, DESCRIPTION, "CIDR block entry"),
-				),
-			},
-		},
-	})
-}
-
-func TestAccIpAllowlistEntry_NoDescription(t *testing.T) {
-	resourceName := "launchdarkly_ip_allowlist_entry.no_desc"
-	resource.ParallelTest(t, resource.TestCase{
-		PreCheck: func() {
-			testAccPreCheck(t)
-		},
-		Providers: testAccProviders,
-		Steps: []resource.TestStep{
-			{
-				Config: testAccIpAllowlistEntryNoDescription,
-				Check: resource.ComposeTestCheckFunc(
-					testAccCheckIpAllowlistEntryExists(resourceName),
-					resource.TestCheckResourceAttr(resourceName, IP_ADDRESS, "198.51.100.1"),
 				),
 			},
 		},
