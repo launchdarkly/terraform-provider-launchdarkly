@@ -9,6 +9,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 )
 
+// ATTENTION!!! These tests should never set the scoped IP allowlist to true, because
+// then they will block all other API requests, rendering our test suite useless.
 const (
 	testAccIpAllowlistConfigDefaults = `
 resource "launchdarkly_ip_allowlist_config" "test" {
