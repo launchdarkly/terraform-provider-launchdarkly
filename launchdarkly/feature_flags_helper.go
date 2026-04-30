@@ -132,6 +132,13 @@ func baseFeatureFlagSchema(options featureFlagSchemaOptions) map[string]*schema.
 			Description: "Specifies whether the flag is archived or not. Note that you cannot create a new flag that is archived, but can update a flag to be archived.",
 			Default:     false,
 		},
+		DEPRECATED: {
+			Type:        schema.TypeBool,
+			Optional:    !options.isDataSource,
+			Computed:    options.isDataSource,
+			Description: "Specifies whether the flag is deprecated or not. Note that you cannot create a new flag that is deprecated, but can update a flag to be deprecated.",
+			Default:     false,
+		},
 		VIEW_KEYS: {
 			Type:     schema.TypeSet,
 			Optional: !options.isDataSource,
@@ -186,6 +193,7 @@ func featureFlagRead(ctx context.Context, d *schema.ResourceData, raw interface{
 	_ = d.Set(DESCRIPTION, flag.Description)
 	_ = d.Set(TEMPORARY, flag.Temporary)
 	_ = d.Set(ARCHIVED, flag.Archived)
+	_ = d.Set(DEPRECATED, flag.GetDeprecated())
 
 	CSA := *flag.ClientSideAvailability
 	clientSideAvailability := []map[string]interface{}{{

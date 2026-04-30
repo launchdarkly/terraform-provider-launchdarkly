@@ -85,6 +85,7 @@ output "team_notifications" {
 - `client_side_availability` (List of Object) (see [below for nested schema](#nestedatt--client_side_availability))
 - `custom_properties` (Set of Object) List of nested blocks describing the feature flag's [custom properties](https://docs.launchdarkly.com/home/connecting/custom-properties) (see [below for nested schema](#nestedatt--custom_properties))
 - `defaults` (List of Object) A block containing the indices of the variations to be used as the default on and off variations in all new environments. Flag configurations in existing environments will not be changed nor updated if the configuration block is removed. (see [below for nested schema](#nestedatt--defaults))
+- `deprecated` (Boolean) Specifies whether the flag is deprecated or not.
 - `description` (String) The feature flag's description.
 - `id` (String) The ID of this resource.
 - `include_in_snippet` (Boolean, Deprecated) Specifies whether this flag should be made available to the client-side JavaScript SDK using the client-side Id. This value gets its default from your project configuration if not set. `include_in_snippet` is now deprecated. Please migrate to `client_side_availability.using_environment_id` to maintain future compatibility.
