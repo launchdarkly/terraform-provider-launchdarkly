@@ -37,7 +37,7 @@ resource "launchdarkly_ip_allowlist_entry" "no_desc" {
 `
 )
 
-func TestAccIpAllowlistEntry_CreateAndRead(t *testing.T) {
+func TestAccIpAllowlistEntry_CreateAndUpdate(t *testing.T) {
 	resourceName := "launchdarkly_ip_allowlist_entry.test"
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
@@ -58,18 +58,6 @@ func TestAccIpAllowlistEntry_CreateAndRead(t *testing.T) {
 				ImportState:       true,
 				ImportStateVerify: true,
 			},
-		},
-	})
-}
-
-func TestAccIpAllowlistEntry_UpdateDescription(t *testing.T) {
-	resourceName := "launchdarkly_ip_allowlist_entry.test"
-	resource.ParallelTest(t, resource.TestCase{
-		PreCheck: func() {
-			testAccPreCheck(t)
-		},
-		Providers: testAccProviders,
-		Steps: []resource.TestStep{
 			{
 				Config: testAccIpAllowlistEntryCreate,
 				Check: resource.ComposeTestCheckFunc(
@@ -78,12 +66,22 @@ func TestAccIpAllowlistEntry_UpdateDescription(t *testing.T) {
 				),
 			},
 			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
+			{
 				Config: testAccIpAllowlistEntryUpdateDescription,
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckIpAllowlistEntryExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, IP_ADDRESS, "203.0.113.42"),
 					resource.TestCheckResourceAttr(resourceName, DESCRIPTION, "Updated description"),
 				),
+			},
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
 			},
 		},
 	})
