@@ -74,6 +74,8 @@ func Provider() *schema.Provider {
 			"launchdarkly_flag_templates":            resourceFlagTemplates(),
 			"launchdarkly_feature_flag_environment":  resourceFeatureFlagEnvironment(),
 			"launchdarkly_flag_trigger":              resourceFlagTrigger(),
+			"launchdarkly_ip_allowlist_config":       resourceIpAllowlistConfig(),
+			"launchdarkly_ip_allowlist_entry":        resourceIpAllowlistEntry(),
 			"launchdarkly_metric":                    resourceMetric(),
 			"launchdarkly_model_config":              resourceModelConfig(),
 			"launchdarkly_project":                   resourceProject(),
