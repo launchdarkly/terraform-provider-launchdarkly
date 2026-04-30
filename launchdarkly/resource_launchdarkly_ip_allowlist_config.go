@@ -38,7 +38,7 @@ func resourceIpAllowlistConfig() *schema.Resource {
 
 		Description: `Provides a LaunchDarkly IP allowlist configuration resource.
 
-This resource allows you to manage the IP allowlist configuration for your LaunchDarkly account. There is only one configuration per account, so only a single instance of this resource should be defined.`,
+This resource allows you to manage the IP allowlist configuration for your LaunchDarkly account. There is only one configuration per account, so you should define only a single instance of this resource.`,
 	}
 }
 
