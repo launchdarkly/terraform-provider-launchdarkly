@@ -1,5 +1,7 @@
 # Development Environment Setup
 
+> **New to the codebase?** Start with [AGENTS.md](./AGENTS.md) for an architecture and conventions overview, then come back here for the build/test mechanics. For PR conventions see [CONTRIBUTING.md](./CONTRIBUTING.md).
+
 ## Requirements
 
 - [Terraform](https://www.terraform.io/downloads.html) 0.12.x (to run acceptance tests)
@@ -30,11 +32,13 @@ $ make build
 
 ## Testing the provider
 
-In order to test the provider, you can simply run `make test`.
+For a fast feedback loop that doesn't hit the LaunchDarkly API, use the unit-test target:
 
 ```sh
-$ make test
+$ make test-unit
 ```
+
+`make test` runs the broader (still non-acceptance) suite.
 
 In order to run the full suite of Acceptance tests, run `make testacc`.
 

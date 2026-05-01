@@ -6,6 +6,8 @@
 
 - [Using the provider](https://registry.terraform.io/providers/launchdarkly/launchdarkly/latest/docs)
 - [Provider development](DEVELOPMENT.md)
+- [Contributing](CONTRIBUTING.md)
+- [Repo orientation for AI agents (and humans)](AGENTS.md)
 
 ## Documentation
 
