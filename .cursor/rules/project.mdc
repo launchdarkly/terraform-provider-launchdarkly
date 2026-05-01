@@ -1,0 +1,8 @@
+---
+description: Project-wide guidance for AI agents working in terraform-provider-launchdarkly
+alwaysApply: true
+---
+
+# terraform-provider-launchdarkly
+
+See [AGENTS.md](../../AGENTS.md) at the repository root for architecture overview, conventions, build/test commands, and common pitfalls. Treat that file as the single source of truth and follow its guidance for every change.
