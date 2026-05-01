@@ -15,6 +15,12 @@ test: fmtcheck
 	echo $(TEST) | \
 		xargs -t -n4 go test $(TESTARGS) -timeout=90s -parallel=4
 
+# test-unit runs only non-acceptance tests. Acceptance tests (TestAcc*)
+# are excluded entirely so they don't appear in output as skips. Safe to
+# run in tight feedback loops (no LaunchDarkly API calls).
+test-unit: fmtcheck
+	go test -timeout=90s -parallel=4 -skip '^TestAcc' $(TESTARGS) $(TEST)
+
 testacc: fmtcheck
 	TF_ACC=1 go test $(TEST) -v $(TESTARGS) -timeout 120m -parallel=4
 
@@ -55,4 +61,4 @@ test-compile:
 	fi
 	go test -c $(TEST) $(TESTARGS)
 
-.PHONY: build install apply test testacc testacc-with-retry vet fmt fmtcheck errcheck lint test-compile
+.PHONY: build install apply test test-unit testacc testacc-with-retry vet fmt fmtcheck errcheck lint test-compile
