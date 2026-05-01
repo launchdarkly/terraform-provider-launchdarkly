@@ -1,0 +1,4 @@
+# Versions used by .github/workflows/test.yml. Keep in sync.
+# Consumed by asdf (https://asdf-vm.com) and mise (https://mise.jdx.dev).
+golang 1.25.5
+golangci-lint 1.64.8
