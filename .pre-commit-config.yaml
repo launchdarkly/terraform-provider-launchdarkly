@@ -6,8 +6,11 @@ repos:
     hooks:
       - id: gofmts
 
+  # NOTE: keep this version in sync with `version:` in
+  # .github/workflows/test.yml (golangci-lint-action). Mixing v1.x and v2.x
+  # produces inconsistent local vs. CI lint results.
   - repo: https://github.com/golangci/golangci-lint
-    rev: v2.10.1
+    rev: v1.64.8
     hooks:
       - id: golangci-lint
 
