@@ -13,6 +13,8 @@ description: |-
 
 # launchdarkly_view_filter_links (Resource)
 
+~> **Beta:** This resource uses a beta API. Beta resources may change or be removed in future versions.
+
 Provides a LaunchDarkly view filter links resource for linking resources to views using filter expressions.
 
 This resource allows you to link all flags and/or segments matching a filter expression to a specific view. The filter is resolved at apply time — the backend finds all resources matching the filter and links them to the view.

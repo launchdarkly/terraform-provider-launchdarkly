@@ -19,6 +19,8 @@ description: |-
 
 # launchdarkly_view_links (Resource)
 
+~> **Beta:** This resource uses a beta API. Beta resources may change or be removed in future versions.
+
 Provides a LaunchDarkly view links resource for managing bulk resource linkage to views.
 
 This resource allows you to efficiently link multiple flags and/or segments to a specific view. This is particularly useful for administrators organizing resources by team or deployment unit.

@@ -9,6 +9,8 @@ description: |-
 
 # launchdarkly_view (Resource)
 
+~> **Beta:** This resource uses a beta API. Beta resources may change or be removed in future versions.
+
 Provides a LaunchDarkly view resource.
 
 This resource allows you to create and manage views within your LaunchDarkly project.

@@ -9,6 +9,10 @@ description: |-
 
 # launchdarkly_ip_allowlist_config (Resource)
 
+-> **Note:** IP allowlists are available to customers on an Enterprise LaunchDarkly plan. To learn more, [read about our pricing](https://launchdarkly.com/pricing/). To upgrade your plan, [contact LaunchDarkly Sales](https://launchdarkly.com/contact-sales/).
+
+~> **Beta:** This resource uses a beta API. Beta resources may change or be removed in future versions.
+
 Provides a LaunchDarkly IP allowlist configuration resource.
 
 This resource allows you to manage the IP allowlist configuration for your LaunchDarkly account. There is only one configuration per account, so you should define only a single instance of this resource.
