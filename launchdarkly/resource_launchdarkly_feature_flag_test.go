@@ -1552,8 +1552,8 @@ func testAccCheckFeatureFlagExists(resourceName string) resource.TestCheckFunc {
 	}
 }
 
-// TestAccFeatureFlag_ViewAssociationRequired tests that creating a flag without view_keys
-// fails when the project requires view association for new flags
+// TestAccFeatureFlag_Deprecated tests that the deprecated attribute is set correctly
+// fails when the property is not set correctly
 func TestAccFeatureFlag_Deprecated(t *testing.T) {
 	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	resourceName := "launchdarkly_feature_flag.deprecated"
@@ -1594,6 +1594,8 @@ func TestAccFeatureFlag_Deprecated(t *testing.T) {
 	})
 }
 
+// TestAccFeatureFlag_ViewAssociationRequired tests that creating a flag without view_keys
+// fails when the project requires view association for new flags
 func TestAccFeatureFlag_ViewAssociationRequired(t *testing.T) {
 	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	resourceName := "launchdarkly_feature_flag.test"
