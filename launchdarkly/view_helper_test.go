@@ -52,19 +52,19 @@ func TestViewRequestsIncludeUserAgentHeader(t *testing.T) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		err := json.NewEncoder(w).Encode(map[string]interface{}{
-			"id":              "view-id",
-			"accountId":       "account-id",
-			"projectId":       "project-id",
-			"projectKey":      projectKey,
-			"key":             viewKey,
-			"name":            "Test View",
+			"id":          "view-id",
+			"accountId":   "account-id",
+			"projectId":   "project-id",
+			"projectKey":  projectKey,
+			"key":         viewKey,
+			"name":        "Test View",
 			"description": "",
 			"version":     1,
-			"tags":            []string{},
-			"createdAt":       0,
-			"updatedAt":       0,
-			"archived":        false,
-			"deleted":         false,
+			"tags":        []string{},
+			"createdAt":   0,
+			"updatedAt":   0,
+			"archived":    false,
+			"deleted":     false,
 		})
 		require.NoError(t, err)
 	}))

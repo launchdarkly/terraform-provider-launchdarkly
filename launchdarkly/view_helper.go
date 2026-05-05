@@ -122,14 +122,14 @@ func viewRead(ctx context.Context, d *schema.ResourceData, meta interface{}, isD
 }
 
 type View struct {
-	Id              string          `json:"id"`
-	Key             string          `json:"key"`
-	Name            string          `json:"name"`
-	Description     *string         `json:"description,omitempty"`
-	ProjectKey string          `json:"projectKey"`
-	Archived   *bool           `json:"archived,omitempty"`
-	Tags            []string        `json:"tags,omitempty"`
-	Maintainer      *ViewMaintainer `json:"maintainer,omitempty"`
+	Id          string          `json:"id"`
+	Key         string          `json:"key"`
+	Name        string          `json:"name"`
+	Description *string         `json:"description,omitempty"`
+	ProjectKey  string          `json:"projectKey"`
+	Archived    *bool           `json:"archived,omitempty"`
+	Tags        []string        `json:"tags,omitempty"`
+	Maintainer  *ViewMaintainer `json:"maintainer,omitempty"`
 }
 
 type ViewMaintainer struct {
