@@ -13,6 +13,26 @@ import (
 )
 
 const (
+	testAccFeatureFlagDeprecated = `
+resource "launchdarkly_feature_flag" "deprecated" {
+	project_key = launchdarkly_project.test.key
+	key = "deprecated-flag"
+	name = "Deprecated feature flag"
+	variation_type = "boolean"
+	deprecated = true
+}
+`
+
+	testAccFeatureFlagUndeprecated = `
+resource "launchdarkly_feature_flag" "deprecated" {
+	project_key = launchdarkly_project.test.key
+	key = "deprecated-flag"
+	name = "Deprecated feature flag"
+	variation_type = "boolean"
+	deprecated = false
+}
+`
+
 	testAccFeatureFlagBasic = `
 resource "launchdarkly_feature_flag" "basic" {
 	project_key = launchdarkly_project.test.key
@@ -1530,6 +1550,48 @@ func testAccCheckFeatureFlagExists(resourceName string) resource.TestCheckFunc {
 		}
 		return nil
 	}
+}
+
+// TestAccFeatureFlag_Deprecated tests that the deprecated attribute is set correctly
+// fails when the property is not set correctly
+func TestAccFeatureFlag_Deprecated(t *testing.T) {
+	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	resourceName := "launchdarkly_feature_flag.deprecated"
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck: func() {
+			testAccPreCheck(t)
+		},
+		Providers:    testAccProviders,
+		CheckDestroy: testAccCheckProjectDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config: withRandomProject(projectKey, testAccFeatureFlagDeprecated),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckProjectExists("launchdarkly_project.test"),
+					testAccCheckFeatureFlagExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, DEPRECATED, "true"),
+				),
+			},
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
+			{
+				Config: withRandomProject(projectKey, testAccFeatureFlagUndeprecated),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckProjectExists("launchdarkly_project.test"),
+					testAccCheckFeatureFlagExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, DEPRECATED, "false"),
+				),
+			},
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
+		},
+	})
 }
 
 // TestAccFeatureFlag_ViewAssociationRequired tests that creating a flag without view_keys
