@@ -34,11 +34,6 @@ func dataSourceView() *schema.Resource {
 				Computed:    true,
 				Description: "The view's description.",
 			},
-			GENERATE_SDK_KEYS: {
-				Type:        schema.TypeBool,
-				Computed:    true,
-				Description: "Whether SDK keys are generated for this view.",
-			},
 			MAINTAINER_ID: {
 				Type:        schema.TypeString,
 				Computed:    true,

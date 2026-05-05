@@ -69,7 +69,6 @@ output "team_flag_access" {
 
 - `archived` (Boolean) Whether the view is archived.
 - `description` (String) The view's description.
-- `generate_sdk_keys` (Boolean) Whether SDK keys are generated for this view.
 - `id` (String) The ID of this resource.
 - `linked_flags` (List of String) A list of feature flag keys that are linked to this view.
 - `linked_segments` (List of Object) A list of segments that are linked to this view. (see [below for nested schema](#nestedatt--linked_segments))
