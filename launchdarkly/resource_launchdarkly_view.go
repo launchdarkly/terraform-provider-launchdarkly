@@ -53,12 +53,6 @@ This resource allows you to create and manage views within your LaunchDarkly pro
 				Optional:    true,
 				Description: "The view's description.",
 			},
-			GENERATE_SDK_KEYS: {
-				Type:        schema.TypeBool,
-				Optional:    true,
-				Default:     false,
-				Description: "Whether to generate SDK keys for this view.",
-			},
 			MAINTAINER_ID: {
 				Type:         schema.TypeString,
 				Optional:     true,
@@ -99,10 +93,6 @@ func resourceViewCreate(ctx context.Context, d *schema.ResourceData, metaRaw int
 
 	if description, ok := d.GetOk(DESCRIPTION); ok {
 		viewPost["description"] = description.(string)
-	}
-
-	if generateSdkKeys, ok := d.GetOk(GENERATE_SDK_KEYS); ok {
-		viewPost["generateSdkKeys"] = generateSdkKeys.(bool)
 	}
 
 	if maintainerId, ok := d.GetOk(MAINTAINER_ID); ok {
@@ -149,10 +139,6 @@ func resourceViewUpdate(ctx context.Context, d *schema.ResourceData, metaRaw int
 
 	if d.HasChange(DESCRIPTION) {
 		patch["description"] = d.Get(DESCRIPTION).(string)
-	}
-
-	if d.HasChange(GENERATE_SDK_KEYS) {
-		patch["generateSdkKeys"] = d.Get(GENERATE_SDK_KEYS).(bool)
 	}
 
 	if d.HasChange(MAINTAINER_ID) {

@@ -64,7 +64,6 @@ const (
 	FLAG_ID                                   = "flag_id"
 	FLAG_KEY                                  = "flag_key"
 	FULL_KEY                                  = "full_key"
-	GENERATE_SDK_KEYS                         = "generate_sdk_keys"
 	GLOBAL                                    = "global"
 	GUARDED_RELEASE_CONFIG                    = "guarded_release_config"
 	ICON                                      = "icon"

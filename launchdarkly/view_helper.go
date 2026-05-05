@@ -57,11 +57,6 @@ func viewRead(ctx context.Context, d *schema.ResourceData, meta interface{}, isD
 		description = *view.Description
 	}
 	_ = d.Set(DESCRIPTION, description)
-	generateSDKKeys := false
-	if view.GenerateSdkKeys != nil {
-		generateSDKKeys = *view.GenerateSdkKeys
-	}
-	_ = d.Set(GENERATE_SDK_KEYS, generateSDKKeys)
 	archived := false
 	if view.Archived != nil {
 		archived = *view.Archived
@@ -131,9 +126,8 @@ type View struct {
 	Key             string          `json:"key"`
 	Name            string          `json:"name"`
 	Description     *string         `json:"description,omitempty"`
-	ProjectKey      string          `json:"projectKey"`
-	GenerateSdkKeys *bool           `json:"generateSdkKeys,omitempty"`
-	Archived        *bool           `json:"archived,omitempty"`
+	ProjectKey string          `json:"projectKey"`
+	Archived   *bool           `json:"archived,omitempty"`
 	Tags            []string        `json:"tags,omitempty"`
 	Maintainer      *ViewMaintainer `json:"maintainer,omitempty"`
 }
@@ -158,18 +152,16 @@ func viewFromAPI(apiView *ldapi.View) *View {
 	}
 
 	description := apiView.Description
-	generateSDKKeys := apiView.GenerateSdkKeys
 	archived := apiView.Archived
 
 	view := &View{
-		Id:              apiView.Id,
-		Key:             apiView.Key,
-		Name:            apiView.Name,
-		Description:     &description,
-		ProjectKey:      apiView.ProjectKey,
-		GenerateSdkKeys: &generateSDKKeys,
-		Archived:        &archived,
-		Tags:            apiView.Tags,
+		Id:          apiView.Id,
+		Key:         apiView.Key,
+		Name:        apiView.Name,
+		Description: &description,
+		ProjectKey:  apiView.ProjectKey,
+		Archived:    &archived,
+		Tags:        apiView.Tags,
 	}
 
 	if apiView.Maintainer != nil {
@@ -222,9 +214,6 @@ func createView(client *Client, projectKey string, viewPost map[string]interface
 	if description, ok := viewPost["description"].(string); ok {
 		viewRequest.SetDescription(description)
 	}
-	if generateSDKKeys, ok := viewPost["generateSdkKeys"].(bool); ok {
-		viewRequest.SetGenerateSdkKeys(generateSDKKeys)
-	}
 	if maintainerID, ok := viewPost["maintainerId"].(string); ok {
 		viewRequest.SetMaintainerId(maintainerID)
 	}
@@ -266,9 +255,6 @@ func patchView(client *Client, projectKey, viewKey string, patch map[string]inte
 	}
 	if description, ok := patch["description"].(string); ok {
 		viewPatch.SetDescription(description)
-	}
-	if generateSDKKeys, ok := patch["generateSdkKeys"].(bool); ok {
-		viewPatch.SetGenerateSdkKeys(generateSDKKeys)
 	}
 	if maintainerID, ok := patch["maintainerId"].(string); ok {
 		viewPatch.SetMaintainerId(maintainerID)
