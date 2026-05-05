@@ -43,7 +43,6 @@ resource "launchdarkly_project" "test" {
 		key   = "test-env"
 		color = "000000"
 	}
-	generate_sdk_keys = true
 }
 
 resource "launchdarkly_view" "test" {
