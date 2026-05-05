@@ -22,6 +22,10 @@ func resourceView() *schema.Resource {
 
 		Description: `Provides a LaunchDarkly view resource.
 
+-> **Note:** Views are available to customers on an Enterprise LaunchDarkly plan. To learn more, [read about our pricing](https://launchdarkly.com/pricing/). To upgrade your plan, [contact LaunchDarkly Sales](https://launchdarkly.com/contact-sales/).
+
+~> **Beta:** This resource uses a beta API. Beta resources may change or be removed in future versions.
+
 This resource allows you to create and manage views within your LaunchDarkly project.`,
 
 		Schema: map[string]*schema.Schema{

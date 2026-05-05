@@ -4,6 +4,8 @@ page_title: "launchdarkly_view_filter_links Resource - launchdarkly"
 subcategory: ""
 description: |-
   Provides a LaunchDarkly view filter links resource for linking resources to views using filter expressions.
+  -> Note: Views are available to customers on an Enterprise LaunchDarkly plan. To learn more, read about our pricing https://launchdarkly.com/pricing/. To upgrade your plan, contact LaunchDarkly Sales https://launchdarkly.com/contact-sales/.
+  ~> Beta: This resource uses a beta API. Beta resources may change or be removed in future versions.
   This resource allows you to link all flags and/or segments matching a filter expression to a specific view. The filter is resolved at apply time — the backend finds all resources matching the filter and links them to the view.
   -> Note: Filter-based links are point-in-time. By default, filters are resolved only when this resource is created or updated (for example, when flag_filter changes). Set reconcile_on_apply = true to force re-resolution on every terraform apply.
   When to use which resource
@@ -14,6 +16,10 @@ description: |-
 # launchdarkly_view_filter_links (Resource)
 
 Provides a LaunchDarkly view filter links resource for linking resources to views using filter expressions.
+
+-> **Note:** Views are available to customers on an Enterprise LaunchDarkly plan. To learn more, [read about our pricing](https://launchdarkly.com/pricing/). To upgrade your plan, [contact LaunchDarkly Sales](https://launchdarkly.com/contact-sales/).
+
+~> **Beta:** This resource uses a beta API. Beta resources may change or be removed in future versions.
 
 This resource allows you to link all flags and/or segments matching a filter expression to a specific view. The filter is resolved at apply time — the backend finds all resources matching the filter and links them to the view.
 

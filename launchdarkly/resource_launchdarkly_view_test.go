@@ -50,7 +50,6 @@ resource "launchdarkly_view" "test" {
 	key               = "%s"
 	name              = "%s"
 	description       = "%s"
-	generate_sdk_keys = true
 	tags              = ["test", "updated"]
 	maintainer_id     = "%s"
 }
@@ -162,7 +161,6 @@ func TestAccView_Update(t *testing.T) {
 					testAccCheckViewExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, NAME, updatedViewName),
 					resource.TestCheckResourceAttr(resourceName, DESCRIPTION, updatedViewDescription),
-					resource.TestCheckResourceAttr(resourceName, GENERATE_SDK_KEYS, "true"),
 					resource.TestCheckResourceAttr(resourceName, "tags.#", "2"),
 				),
 			},

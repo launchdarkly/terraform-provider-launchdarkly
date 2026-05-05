@@ -4,6 +4,8 @@ page_title: "launchdarkly_view_links Resource - launchdarkly"
 subcategory: ""
 description: |-
   Provides a LaunchDarkly view links resource for managing bulk resource linkage to views.
+  -> Note: Views are available to customers on an Enterprise LaunchDarkly plan. To learn more, read about our pricing https://launchdarkly.com/pricing/. To upgrade your plan, contact LaunchDarkly Sales https://launchdarkly.com/contact-sales/.
+  ~> Beta: This resource uses a beta API. Beta resources may change or be removed in future versions.
   This resource allows you to efficiently link multiple flags and/or segments to a specific view. This is particularly useful for administrators organizing resources by team or deployment unit.
   -> Note: This resource manages ALL links for the specified resource types within a view. Adding or removing items from the configuration will link or unlink those resources accordingly.
   Alternative Approach: view_keys on Individual Resources
@@ -20,6 +22,10 @@ description: |-
 # launchdarkly_view_links (Resource)
 
 Provides a LaunchDarkly view links resource for managing bulk resource linkage to views.
+
+-> **Note:** Views are available to customers on an Enterprise LaunchDarkly plan. To learn more, [read about our pricing](https://launchdarkly.com/pricing/). To upgrade your plan, [contact LaunchDarkly Sales](https://launchdarkly.com/contact-sales/).
+
+~> **Beta:** This resource uses a beta API. Beta resources may change or be removed in future versions.
 
 This resource allows you to efficiently link multiple flags and/or segments to a specific view. This is particularly useful for administrators organizing resources by team or deployment unit.
 
