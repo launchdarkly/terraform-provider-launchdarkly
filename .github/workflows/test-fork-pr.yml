@@ -1,41 +1,25 @@
-# Terraform Provider testing workflow.
-name: Test
+# Runs generate and acceptance tests on fork PRs after a maintainer adds the "safe-to-test" label.
+# This uses pull_request_target so OIDC tokens are available (fork PRs cannot get OIDC tokens
+# via the regular pull_request trigger). The label gate ensures untrusted code is reviewed
+# before it runs with access to secrets.
+#
+# Security: Only the "labeled" event triggers this workflow. New pushes to the fork do NOT
+# re-trigger tests — see remove-safe-to-test-label.yml which strips the label on new commits,
+# forcing a maintainer to re-review and re-label.
+name: "Test (Fork PRs)"
 
 on:
-  pull_request: # Fork PRs will only run the build job here. See test-fork-pr.yml for the label-gated workflow that runs generate + tests on forks.
-  push:
-    branches: [main]
-  schedule: # runs tests once a day on the main branch
-    - cron: "0 0 * * *"
+  pull_request_target:
+    types: [labeled]
 
-# Testing only needs permissions to read the repository contents.
 permissions:
   contents: read
 
 jobs:
-  # Ensure project builds before running testing matrix
-  build:
-    name: Build
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-        with:
-          ref: ${{ github.event.pull_request.head.sha || github.sha}}
-      - uses: actions/setup-go@41dfa10bad2bb2ae585af6ee5bb4d7d973ad74ed # v5.1.0
-        with:
-          go-version-file: "go.mod"
-          cache: true
-      - run: go mod download
-      - run: go build -v .
-      - name: Run linters
-        uses: golangci/golangci-lint-action@971e284b6050e8a5849b72094c50ab08da042db8 # v6.1.1
-        with:
-          version: v1.64.8
-          install-mode: goinstall
-  
   generate:
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    if: >-
+      github.event.label.name == 'safe-to-test'
+      && github.event.pull_request.head.repo.full_name != github.repository
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
@@ -44,7 +28,7 @@ jobs:
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          ref: ${{ github.event.pull_request.head.sha }}
       - uses: aws-actions/configure-aws-credentials@f24d7193d98baebaeacc7e2227925dd47cc267f5 # v4.2.0
         with:
           audience: https://github.com/launchdarkly
@@ -60,7 +44,6 @@ jobs:
         with:
           go-version-file: "go.mod"
           cache: true
-      # We need the latest version of Terraform for our documentation generation to use
       - uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3.1.2
         with:
           terraform_wrapper: false
@@ -70,9 +53,10 @@ jobs:
           git diff --compact-summary --exit-code || \
             (echo; echo "Unexpected difference in directories after code generation. Run 'make generate' command and commit."; exit 1)
 
-  # Run acceptance tests in a matrix with Terraform CLI versions
   test:
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    if: >-
+      github.event.label.name == 'safe-to-test'
+      && github.event.pull_request.head.repo.full_name != github.repository
     name: Acceptance Tests
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -115,7 +99,7 @@ jobs:
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          ref: ${{ github.event.pull_request.head.sha }}
       - uses: aws-actions/configure-aws-credentials@f24d7193d98baebaeacc7e2227925dd47cc267f5 # v4.2.0
         with:
           audience: https://github.com/launchdarkly
@@ -142,9 +126,8 @@ jobs:
           TESTARGS="-run ${{ matrix.test_case }}" make testacc-with-retry
 
   check-success:
-    name: Check Success
+    name: "Check Success (Fork)"
     needs:
-      - build
       - generate
       - test
     if: always()
@@ -156,20 +139,3 @@ jobs:
             printf "Tests failed or workflow cancelled:\n\n${{ toJSON(needs) }}"
             exit 1
           fi
-
-  notify-slack-on-failure:
-    name: Notify Slack on Failures
-    if: failure() && github.ref == 'refs/heads/main'
-    needs:
-      - build
-      - generate
-      - test
-    runs-on: ubuntu-latest
-    steps:
-      - name: Send GitHub trigger payload to Slack Workflow Builder
-        id: slack
-        uses: slackapi/slack-github-action@485a9d42d3a73031f12ec201c457e2162c45d02d # v2.0.0
-        with:
-          payload-delimiter: "_"
-          webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
-          webhook-type: webhook-trigger
