@@ -42,7 +42,7 @@ func segmentRulesSchema(options segmentRulesSchemaOptions) *schema.Schema {
 }
 
 func segmentRulesFromResourceData(d *schema.ResourceData, metaRaw interface{}) ([]ldapi.UserSegmentRule, error) {
-	schemaRules := d.Get(RULES).([]interface{})
+	schemaRules := getOptionalInterfaceSlice(d, RULES)
 	rules := make([]ldapi.UserSegmentRule, len(schemaRules))
 	for i, rule := range schemaRules {
 		v, err := segmentRuleFromResourceData(rule)

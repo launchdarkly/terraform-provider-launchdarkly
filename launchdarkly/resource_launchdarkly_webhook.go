@@ -57,7 +57,7 @@ func resourceWebhookCreate(ctx context.Context, d *schema.ResourceData, metaRaw 
 	}
 
 	if rawStatements, ok := d.GetOk(STATEMENTS); ok {
-		statements, err := policyStatementsFromResourceData(rawStatements.([]interface{}))
+		statements, err := policyStatementsFromResourceData(interfaceSliceFromAny(rawStatements))
 		if err != nil {
 			return diag.FromErr(err)
 		}
@@ -117,7 +117,7 @@ func resourceWebhookUpdate(ctx context.Context, d *schema.ResourceData, metaRaw 
 		patchReplace("/tags", &webhookTags),
 	}
 
-	statements, err := policyStatementsFromResourceData(d.Get(STATEMENTS).([]interface{}))
+	statements, err := policyStatementsFromResourceData(getOptionalInterfaceSlice(d, STATEMENTS))
 	if err != nil {
 		return diag.FromErr(err)
 	}

@@ -55,7 +55,7 @@ type rule struct {
 }
 
 func rulesFromResourceData(d *schema.ResourceData) ([]rule, error) {
-	schemaRules := d.Get(RULES).([]interface{})
+	schemaRules := getOptionalInterfaceSlice(d, RULES)
 	rules := make([]rule, 0, len(schemaRules))
 	for _, r := range schemaRules {
 		rule, err := ruleFromResourceData(r)

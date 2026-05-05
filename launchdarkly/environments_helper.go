@@ -144,7 +144,7 @@ func getEnvironmentUpdatePatches(oldConfig, config map[string]interface{}) ([]ld
 
 	tags, ok := config[TAGS]
 	if ok {
-		envTags := stringsFromSchemaSet(tags.(*schema.Set))
+		envTags := stringsFromSchemaSet(optionalSchemaSetFromInterface(tags))
 		patches = append(patches, patchReplace("/tags", &envTags))
 	}
 
@@ -195,7 +195,7 @@ func dataSourceEnvironmentSchema(forProject bool) map[string]*schema.Schema {
 }
 
 func environmentPostsFromResourceData(d *schema.ResourceData) []ldapi.EnvironmentPost {
-	schemaEnvList := d.Get(ENVIRONMENTS).([]interface{})
+	schemaEnvList := getOptionalInterfaceSlice(d, ENVIRONMENTS)
 	envs := make([]ldapi.EnvironmentPost, len(schemaEnvList))
 	for i, env := range schemaEnvList {
 		envs[i] = environmentPostFromResourceData(env)

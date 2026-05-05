@@ -202,7 +202,7 @@ func featureFlagRead(ctx context.Context, d *schema.ResourceData, raw interface{
 	}}
 	// Always set both CSA and IIS to state in order to correctly represent the flag resource as it exists in LD
 	_ = d.Set(CLIENT_SIDE_AVAILABILITY, clientSideAvailability)
-	_ = d.Set(INCLUDE_IN_SNIPPET, CSA.UsingEnvironmentId)
+	_ = resourceDataSetSkipMissingKey(d, INCLUDE_IN_SNIPPET, CSA.UsingEnvironmentId)
 
 	// Only set the maintainer if is specified in the schema
 	_, maintainerIdOk := d.GetOk(MAINTAINER_ID)

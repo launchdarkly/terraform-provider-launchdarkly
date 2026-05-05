@@ -93,7 +93,7 @@ func variationPatchesFromResourceData(d *schema.ResourceData) ([]ldapi.PatchOper
 	variationType := d.Get(VARIATION_TYPE).(string)
 	old, new := d.GetChange(VARIATIONS)
 
-	if len(old.([]interface{})) == 0 {
+	if len(interfaceSliceFromAny(old)) == 0 {
 		// This can only happen when the resource is first created. Since this is handled in the creation POST,
 		// variation patches are not necessary.
 		return patches, nil
@@ -127,7 +127,10 @@ func variationPatchesFromResourceData(d *schema.ResourceData) ([]ldapi.PatchOper
 }
 
 func variationsFromSchemaData(schemaVariations interface{}, variationType string) ([]ldapi.Variation, error) {
-	list := schemaVariations.([]interface{})
+	list := interfaceSliceFromAny(schemaVariations)
+	if list == nil {
+		list = []interface{}{}
+	}
 	variations := make([]ldapi.Variation, len(list))
 	if variationType != BOOL_VARIATION && len(list) < 2 {
 		return variations, fmt.Errorf("multivariate flags must have at least two variations defined")

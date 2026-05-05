@@ -80,8 +80,8 @@ func resourceTeamMemberCreate(ctx context.Context, d *schema.ResourceData, metaR
 	firstName := d.Get(FIRST_NAME).(string)
 	lastName := d.Get(LAST_NAME).(string)
 	memberRole := d.Get(ROLE).(string)
-	customRolesRaw := d.Get(CUSTOM_ROLES).(*schema.Set).List()
-	roleAttributes := roleAttributesFromResourceData(d.Get(ROLE_ATTRIBUTES).(*schema.Set).List())
+	customRolesRaw := optionalSetList(d, CUSTOM_ROLES)
+	roleAttributes := roleAttributesFromResourceData(optionalSetList(d, ROLE_ATTRIBUTES))
 
 	customRoles := make([]string, len(customRolesRaw))
 	for i, cr := range customRolesRaw {
@@ -163,7 +163,7 @@ func resourceTeamMemberUpdate(ctx context.Context, d *schema.ResourceData, metaR
 	client := metaRaw.(*Client)
 	memberID := d.Id()
 	memberRole := d.Get(ROLE).(string)
-	customRolesRaw := d.Get(CUSTOM_ROLES).(*schema.Set).List()
+	customRolesRaw := optionalSetList(d, CUSTOM_ROLES)
 
 	customRoleKeys := make([]string, len(customRolesRaw))
 	for i, cr := range customRolesRaw {

@@ -22,14 +22,14 @@ func customizeMetricDiff(ctx context.Context, diff *schema.ResourceDiff, v inter
 
 	// Kind enum is validated using validateFunc
 	kindInConfig := diff.Get(KIND).(string)
-	selectorInConfig := config.GetAttr(SELECTOR)
-	urlsInConfig := config.GetAttr(URLS)
-	successCriteriaInConfig := config.GetAttr(SUCCESS_CRITERIA)
-	unitInConfig := config.GetAttr(UNIT)
-	eventKeyInConfig := config.GetAttr(EVENT_KEY)
+	selectorInConfig := ctyObjectGetAttr(config, SELECTOR)
+	urlsInConfig := ctyObjectGetAttr(config, URLS)
+	successCriteriaInConfig := ctyObjectGetAttr(config, SUCCESS_CRITERIA)
+	unitInConfig := ctyObjectGetAttr(config, UNIT)
+	eventKeyInConfig := ctyObjectGetAttr(config, EVENT_KEY)
 	analysisTypeInConfig := diff.Get(ANALYSIS_TYPE).(string)
-	percentileValueInConfig := config.GetAttr(PERCENTILE_VALUE)
-	includeUnitsWithoutEventsInConfig := config.GetAttr(INCLUDE_UNITS_WITHOUT_EVENTS)
+	percentileValueInConfig := ctyObjectGetAttr(config, PERCENTILE_VALUE)
+	includeUnitsWithoutEventsInConfig := ctyObjectGetAttr(config, INCLUDE_UNITS_WITHOUT_EVENTS)
 
 	// Different validation logic depending on which kind of metric we are creating
 	switch kindInConfig {
@@ -38,7 +38,7 @@ func customizeMetricDiff(ctx context.Context, diff *schema.ResourceDiff, v inter
 			return fmt.Errorf("click metrics require 'selector' to be set")
 		}
 		// If we have no keys in the URLS block in the config (length is 0) we know the customer hasn't set any URL values
-		urlsSlice := urlsInConfig.AsValueSlice()
+		urlsSlice := ctyValueListElements(urlsInConfig)
 		if len(urlsSlice) == 0 {
 			return fmt.Errorf("click metrics require an 'urls' block to be set")
 		}
@@ -65,9 +65,9 @@ func customizeMetricDiff(ctx context.Context, diff *schema.ResourceDiff, v inter
 				return err
 			}
 		}
-		isNumericInConfig := config.GetAttr(IS_NUMERIC)
+		isNumericInConfig := ctyObjectGetAttr(config, IS_NUMERIC)
 		// numeric custom metrics have extra required fields
-		if isNumericInConfig.True() {
+		if ctyBoolTrue(isNumericInConfig) {
 			if successCriteriaInConfig.IsNull() {
 				return fmt.Errorf("numeric custom metrics require 'success_criteria' to be set")
 
@@ -80,7 +80,7 @@ func customizeMetricDiff(ctx context.Context, diff *schema.ResourceDiff, v inter
 			return fmt.Errorf("custom meterics require 'event_key' to be set")
 		}
 		// Disallow keys specific to other 'kind' values - these updates are ignored by the backend and lead to misleading plans being generated
-		urlsSlice := urlsInConfig.AsValueSlice()
+		urlsSlice := ctyValueListElements(urlsInConfig)
 		if len(urlsSlice) != 0 {
 			return fmt.Errorf("custom metrics do not accept a 'urls' block")
 		}
@@ -89,7 +89,7 @@ func customizeMetricDiff(ctx context.Context, diff *schema.ResourceDiff, v inter
 		}
 	case "pageview":
 		// If we have no keys in the URLS block in the config (length is 0) we know the customer hasn't set any URL values
-		urlsSlice := urlsInConfig.AsValueSlice()
+		urlsSlice := ctyValueListElements(urlsInConfig)
 		if len(urlsSlice) == 0 {
 			return fmt.Errorf("pageview metrics require an 'urls' block to be set")
 		}
@@ -119,7 +119,7 @@ func customizeMetricDiff(ctx context.Context, diff *schema.ResourceDiff, v inter
 		if percentileValueInConfig.IsNull() {
 			return fmt.Errorf("percentile_value is required when analysis_type is percentile")
 		}
-		if includeUnitsWithoutEventsInConfig.True() {
+		if ctyBoolTrue(includeUnitsWithoutEventsInConfig) {
 			return fmt.Errorf("include_units_without_events is not supported for percentile metrics")
 		}
 	} else if !percentileValueInConfig.IsNull() {

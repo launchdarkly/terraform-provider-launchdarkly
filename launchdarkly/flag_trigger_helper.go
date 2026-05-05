@@ -132,7 +132,7 @@ func flagTriggerRead(ctx context.Context, d *schema.ResourceData, metaRaw interf
 }
 
 func instructionsFromResourceData(d *schema.ResourceData, method string) []map[string]interface{} {
-	rawInstructions := d.Get(INSTRUCTIONS).([]interface{})
+	rawInstructions := getOptionalInterfaceSlice(d, INSTRUCTIONS)
 	var instructions []map[string]interface{}
 	switch method {
 	case "POST":

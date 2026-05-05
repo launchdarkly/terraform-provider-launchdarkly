@@ -71,7 +71,11 @@ func targetsFromResourceData(d *schema.ResourceData, options targetOptions) []ld
 	if !ok {
 		return []ldapi.Target{}
 	}
-	schemaTargets := tgts.(*schema.Set).List()
+	set := optionalSchemaSetFromInterface(tgts)
+	if set == nil {
+		return []ldapi.Target{}
+	}
+	schemaTargets := set.List()
 	targets := make([]ldapi.Target, 0, len(schemaTargets))
 	for _, target := range schemaTargets {
 		targetMap := target.(map[string]interface{})
@@ -82,7 +86,10 @@ func targetsFromResourceData(d *schema.ResourceData, options targetOptions) []ld
 
 func targetFromResourceData(targetMap map[string]interface{}, options targetOptions) ldapi.Target {
 	contextKind := "user"
-	resourceValues := targetMap[VALUES].([]interface{})
+	resourceValues := interfaceSliceFromAny(targetMap[VALUES])
+	if resourceValues == nil {
+		resourceValues = []interface{}{}
+	}
 	values := make([]string, 0, len(resourceValues))
 	for _, v := range resourceValues {
 		values = append(values, v.(string))

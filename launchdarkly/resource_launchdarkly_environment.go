@@ -46,7 +46,7 @@ func resourceEnvironmentCreate(ctx context.Context, d *schema.ResourceData, meta
 	defaultTTL := int32(d.Get(DEFAULT_TTL).(int))
 	secureMode := d.Get(SECURE_MODE).(bool)
 	defaultTrackEvents := d.Get(DEFAULT_TRACK_EVENTS).(bool)
-	tags := stringsFromSchemaSet(d.Get(TAGS).(*schema.Set))
+	tags := stringsFromSchemaSet(getOptionalSet(d, TAGS))
 	requireComments := d.Get(REQUIRE_COMMENTS).(bool)
 	confirmChanges := d.Get(CONFIRM_CHANGES).(bool)
 	critical := d.Get(CRITICAL).(bool)
@@ -73,8 +73,8 @@ func resourceEnvironmentCreate(ctx context.Context, d *schema.ResourceData, meta
 		return diag.Errorf("failed to create environment: [%+v] for project key: %s: %s", envPost, projectKey, handleLdapiErr(err))
 	}
 
-	approvalSettings := d.Get(APPROVAL_SETTINGS)
-	if len(approvalSettings.([]interface{})) > 0 {
+	approvalSettings := interfaceSliceFromAny(d.Get(APPROVAL_SETTINGS))
+	if len(approvalSettings) > 0 {
 		updateDiags := resourceEnvironmentUpdate(ctx, d, metaRaw)
 		if updateDiags.HasError() {
 			// if there was a problem in the update state, we need to clean up completely by deleting the env

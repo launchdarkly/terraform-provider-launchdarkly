@@ -104,7 +104,7 @@ func resourceViewCreate(ctx context.Context, d *schema.ResourceData, metaRaw int
 	}
 
 	if tags, ok := d.GetOk(TAGS); ok {
-		viewPost["tags"] = interfaceSliceToStringSlice(tags.(*schema.Set).List())
+		viewPost["tags"] = stringListFromOptionalSetValue(tags)
 	}
 
 	_, err = createView(betaClient, projectKey, viewPost)
@@ -158,7 +158,7 @@ func resourceViewUpdate(ctx context.Context, d *schema.ResourceData, metaRaw int
 	}
 
 	if d.HasChange(TAGS) {
-		patch["tags"] = interfaceSliceToStringSlice(d.Get(TAGS).(*schema.Set).List())
+		patch["tags"] = stringListFromOptionalSetValue(d.Get(TAGS))
 	}
 
 	if d.HasChange(ARCHIVED) {
