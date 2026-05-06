@@ -189,17 +189,17 @@ func resourceMetricCreate(ctx context.Context, d *schema.ResourceData, metaRaw i
 	key := d.Get(KEY).(string)
 	name := d.Get(NAME).(string)
 	kind := d.Get(KIND).(string)
-	description := trimmedStringAttr(d, DESCRIPTION)
+	description := optionalStringAttr(d, DESCRIPTION)
 	tags := stringsFromResourceData(d, TAGS)
 	isNumeric := optionalBoolFromResourceData(d, IS_NUMERIC, false)
 	urls := metricUrlsFromResourceData(d)
 	randomizationUnits := stringsFromResourceData(d, RANDOMIZATION_UNITS)
 	// Required depending on type
-	unit := trimmedStringAttr(d, UNIT)
-	selector := trimmedStringAttr(d, SELECTOR)
-	eventKey := trimmedStringAttr(d, EVENT_KEY)
-	unitAggregationType := trimmedStringAttr(d, UNIT_AGGREGATION_TYPE)
-	analysisType := trimmedStringAttr(d, ANALYSIS_TYPE)
+	unit := optionalStringAttr(d, UNIT)
+	selector := optionalStringAttr(d, SELECTOR)
+	eventKey := optionalStringAttr(d, EVENT_KEY)
+	unitAggregationType := optionalStringAttr(d, UNIT_AGGREGATION_TYPE)
+	analysisType := optionalStringAttr(d, ANALYSIS_TYPE)
 	includeUnitsWithoutEvents := optionalBoolFromResourceData(d, INCLUDE_UNITS_WITHOUT_EVENTS, false)
 	eventDefaultDisabled := !includeUnitsWithoutEvents
 
@@ -227,7 +227,7 @@ func resourceMetricCreate(ctx context.Context, d *schema.ResourceData, metaRaw i
 	// Only add successCriteria if it has a value - empty string causes API errors
 	_, ok := d.GetOk(SUCCESS_CRITERIA)
 	if ok {
-		successCriteria := trimmedStringAttr(d, SUCCESS_CRITERIA)
+		successCriteria := optionalStringAttr(d, SUCCESS_CRITERIA)
 		metric.SuccessCriteria = &successCriteria
 	} else {
 		if kind == "custom" {
@@ -296,17 +296,17 @@ func resourceMetricUpdate(ctx context.Context, d *schema.ResourceData, metaRaw i
 	key := d.Get(KEY).(string)
 	name := d.Get(NAME).(string)
 	kind := d.Get(KIND).(string)
-	description := trimmedStringAttr(d, DESCRIPTION)
+	description := optionalStringAttr(d, DESCRIPTION)
 	tags := stringsFromResourceData(d, TAGS)
 	isActive := optionalBoolFromResourceData(d, IS_ACTIVE, false)
 	isNumeric := optionalBoolFromResourceData(d, IS_NUMERIC, false)
 	urls := metricUrlsFromResourceData(d)
 	// Required depending on type
-	unit := trimmedStringAttr(d, UNIT)
-	selector := trimmedStringAttr(d, SELECTOR)
-	eventKey := trimmedStringAttr(d, EVENT_KEY)
-	unitAggregationType := trimmedStringAttr(d, UNIT_AGGREGATION_TYPE)
-	analysisType := trimmedStringAttr(d, ANALYSIS_TYPE)
+	unit := optionalStringAttr(d, UNIT)
+	selector := optionalStringAttr(d, SELECTOR)
+	eventKey := optionalStringAttr(d, EVENT_KEY)
+	unitAggregationType := optionalStringAttr(d, UNIT_AGGREGATION_TYPE)
+	analysisType := optionalStringAttr(d, ANALYSIS_TYPE)
 	includeUnitsWithoutEvents := optionalBoolFromResourceData(d, INCLUDE_UNITS_WITHOUT_EVENTS, false)
 
 	patch := []ldapi.PatchOperation{

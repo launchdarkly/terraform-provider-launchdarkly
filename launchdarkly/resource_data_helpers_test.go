@@ -77,6 +77,28 @@ func TestOptionalBoolFromResourceData(t *testing.T) {
 	require.True(t, optionalBoolFromResourceData(wrongType, "x", true))
 }
 
+// optionalStringAttr must not trim — trimming would create permanent plan drift if a user's
+// config has whitespace and the LD API does not normalize it server-side: terraform would compare
+// config "  test  " vs state "test" and want to update on every plan.
+func TestOptionalStringAttr_doesNotTrim(t *testing.T) {
+	t.Parallel()
+
+	d := schema.TestResourceDataRaw(t, map[string]*schema.Schema{
+		"x": {Type: schema.TypeString, Optional: true},
+	}, map[string]interface{}{"x": "  has space  "})
+	require.Equal(t, "  has space  ", optionalStringAttr(d, "x"))
+
+	missing := schema.TestResourceDataRaw(t, map[string]*schema.Schema{
+		"y": {Type: schema.TypeString, Optional: true},
+	}, map[string]interface{}{})
+	require.Equal(t, "", optionalStringAttr(missing, "y"))
+
+	wrongType := schema.TestResourceDataRaw(t, map[string]*schema.Schema{
+		"x": {Type: schema.TypeBool, Optional: true},
+	}, map[string]interface{}{"x": true})
+	require.Equal(t, "", optionalStringAttr(wrongType, "x"))
+}
+
 func TestOptionalIntFromResourceData(t *testing.T) {
 	t.Parallel()
 	withVal := schema.TestResourceDataRaw(t, map[string]*schema.Schema{

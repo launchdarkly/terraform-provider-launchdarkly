@@ -112,7 +112,7 @@ func validateAPIVersion(val interface{}, key string) (warns []string, errs []err
 }
 
 func validateAccessTokenResource(d *schema.ResourceData) error {
-	accessTokenRole := trimmedStringAttr(d, ROLE)
+	accessTokenRole := optionalStringAttr(d, ROLE)
 	customRolesRaw := optionalSetList(d, CUSTOM_ROLES)
 	policyStatements, err := policyStatementsFromResourceData(getOptionalInterfaceSlice(d, POLICY_STATEMENTS))
 	if err != nil {
@@ -138,7 +138,7 @@ func resourceAccessTokenCreate(ctx context.Context, d *schema.ResourceData, meta
 	}
 
 	client := metaRaw.(*Client)
-	accessTokenName := trimmedStringAttr(d, NAME)
+	accessTokenName := optionalStringAttr(d, NAME)
 	serviceToken := optionalBoolFromResourceData(d, SERVICE_TOKEN, false)
 
 	accessTokenBody := ldapi.AccessTokenPost{
@@ -248,8 +248,8 @@ func resourceAccessTokenUpdate(ctx context.Context, d *schema.ResourceData, meta
 
 	client := metaRaw.(*Client)
 	accessTokenID := d.Id()
-	accessTokenName := trimmedStringAttr(d, NAME)
-	accessTokenRole := trimmedStringAttr(d, ROLE)
+	accessTokenName := optionalStringAttr(d, NAME)
+	accessTokenRole := optionalStringAttr(d, ROLE)
 	customRolesRaw := optionalSetList(d, CUSTOM_ROLES)
 
 	customRoleKeys := make([]string, len(customRolesRaw))

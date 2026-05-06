@@ -89,12 +89,12 @@ func resourceAIToolUpdate(ctx context.Context, d *schema.ResourceData, metaRaw i
 	patch := ldapi.NewAIToolPatch()
 
 	if d.HasChange(DESCRIPTION) {
-		description := trimmedStringAttr(d, DESCRIPTION)
+		description := optionalStringAttr(d, DESCRIPTION)
 		patch.Description = &description
 	}
 
 	if d.HasChange(SCHEMA_JSON) {
-		schemaMap, err := jsonStringToMap(trimmedStringAttr(d, SCHEMA_JSON))
+		schemaMap, err := jsonStringToMap(optionalStringAttr(d, SCHEMA_JSON))
 		if err != nil {
 			return diag.Errorf("failed to parse schema_json: %s", err)
 		}
@@ -102,7 +102,7 @@ func resourceAIToolUpdate(ctx context.Context, d *schema.ResourceData, metaRaw i
 	}
 
 	if d.HasChange(CUSTOM_PARAMETERS) {
-		customParamsStr := trimmedStringAttr(d, CUSTOM_PARAMETERS)
+		customParamsStr := optionalStringAttr(d, CUSTOM_PARAMETERS)
 		customParamsMap, err := jsonStringToMap(customParamsStr)
 		if err != nil {
 			return diag.Errorf("failed to parse custom_parameters: %s", err)
@@ -113,11 +113,11 @@ func resourceAIToolUpdate(ctx context.Context, d *schema.ResourceData, metaRaw i
 	// Use d.Get() instead of d.GetOk() so removing a maintainer from config
 	// sends an empty string to the API, clearing it server-side.
 	if d.HasChange(MAINTAINER_ID) {
-		patch.MaintainerId = ldapi.PtrString(trimmedStringAttr(d, MAINTAINER_ID))
+		patch.MaintainerId = ldapi.PtrString(optionalStringAttr(d, MAINTAINER_ID))
 	}
 
 	if d.HasChange(MAINTAINER_TEAM_KEY) {
-		patch.MaintainerTeamKey = ldapi.PtrString(trimmedStringAttr(d, MAINTAINER_TEAM_KEY))
+		patch.MaintainerTeamKey = ldapi.PtrString(optionalStringAttr(d, MAINTAINER_TEAM_KEY))
 	}
 
 	var err error

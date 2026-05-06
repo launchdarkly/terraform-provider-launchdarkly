@@ -124,7 +124,7 @@ func providerConfigure(ctx context.Context, d *schema.ResourceData) (interface{}
 	if host == "" {
 		host = DEFAULT_LAUNCHDARKLY_HOST
 	}
-	configHost := trimmedStringAttr(d, API_HOST)
+	configHost := optionalStringAttr(d, API_HOST)
 	if configHost != "" {
 		host = configHost
 	}
@@ -136,11 +136,11 @@ func providerConfigure(ctx context.Context, d *schema.ResourceData) (interface{}
 
 	// Check configuration data, which should take precedence over
 	// environment variable data, if found.
-	configAccessToken := trimmedStringAttr(d, ACCESS_TOKEN)
+	configAccessToken := optionalStringAttr(d, ACCESS_TOKEN)
 	if configAccessToken != "" {
 		accessToken = configAccessToken
 	}
-	configOAuthToken := trimmedStringAttr(d, OAUTH_TOKEN)
+	configOAuthToken := optionalStringAttr(d, OAUTH_TOKEN)
 	if configOAuthToken != "" {
 		oauthToken = configOAuthToken
 	}

@@ -114,11 +114,11 @@ func resourceSegmentCreate(ctx context.Context, d *schema.ResourceData, metaRaw 
 	}
 
 	key := d.Get(KEY).(string)
-	description := trimmedStringAttr(d, DESCRIPTION)
+	description := optionalStringAttr(d, DESCRIPTION)
 	segmentName := d.Get(NAME).(string)
 	tags := stringsFromResourceData(d, TAGS)
 	unbounded := optionalBoolFromResourceData(d, UNBOUNDED, false)
-	unboundedContextKind := trimmedStringAttr(d, UNBOUNDED_CONTEXT_KIND)
+	unboundedContextKind := optionalStringAttr(d, UNBOUNDED_CONTEXT_KIND)
 
 	// Check if view_keys is specified - if so, we need to use raw HTTP to include it in creation
 	var viewKeys []string
@@ -190,7 +190,7 @@ func resourceSegmentUpdate(ctx context.Context, d *schema.ResourceData, metaRaw 
 	if envKey == "" {
 		return diag.Errorf("%s is empty and resource id %q is not project_key/env_key/segment_key", ENV_KEY, d.Id())
 	}
-	description := trimmedStringAttr(d, DESCRIPTION)
+	description := optionalStringAttr(d, DESCRIPTION)
 	name := d.Get(NAME).(string)
 	tags := stringsFromResourceData(d, TAGS)
 	included := getOptionalInterfaceSlice(d, INCLUDED)

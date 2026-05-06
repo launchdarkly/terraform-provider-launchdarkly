@@ -138,7 +138,7 @@ func resourceViewUpdate(ctx context.Context, d *schema.ResourceData, metaRaw int
 	}
 
 	if d.HasChange(DESCRIPTION) {
-		patch["description"] = trimmedStringAttr(d, DESCRIPTION)
+		patch["description"] = optionalStringAttr(d, DESCRIPTION)
 	}
 
 	if d.HasChange(MAINTAINER_ID) {

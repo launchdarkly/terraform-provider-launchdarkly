@@ -102,26 +102,27 @@ func optionalBoolFromResourceData(d *schema.ResourceData, key string, defaultVal
 	return b
 }
 
-// trimmedStringAttr returns "" for missing keys; logs at WARN on wrong type so schema regressions
-// are visible.
-func trimmedStringAttr(d *schema.ResourceData, key string) string {
+// optionalStringAttr returns "" for missing keys; logs at WARN on wrong type so schema regressions
+// are visible. Does NOT trim — preserves whatever the user typed so config↔state stay equal and
+// terraform doesn't show permanent drift on whitespace-laden inputs.
+func optionalStringAttr(d *schema.ResourceData, key string) string {
 	v := d.Get(key)
 	if v == nil {
 		return ""
 	}
 	s, ok := v.(string)
 	if !ok {
-		log.Printf("[WARN] trimmedStringAttr: %q is not a string (got %T)", key, v)
+		log.Printf("[WARN] optionalStringAttr: %q is not a string (got %T)", key, v)
 		return ""
 	}
-	return strings.TrimSpace(s)
+	return s
 }
 
 // effectiveEnvKey falls back to the env_key embedded in resource id "project_key/env_key/<key>"
 // when the attribute is missing — required for the Crossplane / Upjet external-name flow where
 // the schema may strip env_key from the resource view.
 func effectiveEnvKey(d *schema.ResourceData) (string, error) {
-	if k := trimmedStringAttr(d, ENV_KEY); k != "" {
+	if k := strings.TrimSpace(optionalStringAttr(d, ENV_KEY)); k != "" {
 		return k, nil
 	}
 	id := strings.TrimSpace(d.Id())
@@ -153,7 +154,7 @@ func effectiveEnvKeyFromIDOrAttr(d *schema.ResourceData) string {
 // effectiveCustomRoleKeyOrError falls back to d.Id() (Crossplane external-name) when KEY is unset
 // — under embedded schemas the LD custom role key is set via the Terraform id, not the attribute.
 func effectiveCustomRoleKeyOrError(d *schema.ResourceData) (string, error) {
-	if k := trimmedStringAttr(d, KEY); k != "" {
+	if k := optionalStringAttr(d, KEY); k != "" {
 		return k, nil
 	}
 	id := strings.TrimSpace(d.Id())

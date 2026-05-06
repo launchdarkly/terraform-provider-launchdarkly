@@ -127,7 +127,7 @@ func resourceAIConfigUpdate(ctx context.Context, d *schema.ResourceData, metaRaw
 	}
 
 	if d.HasChange(DESCRIPTION) {
-		description := trimmedStringAttr(d, DESCRIPTION)
+		description := optionalStringAttr(d, DESCRIPTION)
 		patch.Description = &description
 		hasChanges = true
 	}
@@ -135,13 +135,13 @@ func resourceAIConfigUpdate(ctx context.Context, d *schema.ResourceData, metaRaw
 	// Use d.Get() instead of d.GetOk() so removing a maintainer from config
 	// sends an empty string to the API, clearing it server-side.
 	if d.HasChange(MAINTAINER_ID) {
-		maintainerId := trimmedStringAttr(d, MAINTAINER_ID)
+		maintainerId := optionalStringAttr(d, MAINTAINER_ID)
 		patch.MaintainerId = &maintainerId
 		hasChanges = true
 	}
 
 	if d.HasChange(MAINTAINER_TEAM_KEY) {
-		maintainerTeamKey := trimmedStringAttr(d, MAINTAINER_TEAM_KEY)
+		maintainerTeamKey := optionalStringAttr(d, MAINTAINER_TEAM_KEY)
 		patch.MaintainerTeamKey = &maintainerTeamKey
 		hasChanges = true
 	}
@@ -154,7 +154,7 @@ func resourceAIConfigUpdate(ctx context.Context, d *schema.ResourceData, metaRaw
 
 	if d.HasChange(EVALUATION_METRIC_KEY) {
 		// Use d.Get() instead of d.GetOk() so users can unset to empty string.
-		evaluationMetricKey := trimmedStringAttr(d, EVALUATION_METRIC_KEY)
+		evaluationMetricKey := optionalStringAttr(d, EVALUATION_METRIC_KEY)
 		patch.EvaluationMetricKey = &evaluationMetricKey
 		hasChanges = true
 	}

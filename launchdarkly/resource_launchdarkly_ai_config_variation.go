@@ -120,17 +120,17 @@ func resourceAIConfigVariationUpdate(ctx context.Context, d *schema.ResourceData
 	}
 
 	if d.HasChange(DESCRIPTION) {
-		description := trimmedStringAttr(d, DESCRIPTION)
+		description := optionalStringAttr(d, DESCRIPTION)
 		patch.Description = &description
 	}
 
 	if d.HasChange(INSTRUCTIONS) {
-		instructions := trimmedStringAttr(d, INSTRUCTIONS)
+		instructions := optionalStringAttr(d, INSTRUCTIONS)
 		patch.Instructions = &instructions
 	}
 
 	if d.HasChange(MODEL) {
-		modelMap, err := jsonStringToMap(trimmedStringAttr(d, MODEL))
+		modelMap, err := jsonStringToMap(optionalStringAttr(d, MODEL))
 		if err != nil {
 			return diag.Errorf("failed to parse model JSON: %s", err)
 		}
@@ -138,7 +138,7 @@ func resourceAIConfigVariationUpdate(ctx context.Context, d *schema.ResourceData
 	}
 
 	if d.HasChange(MODEL_CONFIG_KEY) {
-		modelConfigKey := trimmedStringAttr(d, MODEL_CONFIG_KEY)
+		modelConfigKey := optionalStringAttr(d, MODEL_CONFIG_KEY)
 		patch.ModelConfigKey = &modelConfigKey
 	}
 
@@ -151,7 +151,7 @@ func resourceAIConfigVariationUpdate(ctx context.Context, d *schema.ResourceData
 	}
 
 	if d.HasChange(STATE) {
-		state := trimmedStringAttr(d, STATE)
+		state := optionalStringAttr(d, STATE)
 		patch.State = &state
 	}
 

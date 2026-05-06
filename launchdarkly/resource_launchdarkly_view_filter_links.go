@@ -120,7 +120,7 @@ func resourceViewFilterLinksCreate(ctx context.Context, d *schema.ResourceData, 
 		return diag.Errorf("cannot find view with key %q in project %q", viewKey, projectKey)
 	}
 
-	segmentFilterEnvId := trimmedStringAttr(d, SEGMENT_FILTER_ENVIRONMENT_ID)
+	segmentFilterEnvId := optionalStringAttr(d, SEGMENT_FILTER_ENVIRONMENT_ID)
 
 	// Link flags by filter if specified
 	if flagFilter, ok := d.GetOk(FLAG_FILTER); ok {
@@ -181,7 +181,7 @@ func resourceViewFilterLinksUpdate(ctx context.Context, d *schema.ResourceData, 
 	projectKey := d.Get(PROJECT_KEY).(string)
 	viewKey := d.Get(VIEW_KEY).(string)
 
-	segmentFilterEnvId := trimmedStringAttr(d, SEGMENT_FILTER_ENVIRONMENT_ID)
+	segmentFilterEnvId := optionalStringAttr(d, SEGMENT_FILTER_ENVIRONMENT_ID)
 	hasFlagFilterChange := d.HasChange(FLAG_FILTER)
 	hasSegmentFilterChange := d.HasChange(SEGMENT_FILTER) || d.HasChange(SEGMENT_FILTER_ENVIRONMENT_ID)
 	reconcileOnApply := optionalBoolFromResourceData(d, RECONCILE_ON_APPLY, false)
@@ -191,7 +191,7 @@ func resourceViewFilterLinksUpdate(ctx context.Context, d *schema.ResourceData, 
 
 	if shouldResyncFlags {
 		// Flags: full re-sync
-		flagFilter := trimmedStringAttr(d, FLAG_FILTER)
+		flagFilter := optionalStringAttr(d, FLAG_FILTER)
 		if flagFilter != "" {
 			// Unlink all currently linked flags (clean slate)
 			linkedFlags, err := getLinkedResources(betaClient, projectKey, viewKey, FLAGS)
@@ -237,7 +237,7 @@ func resourceViewFilterLinksUpdate(ctx context.Context, d *schema.ResourceData, 
 
 	if shouldResyncSegments {
 		// Segments: full re-sync
-		segmentFilter := trimmedStringAttr(d, SEGMENT_FILTER)
+		segmentFilter := optionalStringAttr(d, SEGMENT_FILTER)
 		if segmentFilter != "" {
 			// Unlink all currently linked segments (clean slate)
 			linkedSegments, err := getLinkedResources(betaClient, projectKey, viewKey, SEGMENTS)
