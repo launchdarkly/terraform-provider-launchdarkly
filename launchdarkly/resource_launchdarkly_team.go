@@ -122,7 +122,7 @@ func resourceTeamCreate(ctx context.Context, d *schema.ResourceData, metaRaw int
 	client := metaRaw.(*Client)
 	key := d.Get(KEY).(string)
 	name := d.Get(NAME).(string)
-	description := d.Get(DESCRIPTION).(string)
+	description := trimmedStringAttr(d, DESCRIPTION)
 	memberIDs := optionalSetList(d, MEMBER_IDS)
 	maintainers := optionalSetList(d, MAINTAINERS)
 	customRoleKeys := optionalSetList(d, CUSTOM_ROLE_KEYS)

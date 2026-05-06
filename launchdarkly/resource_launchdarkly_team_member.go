@@ -77,9 +77,9 @@ This resource allows you to create and manage team members within your LaunchDar
 func resourceTeamMemberCreate(ctx context.Context, d *schema.ResourceData, metaRaw interface{}) diag.Diagnostics {
 	client := metaRaw.(*Client)
 	memberEmail := d.Get(EMAIL).(string)
-	firstName := d.Get(FIRST_NAME).(string)
-	lastName := d.Get(LAST_NAME).(string)
-	memberRole := d.Get(ROLE).(string)
+	firstName := trimmedStringAttr(d, FIRST_NAME)
+	lastName := trimmedStringAttr(d, LAST_NAME)
+	memberRole := trimmedStringAttr(d, ROLE)
 	customRolesRaw := optionalSetList(d, CUSTOM_ROLES)
 	roleAttributes := roleAttributesFromResourceData(optionalSetList(d, ROLE_ATTRIBUTES))
 
@@ -162,7 +162,7 @@ func resourceTeamMemberRead(ctx context.Context, d *schema.ResourceData, metaRaw
 func resourceTeamMemberUpdate(ctx context.Context, d *schema.ResourceData, metaRaw interface{}) diag.Diagnostics {
 	client := metaRaw.(*Client)
 	memberID := d.Id()
-	memberRole := d.Get(ROLE).(string)
+	memberRole := trimmedStringAttr(d, ROLE)
 	customRolesRaw := optionalSetList(d, CUSTOM_ROLES)
 
 	customRoleKeys := make([]string, len(customRolesRaw))

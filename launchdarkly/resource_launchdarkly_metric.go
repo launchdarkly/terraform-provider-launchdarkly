@@ -189,18 +189,18 @@ func resourceMetricCreate(ctx context.Context, d *schema.ResourceData, metaRaw i
 	key := d.Get(KEY).(string)
 	name := d.Get(NAME).(string)
 	kind := d.Get(KIND).(string)
-	description := d.Get(DESCRIPTION).(string)
+	description := trimmedStringAttr(d, DESCRIPTION)
 	tags := stringsFromResourceData(d, TAGS)
-	isNumeric := d.Get(IS_NUMERIC).(bool)
+	isNumeric := optionalBoolFromResourceData(d, IS_NUMERIC, false)
 	urls := metricUrlsFromResourceData(d)
 	randomizationUnits := stringsFromResourceData(d, RANDOMIZATION_UNITS)
 	// Required depending on type
-	unit := d.Get(UNIT).(string)
-	selector := d.Get(SELECTOR).(string)
-	eventKey := d.Get(EVENT_KEY).(string)
-	unitAggregationType := d.Get(UNIT_AGGREGATION_TYPE).(string)
-	analysisType := d.Get(ANALYSIS_TYPE).(string)
-	includeUnitsWithoutEvents := d.Get(INCLUDE_UNITS_WITHOUT_EVENTS).(bool)
+	unit := trimmedStringAttr(d, UNIT)
+	selector := trimmedStringAttr(d, SELECTOR)
+	eventKey := trimmedStringAttr(d, EVENT_KEY)
+	unitAggregationType := trimmedStringAttr(d, UNIT_AGGREGATION_TYPE)
+	analysisType := trimmedStringAttr(d, ANALYSIS_TYPE)
+	includeUnitsWithoutEvents := optionalBoolFromResourceData(d, INCLUDE_UNITS_WITHOUT_EVENTS, false)
 	eventDefaultDisabled := !includeUnitsWithoutEvents
 
 	metric := ldapi.MetricPost{
@@ -227,7 +227,7 @@ func resourceMetricCreate(ctx context.Context, d *schema.ResourceData, metaRaw i
 	// Only add successCriteria if it has a value - empty string causes API errors
 	_, ok := d.GetOk(SUCCESS_CRITERIA)
 	if ok {
-		successCriteria := d.Get(SUCCESS_CRITERIA).(string)
+		successCriteria := trimmedStringAttr(d, SUCCESS_CRITERIA)
 		metric.SuccessCriteria = &successCriteria
 	} else {
 		if kind == "custom" {
@@ -296,18 +296,18 @@ func resourceMetricUpdate(ctx context.Context, d *schema.ResourceData, metaRaw i
 	key := d.Get(KEY).(string)
 	name := d.Get(NAME).(string)
 	kind := d.Get(KIND).(string)
-	description := d.Get(DESCRIPTION).(string)
+	description := trimmedStringAttr(d, DESCRIPTION)
 	tags := stringsFromResourceData(d, TAGS)
-	isActive := d.Get(IS_ACTIVE).(bool)
-	isNumeric := d.Get(IS_NUMERIC).(bool)
+	isActive := optionalBoolFromResourceData(d, IS_ACTIVE, false)
+	isNumeric := optionalBoolFromResourceData(d, IS_NUMERIC, false)
 	urls := metricUrlsFromResourceData(d)
 	// Required depending on type
-	unit := d.Get(UNIT).(string)
-	selector := d.Get(SELECTOR).(string)
-	eventKey := d.Get(EVENT_KEY).(string)
-	unitAggregationType := d.Get(UNIT_AGGREGATION_TYPE).(string)
-	analysisType := d.Get(ANALYSIS_TYPE).(string)
-	includeUnitsWithoutEvents := d.Get(INCLUDE_UNITS_WITHOUT_EVENTS).(bool)
+	unit := trimmedStringAttr(d, UNIT)
+	selector := trimmedStringAttr(d, SELECTOR)
+	eventKey := trimmedStringAttr(d, EVENT_KEY)
+	unitAggregationType := trimmedStringAttr(d, UNIT_AGGREGATION_TYPE)
+	analysisType := trimmedStringAttr(d, ANALYSIS_TYPE)
+	includeUnitsWithoutEvents := optionalBoolFromResourceData(d, INCLUDE_UNITS_WITHOUT_EVENTS, false)
 
 	patch := []ldapi.PatchOperation{
 		patchReplace("/name", name),

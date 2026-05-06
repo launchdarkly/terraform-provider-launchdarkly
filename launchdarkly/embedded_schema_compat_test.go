@@ -6,9 +6,12 @@ package launchdarkly
 // client; they exercise pure helper functions and the extracted patch builders.
 
 import (
+	"context"
+	"strings"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 	ldapi "github.com/launchdarkly/api-client-go/v22"
 	"github.com/stretchr/testify/require"
 )
@@ -157,6 +160,77 @@ func TestEffectiveEnvKey_recoversFromID(t *testing.T) {
 	got, err := effectiveEnvKey(d)
 	require.NoError(t, err)
 	require.Equal(t, "name-dev", got)
+}
+
+// customizeProjectDiff must early-return without writing IIS or CSA into the planned diff when the
+// runtime schema is embedded (Upjet) and lacks both attributes. Without the guard at project.go:21-25,
+// the function would unconditionally call SetNew on those keys; even though the missing-key shim
+// swallows the resulting SDK error, taking that path is wasted work and obscures real schema bugs.
+// This test exercises Resource.Diff end-to-end so the early-return is hit through the real SDK path,
+// not just by calling customizeProjectDiff in isolation.
+func TestCustomizeProjectDiff_embeddedSchemaEarlyReturn(t *testing.T) {
+	t.Parallel()
+
+	r := &schema.Resource{
+		Schema:        embeddedProjectSchema(),
+		CustomizeDiff: customizeProjectDiff,
+	}
+
+	cfg := terraform.NewResourceConfigRaw(map[string]interface{}{
+		KEY:  "crossplane-project",
+		NAME: "Crossplane Project",
+		TAGS: []interface{}{"managed-by-crossplane"},
+	})
+
+	require.NotPanics(t, func() {
+		instanceDiff, err := r.Diff(context.Background(), &terraform.InstanceState{}, cfg, nil)
+		require.NoError(t, err, "embedded-schema Diff must not surface a SetNew error")
+		require.NotNil(t, instanceDiff)
+
+		for k := range instanceDiff.Attributes {
+			require.False(t, strings.HasPrefix(k, INCLUDE_IN_SNIPPET),
+				"embedded schema must not produce %q diff entries; got %q", INCLUDE_IN_SNIPPET, k)
+			require.False(t, strings.HasPrefix(k, DEFAULT_CLIENT_SIDE_AVAILABILITY),
+				"embedded schema must not produce %q diff entries; got %q", DEFAULT_CLIENT_SIDE_AVAILABILITY, k)
+		}
+	})
+}
+
+// Counterpart for the full schema: when neither IIS nor CSA appears in config, customizeProjectDiff
+// forces an UPDATE by SetNew-ing both, so the resulting plan should include CSA attribute changes.
+// Guards against the embedded-schema guard (TestCustomizeProjectDiff_embeddedSchemaEarlyReturn)
+// going too far and disabling the fallback under the full Terraform CLI schema.
+func TestCustomizeProjectDiff_fullSchemaForcesCSAUpdate(t *testing.T) {
+	t.Parallel()
+
+	r := resourceProject()
+
+	cfg := terraform.NewResourceConfigRaw(map[string]interface{}{
+		KEY:  "p",
+		NAME: "Project",
+		ENVIRONMENTS: []interface{}{
+			map[string]interface{}{
+				KEY:   "production",
+				NAME:  "Production",
+				COLOR: "417505",
+			},
+		},
+	})
+
+	instanceDiff, err := r.Diff(context.Background(), &terraform.InstanceState{}, cfg, nil)
+	require.NoError(t, err)
+	require.NotNil(t, instanceDiff)
+
+	var sawCSA bool
+	for k := range instanceDiff.Attributes {
+		if strings.HasPrefix(k, DEFAULT_CLIENT_SIDE_AVAILABILITY) {
+			sawCSA = true
+			break
+		}
+	}
+	require.True(t, sawCSA,
+		"full-schema customizeProjectDiff must SetNew on %q to force an UPDATE; got attrs %v",
+		DEFAULT_CLIENT_SIDE_AVAILABILITY, instanceDiff.Attributes)
 }
 
 // effectiveCustomRoleKeyOrError error path: nothing to fall back to.

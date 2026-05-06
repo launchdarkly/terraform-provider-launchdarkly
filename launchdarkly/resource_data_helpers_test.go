@@ -77,6 +77,26 @@ func TestOptionalBoolFromResourceData(t *testing.T) {
 	require.True(t, optionalBoolFromResourceData(wrongType, "x", true))
 }
 
+func TestOptionalIntFromResourceData(t *testing.T) {
+	t.Parallel()
+	withVal := schema.TestResourceDataRaw(t, map[string]*schema.Schema{
+		"x": {Type: schema.TypeInt, Optional: true},
+	}, map[string]interface{}{"x": 42})
+	require.Equal(t, 42, optionalIntFromResourceData(withVal, "x", -1))
+
+	// schema present, value unset → returns int zero value (the default arg only applies when d.Get returns nil)
+	unset := schema.TestResourceDataRaw(t, map[string]*schema.Schema{
+		"x": {Type: schema.TypeInt, Optional: true},
+	}, map[string]interface{}{})
+	require.Equal(t, 0, optionalIntFromResourceData(unset, "x", 7))
+
+	// wrong type at the schema layer → default applies via the type-assertion guard
+	wrongType := schema.TestResourceDataRaw(t, map[string]*schema.Schema{
+		"x": {Type: schema.TypeString, Optional: true},
+	}, map[string]interface{}{"x": "not-an-int"})
+	require.Equal(t, 99, optionalIntFromResourceData(wrongType, "x", 99))
+}
+
 func TestPoliciesFromResourceData_nilPolicyNoPanic(t *testing.T) {
 	t.Parallel()
 

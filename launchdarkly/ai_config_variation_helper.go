@@ -252,7 +252,7 @@ func aiConfigVariationRead(ctx context.Context, d *schema.ResourceData, meta int
 }
 
 func messagesFromResourceData(d *schema.ResourceData) ([]ldapi.Message, error) {
-	raw := d.Get(MESSAGES).([]interface{})
+	raw := getOptionalInterfaceSlice(d, MESSAGES)
 	messages := make([]ldapi.Message, len(raw))
 	for i, v := range raw {
 		m, ok := v.(map[string]interface{})

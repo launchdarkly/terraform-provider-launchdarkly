@@ -50,7 +50,7 @@ func dataSourceTeamMembersRead(ctx context.Context, d *schema.ResourceData, meta
 	client := meta.(*Client)
 	var members []ldapi.Member
 	expectedCount := 0
-	ignoreMissing := d.Get(IGNORE_MISSING).(bool)
+	ignoreMissing := optionalBoolFromResourceData(d, IGNORE_MISSING, false)
 
 	// Get our members
 	// There are tradeoffs to be had here

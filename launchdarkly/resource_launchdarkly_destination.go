@@ -83,7 +83,7 @@ func resourceDestinationCreate(ctx context.Context, d *schema.ResourceData, meta
 	destinationEnvKey := d.Get(ENV_KEY).(string)
 	destinationName := d.Get(NAME).(string)
 	destinationKind := d.Get(KIND).(string)
-	destinationOn := d.Get(ON).(bool)
+	destinationOn := optionalBoolFromResourceData(d, ON, false)
 
 	destinationConfig, err := destinationConfigFromResourceData(d)
 	if err != nil {
@@ -170,7 +170,7 @@ func resourceDestinationUpdate(ctx context.Context, d *schema.ResourceData, meta
 	if err != nil {
 		return diag.FromErr(err)
 	}
-	destinationOn := d.Get(ON).(bool)
+	destinationOn := optionalBoolFromResourceData(d, ON, false)
 
 	patch := []ldapi.PatchOperation{
 		patchReplace("/name", &destinationName),

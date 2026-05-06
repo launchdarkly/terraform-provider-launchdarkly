@@ -138,7 +138,7 @@ func resourceViewUpdate(ctx context.Context, d *schema.ResourceData, metaRaw int
 	}
 
 	if d.HasChange(DESCRIPTION) {
-		patch["description"] = d.Get(DESCRIPTION).(string)
+		patch["description"] = trimmedStringAttr(d, DESCRIPTION)
 	}
 
 	if d.HasChange(MAINTAINER_ID) {
@@ -162,7 +162,7 @@ func resourceViewUpdate(ctx context.Context, d *schema.ResourceData, metaRaw int
 	}
 
 	if d.HasChange(ARCHIVED) {
-		patch["archived"] = d.Get(ARCHIVED).(bool)
+		patch["archived"] = optionalBoolFromResourceData(d, ARCHIVED, false)
 	}
 
 	if len(patch) > 0 {

@@ -124,7 +124,7 @@ func providerConfigure(ctx context.Context, d *schema.ResourceData) (interface{}
 	if host == "" {
 		host = DEFAULT_LAUNCHDARKLY_HOST
 	}
-	configHost := d.Get(API_HOST).(string)
+	configHost := trimmedStringAttr(d, API_HOST)
 	if configHost != "" {
 		host = configHost
 	}
@@ -136,11 +136,11 @@ func providerConfigure(ctx context.Context, d *schema.ResourceData) (interface{}
 
 	// Check configuration data, which should take precedence over
 	// environment variable data, if found.
-	configAccessToken := d.Get(ACCESS_TOKEN).(string)
+	configAccessToken := trimmedStringAttr(d, ACCESS_TOKEN)
 	if configAccessToken != "" {
 		accessToken = configAccessToken
 	}
-	configOAuthToken := d.Get(OAUTH_TOKEN).(string)
+	configOAuthToken := trimmedStringAttr(d, OAUTH_TOKEN)
 	if configOAuthToken != "" {
 		oauthToken = configOAuthToken
 	}
@@ -148,7 +148,7 @@ func providerConfigure(ctx context.Context, d *schema.ResourceData) (interface{}
 		return nil, diag.Errorf("either an %q or %q must be specified", ACCESS_TOKEN, OAUTH_TOKEN)
 	}
 
-	httpTimeoutSeconds := d.Get(HTTP_TIMEOUT).(int)
+	httpTimeoutSeconds := optionalIntFromResourceData(d, HTTP_TIMEOUT, 0)
 	if httpTimeoutSeconds == 0 {
 		httpTimeoutSeconds = DEFAULT_HTTP_TIMEOUT_S
 	}

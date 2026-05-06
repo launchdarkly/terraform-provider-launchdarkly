@@ -128,9 +128,6 @@ func variationPatchesFromResourceData(d *schema.ResourceData) ([]ldapi.PatchOper
 
 func variationsFromSchemaData(schemaVariations interface{}, variationType string) ([]ldapi.Variation, error) {
 	list := interfaceSliceFromAny(schemaVariations)
-	if list == nil {
-		list = []interface{}{}
-	}
 	variations := make([]ldapi.Variation, len(list))
 	if variationType != BOOL_VARIATION && len(list) < 2 {
 		return variations, fmt.Errorf("multivariate flags must have at least two variations defined")

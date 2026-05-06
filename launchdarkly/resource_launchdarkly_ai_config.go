@@ -85,12 +85,12 @@ func resourceAIConfigCreate(ctx context.Context, d *schema.ResourceData, metaRaw
 		// meaningless without a metric. Use d.Get() instead of d.GetOk() because
 		// GetOk returns ok=false for bool(false), which would silently drop an
 		// explicit is_inverted = false.
-		isInverted := d.Get(IS_INVERTED).(bool)
+		isInverted := optionalBoolFromResourceData(d, IS_INVERTED, false)
 		post.IsInverted = &isInverted
 	}
 
 	if v, ok := d.GetOk(TAGS); ok {
-		post.Tags = interfaceSliceToStringSlice(v.(*schema.Set).List())
+		post.Tags = stringsFromSchemaSet(optionalSchemaSetFromInterface(v))
 	}
 
 	var err error
@@ -127,7 +127,7 @@ func resourceAIConfigUpdate(ctx context.Context, d *schema.ResourceData, metaRaw
 	}
 
 	if d.HasChange(DESCRIPTION) {
-		description := d.Get(DESCRIPTION).(string)
+		description := trimmedStringAttr(d, DESCRIPTION)
 		patch.Description = &description
 		hasChanges = true
 	}
@@ -135,13 +135,13 @@ func resourceAIConfigUpdate(ctx context.Context, d *schema.ResourceData, metaRaw
 	// Use d.Get() instead of d.GetOk() so removing a maintainer from config
 	// sends an empty string to the API, clearing it server-side.
 	if d.HasChange(MAINTAINER_ID) {
-		maintainerId := d.Get(MAINTAINER_ID).(string)
+		maintainerId := trimmedStringAttr(d, MAINTAINER_ID)
 		patch.MaintainerId = &maintainerId
 		hasChanges = true
 	}
 
 	if d.HasChange(MAINTAINER_TEAM_KEY) {
-		maintainerTeamKey := d.Get(MAINTAINER_TEAM_KEY).(string)
+		maintainerTeamKey := trimmedStringAttr(d, MAINTAINER_TEAM_KEY)
 		patch.MaintainerTeamKey = &maintainerTeamKey
 		hasChanges = true
 	}
@@ -154,7 +154,7 @@ func resourceAIConfigUpdate(ctx context.Context, d *schema.ResourceData, metaRaw
 
 	if d.HasChange(EVALUATION_METRIC_KEY) {
 		// Use d.Get() instead of d.GetOk() so users can unset to empty string.
-		evaluationMetricKey := d.Get(EVALUATION_METRIC_KEY).(string)
+		evaluationMetricKey := trimmedStringAttr(d, EVALUATION_METRIC_KEY)
 		patch.EvaluationMetricKey = &evaluationMetricKey
 		hasChanges = true
 	}
@@ -162,7 +162,7 @@ func resourceAIConfigUpdate(ctx context.Context, d *schema.ResourceData, metaRaw
 	if d.HasChange(IS_INVERTED) {
 		// Use d.Get() instead of d.GetOk() because GetOk returns ok=false
 		// for bool(false), silently dropping true→false changes.
-		isInverted := d.Get(IS_INVERTED).(bool)
+		isInverted := optionalBoolFromResourceData(d, IS_INVERTED, false)
 		patch.IsInverted = &isInverted
 		hasChanges = true
 	}

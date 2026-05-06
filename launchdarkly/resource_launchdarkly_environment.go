@@ -43,13 +43,13 @@ func resourceEnvironmentCreate(ctx context.Context, d *schema.ResourceData, meta
 	key := d.Get(KEY).(string)
 	name := d.Get(NAME).(string)
 	color := d.Get(COLOR).(string)
-	defaultTTL := int32(d.Get(DEFAULT_TTL).(int))
-	secureMode := d.Get(SECURE_MODE).(bool)
-	defaultTrackEvents := d.Get(DEFAULT_TRACK_EVENTS).(bool)
+	defaultTTL := int32(optionalIntFromResourceData(d, DEFAULT_TTL, 0))
+	secureMode := optionalBoolFromResourceData(d, SECURE_MODE, false)
+	defaultTrackEvents := optionalBoolFromResourceData(d, DEFAULT_TRACK_EVENTS, false)
 	tags := stringsFromSchemaSet(getOptionalSet(d, TAGS))
-	requireComments := d.Get(REQUIRE_COMMENTS).(bool)
-	confirmChanges := d.Get(CONFIRM_CHANGES).(bool)
-	critical := d.Get(CRITICAL).(bool)
+	requireComments := optionalBoolFromResourceData(d, REQUIRE_COMMENTS, false)
+	confirmChanges := optionalBoolFromResourceData(d, CONFIRM_CHANGES, false)
+	critical := optionalBoolFromResourceData(d, CRITICAL, false)
 
 	envPost := ldapi.EnvironmentPost{
 		Name:               name,

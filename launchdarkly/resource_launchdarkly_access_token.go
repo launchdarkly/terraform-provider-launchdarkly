@@ -112,7 +112,7 @@ func validateAPIVersion(val interface{}, key string) (warns []string, errs []err
 }
 
 func validateAccessTokenResource(d *schema.ResourceData) error {
-	accessTokenRole := d.Get(ROLE).(string)
+	accessTokenRole := trimmedStringAttr(d, ROLE)
 	customRolesRaw := optionalSetList(d, CUSTOM_ROLES)
 	policyStatements, err := policyStatementsFromResourceData(getOptionalInterfaceSlice(d, POLICY_STATEMENTS))
 	if err != nil {
@@ -138,8 +138,8 @@ func resourceAccessTokenCreate(ctx context.Context, d *schema.ResourceData, meta
 	}
 
 	client := metaRaw.(*Client)
-	accessTokenName := d.Get(NAME).(string)
-	serviceToken := d.Get(SERVICE_TOKEN).(bool)
+	accessTokenName := trimmedStringAttr(d, NAME)
+	serviceToken := optionalBoolFromResourceData(d, SERVICE_TOKEN, false)
 
 	accessTokenBody := ldapi.AccessTokenPost{
 		Name:         ldapi.PtrString(accessTokenName),
@@ -248,8 +248,8 @@ func resourceAccessTokenUpdate(ctx context.Context, d *schema.ResourceData, meta
 
 	client := metaRaw.(*Client)
 	accessTokenID := d.Id()
-	accessTokenName := d.Get(NAME).(string)
-	accessTokenRole := d.Get(ROLE).(string)
+	accessTokenName := trimmedStringAttr(d, NAME)
+	accessTokenRole := trimmedStringAttr(d, ROLE)
 	customRolesRaw := optionalSetList(d, CUSTOM_ROLES)
 
 	customRoleKeys := make([]string, len(customRolesRaw))
@@ -310,8 +310,8 @@ func resourceAccessTokenUpdate(ctx context.Context, d *schema.ResourceData, meta
 	// Reset the access token if the expire field has been updated
 	if d.HasChange(EXPIRE) {
 		oldExpireRaw, newExpireRaw := d.GetChange(EXPIRE)
-		oldExpire := oldExpireRaw.(int)
-		newExpire := newExpireRaw.(int)
+		oldExpire, _ := oldExpireRaw.(int)
+		newExpire, _ := newExpireRaw.(int)
 		if oldExpire != newExpire && newExpire != 0 {
 			token, err := resetAccessToken(client, accessTokenID, newExpire)
 			if err != nil {

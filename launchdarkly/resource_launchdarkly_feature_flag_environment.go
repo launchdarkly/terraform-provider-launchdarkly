@@ -81,9 +81,10 @@ func resourceFeatureFlagEnvironmentCreate(ctx context.Context, d *schema.Resourc
 	offVariation := d.Get(OFF_VARIATION)
 	patches = append(patches, patchReplace(patchFlagEnvPath(d, "offVariation"), offVariation.(int)))
 
-	trackEvents, ok := d.GetOk(TRACK_EVENTS)
+	_, ok := d.GetOk(TRACK_EVENTS)
 	if ok {
-		patches = append(patches, patchReplace(patchFlagEnvPath(d, "trackEvents"), trackEvents.(bool)))
+		trackEvents := optionalBoolFromResourceData(d, TRACK_EVENTS, false)
+		patches = append(patches, patchReplace(patchFlagEnvPath(d, "trackEvents"), trackEvents))
 	}
 
 	_, ok = d.GetOk(RULES)
@@ -188,7 +189,7 @@ func resourceFeatureFlagEnvironmentUpdate(ctx context.Context, d *schema.Resourc
 	}
 
 	if d.HasChange(TRACK_EVENTS) {
-		trackEvents := d.Get(TRACK_EVENTS).(bool)
+		trackEvents := optionalBoolFromResourceData(d, TRACK_EVENTS, false)
 		patchOperations = append(patchOperations, patchReplace(patchFlagEnvPath(d, "trackEvents"), trackEvents))
 	}
 

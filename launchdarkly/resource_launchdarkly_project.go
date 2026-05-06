@@ -282,13 +282,7 @@ func resourceProjectUpdate(ctx context.Context, d *schema.ResourceData, metaRaw 
 	}
 
 	environmentConfigs := interfaceSliceFromAny(newSchemaEnvList)
-	if environmentConfigs == nil {
-		environmentConfigs = []interface{}{}
-	}
 	oldEnvironmentConfigs := interfaceSliceFromAny(oldSchemaEnvList)
-	if oldEnvironmentConfigs == nil {
-		oldEnvironmentConfigs = []interface{}{}
-	}
 	oldEnvConfigsForCompare := make(map[string]map[string]interface{}, len(oldEnvironmentConfigs))
 	for _, env := range oldEnvironmentConfigs {
 		envConfig := env.(map[string]interface{})
@@ -337,9 +331,6 @@ func resourceProjectUpdate(ctx context.Context, d *schema.ResourceData, metaRaw 
 	// we also want to delete environments that were previously tracked in state and have been removed from the config
 	old, _ := d.GetChange(ENVIRONMENTS)
 	oldEnvs := interfaceSliceFromAny(old)
-	if oldEnvs == nil {
-		oldEnvs = []interface{}{}
-	}
 	for _, env := range oldEnvs {
 		envConfig := env.(map[string]interface{})
 		envKey := envConfig[KEY].(string)

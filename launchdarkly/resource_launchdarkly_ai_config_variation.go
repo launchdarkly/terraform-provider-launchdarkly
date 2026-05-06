@@ -83,7 +83,7 @@ func resourceAIConfigVariationCreate(ctx context.Context, d *schema.ResourceData
 	}
 
 	if v, ok := d.GetOk(TOOL_KEYS); ok {
-		toolKeys := stringsFromSchemaSet(v.(*schema.Set))
+		toolKeys := stringsFromSchemaSet(optionalSchemaSetFromInterface(v))
 		post.ToolKeys = toolKeys
 	}
 
@@ -120,17 +120,17 @@ func resourceAIConfigVariationUpdate(ctx context.Context, d *schema.ResourceData
 	}
 
 	if d.HasChange(DESCRIPTION) {
-		description := d.Get(DESCRIPTION).(string)
+		description := trimmedStringAttr(d, DESCRIPTION)
 		patch.Description = &description
 	}
 
 	if d.HasChange(INSTRUCTIONS) {
-		instructions := d.Get(INSTRUCTIONS).(string)
+		instructions := trimmedStringAttr(d, INSTRUCTIONS)
 		patch.Instructions = &instructions
 	}
 
 	if d.HasChange(MODEL) {
-		modelMap, err := jsonStringToMap(d.Get(MODEL).(string))
+		modelMap, err := jsonStringToMap(trimmedStringAttr(d, MODEL))
 		if err != nil {
 			return diag.Errorf("failed to parse model JSON: %s", err)
 		}
@@ -138,7 +138,7 @@ func resourceAIConfigVariationUpdate(ctx context.Context, d *schema.ResourceData
 	}
 
 	if d.HasChange(MODEL_CONFIG_KEY) {
-		modelConfigKey := d.Get(MODEL_CONFIG_KEY).(string)
+		modelConfigKey := trimmedStringAttr(d, MODEL_CONFIG_KEY)
 		patch.ModelConfigKey = &modelConfigKey
 	}
 
@@ -151,12 +151,12 @@ func resourceAIConfigVariationUpdate(ctx context.Context, d *schema.ResourceData
 	}
 
 	if d.HasChange(STATE) {
-		state := d.Get(STATE).(string)
+		state := trimmedStringAttr(d, STATE)
 		patch.State = &state
 	}
 
 	if d.HasChange(TOOL_KEYS) {
-		toolKeys := stringsFromSchemaSet(d.Get(TOOL_KEYS).(*schema.Set))
+		toolKeys := stringsFromSchemaSet(getOptionalSet(d, TOOL_KEYS))
 		patch.ToolKeys = toolKeys
 	}
 

@@ -76,8 +76,8 @@ func resourceCustomRoleCreate(ctx context.Context, d *schema.ResourceData, metaR
 			"%s is required for custom role creation. If the embedded schema omits it, set the Terraform resource id (Crossplane external-name) to the LaunchDarkly role key before create.", KEY)
 	}
 	customRoleName := d.Get(NAME).(string)
-	customRoleDescription := d.Get(DESCRIPTION).(string)
-	customRoleBasePermissions := d.Get(BASE_PERMISSIONS).(string)
+	customRoleDescription := trimmedStringAttr(d, DESCRIPTION)
+	customRoleBasePermissions := trimmedStringAttr(d, BASE_PERMISSIONS)
 	customRolePolicies := policiesFromResourceData(d)
 	policyStatements, err := policyStatementsFromResourceData(getOptionalInterfaceSlice(d, POLICY_STATEMENTS))
 	if err != nil {
@@ -185,8 +185,8 @@ func resourceCustomRoleUpdate(ctx context.Context, d *schema.ResourceData, metaR
 		return diag.Errorf("cannot update custom role: %s is empty and resource id is empty", KEY)
 	}
 	customRoleName := d.Get(NAME).(string)
-	customRoleDescription := d.Get(DESCRIPTION).(string)
-	customRoleBasePermissions := d.Get(BASE_PERMISSIONS).(string)
+	customRoleDescription := trimmedStringAttr(d, DESCRIPTION)
+	customRoleBasePermissions := trimmedStringAttr(d, BASE_PERMISSIONS)
 	customRolePolicies := policiesFromResourceData(d)
 	policyStatements, err := policyStatementsFromResourceData(getOptionalInterfaceSlice(d, POLICY_STATEMENTS))
 	if err != nil {

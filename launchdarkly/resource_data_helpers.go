@@ -8,16 +8,12 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
-// emptyInterfaceSlice is returned in place of nil for list-shaped helpers so callers can iterate
-// without nil checks and JSON marshalling stays deterministic.
 func emptyInterfaceSlice() []interface{} { return []interface{}{} }
 
 func getOptionalSet(d *schema.ResourceData, key string) *schema.Set {
 	return optionalSchemaSetFromInterface(d.Get(key))
 }
 
-// optionalSetList returns the contents of a TypeSet attribute as []interface{}.
-// Returns an empty (non-nil) slice when the key is missing/unset/wrong type.
 func optionalSetList(d *schema.ResourceData, key string) []interface{} {
 	s := getOptionalSet(d, key)
 	if s == nil {
@@ -26,15 +22,12 @@ func optionalSetList(d *schema.ResourceData, key string) []interface{} {
 	return s.List()
 }
 
-// getOptionalInterfaceSlice returns a TypeList attribute as []interface{}.
-// Returns an empty (non-nil) slice when the key is missing/unset/wrong type.
 func getOptionalInterfaceSlice(d *schema.ResourceData, key string) []interface{} {
 	return interfaceSliceFromAny(d.Get(key))
 }
 
-// optionalSchemaSetFromInterface returns nil when v is nil or not a *schema.Set; otherwise the set.
-// Sets retain nil semantics so callers that pass them straight back into helpers (e.g. .List()) can
-// branch on a nil set without an extra zero-length allocation.
+// optionalSchemaSetFromInterface preserves nil for absent/wrong-type values so callers can
+// distinguish "not set" from "set to empty" — list-shaped helpers normalize to empty.
 func optionalSchemaSetFromInterface(v interface{}) *schema.Set {
 	if v == nil {
 		return nil
@@ -46,9 +39,8 @@ func optionalSchemaSetFromInterface(v interface{}) *schema.Set {
 	return s
 }
 
-// interfaceSliceFromAny normalizes any-shaped list values to []interface{}.
-// Nil or wrong-type input yields an empty (non-nil) slice; the wrong-type case is logged so a
-// schema regression is observable instead of silently coerced.
+// interfaceSliceFromAny logs at WARN on type mismatch so embedded-schema regressions surface
+// instead of silently coercing to empty.
 func interfaceSliceFromAny(v interface{}) []interface{} {
 	if v == nil {
 		return emptyInterfaceSlice()
@@ -61,19 +53,16 @@ func interfaceSliceFromAny(v interface{}) []interface{} {
 	return s
 }
 
-// stringListFromOptionalSetValue converts a *schema.Set wrapped in interface{} (e.g. diff.Get / GetChange)
-// to a []string for LaunchDarkly API calls. Nil or wrong type yields nil (preserves prior behavior;
-// LD API calls treat nil and empty []string identically and a few callers depend on the nil signal).
+// stringListFromOptionalSetValue returns nil (not empty) for nil sets — LD API treats nil and
+// empty []string identically and a few callers depend on the nil signal.
 func stringListFromOptionalSetValue(v interface{}) []string {
 	s := optionalSchemaSetFromInterface(v)
 	if s == nil {
 		return nil
 	}
-	return interfaceSliceToStringSlice(s.List())
+	return stringsFromSchemaSet(s)
 }
 
-// optionalSetListFromAny returns the contents of a *schema.Set value as []interface{}.
-// Returns an empty (non-nil) slice when the input is nil or wrong type.
 func optionalSetListFromAny(v interface{}) []interface{} {
 	s := optionalSchemaSetFromInterface(v)
 	if s == nil {
@@ -82,10 +71,24 @@ func optionalSetListFromAny(v interface{}) []interface{} {
 	return s.List()
 }
 
-// optionalBoolFromResourceData returns d.Get(key) as bool when it is a non-nil bool value.
-// When the key is missing from the schema or Get returns nil (e.g. Upjet-embedded provider),
-// defaultVal is used. A wrong-type value (schema regression) is logged at WARN and treated as
-// missing so callers do not accidentally observe schema misconfiguration as a real "false".
+// optionalIntFromResourceData uses defaultVal when the schema is missing the key (Upjet-embedded
+// provider returns nil from d.Get). Wrong-type values log at WARN so regressions stay visible.
+func optionalIntFromResourceData(d *schema.ResourceData, key string, defaultVal int) int {
+	v := d.Get(key)
+	if v == nil {
+		return defaultVal
+	}
+	i, ok := v.(int)
+	if !ok {
+		log.Printf("[WARN] optionalIntFromResourceData: %q is not an int (got %T); using default %v", key, v, defaultVal)
+		return defaultVal
+	}
+	return i
+}
+
+// optionalBoolFromResourceData uses defaultVal for missing keys (Upjet-embedded provider returns
+// nil from d.Get). Wrong-type values log at WARN and fall back to defaultVal — without this guard
+// callers would observe a schema regression as a real "false".
 func optionalBoolFromResourceData(d *schema.ResourceData, key string, defaultVal bool) bool {
 	v := d.Get(key)
 	if v == nil {
@@ -99,8 +102,8 @@ func optionalBoolFromResourceData(d *schema.ResourceData, key string, defaultVal
 	return b
 }
 
-// trimmedStringAttr returns strings.TrimSpace(d.Get(key)) for string attributes.
-// Returns "" for missing keys; logs at WARN for wrong types so schema regressions are visible.
+// trimmedStringAttr returns "" for missing keys; logs at WARN on wrong type so schema regressions
+// are visible.
 func trimmedStringAttr(d *schema.ResourceData, key string) string {
 	v := d.Get(key)
 	if v == nil {
@@ -114,10 +117,9 @@ func trimmedStringAttr(d *schema.ResourceData, key string) string {
 	return strings.TrimSpace(s)
 }
 
-// effectiveEnvKey returns ENV_KEY from config when set; otherwise parses env_key from the resource
-// id "project_key/env_key/flag_key" (or "/segment_key"). Returns an explicit error when env_key is
-// neither in the attributes nor recoverable from a well-formed id; callers should propagate via
-// diag.FromErr so an unset env_key is a real failure rather than an ambient empty string.
+// effectiveEnvKey falls back to the env_key embedded in resource id "project_key/env_key/<key>"
+// when the attribute is missing — required for the Crossplane / Upjet external-name flow where
+// the schema may strip env_key from the resource view.
 func effectiveEnvKey(d *schema.ResourceData) (string, error) {
 	if k := trimmedStringAttr(d, ENV_KEY); k != "" {
 		return k, nil
@@ -137,9 +139,8 @@ func effectiveEnvKey(d *schema.ResourceData) (string, error) {
 	return envKey, nil
 }
 
-// effectiveEnvKeyFromIDOrAttr is the legacy ergonomic wrapper around effectiveEnvKey for callsites
-// (notably patch path builders) that cannot return an error. Logs at WARN when the lookup fails so
-// the underlying issue still surfaces; prefer effectiveEnvKey in new code.
+// effectiveEnvKeyFromIDOrAttr is the no-error wrapper for callsites (e.g. patch-path builders)
+// that cannot return one. Prefer effectiveEnvKey in new code.
 func effectiveEnvKeyFromIDOrAttr(d *schema.ResourceData) string {
 	k, err := effectiveEnvKey(d)
 	if err != nil {
@@ -149,9 +150,8 @@ func effectiveEnvKeyFromIDOrAttr(d *schema.ResourceData) string {
 	return k
 }
 
-// effectiveCustomRoleKeyOrError returns KEY from config when set; otherwise the Terraform resource
-// id (Crossplane external-name / observe id), which must be the LaunchDarkly custom role key.
-// Returns an error when both are empty.
+// effectiveCustomRoleKeyOrError falls back to d.Id() (Crossplane external-name) when KEY is unset
+// — under embedded schemas the LD custom role key is set via the Terraform id, not the attribute.
 func effectiveCustomRoleKeyOrError(d *schema.ResourceData) (string, error) {
 	if k := trimmedStringAttr(d, KEY); k != "" {
 		return k, nil
@@ -163,8 +163,7 @@ func effectiveCustomRoleKeyOrError(d *schema.ResourceData) (string, error) {
 	return id, nil
 }
 
-// effectiveCustomRoleKey is the legacy ergonomic wrapper around effectiveCustomRoleKeyOrError.
-// Returns "" on failure; callers in this provider check for empty and emit a diag.
+// effectiveCustomRoleKey is the no-error wrapper. Callers check for empty and emit a diag.
 func effectiveCustomRoleKey(d *schema.ResourceData) string {
 	k, err := effectiveCustomRoleKeyOrError(d)
 	if err != nil {

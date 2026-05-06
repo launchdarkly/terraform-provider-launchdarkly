@@ -45,10 +45,10 @@ This resource allows you to create and manage webhooks within your LaunchDarkly 
 func resourceWebhookCreate(ctx context.Context, d *schema.ResourceData, metaRaw interface{}) diag.Diagnostics {
 	client := metaRaw.(*Client)
 	webhookURL := d.Get(URL).(string)
-	webhookSecret := d.Get(SECRET).(string)
-	webhookName := d.Get(NAME).(string)
+	webhookSecret := trimmedStringAttr(d, SECRET)
+	webhookName := trimmedStringAttr(d, NAME)
 
-	webhookOn := d.Get(ON).(bool)
+	webhookOn := optionalBoolFromResourceData(d, ON, false)
 
 	webhookBody := ldapi.WebhookPost{
 		Url:  webhookURL,
@@ -104,10 +104,10 @@ func resourceWebhookUpdate(ctx context.Context, d *schema.ResourceData, metaRaw 
 	client := metaRaw.(*Client)
 	webhookID := d.Id()
 	webhookURL := d.Get(URL).(string)
-	webhookSecret := d.Get(SECRET).(string)
-	webhookName := d.Get(NAME).(string)
+	webhookSecret := trimmedStringAttr(d, SECRET)
+	webhookName := trimmedStringAttr(d, NAME)
 	webhookTags := stringsFromResourceData(d, TAGS)
-	webhookOn := d.Get(ON).(bool)
+	webhookOn := optionalBoolFromResourceData(d, ON, false)
 
 	patch := []ldapi.PatchOperation{
 		patchReplace("/url", &webhookURL),

@@ -170,7 +170,7 @@ func getCurrentCSA(client *Client, projectKey string) (*ldapi.DefaultClientSideA
 
 func flagTemplatesPayloadFromResourceData(d *schema.ResourceData, csa ldapi.DefaultClientSideAvailability) ldapi.UpsertFlagDefaultsPayload {
 	tags := stringsFromResourceData(d, TAGS)
-	temporary := d.Get(TEMPORARY).(bool)
+	temporary := optionalBoolFromResourceData(d, TEMPORARY, false)
 
 	trueDisplayName := d.Get(fmt.Sprintf("%s.0.%s", BOOLEAN_DEFAULTS, TRUE_DISPLAY_NAME)).(string)
 	falseDisplayName := d.Get(fmt.Sprintf("%s.0.%s", BOOLEAN_DEFAULTS, FALSE_DISPLAY_NAME)).(string)

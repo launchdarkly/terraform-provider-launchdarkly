@@ -81,7 +81,7 @@ func resourceFeatureFlagCreate(ctx context.Context, d *schema.ResourceData, meta
 	}
 
 	key := d.Get(KEY).(string)
-	description := d.Get(DESCRIPTION).(string)
+	description := trimmedStringAttr(d, DESCRIPTION)
 	flagName := d.Get(NAME).(string)
 	tags := stringsFromResourceData(d, TAGS)
 	includeInSnippet := optionalBoolFromResourceData(d, INCLUDE_IN_SNIPPET, false)
@@ -215,7 +215,7 @@ func featureFlagUpdate(ctx context.Context, d *schema.ResourceData, metaRaw inte
 	client := metaRaw.(*Client)
 	key := d.Get(KEY).(string)
 	projectKey := d.Get(PROJECT_KEY).(string)
-	description := d.Get(DESCRIPTION).(string)
+	description := trimmedStringAttr(d, DESCRIPTION)
 	name := d.Get(NAME).(string)
 	tags := stringsFromResourceData(d, TAGS)
 	includeInSnippet := optionalBoolFromResourceData(d, INCLUDE_IN_SNIPPET, false)
