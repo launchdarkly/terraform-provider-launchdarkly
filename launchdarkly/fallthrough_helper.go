@@ -58,7 +58,7 @@ type fallthroughModel struct {
 }
 
 func validateFallThroughResourceData(f []interface{}) error {
-	if f == nil || len(f) == 0 {
+	if len(f) == 0 {
 		return errors.New("feature flag fallthrough block cannot be empty. Please specify at least one of variation or rollout_weights")
 	}
 	for _, block := range f {
