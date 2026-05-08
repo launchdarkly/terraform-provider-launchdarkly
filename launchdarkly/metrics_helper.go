@@ -243,7 +243,7 @@ func metricUrlSchema() map[string]*schema.Schema {
 }
 
 func metricUrlsFromResourceData(d *schema.ResourceData) []ldapi.UrlPost {
-	schemaUrlList := d.Get(URLS).([]interface{})
+	schemaUrlList := getOptionalInterfaceSlice(d, URLS)
 	urls := make([]ldapi.UrlPost, len(schemaUrlList))
 	for i, url := range schemaUrlList {
 		urls[i] = metricUrlPostFromResourceData(url)

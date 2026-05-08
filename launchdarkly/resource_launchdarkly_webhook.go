@@ -45,10 +45,10 @@ This resource allows you to create and manage webhooks within your LaunchDarkly 
 func resourceWebhookCreate(ctx context.Context, d *schema.ResourceData, metaRaw interface{}) diag.Diagnostics {
 	client := metaRaw.(*Client)
 	webhookURL := d.Get(URL).(string)
-	webhookSecret := d.Get(SECRET).(string)
-	webhookName := d.Get(NAME).(string)
+	webhookSecret := optionalStringAttr(d, SECRET)
+	webhookName := optionalStringAttr(d, NAME)
 
-	webhookOn := d.Get(ON).(bool)
+	webhookOn := optionalBoolFromResourceData(d, ON, false)
 
 	webhookBody := ldapi.WebhookPost{
 		Url:  webhookURL,
@@ -57,7 +57,7 @@ func resourceWebhookCreate(ctx context.Context, d *schema.ResourceData, metaRaw 
 	}
 
 	if rawStatements, ok := d.GetOk(STATEMENTS); ok {
-		statements, err := policyStatementsFromResourceData(rawStatements.([]interface{}))
+		statements, err := policyStatementsFromResourceData(interfaceSliceFromAny(rawStatements))
 		if err != nil {
 			return diag.FromErr(err)
 		}
@@ -104,10 +104,10 @@ func resourceWebhookUpdate(ctx context.Context, d *schema.ResourceData, metaRaw 
 	client := metaRaw.(*Client)
 	webhookID := d.Id()
 	webhookURL := d.Get(URL).(string)
-	webhookSecret := d.Get(SECRET).(string)
-	webhookName := d.Get(NAME).(string)
+	webhookSecret := optionalStringAttr(d, SECRET)
+	webhookName := optionalStringAttr(d, NAME)
 	webhookTags := stringsFromResourceData(d, TAGS)
-	webhookOn := d.Get(ON).(bool)
+	webhookOn := optionalBoolFromResourceData(d, ON, false)
 
 	patch := []ldapi.PatchOperation{
 		patchReplace("/url", &webhookURL),
@@ -117,7 +117,7 @@ func resourceWebhookUpdate(ctx context.Context, d *schema.ResourceData, metaRaw 
 		patchReplace("/tags", &webhookTags),
 	}
 
-	statements, err := policyStatementsFromResourceData(d.Get(STATEMENTS).([]interface{}))
+	statements, err := policyStatementsFromResourceData(getOptionalInterfaceSlice(d, STATEMENTS))
 	if err != nil {
 		return diag.FromErr(err)
 	}

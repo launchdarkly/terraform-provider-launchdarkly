@@ -80,7 +80,7 @@ func projectRead(ctx context.Context, d *schema.ResourceData, meta interface{}, 
 
 		// iterate over the environment keys in the order defined by the config and look up the environment returned by
 		// LD's API
-		rawEnvs := d.Get(ENVIRONMENTS).([]interface{})
+		rawEnvs := getOptionalInterfaceSlice(d, ENVIRONMENTS)
 
 		envConfigKeys := rawEnvironmentConfigsToKeyList(rawEnvs)
 		envAddedMap := make(map[string]bool, len(project.Environments.Items))
@@ -106,7 +106,7 @@ func projectRead(ctx context.Context, d *schema.ResourceData, meta interface{}, 
 			return diag.Errorf("could not set environments on project with key %q: %v", project.Key, err)
 		}
 
-		err = d.Set(INCLUDE_IN_SNIPPET, project.IncludeInSnippetByDefault)
+		err = resourceDataSetSkipMissingKey(d, INCLUDE_IN_SNIPPET, project.IncludeInSnippetByDefault)
 		if err != nil {
 			return diag.Errorf("could not set include_in_snippet on project with key %q: %v", project.Key, err)
 		}
@@ -117,7 +117,7 @@ func projectRead(ctx context.Context, d *schema.ResourceData, meta interface{}, 
 		return diag.Errorf("could not set tags on project with key %q: %v", project.Key, err)
 	}
 
-	err = d.Set(DEFAULT_CLIENT_SIDE_AVAILABILITY, clientSideAvailability)
+	err = resourceDataSetSkipMissingKey(d, DEFAULT_CLIENT_SIDE_AVAILABILITY, clientSideAvailability)
 	if err != nil {
 		return diag.Errorf("could not set default_client_side_availability on project with key %q: %v", project.Key, err)
 	}

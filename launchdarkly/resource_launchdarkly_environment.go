@@ -43,13 +43,13 @@ func resourceEnvironmentCreate(ctx context.Context, d *schema.ResourceData, meta
 	key := d.Get(KEY).(string)
 	name := d.Get(NAME).(string)
 	color := d.Get(COLOR).(string)
-	defaultTTL := int32(d.Get(DEFAULT_TTL).(int))
-	secureMode := d.Get(SECURE_MODE).(bool)
-	defaultTrackEvents := d.Get(DEFAULT_TRACK_EVENTS).(bool)
-	tags := stringsFromSchemaSet(d.Get(TAGS).(*schema.Set))
-	requireComments := d.Get(REQUIRE_COMMENTS).(bool)
-	confirmChanges := d.Get(CONFIRM_CHANGES).(bool)
-	critical := d.Get(CRITICAL).(bool)
+	defaultTTL := int32(optionalIntFromResourceData(d, DEFAULT_TTL, 0))
+	secureMode := optionalBoolFromResourceData(d, SECURE_MODE, false)
+	defaultTrackEvents := optionalBoolFromResourceData(d, DEFAULT_TRACK_EVENTS, false)
+	tags := stringsFromSchemaSet(getOptionalSet(d, TAGS))
+	requireComments := optionalBoolFromResourceData(d, REQUIRE_COMMENTS, false)
+	confirmChanges := optionalBoolFromResourceData(d, CONFIRM_CHANGES, false)
+	critical := optionalBoolFromResourceData(d, CRITICAL, false)
 
 	envPost := ldapi.EnvironmentPost{
 		Name:               name,
@@ -73,8 +73,8 @@ func resourceEnvironmentCreate(ctx context.Context, d *schema.ResourceData, meta
 		return diag.Errorf("failed to create environment: [%+v] for project key: %s: %s", envPost, projectKey, handleLdapiErr(err))
 	}
 
-	approvalSettings := d.Get(APPROVAL_SETTINGS)
-	if len(approvalSettings.([]interface{})) > 0 {
+	approvalSettings := interfaceSliceFromAny(d.Get(APPROVAL_SETTINGS))
+	if len(approvalSettings) > 0 {
 		updateDiags := resourceEnvironmentUpdate(ctx, d, metaRaw)
 		if updateDiags.HasError() {
 			// if there was a problem in the update state, we need to clean up completely by deleting the env

@@ -41,8 +41,10 @@ func policyArraySchema() *schema.Schema {
 }
 
 func policiesFromResourceData(d *schema.ResourceData) []ldapi.StatementPost {
-	schemaPolicies := d.Get(POLICY).(*schema.Set)
-
+	schemaPolicies := getOptionalSet(d, POLICY)
+	if schemaPolicies == nil {
+		return []ldapi.StatementPost{}
+	}
 	policies := make([]ldapi.StatementPost, schemaPolicies.Len())
 	list := schemaPolicies.List()
 	for i, policy := range list {

@@ -56,7 +56,7 @@ func relayProxyConfigCreate(ctx context.Context, d *schema.ResourceData, m inter
 	client := m.(*Client)
 
 	name := d.Get(NAME).(string)
-	policy, err := policyStatementsFromResourceData(d.Get(POLICY).([]interface{}))
+	policy, err := policyStatementsFromResourceData(getOptionalInterfaceSlice(d, POLICY))
 	if err != nil {
 		return diag.FromErr(err)
 	}
@@ -138,7 +138,7 @@ func relayProxyConfigUpdate(ctx context.Context, d *schema.ResourceData, m inter
 
 	id := d.Id()
 	name := d.Get(NAME).(string)
-	policy, err := policyStatementsFromResourceData(d.Get(POLICY).([]interface{}))
+	policy, err := policyStatementsFromResourceData(getOptionalInterfaceSlice(d, POLICY))
 	if err != nil {
 		return diag.FromErr(err)
 	}

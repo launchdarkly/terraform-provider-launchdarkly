@@ -8,7 +8,7 @@ import (
 )
 
 func defaultVariationsFromResourceData(d *schema.ResourceData) (*ldapi.Defaults, error) {
-	schemaVariations := d.Get(VARIATIONS).([]interface{})
+	schemaVariations := getOptionalInterfaceSlice(d, VARIATIONS)
 	numberOfVariations := len(schemaVariations)
 	variationType := d.Get(VARIATION_TYPE).(string)
 	rawDefaults, ok := d.GetOk(DEFAULTS)

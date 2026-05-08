@@ -16,12 +16,21 @@ import (
 func customizeProjectDiff(ctx context.Context, diff *schema.ResourceDiff, v interface{}) error {
 	config := diff.GetRawConfig()
 
-	// Below values will exist due to the schema, we need to check if they are all null
-	snippetInConfig := config.GetAttr(INCLUDE_IN_SNIPPET)
-	csaInConfig := config.GetAttr(DEFAULT_CLIENT_SIDE_AVAILABILITY)
+	// Upjet may omit both deprecated IIS/CSA attributes from the embedded schema entirely; skip this
+	// CustomizeDiff workaround when neither appears on the raw config object type (avoids SetNew noise).
+	if ty := config.Type(); ty.IsObjectType() {
+		if !ty.HasAttribute(INCLUDE_IN_SNIPPET) && !ty.HasAttribute(DEFAULT_CLIENT_SIDE_AVAILABILITY) {
+			return nil
+		}
+	}
+
+	// Below values will exist due to the schema, we need to check if they are all null.
+	// Use safe cty access for embedded providers (Upjet) where raw config may omit attributes.
+	snippetInConfig := ctyObjectGetAttr(config, INCLUDE_IN_SNIPPET)
+	csaInConfig := ctyObjectGetAttr(config, DEFAULT_CLIENT_SIDE_AVAILABILITY)
 
 	// If we have no keys in the CSA block in the config (length is 0) we know the customer hasn't set any CSA values
-	csaKeys := csaInConfig.AsValueSlice()
+	csaKeys := ctyValueListElements(csaInConfig)
 	if len(csaKeys) == 0 {
 		// When we have no values for either clienSideAvailability or includeInSnippet
 		// Force an UPDATE call by setting a new value for INCLUDE_IN_SNIPPET in the diff according to project defaults
@@ -33,11 +42,11 @@ func customizeProjectDiff(ctx context.Context, diff *schema.ResourceDiff, v inte
 			// AND the customer removes the INCLUDE_IN_SNIPPET key from the config without replacing with defaultCSA
 			// The read would assume no changes are needed, HOWEVER we need to jump back to LD set defaults
 			// Hence the setting below
-			err := diff.SetNew(INCLUDE_IN_SNIPPET, false)
+			err := resourceDiffSetNewSkipMissingKey(diff, INCLUDE_IN_SNIPPET, false)
 			if err != nil {
 				return err
 			}
-			err = diff.SetNew(DEFAULT_CLIENT_SIDE_AVAILABILITY, []map[string]interface{}{{
+			err = resourceDiffSetNewSkipMissingKey(diff, DEFAULT_CLIENT_SIDE_AVAILABILITY, []map[string]interface{}{{
 				USING_ENVIRONMENT_ID: false,
 				USING_MOBILE_KEY:     true,
 			}})
@@ -184,12 +193,12 @@ func resourceProjectRead(ctx context.Context, d *schema.ResourceData, metaRaw in
 	return projectRead(ctx, d, metaRaw, false)
 }
 
-func resourceProjectUpdate(ctx context.Context, d *schema.ResourceData, metaRaw interface{}) diag.Diagnostics {
-	client := metaRaw.(*Client)
-	projectKey := d.Get(KEY).(string)
+// buildProjectUpdatePatches assembles the JSON Patch document for resourceProjectUpdate.
+// Extracted so the CSA/IIS fallback decision can be unit-tested without a live LD client.
+func buildProjectUpdatePatches(d *schema.ResourceData) []ldapi.PatchOperation {
 	projName := d.Get(NAME)
 	projTags := stringsFromResourceData(d, TAGS)
-	includeInSnippet := d.Get(INCLUDE_IN_SNIPPET).(bool)
+	includeInSnippet := optionalBoolFromResourceData(d, INCLUDE_IN_SNIPPET, false)
 
 	snippetHasChange := d.HasChange(INCLUDE_IN_SNIPPET)
 	clientSideHasChange := d.HasChange(DEFAULT_CLIENT_SIDE_AVAILABILITY)
@@ -199,8 +208,8 @@ func resourceProjectUpdate(ctx context.Context, d *schema.ResourceData, metaRaw 
 	_, includeInSnippetOk := d.GetOkExists(INCLUDE_IN_SNIPPET)
 	_, clientSideAvailabilityOk := d.GetOk(DEFAULT_CLIENT_SIDE_AVAILABILITY)
 	defaultClientSideAvailability := &ldapi.ClientSideAvailabilityPost{
-		UsingEnvironmentId: d.Get(fmt.Sprintf("%s.0.using_environment_id", DEFAULT_CLIENT_SIDE_AVAILABILITY)).(bool),
-		UsingMobileKey:     d.Get(fmt.Sprintf("%s.0.using_mobile_key", DEFAULT_CLIENT_SIDE_AVAILABILITY)).(bool),
+		UsingEnvironmentId: optionalBoolFromResourceData(d, fmt.Sprintf("%s.0.using_environment_id", DEFAULT_CLIENT_SIDE_AVAILABILITY), false),
+		UsingMobileKey:     optionalBoolFromResourceData(d, fmt.Sprintf("%s.0.using_mobile_key", DEFAULT_CLIENT_SIDE_AVAILABILITY), false),
 	}
 
 	patch := []ldapi.PatchOperation{
@@ -208,21 +217,39 @@ func resourceProjectUpdate(ctx context.Context, d *schema.ResourceData, metaRaw 
 		patchReplace("/tags", &projTags),
 	}
 
-	if clientSideAvailabilityOk && clientSideHasChange {
+	// Upjet/embedded schemas may strip the deprecated INCLUDE_IN_SNIPPET and the
+	// DEFAULT_CLIENT_SIDE_AVAILABILITY block. In that case neither attribute is in the user's
+	// config and we must not append a fallback /defaultClientSideAvailability patch — doing so
+	// would overwrite server-side defaults on every "tags only" update.
+	schemaExposesCSAOrIIS := rawConfigHasAnyAttr(d.GetRawConfig(), INCLUDE_IN_SNIPPET, DEFAULT_CLIENT_SIDE_AVAILABILITY)
+
+	switch {
+	case clientSideAvailabilityOk && clientSideHasChange:
 		patch = append(patch, patchReplace("/defaultClientSideAvailability", defaultClientSideAvailability))
-	} else if includeInSnippetOk && snippetHasChange {
+	case includeInSnippetOk && snippetHasChange:
 		// If includeInSnippet is set, still use clientSideAvailability behind the scenes in order to switch UsingMobileKey to false if needed
 		patch = append(patch, patchReplace("/defaultClientSideAvailability", &ldapi.ClientSideAvailabilityPost{
 			UsingEnvironmentId: includeInSnippet,
 			UsingMobileKey:     true,
 		}))
-	} else {
-		// If the user doesn't set either CSA or IIS in config, we set defaults to match API behaviour
+	case schemaExposesCSAOrIIS:
+		// If the user doesn't set either CSA or IIS in config, we set defaults to match API behaviour.
+		// Only do this when the schema actually exposes those attributes; otherwise we'd overwrite
+		// server-side state that the user never opted into managing via Terraform.
 		patch = append(patch, patchReplace("/defaultClientSideAvailability", &ldapi.ClientSideAvailabilityPost{
 			UsingEnvironmentId: false,
 			UsingMobileKey:     true,
 		}))
 	}
+
+	return patch
+}
+
+func resourceProjectUpdate(ctx context.Context, d *schema.ResourceData, metaRaw interface{}) diag.Diagnostics {
+	client := metaRaw.(*Client)
+	projectKey := d.Get(KEY).(string)
+
+	patch := buildProjectUpdatePatches(d)
 
 	var err error
 	err = client.withConcurrency(client.ctx, func() error {
@@ -238,8 +265,8 @@ func resourceProjectUpdate(ctx context.Context, d *schema.ResourceData, metaRaw 
 	flagsRequiredChanged := d.HasChange(REQUIRE_VIEW_ASSOCIATION_FOR_NEW_FLAGS)
 	segmentsRequiredChanged := d.HasChange(REQUIRE_VIEW_ASSOCIATION_FOR_NEW_SEGMENTS)
 	if flagsRequiredChanged || segmentsRequiredChanged {
-		flagsRequired := d.Get(REQUIRE_VIEW_ASSOCIATION_FOR_NEW_FLAGS).(bool)
-		segmentsRequired := d.Get(REQUIRE_VIEW_ASSOCIATION_FOR_NEW_SEGMENTS).(bool)
+		flagsRequired := optionalBoolFromResourceData(d, REQUIRE_VIEW_ASSOCIATION_FOR_NEW_FLAGS, false)
+		segmentsRequired := optionalBoolFromResourceData(d, REQUIRE_VIEW_ASSOCIATION_FOR_NEW_SEGMENTS, false)
 		err = patchProjectViewSettings(ctx, client, projectKey, flagsRequired, segmentsRequired, flagsRequiredChanged, segmentsRequiredChanged)
 		if err != nil {
 			return diag.Errorf("failed to update view association settings for project %q: %s", projectKey, err)
@@ -254,8 +281,8 @@ func resourceProjectUpdate(ctx context.Context, d *schema.ResourceData, metaRaw 
 		return diag.Errorf("failed to load project %q before updating environments: %s", projectKey, handleLdapiErr(err))
 	}
 
-	environmentConfigs := newSchemaEnvList.([]interface{})
-	oldEnvironmentConfigs := oldSchemaEnvList.([]interface{})
+	environmentConfigs := interfaceSliceFromAny(newSchemaEnvList)
+	oldEnvironmentConfigs := interfaceSliceFromAny(oldSchemaEnvList)
 	oldEnvConfigsForCompare := make(map[string]map[string]interface{}, len(oldEnvironmentConfigs))
 	for _, env := range oldEnvironmentConfigs {
 		envConfig := env.(map[string]interface{})
@@ -303,7 +330,7 @@ func resourceProjectUpdate(ctx context.Context, d *schema.ResourceData, metaRaw 
 	}
 	// we also want to delete environments that were previously tracked in state and have been removed from the config
 	old, _ := d.GetChange(ENVIRONMENTS)
-	oldEnvs := old.([]interface{})
+	oldEnvs := interfaceSliceFromAny(old)
 	for _, env := range oldEnvs {
 		envConfig := env.(map[string]interface{})
 		envKey := envConfig[KEY].(string)

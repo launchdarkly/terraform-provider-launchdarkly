@@ -49,8 +49,8 @@ This resource allows you to manage the IP allowlist configuration for your Launc
 func resourceIpAllowlistConfigCreate(ctx context.Context, d *schema.ResourceData, metaRaw interface{}) diag.Diagnostics {
 	client := metaRaw.(*Client)
 
-	sessionEnabled := d.Get(SESSION_ALLOWLIST_ENABLED).(bool)
-	scopedEnabled := d.Get(SCOPED_ALLOWLIST_ENABLED).(bool)
+	sessionEnabled := optionalBoolFromResourceData(d, SESSION_ALLOWLIST_ENABLED, false)
+	scopedEnabled := optionalBoolFromResourceData(d, SCOPED_ALLOWLIST_ENABLED, false)
 
 	_, err := patchIpAllowlistConfig(client, &sessionEnabled, &scopedEnabled)
 	if err != nil {
@@ -80,8 +80,8 @@ func resourceIpAllowlistConfigRead(ctx context.Context, d *schema.ResourceData, 
 func resourceIpAllowlistConfigUpdate(ctx context.Context, d *schema.ResourceData, metaRaw interface{}) diag.Diagnostics {
 	client := metaRaw.(*Client)
 
-	sessionEnabled := d.Get(SESSION_ALLOWLIST_ENABLED).(bool)
-	scopedEnabled := d.Get(SCOPED_ALLOWLIST_ENABLED).(bool)
+	sessionEnabled := optionalBoolFromResourceData(d, SESSION_ALLOWLIST_ENABLED, false)
+	scopedEnabled := optionalBoolFromResourceData(d, SCOPED_ALLOWLIST_ENABLED, false)
 
 	_, err := patchIpAllowlistConfig(client, &sessionEnabled, &scopedEnabled)
 	if err != nil {

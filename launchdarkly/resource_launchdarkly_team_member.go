@@ -77,11 +77,11 @@ This resource allows you to create and manage team members within your LaunchDar
 func resourceTeamMemberCreate(ctx context.Context, d *schema.ResourceData, metaRaw interface{}) diag.Diagnostics {
 	client := metaRaw.(*Client)
 	memberEmail := d.Get(EMAIL).(string)
-	firstName := d.Get(FIRST_NAME).(string)
-	lastName := d.Get(LAST_NAME).(string)
-	memberRole := d.Get(ROLE).(string)
-	customRolesRaw := d.Get(CUSTOM_ROLES).(*schema.Set).List()
-	roleAttributes := roleAttributesFromResourceData(d.Get(ROLE_ATTRIBUTES).(*schema.Set).List())
+	firstName := optionalStringAttr(d, FIRST_NAME)
+	lastName := optionalStringAttr(d, LAST_NAME)
+	memberRole := optionalStringAttr(d, ROLE)
+	customRolesRaw := optionalSetList(d, CUSTOM_ROLES)
+	roleAttributes := roleAttributesFromResourceData(optionalSetList(d, ROLE_ATTRIBUTES))
 
 	customRoles := make([]string, len(customRolesRaw))
 	for i, cr := range customRolesRaw {
@@ -162,8 +162,8 @@ func resourceTeamMemberRead(ctx context.Context, d *schema.ResourceData, metaRaw
 func resourceTeamMemberUpdate(ctx context.Context, d *schema.ResourceData, metaRaw interface{}) diag.Diagnostics {
 	client := metaRaw.(*Client)
 	memberID := d.Id()
-	memberRole := d.Get(ROLE).(string)
-	customRolesRaw := d.Get(CUSTOM_ROLES).(*schema.Set).List()
+	memberRole := optionalStringAttr(d, ROLE)
+	customRolesRaw := optionalSetList(d, CUSTOM_ROLES)
 
 	customRoleKeys := make([]string, len(customRolesRaw))
 	for i, cr := range customRolesRaw {

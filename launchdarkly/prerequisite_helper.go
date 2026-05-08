@@ -35,7 +35,7 @@ func prerequisitesSchema(isDataSource bool) *schema.Schema {
 }
 
 func prerequisitesFromResourceData(d *schema.ResourceData, metaRaw interface{}) []ldapi.Prerequisite {
-	schemaPrerequisites := d.Get(PREREQUISITES).([]interface{})
+	schemaPrerequisites := getOptionalInterfaceSlice(d, PREREQUISITES)
 	prerequisites := make([]ldapi.Prerequisite, len(schemaPrerequisites))
 	for i, prerequisite := range schemaPrerequisites {
 		v := prerequisiteFromResourceData(prerequisite)

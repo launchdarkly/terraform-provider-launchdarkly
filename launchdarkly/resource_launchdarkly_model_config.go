@@ -73,7 +73,7 @@ func resourceModelConfigCreate(ctx context.Context, d *schema.ResourceData, meta
 	}
 
 	if v, ok := d.GetOk(TAGS); ok {
-		post.Tags = interfaceSliceToStringSlice(v.(*schema.Set).List())
+		post.Tags = stringsFromSchemaSet(optionalSchemaSetFromInterface(v))
 	}
 
 	if v, ok := d.GetOk(COST_PER_INPUT_TOKEN); ok {

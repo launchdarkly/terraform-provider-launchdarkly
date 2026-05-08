@@ -70,7 +70,11 @@ This resource allows you to create and manage a team within your LaunchDarkly or
 }
 
 func interfaceToArr(old interface{}) []string {
-	interfaceArr := old.(*schema.Set).List()
+	set := optionalSchemaSetFromInterface(old)
+	if set == nil {
+		return []string{}
+	}
+	interfaceArr := set.List()
 
 	stringArr := make([]string, len(interfaceArr))
 	for i, str := range interfaceArr {
@@ -118,11 +122,11 @@ func resourceTeamCreate(ctx context.Context, d *schema.ResourceData, metaRaw int
 	client := metaRaw.(*Client)
 	key := d.Get(KEY).(string)
 	name := d.Get(NAME).(string)
-	description := d.Get(DESCRIPTION).(string)
-	memberIDs := d.Get(MEMBER_IDS).(*schema.Set).List()
-	maintainers := d.Get(MAINTAINERS).(*schema.Set).List()
-	customRoleKeys := d.Get(CUSTOM_ROLE_KEYS).(*schema.Set).List()
-	roleAttributes := roleAttributesFromResourceData(d.Get(ROLE_ATTRIBUTES).(*schema.Set).List())
+	description := optionalStringAttr(d, DESCRIPTION)
+	memberIDs := optionalSetList(d, MEMBER_IDS)
+	maintainers := optionalSetList(d, MAINTAINERS)
+	customRoleKeys := optionalSetList(d, CUSTOM_ROLE_KEYS)
+	roleAttributes := roleAttributesFromResourceData(optionalSetList(d, ROLE_ATTRIBUTES))
 
 	stringMemberIDs := make([]string, len(memberIDs))
 	for i := range memberIDs {
@@ -365,7 +369,7 @@ func resourceTeamUpdate(ctx context.Context, d *schema.ResourceData, metaRaw int
 	if d.HasChange(ROLE_ATTRIBUTES) {
 		replaceRoleAttributesInstruction := map[string]interface{}{
 			"kind":  "replaceRoleAttributes",
-			"value": roleAttributesFromResourceData(d.Get(ROLE_ATTRIBUTES).(*schema.Set).List()),
+			"value": roleAttributesFromResourceData(optionalSetList(d, ROLE_ATTRIBUTES)),
 		}
 		instructions = append(instructions, replaceRoleAttributesInstruction)
 	}

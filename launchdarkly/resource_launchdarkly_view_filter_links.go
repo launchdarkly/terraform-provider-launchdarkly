@@ -120,7 +120,7 @@ func resourceViewFilterLinksCreate(ctx context.Context, d *schema.ResourceData, 
 		return diag.Errorf("cannot find view with key %q in project %q", viewKey, projectKey)
 	}
 
-	segmentFilterEnvId := d.Get(SEGMENT_FILTER_ENVIRONMENT_ID).(string)
+	segmentFilterEnvId := optionalStringAttr(d, SEGMENT_FILTER_ENVIRONMENT_ID)
 
 	// Link flags by filter if specified
 	if flagFilter, ok := d.GetOk(FLAG_FILTER); ok {
@@ -181,17 +181,17 @@ func resourceViewFilterLinksUpdate(ctx context.Context, d *schema.ResourceData, 
 	projectKey := d.Get(PROJECT_KEY).(string)
 	viewKey := d.Get(VIEW_KEY).(string)
 
-	segmentFilterEnvId := d.Get(SEGMENT_FILTER_ENVIRONMENT_ID).(string)
+	segmentFilterEnvId := optionalStringAttr(d, SEGMENT_FILTER_ENVIRONMENT_ID)
 	hasFlagFilterChange := d.HasChange(FLAG_FILTER)
 	hasSegmentFilterChange := d.HasChange(SEGMENT_FILTER) || d.HasChange(SEGMENT_FILTER_ENVIRONMENT_ID)
-	reconcileOnApply := d.Get(RECONCILE_ON_APPLY).(bool)
+	reconcileOnApply := optionalBoolFromResourceData(d, RECONCILE_ON_APPLY, false)
 	isPeriodicReconcile := reconcileOnApply && !hasFlagFilterChange && !hasSegmentFilterChange
 	shouldResyncFlags := hasFlagFilterChange || isPeriodicReconcile
 	shouldResyncSegments := hasSegmentFilterChange || isPeriodicReconcile
 
 	if shouldResyncFlags {
 		// Flags: full re-sync
-		flagFilter := d.Get(FLAG_FILTER).(string)
+		flagFilter := optionalStringAttr(d, FLAG_FILTER)
 		if flagFilter != "" {
 			// Unlink all currently linked flags (clean slate)
 			linkedFlags, err := getLinkedResources(betaClient, projectKey, viewKey, FLAGS)
@@ -216,7 +216,7 @@ func resourceViewFilterLinksUpdate(ctx context.Context, d *schema.ResourceData, 
 		} else {
 			// Flag filter was removed — unlink all flags
 			oldVal, _ := d.GetChange(FLAG_FILTER)
-			if oldVal.(string) != "" {
+			if old, _ := oldVal.(string); old != "" {
 				linkedFlags, err := getLinkedResources(betaClient, projectKey, viewKey, FLAGS)
 				if err != nil {
 					return diag.Errorf("failed to get linked flags for view %q in project %q: %s", viewKey, projectKey, err)
@@ -237,7 +237,7 @@ func resourceViewFilterLinksUpdate(ctx context.Context, d *schema.ResourceData, 
 
 	if shouldResyncSegments {
 		// Segments: full re-sync
-		segmentFilter := d.Get(SEGMENT_FILTER).(string)
+		segmentFilter := optionalStringAttr(d, SEGMENT_FILTER)
 		if segmentFilter != "" {
 			// Unlink all currently linked segments (clean slate)
 			linkedSegments, err := getLinkedResources(betaClient, projectKey, viewKey, SEGMENTS)
@@ -265,7 +265,7 @@ func resourceViewFilterLinksUpdate(ctx context.Context, d *schema.ResourceData, 
 		} else {
 			// Segment filter was removed — unlink all segments
 			oldVal, _ := d.GetChange(SEGMENT_FILTER)
-			if oldVal.(string) != "" {
+			if old, _ := oldVal.(string); old != "" {
 				linkedSegments, err := getLinkedResources(betaClient, projectKey, viewKey, SEGMENTS)
 				if err != nil {
 					return diag.Errorf("failed to get linked segments for view %q in project %q: %s", viewKey, projectKey, err)

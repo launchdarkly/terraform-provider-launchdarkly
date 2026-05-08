@@ -54,7 +54,10 @@ func customPropertiesSchema(isDataSource bool) *schema.Schema {
 
 func customPropertiesFromResourceData(d *schema.ResourceData) map[string]ldapi.CustomProperty {
 	customPropertiesRaw := d.Get(CUSTOM_PROPERTIES)
-	schemaCustomProperties := customPropertiesRaw.(*schema.Set)
+	schemaCustomProperties := optionalSchemaSetFromInterface(customPropertiesRaw)
+	if schemaCustomProperties == nil {
+		return map[string]ldapi.CustomProperty{}
+	}
 	customProperties := make(map[string]ldapi.CustomProperty)
 	for _, cpRaw := range schemaCustomProperties.List() {
 		key, cp := customPropertyFromResourceData(cpRaw)

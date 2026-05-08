@@ -114,7 +114,10 @@ func segmentRead(ctx context.Context, d *schema.ResourceData, raw interface{}, i
 	var diags diag.Diagnostics
 	client := raw.(*Client)
 	projectKey := d.Get(PROJECT_KEY).(string)
-	envKey := d.Get(ENV_KEY).(string)
+	envKey := effectiveEnvKeyFromIDOrAttr(d)
+	if envKey == "" {
+		return diag.Errorf("%s is required, or resource id must be project_key/env_key/segment_key", ENV_KEY)
+	}
 	segmentKey := d.Get(KEY).(string)
 
 	var segment *ldapi.UserSegment
@@ -237,9 +240,9 @@ type segmentTargetOptions struct {
 func segmentTargetsFromResourceData(d *schema.ResourceData, options segmentTargetOptions) []ldapi.SegmentTarget {
 	var schemaTargets []interface{}
 	if options.Included {
-		schemaTargets = d.Get(INCLUDED_CONTEXTS).([]interface{})
+		schemaTargets = getOptionalInterfaceSlice(d, INCLUDED_CONTEXTS)
 	} else if options.Excluded {
-		schemaTargets = d.Get(EXCLUDED_CONTEXTS).([]interface{})
+		schemaTargets = getOptionalInterfaceSlice(d, EXCLUDED_CONTEXTS)
 	}
 	targets := make([]ldapi.SegmentTarget, len(schemaTargets))
 	for _, t := range schemaTargets {

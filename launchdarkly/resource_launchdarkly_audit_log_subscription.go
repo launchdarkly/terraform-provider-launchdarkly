@@ -36,13 +36,13 @@ func resourceAuditLogSubscriptionCreate(ctx context.Context, d *schema.ResourceD
 	integrationKey := d.Get(INTEGRATION_KEY).(string)
 	name := d.Get(NAME).(string)
 	on := d.Get(ON).(bool)
-	tags := stringsFromSchemaSet(d.Get(TAGS).(*schema.Set))
+	tags := stringsFromSchemaSet(getOptionalSet(d, TAGS))
 	config, err := configFromResourceData(d)
 	if err != nil {
 		return diag.Errorf("failed to create %s integration with name %s: %v", integrationKey, name, err.Error())
 	}
 
-	statements, err := policyStatementsFromResourceData(d.Get(STATEMENTS).([]interface{}))
+	statements, err := policyStatementsFromResourceData(getOptionalInterfaceSlice(d, STATEMENTS))
 	if err != nil {
 		return diag.Errorf("failed to create %s integration with name %s: %v", integrationKey, name, err.Error())
 	}
@@ -80,7 +80,7 @@ func resourceAuditLogSubscriptionUpdate(ctx context.Context, d *schema.ResourceD
 	}
 	id := d.Id()
 
-	statements, err := policyStatementsFromResourceData(d.Get(STATEMENTS).([]interface{}))
+	statements, err := policyStatementsFromResourceData(getOptionalInterfaceSlice(d, STATEMENTS))
 	if err != nil {
 		return diag.FromErr(err)
 	}

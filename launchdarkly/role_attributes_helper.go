@@ -69,7 +69,7 @@ func roleAttributesToResourceData(roleAttributes *map[string][]string) *[]interf
 func getRoleAttributePatches(d *schema.ResourceData) []ldapi.PatchOperation {
 	var patch []ldapi.PatchOperation
 	if o, n := d.GetChange(ROLE_ATTRIBUTES); o != n {
-		new := roleAttributesFromResourceData(d.Get(ROLE_ATTRIBUTES).(*schema.Set).List())
+		new := roleAttributesFromResourceData(optionalSetList(d, ROLE_ATTRIBUTES))
 		if new != nil {
 			patch = append(patch, patchReplace("/roleAttributes", new))
 		} else {

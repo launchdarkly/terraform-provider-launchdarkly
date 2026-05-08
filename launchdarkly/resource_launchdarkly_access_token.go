@@ -112,14 +112,14 @@ func validateAPIVersion(val interface{}, key string) (warns []string, errs []err
 }
 
 func validateAccessTokenResource(d *schema.ResourceData) error {
-	accessTokenRole := d.Get(ROLE).(string)
-	customRolesRaw := d.Get(CUSTOM_ROLES).(*schema.Set).List()
-	policyStatements, err := policyStatementsFromResourceData(d.Get(POLICY_STATEMENTS).([]interface{}))
+	accessTokenRole := optionalStringAttr(d, ROLE)
+	customRolesRaw := optionalSetList(d, CUSTOM_ROLES)
+	policyStatements, err := policyStatementsFromResourceData(getOptionalInterfaceSlice(d, POLICY_STATEMENTS))
 	if err != nil {
 		return err
 	}
 
-	inlineRoles, err := policyStatementsFromResourceData(d.Get(INLINE_ROLES).([]interface{}))
+	inlineRoles, err := policyStatementsFromResourceData(getOptionalInterfaceSlice(d, INLINE_ROLES))
 	if err != nil {
 		return err
 	}
@@ -138,8 +138,8 @@ func resourceAccessTokenCreate(ctx context.Context, d *schema.ResourceData, meta
 	}
 
 	client := metaRaw.(*Client)
-	accessTokenName := d.Get(NAME).(string)
-	serviceToken := d.Get(SERVICE_TOKEN).(bool)
+	accessTokenName := optionalStringAttr(d, NAME)
+	serviceToken := optionalBoolFromResourceData(d, SERVICE_TOKEN, false)
 
 	accessTokenBody := ldapi.AccessTokenPost{
 		Name:         ldapi.PtrString(accessTokenName),
@@ -150,12 +150,12 @@ func resourceAccessTokenCreate(ctx context.Context, d *schema.ResourceData, meta
 		accessTokenBody.DefaultApiVersion = ldapi.PtrInt32(int32(defaultApiVersion.(int)))
 	}
 
-	inlineRoles, _ := policyStatementsFromResourceData(d.Get(POLICY_STATEMENTS).([]interface{}))
+	inlineRoles, _ := policyStatementsFromResourceData(getOptionalInterfaceSlice(d, POLICY_STATEMENTS))
 	if len(inlineRoles) == 0 {
-		inlineRoles, _ = policyStatementsFromResourceData(d.Get(INLINE_ROLES).([]interface{}))
+		inlineRoles, _ = policyStatementsFromResourceData(getOptionalInterfaceSlice(d, INLINE_ROLES))
 	}
 
-	customRolesRaw := d.Get(CUSTOM_ROLES).(*schema.Set).List()
+	customRolesRaw := optionalSetList(d, CUSTOM_ROLES)
 	if len(inlineRoles) == 0 && len(customRolesRaw) > 0 {
 		customRoles := make([]string, len(customRolesRaw))
 		for i, cr := range customRolesRaw {
@@ -226,7 +226,7 @@ func resourceAccessTokenRead(ctx context.Context, d *schema.ResourceData, metaRa
 
 	policies := accessToken.InlineRole
 	if len(policies) > 0 {
-		policyStatements, _ := policyStatementsFromResourceData(d.Get(POLICY_STATEMENTS).([]interface{}))
+		policyStatements, _ := policyStatementsFromResourceData(getOptionalInterfaceSlice(d, POLICY_STATEMENTS))
 		if len(policyStatements) > 0 {
 			err = d.Set(POLICY_STATEMENTS, policyStatementsToResourceData(policies))
 		} else {
@@ -248,9 +248,9 @@ func resourceAccessTokenUpdate(ctx context.Context, d *schema.ResourceData, meta
 
 	client := metaRaw.(*Client)
 	accessTokenID := d.Id()
-	accessTokenName := d.Get(NAME).(string)
-	accessTokenRole := d.Get(ROLE).(string)
-	customRolesRaw := d.Get(CUSTOM_ROLES).(*schema.Set).List()
+	accessTokenName := optionalStringAttr(d, NAME)
+	accessTokenRole := optionalStringAttr(d, ROLE)
+	customRolesRaw := optionalSetList(d, CUSTOM_ROLES)
 
 	customRoleKeys := make([]string, len(customRolesRaw))
 	for i, cr := range customRolesRaw {
@@ -261,9 +261,9 @@ func resourceAccessTokenUpdate(ctx context.Context, d *schema.ResourceData, meta
 		return diag.FromErr(err)
 	}
 
-	inlineRoles, _ := policyStatementsFromResourceData(d.Get(POLICY_STATEMENTS).([]interface{}))
+	inlineRoles, _ := policyStatementsFromResourceData(getOptionalInterfaceSlice(d, POLICY_STATEMENTS))
 	if len(inlineRoles) == 0 {
-		inlineRoles, _ = policyStatementsFromResourceData(d.Get(INLINE_ROLES).([]interface{}))
+		inlineRoles, _ = policyStatementsFromResourceData(getOptionalInterfaceSlice(d, INLINE_ROLES))
 	}
 	iRoles := inlineRoles
 
@@ -310,8 +310,8 @@ func resourceAccessTokenUpdate(ctx context.Context, d *schema.ResourceData, meta
 	// Reset the access token if the expire field has been updated
 	if d.HasChange(EXPIRE) {
 		oldExpireRaw, newExpireRaw := d.GetChange(EXPIRE)
-		oldExpire := oldExpireRaw.(int)
-		newExpire := newExpireRaw.(int)
+		oldExpire, _ := oldExpireRaw.(int)
+		newExpire, _ := newExpireRaw.(int)
 		if oldExpire != newExpire && newExpire != 0 {
 			token, err := resetAccessToken(client, accessTokenID, newExpire)
 			if err != nil {

@@ -31,9 +31,8 @@ func customizeSegmentDiff(ctx context.Context, diff *schema.ResourceDiff, meta i
 	}
 
 	if viewSettings.RequireViewAssociationForNewSegments {
-		viewKeysRaw := diff.Get(VIEW_KEYS)
-		viewKeys, ok := viewKeysRaw.(*schema.Set)
-		if !ok || viewKeys == nil || viewKeys.Len() == 0 {
+		viewKeys := optionalSchemaSetFromInterface(diff.Get(VIEW_KEYS))
+		if viewKeys == nil || viewKeys.Len() == 0 {
 			return fmt.Errorf("project %q requires new segments to be associated with at least one view. Please set the 'view_keys' attribute", projectKey)
 		}
 	}
@@ -92,21 +91,42 @@ This resource allows you to create and manage segments within your LaunchDarkly 
 func resourceSegmentCreate(ctx context.Context, d *schema.ResourceData, metaRaw interface{}) diag.Diagnostics {
 	client := metaRaw.(*Client)
 	projectKey := d.Get(PROJECT_KEY).(string)
-	envKey := d.Get(ENV_KEY).(string)
+	envKey := effectiveEnvKeyFromIDOrAttr(d)
+	if envKey == "" {
+		return diag.Errorf(
+			"%s is required (LaunchDarkly environment key). If the embedded schema omits it, set resource id to project_key/env_key/segment_key before create.",
+			ENV_KEY)
+	}
+
+	if exists, err := projectExists(projectKey, client); !exists {
+		if err != nil {
+			return diag.FromErr(err)
+		}
+		return diag.Errorf("cannot find project with key %q", projectKey)
+	}
+	if exists, err := environmentExists(projectKey, envKey, client); !exists {
+		if err != nil {
+			return diag.FromErr(err)
+		}
+		return diag.Errorf(
+			"environment %q not found in project %q — env_key must match the LaunchDarkly environment **key**. Create nested `environments` or a `launchdarkly_environment` first.",
+			envKey, projectKey)
+	}
 
 	key := d.Get(KEY).(string)
-	description := d.Get(DESCRIPTION).(string)
+	description := optionalStringAttr(d, DESCRIPTION)
 	segmentName := d.Get(NAME).(string)
 	tags := stringsFromResourceData(d, TAGS)
-	unbounded := d.Get(UNBOUNDED).(bool)
-	unboundedContextKind := d.Get(UNBOUNDED_CONTEXT_KIND).(string)
+	unbounded := optionalBoolFromResourceData(d, UNBOUNDED, false)
+	unboundedContextKind := optionalStringAttr(d, UNBOUNDED_CONTEXT_KIND)
 
 	// Check if view_keys is specified - if so, we need to use raw HTTP to include it in creation
 	var viewKeys []string
 	if viewKeysRaw, ok := d.GetOk(VIEW_KEYS); ok {
-		viewKeysSet := viewKeysRaw.(*schema.Set)
-		for _, v := range viewKeysSet.List() {
-			viewKeys = append(viewKeys, v.(string))
+		if viewKeysSet := optionalSchemaSetFromInterface(viewKeysRaw); viewKeysSet != nil {
+			for _, v := range viewKeysSet.List() {
+				viewKeys = append(viewKeys, v.(string))
+			}
 		}
 	}
 
@@ -166,12 +186,15 @@ func resourceSegmentUpdate(ctx context.Context, d *schema.ResourceData, metaRaw 
 	client := metaRaw.(*Client)
 	key := d.Get(KEY).(string)
 	projectKey := d.Get(PROJECT_KEY).(string)
-	envKey := d.Get(ENV_KEY).(string)
-	description := d.Get(DESCRIPTION).(string)
+	envKey := effectiveEnvKeyFromIDOrAttr(d)
+	if envKey == "" {
+		return diag.Errorf("%s is empty and resource id %q is not project_key/env_key/segment_key", ENV_KEY, d.Id())
+	}
+	description := optionalStringAttr(d, DESCRIPTION)
 	name := d.Get(NAME).(string)
 	tags := stringsFromResourceData(d, TAGS)
-	included := d.Get(INCLUDED).([]interface{})
-	excluded := d.Get(EXCLUDED).([]interface{})
+	included := getOptionalInterfaceSlice(d, INCLUDED)
+	excluded := getOptionalInterfaceSlice(d, EXCLUDED)
 	includedContexts := segmentTargetsFromResourceData(d, segmentTargetOptions{Included: true})
 	excludedContexts := segmentTargetsFromResourceData(d, segmentTargetOptions{Excluded: true})
 	rules, err := segmentRulesFromResourceData(d, RULES)
@@ -214,7 +237,7 @@ func resourceSegmentUpdate(ctx context.Context, d *schema.ResourceData, metaRaw 
 				return diag.Errorf("failed to create beta client for view linking: %v", err)
 			}
 
-			desiredViewKeys := interfaceSliceToStringSlice(viewKeysRaw.(*schema.Set).List())
+			desiredViewKeys := stringListFromOptionalSetValue(viewKeysRaw)
 
 			// Get the environment ID
 			var env *ldapi.Environment
@@ -253,7 +276,7 @@ func resourceSegmentUpdate(ctx context.Context, d *schema.ResourceData, metaRaw 
 			if len(viewsToRemove) > 0 {
 				oldViewKeysRaw, _ := d.GetChange(VIEW_KEYS)
 				if oldViewKeysRaw != nil {
-					oldViewKeys := interfaceSliceToStringSlice(oldViewKeysRaw.(*schema.Set).List())
+					oldViewKeys := stringListFromOptionalSetValue(oldViewKeysRaw)
 					unexpectedViews := difference(viewsToRemove, oldViewKeys)
 					if len(unexpectedViews) > 0 {
 						log.Printf(
@@ -309,7 +332,7 @@ func resourceSegmentUpdate(ctx context.Context, d *schema.ResourceData, metaRaw 
 					return diag.Errorf("failed to get environment %q in project %q: %s", envKey, projectKey, handleLdapiErr(err))
 				}
 
-				oldViewKeys := interfaceSliceToStringSlice(oldViewKeysRaw.(*schema.Set).List())
+				oldViewKeys := stringListFromOptionalSetValue(oldViewKeysRaw)
 				for _, viewKey := range oldViewKeys {
 					segmentIdentifiers := []ViewSegmentIdentifier{{
 						EnvironmentId: env.Id,
@@ -332,7 +355,10 @@ func resourceSegmentDelete(ctx context.Context, d *schema.ResourceData, metaRaw 
 
 	client := metaRaw.(*Client)
 	projectKey := d.Get(PROJECT_KEY).(string)
-	envKey := d.Get(ENV_KEY).(string)
+	envKey := effectiveEnvKeyFromIDOrAttr(d)
+	if envKey == "" {
+		return diag.Errorf("%s is empty and resource id %q is not project_key/env_key/segment_key", ENV_KEY, d.Id())
+	}
 	key := d.Get(KEY).(string)
 
 	var err error
@@ -350,7 +376,10 @@ func resourceSegmentDelete(ctx context.Context, d *schema.ResourceData, metaRaw 
 func resourceSegmentExists(d *schema.ResourceData, metaRaw interface{}) (bool, error) {
 	client := metaRaw.(*Client)
 	projectKey := d.Get(PROJECT_KEY).(string)
-	envKey := d.Get(ENV_KEY).(string)
+	envKey := effectiveEnvKeyFromIDOrAttr(d)
+	if envKey == "" {
+		return false, fmt.Errorf("%s is required, or resource id must be project_key/env_key/segment_key", ENV_KEY)
+	}
 	key := d.Get(KEY).(string)
 
 	var res *http.Response
@@ -378,7 +407,9 @@ func resourceSegmentImport(d *schema.ResourceData, meta interface{}) ([]*schema.
 
 	parts := strings.SplitN(d.Id(), "/", 3)
 
-	projectKey, envKey, segmentKey := parts[0], parts[1], parts[2]
+	projectKey := strings.TrimSpace(parts[0])
+	envKey := strings.TrimSpace(parts[1])
+	segmentKey := strings.TrimSpace(parts[2])
 
 	_ = d.Set(PROJECT_KEY, projectKey)
 	_ = d.Set(ENV_KEY, envKey)

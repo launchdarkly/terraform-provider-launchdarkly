@@ -49,7 +49,12 @@ func resourceFeatureFlagEnvironmentCreate(ctx context.Context, d *schema.Resourc
 	if err != nil {
 		return diag.FromErr(err)
 	}
-	envKey := d.Get(ENV_KEY).(string)
+	envKey := effectiveEnvKeyFromIDOrAttr(d)
+	if envKey == "" {
+		return diag.Errorf(
+			"%s is required and must be the LaunchDarkly environment key (not the display name). If the embedded schema omits it, set resource id to project_key/env_key/flag_key before create.",
+			ENV_KEY)
+	}
 
 	if exists, err := projectExists(projectKey, client); !exists {
 		if err != nil {
@@ -62,7 +67,9 @@ func resourceFeatureFlagEnvironmentCreate(ctx context.Context, d *schema.Resourc
 		if err != nil {
 			return diag.FromErr(err)
 		}
-		return diag.Errorf("failed to find environment with key %q", envKey)
+		return diag.Errorf(
+			"environment %q not found in project %q — env_key must be the LaunchDarkly environment **key**, not its display name. Create the environment first.",
+			envKey, projectKey)
 	}
 
 	patches := make([]ldapi.PatchOperation, 0)
@@ -74,9 +81,10 @@ func resourceFeatureFlagEnvironmentCreate(ctx context.Context, d *schema.Resourc
 	offVariation := d.Get(OFF_VARIATION)
 	patches = append(patches, patchReplace(patchFlagEnvPath(d, "offVariation"), offVariation.(int)))
 
-	trackEvents, ok := d.GetOk(TRACK_EVENTS)
+	_, ok := d.GetOk(TRACK_EVENTS)
 	if ok {
-		patches = append(patches, patchReplace(patchFlagEnvPath(d, "trackEvents"), trackEvents.(bool)))
+		trackEvents := optionalBoolFromResourceData(d, TRACK_EVENTS, false)
+		patches = append(patches, patchReplace(patchFlagEnvPath(d, "trackEvents"), trackEvents))
 	}
 
 	_, ok = d.GetOk(RULES)
@@ -145,7 +153,10 @@ func resourceFeatureFlagEnvironmentUpdate(ctx context.Context, d *schema.Resourc
 	if err != nil {
 		return diag.FromErr(err)
 	}
-	envKey := d.Get(ENV_KEY).(string)
+	envKey := effectiveEnvKeyFromIDOrAttr(d)
+	if envKey == "" {
+		return diag.Errorf("%s is empty and resource id %q is not project_key/env_key/flag_key", ENV_KEY, d.Id())
+	}
 
 	if exists, err := projectExists(projectKey, client); !exists {
 		if err != nil {
@@ -158,7 +169,9 @@ func resourceFeatureFlagEnvironmentUpdate(ctx context.Context, d *schema.Resourc
 		if err != nil {
 			return diag.FromErr(err)
 		}
-		return diag.Errorf("failed to find environment with key %q", envKey)
+		return diag.Errorf(
+			"environment %q not found in project %q — env_key must be the LaunchDarkly environment **key**. Create the environment first or correct env_key.",
+			envKey, projectKey)
 	}
 
 	patchOperations := make([]ldapi.PatchOperation, 0, 7)
@@ -176,7 +189,7 @@ func resourceFeatureFlagEnvironmentUpdate(ctx context.Context, d *schema.Resourc
 	}
 
 	if d.HasChange(TRACK_EVENTS) {
-		trackEvents := d.Get(TRACK_EVENTS).(bool)
+		trackEvents := optionalBoolFromResourceData(d, TRACK_EVENTS, false)
 		patchOperations = append(patchOperations, patchReplace(patchFlagEnvPath(d, "trackEvents"), trackEvents))
 	}
 
@@ -234,7 +247,10 @@ func resourceFeatureFlagEnvironmentDelete(ctx context.Context, d *schema.Resourc
 	if err != nil {
 		return diag.FromErr(err)
 	}
-	envKey := d.Get(ENV_KEY).(string)
+	envKey := effectiveEnvKeyFromIDOrAttr(d)
+	if envKey == "" {
+		return diag.Errorf("%s is empty and resource id %q is not project_key/env_key/flag_key", ENV_KEY, d.Id())
+	}
 
 	if exists, err := projectExists(projectKey, client); !exists {
 		if err != nil {
@@ -247,7 +263,9 @@ func resourceFeatureFlagEnvironmentDelete(ctx context.Context, d *schema.Resourc
 		if err != nil {
 			return diag.FromErr(err)
 		}
-		return diag.Errorf("failed to find environment with key %q", envKey)
+		return diag.Errorf(
+			"environment %q not found in project %q — env_key must be the LaunchDarkly environment **key**.",
+			envKey, projectKey)
 	}
 
 	var flag *ldapi.FeatureFlag
@@ -299,7 +317,9 @@ func resourceFeatureFlagEnvironmentImport(d *schema.ResourceData, meta interface
 		return nil, fmt.Errorf("found unexpected flag id format: %q expected format: 'project_key/env_key/flag_key'", id)
 	}
 	parts := strings.SplitN(id, "/", 3)
-	projectKey, envKey, flagKey := parts[0], parts[1], parts[2]
+	projectKey := strings.TrimSpace(parts[0])
+	envKey := strings.TrimSpace(parts[1])
+	flagKey := strings.TrimSpace(parts[2])
 	_ = d.Set(FLAG_ID, projectKey+"/"+flagKey)
 	_ = d.Set(ENV_KEY, envKey)
 

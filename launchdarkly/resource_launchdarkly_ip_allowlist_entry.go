@@ -93,7 +93,7 @@ func resourceIpAllowlistEntryUpdate(ctx context.Context, d *schema.ResourceData,
 	client := metaRaw.(*Client)
 
 	if d.HasChange(DESCRIPTION) {
-		description := d.Get(DESCRIPTION).(string)
+		description := optionalStringAttr(d, DESCRIPTION)
 		_, err := patchIpAllowlistEntry(client, d.Id(), description)
 		if err != nil {
 			return diag.Errorf("failed to update IP allowlist entry %q: %s", d.Id(), err)

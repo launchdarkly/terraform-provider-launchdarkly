@@ -58,8 +58,11 @@ type fallthroughModel struct {
 }
 
 func validateFallThroughResourceData(f []interface{}) error {
-	for _, f := range f {
-		if f == nil {
+	if len(f) == 0 {
+		return errors.New("feature flag fallthrough block cannot be empty. Please specify at least one of variation or rollout_weights")
+	}
+	for _, block := range f {
+		if block == nil {
 			return errors.New("feature flag fallthrough block cannot be empty. Please specify at least one of variation or rollout_weights")
 		}
 	}
@@ -85,7 +88,7 @@ func isPercentRollout(fall []interface{}) bool {
 }
 
 func fallthroughFromResourceData(d *schema.ResourceData) (fallthroughModel, error) {
-	f := d.Get(FALLTHROUGH).([]interface{})
+	f := getOptionalInterfaceSlice(d, FALLTHROUGH)
 	err := validateFallThroughResourceData(f)
 	if err != nil {
 		return fallthroughModel{}, err

@@ -25,10 +25,13 @@ func tagsSchema(options tagsSchemaOptions) *schema.Schema {
 }
 
 func stringsFromResourceData(d *schema.ResourceData, key string) []string {
-	return stringsFromSchemaSet(d.Get(key).(*schema.Set))
+	return stringsFromSchemaSet(getOptionalSet(d, key))
 }
 
 func stringsFromSchemaSet(schemaSet *schema.Set) []string {
+	if schemaSet == nil {
+		return []string{}
+	}
 	strs := make([]string, schemaSet.Len())
 	for i, tag := range schemaSet.List() {
 		strs[i] = tag.(string)

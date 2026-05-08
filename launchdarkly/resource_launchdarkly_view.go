@@ -104,7 +104,7 @@ func resourceViewCreate(ctx context.Context, d *schema.ResourceData, metaRaw int
 	}
 
 	if tags, ok := d.GetOk(TAGS); ok {
-		viewPost["tags"] = interfaceSliceToStringSlice(tags.(*schema.Set).List())
+		viewPost["tags"] = stringListFromOptionalSetValue(tags)
 	}
 
 	_, err = createView(betaClient, projectKey, viewPost)
@@ -138,7 +138,7 @@ func resourceViewUpdate(ctx context.Context, d *schema.ResourceData, metaRaw int
 	}
 
 	if d.HasChange(DESCRIPTION) {
-		patch["description"] = d.Get(DESCRIPTION).(string)
+		patch["description"] = optionalStringAttr(d, DESCRIPTION)
 	}
 
 	if d.HasChange(MAINTAINER_ID) {
@@ -158,11 +158,11 @@ func resourceViewUpdate(ctx context.Context, d *schema.ResourceData, metaRaw int
 	}
 
 	if d.HasChange(TAGS) {
-		patch["tags"] = interfaceSliceToStringSlice(d.Get(TAGS).(*schema.Set).List())
+		patch["tags"] = stringListFromOptionalSetValue(d.Get(TAGS))
 	}
 
 	if d.HasChange(ARCHIVED) {
-		patch["archived"] = d.Get(ARCHIVED).(bool)
+		patch["archived"] = optionalBoolFromResourceData(d, ARCHIVED, false)
 	}
 
 	if len(patch) > 0 {
