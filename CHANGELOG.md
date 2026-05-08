@@ -2,6 +2,20 @@
 
 All notable changes to the LaunchDarkly Terraform Provider will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org).
 
+## [2.29.0](https://github.com/launchdarkly/terraform-provider-launchdarkly/compare/v2.28.0...v2.29.0) (2026-05-08)
+
+
+### Features
+
+* [REL-13052] add IP allowlist config and entry resources ([#411](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/411)) ([03a540b](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/03a540beb0dc302ad6d424ddf8ddbabd27cc78ae))
+* add deprecated field to feature flag schema ([#410](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/410)) ([87bee57](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/87bee579d3be89de5535a0d68228b2ce8d33b828))
+
+
+### Bug Fixes
+
+* prevent nil-pointer panics in optional schema attributes and harden embedded-schema (Upjet) compatibility ([#387](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/387)) ([#415](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/415)) ([4844112](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/484411229387ba44ab40ce298f363e515eeb4cf8))
+* remove deprecated `generate_sdk_keys` field from beta views resource ([#412](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/412)) ([bdf36e4](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/bdf36e481e26a4576f19e0b82046571d6eaece30))
+
 ## [2.28.0](https://github.com/launchdarkly/terraform-provider-launchdarkly/compare/v2.27.0...v2.28.0) (2026-04-20)
 
 
