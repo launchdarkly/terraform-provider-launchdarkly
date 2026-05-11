@@ -61,9 +61,17 @@ This resource allows you to create and manage custom roles within your LaunchDar
 			POLICY_STATEMENTS: policyStatementsSchema(
 				policyStatementSchemaOptions{
 					optional:      true,
-					conflictsWith: []string{POLICY},
+					conflictsWith: []string{POLICY, POLICY_STATEMENTS_JSON},
 					description:   "An array of the policy statements that define the permissions for the custom role. This field accepts [role attributes](https://docs.launchdarkly.com/home/getting-started/vocabulary#role-attribute). To use role attributes, use the syntax `$${roleAttribute/<YOUR_ROLE_ATTRIBUTE>}` in lieu of your usual resource keys.",
 				}),
+			POLICY_STATEMENTS_JSON: {
+				Type:             schema.TypeString,
+				Optional:         true,
+				ConflictsWith:    []string{POLICY, POLICY_STATEMENTS},
+				ValidateDiagFunc: validateJsonStringDiagFunc(),
+				DiffSuppressFunc: suppressEquivalentJsonDiffs,
+				Description:      "Policy statements expressed as a single JSON document — an array of statement objects with the same keys as the `policy_statements` blocks (`resources`, `not_resources`, `actions`, `not_actions`, `effect`). Mutually exclusive with `policy_statements` and `policy`. Use this form when reading the policy from a file or templating it dynamically (for example with `jsonencode(...)` or `file(\"policy.json\")`). To use [role attributes](https://docs.launchdarkly.com/home/getting-started/vocabulary#role-attribute), escape the `$` as `$${roleAttribute/<YOUR_ROLE_ATTRIBUTE>}` inside HCL strings.",
+			},
 		},
 	}
 }
@@ -85,6 +93,15 @@ func resourceCustomRoleCreate(ctx context.Context, d *schema.ResourceData, metaR
 	}
 	if len(policyStatements) > 0 {
 		customRolePolicies = policyStatements
+	}
+	if rawJSON := strings.TrimSpace(d.Get(POLICY_STATEMENTS_JSON).(string)); rawJSON != "" {
+		jsonStatements, jerr := policyStatementsFromJSON(rawJSON)
+		if jerr != nil {
+			return diag.FromErr(jerr)
+		}
+		if len(jsonStatements) > 0 {
+			customRolePolicies = jsonStatements
+		}
 	}
 
 	customRoleBody := ldapi.CustomRolePost{
@@ -159,7 +176,9 @@ func resourceCustomRoleRead(ctx context.Context, d *schema.ResourceData, metaRaw
 	_ = resourceDataSetSkipMissingKey(d, BASE_PERMISSIONS, basePerms)
 
 	// Because "policy" is now deprecated in favor of "policy_statements", only set "policy" if it has
-	// already been set by the user.
+	// already been set by the user. When the user authored the policy via the JSON form, route the
+	// response back into policy_statements_json so the block form isn't populated in state (which
+	// would manifest as a permanent diff against the JSON-form config).
 	// TODO: Somehow this seems to also add an empty policystatement of
 	// 	policy {
 	// 		+ actions   = []
@@ -168,6 +187,12 @@ func resourceCustomRoleRead(ctx context.Context, d *schema.ResourceData, metaRaw
 	if _, ok := d.GetOk(POLICY); ok {
 		policies := policiesToResourceData(customRole.Policy)
 		err = resourceDataSetSkipMissingKey(d, POLICY, policies)
+	} else if _, ok := d.GetOk(POLICY_STATEMENTS_JSON); ok {
+		encoded, jerr := policyStatementsToJSON(statementsToStatementReps(customRole.Policy))
+		if jerr != nil {
+			return diag.Errorf("could not serialize %s on custom role with id %q: %v", POLICY_STATEMENTS_JSON, customRoleID, jerr)
+		}
+		err = resourceDataSetSkipMissingKey(d, POLICY_STATEMENTS_JSON, encoded)
 	} else {
 		err = resourceDataSetSkipMissingKey(d, POLICY_STATEMENTS, policyStatementsToResourceData(statementsToStatementReps(customRole.Policy)))
 	}
@@ -194,6 +219,15 @@ func resourceCustomRoleUpdate(ctx context.Context, d *schema.ResourceData, metaR
 	}
 	if len(policyStatements) > 0 {
 		customRolePolicies = policyStatements
+	}
+	if rawJSON := strings.TrimSpace(d.Get(POLICY_STATEMENTS_JSON).(string)); rawJSON != "" {
+		jsonStatements, jerr := policyStatementsFromJSON(rawJSON)
+		if jerr != nil {
+			return diag.FromErr(jerr)
+		}
+		if len(jsonStatements) > 0 {
+			customRolePolicies = jsonStatements
+		}
 	}
 
 	patch := ldapi.PatchWithComment{

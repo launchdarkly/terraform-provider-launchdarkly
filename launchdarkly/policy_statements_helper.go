@@ -1,7 +1,10 @@
 package launchdarkly
 
 import (
+	"encoding/json"
 	"errors"
+	"fmt"
+	"strings"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
@@ -185,4 +188,93 @@ func statementPostsToStatementReps(policies []ldapi.StatementPost) []ldapi.State
 		statements = append(statements, rep)
 	}
 	return statements
+}
+
+// policyStatementsFromJSON decodes a JSON document representing an array of
+// policy statements into the same []ldapi.StatementPost slice the block form
+// produces. Expected shape mirrors the block schema (snake_case keys:
+// resources, not_resources, actions, not_actions, effect). Returns (nil, nil)
+// for empty input.
+func policyStatementsFromJSON(raw string) ([]ldapi.StatementPost, error) {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return nil, nil
+	}
+	var decoded []map[string]interface{}
+	if err := json.Unmarshal([]byte(raw), &decoded); err != nil {
+		return nil, fmt.Errorf("%s: invalid JSON: %w", POLICY_STATEMENTS_JSON, err)
+	}
+	statements := make([]ldapi.StatementPost, 0, len(decoded))
+	for i, stmt := range decoded {
+		normalized := map[string]interface{}{
+			RESOURCES:     jsonStringSliceField(stmt, RESOURCES),
+			NOT_RESOURCES: jsonStringSliceField(stmt, NOT_RESOURCES),
+			ACTIONS:       jsonStringSliceField(stmt, ACTIONS),
+			NOT_ACTIONS:   jsonStringSliceField(stmt, NOT_ACTIONS),
+		}
+		effectRaw, ok := stmt[EFFECT]
+		if !ok {
+			return nil, fmt.Errorf("%s[%d]: 'effect' is required", POLICY_STATEMENTS_JSON, i)
+		}
+		effect, ok := effectRaw.(string)
+		if !ok {
+			return nil, fmt.Errorf("%s[%d]: 'effect' must be a string", POLICY_STATEMENTS_JSON, i)
+		}
+		normalized[EFFECT] = effect
+		s, err := policyStatementFromResourceData(normalized)
+		if err != nil {
+			return nil, fmt.Errorf("%s[%d]: %w", POLICY_STATEMENTS_JSON, i, err)
+		}
+		statements = append(statements, s)
+	}
+	return statements, nil
+}
+
+// jsonStringSliceField coerces a JSON array of strings, decoded by
+// encoding/json into []interface{}, into the []interface{} shape that
+// policyStatementFromResourceData expects. Returns an empty slice for missing
+// or non-array keys.
+func jsonStringSliceField(stmt map[string]interface{}, key string) []interface{} {
+	raw, ok := stmt[key]
+	if !ok || raw == nil {
+		return []interface{}{}
+	}
+	arr, ok := raw.([]interface{})
+	if !ok {
+		return []interface{}{}
+	}
+	return arr
+}
+
+// policyStatementsToJSON converts the LD API response back into the canonical
+// JSON form for storage in policy_statements_json. Returns "" when statements
+// is empty so an unset attribute stays unset.
+func policyStatementsToJSON(statements []ldapi.Statement) (string, error) {
+	if len(statements) == 0 {
+		return "", nil
+	}
+	out := make([]map[string]interface{}, 0, len(statements))
+	for _, s := range statements {
+		m := map[string]interface{}{
+			EFFECT: s.Effect,
+		}
+		if len(s.Resources) > 0 {
+			m[RESOURCES] = s.Resources
+		}
+		if len(s.NotResources) > 0 {
+			m[NOT_RESOURCES] = s.NotResources
+		}
+		if len(s.Actions) > 0 {
+			m[ACTIONS] = s.Actions
+		}
+		if len(s.NotActions) > 0 {
+			m[NOT_ACTIONS] = s.NotActions
+		}
+		out = append(out, m)
+	}
+	b, err := json.Marshal(out)
+	if err != nil {
+		return "", fmt.Errorf("%s: failed to marshal: %w", POLICY_STATEMENTS_JSON, err)
+	}
+	return string(b), nil
 }

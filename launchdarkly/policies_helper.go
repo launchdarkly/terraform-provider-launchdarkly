@@ -14,7 +14,7 @@ func policyArraySchema() *schema.Schema {
 		Set:           policyHash,
 		Optional:      true,
 		Deprecated:    "'policy' is now deprecated. Please migrate to 'policy_statements' to maintain future compatability.",
-		ConflictsWith: []string{POLICY_STATEMENTS},
+		ConflictsWith: []string{POLICY_STATEMENTS, POLICY_STATEMENTS_JSON},
 		Elem: &schema.Resource{
 			Schema: map[string]*schema.Schema{
 				RESOURCES: {
