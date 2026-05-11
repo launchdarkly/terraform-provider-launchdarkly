@@ -339,3 +339,44 @@ func createSegmentWithViewKeys(ctx context.Context, client *Client, projectKey, 
 
 	return nil
 }
+
+// segmentPostCreatePatchOps returns the minimal patch ops needed to finish
+// configuring a segment whose initial POST /api/v2/segments call has already
+// succeeded.
+//
+// The LaunchDarkly POST /segments body (the SegmentBody schema) only carries
+// name, key, description, tags, unbounded, and unboundedContextKind. Rule and
+// target fields must be applied via a follow-up PATCH. When segment approvals
+// are required on the target environment, that PATCH trips the approval gate
+// — which is why this helper skips the PATCH entirely when no rule/target
+// field is configured. See issue #370.
+//
+// The returned fields slice mirrors ops 1:1 and is used to construct a
+// user-facing recovery message if PATCH later fails.
+func segmentPostCreatePatchOps(d *schema.ResourceData) (ops []ldapi.PatchOperation, fields []string, err error) {
+	if included := getOptionalInterfaceSlice(d, INCLUDED); len(included) > 0 {
+		ops = append(ops, patchReplace("/included", included))
+		fields = append(fields, INCLUDED)
+	}
+	if excluded := getOptionalInterfaceSlice(d, EXCLUDED); len(excluded) > 0 {
+		ops = append(ops, patchReplace("/excluded", excluded))
+		fields = append(fields, EXCLUDED)
+	}
+	if includedCtxRaw := getOptionalInterfaceSlice(d, INCLUDED_CONTEXTS); len(includedCtxRaw) > 0 {
+		ops = append(ops, patchReplace("/includedContexts", segmentTargetsFromResourceData(d, segmentTargetOptions{Included: true})))
+		fields = append(fields, INCLUDED_CONTEXTS)
+	}
+	if excludedCtxRaw := getOptionalInterfaceSlice(d, EXCLUDED_CONTEXTS); len(excludedCtxRaw) > 0 {
+		ops = append(ops, patchReplace("/excludedContexts", segmentTargetsFromResourceData(d, segmentTargetOptions{Excluded: true})))
+		fields = append(fields, EXCLUDED_CONTEXTS)
+	}
+	if rulesRaw := getOptionalInterfaceSlice(d, RULES); len(rulesRaw) > 0 {
+		rules, ruleErr := segmentRulesFromResourceData(d, nil)
+		if ruleErr != nil {
+			return nil, nil, ruleErr
+		}
+		ops = append(ops, patchReplace("/rules", rules))
+		fields = append(fields, RULES)
+	}
+	return ops, fields, nil
+}

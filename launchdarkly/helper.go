@@ -166,3 +166,38 @@ func splitID(id string, expectedParts int) []string {
 	}
 	return parts
 }
+
+// is403ApprovalRequired reports whether err looks like the LaunchDarkly
+// "approval required" 403 response. The check is intentionally defensive:
+// the exact wording in the response body has not been captured against the
+// live API, so we match a 403 status with "approval" anywhere in the
+// response body or error message. See issue #370.
+func is403ApprovalRequired(res *http.Response, err error) bool {
+	if err == nil {
+		return false
+	}
+	var body string
+	if apiErr, ok := err.(*ldapi.GenericOpenAPIError); ok {
+		body = string(apiErr.Body())
+	}
+	status := 0
+	if res != nil {
+		status = res.StatusCode
+	}
+	return is403ApprovalRequiredFromParts(status, body, err.Error())
+}
+
+// is403ApprovalRequiredFromParts is the pure-function core of
+// is403ApprovalRequired, factored out so it can be unit-tested without
+// fabricating an *ldapi.GenericOpenAPIError (its fields are unexported).
+func is403ApprovalRequiredFromParts(status int, body, errMsg string) bool {
+	is403 := status == http.StatusForbidden ||
+		strings.Contains(errMsg, "403") ||
+		strings.Contains(body, "403")
+	if !is403 {
+		return false
+	}
+	bl := strings.ToLower(body)
+	ml := strings.ToLower(errMsg)
+	return strings.Contains(bl, "approval") || strings.Contains(ml, "approval")
+}

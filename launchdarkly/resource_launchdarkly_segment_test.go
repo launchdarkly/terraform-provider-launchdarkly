@@ -743,3 +743,94 @@ resource "launchdarkly_segment" "test" {
 		},
 	})
 }
+
+// TestAccSegment_MinimalCreateNoPatch validates the issue-#370 fix path: a
+// minimal segment config (no rules / included / excluded / *_contexts) must
+// succeed without a post-create PATCH. Under segment approvals this is the
+// difference between create succeeding and the call failing with
+// `403 approval is required`.
+//
+// This test does not enable segment approvals on the env — the provider's
+// approval_settings schema today configures flag approvals only (different
+// LD infra, per maintainer note on issue #339). It exercises the new
+// segmentPostCreatePatchOps "skip PATCH entirely" branch end-to-end against
+// real LD. The approval-gate scenario itself is covered manually; see the
+// plan at .claude/plans/issue-370-segment-approval-create.md.
+func TestAccSegment_MinimalCreateNoPatch(t *testing.T) {
+	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	resourceName := "launchdarkly_segment.minimal"
+	config := fmt.Sprintf(`
+resource "launchdarkly_project" "test" {
+	lifecycle {
+		ignore_changes = [environments]
+	}
+	name = "testProject"
+	key = "%s"
+	environments {
+		name  = "testEnvironment"
+		key   = "test"
+		color = "000000"
+	}
+}
+
+resource "launchdarkly_segment" "minimal" {
+	key         = "minimal-segment"
+	project_key = launchdarkly_project.test.key
+	env_key     = "test"
+	name        = "minimal segment"
+	description = "POST-only fields, no PATCH expected"
+	tags        = ["tf-test"]
+	unbounded   = false
+}
+`, projectKey)
+
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck: func() {
+			testAccPreCheck(t)
+		},
+		Providers: testAccProviders,
+		Steps: []resource.TestStep{
+			{
+				Config: config,
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckProjectExists("launchdarkly_project.test"),
+					testAccCheckSegmentExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, KEY, "minimal-segment"),
+					resource.TestCheckResourceAttr(resourceName, PROJECT_KEY, projectKey),
+					resource.TestCheckResourceAttr(resourceName, ENV_KEY, "test"),
+					resource.TestCheckResourceAttr(resourceName, NAME, "minimal segment"),
+					resource.TestCheckResourceAttr(resourceName, DESCRIPTION, "POST-only fields, no PATCH expected"),
+					resource.TestCheckResourceAttr(resourceName, "tags.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "tags.0", "tf-test"),
+					resource.TestCheckResourceAttr(resourceName, UNBOUNDED, "false"),
+					resource.TestCheckResourceAttrSet(resourceName, CREATION_DATE),
+				),
+			},
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
+		},
+	})
+}
+
+// TestAccSegment_CreateUnderApproval is the segment-approval-specific
+// scenario from issue #370. It is currently skipped because segment
+// approvals cannot be enabled via the provider's `approval_settings` block
+// (that block gates flag approvals only, per the maintainer comment on
+// issue #339). Until the LD API exposes segment-approval configuration in a
+// way the provider can target, this scenario must be verified manually:
+//
+//  1. terraform apply project + env from the config below.
+//  2. In the LD UI, enable "Require approvals" for segment changes on the
+//     test env.
+//  3. terraform apply the minimal segment. Expect: succeeds (Issue #370 fix).
+//  4. terraform apply a segment with rules. Expect: fails with a recoverable
+//     diagnostic naming the import command, and the resource is in state.
+//
+// See .claude/plans/issue-370-segment-approval-create.md for the full
+// verification protocol.
+func TestAccSegment_CreateUnderApproval(t *testing.T) {
+	t.Skip("segment approvals are not configurable via the provider's approval_settings block (flag-only, per issue #339). Verified manually; see .claude/plans/issue-370-segment-approval-create.md.")
+}

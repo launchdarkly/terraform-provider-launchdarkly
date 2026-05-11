@@ -164,17 +164,53 @@ func resourceSegmentCreate(ctx context.Context, d *schema.ResourceData, metaRaw 
 		return diag.Errorf("failed to create segment %q in project %q: %s", key, projectKey, handleLdapiErr(err))
 	}
 
-	// ld's api does not allow some fields to be passed in during segment creation so we do an update:
-	// https://apidocs.launchdarkly.com/reference#create-segment
-	updateDiags := resourceSegmentUpdate(ctx, d, metaRaw)
-	if updateDiags.HasError() {
-		// TODO: Figure out if we can get the err out of updateDiag (not looking likely) to use in handleLdapiErr
-		return updateDiags
-		// return diag.Errorf("failed to update segment with name %q key %q for projectKey %q: %s",
-		// 	segmentName, key, projectKey, handleLdapiErr(errs))
+	// Set the ID immediately after POST so that any subsequent error during
+	// PATCH still leaves the created segment tracked in Terraform state.
+	// Without this, a PATCH that hits the segment-approval gate would leave
+	// an orphan LD-side resource that Terraform doesn't know about. See #370.
+	d.SetId(projectKey + "/" + envKey + "/" + key)
+
+	// LD's POST /api/v2/segments body only carries name/key/description/tags/
+	// unbounded/unboundedContextKind. Rule and target fields must be applied
+	// via a follow-up PATCH. We emit that PATCH only when the user actually
+	// configured one of those fields, so minimal configs don't trip the
+	// segment-approval gate. See #370.
+	patchOps, patchFields, err := segmentPostCreatePatchOps(d)
+	if err != nil {
+		return diag.Errorf("failed to build patch ops for segment %q in project %q: %s", key, projectKey, err)
+	}
+	if len(patchOps) > 0 {
+		comment := "Terraform"
+		var patchRes *http.Response
+		err = client.withConcurrency(client.ctx, func() error {
+			_, patchRes, err = client.ld.SegmentsApi.PatchSegment(client.ctx, projectKey, envKey, key).PatchWithComment(ldapi.PatchWithComment{
+				Comment: &comment,
+				Patch:   patchOps,
+			}).Execute()
+			return err
+		})
+		if err != nil {
+			if is403ApprovalRequired(patchRes, err) {
+				// Populate state from the partially-created segment so the
+				// user can inspect it via `terraform state show` and recover
+				// without re-importing. Read failures are appended but not
+				// allowed to mask the primary approval-required diagnostic.
+				// SDKv2 will mark the resource tainted because Create
+				// returned an error — the diagnostic below tells the user
+				// how to break that loop.
+				diags := resourceSegmentRead(ctx, d, metaRaw)
+				diags = append(diags, diag.Errorf(
+					"segment %q was created in project %q environment %q, but the follow-up PATCH to set %v was rejected because segment approvals are required on this environment. "+
+						"The segment exists on the LaunchDarkly side with the POST-carried fields applied (name, description, tags, unbounded settings); only the rule/target fields are unset. "+
+						"Terraform has marked the resource tainted (id %q) — re-applying without further action will destroy and recreate it and hit the same gate. "+
+						"To recover: either (a) have an approver disable segment approvals on this environment, then `terraform untaint <resource_address>` and `terraform apply` to apply the remaining PATCH in place; or (b) leave the partial segment as-is, `terraform untaint <resource_address>`, and submit the rule/target changes via the LaunchDarkly UI approval workflow.",
+					key, projectKey, envKey, patchFields, d.Id())...)
+				return diags
+			}
+			return diag.Errorf("failed to apply post-create patch to segment %q in project %q: %s", key, projectKey, handleLdapiErr(err))
+		}
 	}
 
-	d.SetId(projectKey + "/" + envKey + "/" + key)
 	return resourceSegmentRead(ctx, d, metaRaw)
 }
 
