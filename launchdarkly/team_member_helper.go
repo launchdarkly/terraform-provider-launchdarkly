@@ -3,9 +3,54 @@ package launchdarkly
 import (
 	"fmt"
 	"net/http"
+	"net/url"
 
 	ldapi "github.com/launchdarkly/api-client-go/v22"
 )
+
+// getTeamMemberByEmail performs a paginated GetMembers search filtered
+// by email and returns the first exact match. Lives here (not in the
+// SDKv2 data_source_launchdarkly_team_member.go that owned it pre-
+// migration) because both the framework team_member + team_members
+// data sources consume it after the data source was migrated to
+// terraform-plugin-framework in Phase 1.3.2.
+func getTeamMemberByEmail(client *Client, memberEmail string) (*ldapi.Member, error) {
+	teamMemberLimit := int64(1000)
+
+	var members *ldapi.Members
+	var err error
+	err = client.withConcurrency(client.ctx, func() error {
+		members, _, err = client.ld.AccountMembersApi.GetMembers(client.ctx).Filter(fmt.Sprintf("query:%s", url.QueryEscape(memberEmail))).Expand("roleAttributes").Execute()
+		return err
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to read team member with email: %s: %v", memberEmail, handleLdapiErr(err))
+	}
+
+	totalMemberCount := int(*members.TotalCount)
+	memberItems := members.Items
+	membersPulled := len(memberItems)
+	for membersPulled < totalMemberCount {
+		offset := int64(membersPulled)
+		var newMembers *ldapi.Members
+		err = client.withConcurrency(client.ctx, func() error {
+			newMembers, _, err = client.ld.AccountMembersApi.GetMembers(client.ctx).Limit(teamMemberLimit).Offset(offset).Filter(fmt.Sprintf("query:%s", url.QueryEscape(memberEmail))).Execute()
+			return err
+		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to read team member with email: %s: %v", memberEmail, handleLdapiErr(err))
+		}
+		memberItems = append(memberItems, newMembers.Items...)
+		membersPulled = len(memberItems)
+	}
+
+	for _, member := range memberItems {
+		if member.Email == memberEmail {
+			return &member, nil
+		}
+	}
+	return nil, fmt.Errorf("failed to find team member with email: %s", memberEmail)
+}
 
 // The LD api returns custom role IDs (not keys). Since we want to set custom_roles with keys, we need to look up their IDs
 func customRoleIDsToKeys(client *Client, ids []string) ([]string, error) {

@@ -133,6 +133,7 @@ func (p *launchdarklyProvider) DataSources(_ context.Context) []func() datasourc
 		NewProjectDataSource,
 		NewRelayProxyConfigurationDataSource,
 		NewTeamDataSource,
+		NewTeamMemberDataSource,
 		NewWebhookDataSource,
 	}
 }
