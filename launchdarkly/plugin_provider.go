@@ -149,6 +149,7 @@ func (p *launchdarklyProvider) DataSources(_ context.Context) []func() datasourc
 func (p *launchdarklyProvider) Resources(_ context.Context) []func() resource.Resource {
 	return []func() resource.Resource{
 		NewAIToolResource,
+		NewCustomRoleResource,
 		NewRelayProxyConfigResource,
 		NewTeamMemberResource,
 		NewWebhookResource,
