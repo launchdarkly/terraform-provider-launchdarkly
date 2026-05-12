@@ -165,7 +165,7 @@ func TestAccDataSourceFeatureFlagEnvironment_exists(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config: fmt.Sprintf(testAccDataSourceFeatureFlagEnvironment, envKey, flagId),
@@ -292,7 +292,7 @@ func TestAccDataSourceFeatureFlagEnvironment_WithContextFields(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config: fmt.Sprintf(testAccDataSourceFeatureFlagEnvironment, envKey, flagId),

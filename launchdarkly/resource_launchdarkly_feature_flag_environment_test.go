@@ -677,7 +677,7 @@ func TestAccFeatureFlagEnvironment_Empty(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config: withRandomProject(projectKey, testAccFeatureFlagEnvironmentEmpty),
@@ -711,7 +711,7 @@ func TestAccFeatureFlagEnvironment_Update(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config: withRandomProject(projectKey, testAccFeatureFlagEnvironmentBasic),
@@ -811,7 +811,7 @@ func TestAccFeatureFlagEnvironment_JSON_variations(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config: withRandomProject(projectKey, testAccFeatureFlagEnvironmentJSONVariations),
@@ -840,7 +840,7 @@ func TestAccFeatureFlagEnvironment_BoolClauseValue(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config: withRandomProject(projectKey, testAccFeatureFlagEnvironmentBoolClauseValue),
@@ -917,7 +917,7 @@ func TestAccFeatureFlagEnvironment_NumberClauseValue(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config: withRandomProject(projectKey, testAccFeatureFlagEnvironmentNumberClauseValue),
@@ -950,7 +950,7 @@ func TestAccFeatureFlagEnvironment_UpdateClauseWithRollout(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config: withRandomProject(projectKey, testAccPercentageRollout),
@@ -1015,7 +1015,7 @@ func TestAccFeatureFlagEnvironment_InvalidBucketBy(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config:      withRandomProject(projectKey, testAccInvalidFallthroughBucketBy),
@@ -1036,7 +1036,7 @@ func TestAccFeatureFlagEnvironment_Prereq(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config: withRandomProject(projectKey, testAccFeatureFlagEnvironmentPrereq),
@@ -1084,7 +1084,7 @@ func TestAccFeatureFlagEnvironment_ContextTargets(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config: fmt.Sprintf(testAccContextKind, projectKey, accountContextKind, otherContextKind),
@@ -1224,7 +1224,7 @@ func TestAccFeatureFlagEnvironment_OffVariationResetsToCorrectDefaultOnDelete(t 
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config: withRandomProject(projectKey, testAccDefaultOffVariationOnDelete),
@@ -1278,7 +1278,7 @@ func testAccCheckFeatureFlagEnvironmentExists(resourceName string) resource.Test
 		if !ok {
 			return fmt.Errorf("environent key not found: %s", resourceName)
 		}
-		client := testAccProvider.Meta().(*Client)
+		client := mustTestAccClient()
 		_, _, err = client.ld.FeatureFlagsApi.GetFeatureFlag(client.ctx, projKey, flagKey).Env(envKey).Execute()
 		if err != nil {
 			return fmt.Errorf("received an error getting feature flag environment. %s", err)

@@ -245,8 +245,8 @@ func TestAccFeatureFlagViewKeys_CreateAndUpdate(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers:    testAccProviders,
-		CheckDestroy: testAccCheckFeatureFlagDestroy,
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories,
+		CheckDestroy:             testAccCheckFeatureFlagDestroy,
 		Steps: []resource.TestStep{
 			{
 				Config: fmt.Sprintf(testAccFeatureFlagWithViewKeysCreate, projectName, projectKey, maintainerId, maintainerId, maintainerId),
@@ -310,8 +310,8 @@ func TestAccFeatureFlagViewKeys_NonexistentView(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers:    testAccProviders,
-		CheckDestroy: testAccCheckFeatureFlagDestroy,
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories,
+		CheckDestroy:             testAccCheckFeatureFlagDestroy,
 		Steps: []resource.TestStep{
 			// Step 1: Create project and view first
 			{
@@ -356,8 +356,8 @@ func TestAccFeatureFlagViewKeys_ReconcileUnexpectedViewAssociation(t *testing.T)
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers:    testAccProviders,
-		CheckDestroy: testAccCheckFeatureFlagDestroy,
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories,
+		CheckDestroy:             testAccCheckFeatureFlagDestroy,
 		Steps: []resource.TestStep{
 			{
 				Config: fmt.Sprintf(testAccFeatureFlagWithViewKeysCreate, projectName, projectKey, maintainerId, maintainerId, maintainerId),
@@ -403,7 +403,7 @@ func TestAccFeatureFlagViewKeys_ReconcileUnexpectedViewAssociation(t *testing.T)
 // testAccCheckFlagLinkedToViews verifies that a flag is linked to specific views via API
 func testAccCheckFlagLinkedToViews(projectKey, flagKey string, expectedViewKeys []string) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
-		client := testAccProvider.Meta().(*Client)
+		client := mustTestAccClient()
 		betaClient, err := newBetaClient(client.apiKey, client.apiHost, false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
 		if err != nil {
 			return fmt.Errorf("failed to create beta client: %v", err)
@@ -440,7 +440,7 @@ func testAccCheckFlagLinkedToViews(projectKey, flagKey string, expectedViewKeys 
 
 // testAccCheckFeatureFlagDestroy verifies the flag has been destroyed
 func testAccCheckFeatureFlagDestroy(s *terraform.State) error {
-	client := testAccProvider.Meta().(*Client)
+	client := mustTestAccClient()
 	for _, rs := range s.RootModule().Resources {
 		if rs.Type != "launchdarkly_feature_flag" {
 			continue

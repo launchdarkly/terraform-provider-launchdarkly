@@ -180,7 +180,7 @@ func TestAccEnvironment_Create(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config: withRandomProject(projectKey, testAccEnvironmentCreate),
@@ -217,7 +217,7 @@ func TestAccEnvironment_Update(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config: withRandomProject(projectKey, testAccEnvironmentCreate),
@@ -260,7 +260,7 @@ func TestAccEnvironment_RemoveAttributes(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config: withRandomProject(projectKey, testAccEnvironmentCreate),
@@ -303,7 +303,7 @@ func TestAccEnvironment_Invalid(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config:      withRandomProject(projectKey, testAccEnvironmentInvalid),
@@ -336,7 +336,7 @@ func TestAccEnvironment_WithApprovals(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config: withRandomProject(projectKey, testAccEnvironmentWithApprovals),
@@ -429,7 +429,7 @@ func TestAccEnvironment_WithApprovalIntegrations(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config: withRandomProject(projectKey, testAccEnvironmentWithServiceNowApprovals),
@@ -494,7 +494,7 @@ func TestAccEnvironment_Critical(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config: withRandomProject(projectKey, testAccEnvironmentCritical),
@@ -578,7 +578,7 @@ func testAccCheckEnvironmentExists(resourceName string) resource.TestCheckFunc {
 		if !ok {
 			return fmt.Errorf("project key not found: %s", resourceName)
 		}
-		client := testAccProvider.Meta().(*Client)
+		client := mustTestAccClient()
 		_, _, err := client.ld.EnvironmentsApi.GetEnvironment(client.ctx, projKey, envKey).Execute()
 		if err != nil {
 			return fmt.Errorf("received an error getting environment. %s", err)

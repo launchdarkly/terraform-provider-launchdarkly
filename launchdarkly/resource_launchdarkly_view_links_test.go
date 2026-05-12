@@ -449,7 +449,7 @@ func TestAccViewLinks_Update(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config: fmt.Sprintf(testAccViewLinksCreate, projectName, projectKey, maintainerId),
@@ -516,7 +516,7 @@ func TestAccViewLinks_Import(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config: fmt.Sprintf(testAccViewLinksCreate, projectName, projectKey, maintainerId),
@@ -553,7 +553,7 @@ func TestAccViewLinks_WithFlagsAndSegments(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config: fmt.Sprintf(testAccViewLinksWithSegmentsCreate, projectName, projectKey, maintainerId),
@@ -620,7 +620,7 @@ func testAccCheckViewForLinksExists(resourceName string) resource.TestCheckFunc 
 			return fmt.Errorf("view links ID is not set")
 		}
 
-		client := testAccProvider.Meta().(*Client)
+		client := mustTestAccClient()
 		betaClient, err := newBetaClient(client.apiKey, client.apiHost, false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
 		if err != nil {
 			return err
@@ -644,7 +644,7 @@ func testAccCheckViewForLinksExists(resourceName string) resource.TestCheckFunc 
 // testAccCheckViewExistsViaAPI verifies that a view exists via direct API call
 func testAccCheckViewExistsViaAPI(projectKey, viewKey string) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
-		client := testAccProvider.Meta().(*Client)
+		client := mustTestAccClient()
 		betaClient, err := newBetaClient(client.apiKey, client.apiHost, false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
 		if err != nil {
 			return fmt.Errorf("failed to create beta client: %v", err)
@@ -665,7 +665,7 @@ func testAccCheckViewExistsViaAPI(projectKey, viewKey string) resource.TestCheck
 // testAccCheckViewLinksAPIState verifies the actual linked flags via API call
 func testAccCheckViewLinksAPIState(projectKey, viewKey string, expectedFlags []string) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
-		client := testAccProvider.Meta().(*Client)
+		client := mustTestAccClient()
 		betaClient, err := newBetaClient(client.apiKey, client.apiHost, false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
 		if err != nil {
 			return fmt.Errorf("failed to create beta client: %v", err)
@@ -722,7 +722,7 @@ func testAccCheckViewLinksAPIState(projectKey, viewKey string, expectedFlags []s
 // testAccCheckViewLinksSegmentsAPIState verifies the actual linked segments via API call
 func testAccCheckViewLinksSegmentsAPIState(projectKey, viewKey string, expectedSegments []string) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
-		client := testAccProvider.Meta().(*Client)
+		client := mustTestAccClient()
 		betaClient, err := newBetaClient(client.apiKey, client.apiHost, false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
 		if err != nil {
 			return fmt.Errorf("failed to create beta client: %v", err)

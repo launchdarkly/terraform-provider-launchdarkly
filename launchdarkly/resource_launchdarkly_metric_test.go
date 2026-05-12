@@ -131,7 +131,7 @@ func TestAccMetric_BasicCreateAndUpdate(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config: withRandomProject(projectKey, testAccMetricBasic),
@@ -202,7 +202,7 @@ func TestAccMetric_WithRandomizationUnits(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config: fmt.Sprintf(testAccMetricCustomWithRandomizationUnitsFmt, projectKey),
@@ -256,7 +256,7 @@ func TestAccMetric_MetricAnalysisFields(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories,
 		Steps: []resource.TestStep{
 			// 1. Set none of the analysis fields, verify the metric is created with default values
 			{
@@ -522,7 +522,7 @@ func TestAccMetric_IncludeUnitsWithoutEvents(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories,
 		Steps: []resource.TestStep{
 			// Default value is "true" when "analysis_type" is "mean"
 			{
@@ -642,7 +642,7 @@ func testAccCheckMetricExists(resourceName string) resource.TestCheckFunc {
 		if !ok {
 			return fmt.Errorf("project key not found: %s", resourceName)
 		}
-		client := testAccProvider.Meta().(*Client)
+		client := mustTestAccClient()
 		_, _, err := client.ld.MetricsApi.GetMetric(client.ctx, projKey, metricKey).Execute()
 		if err != nil {
 			return fmt.Errorf("received an error getting metric. %s", err)

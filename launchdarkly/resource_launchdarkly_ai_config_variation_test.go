@@ -176,8 +176,8 @@ func TestAccAIConfigVariation_CreateAndUpdate(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers:    testAccProviders,
-		CheckDestroy: testAccCheckAIConfigVariationDestroy,
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories,
+		CheckDestroy:             testAccCheckAIConfigVariationDestroy,
 		Steps: []resource.TestStep{
 			{
 				Config: withAITestProject(projectKey, fmt.Sprintf(testAccAIConfigVariationCreate, configKey, variationKey, variationName)),
@@ -227,9 +227,9 @@ func TestAccAIConfigVariation_WithModelConfigKey(t *testing.T) {
 	resourceName := "launchdarkly_ai_config_variation.test"
 
 	resource.Test(t, resource.TestCase{
-		PreCheck:     func() { testAccPreCheck(t) },
-		Providers:    testAccProviders,
-		CheckDestroy: testAccCheckAIConfigVariationDestroy,
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories,
+		CheckDestroy:             testAccCheckAIConfigVariationDestroy,
 		Steps: []resource.TestStep{
 			{
 				Config: withAITestProject(projectKey, fmt.Sprintf(testAccAIConfigVariationWithModelConfigKey, modelConfigKey, configKey, variationKey)),
@@ -264,9 +264,9 @@ func TestAccAIConfigVariation_AgentMode(t *testing.T) {
 	resourceName := "launchdarkly_ai_config_variation.test"
 
 	resource.Test(t, resource.TestCase{
-		PreCheck:     func() { testAccPreCheck(t) },
-		Providers:    testAccProviders,
-		CheckDestroy: testAccCheckAIConfigVariationDestroy,
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories,
+		CheckDestroy:             testAccCheckAIConfigVariationDestroy,
 		Steps: []resource.TestStep{
 			{
 				Config: withAITestProject(projectKey, fmt.Sprintf(testAccAIConfigVariationAgentMode, configKey, variationKey, variationName)),
@@ -306,9 +306,9 @@ func TestAccAIConfigVariation_WithToolKeys(t *testing.T) {
 	resourceName := "launchdarkly_ai_config_variation.test"
 
 	resource.Test(t, resource.TestCase{
-		PreCheck:     func() { testAccPreCheck(t) },
-		Providers:    testAccProviders,
-		CheckDestroy: testAccCheckAIConfigVariationDestroy,
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories,
+		CheckDestroy:             testAccCheckAIConfigVariationDestroy,
 		Steps: []resource.TestStep{
 			{
 				Config: withAITestProject(projectKey, fmt.Sprintf(testAccAIConfigVariationWithToolKeys, toolKey, configKey, variationKey)),
@@ -330,9 +330,9 @@ func TestAccAIConfigVariation_WithInlineModel(t *testing.T) {
 	resourceName := "launchdarkly_ai_config_variation.test"
 
 	resource.Test(t, resource.TestCase{
-		PreCheck:     func() { testAccPreCheck(t) },
-		Providers:    testAccProviders,
-		CheckDestroy: testAccCheckAIConfigVariationDestroy,
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories,
+		CheckDestroy:             testAccCheckAIConfigVariationDestroy,
 		Steps: []resource.TestStep{
 			{
 				Config: withAITestProject(projectKey, fmt.Sprintf(testAccAIConfigVariationWithInlineModel, configKey, variationKey)),
@@ -364,7 +364,7 @@ func testAccCheckAIConfigVariationExists(resourceName string) resource.TestCheck
 		configKey := rs.Primary.Attributes[AI_CONFIG_KEY]
 		variationKey := rs.Primary.Attributes[KEY]
 
-		client := testAccProvider.Meta().(*Client)
+		client := mustTestAccClient()
 		_, _, err := client.ld.AIConfigsApi.GetAIConfigVariation(client.ctx, projectKey, configKey, variationKey).Execute()
 		if err != nil {
 			return fmt.Errorf("received an error getting AI config variation: %s", err)
@@ -374,7 +374,7 @@ func testAccCheckAIConfigVariationExists(resourceName string) resource.TestCheck
 }
 
 var testAccCheckAIConfigVariationDestroy = func(s *terraform.State) error {
-	client := testAccProvider.Meta().(*Client)
+	client := mustTestAccClient()
 
 	for _, rs := range s.RootModule().Resources {
 		if rs.Type != "launchdarkly_ai_config_variation" {

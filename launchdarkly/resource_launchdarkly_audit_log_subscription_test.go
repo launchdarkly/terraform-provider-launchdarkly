@@ -60,7 +60,7 @@ func TestAccAuditLogSubscription_CreateUpdateDatadog(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config: fmt.Sprintf(testAccAuditLogSubscriptionCreate, integrationKey, integrationKey, config),
@@ -117,7 +117,7 @@ func TestAccAuditLogSubscription_CreateDynatrace(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config: fmt.Sprintf(testAccAuditLogSubscriptionCreate, integrationKey, integrationKey, config),
@@ -155,7 +155,7 @@ func TestAccAuditLogSubscription_CreateMSTeams(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config: fmt.Sprintf(testAccAuditLogSubscriptionCreate, integrationKey, integrationKey, config),
@@ -192,7 +192,7 @@ func TestAccAuditLogSubscription_CreateSlack(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config: fmt.Sprintf(testAccAuditLogSubscriptionCreate, integrationKey, integrationKey, config),
@@ -231,7 +231,7 @@ func TestAccAuditLogSubscription_CreateSplunk(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config: fmt.Sprintf(testAccAuditLogSubscriptionCreate, integrationKey, integrationKey, config),
@@ -267,7 +267,7 @@ func TestAccAuditLogSubscription_WrongConfigReturnsError(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config:      fmt.Sprintf(testAccAuditLogSubscriptionCreate, integrationKey, integrationKey, config),
@@ -291,7 +291,7 @@ func testAccCheckIntegrationExists(resourceName string) resource.TestCheckFunc {
 		if !ok {
 			return fmt.Errorf("integration not found: %s", resourceName)
 		}
-		client := testAccProvider.Meta().(*Client)
+		client := mustTestAccClient()
 		_, _, err := client.ld.IntegrationAuditLogSubscriptionsApi.GetSubscriptionByID(client.ctx, integrationKey, integrationID).Execute()
 		if err != nil {
 			return fmt.Errorf("error getting %s integration: %s", integrationKey, err)
