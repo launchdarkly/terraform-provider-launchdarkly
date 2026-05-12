@@ -102,8 +102,8 @@ func Provider() *schema.Provider {
 			// launchdarkly_model_config now served by the framework provider; see data_source_model_config_framework.go.
 			// launchdarkly_project now served by the framework provider; see data_source_project_framework.go.
 			// launchdarkly_relay_proxy_configuration now served by the framework provider; see data_source_relay_proxy_configuration_framework.go.
-			"launchdarkly_segment":      dataSourceSegment(),
-			"launchdarkly_team":         dataSourceTeam(),
+			"launchdarkly_segment": dataSourceSegment(),
+			// launchdarkly_team now served by the framework provider; see data_source_team_framework.go.
 			"launchdarkly_team_member":  dataSourceTeamMember(),
 			"launchdarkly_team_members": dataSourceTeamMembers(),
 			"launchdarkly_view":         dataSourceView(),
