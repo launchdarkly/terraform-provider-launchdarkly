@@ -96,7 +96,7 @@ func Provider() *schema.Provider {
 			// launchdarkly_environment now served by the framework provider; see data_source_environment_framework.go.
 			// launchdarkly_feature_flag now served by the framework provider; see data_source_feature_flag_framework.go.
 			// launchdarkly_flag_templates now served by the framework provider; see data_source_flag_templates_framework.go.
-			"launchdarkly_feature_flag_environment": dataSourceFeatureFlagEnvironment(),
+			// launchdarkly_feature_flag_environment now served by the framework provider; see data_source_feature_flag_environment_framework.go.
 			// launchdarkly_flag_trigger now served by the framework provider; see data_source_flag_trigger_framework.go.
 			// launchdarkly_metric now served by the framework provider; see data_source_metric_framework.go.
 			// launchdarkly_model_config now served by the framework provider; see data_source_model_config_framework.go.
