@@ -122,6 +122,7 @@ func (p *launchdarklyProvider) Configure(ctx context.Context, req provider.Confi
 func (p *launchdarklyProvider) DataSources(_ context.Context) []func() datasource.DataSource {
 	return []func() datasource.DataSource{
 		NewAIConfigDataSource,
+		NewAIConfigVariationDataSource,
 		NewAuditLogSubscriptionDataSource,
 		NewFlagTriggerDataSource,
 		NewMetricDataSource,
