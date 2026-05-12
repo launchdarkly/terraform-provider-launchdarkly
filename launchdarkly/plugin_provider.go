@@ -135,6 +135,7 @@ func (p *launchdarklyProvider) DataSources(_ context.Context) []func() datasourc
 		NewTeamDataSource,
 		NewTeamMemberDataSource,
 		NewTeamMembersDataSource,
+		NewViewDataSource,
 		NewWebhookDataSource,
 	}
 }
