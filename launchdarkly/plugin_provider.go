@@ -151,6 +151,7 @@ func (p *launchdarklyProvider) Resources(_ context.Context) []func() resource.Re
 		NewAccessTokenResource,
 		NewAIToolResource,
 		NewCustomRoleResource,
+		NewEnvironmentResource,
 		NewRelayProxyConfigResource,
 		NewTeamMemberResource,
 		NewViewResource,

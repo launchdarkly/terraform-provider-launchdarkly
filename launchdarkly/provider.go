@@ -68,8 +68,8 @@ func Provider() *schema.Provider {
 			// launchdarkly_ai_tool now served by the framework provider; see resource_ai_tool_framework.go.
 			"launchdarkly_audit_log_subscription": resourceAuditLogSubscription(),
 			// launchdarkly_custom_role now served by the framework provider; see resource_custom_role_framework.go.
-			"launchdarkly_destination":              resourceDestination(),
-			"launchdarkly_environment":              resourceEnvironment(),
+			"launchdarkly_destination": resourceDestination(),
+			// launchdarkly_environment now served by the framework provider; see resource_environment_framework.go.
 			"launchdarkly_feature_flag":             resourceFeatureFlag(),
 			"launchdarkly_flag_templates":           resourceFlagTemplates(),
 			"launchdarkly_feature_flag_environment": resourceFeatureFlagEnvironment(),
