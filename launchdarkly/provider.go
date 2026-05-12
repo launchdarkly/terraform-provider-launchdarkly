@@ -97,8 +97,8 @@ func Provider() *schema.Provider {
 			"launchdarkly_feature_flag":             dataSourceFeatureFlag(),
 			"launchdarkly_flag_templates":           dataSourceFlagTemplates(),
 			"launchdarkly_feature_flag_environment": dataSourceFeatureFlagEnvironment(),
-			"launchdarkly_flag_trigger":             dataSourceFlagTrigger(),
-			"launchdarkly_metric":                   dataSourceMetric(),
+			// launchdarkly_flag_trigger now served by the framework provider; see data_source_flag_trigger_framework.go.
+			"launchdarkly_metric": dataSourceMetric(),
 			// launchdarkly_model_config now served by the framework provider; see data_source_model_config_framework.go.
 			"launchdarkly_project": dataSourceProject(),
 			// launchdarkly_relay_proxy_configuration now served by the framework provider; see data_source_relay_proxy_configuration_framework.go.
