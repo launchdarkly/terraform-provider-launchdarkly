@@ -52,6 +52,41 @@ func getTeamMemberByEmail(client *Client, memberEmail string) (*ldapi.Member, er
 	return nil, fmt.Errorf("failed to find team member with email: %s", memberEmail)
 }
 
+// getAllTeamMembers paginates GetMembers and returns every member in
+// the org. Used by data_source_team_members_framework.go for bulk
+// lookup against a supplied list of emails.
+func getAllTeamMembers(client *Client) ([]ldapi.Member, error) {
+	teamMemberLimit := int64(1000)
+
+	var members *ldapi.Members
+	var err error
+	err = client.withConcurrency(client.ctx, func() error {
+		members, _, err = client.ld.AccountMembersApi.GetMembers(client.ctx).Limit(teamMemberLimit).Execute()
+		return err
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to read team members: %v", handleLdapiErr(err))
+	}
+
+	totalMemberCount := int(*members.TotalCount)
+	memberItems := members.Items
+	membersPulled := len(memberItems)
+	for membersPulled < totalMemberCount {
+		offset := int64(membersPulled)
+		var newMembers *ldapi.Members
+		err = client.withConcurrency(client.ctx, func() error {
+			newMembers, _, err = client.ld.AccountMembersApi.GetMembers(client.ctx).Limit(teamMemberLimit).Offset(offset).Execute()
+			return err
+		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to read team members: %v", handleLdapiErr(err))
+		}
+		memberItems = append(memberItems, newMembers.Items...)
+		membersPulled = len(memberItems)
+	}
+	return memberItems, nil
+}
+
 // The LD api returns custom role IDs (not keys). Since we want to set custom_roles with keys, we need to look up their IDs
 func customRoleIDsToKeys(client *Client, ids []string) ([]string, error) {
 	customRoleKeys := make([]string, 0, len(ids))

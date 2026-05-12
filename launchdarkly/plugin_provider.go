@@ -134,6 +134,7 @@ func (p *launchdarklyProvider) DataSources(_ context.Context) []func() datasourc
 		NewRelayProxyConfigurationDataSource,
 		NewTeamDataSource,
 		NewTeamMemberDataSource,
+		NewTeamMembersDataSource,
 		NewWebhookDataSource,
 	}
 }

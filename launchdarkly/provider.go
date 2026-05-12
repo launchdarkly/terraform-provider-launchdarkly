@@ -105,8 +105,8 @@ func Provider() *schema.Provider {
 			"launchdarkly_segment": dataSourceSegment(),
 			// launchdarkly_team now served by the framework provider; see data_source_team_framework.go.
 			// launchdarkly_team_member now served by the framework provider; see data_source_team_member_framework.go.
-			"launchdarkly_team_members": dataSourceTeamMembers(),
-			"launchdarkly_view":         dataSourceView(),
+			// launchdarkly_team_members now served by the framework provider; see data_source_team_members_framework.go.
+			"launchdarkly_view": dataSourceView(),
 			// launchdarkly_webhook now served by the framework provider; see data_source_webhook_framework.go.
 		},
 		ConfigureContextFunc: providerConfigure,
