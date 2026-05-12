@@ -17,10 +17,12 @@ package launchdarkly
 
 import (
 	"context"
+	"errors"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	dsschema "github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
+	rsschema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	ldapi "github.com/launchdarkly/api-client-go/v22"
@@ -73,6 +75,115 @@ func frameworkPolicyStatementsDataSourceBlock(description string) dsschema.ListN
 			},
 		},
 	}
+}
+
+// frameworkPolicyStatementsResourceBlock returns a ListNestedBlock for
+// use in resource.Schema. The required flag controls whether the block
+// itself is required; inner attrs default to Optional with element-list
+// validation matching SDKv2.
+func frameworkPolicyStatementsResourceBlock(required bool, description string, deprecated string) rsschema.ListNestedBlock {
+	return rsschema.ListNestedBlock{
+		Description:        description,
+		DeprecationMessage: deprecated,
+		NestedObject: rsschema.NestedBlockObject{
+			Attributes: map[string]rsschema.Attribute{
+				RESOURCES: rsschema.ListAttribute{
+					Optional:    true,
+					Computed:    true,
+					ElementType: types.StringType,
+					Description: "The list of resource specifiers the statement applies to.",
+				},
+				NOT_RESOURCES: rsschema.ListAttribute{
+					Optional:    true,
+					Computed:    true,
+					ElementType: types.StringType,
+					Description: "The list of resource specifiers the statement does not apply to.",
+				},
+				ACTIONS: rsschema.ListAttribute{
+					Optional:    true,
+					Computed:    true,
+					ElementType: types.StringType,
+					Description: "The list of actions the statement applies to.",
+				},
+				NOT_ACTIONS: rsschema.ListAttribute{
+					Optional:    true,
+					Computed:    true,
+					ElementType: types.StringType,
+					Description: "The list of actions the statement does not apply to.",
+				},
+				EFFECT: rsschema.StringAttribute{
+					Required:    true,
+					Description: "Either `allow` or `deny`.",
+				},
+			},
+		},
+	}
+}
+
+// frameworkPolicyStatementsFromList converts a framework types.List of
+// policy-statement objects back into an []ldapi.StatementPost (used by
+// resource Create/Update calls).
+func frameworkPolicyStatementsFromList(ctx context.Context, list types.List) ([]ldapi.StatementPost, diag.Diagnostics) {
+	var diags diag.Diagnostics
+	if list.IsNull() || list.IsUnknown() {
+		return nil, diags
+	}
+	var elements []frameworkPolicyStatementModel
+	diags.Append(list.ElementsAs(ctx, &elements, false)...)
+	if diags.HasError() {
+		return nil, diags
+	}
+	out := make([]ldapi.StatementPost, 0, len(elements))
+	for _, e := range elements {
+		stmt, d := e.toLDAPI()
+		diags.Append(d...)
+		if diags.HasError() {
+			return nil, diags
+		}
+		out = append(out, stmt)
+	}
+	return out, diags
+}
+
+type frameworkPolicyStatementModel struct {
+	Resources    []string `tfsdk:"resources"`
+	NotResources []string `tfsdk:"not_resources"`
+	Actions      []string `tfsdk:"actions"`
+	NotActions   []string `tfsdk:"not_actions"`
+	Effect       string   `tfsdk:"effect"`
+}
+
+func (m frameworkPolicyStatementModel) toLDAPI() (ldapi.StatementPost, diag.Diagnostics) {
+	var diags diag.Diagnostics
+	if len(m.Resources) > 0 && len(m.NotResources) > 0 {
+		diags.AddError("Invalid policy statement", errors.New("policy statements cannot contain both 'resources' and 'not_resources'").Error())
+	}
+	if len(m.Resources) == 0 && len(m.NotResources) == 0 {
+		diags.AddError("Invalid policy statement", errors.New("policy statements must contain either 'resources' or 'not_resources'").Error())
+	}
+	if len(m.Actions) > 0 && len(m.NotActions) > 0 {
+		diags.AddError("Invalid policy statement", errors.New("policy statements cannot contain both 'actions' and 'not_actions'").Error())
+	}
+	if len(m.Actions) == 0 && len(m.NotActions) == 0 {
+		diags.AddError("Invalid policy statement", errors.New("policy statements must contain either 'actions' or 'not_actions'").Error())
+	}
+	if diags.HasError() {
+		return ldapi.StatementPost{}, diags
+	}
+	stmt := ldapi.StatementPost{Effect: m.Effect}
+	if len(m.Resources) > 0 {
+		stmt.SetResources(m.Resources)
+	}
+	if len(m.NotResources) > 0 {
+		stmt.SetNotResources(m.NotResources)
+	}
+	if len(m.Actions) > 0 {
+		stmt.SetActions(m.Actions)
+	}
+	if len(m.NotActions) > 0 {
+		stmt.SetNotActions(m.NotActions)
+	}
+	return stmt, diags
 }
 
 // frameworkPolicyStatementsValue converts an LD-API []Statement into a
