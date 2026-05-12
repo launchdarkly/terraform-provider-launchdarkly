@@ -120,7 +120,9 @@ func (p *launchdarklyProvider) Configure(ctx context.Context, req provider.Confi
 
 // DataSources defines the data sources implemented in the provider.
 func (p *launchdarklyProvider) DataSources(_ context.Context) []func() datasource.DataSource {
-	return nil
+	return []func() datasource.DataSource{
+		NewModelConfigDataSource,
+	}
 }
 
 // Resources defines the resources implemented in the provider.
