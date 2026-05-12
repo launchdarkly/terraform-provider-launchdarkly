@@ -1,169 +1,165 @@
 # Migration handoff
 
-> Live status doc. Each session updates this; check git log on the
-> moonshots branches for ground truth.
+> Live status doc. Check git log on the moonshots branches for ground
+> truth. 50 commits across ~54 stacked branches under
+> `moonshots/tpf/*`, all green on local `make fmtcheck && go vet && go build`.
 
-## Phase 0 — Foundation: COMPLETE
+## Phase status summary
 
-Stack: `moonshots/tpf/0.1-branch-ci` → … → `moonshots/tpf/0.9a-parity-bootstrap`.
-9 branches, 9 commits, all green on local `make fmtcheck && go vet && go build`.
+| Phase | Status | Branches |
+|---|---|---|
+| 0 (Foundation) | DONE | 9 |
+| 1 (Data sources) | DONE — 19/19 migrated | 19 |
+| 2 (Leaf resources) | DONE — 9/9 migrated | 9 |
+| 3 (Medium resources) | 2/10 full impl (environment + flag_templates), 8 scaffolds | 10 |
+| 4 (Complex resources) | 4 scaffolds (project, segment, feature_flag, FFE) | 4 |
+| 5 (Cutover) | Documented (no code change required pre-promotion) | 1 |
+| 6 (Additive features) | 1 example: `provider::launchdarkly::flag_key` | 1 |
+| 7 (Release ceremony) | Documented per-phase | 1 |
+
+## Detail
+
+### Phase 0 — Foundation: COMPLETE
 
 | Sub-phase | Branch | Status |
 |---|---|---|
-| 0.1 | `moonshots/tpf/0.1-branch-ci` | done — push triggers + workflow_dispatch for moonshots branch |
-| 0.2 | `moonshots/tpf/0.2-test-factories` | done — `testAccProtoV5ProviderFactories` mux factory replaces 171 `Providers:` callsites across 46 test files; `mustTestAccClient()` replaces `testAccProvider.Meta()` (20 callsites) |
-| 0.3 | `moonshots/tpf/0.3-framework-helpers` | done — `framework_helpers.go` + tests; team_role_mapping refactored to consume |
-| 0.4 | `moonshots/tpf/0.4-framework-validators` | done — SDKv2 validation_helper.go ported to `framework_validators.go` (no new external deps; native `validator.String` interface) |
-| 0.5 | `moonshots/tpf/0.5-state-compat-harness` | done — `statecompat.Run`, capture/scan/safe-placeholders scripts, CI integration, fixture-safety policy locked |
-| 0.6 | `moonshots/tpf/0.6-schema-compat-decision` | done — `framework_schema_compat.go` ships defensively; decision doc in `docs/migration-schema-compat-upjet.md` |
-| 0.7 | `moonshots/tpf/0.7-block-schema-reference` | done — `framework_schema_reference.go` worked example + cheatsheet; CLAUDE.md migration conventions section |
-| 0.8 | `moonshots/tpf/0.8-contributor-docs` | done — `CONTRIBUTING.md` + PR template migration metadata |
-| 0.9a | `moonshots/tpf/0.9a-parity-bootstrap` | done — set-hash parity inventory + deprecation carry-forward docs |
+| 0.1 | `moonshots/tpf/0.1-branch-ci` | CI: push triggers + workflow_dispatch for moonshots branch |
+| 0.2 | `moonshots/tpf/0.2-test-factories` | `testAccProtoV5ProviderFactories` mux factory replaces 171 `Providers:` callsites across 46 test files; `mustTestAccClient()` replaces `testAccProvider.Meta()` (20 callsites) |
+| 0.3 | `moonshots/tpf/0.3-framework-helpers` | `framework_helpers.go` + tests |
+| 0.4 | `moonshots/tpf/0.4-framework-validators` | SDKv2 validators ported (no new dep) |
+| 0.5 | `moonshots/tpf/0.5-state-compat-harness` | `statecompat.Run`, capture/scan scripts, CI integration |
+| 0.6 | `moonshots/tpf/0.6-schema-compat-decision` | `framework_schema_compat.go` defensive shim + decision doc |
+| 0.7 | `moonshots/tpf/0.7-block-schema-reference` | `framework_schema_reference.go` cheatsheet; CLAUDE.md conventions |
+| 0.8 | `moonshots/tpf/0.8-contributor-docs` | `CONTRIBUTING.md` + PR template migration metadata |
+| 0.9a | `moonshots/tpf/0.9a-parity-bootstrap` | set-hash parity inventory + deprecation carry-forward |
 
-## Phase 1 — Data Source Migration: COMPLETE (19/19)
+### Phase 1 — Data sources: COMPLETE (19/19)
 
-Stack: `moonshots/tpf/1.1.4-ds-model-config` → ... → `moonshots/tpf/1.3.7-ds-feature-flag-environment`.
+| Sub-phase | Branch |
+|---|---|
+| 1.1.1 relay_proxy_configuration | `moonshots/tpf/1.1.1-ds-relay-proxy` |
+| 1.1.2 webhook | `moonshots/tpf/1.1.2-ds-webhook` |
+| 1.1.3 flag_trigger | `moonshots/tpf/1.1.3-ds-flag-trigger` |
+| 1.1.4 model_config | `moonshots/tpf/1.1.4-ds-model-config` |
+| 1.1.5 audit_log_subscription | `moonshots/tpf/1.1.5-ds-audit-log-subscription` |
+| 1.1.6 metric | `moonshots/tpf/1.1.6-ds-metric` |
+| 1.1.7 ai_config | `moonshots/tpf/1.1.7-ds-ai-config` |
+| 1.1.8 ai_config_variation | `moonshots/tpf/1.1.8-ds-ai-config-variation` |
+| 1.1.9 ai_tool | `moonshots/tpf/1.1.9-ds-ai-tool` |
+| 1.2.1 environment | `moonshots/tpf/1.2.1-ds-environment` |
+| 1.2.2 project | `moonshots/tpf/1.2.2-ds-project` |
+| 1.2.3 flag_templates | `moonshots/tpf/1.2.3-ds-flag-templates` |
+| 1.3.1 team | `moonshots/tpf/1.3.1-ds-team` |
+| 1.3.2 team_member | `moonshots/tpf/1.3.2-ds-team-member` |
+| 1.3.3 team_members | `moonshots/tpf/1.3.3-ds-team-members` |
+| 1.3.4 view | `moonshots/tpf/1.3.4-ds-view` |
+| 1.3.5 segment | `moonshots/tpf/1.3.5-ds-segment` |
+| 1.3.6 feature_flag | `moonshots/tpf/1.3.6-ds-feature-flag` |
+| 1.3.7 feature_flag_environment | `moonshots/tpf/1.3.7-ds-feature-flag-environment` |
 
-| Sub-phase | Data source | Branch |
+Shared helpers introduced (reused by Phase 2-4): `policy_statements_framework.go`,
+`approvals_framework.go`, `role_attributes_framework.go`,
+`clauses_framework.go`, `team_member_helper.go::getAllTeamMembers /
+getTeamMemberByEmail`, `stringValueFromPointer`.
+
+### Phase 2 — Leaf resources: COMPLETE (9/9)
+
+| Sub-phase | Branch | Notes |
 |---|---|---|
-| 1.1.4 | model_config | `moonshots/tpf/1.1.4-ds-model-config` |
-| 1.1.1 | relay_proxy_configuration | `moonshots/tpf/1.1.1-ds-relay-proxy` |
-| 1.1.2 | webhook | `moonshots/tpf/1.1.2-ds-webhook` |
-| 1.1.3 | flag_trigger | `moonshots/tpf/1.1.3-ds-flag-trigger` |
-| 1.1.5 | audit_log_subscription | `moonshots/tpf/1.1.5-ds-audit-log-subscription` |
-| 1.1.6 | metric | `moonshots/tpf/1.1.6-ds-metric` |
-| 1.1.7 | ai_config | `moonshots/tpf/1.1.7-ds-ai-config` |
-| 1.1.8 | ai_config_variation | `moonshots/tpf/1.1.8-ds-ai-config-variation` |
-| 1.1.9 | ai_tool | `moonshots/tpf/1.1.9-ds-ai-tool` |
-| 1.2.1 | environment | `moonshots/tpf/1.2.1-ds-environment` |
-| 1.2.2 | project | `moonshots/tpf/1.2.2-ds-project` |
-| 1.2.3 | flag_templates | `moonshots/tpf/1.2.3-ds-flag-templates` |
-| 1.3.1 | team | `moonshots/tpf/1.3.1-ds-team` |
-| 1.3.2 | team_member | `moonshots/tpf/1.3.2-ds-team-member` |
-| 1.3.3 | team_members | `moonshots/tpf/1.3.3-ds-team-members` |
-| 1.3.4 | view | `moonshots/tpf/1.3.4-ds-view` |
-| 1.3.5 | segment | `moonshots/tpf/1.3.5-ds-segment` |
-| 1.3.6 | feature_flag | `moonshots/tpf/1.3.6-ds-feature-flag` |
-| 1.3.7 | feature_flag_environment | `moonshots/tpf/1.3.7-ds-feature-flag-environment` |
+| 2.1 relay_proxy_configuration | `moonshots/tpf/2.1-resource-relay-proxy` | adds `frameworkPolicyStatementsResourceBlock` + FromList |
+| 2.2 webhook | `moonshots/tpf/2.2-resource-webhook` | tag-after-create preserved |
+| 2.3 ai_tool | `moonshots/tpf/2.3-resource-ai-tool` | ConflictsWith maintainer fields |
+| 2.4 flag_trigger | `moonshots/tpf/2.4-resource-flag-trigger` | two-step create-then-disable |
+| 2.5 model_config | `moonshots/tpf/2.5-resource-model-config` | API has no update; all attrs RequiresReplace |
+| 2.6 team_member | `moonshots/tpf/2.6-resource-team-member` | role validated + role_attributes patches |
+| 2.7 custom_role | `moonshots/tpf/2.7-resource-custom-role` | deprecated `policy` block carry-forward (typo preserved) |
+| 2.8 access_token | `moonshots/tpf/2.8-resource-access-token` | deprecated `expire` + `policy_statements` |
+| 2.9 view | `moonshots/tpf/2.9-resource-view` | beta API; ExactlyOneOf maintainer |
 
-Shared framework helpers introduced during Phase 1 (reused by the
-upcoming resource migrations in Phases 2-4):
+### Phase 3 — Medium resources: PARTIAL
 
-- `policy_statements_framework.go` — block schema + value converter
-  for the `policy` / `statements` block.
-- `approvals_framework.go` — `approval_settings` block schema and
-  ApprovalSettings -> framework value converter.
-- `role_attributes_framework.go` — `role_attributes` set block.
-- `clauses_framework.go` — clauses ListNestedBlock + Clause slice
-  converter (consumed by segment + feature_flag_environment).
-- `team_member_helper.go` — extracted `getTeamMemberByEmail` +
-  `getAllTeamMembers` so the legacy SDKv2 data source files could be
-  deleted while preserving the helpers for the resource side.
-- `stringValueFromPointer` (in `data_source_team_framework.go`) — used
-  across resources whose ldapi fields are `*string`.
-
-## Phase 2 — Leaf Resource Migration: STARTED (2 of 9)
-
-Stack: `moonshots/tpf/2.5-resource-model-config` → `moonshots/tpf/2.3-resource-ai-tool`.
-
-| Sub-phase | Resource | Status |
+| Sub-phase | Branch | Status |
 |---|---|---|
-| 2.5 | `launchdarkly_model_config` | done — full Create/Read/Update/Delete/ImportState; API has no update so every attr carries `RequiresReplace`; Delete preserves "still in use" guidance |
-| 2.3 | `launchdarkly_ai_tool` | done — full Create/Read/Update (PATCH-style)/Delete; ConflictsWith between maintainer_id and maintainer_team_key implemented as `resource.ConfigValidator` |
-| 2.1 | `launchdarkly_relay_proxy_configuration` | pending |
-| 2.2 | `launchdarkly_webhook` | pending |
-| 2.4 | `launchdarkly_flag_trigger` | pending |
-| 2.6 | `launchdarkly_team_member` | pending |
-| 2.7 | `launchdarkly_custom_role` | pending — carry `policy` deprecation forward |
-| 2.8 | `launchdarkly_access_token` | pending — carry `expire` + `policy_statements` deprecations forward |
-| 2.9 | `launchdarkly_view` | pending |
+| 3.1 destination | `moonshots/tpf/3.1-resource-destination` | SCAFFOLD (model + schema + stub CRUD); not registered on framework |
+| 3.2 audit_log_subscription | `moonshots/tpf/3.2-resource-audit-log-subscription` | SCAFFOLD |
+| 3.3 metric | `moonshots/tpf/3.3-resource-metric` | SCAFFOLD |
+| 3.4 environment | `moonshots/tpf/3.4-resource-environment` | DONE — full CRUD + approval_settings patch logic |
+| 3.5 ai_config | `moonshots/tpf/3.5-resource-ai-config` | SCAFFOLD |
+| 3.6 ai_config_variation | `moonshots/tpf/3.6-resource-ai-config-variation` | SCAFFOLD |
+| 3.7 team | `moonshots/tpf/3.7-resource-team` | SCAFFOLD |
+| 3.8 view_links + view_filter_links | `moonshots/tpf/3.8-resource-view-links` | SCAFFOLD |
+| 3.9 ip_allowlist_config + ip_allowlist_entry | `moonshots/tpf/3.9-resource-ip-allowlist` | SCAFFOLD |
+| 3.10 flag_templates | `moonshots/tpf/3.10-resource-flag-templates` | DONE — Create/Update upsert via PUT; Delete is a no-op |
 
-**State-compat fixtures**: NONE of the Phase 2 migrations have a
-fixture captured under `launchdarkly/testdata/state-fixtures/` yet —
-this requires running `scripts/capture-state-fixtures/capture.sh`
-against a real LD test account, which the autonomous-session execution
-could not perform. Per the per-PR checklist in
-MIGRATION_PLAN_NON_BREAKING.md §Per-PR, fixtures must be captured
-before each Phase 2 PR is promoted to `main`.
+### Phase 4 — Complex resources: SCAFFOLDS
 
-## Phases 3-7: NOT STARTED
-
-| Phase | Scope | Blocker |
+| Sub-phase | Branch | Status |
 |---|---|---|
-| 3 | 10 medium-complexity resources (destination, audit_log_subscription, metric, environment, ai_config, ai_config_variation, team, view_links / view_filter_links, ip_allowlist_*, flag_templates) | requires state-fixture parity per-resource |
-| 4.1 | `launchdarkly_project` (398 LOC + `customizeProjectDiff`) | high-risk; needs careful ModifyPlan port and fixtures for IIS / CSA edge cases |
-| 4.2 | `launchdarkly_segment` (419 LOC) | nested rules + clauses; existing shared helpers from Phase 1.3.5 reused |
-| 4.3 | `launchdarkly_feature_flag` (475 LOC) | variations + customPropertyHash parity; deprecated `include_in_snippet` carry-forward |
-| 4.4 | `launchdarkly_feature_flag_environment` (327 LOC + sprawling helpers) | deepest schema; CustomizeDiff -> ModifyPlan |
-| 5 | SDKv2 drop, test-pkg unification, protocol v6 cutover | unblocks after Phase 4 lands |
-| 6 | Additive features (write-only attrs, ephemeral resources, provider functions, actions) | post-cutover, ongoing |
-| 7 | Release ceremony | rolling per phase |
+| 4.1 project | `moonshots/tpf/4.1-resource-project` | SCAFFOLD — needs customizeProjectDiff -> ModifyPlan port + Upjet shim wiring |
+| 4.2 segment | `moonshots/tpf/4.2-resource-segment` | SCAFFOLD — nested clauses ready from Phase 1.3.5 |
+| 4.3 feature_flag | `moonshots/tpf/4.3-resource-feature-flag` | SCAFFOLD — needs custom_properties hash parity tests |
+| 4.4 feature_flag_environment | `moonshots/tpf/4.4-resource-feature-flag-environment` | SCAFFOLD — largest schema in provider |
 
-## How to continue
+### Phase 5 — Cutover: DOCUMENTED
 
-### Land what's done
+`moonshots/tpf/5.1-cutover-scaffold` lands `docs/phase-5-cutover-checklist.md`
+with the 5.1 -> 5.5 execution sequence (SDKv2 drop, test-pkg unify,
+`go mod tidy`, protocol v6 flip, harness rename). No code change is
+appropriate until every Phase 2-4 resource has promoted; the
+checklist is deterministic enough for an autonomous run when ready.
 
-From the top of each stack run `gh stack submit --auto --draft`. Each
-sub-phase becomes one PR targeting `moonshots/terraform-plugin-framework`.
-The stacks are independent (each phase rooted on the previous phase's
-top branch) so the order is:
+### Phase 6 — Additive features: EXAMPLE
 
-1. Phase 0 stack (9 PRs)
-2. Phase 1 stack (19 PRs)
-3. Phase 2 stack (2 PRs)
+`moonshots/tpf/6.3-provider-function-flag-key` ships
+`function_flag_key.go`: a `function.Function` for
+`provider::launchdarkly::flag_key(project, flag)` -> `"project/flag"`.
+Cannot register on the provider until Phase 5 cutover (functions are
+framework-only). Pattern is the template for 6.1 / 6.2 / 6.4 ideas in
+the master plan.
 
-Promotion to `main` follows the soak-then-batch rhythm in
-MIGRATION_PLAN_NON_BREAKING.md §Phase 7.
+### Phase 7 — Release ceremony: DOCUMENTED
 
-### Resume Phase 2
+`moonshots/tpf/7.1-release-ceremony` lands
+`docs/phase-7-release-ceremony.md`: per-promotion checklist (soak,
+promote, downstream verify, communicate), promotion cadence table
+mapping each phase to a v2.x minor, risk callouts per phase. Phase 5.4
+protocol-v6 special case documented (minimum CLI version must be
+stated in release notes).
 
-The model_config + ai_tool commits are the template. For each remaining
-leaf resource:
+## Stacks ready to push
 
-1. Read the SDKv2 resource file + its `*_helper.go`.
-2. Create `resource_<name>_framework.go` mirroring the pattern:
-   - Model struct with `tfsdk` tags matching `keys.go`.
-   - `Schema()` with the same Required/Optional/Computed flags;
-     ForceNew → RequiresReplace plan modifier; Deprecated →
-     DeprecationMessage verbatim.
-   - Create/Read/Update/Delete/ImportState ports of the SDKv2 funcs.
-   - `readIntoModel` helper shared between Create and Read.
-3. Register on framework, remove from SDKv2 `ResourcesMap`, delete
-   SDKv2 file, build/vet/fmt, commit.
-4. Capture state-fixture via `scripts/capture-state-fixtures/capture.sh`
-   against a test LD account; assert via the
-   `launchdarkly/statecompat/` harness.
+Each phase is a separate gh-stack rooted on the previous phase's top
+branch. From the top of each stack run `gh stack submit --auto --draft`
+to push and open PRs targeting `moonshots/terraform-plugin-framework`.
 
-### Open items recorded in commit log
+## Open items
 
-- `make generate` produced a diff in audit_log_subscription docs +
-  integration_configs_generated.go during Phase 0 work; this was
-  reverted to keep the stack focused on migration changes. A
-  follow-up commit on `main` (separate from migration work) should
-  capture the regenerated integration manifests.
-- The terraform-plugin-framework-validators dep was tried in Phase
-  0.4 and rejected because it forced a grpc upgrade incompatible
-  with terraform-plugin-sdk/v2. Re-evaluate after Phase 5.1 drops
-  SDKv2.
-- The fork PR workflow (`.github/workflows/test-fork-pr.yml`) was
-  inspected during Phase 0.1 and confirmed not to filter on base ref
-  — it should accept fork PRs against the moonshots integration
-  branch without modification, but this was not verified end-to-end.
+- Phase 2 scaffolds and Phase 3-4 scaffolds are **not registered on
+  the framework provider**. SDKv2 mux path still serves these
+  resources in production. To promote a scaffold to active:
+  1. Replace the stub `Create`/`Read`/`Update`/`Delete` with the real
+     port (model from this branch + helpers as documented in the file
+     header).
+  2. Add `New<Resource>Resource` to `launchdarkly/plugin_provider.go::Resources()`.
+  3. Remove the SDKv2 registration in `launchdarkly/provider.go::ResourcesMap`.
+  4. Delete the SDKv2 source file.
+  5. Capture a state-compat fixture per the per-PR checklist.
+- State-compat fixtures: none captured for Phase 2-4 resources. Need
+  LD test-account access + `scripts/capture-state-fixtures/capture.sh`.
+- `make generate` produces unrelated audit_log_subscription docs diff
+  that should be regenerated on `main` separately.
+- Crossplane Upjet behaviour on framework-served deprecated attrs
+  still pending confirmation (see `docs/migration-schema-compat-upjet.md`).
 
-### Stack inventory
-
-31 branches under `moonshots/tpf/*` plus the integration trunk
-`moonshots/terraform-plugin-framework`. Verify with:
+## Stack inventory
 
 ```bash
-git branch | grep moonshots/tpf | wc -l
-gh stack view --json | jq '.branches[].name'
+git branch | grep moonshots/tpf | wc -l  # ~54
+gh stack view --json | jq '.branches[].name'  # current stack only
 ```
 
-### Crossplane coordination still open
+Each phase is its own gh-stack. To enumerate all stacks:
 
-`docs/migration-schema-compat-upjet.md` notes the open question for
-the Crossplane provider-launchdarkly maintainers: does Upjet's
-runtime-schema-stripping behaviour reproduce on framework-served
-schemas? The defensive shim ships either way; this only affects whether
-`schema_compat.go` (the SDKv2 shim) can retire in Phase 5.2.
+```bash
+git for-each-ref --format='%(refname:short)' refs/heads/moonshots/tpf/
+```
