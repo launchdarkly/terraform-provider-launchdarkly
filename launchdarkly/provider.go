@@ -91,7 +91,7 @@ func Provider() *schema.Provider {
 		DataSourcesMap: map[string]*schema.Resource{
 			// launchdarkly_ai_config now served by the framework provider; see data_source_ai_config_framework.go.
 			// launchdarkly_ai_config_variation now served by the framework provider; see data_source_ai_config_variation_framework.go.
-			"launchdarkly_ai_tool": dataSourceAITool(),
+			// launchdarkly_ai_tool now served by the framework provider; see data_source_ai_tool_framework.go.
 			// launchdarkly_audit_log_subscription now served by the framework provider; see data_source_audit_log_subscription_framework.go.
 			"launchdarkly_environment":              dataSourceEnvironment(),
 			"launchdarkly_feature_flag":             dataSourceFeatureFlag(),
