@@ -125,6 +125,7 @@ func (p *launchdarklyProvider) DataSources(_ context.Context) []func() datasourc
 		NewAIConfigVariationDataSource,
 		NewAIToolDataSource,
 		NewAuditLogSubscriptionDataSource,
+		NewEnvironmentDataSource,
 		NewFlagTriggerDataSource,
 		NewMetricDataSource,
 		NewModelConfigDataSource,
