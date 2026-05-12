@@ -86,7 +86,7 @@ func Provider() *schema.Provider {
 			"launchdarkly_view":              resourceView(),
 			"launchdarkly_view_filter_links": resourceViewFilterLinks(),
 			"launchdarkly_view_links":        resourceViewLinks(),
-			"launchdarkly_webhook":           resourceWebhook(),
+			// launchdarkly_webhook now served by the framework provider; see resource_webhook_framework.go.
 		},
 		DataSourcesMap: map[string]*schema.Resource{
 			// launchdarkly_ai_config now served by the framework provider; see data_source_ai_config_framework.go.
