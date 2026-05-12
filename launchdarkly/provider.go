@@ -73,10 +73,10 @@ func Provider() *schema.Provider {
 			"launchdarkly_feature_flag":             resourceFeatureFlag(),
 			"launchdarkly_flag_templates":           resourceFlagTemplates(),
 			"launchdarkly_feature_flag_environment": resourceFeatureFlagEnvironment(),
-			"launchdarkly_flag_trigger":             resourceFlagTrigger(),
-			"launchdarkly_ip_allowlist_config":      resourceIpAllowlistConfig(),
-			"launchdarkly_ip_allowlist_entry":       resourceIpAllowlistEntry(),
-			"launchdarkly_metric":                   resourceMetric(),
+			// launchdarkly_flag_trigger now served by the framework provider; see resource_flag_trigger_framework.go.
+			"launchdarkly_ip_allowlist_config": resourceIpAllowlistConfig(),
+			"launchdarkly_ip_allowlist_entry":  resourceIpAllowlistEntry(),
+			"launchdarkly_metric":              resourceMetric(),
 			// launchdarkly_model_config now served by the framework provider; see resource_model_config_framework.go.
 			"launchdarkly_project": resourceProject(),
 			// launchdarkly_relay_proxy_configuration now served by the framework provider; see resource_relay_proxy_configuration_framework.go.
