@@ -70,8 +70,8 @@ func Provider() *schema.Provider {
 			// launchdarkly_custom_role now served by the framework provider; see resource_custom_role_framework.go.
 			"launchdarkly_destination": resourceDestination(),
 			// launchdarkly_environment now served by the framework provider; see resource_environment_framework.go.
-			"launchdarkly_feature_flag":             resourceFeatureFlag(),
-			"launchdarkly_flag_templates":           resourceFlagTemplates(),
+			"launchdarkly_feature_flag": resourceFeatureFlag(),
+			// launchdarkly_flag_templates now served by the framework provider; see resource_flag_templates_framework.go.
 			"launchdarkly_feature_flag_environment": resourceFeatureFlagEnvironment(),
 			// launchdarkly_flag_trigger now served by the framework provider; see resource_flag_trigger_framework.go.
 			"launchdarkly_ip_allowlist_config": resourceIpAllowlistConfig(),
