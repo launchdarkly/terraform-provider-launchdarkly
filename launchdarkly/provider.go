@@ -62,7 +62,7 @@ func Provider() *schema.Provider {
 	return &schema.Provider{
 		Schema: providerSchema(),
 		ResourcesMap: map[string]*schema.Resource{
-			"launchdarkly_access_token":        resourceAccessToken(),
+			// launchdarkly_access_token now served by the framework provider; see resource_access_token_framework.go.
 			"launchdarkly_ai_config":           resourceAIConfig(),
 			"launchdarkly_ai_config_variation": resourceAIConfigVariation(),
 			// launchdarkly_ai_tool now served by the framework provider; see resource_ai_tool_framework.go.

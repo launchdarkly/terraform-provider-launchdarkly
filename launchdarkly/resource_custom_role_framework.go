@@ -12,6 +12,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	sdkschema "github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	ldapi "github.com/launchdarkly/api-client-go/v22"
 )
 
@@ -19,6 +20,26 @@ var (
 	_ resource.Resource                = &CustomRoleResource{}
 	_ resource.ResourceWithImportState = &CustomRoleResource{}
 )
+
+// resourceCustomRole is a compat shim retained for SDKv2-bound test
+// files (embedded_schema_compat_test.go, resource_data_helpers_test.go)
+// that exercise the legacy schema. The schema is the minimal subset
+// those tests touch; the function will be removed when those tests
+// are unified in Phase 5.1a (collapse tests/ + helper-test cleanup).
+func resourceCustomRole() *sdkschema.Resource {
+	return &sdkschema.Resource{
+		Schema: map[string]*sdkschema.Schema{
+			KEY:              {Type: sdkschema.TypeString, Required: true},
+			NAME:             {Type: sdkschema.TypeString, Required: true},
+			DESCRIPTION:      {Type: sdkschema.TypeString, Optional: true},
+			BASE_PERMISSIONS: {Type: sdkschema.TypeString, Optional: true},
+			POLICY:           policyArraySchema(),
+			POLICY_STATEMENTS: policyStatementsSchema(policyStatementSchemaOptions{
+				optional: true,
+			}),
+		},
+	}
+}
 
 type CustomRoleResource struct {
 	client *Client
