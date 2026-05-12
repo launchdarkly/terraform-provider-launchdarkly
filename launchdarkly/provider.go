@@ -100,14 +100,14 @@ func Provider() *schema.Provider {
 			"launchdarkly_flag_trigger":             dataSourceFlagTrigger(),
 			"launchdarkly_metric":                   dataSourceMetric(),
 			// launchdarkly_model_config now served by the framework provider; see data_source_model_config_framework.go.
-			"launchdarkly_project":                   dataSourceProject(),
-			"launchdarkly_relay_proxy_configuration": dataSourceRelayProxyConfig(),
-			"launchdarkly_segment":                   dataSourceSegment(),
-			"launchdarkly_team":                      dataSourceTeam(),
-			"launchdarkly_team_member":               dataSourceTeamMember(),
-			"launchdarkly_team_members":              dataSourceTeamMembers(),
-			"launchdarkly_view":                      dataSourceView(),
-			"launchdarkly_webhook":                   dataSourceWebhook(),
+			"launchdarkly_project": dataSourceProject(),
+			// launchdarkly_relay_proxy_configuration now served by the framework provider; see data_source_relay_proxy_configuration_framework.go.
+			"launchdarkly_segment":      dataSourceSegment(),
+			"launchdarkly_team":         dataSourceTeam(),
+			"launchdarkly_team_member":  dataSourceTeamMember(),
+			"launchdarkly_team_members": dataSourceTeamMembers(),
+			"launchdarkly_view":         dataSourceView(),
+			"launchdarkly_webhook":      dataSourceWebhook(),
 		},
 		ConfigureContextFunc: providerConfigure,
 	}
