@@ -89,10 +89,10 @@ func Provider() *schema.Provider {
 			"launchdarkly_webhook":                   resourceWebhook(),
 		},
 		DataSourcesMap: map[string]*schema.Resource{
-			"launchdarkly_ai_config":                dataSourceAIConfig(),
-			"launchdarkly_ai_config_variation":      dataSourceAIConfigVariation(),
-			"launchdarkly_ai_tool":                  dataSourceAITool(),
-			"launchdarkly_audit_log_subscription":   dataSourceAuditLogSubscription(),
+			"launchdarkly_ai_config":           dataSourceAIConfig(),
+			"launchdarkly_ai_config_variation": dataSourceAIConfigVariation(),
+			"launchdarkly_ai_tool":             dataSourceAITool(),
+			// launchdarkly_audit_log_subscription now served by the framework provider; see data_source_audit_log_subscription_framework.go.
 			"launchdarkly_environment":              dataSourceEnvironment(),
 			"launchdarkly_feature_flag":             dataSourceFeatureFlag(),
 			"launchdarkly_flag_templates":           dataSourceFlagTemplates(),
