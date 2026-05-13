@@ -5,7 +5,7 @@ subcategory: ""
 description: |-
   Provides a LaunchDarkly team data source.
   This data source allows you to retrieve team information from your LaunchDarkly organization.
-  -> Note: Teams are available to customers on an Enterprise LaunchDarkly plan.
+  -> Note: Teams are available to customers on an Enterprise LaunchDarkly plan. To learn more, read about our pricing https://launchdarkly.com/pricing/. To upgrade your plan, contact LaunchDarkly Sales https://launchdarkly.com/contact-sales/.
 ---
 
 # launchdarkly_team (Data Source)
@@ -14,7 +14,7 @@ Provides a LaunchDarkly team data source.
 
 This data source allows you to retrieve team information from your LaunchDarkly organization.
 
--> **Note:** Teams are available to customers on an Enterprise LaunchDarkly plan.
+-> **Note:** Teams are available to customers on an Enterprise LaunchDarkly plan. To learn more, [read about our pricing](https://launchdarkly.com/pricing/). To upgrade your plan, [contact LaunchDarkly Sales](https://launchdarkly.com/contact-sales/).
 
 ## Example Usage
 

@@ -92,7 +92,7 @@ Read-Only:
 - `attribute` (String) User attribute to operate on.
 - `context_kind` (String) Context kind for the clause.
 - `negate` (Boolean) Whether to negate the clause.
-- `op` (String) Operator (in, endsWith, ...).
+- `op` (String) The operator associated with the rule clause. Available options are `in`, `endsWith`, `startsWith`, `matches`, `contains`, `lessThan`, `greaterThan`, `lessThanOrEqual`, `greaterThanOrEqual`, `before`, `after`, `segmentMatch`, `semVerEqual`, `semVerLessThan`, and `semVerGreaterThan`. To learn more, read [Operators](https://docs.launchdarkly.com/sdk/concepts/flag-evaluation-rules#operators).
 - `value_type` (String) Type of each clause value (boolean / string / number).
 - `values` (List of String) Values for the clause.
 

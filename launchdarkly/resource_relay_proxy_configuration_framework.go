@@ -46,7 +46,7 @@ func (r *RelayProxyConfigResource) Schema(_ context.Context, _ resource.SchemaRe
 
 This resource allows you to create and manage Relay Proxy configurations within your LaunchDarkly organization.
 
--> **Note:** This resource will store the full plaintext secret for your Relay Proxy configuration's unique key in Terraform state. Be sure your state is configured securely before using this resource. See https://www.terraform.io/docs/state/sensitive-data.html for more details.`,
+-> **Note:** This resource stores the full plaintext secret for your Relay Proxy configuration's unique key in Terraform state. Be sure your state is configured securely before using this resource. To learn more, read [Sensitive data in state](https://www.terraform.io/docs/state/sensitive-data.html).`,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				Computed:      true,

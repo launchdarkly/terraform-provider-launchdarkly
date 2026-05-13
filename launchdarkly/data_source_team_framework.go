@@ -46,7 +46,7 @@ func (d *TeamDataSource) Metadata(_ context.Context, req datasource.MetadataRequ
 
 func (d *TeamDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "Provides a LaunchDarkly team data source.\n\nThis data source allows you to retrieve team information from your LaunchDarkly organization.\n\n-> **Note:** Teams are available to customers on an Enterprise LaunchDarkly plan.",
+		Description: "Provides a LaunchDarkly team data source.\n\nThis data source allows you to retrieve team information from your LaunchDarkly organization.\n\n-> **Note:** Teams are available to customers on an Enterprise LaunchDarkly plan. To learn more, [read about our pricing](https://launchdarkly.com/pricing/). To upgrade your plan, [contact LaunchDarkly Sales](https://launchdarkly.com/contact-sales/).",
 		Attributes: map[string]schema.Attribute{
 			"id":        schema.StringAttribute{Computed: true, Description: "The team key."},
 			KEY:         schema.StringAttribute{Required: true, Description: "The team key."},

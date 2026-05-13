@@ -33,7 +33,7 @@ func frameworkClausesDataSourceBlock() dsschema.ListNestedBlock {
 		NestedObject: dsschema.NestedBlockObject{
 			Attributes: map[string]dsschema.Attribute{
 				ATTRIBUTE: dsschema.StringAttribute{Computed: true, Description: "User attribute to operate on."},
-				OP:        dsschema.StringAttribute{Computed: true, Description: "Operator (in, endsWith, ...)."},
+				OP:        dsschema.StringAttribute{Computed: true, Description: "The operator associated with the rule clause. Available options are `in`, `endsWith`, `startsWith`, `matches`, `contains`, `lessThan`, `greaterThan`, `lessThanOrEqual`, `greaterThanOrEqual`, `before`, `after`, `segmentMatch`, `semVerEqual`, `semVerLessThan`, and `semVerGreaterThan`. To learn more, read [Operators](https://docs.launchdarkly.com/sdk/concepts/flag-evaluation-rules#operators)."},
 				VALUES: dsschema.ListAttribute{
 					Computed:    true,
 					ElementType: types.StringType,

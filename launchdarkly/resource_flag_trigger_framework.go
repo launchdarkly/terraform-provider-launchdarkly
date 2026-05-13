@@ -55,7 +55,7 @@ func (r *FlagTriggerResource) Schema(_ context.Context, _ resource.SchemaRequest
 
 This resource allows you to create and manage flag triggers within your LaunchDarkly organization.
 
--> **Note:** This resource will store sensitive unique trigger URL value in plaintext in your Terraform state. Be sure your state is configured securely before using this resource. See https://www.terraform.io/docs/state/sensitive-data.html for more details.`,
+-> **Note:** This resource stores the sensitive unique trigger URL value in plaintext in your Terraform state. Be sure your state is configured securely before using this resource. To learn more, read [Sensitive data in state](https://www.terraform.io/docs/state/sensitive-data.html).`,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				Computed:      true,

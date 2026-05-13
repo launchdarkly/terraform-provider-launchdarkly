@@ -30,11 +30,11 @@ data "launchdarkly_team_member" "example" {
 
 ### Read-Only
 
-- `custom_roles` (Set of String) Custom role keys associated with the team member.
+- `custom_roles` (Set of String) The list of custom roles keys associated with the team member. Custom roles are only available to customers on an Enterprise plan. To learn more, [read about our pricing](https://launchdarkly.com/pricing/). To upgrade your plan, [contact LaunchDarkly Sales](https://launchdarkly.com/contact-sales/).
 - `first_name` (String) First name.
 - `id` (String) The 24-character member ID.
 - `last_name` (String) Last name.
-- `role` (String) The member's role (owner, reader, writer, admin).
+- `role` (String) The role associated with the team member. Possible roles are `owner`, `reader`, `writer`, or `admin`.
 - `role_attributes` (Block Set) A role attributes block. One block must be defined per role attribute. The key is the role attribute key and the value is a string array of resource keys that apply. (see [below for nested schema](#nestedblock--role_attributes))
 
 <a id="nestedblock--role_attributes"></a>

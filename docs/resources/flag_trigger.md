@@ -5,7 +5,7 @@ description: |-
   Provides a LaunchDarkly flag trigger resource.
   -> Note: Flag triggers are available to customers on an Enterprise LaunchDarkly plan. To learn more, read about our pricing https://launchdarkly.com/pricing/. To upgrade your plan, contact LaunchDarkly Sales https://launchdarkly.com/contact-sales/.
   This resource allows you to create and manage flag triggers within your LaunchDarkly organization.
-  -> Note: This resource will store sensitive unique trigger URL value in plaintext in your Terraform state. Be sure your state is configured securely before using this resource. See https://www.terraform.io/docs/state/sensitive-data.html for more details.
+  -> Note: This resource stores the sensitive unique trigger URL value in plaintext in your Terraform state. Be sure your state is configured securely before using this resource. To learn more, read Sensitive data in state https://www.terraform.io/docs/state/sensitive-data.html.
 ---
 
 # launchdarkly_flag_trigger (Resource)
@@ -16,7 +16,7 @@ Provides a LaunchDarkly flag trigger resource.
 
 This resource allows you to create and manage flag triggers within your LaunchDarkly organization.
 
--> **Note:** This resource will store sensitive unique trigger URL value in plaintext in your Terraform state. Be sure your state is configured securely before using this resource. See https://www.terraform.io/docs/state/sensitive-data.html for more details.
+-> **Note:** This resource stores the sensitive unique trigger URL value in plaintext in your Terraform state. Be sure your state is configured securely before using this resource. To learn more, read [Sensitive data in state](https://www.terraform.io/docs/state/sensitive-data.html).
 
 ## Example Usage
 
