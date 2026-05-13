@@ -38,10 +38,10 @@ resource "launchdarkly_metric" "example" {
 
 ### Required
 
-- `key` (String) The unique key that references the metric. A change in this field will force the destruction of the existing resource and the creation of a new one. A change in this field will force the destruction of the existing resource and the creation of a new one.
+- `key` (String) The unique key that references the metric. A change in this field will force the destruction of the existing resource and the creation of a new one.
 - `kind` (String) The metric type. Available choices are `click`, `custom`, and `pageview`. A change in this field will force the destruction of the existing resource and the creation of a new one.
 - `name` (String) The human-friendly name for the metric.
-- `project_key` (String) The metrics's project key. A change in this field will force the destruction of the existing resource and the creation of a new one. A change in this field will force the destruction of the existing resource and the creation of a new one.
+- `project_key` (String) The metrics's project key. A change in this field will force the destruction of the existing resource and the creation of a new one.
 
 ### Optional
 
@@ -56,7 +56,7 @@ resource "launchdarkly_metric" "example" {
 - `randomization_units` (Set of String) A set of one or more context kinds that this metric can measure events from. Metrics can only use context kinds marked as "Available for experiments." For more information, read [Allocating experiment audiences](https://docs.launchdarkly.com/home/creating-experiments/allocation).
 - `selector` (String) The CSS selector for your metric (if click metric)
 - `success_criteria` (String) The success criteria for your metric (if numeric metric). Available choices are `HigherThanBaseline` and `LowerThanBaseline`.
-- `tags` (Set of String) Tags associated with your resource.
+- `tags` (Set of String) Tags associated with this resource.
 - `unit` (String) (Required for kind `custom`) The unit for numeric `custom` metrics.
 - `unit_aggregation_type` (String) The method by which multiple unit event values are aggregated. Available choices are `average` and `sum`.
 - `urls` (Block List) List of nested `url` blocks describing URLs that you want to associate with the metric. (see [below for nested schema](#nestedblock--urls))

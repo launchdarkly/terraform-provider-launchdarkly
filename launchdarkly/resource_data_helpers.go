@@ -63,14 +63,6 @@ func stringListFromOptionalSetValue(v interface{}) []string {
 	return stringsFromSchemaSet(s)
 }
 
-func optionalSetListFromAny(v interface{}) []interface{} {
-	s := optionalSchemaSetFromInterface(v)
-	if s == nil {
-		return emptyInterfaceSlice()
-	}
-	return s.List()
-}
-
 // optionalIntFromResourceData uses defaultVal when the schema is missing the key (Upjet-embedded
 // provider returns nil from d.Get). Wrong-type values log at WARN so regressions stay visible.
 func optionalIntFromResourceData(d *schema.ResourceData, key string, defaultVal int) int {

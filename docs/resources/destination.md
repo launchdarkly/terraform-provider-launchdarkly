@@ -112,7 +112,7 @@ resource "launchdarkly_destination" "segment_example" {
 ### Optional
 
 - `on` (Boolean) Whether the data export destination is on or not.
-- `tags` (Set of String) Tags associated with your resource.
+- `tags` (Set of String) Tags associated with this resource.
 
 ### Read-Only
 

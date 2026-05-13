@@ -43,7 +43,7 @@ resource "launchdarkly_ai_config" "example" {
 - `maintainer_id` (String) The member ID of the maintainer for this AI Config. Conflicts with `maintainer_team_key`.
 - `maintainer_team_key` (String) The team key of the maintainer team for this AI Config. Conflicts with `maintainer_id`.
 - `mode` (String) The AI Config's mode. Must be `completion`, `agent`, or `judge`. Defaults to `completion`. A change in this field will force the destruction of the existing resource and the creation of a new one.
-- `tags` (Set of String) Tags associated with your resource.
+- `tags` (Set of String) Tags associated with this AI Config.
 
 ### Read-Only
 

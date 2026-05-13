@@ -8,15 +8,7 @@ description: |-
   ~> Beta: This resource uses a beta API. Beta resources may change or be removed in future versions.
   This resource allows you to efficiently link multiple flags and/or segments to a specific view. This is particularly useful for administrators organizing resources by team or deployment unit.
   -> Note: This resource manages ALL links for the specified resource types within a view. Adding or removing items from the configuration will link or unlink those resources accordingly.
-  Alternative Approach: view_keys on Individual Resources
-  For modular Terraform configurations where flags and segments are defined in separate files or modules, you can use the view_keys field directly on the resource instead of using this centralized view_links resource:
-  Feature Flags: Use the view_keys attribute on launchdarkly_feature_flag resourcesSegments: Use the view_keys attribute on launchdarkly_segment resources
-  When to use view_links (this resource):
-  Managing many flags/segments for a single view (bulk operations)Centralized view management across your infrastructureAdministrative view organization
-  When to use view_keys on individual resources:
-  Modular Terraform structures with separate files per flag/segmentEach team/module manages their own resourcesWant view membership defined alongside the resource
   -> Warning: Do not use both view_links and view_keys to manage the same flag or segment's view associations. Mixed ownership can cause conflicts; when detected, Terraform logs a warning and reconciles to the managing resource's configured associations. Choose one approach per resource.
-  See the feature flag resource documentation and segment resource documentation for details on the view_keys attribute.
 ---
 
 # launchdarkly_view_links (Resource)
@@ -31,26 +23,7 @@ This resource allows you to efficiently link multiple flags and/or segments to a
 
 -> **Note:** This resource manages ALL links for the specified resource types within a view. Adding or removing items from the configuration will link or unlink those resources accordingly.
 
-## Alternative Approach: view_keys on Individual Resources
-
-For modular Terraform configurations where flags and segments are defined in separate files or modules, you can use the `view_keys` field directly on the resource instead of using this centralized `view_links` resource:
-
-- **Feature Flags**: Use the `view_keys` attribute on `launchdarkly_feature_flag` resources
-- **Segments**: Use the `view_keys` attribute on `launchdarkly_segment` resources
-
-**When to use `view_links` (this resource):**
-- Managing many flags/segments for a single view (bulk operations)
-- Centralized view management across your infrastructure
-- Administrative view organization
-
-**When to use `view_keys` on individual resources:**
-- Modular Terraform structures with separate files per flag/segment
-- Each team/module manages their own resources
-- Want view membership defined alongside the resource
-
 -> **Warning:** Do not use both `view_links` and `view_keys` to manage the same flag or segment's view associations. Mixed ownership can cause conflicts; when detected, Terraform logs a warning and reconciles to the managing resource's configured associations. Choose one approach per resource.
-
-See the feature flag resource documentation and segment resource documentation for details on the `view_keys` attribute.
 
 ## Example Usage
 

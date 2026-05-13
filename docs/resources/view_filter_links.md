@@ -8,9 +8,6 @@ description: |-
   ~> Beta: This resource uses a beta API. Beta resources may change or be removed in future versions.
   This resource allows you to link all flags and/or segments matching a filter expression to a specific view. The filter is resolved at apply time — the backend finds all resources matching the filter and links them to the view.
   -> Note: Filter-based links are point-in-time. By default, filters are resolved only when this resource is created or updated (for example, when flag_filter changes). Set reconcile_on_apply = true to force re-resolution on every terraform apply.
-  When to use which resource
-  view_links: You know the exact flag/segment keys to link. Terraform tracks the explicit list and detects drift if links are removed externally.view_filter_links (this resource): You want to link all resources matching a dynamic query (e.g. all flags tagged "frontend"). No drift detection on resolved keys. By default, only resource argument changes trigger updates; set reconcile_on_apply to refresh links every apply.view_keys on individual resources: Each flag/segment declares its own view membership. Best for modular Terraform structures.
-  -> Warning: Do not use view_filter_links and view_links targeting the same view and resource type, as conflicts may cause unexpected behavior.
 ---
 
 # launchdarkly_view_filter_links (Resource)
@@ -24,14 +21,6 @@ Provides a LaunchDarkly view filter links resource for linking resources to view
 This resource allows you to link all flags and/or segments matching a filter expression to a specific view. The filter is resolved at apply time — the backend finds all resources matching the filter and links them to the view.
 
 -> **Note:** Filter-based links are point-in-time. By default, filters are resolved only when this resource is created or updated (for example, when `flag_filter` changes). Set `reconcile_on_apply = true` to force re-resolution on every `terraform apply`.
-
-## When to use which resource
-
-- **`view_links`**: You know the exact flag/segment keys to link. Terraform tracks the explicit list and detects drift if links are removed externally.
-- **`view_filter_links` (this resource)**: You want to link all resources matching a dynamic query (e.g. all flags tagged "frontend"). No drift detection on resolved keys. By default, only resource argument changes trigger updates; set `reconcile_on_apply` to refresh links every apply.
-- **`view_keys` on individual resources**: Each flag/segment declares its own view membership. Best for modular Terraform structures.
-
--> **Warning:** Do not use `view_filter_links` and `view_links` targeting the same view and resource type, as conflicts may cause unexpected behavior.
 
 ## Example Usage
 
