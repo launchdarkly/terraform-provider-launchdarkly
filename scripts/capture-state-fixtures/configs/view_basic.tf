@@ -10,6 +10,11 @@ terraform {
 resource "launchdarkly_project" "fixture" {
   key  = "fixture-project-1"
   name = "fixture-project-1"
+  environments {
+    key   = "fixture-env-test"
+    name  = "fixture-env-test"
+    color = "AABBCC"
+  }
 }
 
 # The capture script must set view_maintainer_id to a real member ID from the

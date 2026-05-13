@@ -8,10 +8,11 @@ terraform {
 }
 
 resource "launchdarkly_webhook" "fixture" {
-  url  = "https://example.invalid/fixture-webhook"
-  name = "fixture-webhook-basic"
-  on   = true
-  tags = ["fixture-tag"]
+  url    = "https://example.invalid/fixture-webhook"
+  name   = "fixture-webhook-basic"
+  secret = "deterministic-fixture-secret"
+  on     = true
+  tags   = ["fixture-tag"]
   statements {
     effect    = "allow"
     resources = ["proj/*"]

@@ -126,7 +126,12 @@ The resource must contain either a "role", "custom_role" or an "inline_roles" (p
 				Description: "A list of custom role IDs to use as access limits for the access token.",
 			},
 			SERVICE_TOKEN: schema.BoolAttribute{
-				Optional:    true,
+				Optional: true,
+				// framework requires Computed: true alongside Default; the
+				// SDKv2 schema was Optional+Default only (no Computed) but
+				// the user-visible behavior is identical — Default fills
+				// in unset values either way.
+				Computed:    true,
 				Default:     booldefault.StaticBool(false),
 				Description: addForceNewDescription("Whether the token will be a [service token](https://docs.launchdarkly.com/home/account-security/api-access-tokens#service-tokens).", true),
 				PlanModifiers: []planmodifier.Bool{
