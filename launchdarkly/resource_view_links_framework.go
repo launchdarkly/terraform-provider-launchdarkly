@@ -504,9 +504,14 @@ func (viewFilterLinksValidator) ValidateResource(ctx context.Context, req resour
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	flagSet := !data.FlagFilter.IsNull() && !data.FlagFilter.IsUnknown() && data.FlagFilter.ValueString() != ""
-	segSet := !data.SegmentFilter.IsNull() && !data.SegmentFilter.IsUnknown() && data.SegmentFilter.ValueString() != ""
-	envSet := !data.SegmentFilterEnvironmentID.IsNull() && !data.SegmentFilterEnvironmentID.IsUnknown() && data.SegmentFilterEnvironmentID.ValueString() != ""
+	// Treat Unknown values as user-supplied: the value is just deferred
+	// until apply (e.g. a downstream reference to a Computed attribute
+	// like client_side_id), so the paired-attribute claim can't fire
+	// yet. ConfigValidators run on the config, where "value present
+	// but unknown" differs from "absent".
+	flagSet := !data.FlagFilter.IsNull() && (data.FlagFilter.IsUnknown() || data.FlagFilter.ValueString() != "")
+	segSet := !data.SegmentFilter.IsNull() && (data.SegmentFilter.IsUnknown() || data.SegmentFilter.ValueString() != "")
+	envSet := !data.SegmentFilterEnvironmentID.IsNull() && (data.SegmentFilterEnvironmentID.IsUnknown() || data.SegmentFilterEnvironmentID.ValueString() != "")
 	if !flagSet && !segSet {
 		resp.Diagnostics.AddError(
 			"Missing filter",

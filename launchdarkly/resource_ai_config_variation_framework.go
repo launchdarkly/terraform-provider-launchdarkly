@@ -133,9 +133,8 @@ func (r *AIConfigVariationResource) Schema(_ context.Context, _ resource.SchemaR
 				},
 			},
 			VARIATION_ID: schema.StringAttribute{
-				Computed:      true,
-				Description:   "The internal ID of the variation.",
-				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+				Computed:    true,
+				Description: "The internal ID of the variation.",
 			},
 			VERSION: schema.Int64Attribute{
 				Computed:    true,
