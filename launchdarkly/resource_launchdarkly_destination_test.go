@@ -255,7 +255,7 @@ func TestAccDestination_CreateMparticleDeprecated(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config: withRandomProjectAndEnv(projectKey, envKey, fmt.Sprintf(testAccDestinationCreateMparticleDeprecated, envKey)),
@@ -279,7 +279,7 @@ func TestAccDestination_CreateMalformedMparticle(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config:      withRandomProjectAndEnv(projectKey, envKey, fmt.Sprintf(testAccDestinationCreateMalformedMparticle, envKey)),
@@ -297,7 +297,7 @@ func TestAccDestination_CreateAndUpdateKinesis(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config: withRandomProjectAndEnv(projectKey, envKey, fmt.Sprintf(testAccDestinationCreateKinesis, envKey)),
@@ -354,7 +354,7 @@ func TestAccDestination_CreateAndUpdatePubsub(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config: withRandomProjectAndEnv(projectKey, envKey, fmt.Sprintf(testAccDestinationCreatePubsub, envKey)),
@@ -405,7 +405,7 @@ func TestAccDestination_CreateAndUpdateMparticle(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config: withRandomProjectAndEnv(projectKey, envKey, fmt.Sprintf(testAccDestinationCreateMparticle, envKey)),
@@ -477,7 +477,7 @@ func TestAccDestination_CreateAndUpdateSegmentDeprecated(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config: withRandomProjectAndEnv(projectKey, envKey, fmt.Sprintf(testAccDestinationCreateSegmentDeprecated, envKey)),
@@ -529,7 +529,7 @@ func TestAccDestination_CreateAndUpdateSegment(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config: withRandomProjectAndEnv(projectKey, envKey, fmt.Sprintf(testAccDestinationCreateSegment, envKey)),
@@ -585,7 +585,7 @@ func TestAccDestination_CreateAndUpdateAzureEventHubs(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config: withRandomProjectAndEnv(projectKey, envKey, fmt.Sprintf(testAccDestinationCreateAzureEventHubs, envKey)),
@@ -652,7 +652,7 @@ func testAccCheckDestinationExists(resourceName string) resource.TestCheckFunc {
 		if !ok {
 			return fmt.Errorf("destination environment key not found: %s", resourceName)
 		}
-		client := testAccProvider.Meta().(*Client)
+		client := mustTestAccClient()
 		_, _, destID, err := destinationImportIDtoKeys(rs.Primary.ID)
 		if err != nil {
 			return err

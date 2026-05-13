@@ -197,8 +197,8 @@ func TestAccTeam_CreateAndUpdate(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers:    testAccProviders,
-		CheckDestroy: testAccCheckTeamDestroy,
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories,
+		CheckDestroy:             testAccCheckTeamDestroy,
 		Steps: []resource.TestStep{
 			{
 				Config: fmt.Sprintf(testAccTeamCreate, randomRoleOne, randomRoleOne, randomEmailOne, randomEmailTwo, randomTeamKey),
@@ -333,7 +333,7 @@ func testAccCheckTeamExists(resourceName string) resource.TestCheckFunc {
 		if rs.Primary.ID == "" {
 			return fmt.Errorf("team ID is not set")
 		}
-		client := testAccProvider.Meta().(*Client)
+		client := mustTestAccClient()
 		_, _, err := client.ld.TeamsApi.GetTeam(client.ctx, rs.Primary.ID).Execute()
 		if err != nil {
 			return fmt.Errorf("received an error getting team: %s", err)
@@ -344,7 +344,7 @@ func testAccCheckTeamExists(resourceName string) resource.TestCheckFunc {
 
 // testAccCheckTeamDestroy verifies the team has been destroyed
 func testAccCheckTeamDestroy(s *terraform.State) error {
-	client := testAccProvider.Meta().(*Client)
+	client := mustTestAccClient()
 	for _, rs := range s.RootModule().Resources {
 		if rs.Type != "launchdarkly_team" {
 			continue

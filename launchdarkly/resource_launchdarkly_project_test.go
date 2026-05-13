@@ -237,8 +237,8 @@ func TestAccProject_Create(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers:    testAccProviders,
-		CheckDestroy: testAccCheckProjectDestroy,
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories,
+		CheckDestroy:             testAccCheckProjectDestroy,
 		Steps: []resource.TestStep{
 			{
 				Config: fmt.Sprintf(testAccProjectCreate, projectKey),
@@ -267,8 +267,8 @@ func TestAccProject_Update(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers:    testAccProviders,
-		CheckDestroy: testAccCheckProjectDestroy,
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories,
+		CheckDestroy:             testAccCheckProjectDestroy,
 		Steps: []resource.TestStep{
 			{
 				Config: fmt.Sprintf(testAccProjectCreate, projectKey),
@@ -327,8 +327,8 @@ func TestAccProject_CSA_Update_And_Revert(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers:    testAccProviders,
-		CheckDestroy: testAccCheckProjectDestroy,
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories,
+		CheckDestroy:             testAccCheckProjectDestroy,
 		Steps: []resource.TestStep{
 			{
 				Config: fmt.Sprintf(testAccProjectCreate, projectKey),
@@ -379,8 +379,8 @@ func TestAccProject_WithEnvironments(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers:    testAccProviders,
-		CheckDestroy: testAccCheckProjectDestroy,
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories,
+		CheckDestroy:             testAccCheckProjectDestroy,
 		Steps: []resource.TestStep{
 			{
 				Config: fmt.Sprintf(testAccProjectWithEnvironment, projectKey),
@@ -508,8 +508,8 @@ func TestAccProject_EnvApprovalUpdate(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers:    testAccProviders,
-		CheckDestroy: testAccCheckProjectDestroy,
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories,
+		CheckDestroy:             testAccCheckProjectDestroy,
 		Steps: []resource.TestStep{
 			{
 				Config: fmt.Sprintf(testAccProjectWithEnvApprovalSettings, projectKey),
@@ -570,8 +570,8 @@ func TestAccProject_ManyEnvironments(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers:    testAccProviders,
-		CheckDestroy: testAccCheckProjectDestroy,
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories,
+		CheckDestroy:             testAccCheckProjectDestroy,
 		Steps: []resource.TestStep{
 			{
 				Config: fmt.Sprintf(testAccProjectWithManyEnvironments, "%d", projectKey, "%s", "%s"),
@@ -645,8 +645,8 @@ resource "launchdarkly_project" "view_req_test" {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers:    testAccProviders,
-		CheckDestroy: testAccCheckProjectDestroy,
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories,
+		CheckDestroy:             testAccCheckProjectDestroy,
 		Steps: []resource.TestStep{
 			{
 				// Create with defaults (both false)
@@ -698,7 +698,7 @@ func testAccCheckProjectExists(resourceName string) resource.TestCheckFunc {
 			return fmt.Errorf("project ID is not set")
 		}
 
-		client := testAccProvider.Meta().(*Client)
+		client := mustTestAccClient()
 		_, _, err := client.ld.ProjectsApi.GetProject(client.ctx, rs.Primary.ID).Execute()
 		if err != nil {
 			return fmt.Errorf("received an error getting project. %s", err)
@@ -709,7 +709,7 @@ func testAccCheckProjectExists(resourceName string) resource.TestCheckFunc {
 
 // testAccCheckProjectDestroy verifies the project has been destroyed
 func testAccCheckProjectDestroy(s *terraform.State) error {
-	client := testAccProvider.Meta().(*Client)
+	client := mustTestAccClient()
 	for _, rs := range s.RootModule().Resources {
 		if rs.Type != "launchdarkly_project" {
 			continue

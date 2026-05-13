@@ -83,7 +83,7 @@ func TestAccFlagTemplates_CreateAndUpdate(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config: testAccFlagTemplatesConfig(projectKey),
@@ -133,7 +133,7 @@ func testAccCheckFlagTemplatesExists(resourceName string) resource.TestCheckFunc
 		if rs.Primary.ID == "" {
 			return fmt.Errorf("flag templates ID is not set")
 		}
-		client := testAccProvider.Meta().(*Client)
+		client := mustTestAccClient()
 		_, _, err := client.ld.ProjectsApi.GetFlagDefaultsByProject(client.ctx, rs.Primary.ID).Execute()
 		if err != nil {
 			return fmt.Errorf("received an error getting flag templates: %s", err)

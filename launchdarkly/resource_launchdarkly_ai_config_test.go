@@ -106,8 +106,8 @@ func TestAccAIConfig_CreateAndUpdate(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers:    testAccProviders,
-		CheckDestroy: testAccCheckAIConfigDestroy,
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories,
+		CheckDestroy:             testAccCheckAIConfigDestroy,
 		Steps: []resource.TestStep{
 			{
 				Config: withAITestProject(projectKey, fmt.Sprintf(testAccAIConfigCreate, configKey, configName, configDescription)),
@@ -153,9 +153,9 @@ func TestAccAIConfig_WithMode(t *testing.T) {
 	resourceName := "launchdarkly_ai_config.test"
 
 	resource.Test(t, resource.TestCase{
-		PreCheck:     func() { testAccPreCheck(t) },
-		Providers:    testAccProviders,
-		CheckDestroy: testAccCheckAIConfigDestroy,
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories,
+		CheckDestroy:             testAccCheckAIConfigDestroy,
 		Steps: []resource.TestStep{
 			{
 				Config: withAITestProject(projectKey, fmt.Sprintf(testAccAIConfigWithMode, configKey)),
@@ -189,9 +189,9 @@ func TestAccAIConfig_WithMaintainer(t *testing.T) {
 	maintainerId := members.Items[0].Id
 
 	resource.Test(t, resource.TestCase{
-		PreCheck:     func() { testAccPreCheck(t) },
-		Providers:    testAccProviders,
-		CheckDestroy: testAccCheckAIConfigDestroy,
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories,
+		CheckDestroy:             testAccCheckAIConfigDestroy,
 		Steps: []resource.TestStep{
 			{
 				Config: withAITestProject(projectKey, fmt.Sprintf(testAccAIConfigWithMaintainer, configKey, maintainerId)),
@@ -217,9 +217,9 @@ func TestAccAIConfig_WithTeamMaintainer(t *testing.T) {
 	resourceName := "launchdarkly_ai_config.test"
 
 	resource.Test(t, resource.TestCase{
-		PreCheck:     func() { testAccPreCheck(t) },
-		Providers:    testAccProviders,
-		CheckDestroy: testAccCheckAIConfigDestroy,
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories,
+		CheckDestroy:             testAccCheckAIConfigDestroy,
 		Steps: []resource.TestStep{
 			{
 				Config: withAITestProject(projectKey, fmt.Sprintf(testAccAIConfigWithTeamMaintainer, teamKey, configKey)),
@@ -247,9 +247,9 @@ func TestAccAIConfig_WithEvaluationMetric(t *testing.T) {
 	resourceName := "launchdarkly_ai_config.test"
 
 	resource.Test(t, resource.TestCase{
-		PreCheck:     func() { testAccPreCheck(t) },
-		Providers:    testAccProviders,
-		CheckDestroy: testAccCheckAIConfigDestroy,
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories,
+		CheckDestroy:             testAccCheckAIConfigDestroy,
 		Steps: []resource.TestStep{
 			{
 				Config: withAITestProject(projectKey, fmt.Sprintf(testAccAIConfigWithEvaluationMetric, configKey, metricSuffix, false)),
@@ -287,9 +287,9 @@ func TestAccAIConfig_RemoveOptionalFields(t *testing.T) {
 	resourceName := "launchdarkly_ai_config.test"
 
 	resource.Test(t, resource.TestCase{
-		PreCheck:     func() { testAccPreCheck(t) },
-		Providers:    testAccProviders,
-		CheckDestroy: testAccCheckAIConfigDestroy,
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories,
+		CheckDestroy:             testAccCheckAIConfigDestroy,
 		Steps: []resource.TestStep{
 			{
 				Config: withAITestProject(projectKey, fmt.Sprintf(testAccAIConfigCreate, configKey, "Full Config", "A description")),
@@ -381,7 +381,7 @@ func testAccCheckAIConfigExists(resourceName string) resource.TestCheckFunc {
 		projectKey := rs.Primary.Attributes[PROJECT_KEY]
 		configKey := rs.Primary.Attributes[KEY]
 
-		client := testAccProvider.Meta().(*Client)
+		client := mustTestAccClient()
 		_, _, err := client.ld.AIConfigsApi.GetAIConfig(client.ctx, projectKey, configKey).Execute()
 		if err != nil {
 			return fmt.Errorf("received an error getting AI config: %s", err)
@@ -391,7 +391,7 @@ func testAccCheckAIConfigExists(resourceName string) resource.TestCheckFunc {
 }
 
 var testAccCheckAIConfigDestroy = func(s *terraform.State) error {
-	client := testAccProvider.Meta().(*Client)
+	client := mustTestAccClient()
 
 	for _, rs := range s.RootModule().Resources {
 		if rs.Type != "launchdarkly_ai_config" {

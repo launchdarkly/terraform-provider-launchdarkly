@@ -134,8 +134,8 @@ func TestAccView_Update(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers:    testAccProviders,
-		CheckDestroy: testAccCheckViewDestroy,
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories,
+		CheckDestroy:             testAccCheckViewDestroy,
 		Steps: []resource.TestStep{
 			{
 				Config: fmt.Sprintf(testAccViewCreate, projectKey, viewKey, viewName, viewDescription, maintainerId),
@@ -215,8 +215,8 @@ func TestAccView_WithMaintainer(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers:    testAccProviders,
-		CheckDestroy: testAccCheckViewDestroy,
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories,
+		CheckDestroy:             testAccCheckViewDestroy,
 		Steps: []resource.TestStep{
 			// Set the view to be maintained by a team
 			{
@@ -288,7 +288,7 @@ func TestAccView_InvalidKey(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config:      fmt.Sprintf(testAccViewCreate, projectKey, invalidViewKey, viewName, viewDescription, maintainerId),
@@ -310,7 +310,7 @@ func testAccCheckViewExists(resourceName string) resource.TestCheckFunc {
 		projectKey := rs.Primary.Attributes[PROJECT_KEY]
 		viewKey := rs.Primary.Attributes[KEY]
 
-		client := testAccProvider.Meta().(*Client)
+		client := mustTestAccClient()
 		betaClient, err := newBetaClient(client.apiKey, client.apiHost, false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
 		if err != nil {
 			return fmt.Errorf("failed to create beta client: %v", err)
@@ -325,7 +325,7 @@ func testAccCheckViewExists(resourceName string) resource.TestCheckFunc {
 }
 
 func testAccCheckViewDestroy(s *terraform.State) error {
-	client := testAccProvider.Meta().(*Client)
+	client := mustTestAccClient()
 	betaClient, err := newBetaClient(client.apiKey, client.apiHost, false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
 	if err != nil {
 		return fmt.Errorf("failed to create beta client: %v", err)
