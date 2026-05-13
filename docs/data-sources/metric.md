@@ -30,6 +30,10 @@ data "launchdarkly_metric" "example" {
 - `key` (String) The unique key that references the metric.
 - `project_key` (String) The metric's project key.
 
+### Optional
+
+- `is_active` (Boolean, Deprecated) Ignored. All metrics are considered active.
+
 ### Read-Only
 
 - `analysis_type` (String) The method for analyzing metric events.
@@ -37,7 +41,6 @@ data "launchdarkly_metric" "example" {
 - `event_key` (String) The event key for your metric (if custom metric).
 - `id` (String) The ID in the format `project_key/key`.
 - `include_units_without_events` (Boolean) Include units that did not send any events and set their value to 0.
-- `is_active` (Boolean, Deprecated) Ignored. All metrics are considered active.
 - `is_numeric` (Boolean) Whether a `custom` metric is a numeric metric or not.
 - `kind` (String) The metric type.
 - `maintainer_id` (String) The LaunchDarkly member ID of the maintainer.

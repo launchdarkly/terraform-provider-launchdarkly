@@ -3,7 +3,6 @@ package launchdarkly
 import (
 	"context"
 	"fmt"
-	"net/http"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
@@ -155,18 +154,16 @@ func (d *SegmentDataSource) Read(ctx context.Context, req datasource.ReadRequest
 	segmentKey := data.Key.ValueString()
 
 	var segment *ldapi.UserSegment
-	var res *http.Response
 	var err error
 	err = d.client.withConcurrency(d.client.ctx, func() error {
-		segment, res, err = d.client.ld.SegmentsApi.GetSegment(d.client.ctx, projectKey, envKey, segmentKey).Execute()
+		segment, _, err = d.client.ld.SegmentsApi.GetSegment(d.client.ctx, projectKey, envKey, segmentKey).Execute()
 		return err
 	})
 	if err != nil {
-		if isStatusNotFound(res) {
-			resp.Diagnostics.AddError("Segment not found", fmt.Sprintf("Segment %q in %s/%s not found.", segmentKey, projectKey, envKey))
-			return
-		}
-		addLdapiError(&resp.Diagnostics, "Failed to get segment", err)
+		resp.Diagnostics.AddError(
+			fmt.Sprintf("failed to get segment %q of project %q: %s", segmentKey, projectKey, handleLdapiErr(err).Error()),
+			"",
+		)
 		return
 	}
 

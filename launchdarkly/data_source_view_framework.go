@@ -103,13 +103,12 @@ func (d *ViewDataSource) Read(ctx context.Context, req datasource.ReadRequest, r
 	projectKey := data.ProjectKey.ValueString()
 	viewKey := data.Key.ValueString()
 
-	view, res, err := getView(betaClient, projectKey, viewKey)
+	view, _, err := getView(betaClient, projectKey, viewKey)
 	if err != nil {
-		if isStatusNotFound(res) {
-			resp.Diagnostics.AddError("View not found", fmt.Sprintf("View %q in project %q not found.", viewKey, projectKey))
-			return
-		}
-		addLdapiError(&resp.Diagnostics, "Failed to get view", err)
+		resp.Diagnostics.AddError(
+			fmt.Sprintf("failed to get view with key %q in project %q: %s", viewKey, projectKey, handleLdapiErr(err).Error()),
+			"",
+		)
 		return
 	}
 

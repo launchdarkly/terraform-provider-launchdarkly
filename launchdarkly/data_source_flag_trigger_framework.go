@@ -3,7 +3,6 @@ package launchdarkly
 import (
 	"context"
 	"fmt"
-	"net/http"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
@@ -117,18 +116,19 @@ func (d *FlagTriggerDataSource) Read(ctx context.Context, req datasource.ReadReq
 	flagKey := data.FlagKey.ValueString()
 
 	var trigger *ldapi.TriggerWorkflowRep
-	var res *http.Response
 	var err error
+	// integration_key is computed-only on the data source — start empty so the
+	// SDKv2-format message renders with the same double-space placeholder.
+	integrationKey := ""
 	err = d.client.withConcurrency(d.client.ctx, func() error {
-		trigger, res, err = d.client.ld.FlagTriggersApi.GetTriggerWorkflowById(d.client.ctx, projectKey, flagKey, envKey, triggerID).Execute()
+		trigger, _, err = d.client.ld.FlagTriggersApi.GetTriggerWorkflowById(d.client.ctx, projectKey, flagKey, envKey, triggerID).Execute()
 		return err
 	})
 	if err != nil {
-		if isStatusNotFound(res) {
-			resp.Diagnostics.AddError("Flag trigger not found", fmt.Sprintf("Trigger %q not found in %s/%s/%s", triggerID, projectKey, envKey, flagKey))
-			return
-		}
-		addLdapiError(&resp.Diagnostics, "Failed to get flag trigger", err)
+		resp.Diagnostics.AddError(
+			fmt.Sprintf("failed to get %s trigger with ID %q: %s", integrationKey, triggerID, handleLdapiErr(err).Error()),
+			"",
+		)
 		return
 	}
 

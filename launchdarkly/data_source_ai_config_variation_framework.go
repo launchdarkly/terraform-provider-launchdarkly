@@ -3,7 +3,6 @@ package launchdarkly
 import (
 	"context"
 	"fmt"
-	"net/http"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
@@ -109,23 +108,24 @@ func (d *AIConfigVariationDataSource) Read(ctx context.Context, req datasource.R
 	variationKey := data.Key.ValueString()
 
 	var variationsResp *ldapi.AIConfigVariationsResponse
-	var res *http.Response
 	var err error
 	err = d.client.withConcurrency(d.client.ctx, func() error {
-		variationsResp, res, err = d.client.ld.AIConfigsApi.GetAIConfigVariation(d.client.ctx, projectKey, configKey, variationKey).Execute()
+		variationsResp, _, err = d.client.ld.AIConfigsApi.GetAIConfigVariation(d.client.ctx, projectKey, configKey, variationKey).Execute()
 		return err
 	})
 	if err != nil {
-		if isStatusNotFound(res) {
-			resp.Diagnostics.AddError("AI config variation not found", fmt.Sprintf("Variation %q in config %q project %q not found.", variationKey, configKey, projectKey))
-			return
-		}
-		addLdapiError(&resp.Diagnostics, "Failed to get AI config variation", err)
+		resp.Diagnostics.AddError(
+			fmt.Sprintf("failed to get AI config variation with key %q in config %q project %q: %s", variationKey, configKey, projectKey, handleLdapiErr(err).Error()),
+			"",
+		)
 		return
 	}
 
 	if variationsResp == nil || len(variationsResp.Items) == 0 {
-		resp.Diagnostics.AddError("AI config variation not found", fmt.Sprintf("Variation %q in config %q project %q has no versions.", variationKey, configKey, projectKey))
+		resp.Diagnostics.AddError(
+			fmt.Sprintf("failed to get AI config variation with key %q in config %q project %q: no versions found", variationKey, configKey, projectKey),
+			"",
+		)
 		return
 	}
 

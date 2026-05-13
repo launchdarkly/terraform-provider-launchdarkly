@@ -3,7 +3,6 @@ package launchdarkly
 import (
 	"context"
 	"fmt"
-	"net/http"
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
@@ -78,18 +77,16 @@ func (d *AIToolDataSource) Read(ctx context.Context, req datasource.ReadRequest,
 	key := data.Key.ValueString()
 
 	var tool *ldapi.AITool
-	var res *http.Response
 	var err error
 	err = d.client.withConcurrency(d.client.ctx, func() error {
-		tool, res, err = d.client.ld.AIConfigsApi.GetAITool(d.client.ctx, projectKey, key).Execute()
+		tool, _, err = d.client.ld.AIConfigsApi.GetAITool(d.client.ctx, projectKey, key).Execute()
 		return err
 	})
 	if err != nil {
-		if isStatusNotFound(res) {
-			resp.Diagnostics.AddError("AI tool not found", fmt.Sprintf("AI tool %q in project %q not found.", key, projectKey))
-			return
-		}
-		addLdapiError(&resp.Diagnostics, "Failed to get AI tool", err)
+		resp.Diagnostics.AddError(
+			fmt.Sprintf("failed to get AI tool with key %q in project %q: %s", key, projectKey, handleLdapiErr(err).Error()),
+			"",
+		)
 		return
 	}
 

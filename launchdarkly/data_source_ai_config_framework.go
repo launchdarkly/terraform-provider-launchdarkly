@@ -3,7 +3,6 @@ package launchdarkly
 import (
 	"context"
 	"fmt"
-	"net/http"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
@@ -104,18 +103,16 @@ func (d *AIConfigDataSource) Read(ctx context.Context, req datasource.ReadReques
 	key := data.Key.ValueString()
 
 	var aiConfig *ldapi.AIConfig
-	var res *http.Response
 	var err error
 	err = d.client.withConcurrency(d.client.ctx, func() error {
-		aiConfig, res, err = d.client.ld.AIConfigsApi.GetAIConfig(d.client.ctx, projectKey, key).Execute()
+		aiConfig, _, err = d.client.ld.AIConfigsApi.GetAIConfig(d.client.ctx, projectKey, key).Execute()
 		return err
 	})
 	if err != nil {
-		if isStatusNotFound(res) {
-			resp.Diagnostics.AddError("AI config not found", fmt.Sprintf("AI config %q in project %q not found.", key, projectKey))
-			return
-		}
-		addLdapiError(&resp.Diagnostics, "Failed to get AI config", err)
+		resp.Diagnostics.AddError(
+			fmt.Sprintf("failed to get AI config with key %q in project %q: %s", key, projectKey, handleLdapiErr(err).Error()),
+			"",
+		)
 		return
 	}
 

@@ -3,7 +3,6 @@ package launchdarkly
 import (
 	"context"
 	"fmt"
-	"net/http"
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
@@ -90,18 +89,16 @@ func (d *WebhookDataSource) Read(ctx context.Context, req datasource.ReadRequest
 	id := data.ID.ValueString()
 
 	var webhook *ldapi.Webhook
-	var res *http.Response
 	var err error
 	err = d.client.withConcurrency(d.client.ctx, func() error {
-		webhook, res, err = d.client.ld.WebhooksApi.GetWebhook(d.client.ctx, id).Execute()
+		webhook, _, err = d.client.ld.WebhooksApi.GetWebhook(d.client.ctx, id).Execute()
 		return err
 	})
 	if err != nil {
-		if isStatusNotFound(res) {
-			resp.Diagnostics.AddError("Webhook not found", fmt.Sprintf("Webhook with id %q not found.", id))
-			return
-		}
-		addLdapiError(&resp.Diagnostics, "Failed to get webhook", err)
+		resp.Diagnostics.AddError(
+			fmt.Sprintf("failed to get webhook with id %q: %s", id, handleLdapiErr(err).Error()),
+			"",
+		)
 		return
 	}
 

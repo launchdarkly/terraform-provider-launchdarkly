@@ -91,13 +91,12 @@ func (d *ProjectDataSource) Read(ctx context.Context, req datasource.ReadRequest
 	}
 
 	projectKey := data.Key.ValueString()
-	project, res, err := getFullProject(d.client, projectKey)
+	project, _, err := getFullProject(d.client, projectKey)
 	if err != nil {
-		if isStatusNotFound(res) {
-			resp.Diagnostics.AddError("Project not found", fmt.Sprintf("Project %q not found.", projectKey))
-			return
-		}
-		addLdapiError(&resp.Diagnostics, "Failed to get project", err)
+		resp.Diagnostics.AddError(
+			fmt.Sprintf("failed to get project with key %q: %s", projectKey, handleLdapiErr(err).Error()),
+			"",
+		)
 		return
 	}
 

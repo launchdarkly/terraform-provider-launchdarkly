@@ -15,7 +15,6 @@ package launchdarkly
 import (
 	"context"
 	"fmt"
-	"net/http"
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
@@ -140,21 +139,16 @@ func (d *ModelConfigDataSource) Read(ctx context.Context, req datasource.ReadReq
 	key := data.Key.ValueString()
 
 	var modelConfig *ldapi.ModelConfig
-	var res *http.Response
 	var err error
 	err = d.client.withConcurrency(d.client.ctx, func() error {
-		modelConfig, res, err = d.client.ld.AIConfigsApi.GetModelConfig(d.client.ctx, projectKey, key).Execute()
+		modelConfig, _, err = d.client.ld.AIConfigsApi.GetModelConfig(d.client.ctx, projectKey, key).Execute()
 		return err
 	})
 	if err != nil {
-		if isStatusNotFound(res) {
-			resp.Diagnostics.AddError(
-				"Model config not found",
-				fmt.Sprintf("No model config %q in project %q", key, projectKey),
-			)
-			return
-		}
-		addLdapiError(&resp.Diagnostics, "Failed to get model config", err)
+		resp.Diagnostics.AddError(
+			fmt.Sprintf("failed to get model config with key %q in project %q: %s", key, projectKey, handleLdapiErr(err).Error()),
+			"",
+		)
 		return
 	}
 

@@ -30,6 +30,10 @@ data "launchdarkly_environment" "example" {
 - `key` (String) The project-unique key for the environment.
 - `project_key` (String) The environment's project key.
 
+### Optional
+
+- `critical` (Boolean) Denotes whether the environment is critical.
+
 ### Read-Only
 
 - `api_key` (String, Sensitive) The environment's SDK key.
@@ -37,7 +41,6 @@ data "launchdarkly_environment" "example" {
 - `client_side_id` (String, Sensitive) The environment's client-side ID.
 - `color` (String) The color swatch as an RGB hex value with no leading `#`.
 - `confirm_changes` (Boolean) Whether flag/segment changes require confirmation.
-- `critical` (Boolean) Whether the environment is critical.
 - `default_track_events` (Boolean) Whether data export is enabled for new flags.
 - `default_ttl` (Number) The default TTL (0-60 minutes).
 - `id` (String) The ID in the format `project_key/key`.

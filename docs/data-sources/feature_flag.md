@@ -74,6 +74,11 @@ output "team_notifications" {
 - `key` (String) The unique feature flag key.
 - `project_key` (String) The feature flag's project key.
 
+### Optional
+
+- `maintainer_id` (String) The feature flag maintainer's 24 character alphanumeric team member ID. `maintainer_team_key` cannot be set if `maintainer_id` is set. If neither is set, it will automatically be or stay set to the member ID associated with the API key used by your LaunchDarkly Terraform provider or the most recently-set maintainer.
+- `maintainer_team_key` (String) The key of the associated team that maintains this feature flag. `maintainer_id` cannot be set if `maintainer_team_key` is set
+
 ### Read-Only
 
 - `archived` (Boolean) Whether the flag is archived.
@@ -84,8 +89,6 @@ output "team_notifications" {
 - `description` (String) Feature flag description.
 - `id` (String) Composite ID `project_key/key`.
 - `include_in_snippet` (Boolean, Deprecated) Deprecated: use client_side_availability.using_environment_id.
-- `maintainer_id` (String) Maintainer member ID.
-- `maintainer_team_key` (String) Maintainer team key.
 - `name` (String) Human-readable name.
 - `tags` (Set of String) Tags.
 - `temporary` (Boolean) Whether the flag is temporary.

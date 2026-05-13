@@ -3,7 +3,6 @@ package launchdarkly
 import (
 	"context"
 	"fmt"
-	"net/http"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
@@ -95,6 +94,7 @@ func (d *MetricDataSource) Schema(_ context.Context, _ datasource.SchemaRequest,
 				Description: "Tags associated with the metric.",
 			},
 			IS_ACTIVE: schema.BoolAttribute{
+				Optional:           true,
 				Computed:           true,
 				Description:        "Ignored. All metrics are considered active.",
 				DeprecationMessage: "No longer in use. This field will be removed in a future major release of the LaunchDarkly provider.",
@@ -180,18 +180,16 @@ func (d *MetricDataSource) Read(ctx context.Context, req datasource.ReadRequest,
 	key := data.Key.ValueString()
 
 	var metric *ldapi.MetricRep
-	var res *http.Response
 	var err error
 	err = d.client.withConcurrency(d.client.ctx, func() error {
-		metric, res, err = d.client.ld.MetricsApi.GetMetric(d.client.ctx, projectKey, key).Execute()
+		metric, _, err = d.client.ld.MetricsApi.GetMetric(d.client.ctx, projectKey, key).Execute()
 		return err
 	})
 	if err != nil {
-		if isStatusNotFound(res) {
-			resp.Diagnostics.AddError("Metric not found", fmt.Sprintf("Metric %q in project %q not found.", key, projectKey))
-			return
-		}
-		addLdapiError(&resp.Diagnostics, "Failed to get metric", err)
+		resp.Diagnostics.AddError(
+			fmt.Sprintf("failed to get metric with key %q in project %q: %s", key, projectKey, handleLdapiErr(err).Error()),
+			"",
+		)
 		return
 	}
 

@@ -3,7 +3,6 @@ package launchdarkly
 import (
 	"context"
 	"fmt"
-	"net/http"
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
@@ -65,7 +64,7 @@ func (d *EnvironmentDataSource) Schema(_ context.Context, _ datasource.SchemaReq
 			DEFAULT_TRACK_EVENTS: schema.BoolAttribute{Computed: true, Description: "Whether data export is enabled for new flags."},
 			REQUIRE_COMMENTS:     schema.BoolAttribute{Computed: true, Description: "Whether flag/segment changes require comments."},
 			CONFIRM_CHANGES:      schema.BoolAttribute{Computed: true, Description: "Whether flag/segment changes require confirmation."},
-			CRITICAL:             schema.BoolAttribute{Computed: true, Description: "Whether the environment is critical."},
+			CRITICAL:             schema.BoolAttribute{Optional: true, Computed: true, Description: "Denotes whether the environment is critical."},
 			TAGS: schema.SetAttribute{
 				Computed:    true,
 				ElementType: types.StringType,
@@ -97,18 +96,16 @@ func (d *EnvironmentDataSource) Read(ctx context.Context, req datasource.ReadReq
 	key := data.Key.ValueString()
 
 	var env *ldapi.Environment
-	var res *http.Response
 	var err error
 	err = d.client.withConcurrency(d.client.ctx, func() error {
-		env, res, err = d.client.ld.EnvironmentsApi.GetEnvironment(d.client.ctx, projectKey, key).Execute()
+		env, _, err = d.client.ld.EnvironmentsApi.GetEnvironment(d.client.ctx, projectKey, key).Execute()
 		return err
 	})
 	if err != nil {
-		if isStatusNotFound(res) {
-			resp.Diagnostics.AddError("Environment not found", fmt.Sprintf("Environment %q in project %q not found.", key, projectKey))
-			return
-		}
-		addLdapiError(&resp.Diagnostics, "Failed to get environment", err)
+		resp.Diagnostics.AddError(
+			fmt.Sprintf("failed to get environment with key %q for project key: %q: %s", key, projectKey, handleLdapiErr(err).Error()),
+			"",
+		)
 		return
 	}
 

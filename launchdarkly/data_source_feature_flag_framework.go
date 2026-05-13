@@ -3,7 +3,6 @@ package launchdarkly
 import (
 	"context"
 	"fmt"
-	"net/http"
 	"sort"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
@@ -70,15 +69,20 @@ func (d *FeatureFlagDataSource) Schema(_ context.Context, _ datasource.SchemaReq
 	resp.Schema = schema.Schema{
 		Description: "Provides a LaunchDarkly feature flag data source.\n\nThis data source allows you to retrieve feature flag information from your LaunchDarkly organization.",
 		Attributes: map[string]schema.Attribute{
-			"id":          schema.StringAttribute{Computed: true, Description: "Composite ID `project_key/key`."},
-			PROJECT_KEY:   schema.StringAttribute{Required: true, Description: "The feature flag's project key."},
-			KEY:           schema.StringAttribute{Required: true, Description: "The unique feature flag key."},
-			NAME:          schema.StringAttribute{Computed: true, Description: "Human-readable name."},
-			DESCRIPTION:   schema.StringAttribute{Computed: true, Description: "Feature flag description."},
-			MAINTAINER_ID: schema.StringAttribute{Computed: true, Description: "Maintainer member ID."},
-			MAINTAINER_TEAM_KEY: schema.StringAttribute{
+			"id":        schema.StringAttribute{Computed: true, Description: "Composite ID `project_key/key`."},
+			PROJECT_KEY: schema.StringAttribute{Required: true, Description: "The feature flag's project key."},
+			KEY:         schema.StringAttribute{Required: true, Description: "The unique feature flag key."},
+			NAME:        schema.StringAttribute{Computed: true, Description: "Human-readable name."},
+			DESCRIPTION: schema.StringAttribute{Computed: true, Description: "Feature flag description."},
+			MAINTAINER_ID: schema.StringAttribute{
+				Optional:    true,
 				Computed:    true,
-				Description: "Maintainer team key.",
+				Description: "The feature flag maintainer's 24 character alphanumeric team member ID. `maintainer_team_key` cannot be set if `maintainer_id` is set. If neither is set, it will automatically be or stay set to the member ID associated with the API key used by your LaunchDarkly Terraform provider or the most recently-set maintainer.",
+			},
+			MAINTAINER_TEAM_KEY: schema.StringAttribute{
+				Optional:    true,
+				Computed:    true,
+				Description: "The key of the associated team that maintains this feature flag. `maintainer_id` cannot be set if `maintainer_team_key` is set",
 			},
 			TAGS:           schema.SetAttribute{Computed: true, ElementType: types.StringType, Description: "Tags."},
 			VARIATION_TYPE: schema.StringAttribute{Computed: true, Description: fmt.Sprintf("Variation type: %q, %q, %q, or %q.", BOOL_VARIATION, STRING_VARIATION, NUMBER_VARIATION, JSON_VARIATION)},
@@ -166,18 +170,16 @@ func (d *FeatureFlagDataSource) Read(ctx context.Context, req datasource.ReadReq
 	key := data.Key.ValueString()
 
 	var flag *ldapi.FeatureFlag
-	var res *http.Response
 	var err error
 	err = d.client.withConcurrency(d.client.ctx, func() error {
-		flag, res, err = d.client.ld.FeatureFlagsApi.GetFeatureFlag(d.client.ctx, projectKey, key).Execute()
+		flag, _, err = d.client.ld.FeatureFlagsApi.GetFeatureFlag(d.client.ctx, projectKey, key).Execute()
 		return err
 	})
 	if err != nil {
-		if isStatusNotFound(res) {
-			resp.Diagnostics.AddError("Flag not found", fmt.Sprintf("Flag %q in project %q not found.", key, projectKey))
-			return
-		}
-		addLdapiError(&resp.Diagnostics, "Failed to get feature flag", err)
+		resp.Diagnostics.AddError(
+			fmt.Sprintf("failed to get flag %q of project %q: %s", key, projectKey, handleLdapiErr(err).Error()),
+			"",
+		)
 		return
 	}
 

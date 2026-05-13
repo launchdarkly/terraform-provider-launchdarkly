@@ -3,7 +3,6 @@ package launchdarkly
 import (
 	"context"
 	"fmt"
-	"net/http"
 	"strconv"
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
@@ -93,18 +92,16 @@ func (d *AuditLogSubscriptionDataSource) Read(ctx context.Context, req datasourc
 	integrationKey := data.IntegrationKey.ValueString()
 
 	var sub *ldapi.Integration
-	var res *http.Response
 	var err error
 	err = d.client.withConcurrency(d.client.ctx, func() error {
-		sub, res, err = d.client.ld.IntegrationAuditLogSubscriptionsApi.GetSubscriptionByID(d.client.ctx, integrationKey, id).Execute()
+		sub, _, err = d.client.ld.IntegrationAuditLogSubscriptionsApi.GetSubscriptionByID(d.client.ctx, integrationKey, id).Execute()
 		return err
 	})
 	if err != nil {
-		if isStatusNotFound(res) {
-			resp.Diagnostics.AddError("Audit log subscription not found", fmt.Sprintf("No subscription %q for integration %q", id, integrationKey))
-			return
-		}
-		addLdapiError(&resp.Diagnostics, "Failed to get audit log subscription", err)
+		resp.Diagnostics.AddError(
+			fmt.Sprintf("failed to get integration with ID %q: %s", id, handleLdapiErr(err).Error()),
+			"",
+		)
 		return
 	}
 
