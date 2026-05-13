@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -65,17 +64,7 @@ func (r *TeamRoleMappingResource) Schema(ctx context.Context, req resource.Schem
 }
 
 func (r *TeamRoleMappingResource) Configure(ctx context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
-	// Prevent panic if the provider has not been configured
-	if req.ProviderData == nil {
-		return
-	}
-
-	client, ok := req.ProviderData.(*Client)
-	if !ok {
-		resp.Diagnostics.AddError("Unexpected Resource Configure Type", fmt.Sprintf("Expected *http.Client, got: %T. Please report this issue to the provider developers.", req.ProviderData))
-	}
-
-	r.client = client
+	r.client = configureResourceClient(req, resp)
 }
 
 func (r *TeamRoleMappingResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
@@ -119,8 +108,8 @@ func (r *TeamRoleMappingResource) Create(ctx context.Context, req resource.Creat
 		resp.Diagnostics.AddError("The team already has custom roles assigned.", fmt.Sprintf("The team %q already has custom roles assigned.", teamKey))
 	}
 
-	customRoleKeys := make([]string, 0, len(data.CustomRoleKeys.Elements()))
-	resp.Diagnostics.Append(data.CustomRoleKeys.ElementsAs(ctx, &customRoleKeys, false)...)
+	customRoleKeys, sliceDiags := stringSliceFromSet(ctx, data.CustomRoleKeys)
+	resp.Diagnostics.Append(sliceDiags...)
 
 	patchInstructions := make([]map[string]interface{}, 0)
 
@@ -161,7 +150,7 @@ func (r *TeamRoleMappingResource) Create(ctx context.Context, req resource.Creat
 			}
 		}
 
-		customRoleSet, diags := types.SetValueFrom(ctx, types.StringType, returnedRoleKeys)
+		customRoleSet, diags := setFromStringSlice(ctx, returnedRoleKeys)
 		resp.Diagnostics.Append(diags...)
 		data.CustomRoleKeys = customRoleSet
 	}
@@ -210,11 +199,7 @@ func (r *TeamRoleMappingResource) Read(ctx context.Context, req resource.ReadReq
 
 	data.TeamKey = types.StringValue(teamKey)
 	data.ID = types.StringValue(teamKey)
-	coercedRoleKeys := make([]attr.Value, 0, len(roleKeys))
-	for _, roleKey := range roleKeys {
-		coercedRoleKeys = append(coercedRoleKeys, types.StringValue(roleKey))
-	}
-	customRoleSet, diags := types.SetValue(types.StringType, coercedRoleKeys)
+	customRoleSet, diags := setFromStringSlice(ctx, roleKeys)
 	resp.Diagnostics.Append(diags...)
 	data.CustomRoleKeys = customRoleSet
 
@@ -257,8 +242,8 @@ func (r *TeamRoleMappingResource) Update(ctx context.Context, req resource.Updat
 		return
 	}
 
-	customRoleKeys := make([]string, 0, len(data.CustomRoleKeys.Elements()))
-	resp.Diagnostics.Append(data.CustomRoleKeys.ElementsAs(ctx, &customRoleKeys, false)...)
+	customRoleKeys, sliceDiags := stringSliceFromSet(ctx, data.CustomRoleKeys)
+	resp.Diagnostics.Append(sliceDiags...)
 
 	patchInstructions := make([]map[string]interface{}, 0)
 
@@ -310,7 +295,7 @@ func (r *TeamRoleMappingResource) Update(ctx context.Context, req resource.Updat
 			}
 		}
 
-		customRoleSet, diags := types.SetValueFrom(ctx, types.StringType, returnedRoleKeys)
+		customRoleSet, diags := setFromStringSlice(ctx, returnedRoleKeys)
 		resp.Diagnostics.Append(diags...)
 		data.CustomRoleKeys = customRoleSet
 	}
@@ -329,8 +314,8 @@ func (r *TeamRoleMappingResource) Delete(ctx context.Context, req resource.Delet
 	}
 
 	teamKey := data.TeamKey.ValueString()
-	customRoleKeys := make([]string, 0, len(data.CustomRoleKeys.Elements()))
-	resp.Diagnostics.Append(data.CustomRoleKeys.ElementsAs(ctx, &customRoleKeys, false)...)
+	customRoleKeys, sliceDiags := stringSliceFromSet(ctx, data.CustomRoleKeys)
+	resp.Diagnostics.Append(sliceDiags...)
 
 	if len(customRoleKeys) > 0 {
 		instructions := []map[string]interface{}{
