@@ -337,7 +337,8 @@ func (r *ViewResource) readIntoModel(
 		}
 	}
 
-	tagsSet, d := setFromStringSlice(ctx, view.Tags)
+	// Optional-only Set attr: write null when API returns no tags.
+	tagsSet, d := setFromStringSliceOrNull(ctx, view.Tags)
 	if d.HasError() {
 		for _, e := range d.Errors() {
 			diags.AddError(e.Summary(), e.Detail())

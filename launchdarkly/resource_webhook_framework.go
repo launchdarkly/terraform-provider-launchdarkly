@@ -265,7 +265,8 @@ func (r *WebhookResource) readIntoModel(
 	data.Name = stringValueOrNullFromPointer(webhook.Name)
 	data.Secret = stringValueOrNullFromPointer(webhook.Secret)
 
-	tagsSet, d := setFromStringSlice(ctx, webhook.Tags)
+	// Optional-only Set attr: write null when API returns no tags.
+	tagsSet, d := setFromStringSliceOrNull(ctx, webhook.Tags)
 	if d.HasError() {
 		for _, e := range d.Errors() {
 			diags.AddError(e.Summary(), e.Detail())

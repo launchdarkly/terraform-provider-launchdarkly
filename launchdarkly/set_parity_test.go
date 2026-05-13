@@ -119,6 +119,47 @@ func TestSetParity_TagsReorderInvariant(t *testing.T) {
 	}
 }
 
+// TestSetFromStringSliceOrNull pins the Set-flavoured analogue of
+// TestStringValueOrNullFromPointer. Same root cause: writing an empty
+// non-null Set on Read when the user's HCL omitted the attribute
+// trips terraform-core's "Provider produced inconsistent result after
+// apply" check. Originally surfaced via TestAccTeam_CreateAndUpdate
+// where launchdarkly_team_member.custom_roles was nil in plan but
+// became cty.SetValEmpty(cty.String) post-apply.
+func TestSetFromStringSliceOrNull(t *testing.T) {
+	ctx := context.Background()
+	t.Run("nil slice maps to null", func(t *testing.T) {
+		got, d := setFromStringSliceOrNull(ctx, nil)
+		if d.HasError() {
+			t.Fatalf("unexpected diagnostics: %v", d)
+		}
+		if !got.IsNull() {
+			t.Fatalf("nil slice should produce SetNull, got %v", got)
+		}
+	})
+	t.Run("empty slice maps to null", func(t *testing.T) {
+		got, d := setFromStringSliceOrNull(ctx, []string{})
+		if d.HasError() {
+			t.Fatalf("unexpected diagnostics: %v", d)
+		}
+		if !got.IsNull() {
+			t.Fatalf("empty slice should produce SetNull, got %v", got)
+		}
+	})
+	t.Run("non-empty slice passes through", func(t *testing.T) {
+		got, d := setFromStringSliceOrNull(ctx, []string{"a", "b"})
+		if d.HasError() {
+			t.Fatalf("unexpected diagnostics: %v", d)
+		}
+		if got.IsNull() {
+			t.Fatalf("non-empty slice should produce a populated Set, got null")
+		}
+		if len(got.Elements()) != 2 {
+			t.Fatalf("expected 2 elements, got %d", len(got.Elements()))
+		}
+	})
+}
+
 // TestStringValueOrNullFromPointer pins the contract for the helper
 // that fixes the plan-apply consistency bug surfaced by
 // TestAccTeamRoleMapping_* in CI: an Optional (non-Computed) string

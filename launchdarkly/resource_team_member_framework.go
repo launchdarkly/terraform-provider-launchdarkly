@@ -295,7 +295,9 @@ func (r *TeamMemberResource) readIntoModel(
 		diags.AddError("Failed to resolve custom role keys", err.Error())
 		return
 	}
-	rolesSet, d := setFromStringSlice(ctx, customRoleKeys)
+	// Optional-only Set attr: write null (not empty Set) when the API
+	// returns no custom roles so plan(null) matches apply.
+	rolesSet, d := setFromStringSliceOrNull(ctx, customRoleKeys)
 	if d.HasError() {
 		for _, e := range d.Errors() {
 			diags.AddError(e.Summary(), e.Detail())

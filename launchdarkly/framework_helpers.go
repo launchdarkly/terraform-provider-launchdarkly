@@ -136,6 +136,23 @@ func stringValueOrNullFromPointer(p *string) types.String {
 	return stringValueOrNull(*p)
 }
 
+// setFromStringSliceOrNull is the Set analogue of stringValueOrNull. It
+// returns a null Set when the input slice is nil or empty, and a
+// populated Set otherwise. Use for Optional (non-Computed) Set
+// attributes in Read paths: a user's HCL that omits the attribute
+// plans null, and writing an empty non-null Set on apply trips
+// terraform-core's plan-apply consistency check the same way the
+// string-flavoured pair does. setFromStringSlice deliberately keeps
+// the empty-non-null semantics for callers that want deterministic
+// state writes regardless of plan; this variant is for the parallel
+// case where matching the plan (null) is the correctness requirement.
+func setFromStringSliceOrNull(ctx context.Context, vals []string) (types.Set, diag.Diagnostics) {
+	if len(vals) == 0 {
+		return types.SetNull(types.StringType), nil
+	}
+	return types.SetValueFrom(ctx, types.StringType, vals)
+}
+
 // stringPointerFromAttr is the inverse: null / unknown framework values
 // project to a nil *string, suitable for ldapi optional-field patches.
 func stringPointerFromAttr(v types.String) *string {
