@@ -4,14 +4,11 @@ page_title: "launchdarkly_webhook Resource - launchdarkly"
 subcategory: ""
 description: |-
   Provides a LaunchDarkly webhook resource.
-  This resource allows you to create and manage webhooks within your LaunchDarkly organization.
 ---
 
 # launchdarkly_webhook (Resource)
 
 Provides a LaunchDarkly webhook resource.
-
-This resource allows you to create and manage webhooks within your LaunchDarkly organization.
 
 ## Example Usage
 
@@ -44,11 +41,11 @@ resource "launchdarkly_webhook" "example" {
 
 ### Optional
 
-- `name` (String) The webhook's human-readable name.
-- `on` (Boolean) Specifies whether the webhook is enabled.
+- `name` (String) Human-readable name.
+- `on` (Boolean) Whether the webhook is enabled.
 - `secret` (String, Sensitive) The secret used to sign the webhook.
-- `statements` (Block List) List of policy statement blocks used to filter webhook events. For more information on webhook policy filters read [Adding a policy filter](https://docs.launchdarkly.com/integrations/webhooks#adding-a-policy-filter). (see [below for nested schema](#nestedblock--statements))
-- `tags` (Set of String) Tags associated with your resource.
+- `statements` (Block List) Policy statement blocks filtering webhook events. (see [below for nested schema](#nestedblock--statements))
+- `tags` (Set of String) Tags.
 
 ### Read-Only
 
@@ -59,15 +56,14 @@ resource "launchdarkly_webhook" "example" {
 
 Required:
 
-- `effect` (String) Either `allow` or `deny`. This argument defines whether the statement allows or denies access to the named resources and actions.
+- `effect` (String) Either `allow` or `deny`.
 
 Optional:
 
-- `actions` (List of String) The list of action specifiers defining the actions to which the statement applies.
-Either `actions` or `not_actions` must be specified. For a list of available actions read [Actions reference](https://docs.launchdarkly.com/home/account-security/custom-roles/actions#actions-reference).
-- `not_actions` (List of String) The list of action specifiers defining the actions to which the statement does not apply.
-- `not_resources` (List of String) The list of resource specifiers defining the resources to which the statement does not apply.
-- `resources` (List of String) The list of resource specifiers defining the resources to which the statement applies.
+- `actions` (List of String) The list of actions the statement applies to.
+- `not_actions` (List of String) The list of actions the statement does not apply to.
+- `not_resources` (List of String) The list of resource specifiers the statement does not apply to.
+- `resources` (List of String) The list of resource specifiers the statement applies to.
 
 ## Import
 

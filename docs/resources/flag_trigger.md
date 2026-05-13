@@ -2,21 +2,12 @@
 page_title: "launchdarkly_flag_trigger Resource - launchdarkly"
 subcategory: ""
 description: |-
-  Provides a LaunchDarkly flag trigger resource.
-  -> Note: Flag triggers are available to customers on an Enterprise LaunchDarkly plan. To learn more, read about our pricing https://launchdarkly.com/pricing/. To upgrade your plan, contact LaunchDarkly Sales https://launchdarkly.com/contact-sales/.
-  This resource allows you to create and manage flag triggers within your LaunchDarkly organization.
-  -> Note: This resource will store sensitive unique trigger URL value in plaintext in your Terraform state. Be sure your state is configured securely before using this resource. See https://www.terraform.io/docs/state/sensitive-data.html for more details.
+  Provides a LaunchDarkly flag trigger resource (Enterprise plan only).
 ---
 
 # launchdarkly_flag_trigger (Resource)
 
-Provides a LaunchDarkly flag trigger resource.
-
--> **Note:** Flag triggers are available to customers on an Enterprise LaunchDarkly plan. To learn more, [read about our pricing](https://launchdarkly.com/pricing/). To upgrade your plan, [contact LaunchDarkly Sales](https://launchdarkly.com/contact-sales/).
-
-This resource allows you to create and manage flag triggers within your LaunchDarkly organization.
-
--> **Note:** This resource will store sensitive unique trigger URL value in plaintext in your Terraform state. Be sure your state is configured securely before using this resource. See https://www.terraform.io/docs/state/sensitive-data.html for more details.
+Provides a LaunchDarkly flag trigger resource (Enterprise plan only).
 
 ## Example Usage
 
@@ -38,25 +29,28 @@ resource "launchdarkly_flag_trigger" "example" {
 
 ### Required
 
-- `enabled` (Boolean) Whether the trigger is currently active or not.
-- `env_key` (String) The unique key of the environment the flag trigger will work in. A change in this field will force the destruction of the existing resource and the creation of a new one.
-- `flag_key` (String) The unique key of the associated flag. A change in this field will force the destruction of the existing resource and the creation of a new one.
-- `instructions` (Block List, Min: 1, Max: 1) Instructions containing the action to perform when invoking the trigger. Currently supported flag actions are `turnFlagOn` and `turnFlagOff`. This must be passed as the key-value pair `{ kind = "<flag_action>" }`. (see [below for nested schema](#nestedblock--instructions))
-- `integration_key` (String) The unique identifier of the integration you intend to set your trigger up with. Currently supported are `generic-trigger`, `datadog`, `dynatrace`, `dynatrace-cloud-automation`, `honeycomb`, `new-relic-apm`, and `signalfx`. `generic-trigger` should be used for integrations not explicitly supported. A change in this field will force the destruction of the existing resource and the creation of a new one.
-- `project_key` (String) The unique key of the project encompassing the associated flag. A change in this field will force the destruction of the existing resource and the creation of a new one.
+- `enabled` (Boolean) Whether the trigger is enabled.
+- `env_key` (String) The environment key.
+- `flag_key` (String) The flag key.
+- `integration_key` (String) The integration key. Supported: `generic-trigger`, `datadog`, `dynatrace`, `dynatrace-cloud-automation`, `honeycomb`, `new-relic-apm`, and `signalfx`.
+- `project_key` (String) The project key.
+
+### Optional
+
+- `instructions` (Block List) Instructions specifying the action to perform. (see [below for nested schema](#nestedblock--instructions))
 
 ### Read-Only
 
 - `id` (String) The ID of this resource.
-- `maintainer_id` (String) The ID of the member responsible for maintaining the flag trigger. If created via Terraform, this value will be the ID of the member associated with the API key used for your provider configuration.
-- `trigger_url` (String, Sensitive) The unique URL used to invoke the trigger.
+- `maintainer_id` (String) Member ID maintaining the trigger.
+- `trigger_url` (String, Sensitive) The unique URL used to invoke the trigger. Exposed once.
 
 <a id="nestedblock--instructions"></a>
 ### Nested Schema for `instructions`
 
 Required:
 
-- `kind` (String) The action to perform when triggering. Currently supported flag actions are `turnFlagOn` and `turnFlagOff`.
+- `kind` (String) Currently `turnFlagOn` or `turnFlagOff`.
 
 ## Import
 
