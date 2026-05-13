@@ -43,7 +43,7 @@ func TestAccIpAllowlistEntry_CreateAndUpdate(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config: testAccIpAllowlistEntryCreate,
@@ -106,7 +106,7 @@ func TestAccIpAllowlistEntry_CIDRBlock(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config: testAccIpAllowlistEntryCIDR,
@@ -129,7 +129,7 @@ func testAccCheckIpAllowlistEntryExists(resourceName string) resource.TestCheckF
 		if rs.Primary.ID == "" {
 			return fmt.Errorf("IP allowlist entry ID is not set")
 		}
-		client := testAccProvider.Meta().(*Client)
+		client := mustTestAccClient()
 		allowlist, err := getIpAllowlist(client)
 		if err != nil {
 			return fmt.Errorf("error getting IP allowlist: %s", err)

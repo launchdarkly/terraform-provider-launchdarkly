@@ -281,8 +281,8 @@ func TestAccSegmentViewKeys_CreateAndUpdate(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers:    testAccProviders,
-		CheckDestroy: testAccCheckSegmentDestroy,
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories,
+		CheckDestroy:             testAccCheckSegmentDestroy,
 		Steps: []resource.TestStep{
 			{
 				Config: fmt.Sprintf(testAccSegmentWithViewKeysCreate, projectName, projectKey, maintainerId, maintainerId, maintainerId),
@@ -346,8 +346,8 @@ func TestAccSegmentViewKeys_NonexistentView(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers:    testAccProviders,
-		CheckDestroy: testAccCheckSegmentDestroy,
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories,
+		CheckDestroy:             testAccCheckSegmentDestroy,
 		Steps: []resource.TestStep{
 			// Step 1: Create project and view first
 			{
@@ -392,8 +392,8 @@ func TestAccSegmentViewKeys_ReconcileUnexpectedViewAssociation(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers:    testAccProviders,
-		CheckDestroy: testAccCheckSegmentDestroy,
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories,
+		CheckDestroy:             testAccCheckSegmentDestroy,
 		Steps: []resource.TestStep{
 			{
 				Config: fmt.Sprintf(testAccSegmentWithViewKeysCreate, projectName, projectKey, maintainerId, maintainerId, maintainerId),
@@ -456,7 +456,7 @@ func TestAccSegmentViewKeys_ReconcileUnexpectedViewAssociation(t *testing.T) {
 // testAccCheckSegmentLinkedToViews verifies that a segment is linked to specific views via API
 func testAccCheckSegmentLinkedToViews(projectKey, envKey, segmentKey string, expectedViewKeys []string) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
-		client := testAccProvider.Meta().(*Client)
+		client := mustTestAccClient()
 		betaClient, err := newBetaClient(client.apiKey, client.apiHost, false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
 		if err != nil {
 			return fmt.Errorf("failed to create beta client: %v", err)
@@ -503,7 +503,7 @@ func testAccCheckSegmentLinkedToViews(projectKey, envKey, segmentKey string, exp
 
 // testAccCheckSegmentDestroy verifies the segment has been destroyed
 func testAccCheckSegmentDestroy(s *terraform.State) error {
-	client := testAccProvider.Meta().(*Client)
+	client := mustTestAccClient()
 	for _, rs := range s.RootModule().Resources {
 		if rs.Type != "launchdarkly_segment" {
 			continue

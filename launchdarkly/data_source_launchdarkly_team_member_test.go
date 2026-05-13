@@ -50,7 +50,7 @@ func TestAccDataSourceTeamMember_noMatchReturnsError(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config:      testAccDataSourceTeamMemberConfig(email),
@@ -85,7 +85,7 @@ func TestAccDataSourceTeamMember_exists(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config: testAccDataSourceTeamMemberConfig(testMember.Email),

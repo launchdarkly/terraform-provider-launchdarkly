@@ -83,7 +83,7 @@ func TestAccFlagTrigger_CreateUpdate(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config: withRandomProject(projectKey, withRandomFlag(flagKey, testAccFlagTriggerCreate)),
@@ -149,7 +149,7 @@ func TestAccFlagTrigger_CreateEnabled(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config: withRandomProject(projectKey, withRandomFlag(flagKey, testAccFlagTriggerCreateEnabled)),
@@ -191,7 +191,7 @@ func testAccCheckFlagExists(projectKey, resourceName string) resource.TestCheckF
 			return fmt.Errorf("flag ID is not set correctly")
 		}
 
-		client := testAccProvider.Meta().(*Client)
+		client := mustTestAccClient()
 		_, _, err = client.ld.FeatureFlagsApi.GetFeatureFlag(client.ctx, projectKey, flagKey).Execute()
 		if err != nil {
 			return fmt.Errorf("received an error getting flag. %s", err)

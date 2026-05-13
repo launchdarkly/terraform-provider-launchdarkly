@@ -19,21 +19,22 @@ func testAccPreCheck(t *testing.T) {
 	}
 }
 
-func testAccFrameworkMuxProviders(ctx context.Context, t *testing.T) map[string]func() (tfprotov5.ProviderServer, error) {
+// testAccFrameworkMuxProviders builds the same tf5muxserver as main.go.
+//
+// The root launchdarkly package owns the canonical wiring in its
+// _test.go file (TestAccProtoV5ProviderFactories), but Go test symbols are
+// package-scoped, so this sub-package rebuilds the mux locally rather than
+// importing across the test boundary. Keep both factories in sync.
+func testAccFrameworkMuxProviders(ctx context.Context, _ *testing.T) map[string]func() (tfprotov5.ProviderServer, error) {
 	sdkV2Provider := launchdarkly.Provider()
 	frameworkProvider := launchdarkly.NewPluginProvider("test")
 
-	muxProviders := map[string]func() (tfprotov5.ProviderServer, error){
+	return map[string]func() (tfprotov5.ProviderServer, error){
 		"launchdarkly": func() (tfprotov5.ProviderServer, error) {
 			return tf5muxserver.NewMuxServer(ctx,
 				sdkV2Provider.GRPCProvider,
-
-				providerserver.NewProtocol5(
-					frameworkProvider(),
-				),
+				providerserver.NewProtocol5(frameworkProvider()),
 			)
 		},
 	}
-
-	return muxProviders
 }

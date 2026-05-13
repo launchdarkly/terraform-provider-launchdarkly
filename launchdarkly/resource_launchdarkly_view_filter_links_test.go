@@ -620,7 +620,7 @@ func TestAccViewFilterLinks_FlagFilter(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config: fmt.Sprintf(testAccViewFilterLinksCreateFlagFilter, projectName, projectKey, maintainerID),
@@ -697,7 +697,7 @@ func TestAccViewFilterLinks_SegmentFilter(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config: fmt.Sprintf(testAccViewFilterLinksCreateSegmentFilter, projectName, projectKey, maintainerID),
@@ -741,7 +741,7 @@ func TestAccViewFilterLinks_BothFilters(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config: fmt.Sprintf(testAccViewFilterLinksCreateBothFilters, projectName, projectKey, maintainerID),
@@ -804,7 +804,7 @@ func TestAccViewFilterLinks_Triggers(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				// Step 1: Both flags tagged "trigger-test" → both should be linked
@@ -855,7 +855,7 @@ func TestAccViewFilterLinks_ReconcileOnApplyToggle(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				// Step 1: baseline (default behavior) should converge to an empty plan.
@@ -915,7 +915,7 @@ func TestAccViewFilterLinks_SegmentTriggers(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				// Step 1: both segments match the filter and should be linked.
@@ -954,7 +954,7 @@ func testAccCheckViewForFilterLinksExists(resourceName string) resource.TestChec
 			return fmt.Errorf("view filter links ID is not set")
 		}
 
-		client := testAccProvider.Meta().(*Client)
+		client := mustTestAccClient()
 		betaClient, err := newBetaClient(client.apiKey, client.apiHost, false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
 		if err != nil {
 			return err

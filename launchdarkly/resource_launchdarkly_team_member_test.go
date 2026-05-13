@@ -160,8 +160,8 @@ func TestAccTeamMember_CreateAndUpdateGeneric(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers:    testAccProviders,
-		CheckDestroy: testAccCheckTeamMemberDestroy,
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories,
+		CheckDestroy:             testAccCheckTeamMemberDestroy,
 		Steps: []resource.TestStep{
 			{
 				Config: fmt.Sprintf(testAccTeamMemberCreate, randomName),
@@ -210,8 +210,8 @@ func TestAccTeamMember_WithCustomRole(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers:    testAccProviders,
-		CheckDestroy: testAccCheckTeamMemberDestroy,
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories,
+		CheckDestroy:             testAccCheckTeamMemberDestroy,
 		Steps: []resource.TestStep{
 			{
 				Config: fmt.Sprintf(testAccTeamMemberCustomRoleCreate, roleKey1, roleKey1, randomName),
@@ -337,7 +337,7 @@ func testAccCheckMemberExists(resourceName string) resource.TestCheckFunc {
 		if rs.Primary.ID == "" {
 			return fmt.Errorf("team member ID is not set")
 		}
-		client := testAccProvider.Meta().(*Client)
+		client := mustTestAccClient()
 		_, _, err := client.ld.AccountMembersApi.GetMember(client.ctx, rs.Primary.ID).Execute()
 		if err != nil {
 			return fmt.Errorf("received an error getting team member. %s", err)
@@ -348,7 +348,7 @@ func testAccCheckMemberExists(resourceName string) resource.TestCheckFunc {
 
 // testAccCheckTeamMemberDestroy verifies the team member has been destroyed
 func testAccCheckTeamMemberDestroy(s *terraform.State) error {
-	client := testAccProvider.Meta().(*Client)
+	client := mustTestAccClient()
 	for _, rs := range s.RootModule().Resources {
 		if rs.Type != "launchdarkly_team_member" {
 			continue

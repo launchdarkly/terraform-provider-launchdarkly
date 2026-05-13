@@ -203,7 +203,7 @@ func TestAccSegment_CreateAndUpdate(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config: withRandomProject(projectKey, testAccSegmentCreate),
@@ -335,7 +335,7 @@ func TestAccSegment_Unbounded(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config: withRandomProject(projectKey, testAccSegmentCreateWithUnbounded),
@@ -389,7 +389,7 @@ func TestAccSegment_WithAnonymousClause(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config: withRandomProject(projectKey, testAccSegmentWithAnonymousUser),
@@ -424,7 +424,7 @@ func TestAccSegment_WithRules(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config: withRandomProject(projectKey, testAccSegmentCreateWithRules),
@@ -511,7 +511,7 @@ func TestAccSegment_WithTargetingByContext(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config: withRandomProject(projectKey, testAccSegmentCreateWithContextTargets),
@@ -642,7 +642,7 @@ func testAccCheckSegmentExists(resourceName string) resource.TestCheckFunc {
 		if !ok {
 			return fmt.Errorf("project key not found: %s", resourceName)
 		}
-		client := testAccProvider.Meta().(*Client)
+		client := mustTestAccClient()
 		_, _, err := client.ld.SegmentsApi.GetSegment(client.ctx, projKey, envKey, segmentKey).Execute()
 		if err != nil {
 			return fmt.Errorf("received an error getting environment. %s", err)
@@ -724,8 +724,8 @@ resource "launchdarkly_segment" "test" {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers:    testAccProviders,
-		CheckDestroy: testAccCheckProjectDestroy,
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories,
+		CheckDestroy:             testAccCheckProjectDestroy,
 		Steps: []resource.TestStep{
 			// Step 1: Verify segment without view_keys fails when project requires it
 			{

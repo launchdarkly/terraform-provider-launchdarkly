@@ -117,8 +117,8 @@ func TestAccAccessToken_Create(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers:    testAccProviders,
-		CheckDestroy: testAccCheckAccessTokenDestroy,
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories,
+		CheckDestroy:             testAccCheckAccessTokenDestroy,
 		Steps: []resource.TestStep{
 			{
 				Config: fmt.Sprintf(testAccAccessTokenCreate, name),
@@ -144,8 +144,8 @@ func TestAccAccessToken_WithCustomRole(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers:    testAccProviders,
-		CheckDestroy: testAccCheckAccessTokenDestroy,
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories,
+		CheckDestroy:             testAccCheckAccessTokenDestroy,
 		Steps: []resource.TestStep{
 			{
 				Config: fmt.Sprintf(testAccAccessTokenCreateWithCustomRole, name, name, name),
@@ -181,8 +181,8 @@ func TestAccAccessToken_CreateWithImmutableParams(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers:    testAccProviders,
-		CheckDestroy: testAccCheckAccessTokenDestroy,
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories,
+		CheckDestroy:             testAccCheckAccessTokenDestroy,
 		Steps: []resource.TestStep{
 			{
 				Config: fmt.Sprintf(testAccAccessTokenCreateWithImmutableParams, name),
@@ -208,8 +208,8 @@ func TestAccAccessToken_CreateWithInlineRoles(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers:    testAccProviders,
-		CheckDestroy: testAccCheckAccessTokenDestroy,
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories,
+		CheckDestroy:             testAccCheckAccessTokenDestroy,
 		Steps: []resource.TestStep{
 			{
 				Config: fmt.Sprintf(testAccAccessTokenCreateWithInlineRoles, name),
@@ -240,8 +240,8 @@ func TestAccAccessToken_CreateWithPolicyStatements(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers:    testAccProviders,
-		CheckDestroy: testAccCheckAccessTokenDestroy,
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories,
+		CheckDestroy:             testAccCheckAccessTokenDestroy,
 		Steps: []resource.TestStep{
 			{
 				Config: fmt.Sprintf(testAccAccessTokenCreateWithPolicyStatements, name),
@@ -272,8 +272,8 @@ func TestAccAccessToken_Update(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers:    testAccProviders,
-		CheckDestroy: testAccCheckAccessTokenDestroy,
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories,
+		CheckDestroy:             testAccCheckAccessTokenDestroy,
 		Steps: []resource.TestStep{
 			{
 				Config: fmt.Sprintf(testAccAccessTokenCreate, name),
@@ -310,8 +310,8 @@ func TestAccAccessToken_Reset(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers:    testAccProviders,
-		CheckDestroy: testAccCheckAccessTokenDestroy,
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories,
+		CheckDestroy:             testAccCheckAccessTokenDestroy,
 		Steps: []resource.TestStep{
 			{
 				Config: fmt.Sprintf(testAccAccessTokenCreate, name),
@@ -371,7 +371,7 @@ func testAccCheckAccessTokenExists(resourceName string) resource.TestCheckFunc {
 		if rs.Primary.ID == "" {
 			return fmt.Errorf("access token ID is not set")
 		}
-		client := testAccProvider.Meta().(*Client)
+		client := mustTestAccClient()
 		_, _, err := client.ld.AccessTokensApi.GetToken(client.ctx, rs.Primary.ID).Execute()
 		if err != nil {
 			return fmt.Errorf("received an error getting access token. %s", err)
@@ -382,7 +382,7 @@ func testAccCheckAccessTokenExists(resourceName string) resource.TestCheckFunc {
 
 // testAccCheckAccessTokenDestroy verifies the access token has been destroyed
 func testAccCheckAccessTokenDestroy(s *terraform.State) error {
-	client := testAccProvider.Meta().(*Client)
+	client := mustTestAccClient()
 	for _, rs := range s.RootModule().Resources {
 		if rs.Type != "launchdarkly_access_token" {
 			continue

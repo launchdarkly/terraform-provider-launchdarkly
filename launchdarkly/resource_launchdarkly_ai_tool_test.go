@@ -79,8 +79,8 @@ func TestAccAITool_CreateAndUpdate(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers:    testAccProviders,
-		CheckDestroy: testAccCheckAIToolDestroy,
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories,
+		CheckDestroy:             testAccCheckAIToolDestroy,
 		Steps: []resource.TestStep{
 			{
 				Config: withAITestProject(projectKey, fmt.Sprintf(testAccAIToolCreate, toolKey, toolDescription)),
@@ -120,9 +120,9 @@ func TestAccAITool_WithCustomParameters(t *testing.T) {
 	resourceName := "launchdarkly_ai_tool.test"
 
 	resource.ParallelTest(t, resource.TestCase{
-		PreCheck:     func() { testAccPreCheck(t) },
-		Providers:    testAccProviders,
-		CheckDestroy: testAccCheckAIToolDestroy,
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories,
+		CheckDestroy:             testAccCheckAIToolDestroy,
 		Steps: []resource.TestStep{
 			{
 				Config: withAITestProject(projectKey, fmt.Sprintf(testAccAIToolWithCustomParams, toolKey)),
@@ -156,7 +156,7 @@ func testAccCheckAIToolExists(resourceName string) resource.TestCheckFunc {
 		projectKey := rs.Primary.Attributes[PROJECT_KEY]
 		toolKey := rs.Primary.Attributes[KEY]
 
-		client := testAccProvider.Meta().(*Client)
+		client := mustTestAccClient()
 		_, _, err := client.ld.AIConfigsApi.GetAITool(client.ctx, projectKey, toolKey).Execute()
 		if err != nil {
 			return fmt.Errorf("received an error getting AI tool: %s", err)
@@ -166,7 +166,7 @@ func testAccCheckAIToolExists(resourceName string) resource.TestCheckFunc {
 }
 
 var testAccCheckAIToolDestroy = func(s *terraform.State) error {
-	client := testAccProvider.Meta().(*Client)
+	client := mustTestAccClient()
 
 	for _, rs := range s.RootModule().Resources {
 		if rs.Type != "launchdarkly_ai_tool" {
