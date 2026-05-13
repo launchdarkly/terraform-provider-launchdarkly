@@ -28,21 +28,21 @@ data "launchdarkly_feature_flag_environment" "example" {
 ### Required
 
 - `env_key` (String) The environment key.
-- `flag_id` (String) The feature flag's unique `id` in the format `project_key/flag_key`.
+- `flag_id` (String) Flag ID in the format `project_key/flag_key`.
 
 ### Read-Only
 
-- `context_targets` (Set of Object) The set of nested blocks describing the individual targets for non-user context kinds for each variation. (see [below for nested schema](#nestedatt--context_targets))
-- `fallthrough` (List of Object) Nested block describing the default variation to serve if no `prerequisites`, `target`, or `rules` apply. (see [below for nested schema](#nestedatt--fallthrough))
-- `id` (String) The ID of this resource.
-- `off_variation` (Number) The index of the variation to serve if targeting is disabled.
-- `on` (Boolean) Whether targeting is enabled. Defaults to `false` if not set.
-- `prerequisites` (List of Object) List of nested blocks describing prerequisite feature flags rules. (see [below for nested schema](#nestedatt--prerequisites))
-- `rules` (List of Object) List of logical targeting rules. (see [below for nested schema](#nestedatt--rules))
-- `targets` (Set of Object) Set of nested blocks describing the individual user targets for each variation. (see [below for nested schema](#nestedatt--targets))
-- `track_events` (Boolean) Whether to send event data back to LaunchDarkly. Defaults to `false` if not set.
+- `context_targets` (Block Set) Individual context-kind targets per variation. (see [below for nested schema](#nestedblock--context_targets))
+- `fallthrough` (Block List) Default variation served when no other targeting applies (single element). (see [below for nested schema](#nestedblock--fallthrough))
+- `id` (String) Composite ID `project_key/env_key/flag_key`.
+- `off_variation` (Number) Variation index to serve when targeting is disabled.
+- `on` (Boolean) Whether targeting is enabled.
+- `prerequisites` (Block List) Prerequisite flag rules. (see [below for nested schema](#nestedblock--prerequisites))
+- `rules` (Block List) Logical targeting rules. (see [below for nested schema](#nestedblock--rules))
+- `targets` (Block Set) Individual user targets per variation. (see [below for nested schema](#nestedblock--targets))
+- `track_events` (Boolean) Whether to send event data back to LaunchDarkly.
 
-<a id="nestedatt--context_targets"></a>
+<a id="nestedblock--context_targets"></a>
 ### Nested Schema for `context_targets`
 
 Read-Only:
@@ -52,7 +52,7 @@ Read-Only:
 - `variation` (Number)
 
 
-<a id="nestedatt--fallthrough"></a>
+<a id="nestedblock--fallthrough"></a>
 ### Nested Schema for `fallthrough`
 
 Read-Only:
@@ -63,7 +63,7 @@ Read-Only:
 - `variation` (Number)
 
 
-<a id="nestedatt--prerequisites"></a>
+<a id="nestedblock--prerequisites"></a>
 ### Nested Schema for `prerequisites`
 
 Read-Only:
@@ -72,33 +72,33 @@ Read-Only:
 - `variation` (Number)
 
 
-<a id="nestedatt--rules"></a>
+<a id="nestedblock--rules"></a>
 ### Nested Schema for `rules`
 
 Read-Only:
 
 - `bucket_by` (String)
-- `clauses` (List of Object) (see [below for nested schema](#nestedobjatt--rules--clauses))
+- `clauses` (Block List) Clauses applied as the rule's logical condition. (see [below for nested schema](#nestedblock--rules--clauses))
 - `context_kind` (String)
 - `description` (String)
 - `rollout_weights` (List of Number)
 - `variation` (Number)
 
-<a id="nestedobjatt--rules--clauses"></a>
+<a id="nestedblock--rules--clauses"></a>
 ### Nested Schema for `rules.clauses`
 
 Read-Only:
 
-- `attribute` (String)
-- `context_kind` (String)
-- `negate` (Boolean)
-- `op` (String)
-- `value_type` (String)
-- `values` (List of String)
+- `attribute` (String) User attribute to operate on.
+- `context_kind` (String) Context kind for the clause.
+- `negate` (Boolean) Whether to negate the clause.
+- `op` (String) Operator (in, endsWith, ...).
+- `value_type` (String) Type of each clause value (boolean / string / number).
+- `values` (List of String) Values for the clause.
 
 
 
-<a id="nestedatt--targets"></a>
+<a id="nestedblock--targets"></a>
 ### Nested Schema for `targets`
 
 Read-Only:

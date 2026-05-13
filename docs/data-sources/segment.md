@@ -34,22 +34,22 @@ data "launchdarkly_segment" "example" {
 
 ### Read-Only
 
-- `creation_date` (Number) The segment's creation date represented as a UNIX epoch timestamp.
-- `description` (String) The description of the segment's purpose.
-- `excluded` (List of String) List of user keys excluded from the segment. To target on other context kinds, use the excluded_contexts block attribute. This attribute is not valid when `unbounded` is set to `true`.
-- `excluded_contexts` (List of Object) List of non-user target objects excluded from the segment. This attribute is not valid when `unbounded` is set to `true`. (see [below for nested schema](#nestedatt--excluded_contexts))
-- `id` (String) The ID of this resource.
-- `included` (List of String) List of user keys included in the segment. To target on other context kinds, use the included_contexts block attribute. This attribute is not valid when `unbounded` is set to `true`.
-- `included_contexts` (List of Object) List of non-user target objects included in the segment. This attribute is not valid when `unbounded` is set to `true`. (see [below for nested schema](#nestedatt--included_contexts))
-- `name` (String) The human-friendly name for the segment.
-- `rules` (List of Object) List of nested custom rule blocks to apply to the segment. This attribute is not valid when `unbounded` is set to `true`. (see [below for nested schema](#nestedatt--rules))
-- `tags` (Set of String) Tags associated with your resource.
-- `unbounded` (Boolean) Whether to create a standard segment (`false`) or a Big Segment (`true`). Standard segments include rule-based and smaller list-based segments. Big Segments include larger list-based segments and synced segments. Only use a Big Segment if you need to add more than 15,000 individual targets. It is not possible to manage the list of targeted contexts for Big Segments with Terraform.
-- `unbounded_context_kind` (String) For Big Segments, the targeted context kind. If this attribute is not specified it will default to `user`.
-- `view_keys` (Set of String) A set of view keys to link this segment to. This is an alternative to using the `launchdarkly_view_links` resource for managing view associations. When set, this segment will be linked to the specified views. The field is also computed, meaning Terraform will read back the current view associations from LaunchDarkly to detect drift. To explicitly remove all view associations, set `view_keys = []`. Simply removing the field from your configuration will leave existing associations unchanged. **Important**: Avoid using both `view_keys` and `launchdarkly_view_links` to manage the same segment. Mixed ownership can cause conflicts; when detected, Terraform logs a warning and reconciles to the configured `view_keys`. Choose one approach per resource.
-- `views` (List of String) A list of view keys that this segment is linked to.
+- `creation_date` (Number) UNIX epoch ms timestamp.
+- `description` (String) Segment description.
+- `excluded` (List of String) User keys excluded from the segment.
+- `excluded_contexts` (Block List) Non-user target objects excluded from the segment. (see [below for nested schema](#nestedblock--excluded_contexts))
+- `id` (String) Composite ID `project_key/env_key/key`.
+- `included` (List of String) User keys included in the segment.
+- `included_contexts` (Block List) Non-user target objects included in the segment. (see [below for nested schema](#nestedblock--included_contexts))
+- `name` (String) Human-friendly name for the segment.
+- `rules` (Block List) Custom rule blocks applied to the segment. (see [below for nested schema](#nestedblock--rules))
+- `tags` (Set of String) Tags.
+- `unbounded` (Boolean) Whether this is a Big Segment.
+- `unbounded_context_kind` (String) Context kind for the big segment.
+- `view_keys` (Set of String) View keys linked to this segment.
+- `views` (List of String) Legacy view keys list (backwards-compat).
 
-<a id="nestedatt--excluded_contexts"></a>
+<a id="nestedblock--excluded_contexts"></a>
 ### Nested Schema for `excluded_contexts`
 
 Read-Only:
@@ -58,7 +58,7 @@ Read-Only:
 - `values` (List of String)
 
 
-<a id="nestedatt--included_contexts"></a>
+<a id="nestedblock--included_contexts"></a>
 ### Nested Schema for `included_contexts`
 
 Read-Only:
@@ -67,24 +67,24 @@ Read-Only:
 - `values` (List of String)
 
 
-<a id="nestedatt--rules"></a>
+<a id="nestedblock--rules"></a>
 ### Nested Schema for `rules`
 
 Read-Only:
 
-- `bucket_by` (String)
-- `clauses` (List of Object) (see [below for nested schema](#nestedobjatt--rules--clauses))
-- `rollout_context_kind` (String)
-- `weight` (Number)
+- `bucket_by` (String) Attribute for bucketing contexts.
+- `clauses` (Block List) Clauses applied as the rule's logical condition. (see [below for nested schema](#nestedblock--rules--clauses))
+- `rollout_context_kind` (String) Context kind for the rollout.
+- `weight` (Number) Rule weight (1-100000).
 
-<a id="nestedobjatt--rules--clauses"></a>
+<a id="nestedblock--rules--clauses"></a>
 ### Nested Schema for `rules.clauses`
 
 Read-Only:
 
-- `attribute` (String)
-- `context_kind` (String)
-- `negate` (Boolean)
-- `op` (String)
-- `value_type` (String)
-- `values` (List of String)
+- `attribute` (String) User attribute to operate on.
+- `context_kind` (String) Context kind for the clause.
+- `negate` (Boolean) Whether to negate the clause.
+- `op` (String) Operator (in, endsWith, ...).
+- `value_type` (String) Type of each clause value (boolean / string / number).
+- `values` (List of String) Values for the clause.

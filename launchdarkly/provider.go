@@ -89,25 +89,25 @@ func Provider() *schema.Provider {
 			"launchdarkly_webhook":                   resourceWebhook(),
 		},
 		DataSourcesMap: map[string]*schema.Resource{
-			"launchdarkly_ai_config":                 dataSourceAIConfig(),
-			"launchdarkly_ai_config_variation":       dataSourceAIConfigVariation(),
-			"launchdarkly_ai_tool":                   dataSourceAITool(),
-			"launchdarkly_audit_log_subscription":    dataSourceAuditLogSubscription(),
-			"launchdarkly_environment":               dataSourceEnvironment(),
-			"launchdarkly_feature_flag":              dataSourceFeatureFlag(),
-			"launchdarkly_flag_templates":            dataSourceFlagTemplates(),
-			"launchdarkly_feature_flag_environment":  dataSourceFeatureFlagEnvironment(),
-			"launchdarkly_flag_trigger":              dataSourceFlagTrigger(),
-			"launchdarkly_metric":                    dataSourceMetric(),
-			"launchdarkly_model_config":              dataSourceModelConfig(),
-			"launchdarkly_project":                   dataSourceProject(),
-			"launchdarkly_relay_proxy_configuration": dataSourceRelayProxyConfig(),
-			"launchdarkly_segment":                   dataSourceSegment(),
-			"launchdarkly_team":                      dataSourceTeam(),
-			"launchdarkly_team_member":               dataSourceTeamMember(),
-			"launchdarkly_team_members":              dataSourceTeamMembers(),
-			"launchdarkly_view":                      dataSourceView(),
-			"launchdarkly_webhook":                   dataSourceWebhook(),
+			// launchdarkly_ai_config now served by the framework provider; see data_source_ai_config_framework.go.
+			// launchdarkly_ai_config_variation now served by the framework provider; see data_source_ai_config_variation_framework.go.
+			// launchdarkly_ai_tool now served by the framework provider; see data_source_ai_tool_framework.go.
+			// launchdarkly_audit_log_subscription now served by the framework provider; see data_source_audit_log_subscription_framework.go.
+			// launchdarkly_environment now served by the framework provider; see data_source_environment_framework.go.
+			// launchdarkly_feature_flag now served by the framework provider; see data_source_feature_flag_framework.go.
+			// launchdarkly_flag_templates now served by the framework provider; see data_source_flag_templates_framework.go.
+			// launchdarkly_feature_flag_environment now served by the framework provider; see data_source_feature_flag_environment_framework.go.
+			// launchdarkly_flag_trigger now served by the framework provider; see data_source_flag_trigger_framework.go.
+			// launchdarkly_metric now served by the framework provider; see data_source_metric_framework.go.
+			// launchdarkly_model_config now served by the framework provider; see data_source_model_config_framework.go.
+			// launchdarkly_project now served by the framework provider; see data_source_project_framework.go.
+			// launchdarkly_relay_proxy_configuration now served by the framework provider; see data_source_relay_proxy_configuration_framework.go.
+			// launchdarkly_segment now served by the framework provider; see data_source_segment_framework.go.
+			// launchdarkly_team now served by the framework provider; see data_source_team_framework.go.
+			// launchdarkly_team_member now served by the framework provider; see data_source_team_member_framework.go.
+			// launchdarkly_team_members now served by the framework provider; see data_source_team_members_framework.go.
+			// launchdarkly_view now served by the framework provider; see data_source_view_framework.go.
+			// launchdarkly_webhook now served by the framework provider; see data_source_webhook_framework.go.
 		},
 		ConfigureContextFunc: providerConfigure,
 	}

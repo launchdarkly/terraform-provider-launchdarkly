@@ -61,6 +61,26 @@ func TestStringSliceFromSet_NullAndUnknown(t *testing.T) {
 	}
 }
 
+// TestSetFromStringSlice_OrderInvariant guards the Phase 0.9a parity
+// guarantee for set-hashed Sets (custom_roles on team_member /
+// team_members / team data sources, tags on feature_flag) — reordered
+// input must produce a SetValue that the framework treats as equal.
+func TestSetFromStringSlice_OrderInvariant(t *testing.T) {
+	ctx := context.Background()
+
+	a, diags := setFromStringSlice(ctx, []string{"alpha", "beta", "gamma"})
+	if diags.HasError() {
+		t.Fatalf("first setFromStringSlice diags: %v", diags)
+	}
+	b, diags := setFromStringSlice(ctx, []string{"gamma", "alpha", "beta"})
+	if diags.HasError() {
+		t.Fatalf("second setFromStringSlice diags: %v", diags)
+	}
+	if !a.Equal(b) {
+		t.Fatalf("reordered slices produced unequal sets: %v vs %v", a, b)
+	}
+}
+
 func TestSetFromStringSlice_NilInput(t *testing.T) {
 	ctx := context.Background()
 

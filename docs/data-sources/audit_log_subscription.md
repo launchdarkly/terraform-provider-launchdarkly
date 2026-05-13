@@ -32,19 +32,19 @@ data "launchdarkly_audit_log_subscription" "test" {
 
 ### Read-Only
 
-- `config` (Map of String) The set of configuration fields corresponding to the value defined for `integration_key`. Refer to the `formVariables` field in the corresponding `integrations/<integration_key>/manifest.json` file in [this repo](https://github.com/launchdarkly/integration-framework/tree/master/integrations) for a full list of fields for the integration you wish to configure. **IMPORTANT**: Please note that Terraform will only accept these in snake case, regardless of the case shown in the manifest.
-- `name` (String) A human-friendly name for your audit log subscription viewable from within the LaunchDarkly Integrations page.
-- `on` (Boolean) Whether or not you want your subscription enabled, i.e. to actively send events.
-- `statements` (List of Object) A block representing the resources to which you wish to subscribe. (see [below for nested schema](#nestedatt--statements))
-- `tags` (Set of String) Tags associated with your resource.
+- `config` (Map of String) The set of configuration fields corresponding to the value defined for `integration_key`.
+- `name` (String) A human-friendly name for your audit log subscription.
+- `on` (Boolean) Whether or not the subscription is enabled.
+- `statements` (Block List) A block representing the resources to which you wish to subscribe. (see [below for nested schema](#nestedblock--statements))
+- `tags` (Set of String) Tags associated with the audit log subscription.
 
-<a id="nestedatt--statements"></a>
+<a id="nestedblock--statements"></a>
 ### Nested Schema for `statements`
 
 Read-Only:
 
-- `actions` (List of String)
-- `effect` (String)
-- `not_actions` (List of String)
-- `not_resources` (List of String)
-- `resources` (List of String)
+- `actions` (List of String) The list of action specifiers defining the actions to which the statement applies.
+- `effect` (String) Either `allow` or `deny`. This argument defines whether the statement allows or denies access to the named resources and actions.
+- `not_actions` (List of String) The list of action specifiers defining the actions to which the statement does not apply.
+- `not_resources` (List of String) The list of resource specifiers defining the resources to which the statement does not apply.
+- `resources` (List of String) The list of resource specifiers defining the resources to which the statement applies.

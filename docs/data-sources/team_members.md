@@ -34,8 +34,8 @@ data "launchdarkly_team_members" "example" {
 
 ### Read-Only
 
-- `id` (String) The ID of this resource.
-- `team_members` (List of Object) The members that were found. The following attributes are available for each member:
+- `id` (String) A hash of the returned member IDs.
+- `team_members` (Block List) The members that were found. The following attributes are available for each member:
 
 - `id` - The 24 character alphanumeric ID of the team member.
 
@@ -45,25 +45,25 @@ data "launchdarkly_team_members" "example" {
 
 - `role` - The role associated with team member. Possible roles are `owner`, `reader`, `writer`, or `admin`.
 
-- `custom_roles` - (Optional) The list of custom roles keys associated with the team member. Custom roles are only available to customers on an Enterprise plan. To learn more, [read about our pricing](https://launchdarkly.com/pricing/). To upgrade your plan, [contact LaunchDarkly Sales](https://launchdarkly.com/contact-sales/). (see [below for nested schema](#nestedatt--team_members))
+- `custom_roles` - (Optional) The list of custom roles keys associated with the team member. Custom roles are only available to customers on an Enterprise plan. To learn more, [read about our pricing](https://launchdarkly.com/pricing/). To upgrade your plan, [contact LaunchDarkly Sales](https://launchdarkly.com/contact-sales/). (see [below for nested schema](#nestedblock--team_members))
 
-<a id="nestedatt--team_members"></a>
+<a id="nestedblock--team_members"></a>
 ### Nested Schema for `team_members`
 
 Read-Only:
 
-- `custom_roles` (Set of String)
-- `email` (String)
-- `first_name` (String)
-- `id` (String)
-- `last_name` (String)
-- `role` (String)
-- `role_attributes` (Set of Object) (see [below for nested schema](#nestedobjatt--team_members--role_attributes))
+- `custom_roles` (Set of String) The list of custom roles keys associated with the team member. Custom roles are only available to customers on an Enterprise plan. To learn more, [read about our pricing](https://launchdarkly.com/pricing/). To upgrade your plan, [contact LaunchDarkly Sales](https://launchdarkly.com/contact-sales/).
+- `email` (String) The unique email address associated with the team member.
+- `first_name` (String) The team member's given name.
+- `id` (String) The 24 character alphanumeric ID of the team member.
+- `last_name` (String) The team member's family name.
+- `role` (String) The role associated with team member. Possible roles are `owner`, `reader`, `writer`, or `admin`.
+- `role_attributes` (Block Set) Role attributes for the team. Keyed by attribute name with a list of resource-key values. (see [below for nested schema](#nestedblock--team_members--role_attributes))
 
-<a id="nestedobjatt--team_members--role_attributes"></a>
+<a id="nestedblock--team_members--role_attributes"></a>
 ### Nested Schema for `team_members.role_attributes`
 
 Read-Only:
 
-- `key` (String)
-- `values` (List of String)
+- `key` (String) The role attribute key.
+- `values` (List of String) List of resource-key values for the attribute.

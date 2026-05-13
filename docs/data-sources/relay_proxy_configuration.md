@@ -42,15 +42,15 @@ https://app.launchdarkly.com/settings/relay/THIS_IS_YOUR_RELAY_PROXY_ID/edit
 
 - `display_key` (String) The last 4 characters of the Relay Proxy configuration's unique key.
 - `name` (String) The human-readable name for your Relay Proxy configuration.
-- `policy` (List of Object) The Relay Proxy configuration's rule policy block. This determines what content the Relay Proxy receives. To learn more, read [Understanding policies](https://docs.launchdarkly.com/home/members/role-policies#understanding-policies). (see [below for nested schema](#nestedatt--policy))
+- `policy` (Block List) The Relay Proxy configuration's rule policy block. This determines what content the Relay Proxy receives. To learn more, read [Understanding policies](https://docs.launchdarkly.com/home/members/role-policies#understanding-policies). (see [below for nested schema](#nestedblock--policy))
 
-<a id="nestedatt--policy"></a>
+<a id="nestedblock--policy"></a>
 ### Nested Schema for `policy`
 
 Read-Only:
 
-- `actions` (List of String)
-- `effect` (String)
-- `not_actions` (List of String)
-- `not_resources` (List of String)
-- `resources` (List of String)
+- `actions` (List of String) The list of action specifiers defining the actions to which the statement applies.
+- `effect` (String) Either `allow` or `deny`. This argument defines whether the statement allows or denies access to the named resources and actions.
+- `not_actions` (List of String) The list of action specifiers defining the actions to which the statement does not apply.
+- `not_resources` (List of String) The list of resource specifiers defining the resources to which the statement does not apply.
+- `resources` (List of String) The list of resource specifiers defining the resources to which the statement applies.

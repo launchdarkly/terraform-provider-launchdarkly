@@ -36,21 +36,21 @@ data "launchdarkly_ai_config_variation" "example" {
 
 - `creation_date` (Number) The creation timestamp of the variation.
 - `description` (String) The variation's description (used in agent mode).
-- `id` (String) The ID of this resource.
+- `id` (String) The ID in the format `project_key/config_key/key`.
 - `instructions` (String) The variation's instructions (used in agent mode).
-- `messages` (List of Object) A list of messages for completion mode. Each message has a `role` and `content`. (see [below for nested schema](#nestedatt--messages))
-- `model` (String) A JSON string representing the inline model configuration for the variation. Conflicts with `model_config_key`.
-- `model_config_key` (String) The key of a model config resource to use for this variation. Conflicts with `model`.
+- `messages` (Block List) A list of messages for completion mode. (see [below for nested schema](#nestedblock--messages))
+- `model` (String) A JSON string representing the inline model configuration.
+- `model_config_key` (String) The key of a model config resource used for this variation.
 - `name` (String) The variation's human-readable name.
 - `state` (String) The state of the variation. Must be `archived` or `published`.
 - `tool_keys` (Set of String) A set of AI tool keys to associate with this variation. **Note:** The API does not currently return tool associations on read, so Terraform cannot detect drift for this field. Changes made outside of Terraform will not be reflected in state.
 - `variation_id` (String) The internal ID of the variation.
 - `version` (Number) The version number of the variation.
 
-<a id="nestedatt--messages"></a>
+<a id="nestedblock--messages"></a>
 ### Nested Schema for `messages`
 
 Read-Only:
 
-- `content` (String)
-- `role` (String)
+- `content` (String) Content of the message.
+- `role` (String) Role of the message.

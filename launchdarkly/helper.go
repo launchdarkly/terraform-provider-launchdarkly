@@ -116,6 +116,13 @@ func emptyValueIfDataSource[V any](v V, isDataSource bool) V {
 
 // removeInvalidFieldsForDataSource removes all default and validation functions from the schema map.
 // This is done because Terraform requires defaults and validation functions to be nil for read-only data-source attributes.
+//
+// TODO(phase-5): all launchdarkly data sources are now served by the
+// terraform-plugin-framework provider (Phase 1). This helper is only
+// kept alive by SDKv2 *resource* schemas that still call it with
+// isDataSource=true for shape-shared construction. Once Phase 5 (SDKv2
+// cutover) lands, the call sites disappear and this function can be
+// deleted.
 func removeInvalidFieldsForDataSource(schemaMap map[string]*schema.Schema) map[string]*schema.Schema {
 	for k, v := range schemaMap {
 		if v.Computed {

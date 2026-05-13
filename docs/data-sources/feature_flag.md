@@ -71,7 +71,7 @@ output "team_notifications" {
 
 ### Required
 
-- `key` (String) The unique feature flag key that references the flag in your application code.
+- `key` (String) The unique feature flag key.
 - `project_key` (String) The feature flag's project key.
 
 ### Optional
@@ -81,23 +81,23 @@ output "team_notifications" {
 
 ### Read-Only
 
-- `archived` (Boolean) Specifies whether the flag is archived or not. Note that you cannot create a new flag that is archived, but can update a flag to be archived.
-- `client_side_availability` (List of Object) (see [below for nested schema](#nestedatt--client_side_availability))
-- `custom_properties` (Set of Object) List of nested blocks describing the feature flag's [custom properties](https://docs.launchdarkly.com/home/connecting/custom-properties) (see [below for nested schema](#nestedatt--custom_properties))
-- `defaults` (List of Object) A block containing the indices of the variations to be used as the default on and off variations in all new environments. Flag configurations in existing environments will not be changed nor updated if the configuration block is removed. (see [below for nested schema](#nestedatt--defaults))
-- `deprecated` (Boolean) Specifies whether the flag is deprecated or not. Note that you cannot create a new flag that is deprecated, but can update a flag to be deprecated.
-- `description` (String) The feature flag's description.
-- `id` (String) The ID of this resource.
-- `include_in_snippet` (Boolean, Deprecated) Specifies whether this flag should be made available to the client-side JavaScript SDK using the client-side Id. This value gets its default from your project configuration if not set. `include_in_snippet` is now deprecated. Please migrate to `client_side_availability.using_environment_id` to maintain future compatibility.
-- `name` (String) The feature flag's human-readable name
-- `tags` (Set of String) Tags associated with your resource.
-- `temporary` (Boolean) Specifies whether the flag is a temporary flag.
-- `variation_type` (String) The uniform type for all variations. Can be either "boolean", "string", "number", or "json".
-- `variations` (List of Object) An array of possible variations for the flag (see [below for nested schema](#nestedatt--variations))
-- `view_keys` (Set of String) A set of view keys to link this flag to. This is an alternative to using the `launchdarkly_view_links` resource for managing view associations. When set, this flag will be linked to the specified views. The field is also computed, meaning Terraform will read back the current view associations from LaunchDarkly to detect drift. To explicitly remove all view associations, set `view_keys = []`. Simply removing the field from your configuration will leave existing associations unchanged. **Important**: Avoid using both `view_keys` and `launchdarkly_view_links` to manage the same flag. Mixed ownership can cause conflicts; when detected, Terraform logs a warning and reconciles to the configured `view_keys`. Choose one approach per resource.
-- `views` (List of String) A list of view keys that this feature flag is linked to.
+- `archived` (Boolean) Whether the flag is archived.
+- `client_side_availability` (Block List) Client-side availability settings. (see [below for nested schema](#nestedblock--client_side_availability))
+- `custom_properties` (Block Set) Custom properties. (see [below for nested schema](#nestedblock--custom_properties))
+- `defaults` (Block List) Default variation indices for new environments. (see [below for nested schema](#nestedblock--defaults))
+- `deprecated` (Boolean) Whether the flag is deprecated.
+- `description` (String) Feature flag description.
+- `id` (String) Composite ID `project_key/key`.
+- `include_in_snippet` (Boolean, Deprecated) Deprecated: use client_side_availability.using_environment_id.
+- `name` (String) Human-readable name.
+- `tags` (Set of String) Tags.
+- `temporary` (Boolean) Whether the flag is temporary.
+- `variation_type` (String) Variation type: "boolean", "string", "number", or "json".
+- `variations` (Block List) Possible variations for the flag. (see [below for nested schema](#nestedblock--variations))
+- `view_keys` (Set of String) View keys linked to the flag.
+- `views` (List of String) Legacy view keys list.
 
-<a id="nestedatt--client_side_availability"></a>
+<a id="nestedblock--client_side_availability"></a>
 ### Nested Schema for `client_side_availability`
 
 Read-Only:
@@ -106,7 +106,7 @@ Read-Only:
 - `using_mobile_key` (Boolean)
 
 
-<a id="nestedatt--custom_properties"></a>
+<a id="nestedblock--custom_properties"></a>
 ### Nested Schema for `custom_properties`
 
 Read-Only:
@@ -116,7 +116,7 @@ Read-Only:
 - `value` (List of String)
 
 
-<a id="nestedatt--defaults"></a>
+<a id="nestedblock--defaults"></a>
 ### Nested Schema for `defaults`
 
 Read-Only:
@@ -125,11 +125,11 @@ Read-Only:
 - `on_variation` (Number)
 
 
-<a id="nestedatt--variations"></a>
+<a id="nestedblock--variations"></a>
 ### Nested Schema for `variations`
 
 Read-Only:
 
-- `description` (String)
-- `name` (String)
-- `value` (String)
+- `description` (String) Variation description.
+- `name` (String) Variation name.
+- `value` (String) Variation value (stringified per variation_type).
