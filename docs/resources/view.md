@@ -3,12 +3,21 @@
 page_title: "launchdarkly_view Resource - launchdarkly"
 subcategory: ""
 description: |-
-  Provides a LaunchDarkly view resource (Enterprise, beta API).
+  Provides a LaunchDarkly view resource.
+  -> Note: Views are available to customers on an Enterprise LaunchDarkly plan. To learn more, read about our pricing https://launchdarkly.com/pricing/. To upgrade your plan, contact LaunchDarkly Sales https://launchdarkly.com/contact-sales/.
+  ~> Beta: This resource uses a beta API. Beta resources may change or be removed in future versions.
+  This resource allows you to create and manage views within your LaunchDarkly project.
 ---
 
 # launchdarkly_view (Resource)
 
-Provides a LaunchDarkly view resource (Enterprise, beta API).
+Provides a LaunchDarkly view resource.
+
+-> **Note:** Views are available to customers on an Enterprise LaunchDarkly plan. To learn more, [read about our pricing](https://launchdarkly.com/pricing/). To upgrade your plan, [contact LaunchDarkly Sales](https://launchdarkly.com/contact-sales/).
+
+~> **Beta:** This resource uses a beta API. Beta resources may change or be removed in future versions.
+
+This resource allows you to create and manage views within your LaunchDarkly project.
 
 ## Example Usage
 
@@ -48,17 +57,17 @@ resource "launchdarkly_view" "team_maintained" {
 
 ### Required
 
-- `key` (String) The view's unique key.
-- `name` (String) View's name.
-- `project_key` (String) The project key.
+- `key` (String) The view's unique key. A change in this field will force the destruction of the existing resource and the creation of a new one.
+- `name` (String) The view's name.
+- `project_key` (String) The project key. A change in this field will force the destruction of the existing resource and the creation of a new one.
 
 ### Optional
 
 - `archived` (Boolean) Whether the view is archived.
-- `description` (String) View's description.
-- `maintainer_id` (String) Member ID of the maintainer. Exactly one of maintainer_id / maintainer_team_key must be set.
-- `maintainer_team_key` (String) Team key of the maintainer team.
-- `tags` (Set of String) Tags.
+- `description` (String) The view's description.
+- `maintainer_id` (String) The member ID of the maintainer for this view. Exactly one of `maintainer_id` and `maintainer_team_key` must be set.
+- `maintainer_team_key` (String) The team key of the maintainer team for this view. Exactly one of `maintainer_id` and `maintainer_team_key` must be set.
+- `tags` (Set of String) Tags associated with your resource.
 
 ### Read-Only
 

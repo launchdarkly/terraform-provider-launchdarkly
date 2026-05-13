@@ -58,12 +58,12 @@ Read-Only:
 - `id` (String) The 24 character alphanumeric ID of the team member.
 - `last_name` (String) The team member's family name.
 - `role` (String) The role associated with team member. Possible roles are `owner`, `reader`, `writer`, or `admin`.
-- `role_attributes` (Block Set) Role attributes for the team. Keyed by attribute name with a list of resource-key values. (see [below for nested schema](#nestedblock--team_members--role_attributes))
+- `role_attributes` (Block Set) A role attributes block. One block must be defined per role attribute. The key is the role attribute key and the value is a string array of resource keys that apply. (see [below for nested schema](#nestedblock--team_members--role_attributes))
 
 <a id="nestedblock--team_members--role_attributes"></a>
 ### Nested Schema for `team_members.role_attributes`
 
 Read-Only:
 
-- `key` (String) The role attribute key.
-- `values` (List of String) List of resource-key values for the attribute.
+- `key` (String) The key / name of your role attribute. In the example `$${roleAttribute/testAttribute}`, the key is `testAttribute`.
+- `values` (List of String) A list of values for your role attribute. For example, if your policy statement defines the resource `"proj/$${roleAttribute/testAttribute}"`, the values would be the keys of the projects you wanted to assign access to.

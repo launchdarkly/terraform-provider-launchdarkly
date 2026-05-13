@@ -32,20 +32,20 @@ resource "launchdarkly_model_config" "example" {
 
 ### Required
 
-- `key` (String) The model config's unique key.
-- `model_id` (String) The model identifier (e.g. `gpt-4`, `claude-3`).
-- `name` (String) The model config's human-readable name.
-- `project_key` (String) The project key.
+- `key` (String) The model config's unique key. A change in this field will force the destruction of the existing resource and the creation of a new one.
+- `model_id` (String) The model identifier (e.g. `gpt-4`, `claude-3`). A change in this field will force the destruction of the existing resource and the creation of a new one.
+- `name` (String) The model config's human-readable name. A change in this field will force the destruction of the existing resource and the creation of a new one.
+- `project_key` (String) The project key. A change in this field will force the destruction of the existing resource and the creation of a new one.
 
 ### Optional
 
-- `cost_per_input_token` (Number) The cost per input token for the model.
-- `cost_per_output_token` (Number) The cost per output token for the model.
-- `custom_parameters` (String) A JSON string representing custom parameters.
-- `icon` (String) The icon for the model config.
-- `model_provider` (String) The provider name (e.g. `openai`, `anthropic`).
-- `params` (String) A JSON string representing model parameters.
-- `tags` (Set of String) Tags associated with the model config.
+- `cost_per_input_token` (Number) The cost per input token for the model. A change in this field will force the destruction of the existing resource and the creation of a new one.
+- `cost_per_output_token` (Number) The cost per output token for the model. A change in this field will force the destruction of the existing resource and the creation of a new one.
+- `custom_parameters` (String) A JSON string representing custom parameters for the model config. A change in this field will force the destruction of the existing resource and the creation of a new one.
+- `icon` (String) The icon for the model config. A change in this field will force the destruction of the existing resource and the creation of a new one.
+- `model_provider` (String) The provider name for the model config (e.g. `openai`, `anthropic`). A change in this field will force the destruction of the existing resource and the creation of a new one.
+- `params` (String) A JSON string representing the model parameters (e.g. `{"temperature": 0.7, "maxTokens": 4096}`). A change in this field will force the destruction of the existing resource and the creation of a new one.
+- `tags` (Set of String) Tags associated with your resource. A change in this field will force the destruction of the existing resource and the creation of a new one.
 
 ### Read-Only
 

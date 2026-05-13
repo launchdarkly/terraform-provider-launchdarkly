@@ -38,20 +38,20 @@ resource "launchdarkly_ai_tool" "example" {
 
 ### Required
 
-- `key` (String) The AI tool's unique key.
-- `project_key` (String) The project key.
-- `schema_json` (String) JSON Schema for the tool's parameters.
+- `key` (String) The AI tool's unique key. A change in this field will force the destruction of the existing resource and the creation of a new one.
+- `project_key` (String) The project key. A change in this field will force the destruction of the existing resource and the creation of a new one.
+- `schema_json` (String) A JSON string representing the JSON Schema for the tool's parameters.
 
 ### Optional
 
-- `custom_parameters` (String) JSON string of custom application-level metadata.
+- `custom_parameters` (String) A JSON string representing custom application-level metadata for the AI tool.
 - `description` (String) The AI tool's description.
-- `maintainer_id` (String) Member ID of the maintainer (conflicts with maintainer_team_key).
-- `maintainer_team_key` (String) Team key of the maintainer team (conflicts with maintainer_id).
+- `maintainer_id` (String) The member ID of the maintainer for this AI tool. Conflicts with `maintainer_team_key`.
+- `maintainer_team_key` (String) The team key of the maintainer team for this AI tool. Conflicts with `maintainer_id`.
 
 ### Read-Only
 
-- `creation_date` (Number) Creation timestamp.
+- `creation_date` (Number) The creation timestamp of the AI tool.
 - `id` (String) Composite ID `project_key/key`.
 - `version` (Number) The version of the AI tool.
 
