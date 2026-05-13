@@ -131,7 +131,7 @@ func (d *TeamMembersDataSource) Read(ctx context.Context, req datasource.ReadReq
 				if ignoreMissing {
 					continue
 				}
-				resp.Diagnostics.AddError("Team member not found", fmt.Sprintf("No team member found for email: %s", memberEmail))
+				resp.Diagnostics.AddError(fmt.Sprintf("No team member found for email: %s", memberEmail), "")
 				return
 			}
 			members = append(members, foundMember)

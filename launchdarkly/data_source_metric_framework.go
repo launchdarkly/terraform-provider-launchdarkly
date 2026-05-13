@@ -2,7 +2,6 @@ package launchdarkly
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
@@ -186,10 +185,10 @@ func (d *MetricDataSource) Read(ctx context.Context, req datasource.ReadRequest,
 		return err
 	})
 	if err != nil {
-		resp.Diagnostics.AddError(
-			fmt.Sprintf("failed to get metric with key %q in project %q: %s", key, projectKey, handleLdapiErr(err).Error()),
-			"",
-		)
+		// SDKv2 metric data source surfaced the raw upstream error
+		// (no wrapper text), so the test ExpectError regex matches
+		// "Error: 404 Not Found:" directly against the summary.
+		resp.Diagnostics.AddError(handleLdapiErr(err).Error(), "")
 		return
 	}
 
