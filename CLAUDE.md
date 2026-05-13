@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Common commands
 
-Go version pinned in `.go-version`: **1.25.5**. Provider package: `launchdarkly` (PKG_NAME in the makefile).
+Go version pinned in `.go-version`: **1.25.8** (bumped from 1.25.5 in Phase 2 after the `terraform-plugin-sdk/v2` v2.40.1 upgrade required it; `scripts/codegen/go.mod` and parent `go.mod` are aligned at `go 1.25.8`). Provider package: `launchdarkly` (PKG_NAME in the makefile).
 
 - `make build` — `fmtcheck` then `go install` with `-ldflags` injecting the short git rev as `version`. Binary lands in `$GOPATH/bin`.
 - `make fmt` — runs `gofmts -w` (the constant-sorting linter from `github.com/ashanbrown/gofmts`, *not* `gofumpt`) **then** `gofmt -w`. Order matters: `gofmts` rewrites `//gofmts:sort` blocks (see `launchdarkly/keys.go`) and the second pass normalizes the result.
