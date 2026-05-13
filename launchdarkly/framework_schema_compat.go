@@ -27,12 +27,10 @@ package launchdarkly
 // from somewhere else in the diagnostics list.
 
 import (
-	"context"
 	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
-	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 )
 
 // frameworkMissingAttrSummary is the diagnostic summary emitted by
@@ -89,13 +87,16 @@ func filterOmittedAttrDiags(diags diag.Diagnostics, attrPath path.Path) diag.Dia
 // to a deprecated attribute that Upjet (or another embedder) may have
 // removed from the runtime schema. Other diagnostics are returned
 // unchanged so unrelated errors still surface.
-func stateSetSkipMissingKey(ctx context.Context, state *tfsdk.State, attrPath path.Path, val interface{}) diag.Diagnostics {
-	diags := state.SetAttribute(ctx, attrPath, val)
-	return filterOmittedAttrDiags(diags, attrPath)
-}
+// Scaffolding only for now, uncomment when needed
+// ignore unusedfunc linting this is scaffodling
 
-// planSetSkipMissingKey is the plan equivalent of stateSetSkipMissingKey.
-func planSetSkipMissingKey(ctx context.Context, plan *tfsdk.Plan, attrPath path.Path, val interface{}) diag.Diagnostics {
-	diags := plan.SetAttribute(ctx, attrPath, val)
-	return filterOmittedAttrDiags(diags, attrPath)
-}
+// func stateSetSkipMissingKey(ctx context.Context, state *tfsdk.State, attrPath path.Path, val interface{}) diag.Diagnostics {
+// 	diags := state.SetAttribute(ctx, attrPath, val)
+// 	return filterOmittedAttrDiags(diags, attrPath)
+// }
+
+// // planSetSkipMissingKey is the plan equivalent of stateSetSkipMissingKey.
+// func planSetSkipMissingKey(ctx context.Context, plan *tfsdk.Plan, attrPath path.Path, val interface{}) diag.Diagnostics {
+// 	diags := plan.SetAttribute(ctx, attrPath, val)
+// 	return filterOmittedAttrDiags(diags, attrPath)
+// }
