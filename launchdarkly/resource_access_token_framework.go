@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework-validators/resourcevalidator"
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -382,7 +383,7 @@ func (r *AccessTokenResource) readIntoModel(
 	ctx context.Context,
 	id string,
 	data *AccessTokenResourceModel,
-	diags interface{ AddError(string, string) },
+	diags *diag.Diagnostics,
 ) {
 	var accessToken *ldapi.Token
 	var res *http.Response

@@ -7,6 +7,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework-validators/resourcevalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/setvalidator"
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -22,10 +23,6 @@ var (
 	_ resource.ResourceWithImportState      = &ViewResource{}
 	_ resource.ResourceWithConfigValidators = &ViewResource{}
 )
-
-type ViewResource struct {
-	client *Client
-}
 
 type ViewResourceModel struct {
 	ID                types.String `tfsdk:"id"`
@@ -130,11 +127,28 @@ func viewExists(projectKey, viewKey string, client *Client) (bool, error) {
 	return true, nil
 }
 
+type ViewResource struct {
+	client *Client
+	beta   *Client
+}
+
 func (r *ViewResource) Configure(_ context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
 	r.client = configureResourceClient(req, resp)
+	if r.client == nil {
+		return
+	}
+	beta, err := newBetaClient(r.client.apiKey, r.client.apiHost, false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
+	if err != nil {
+		resp.Diagnostics.AddError("Failed to build LaunchDarkly beta client", err.Error())
+		return
+	}
+	r.beta = beta
 }
 
 func (r *ViewResource) betaClient() (*Client, error) {
+	if r.beta != nil {
+		return r.beta, nil
+	}
 	return newBetaClient(r.client.apiKey, r.client.apiHost, false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
 }
 
@@ -301,7 +315,7 @@ func (r *ViewResource) readIntoModel(
 	ctx context.Context,
 	projectKey, viewKey string,
 	data *ViewResourceModel,
-	diags interface{ AddError(string, string) },
+	diags *diag.Diagnostics,
 ) {
 	beta, err := r.betaClient()
 	if err != nil {
@@ -347,10 +361,6 @@ func (r *ViewResource) readIntoModel(
 
 	// Optional-only Set attr with plan-aware null-vs-empty handling.
 	tagsSet, d := setFromStringSlicePreservingPlan(ctx, view.Tags, data.Tags)
-	if d.HasError() {
-		for _, e := range d.Errors() {
-			diags.AddError(e.Summary(), e.Detail())
-		}
-	}
+	diags.Append(d...)
 	data.Tags = tagsSet
 }

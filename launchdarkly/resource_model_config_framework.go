@@ -16,6 +16,7 @@ import (
 	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework-validators/setvalidator"
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -336,9 +337,7 @@ func (r *ModelConfigResource) readIntoModel(
 	ctx context.Context,
 	projectKey, key string,
 	data *ModelConfigResourceModel,
-	diags interface {
-		AddError(string, string)
-	},
+	diags *diag.Diagnostics,
 ) {
 	var modelConfig *ldapi.ModelConfig
 	var res *http.Response
@@ -389,11 +388,7 @@ func (r *ModelConfigResource) readIntoModel(
 	data.CustomParameters = types.StringValue(customParamsJSON)
 
 	tagsSet, d := setFromStringSlice(ctx, modelConfig.Tags)
-	if d.HasError() {
-		for _, e := range d.Errors() {
-			diags.AddError(e.Summary(), e.Detail())
-		}
-	}
+	diags.Append(d...)
 	data.Tags = tagsSet
 
 	if modelConfig.CostPerInputToken != nil {

@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -265,7 +266,7 @@ func (r *TeamMemberResource) readIntoModel(
 	ctx context.Context,
 	memberID string,
 	data *TeamMemberResourceModel,
-	diags interface{ AddError(string, string) },
+	diags *diag.Diagnostics,
 ) {
 	var member *ldapi.Member
 	var res *http.Response
@@ -300,18 +301,10 @@ func (r *TeamMemberResource) readIntoModel(
 	// (plan empty Set, apply must echo empty Set) and omitted
 	// (plan null, apply must echo null). See helper godoc.
 	rolesSet, d := setFromStringSlicePreservingPlan(ctx, customRoleKeys, data.CustomRoles)
-	if d.HasError() {
-		for _, e := range d.Errors() {
-			diags.AddError(e.Summary(), e.Detail())
-		}
-	}
+	diags.Append(d...)
 	data.CustomRoles = rolesSet
 
 	attrs, d := frameworkRoleAttributesValue(ctx, member.RoleAttributes)
-	if d.HasError() {
-		for _, e := range d.Errors() {
-			diags.AddError(e.Summary(), e.Detail())
-		}
-	}
+	diags.Append(d...)
 	data.RoleAttributes = attrs
 }

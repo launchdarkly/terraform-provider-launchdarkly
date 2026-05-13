@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -326,9 +327,7 @@ func (r *AIToolResource) readIntoModel(
 	ctx context.Context,
 	projectKey, toolKey string,
 	data *AIToolResourceModel,
-	diags interface {
-		AddError(string, string)
-	},
+	diags *diag.Diagnostics,
 ) {
 	var tool *ldapi.AITool
 	var res *http.Response

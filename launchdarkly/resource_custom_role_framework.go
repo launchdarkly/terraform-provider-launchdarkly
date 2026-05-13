@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"sort"
 
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -161,10 +162,7 @@ type customRolePolicyModel struct {
 	Effect    string   `tfsdk:"effect"`
 }
 
-func (r *CustomRoleResource) policiesFromModel(ctx context.Context, data *CustomRoleResourceModel, diags interface {
-	Append(...interface{ AppendDiagnostic() })
-},
-) []ldapi.StatementPost {
+func (r *CustomRoleResource) policiesFromModel(ctx context.Context, data *CustomRoleResourceModel) []ldapi.StatementPost {
 	// Use the new policy_statements if set; otherwise fall back to the
 	// deprecated policy block.
 	if !data.PolicyStatements.IsNull() && len(data.PolicyStatements.Elements()) > 0 {
@@ -206,7 +204,7 @@ func (r *CustomRoleResource) Create(ctx context.Context, req resource.CreateRequ
 	desc := plan.Description.ValueString()
 	basePerms := plan.BasePermissions.ValueString()
 
-	policies := r.policiesFromModel(ctx, &plan, nil)
+	policies := r.policiesFromModel(ctx, &plan)
 
 	body := ldapi.CustomRolePost{
 		Key:         key,
@@ -269,7 +267,7 @@ func (r *CustomRoleResource) Update(ctx context.Context, req resource.UpdateRequ
 	name := plan.Name.ValueString()
 	desc := plan.Description.ValueString()
 	basePerms := plan.BasePermissions.ValueString()
-	policies := r.policiesFromModel(ctx, &plan, nil)
+	policies := r.policiesFromModel(ctx, &plan)
 
 	patch := ldapi.PatchWithComment{Patch: []ldapi.PatchOperation{
 		patchReplace("/name", &name),
@@ -320,7 +318,7 @@ func (r *CustomRoleResource) readIntoModel(
 	ctx context.Context,
 	id string,
 	data *CustomRoleResourceModel,
-	diags interface{ AddError(string, string) },
+	diags *diag.Diagnostics,
 ) {
 	var customRole *ldapi.CustomRole
 	var res *http.Response
@@ -374,20 +372,14 @@ func (r *CustomRoleResource) readIntoModel(
 			})
 		}
 		setVal, d := types.SetValueFrom(ctx, data.Policy.ElementType(ctx), elems)
-		if d.HasError() {
-			for _, e := range d.Errors() {
-				diags.AddError(e.Summary(), e.Detail())
-			}
+		diags.Append(d...)
+		if diags.HasError() {
 			return
 		}
 		data.Policy = setVal
 	} else {
 		stmts, d := frameworkPolicyStatementsValue(ctx, customRole.Policy)
-		if d.HasError() {
-			for _, e := range d.Errors() {
-				diags.AddError(e.Summary(), e.Detail())
-			}
-		}
+		diags.Append(d...)
 		data.PolicyStatements = stmts
 	}
 }

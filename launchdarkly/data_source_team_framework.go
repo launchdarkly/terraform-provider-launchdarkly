@@ -172,13 +172,3 @@ func (d *TeamDataSource) Read(ctx context.Context, req datasource.ReadRequest, r
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
-
-// stringValueFromPointer dereferences a *string into a non-null
-// types.String, defaulting to empty when the pointer is nil. Used for
-// LD API responses whose nullable fields are exposed as *string.
-func stringValueFromPointer(s *string) types.String {
-	if s == nil {
-		return types.StringValue("")
-	}
-	return types.StringValue(*s)
-}

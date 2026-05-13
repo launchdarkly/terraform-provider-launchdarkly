@@ -8,6 +8,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -303,7 +304,7 @@ func (r *FlagTriggerResource) readIntoModel(
 	ctx context.Context,
 	projectKey, envKey, flagKey, triggerID string,
 	data *FlagTriggerResourceModel,
-	diags interface{ AddError(string, string) },
+	diags *diag.Diagnostics,
 ) {
 	var trigger *ldapi.TriggerWorkflowRep
 	var res *http.Response
@@ -328,14 +329,12 @@ func (r *FlagTriggerResource) readIntoModel(
 	data.ProjectKey = types.StringValue(projectKey)
 	data.EnvKey = types.StringValue(envKey)
 	data.FlagKey = types.StringValue(flagKey)
-	if trigger.IntegrationKey != nil {
-		data.IntegrationKey = types.StringValue(*trigger.IntegrationKey)
-	}
-	if trigger.MaintainerId != nil {
-		data.MaintainerID = types.StringValue(*trigger.MaintainerId)
-	} else {
-		data.MaintainerID = types.StringValue("")
-	}
+	// integration_key is Required so the API always returns it; using
+	// stringValueFromPointer keeps Read defensive without leaving stale
+	// state when the pointer is unexpectedly nil.
+	data.IntegrationKey = stringValueFromPointer(trigger.IntegrationKey)
+	// maintainer_id is Computed; "" is the framework-correct empty form.
+	data.MaintainerID = stringValueFromPointer(trigger.MaintainerId)
 	if trigger.Enabled != nil {
 		data.Enabled = types.BoolValue(*trigger.Enabled)
 	}

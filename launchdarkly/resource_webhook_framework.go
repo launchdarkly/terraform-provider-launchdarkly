@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/hashicorp/terraform-plugin-framework-validators/setvalidator"
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -241,7 +242,7 @@ func (r *WebhookResource) readIntoModel(
 	ctx context.Context,
 	id string,
 	data *WebhookResourceModel,
-	diags interface{ AddError(string, string) },
+	diags *diag.Diagnostics,
 ) {
 	var webhook *ldapi.Webhook
 	var res *http.Response
@@ -267,18 +268,10 @@ func (r *WebhookResource) readIntoModel(
 
 	// Optional-only Set attr with plan-aware null-vs-empty handling.
 	tagsSet, d := setFromStringSlicePreservingPlan(ctx, webhook.Tags, data.Tags)
-	if d.HasError() {
-		for _, e := range d.Errors() {
-			diags.AddError(e.Summary(), e.Detail())
-		}
-	}
+	diags.Append(d...)
 	data.Tags = tagsSet
 
 	stmts, d := frameworkPolicyStatementsValue(ctx, webhook.Statements)
-	if d.HasError() {
-		for _, e := range d.Errors() {
-			diags.AddError(e.Summary(), e.Detail())
-		}
-	}
+	diags.Append(d...)
 	data.Statements = stmts
 }

@@ -56,19 +56,17 @@ func preCheck(t *testing.T) {
 	}
 }
 
-// stateCompatCase pairs a fixture filename with the synthetic HCL
-// config that produced it. The HCL string is loaded from
-// scripts/capture-state-fixtures/configs/<config-path> so the replay
-// step exercises the same source-of-truth config the fixture was
-// captured from.
+// stateCompatCase keys both the fixture file and the synthetic HCL
+// config off a single stem: <name>.tfstate under state-fixtures/ and
+// <name>.tf under scripts/capture-state-fixtures/configs/. Keeping
+// them in lockstep is the captured-then-replayed contract.
 type stateCompatCase struct {
-	fixtureName string
-	configPath  string
+	name string
 }
 
 func (c stateCompatCase) hcl(t *testing.T) string {
 	t.Helper()
-	abs := filepath.Join(repoRoot(t), "scripts", "capture-state-fixtures", "configs", c.configPath)
+	abs := filepath.Join(repoRoot(t), "scripts", "capture-state-fixtures", "configs", c.name+".tf")
 	b, err := os.ReadFile(abs)
 	if err != nil {
 		t.Fatalf("read synthetic config %s: %s", abs, err)
@@ -76,9 +74,11 @@ func (c stateCompatCase) hcl(t *testing.T) string {
 	return string(b)
 }
 
+func (c stateCompatCase) fixtureFile() string { return c.name + ".tfstate" }
+
 func (c stateCompatCase) fixtureAbsPath(t *testing.T) string {
 	t.Helper()
-	return filepath.Join(repoRoot(t), "launchdarkly", statecompat.FixturesDir, c.fixtureName)
+	return filepath.Join(repoRoot(t), "launchdarkly", statecompat.FixturesDir, c.fixtureFile())
 }
 
 func repoRoot(t *testing.T) string {
@@ -91,16 +91,15 @@ func repoRoot(t *testing.T) string {
 func runCase(t *testing.T, c stateCompatCase) {
 	t.Helper()
 	if _, err := os.Stat(c.fixtureAbsPath(t)); err != nil {
-		shortName := c.fixtureName[:len(c.fixtureName)-len(".tfstate")]
 		t.Skipf(
 			"fixture %s not captured yet. Run:\n  LAUNCHDARKLY_ACCESS_TOKEN=<test-token> ./scripts/capture-state-fixtures/capture.sh %s",
-			c.fixtureName, shortName,
+			c.fixtureFile(), c.name,
 		)
 		return
 	}
 	statecompat.Run(t, statecompat.Case{
 		HCLConfig:                c.hcl(t),
-		FixtureFile:              c.fixtureName,
+		FixtureFile:              c.fixtureFile(),
 		PreviousVersion:          stateCompatProviderVersion,
 		ProtoV5ProviderFactories: protoV5Factories,
 		PreCheck:                 func() { preCheck(t) },
@@ -108,97 +107,67 @@ func runCase(t *testing.T, c stateCompatCase) {
 }
 
 func TestStateCompatAccessToken_Basic(t *testing.T) {
-	runCase(t, stateCompatCase{
-		fixtureName: "access_token_basic.tfstate",
-		configPath:  "access_token_basic.tf",
-	})
+	runCase(t, stateCompatCase{name: "access_token_basic"})
 }
 
 func TestStateCompatAccessToken_CustomRoles(t *testing.T) {
-	runCase(t, stateCompatCase{
-		fixtureName: "access_token_custom_roles.tfstate",
-		configPath:  "access_token_custom_roles.tf",
-	})
+	runCase(t, stateCompatCase{name: "access_token_custom_roles"})
 }
 
 func TestStateCompatCustomRole_Basic(t *testing.T) {
-	runCase(t, stateCompatCase{
-		fixtureName: "custom_role_basic.tfstate",
-		configPath:  "custom_role_basic.tf",
-	})
+	runCase(t, stateCompatCase{name: "custom_role_basic"})
 }
 
 func TestStateCompatTeamMember_Basic(t *testing.T) {
-	runCase(t, stateCompatCase{
-		fixtureName: "team_member_basic.tfstate",
-		configPath:  "team_member_basic.tf",
-	})
+	runCase(t, stateCompatCase{name: "team_member_basic"})
 }
 
 func TestStateCompatWebhook_Basic(t *testing.T) {
-	runCase(t, stateCompatCase{
-		fixtureName: "webhook_basic.tfstate",
-		configPath:  "webhook_basic.tf",
-	})
+	runCase(t, stateCompatCase{name: "webhook_basic"})
 }
 
 func TestStateCompatRelayProxyConfiguration_Basic(t *testing.T) {
-	runCase(t, stateCompatCase{
-		fixtureName: "relay_proxy_configuration_basic.tfstate",
-		configPath:  "relay_proxy_configuration_basic.tf",
-	})
+	runCase(t, stateCompatCase{name: "relay_proxy_configuration_basic"})
 }
 
 func TestStateCompatAITool_Basic(t *testing.T) {
-	runCase(t, stateCompatCase{
-		fixtureName: "ai_tool_basic.tfstate",
-		configPath:  "ai_tool_basic.tf",
-	})
+	runCase(t, stateCompatCase{name: "ai_tool_basic"})
 }
 
 func TestStateCompatFlagTrigger_Basic(t *testing.T) {
-	runCase(t, stateCompatCase{
-		fixtureName: "flag_trigger_basic.tfstate",
-		configPath:  "flag_trigger_basic.tf",
-	})
+	runCase(t, stateCompatCase{name: "flag_trigger_basic"})
 }
 
 func TestStateCompatModelConfig_Basic(t *testing.T) {
-	runCase(t, stateCompatCase{
-		fixtureName: "model_config_basic.tfstate",
-		configPath:  "model_config_basic.tf",
-	})
+	runCase(t, stateCompatCase{name: "model_config_basic"})
 }
 
 func TestStateCompatView_Basic(t *testing.T) {
-	runCase(t, stateCompatCase{
-		fixtureName: "view_basic.tfstate",
-		configPath:  "view_basic.tf",
-	})
+	runCase(t, stateCompatCase{name: "view_basic"})
 }
 
-// phase2Inventory enumerates every fixture the Phase 2 plan requires.
+// phase2Inventory keys the Phase 2 fixture set.
 // TestStateCompatPhase2_Inventory below logs (but does not fail on) the
 // list of fixtures still to capture, giving operators a single
 // `go test`-driven checklist.
 var phase2Inventory = []string{
-	"access_token_basic.tfstate",
-	"access_token_custom_roles.tfstate",
-	"ai_tool_basic.tfstate",
-	"custom_role_basic.tfstate",
-	"flag_trigger_basic.tfstate",
-	"model_config_basic.tfstate",
-	"relay_proxy_configuration_basic.tfstate",
-	"team_member_basic.tfstate",
-	"view_basic.tfstate",
-	"webhook_basic.tfstate",
+	"access_token_basic",
+	"access_token_custom_roles",
+	"ai_tool_basic",
+	"custom_role_basic",
+	"flag_trigger_basic",
+	"model_config_basic",
+	"relay_proxy_configuration_basic",
+	"team_member_basic",
+	"view_basic",
+	"webhook_basic",
 }
 
 func TestStateCompatPhase2_Inventory(t *testing.T) {
 	fixturesDir := filepath.Join(repoRoot(t), "launchdarkly", statecompat.FixturesDir)
 	var missing []string
 	for _, name := range phase2Inventory {
-		if _, err := os.Stat(filepath.Join(fixturesDir, name)); err != nil {
+		if _, err := os.Stat(filepath.Join(fixturesDir, name+".tfstate")); err != nil {
 			missing = append(missing, name)
 		}
 	}
@@ -206,9 +175,8 @@ func TestStateCompatPhase2_Inventory(t *testing.T) {
 		return
 	}
 	msg := fmt.Sprintf("Phase 2 fixtures still to capture (%d of %d remaining):\n", len(missing), len(phase2Inventory))
-	for _, f := range missing {
-		short := f[:len(f)-len(".tfstate")]
-		msg += fmt.Sprintf("  - ./scripts/capture-state-fixtures/capture.sh %s\n", short)
+	for _, name := range missing {
+		msg += fmt.Sprintf("  - ./scripts/capture-state-fixtures/capture.sh %s\n", name)
 	}
 	t.Log(msg)
 }

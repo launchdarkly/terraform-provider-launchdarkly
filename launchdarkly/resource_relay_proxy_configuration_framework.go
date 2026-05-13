@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -191,7 +192,7 @@ func (r *RelayProxyConfigResource) readIntoModel(
 	ctx context.Context,
 	id string,
 	data *RelayProxyConfigResourceModel,
-	diags interface{ AddError(string, string) },
+	diags *diag.Diagnostics,
 ) {
 	var proxyConfig *ldapi.RelayAutoConfigRep
 	var res *http.Response
@@ -212,11 +213,6 @@ func (r *RelayProxyConfigResource) readIntoModel(
 	data.Name = types.StringValue(proxyConfig.Name)
 	data.DisplayKey = types.StringValue(proxyConfig.DisplayKey)
 	policyList, d := frameworkPolicyStatementsValue(ctx, proxyConfig.Policy)
-	if d.HasError() {
-		for _, e := range d.Errors() {
-			diags.AddError(e.Summary(), e.Detail())
-		}
-		return
-	}
+	diags.Append(d...)
 	data.Policy = policyList
 }
