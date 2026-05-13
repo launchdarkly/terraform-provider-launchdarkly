@@ -4,14 +4,14 @@ page_title: "launchdarkly_flag_templates Data Source - launchdarkly"
 subcategory: ""
 description: |-
   Provides a LaunchDarkly flag templates data source.
-  This data source allows you to retrieve the "Custom" flag template settings for a LaunchDarkly project. LaunchDarkly projects include several built-in flag templates (Release, Kill switch, Experiment, Custom, Migration). This data source reads the Custom template only.
+  This data source allows you to retrieve the "Custom" flag template settings for a LaunchDarkly project.
 ---
 
 # launchdarkly_flag_templates (Data Source)
 
 Provides a LaunchDarkly flag templates data source.
 
-This data source allows you to retrieve the "Custom" flag template settings for a LaunchDarkly project. LaunchDarkly projects include several built-in flag templates (Release, Kill switch, Experiment, Custom, Migration). This data source reads the Custom template only.
+This data source allows you to retrieve the "Custom" flag template settings for a LaunchDarkly project.
 
 
 
@@ -24,19 +24,19 @@ This data source allows you to retrieve the "Custom" flag template settings for 
 
 ### Read-Only
 
-- `boolean_defaults` (List of Object) A block describing the default boolean flag variation settings. (see [below for nested schema](#nestedatt--boolean_defaults))
-- `id` (String) The ID of this resource.
-- `tags` (Set of String) Tags associated with your resource.
+- `boolean_defaults` (Block List) Default boolean flag variation settings. (see [below for nested schema](#nestedblock--boolean_defaults))
+- `id` (String) Project key (the ID).
+- `tags` (Set of String) Tags applied by default.
 - `temporary` (Boolean) Whether new flags should be temporary by default.
 
-<a id="nestedatt--boolean_defaults"></a>
+<a id="nestedblock--boolean_defaults"></a>
 ### Nested Schema for `boolean_defaults`
 
 Read-Only:
 
-- `false_description` (String)
-- `false_display_name` (String)
-- `off_variation` (Number)
-- `on_variation` (Number)
-- `true_description` (String)
-- `true_display_name` (String)
+- `false_description` (String) Description for the false variation.
+- `false_display_name` (String) Display name for the false variation.
+- `off_variation` (Number) Variation index served when targeting is off (0 or 1).
+- `on_variation` (Number) Variation index served when targeting is on (0 or 1).
+- `true_description` (String) Description for the true variation.
+- `true_display_name` (String) Display name for the true variation.

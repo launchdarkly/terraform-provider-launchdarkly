@@ -216,7 +216,11 @@ func (d *FeatureFlagEnvironmentDataSource) Read(ctx context.Context, req datasou
 	data.FlagID = types.StringValue(projectKey + "/" + flag.Key)
 	data.On = types.BoolValue(environment.On)
 	data.TrackEvents = types.BoolValue(environment.TrackEvents)
-	data.OffVariation = types.Int64Value(int64(*environment.OffVariation))
+	if environment.OffVariation != nil {
+		data.OffVariation = types.Int64Value(int64(*environment.OffVariation))
+	} else {
+		data.OffVariation = types.Int64Value(0)
+	}
 
 	// targets / context_targets
 	data.Targets = ffeTargetsValue(ctx, environment.Targets, false, &resp.Diagnostics)

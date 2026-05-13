@@ -59,16 +59,16 @@ func (d *AIConfigDataSource) Schema(_ context.Context, _ datasource.SchemaReques
 			NAME:          schema.StringAttribute{Computed: true, Description: "The AI Config's human-readable name."},
 			DESCRIPTION:   schema.StringAttribute{Computed: true, Description: "The AI Config's description."},
 			MODE:          schema.StringAttribute{Computed: true, Description: "The AI Config's mode. Must be `completion`, `agent`, or `judge`."},
-			TAGS:          schema.SetAttribute{Computed: true, ElementType: types.StringType, Description: "Tags."},
-			MAINTAINER_ID: schema.StringAttribute{Computed: true, Description: "The member ID of the maintainer."},
+			TAGS:          schema.SetAttribute{Computed: true, ElementType: types.StringType, Description: "Tags associated with your resource."},
+			MAINTAINER_ID: schema.StringAttribute{Computed: true, Description: "The member ID of the maintainer for this AI Config. Conflicts with `maintainer_team_key`."},
 			MAINTAINER_TEAM_KEY: schema.StringAttribute{
 				Computed:    true,
-				Description: "The team key of the maintainer team.",
+				Description: "The team key of the maintainer team for this AI Config. Conflicts with `maintainer_id`.",
 			},
-			EVALUATION_METRIC_KEY: schema.StringAttribute{Computed: true, Description: "The key of the evaluation metric."},
+			EVALUATION_METRIC_KEY: schema.StringAttribute{Computed: true, Description: "The key of the evaluation metric associated with this AI Config."},
 			IS_INVERTED:           schema.BoolAttribute{Computed: true, Description: "Whether the evaluation metric is inverted."},
 			VERSION:               schema.Int64Attribute{Computed: true, Description: "The version of the AI Config."},
-			CREATION_DATE:         schema.Int64Attribute{Computed: true, Description: "Creation timestamp."},
+			CREATION_DATE:         schema.Int64Attribute{Computed: true, Description: "A timestamp of when the AI Config was created."},
 		},
 		Blocks: map[string]schema.Block{
 			VARIATIONS: schema.ListNestedBlock{

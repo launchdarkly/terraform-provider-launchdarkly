@@ -96,7 +96,7 @@ func (d *MetricDataSource) Schema(_ context.Context, _ datasource.SchemaRequest,
 			},
 			IS_ACTIVE: schema.BoolAttribute{
 				Computed:           true,
-				Description:        "Deprecated: All metrics are considered active.",
+				Description:        "Ignored. All metrics are considered active.",
 				DeprecationMessage: "No longer in use. This field will be removed in a future major release of the LaunchDarkly provider.",
 			},
 			IS_NUMERIC: schema.BoolAttribute{

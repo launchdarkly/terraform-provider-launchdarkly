@@ -181,19 +181,6 @@ func environmentSchema(options environmentSchemaOptions) map[string]*schema.Sche
 	return schemaMap
 }
 
-func dataSourceEnvironmentSchema(forProject bool) map[string]*schema.Schema {
-	schemaMap := baseEnvironmentSchema(environmentSchemaOptions{forProject: true, isDataSource: true})
-	schemaMap[NAME] = &schema.Schema{
-		Type:     schema.TypeString,
-		Computed: true,
-	}
-	schemaMap[COLOR] = &schema.Schema{
-		Type:     schema.TypeString,
-		Computed: true,
-	}
-	return schemaMap
-}
-
 func environmentPostsFromResourceData(d *schema.ResourceData) []ldapi.EnvironmentPost {
 	schemaEnvList := getOptionalInterfaceSlice(d, ENVIRONMENTS)
 	envs := make([]ldapi.EnvironmentPost, len(schemaEnvList))

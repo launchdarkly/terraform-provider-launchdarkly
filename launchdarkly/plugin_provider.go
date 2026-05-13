@@ -107,6 +107,7 @@ func (p *launchdarklyProvider) Configure(ctx context.Context, req provider.Confi
 			return
 		}
 		resp.ResourceData = client
+		resp.DataSourceData = client
 		return
 	}
 
@@ -116,6 +117,7 @@ func (p *launchdarklyProvider) Configure(ctx context.Context, req provider.Confi
 		return
 	}
 	resp.ResourceData = client
+	resp.DataSourceData = client
 }
 
 // DataSources defines the data sources implemented in the provider.

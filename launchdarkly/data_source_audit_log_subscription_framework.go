@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strconv"
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
@@ -122,9 +123,21 @@ func (d *AuditLogSubscriptionDataSource) Read(ctx context.Context, req datasourc
 	// Config: emit snake_case keys with string values, matching the
 	// SDKv2 representation in configToResourceData (which the
 	// underlying framework data source schema declares as Map<String>).
+	// Secret-typed fields are suppressed because the API never returns
+	// the plaintext value; SDKv2 mirrors this by overwriting with the
+	// caller's original (empty) input. For a data source, that means
+	// dropping the key from state entirely.
+	configFormat := getSubscriptionConfigurationMap()[integrationKey]
 	configMap := make(map[string]string, len(sub.Config))
 	for k, v := range sub.Config {
+		if configFormat[k].IsSecret {
+			continue
+		}
 		key := strcase.SnakeCase(k)
+		if b, isBool := v.(bool); isBool {
+			configMap[key] = strconv.FormatBool(b)
+			continue
+		}
 		configMap[key] = fmt.Sprintf("%v", v)
 	}
 	mapVal, diags := types.MapValueFrom(ctx, types.StringType, configMap)

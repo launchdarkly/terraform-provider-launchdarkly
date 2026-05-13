@@ -47,14 +47,14 @@ func (d *AIToolDataSource) Schema(_ context.Context, _ datasource.SchemaRequest,
 			KEY:               schema.StringAttribute{Required: true, Description: "The AI tool's unique key."},
 			DESCRIPTION:       schema.StringAttribute{Computed: true, Description: "The AI tool's description."},
 			SCHEMA_JSON:       schema.StringAttribute{Computed: true, Description: "A JSON string representing the JSON Schema for the tool's parameters."},
-			CUSTOM_PARAMETERS: schema.StringAttribute{Computed: true, Description: "A JSON string representing custom application-level metadata."},
-			MAINTAINER_ID:     schema.StringAttribute{Computed: true, Description: "The member ID of the maintainer."},
+			CUSTOM_PARAMETERS: schema.StringAttribute{Computed: true, Description: "A JSON string representing custom application-level metadata for the AI tool."},
+			MAINTAINER_ID:     schema.StringAttribute{Computed: true, Description: "The member ID of the maintainer for this AI tool. Conflicts with `maintainer_team_key`."},
 			MAINTAINER_TEAM_KEY: schema.StringAttribute{
 				Computed:    true,
-				Description: "The team key of the maintainer team.",
+				Description: "The team key of the maintainer team for this AI tool. Conflicts with `maintainer_id`.",
 			},
 			VERSION:       schema.Int64Attribute{Computed: true, Description: "The version of the AI tool."},
-			CREATION_DATE: schema.Int64Attribute{Computed: true, Description: "Creation timestamp."},
+			CREATION_DATE: schema.Int64Attribute{Computed: true, Description: "The creation timestamp of the AI tool."},
 		},
 	}
 }

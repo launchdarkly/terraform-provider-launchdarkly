@@ -48,7 +48,7 @@ func (d *FlagTriggerDataSource) Schema(_ context.Context, _ datasource.SchemaReq
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				Required:    true,
-				Description: "The Terraform trigger ID.",
+				Description: "The Terraform trigger ID. The unique trigger ID can be found in your saved trigger URL:\n\n```\nhttps://app.launchdarkly.com/webhook/triggers/THIS_IS_YOUR_TRIGGER_ID/aff25a53-17d9-4112-a9b8-12718d1a2e79\n```\n\nPlease note that if you did not save this upon creation of the resource, you will have to reset it to get a new value, which can cause breaking changes.",
 			},
 			PROJECT_KEY: schema.StringAttribute{
 				Required:    true,
@@ -64,7 +64,7 @@ func (d *FlagTriggerDataSource) Schema(_ context.Context, _ datasource.SchemaReq
 			},
 			INTEGRATION_KEY: schema.StringAttribute{
 				Computed:    true,
-				Description: "The unique identifier of the integration you intend to set your trigger up with.",
+				Description: fmt.Sprintf("The unique identifier of the integration you intend to set your trigger up with. Currently supported are %s. `generic-trigger` should be used for integrations not explicitly supported.", oxfordCommaJoin(VALID_TRIGGER_INTEGRATIONS)),
 			},
 			TRIGGER_URL: schema.StringAttribute{
 				Computed:    true,
@@ -82,12 +82,12 @@ func (d *FlagTriggerDataSource) Schema(_ context.Context, _ datasource.SchemaReq
 		},
 		Blocks: map[string]schema.Block{
 			INSTRUCTIONS: schema.ListNestedBlock{
-				Description: "Instructions containing the action to perform when invoking the trigger.",
+				Description: "Instructions containing the action to perform when invoking the trigger. Currently supported flag actions are `turnFlagOn` and `turnFlagOff`. This must be passed as the key-value pair `{ kind = \"<flag_action>\" }`.",
 				NestedObject: schema.NestedBlockObject{
 					Attributes: map[string]schema.Attribute{
 						KIND: schema.StringAttribute{
 							Computed:    true,
-							Description: "The action to perform when triggering.",
+							Description: "The action to perform when triggering. Currently supported flag actions are `turnFlagOn` and `turnFlagOff`.",
 						},
 					},
 				},

@@ -63,14 +63,14 @@ func (d *AIConfigVariationDataSource) Schema(_ context.Context, _ datasource.Sch
 				Computed:    true,
 				Description: "The key of a model config resource used for this variation.",
 			},
-			DESCRIPTION:  schema.StringAttribute{Computed: true, Description: "The variation's description."},
-			INSTRUCTIONS: schema.StringAttribute{Computed: true, Description: "The variation's instructions."},
+			DESCRIPTION:  schema.StringAttribute{Computed: true, Description: "The variation's description (used in agent mode)."},
+			INSTRUCTIONS: schema.StringAttribute{Computed: true, Description: "The variation's instructions (used in agent mode)."},
 			TOOL_KEYS: schema.SetAttribute{
 				Computed:    true,
 				ElementType: types.StringType,
-				Description: "AI tool keys associated with the variation.",
+				Description: "A set of AI tool keys to associate with this variation. **Note:** The API does not currently return tool associations on read, so Terraform cannot detect drift for this field. Changes made outside of Terraform will not be reflected in state.",
 			},
-			STATE:         schema.StringAttribute{Computed: true, Description: "The state of the variation (`archived` or `published`)."},
+			STATE:         schema.StringAttribute{Computed: true, Description: "The state of the variation. Must be `archived` or `published`."},
 			VARIATION_ID:  schema.StringAttribute{Computed: true, Description: "The internal ID of the variation."},
 			VERSION:       schema.Int64Attribute{Computed: true, Description: "The version number of the variation."},
 			CREATION_DATE: schema.Int64Attribute{Computed: true, Description: "The creation timestamp of the variation."},
@@ -177,7 +177,7 @@ func (d *AIConfigVariationDataSource) Read(ctx context.Context, req datasource.R
 		}
 		data.Model = types.StringValue(modelJSON)
 	} else {
-		data.Model = types.StringNull()
+		data.Model = types.StringValue("")
 	}
 
 	messagesType := types.ObjectType{AttrTypes: aiConfigVariationMessageAttrTypes}

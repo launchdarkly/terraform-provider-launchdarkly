@@ -28,12 +28,13 @@ type TeamMembersDataSourceModel struct {
 }
 
 var teamMembersMemberAttrTypes = map[string]attr.Type{
-	ID:           types.StringType,
-	EMAIL:        types.StringType,
-	FIRST_NAME:   types.StringType,
-	LAST_NAME:    types.StringType,
-	ROLE:         types.StringType,
-	CUSTOM_ROLES: types.SetType{ElemType: types.StringType},
+	ID:              types.StringType,
+	EMAIL:           types.StringType,
+	FIRST_NAME:      types.StringType,
+	LAST_NAME:       types.StringType,
+	ROLE:            types.StringType,
+	CUSTOM_ROLES:    types.SetType{ElemType: types.StringType},
+	ROLE_ATTRIBUTES: types.SetType{ElemType: types.ObjectType{AttrTypes: frameworkRoleAttributeAttrTypes}},
 }
 
 func NewTeamMembersDataSource() datasource.DataSource {
@@ -62,18 +63,22 @@ func (d *TeamMembersDataSource) Schema(_ context.Context, _ datasource.SchemaReq
 		},
 		Blocks: map[string]schema.Block{
 			TEAM_MEMBERS: schema.ListNestedBlock{
-				Description: "The members that were found.",
+				Description: "The members that were found. The following attributes are available for each member:\n\n- `id` - The 24 character alphanumeric ID of the team member.\n\n- `first_name` - The team member's given name.\n\n- `last_name` - The team member's family name.\n\n- `role` - The role associated with team member. Possible roles are `owner`, `reader`, `writer`, or `admin`.\n\n- `custom_roles` - (Optional) The list of custom roles keys associated with the team member. Custom roles are only available to customers on an Enterprise plan. To learn more, [read about our pricing](https://launchdarkly.com/pricing/). To upgrade your plan, [contact LaunchDarkly Sales](https://launchdarkly.com/contact-sales/).\n",
 				NestedObject: schema.NestedBlockObject{
 					Attributes: map[string]schema.Attribute{
-						ID:         schema.StringAttribute{Computed: true, Description: "The 24-character member ID."},
-						EMAIL:      schema.StringAttribute{Computed: true},
-						FIRST_NAME: schema.StringAttribute{Computed: true},
-						LAST_NAME:  schema.StringAttribute{Computed: true},
-						ROLE:       schema.StringAttribute{Computed: true},
+						ID:         schema.StringAttribute{Computed: true, Description: "The 24 character alphanumeric ID of the team member."},
+						EMAIL:      schema.StringAttribute{Computed: true, Description: "The unique email address associated with the team member."},
+						FIRST_NAME: schema.StringAttribute{Computed: true, Description: "The team member's given name."},
+						LAST_NAME:  schema.StringAttribute{Computed: true, Description: "The team member's family name."},
+						ROLE:       schema.StringAttribute{Computed: true, Description: "The role associated with team member. Possible roles are `owner`, `reader`, `writer`, or `admin`."},
 						CUSTOM_ROLES: schema.SetAttribute{
 							Computed:    true,
 							ElementType: types.StringType,
+							Description: "The list of custom roles keys associated with the team member. Custom roles are only available to customers on an Enterprise plan. To learn more, [read about our pricing](https://launchdarkly.com/pricing/). To upgrade your plan, [contact LaunchDarkly Sales](https://launchdarkly.com/contact-sales/).",
 						},
+					},
+					Blocks: map[string]schema.Block{
+						ROLE_ATTRIBUTES: frameworkRoleAttributesDataSourceBlock(),
 					},
 				},
 			},
@@ -144,13 +149,16 @@ func (d *TeamMembersDataSource) Read(ctx context.Context, req datasource.ReadReq
 	for _, m := range members {
 		customRolesSet, d := setFromStringSlice(ctx, m.CustomRoles)
 		resp.Diagnostics.Append(d...)
+		roleAttrsSet, d := frameworkRoleAttributesValue(ctx, m.RoleAttributes)
+		resp.Diagnostics.Append(d...)
 		obj, d := types.ObjectValue(teamMembersMemberAttrTypes, map[string]attr.Value{
-			ID:           types.StringValue(m.Id),
-			EMAIL:        types.StringValue(m.Email),
-			FIRST_NAME:   stringValueFromPointer(m.FirstName),
-			LAST_NAME:    stringValueFromPointer(m.LastName),
-			ROLE:         types.StringValue(m.Role),
-			CUSTOM_ROLES: customRolesSet,
+			ID:              types.StringValue(m.Id),
+			EMAIL:           types.StringValue(m.Email),
+			FIRST_NAME:      stringValueFromPointer(m.FirstName),
+			LAST_NAME:       stringValueFromPointer(m.LastName),
+			ROLE:            types.StringValue(m.Role),
+			CUSTOM_ROLES:    customRolesSet,
+			ROLE_ATTRIBUTES: roleAttrsSet,
 		})
 		resp.Diagnostics.Append(d...)
 		elements = append(elements, obj)

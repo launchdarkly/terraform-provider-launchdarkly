@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"sort"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
@@ -271,11 +272,15 @@ func (d *FeatureFlagDataSource) Read(ctx context.Context, req datasource.ReadReq
 	resp.Diagnostics.Append(diags...)
 	data.Variations = variationsList
 
-	// custom_properties
+	// custom_properties — sort each property's values to match SDKv2
+	// customPropertiesToResourceData parity (custom_properties_helper.go).
 	cpObjectType := types.ObjectType{AttrTypes: featureFlagCustomPropertyAttrTypes}
 	cpElements := make([]attr.Value, 0, len(flag.CustomProperties))
 	for k, cp := range flag.CustomProperties {
-		valuesList, d := listFromStringSlice(ctx, cp.Value)
+		sortedValues := make([]string, len(cp.Value))
+		copy(sortedValues, cp.Value)
+		sort.Strings(sortedValues)
+		valuesList, d := listFromStringSlice(ctx, sortedValues)
 		resp.Diagnostics.Append(d...)
 		obj, d := types.ObjectValue(featureFlagCustomPropertyAttrTypes, map[string]attr.Value{
 			KEY:   types.StringValue(k),
