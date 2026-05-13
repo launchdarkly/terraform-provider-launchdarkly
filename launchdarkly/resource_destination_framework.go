@@ -298,12 +298,16 @@ func (r *DestinationResource) readIntoModel(ctx context.Context, data *Destinati
 	apiCfg := destinationConfigFromAPI(*dest.Kind, dest.Config)
 	preserved := preserveObfuscatedDestinationAttributes(priorConfig, apiCfg)
 
-	// mparticle compat: when user supplied user_identities, the server
-	// may also return the legacy user_identity scalar. Drop it from
-	// state so it doesn't surface as drift. Mirrors the SDKv2
-	// configDiffSuppressFunc on user_identity.
+	// mparticle compat: when the array-form user_identities is in play
+	// the server also returns the legacy `user_identity` scalar. Drop
+	// it from state so it doesn't surface as drift; framework Map<String>
+	// can't keep API-only keys the user didn't set without tripping the
+	// plan-apply consistency check. Mirrors the SDKv2
+	// configDiffSuppressFunc on user_identity. We key off the API
+	// response (not prior state) so import + create produce the same
+	// shape; SDKv2 used user_identity on the user_identities-less path.
 	if *dest.Kind == "mparticle" {
-		if _, hasNew := priorConfig["user_identities"]; hasNew {
+		if _, fromAPI := preserved["user_identities"]; fromAPI {
 			delete(preserved, "user_identity")
 		}
 	}
