@@ -2,6 +2,7 @@ package launchdarkly
 
 import (
 	"fmt"
+	"os"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
@@ -25,7 +26,14 @@ var testAccIpAllowlistEntryTestIPs = []string{"52.1.1.1", "54.0.0.0/24"}
 
 func cleanupOrphanIpAllowlistEntries(t *testing.T) {
 	t.Helper()
-	client := testAccProvider.Meta().(*Client)
+	// Build a client directly from env: testAccProvider.Meta() is nil
+	// until terraform-plugin-sdk configures the provider, which only
+	// happens once a test Step runs. PreCheck fires before that.
+	client, err := newClient(os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN), os.Getenv(LAUNCHDARKLY_API_HOST), false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
+	if err != nil {
+		t.Logf("ip-allowlist cleanup: client construction failed (continuing): %s", err)
+		return
+	}
 	allowlist, err := getIpAllowlist(client)
 	if err != nil {
 		t.Logf("ip-allowlist cleanup probe failed (continuing): %s", err)
