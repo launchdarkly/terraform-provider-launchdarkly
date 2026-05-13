@@ -400,7 +400,7 @@ func (r *AccessTokenResource) readIntoModel(
 		return
 	}
 	data.ID = types.StringValue(accessToken.Id)
-	data.Name = stringValueFromPointer(accessToken.Name)
+	data.Name = stringValueOrNullFromPointer(accessToken.Name)
 	if accessToken.Role != nil {
 		data.Role = types.StringValue(*accessToken.Role)
 	}

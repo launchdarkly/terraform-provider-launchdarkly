@@ -284,8 +284,9 @@ func (r *TeamMemberResource) readIntoModel(
 	}
 	data.ID = types.StringValue(member.Id)
 	data.Email = types.StringValue(member.Email)
-	data.FirstName = stringValueFromPointer(member.FirstName)
-	data.LastName = stringValueFromPointer(member.LastName)
+	// Optional-only attrs: null-when-empty for plan-apply consistency.
+	data.FirstName = stringValueOrNullFromPointer(member.FirstName)
+	data.LastName = stringValueOrNullFromPointer(member.LastName)
 	data.Role = types.StringValue(member.Role)
 
 	// API returns custom-role IDs; convert to keys for state.

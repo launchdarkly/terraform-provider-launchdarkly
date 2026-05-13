@@ -348,11 +348,8 @@ func (r *AIToolResource) readIntoModel(
 	data.ID = types.StringValue(fmt.Sprintf("%s/%s", projectKey, tool.GetKey()))
 	data.ProjectKey = types.StringValue(projectKey)
 	data.Key = types.StringValue(tool.GetKey())
-	if tool.Description != nil {
-		data.Description = types.StringValue(*tool.Description)
-	} else {
-		data.Description = types.StringValue("")
-	}
+	// Optional-only attr: null-when-empty for plan-apply consistency.
+	data.Description = stringValueOrNullFromPointer(tool.Description)
 	schemaJSON, err := mapToJsonString(tool.GetSchema())
 	if err != nil {
 		diags.AddError("Failed to serialise schema_json", err.Error())
@@ -364,7 +361,9 @@ func (r *AIToolResource) readIntoModel(
 		diags.AddError("Failed to serialise custom_parameters", err.Error())
 		return
 	}
-	data.CustomParameters = types.StringValue(customParamsJSON)
+	// Optional-only attr: null-when-empty so unset custom_parameters
+	// doesn't trip terraform-core consistency check.
+	data.CustomParameters = stringValueOrNull(customParamsJSON)
 	data.Version = types.Int64Value(int64(tool.GetVersion()))
 	data.CreationDate = types.Int64Value(tool.GetCreatedAt())
 

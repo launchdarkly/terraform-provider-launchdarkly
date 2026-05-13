@@ -123,6 +123,19 @@ func stringValueOrNull(v string) types.String {
 	return types.StringValue(v)
 }
 
+// stringValueOrNullFromPointer is stringValueOrNull for *string inputs.
+// Returns null when the pointer is nil or points to "". Use for Optional
+// (non-Computed) string attributes in Read paths so that an API
+// response carrying an empty string for an unset field doesn't trip
+// terraform-core's plan-apply consistency check (which sees plan-null
+// vs apply-"" as a regression).
+func stringValueOrNullFromPointer(p *string) types.String {
+	if p == nil {
+		return types.StringNull()
+	}
+	return stringValueOrNull(*p)
+}
+
 // stringPointerFromAttr is the inverse: null / unknown framework values
 // project to a nil *string, suitable for ldapi optional-field patches.
 func stringPointerFromAttr(v types.String) *string {

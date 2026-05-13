@@ -119,6 +119,39 @@ func TestSetParity_TagsReorderInvariant(t *testing.T) {
 	}
 }
 
+// TestStringValueOrNullFromPointer pins the contract for the helper
+// that fixes the plan-apply consistency bug surfaced by
+// TestAccTeamRoleMapping_* in CI: an Optional (non-Computed) string
+// attribute whose API response is nil or "" MUST land in state as
+// types.StringNull(), not types.StringValue(""). Otherwise
+// terraform-core compares plan(null) vs apply("") and rejects the
+// apply with "Provider produced inconsistent result after apply".
+func TestStringValueOrNullFromPointer(t *testing.T) {
+	t.Run("nil pointer maps to null", func(t *testing.T) {
+		got := stringValueOrNullFromPointer(nil)
+		if !got.IsNull() {
+			t.Fatalf("nil pointer should produce StringNull, got %v", got)
+		}
+	})
+	t.Run("pointer to empty string maps to null", func(t *testing.T) {
+		s := ""
+		got := stringValueOrNullFromPointer(&s)
+		if !got.IsNull() {
+			t.Fatalf("pointer to empty string should produce StringNull, got %v", got)
+		}
+	})
+	t.Run("pointer to non-empty value passes through", func(t *testing.T) {
+		s := "hello"
+		got := stringValueOrNullFromPointer(&s)
+		if got.IsNull() {
+			t.Fatalf("non-empty pointer should produce a value, got null")
+		}
+		if got.ValueString() != "hello" {
+			t.Fatalf("expected \"hello\", got %q", got.ValueString())
+		}
+	})
+}
+
 // TestSetParity_CustomRolesNullVsEmpty pins the framework Set
 // null-vs-empty distinction. SDKv2 TypeSet collapsed both to an empty
 // slice; the framework Set distinguishes them. The setFromStringSlice

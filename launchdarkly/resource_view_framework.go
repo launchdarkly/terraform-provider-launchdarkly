@@ -313,11 +313,8 @@ func (r *ViewResource) readIntoModel(
 	data.ProjectKey = types.StringValue(view.ProjectKey)
 	data.Key = types.StringValue(view.Key)
 	data.Name = types.StringValue(view.Name)
-	if view.Description != nil {
-		data.Description = types.StringValue(*view.Description)
-	} else {
-		data.Description = types.StringValue("")
-	}
+	// Optional-only attr: null-when-empty for plan-apply consistency.
+	data.Description = stringValueOrNullFromPointer(view.Description)
 	if view.Archived != nil {
 		data.Archived = types.BoolValue(*view.Archived)
 	} else {

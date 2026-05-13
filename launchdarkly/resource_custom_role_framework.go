@@ -340,11 +340,10 @@ func (r *CustomRoleResource) readIntoModel(
 	data.ID = types.StringValue(customRole.Key)
 	data.Key = types.StringValue(customRole.Key)
 	data.Name = types.StringValue(customRole.Name)
-	if customRole.Description != nil {
-		data.Description = types.StringValue(*customRole.Description)
-	} else {
-		data.Description = types.StringValue("")
-	}
+	// Optional-only attr: write null when API returns empty/nil so
+	// terraform-core's plan-apply consistency check doesn't see
+	// plan(null) vs apply(""). See stringValueOrNullFromPointer.
+	data.Description = stringValueOrNullFromPointer(customRole.Description)
 	if customRole.BasePermissions != nil {
 		data.BasePermissions = types.StringValue(*customRole.BasePermissions)
 	} else {

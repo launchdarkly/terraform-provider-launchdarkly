@@ -261,8 +261,9 @@ func (r *WebhookResource) readIntoModel(
 	data.ID = types.StringValue(webhook.Id)
 	data.URL = types.StringValue(webhook.Url)
 	data.On = types.BoolValue(webhook.On)
-	data.Name = stringValueFromPointer(webhook.Name)
-	data.Secret = stringValueFromPointer(webhook.Secret)
+	// Optional-only attrs: null-when-empty for plan-apply consistency.
+	data.Name = stringValueOrNullFromPointer(webhook.Name)
+	data.Secret = stringValueOrNullFromPointer(webhook.Secret)
 
 	tagsSet, d := setFromStringSlice(ctx, webhook.Tags)
 	if d.HasError() {
