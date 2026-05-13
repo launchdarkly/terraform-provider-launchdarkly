@@ -77,19 +77,6 @@ func policyFromResourceData(val interface{}) ldapi.StatementPost {
 	return p
 }
 
-func policiesToResourceData(policies []ldapi.Statement) interface{} {
-	transformed := make([]interface{}, len(policies))
-
-	for i, p := range policies {
-		transformed[i] = map[string]interface{}{
-			RESOURCES: p.Resources,
-			ACTIONS:   p.Actions,
-			EFFECT:    p.Effect,
-		}
-	}
-	return transformed
-}
-
 // https://godoc.org/github.com/hashicorp/terraform/helper/schema#SchemaSetFunc
 type hashStatement struct {
 	Resources []string
