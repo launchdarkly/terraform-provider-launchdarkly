@@ -119,6 +119,53 @@ func TestSetParity_TagsReorderInvariant(t *testing.T) {
 	}
 }
 
+// TestSetFromStringSlicePreservingPlan pins the plan-aware variant
+// used by team_member.custom_roles, view.tags, webhook.tags. It must
+// preserve the user's null-vs-empty distinction on the empty-API
+// case so terraform-core's plan-apply consistency check accepts
+// both `attr = []` and an omitted attribute. Surfaced via
+// TestAccFeatureFlag_WithMaintainer which sets `custom_roles = []`
+// explicitly on a launchdarkly_team_member.
+func TestSetFromStringSlicePreservingPlan(t *testing.T) {
+	ctx := context.Background()
+	emptySet, _ := types.SetValueFrom(ctx, types.StringType, []string{})
+	populated, _ := types.SetValueFrom(ctx, types.StringType, []string{"a"})
+
+	t.Run("nil API + null plan stays null", func(t *testing.T) {
+		got, _ := setFromStringSlicePreservingPlan(ctx, nil, types.SetNull(types.StringType))
+		if !got.IsNull() {
+			t.Fatalf("expected null, got %v", got)
+		}
+	})
+	t.Run("nil API + empty-set plan stays empty set", func(t *testing.T) {
+		got, _ := setFromStringSlicePreservingPlan(ctx, nil, emptySet)
+		if got.IsNull() {
+			t.Fatalf("expected non-null empty set, got null")
+		}
+		if len(got.Elements()) != 0 {
+			t.Fatalf("expected 0 elements, got %d", len(got.Elements()))
+		}
+	})
+	t.Run("nil API + populated plan flips to empty set (drift)", func(t *testing.T) {
+		got, _ := setFromStringSlicePreservingPlan(ctx, nil, populated)
+		if got.IsNull() {
+			t.Fatalf("expected non-null empty set, got null")
+		}
+		if len(got.Elements()) != 0 {
+			t.Fatalf("expected drift to empty set (0 elements), got %d", len(got.Elements()))
+		}
+	})
+	t.Run("populated API overrides null plan", func(t *testing.T) {
+		got, _ := setFromStringSlicePreservingPlan(ctx, []string{"x"}, types.SetNull(types.StringType))
+		if got.IsNull() {
+			t.Fatalf("expected populated set, got null")
+		}
+		if len(got.Elements()) != 1 {
+			t.Fatalf("expected 1 element, got %d", len(got.Elements()))
+		}
+	})
+}
+
 // TestSetFromStringSliceOrNull pins the Set-flavoured analogue of
 // TestStringValueOrNullFromPointer. Same root cause: writing an empty
 // non-null Set on Read when the user's HCL omitted the attribute

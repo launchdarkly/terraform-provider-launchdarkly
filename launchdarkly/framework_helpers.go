@@ -153,6 +153,35 @@ func setFromStringSliceOrNull(ctx context.Context, vals []string) (types.Set, di
 	return types.SetValueFrom(ctx, types.StringType, vals)
 }
 
+// setFromStringSlicePreservingPlan is the plan-aware variant: it
+// preserves the user's null-vs-empty intent when the API returns
+// nothing for an Optional Set attribute. Three cases:
+//
+//  1. API returns N>0 values → write the populated Set (matches API
+//     truth; also detects drift if a populated state diverged).
+//  2. API returns 0 values AND `current` is null → keep null. This is
+//     the "user omitted the attribute" case; writing an empty Set
+//     would trip terraform-core's plan-apply consistency check (the
+//     bug fixed by setFromStringSliceOrNull).
+//  3. API returns 0 values AND `current` is non-null → write an
+//     explicit empty Set. This covers two scenarios with the same
+//     correct output: (a) user wrote `attr = []` in HCL, plan is
+//     empty Set, apply must echo empty Set; (b) drift from populated
+//     to empty, where writing empty surfaces the diff on next plan.
+//
+// Callers pass the existing model field (the plan value during Create,
+// the state value during Read-refresh) as `current` so the helper can
+// preserve user intent.
+func setFromStringSlicePreservingPlan(ctx context.Context, vals []string, current types.Set) (types.Set, diag.Diagnostics) {
+	if len(vals) > 0 {
+		return types.SetValueFrom(ctx, types.StringType, vals)
+	}
+	if current.IsNull() {
+		return types.SetNull(types.StringType), nil
+	}
+	return types.SetValueFrom(ctx, types.StringType, []string{})
+}
+
 // stringPointerFromAttr is the inverse: null / unknown framework values
 // project to a nil *string, suitable for ldapi optional-field patches.
 func stringPointerFromAttr(v types.String) *string {

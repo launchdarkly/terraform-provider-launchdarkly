@@ -337,8 +337,8 @@ func (r *ViewResource) readIntoModel(
 		}
 	}
 
-	// Optional-only Set attr: write null when API returns no tags.
-	tagsSet, d := setFromStringSliceOrNull(ctx, view.Tags)
+	// Optional-only Set attr with plan-aware null-vs-empty handling.
+	tagsSet, d := setFromStringSlicePreservingPlan(ctx, view.Tags, data.Tags)
 	if d.HasError() {
 		for _, e := range d.Errors() {
 			diags.AddError(e.Summary(), e.Detail())

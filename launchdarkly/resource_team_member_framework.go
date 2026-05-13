@@ -295,9 +295,11 @@ func (r *TeamMemberResource) readIntoModel(
 		diags.AddError("Failed to resolve custom role keys", err.Error())
 		return
 	}
-	// Optional-only Set attr: write null (not empty Set) when the API
-	// returns no custom roles so plan(null) matches apply.
-	rolesSet, d := setFromStringSliceOrNull(ctx, customRoleKeys)
+	// Optional-only Set attr with plan-aware null-vs-empty handling:
+	// preserves the user's distinction between `custom_roles = []`
+	// (plan empty Set, apply must echo empty Set) and omitted
+	// (plan null, apply must echo null). See helper godoc.
+	rolesSet, d := setFromStringSlicePreservingPlan(ctx, customRoleKeys, data.CustomRoles)
 	if d.HasError() {
 		for _, e := range d.Errors() {
 			diags.AddError(e.Summary(), e.Detail())
