@@ -5,9 +5,35 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math/rand"
 	"net/http"
 	"strings"
+	"time"
 )
+
+// LD's IP allowlist API persists the whole allowlist as a single account
+// document. Concurrent writes (POST/PATCH/DELETE on /api/v2/account/ip-allowlist)
+// race on the document's underlying version and the loser comes back with a
+// 409 "Conflict creating IP allowlist entry" even when the IPs themselves
+// don't collide. The acceptance tests in this file each call resource.ParallelTest
+// so they fan out within a single shard, and concurrent CI runs against the
+// same blitz LD account add more contention. The retryablehttp policy that
+// powers fallbackClient does not retry 409s, so a single lost race is enough
+// to fail the build.
+//
+// We treat write 409s as transient and retry with jittered backoff, capped
+// at 4 attempts (~3s total worst case). Read 409s would be unusual but the
+// same loop applies to keep the helper uniform.
+const (
+	ipAllowlistMaxAttempts = 4
+	ipAllowlistBaseBackoff = 200 * time.Millisecond
+)
+
+func ipAllowlistBackoff(attempt int) time.Duration {
+	d := ipAllowlistBaseBackoff * time.Duration(1<<attempt) //nolint:gosec // attempt is bounded by ipAllowlistMaxAttempts
+	jitter := time.Duration(rand.Int63n(int64(ipAllowlistBaseBackoff)))
+	return d + jitter
+}
 
 type ipAllowlistResponse struct {
 	SessionAllowlistEnabled  bool                       `json:"sessionAllowlistEnabled"`
@@ -43,21 +69,51 @@ type ipAllowlistErrorResponse struct {
 const ipAllowlistBasePath = "/api/v2/account/ip-allowlist"
 
 func ipAllowlistRequest(client *Client, method, path string, body interface{}) (*http.Response, []byte, error) {
+	// Marshal once; the request body itself is short and re-using the
+	// buffer per attempt is simpler than serializing on every retry.
+	var rawBody []byte
+	if body != nil {
+		var err error
+		rawBody, err = json.Marshal(body)
+		if err != nil {
+			return nil, nil, fmt.Errorf("failed to marshal request body: %w", err)
+		}
+	}
+
 	endpoint := fmt.Sprintf("%s%s", client.apiHost, path)
 	if !strings.HasPrefix(endpoint, "http") {
 		endpoint = "https://" + endpoint
 	}
 
-	var bodyReader io.Reader
-	if body != nil {
-		rawBody, err := json.Marshal(body)
-		if err != nil {
-			return nil, nil, fmt.Errorf("failed to marshal request body: %w", err)
+	var (
+		resp     *http.Response
+		respBody []byte
+		lastErr  error
+	)
+	for attempt := 0; attempt < ipAllowlistMaxAttempts; attempt++ {
+		var bodyReader io.Reader
+		if rawBody != nil {
+			bodyReader = bytes.NewReader(rawBody)
 		}
-		bodyReader = bytes.NewBuffer(rawBody)
+		resp, respBody, lastErr = ipAllowlistDoOnce(client, method, endpoint, bodyReader)
+		// Retry only on 409 Conflict, which we know LD returns for
+		// optimistic-concurrency races on the account allowlist
+		// document. Everything else (transport errors, 4xx other
+		// than 409, 5xx) falls back to the underlying retryablehttp
+		// policy already applied by fallbackClient.
+		if resp == nil || resp.StatusCode != http.StatusConflict {
+			return resp, respBody, lastErr
+		}
+		if attempt == ipAllowlistMaxAttempts-1 {
+			return resp, respBody, lastErr
+		}
+		time.Sleep(ipAllowlistBackoff(attempt))
 	}
+	return resp, respBody, lastErr
+}
 
-	req, err := http.NewRequest(method, endpoint, bodyReader)
+func ipAllowlistDoOnce(client *Client, method, endpoint string, body io.Reader) (*http.Response, []byte, error) {
+	req, err := http.NewRequest(method, endpoint, body)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to create request: %w", err)
 	}
@@ -74,10 +130,10 @@ func ipAllowlistRequest(client *Client, method, path string, body interface{}) (
 		return resp, nil, fmt.Errorf("request failed: %w", err)
 	}
 
-	respBody, err := io.ReadAll(resp.Body)
+	respBody, readErr := io.ReadAll(resp.Body)
 	defer resp.Body.Close()
-	if err != nil {
-		return resp, nil, fmt.Errorf("failed to read response body: %w", err)
+	if readErr != nil {
+		return resp, nil, fmt.Errorf("failed to read response body: %w", readErr)
 	}
 
 	if resp.StatusCode >= 400 {
