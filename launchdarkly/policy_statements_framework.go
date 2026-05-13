@@ -17,10 +17,14 @@ package launchdarkly
 
 import (
 	"context"
+	"errors"
 
+	"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	dsschema "github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
+	rsschema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	ldapi "github.com/launchdarkly/api-client-go/v22"
@@ -75,11 +79,139 @@ func frameworkPolicyStatementsDataSourceBlock(description string) dsschema.ListN
 	}
 }
 
+// frameworkPolicyStatementsResourceBlock returns a ListNestedBlock for
+// use in resource.Schema. The required flag controls whether the block
+// itself is required; inner attrs preserve the SDKv2 flag matrix
+// (Optional + MinItems=1 via list-size validator). Inner descriptions
+// and the effect enum validator mirror policy_statements_helper.go.
+func frameworkPolicyStatementsResourceBlock(required bool, description string, deprecated string) rsschema.ListNestedBlock {
+	block := rsschema.ListNestedBlock{
+		Description:        description,
+		DeprecationMessage: deprecated,
+		NestedObject: rsschema.NestedBlockObject{
+			Attributes: map[string]rsschema.Attribute{
+				RESOURCES: rsschema.ListAttribute{
+					Optional:    true,
+					ElementType: types.StringType,
+					Description: "The list of resource specifiers defining the resources to which the statement applies.",
+					Validators: []validator.List{
+						listvalidator.SizeAtLeast(1),
+					},
+				},
+				NOT_RESOURCES: rsschema.ListAttribute{
+					Optional:    true,
+					ElementType: types.StringType,
+					Description: "The list of resource specifiers defining the resources to which the statement does not apply.",
+					Validators: []validator.List{
+						listvalidator.SizeAtLeast(1),
+					},
+				},
+				ACTIONS: rsschema.ListAttribute{
+					Optional:    true,
+					ElementType: types.StringType,
+					Description: "The list of action specifiers defining the actions to which the statement applies.\nEither `actions` or `not_actions` must be specified. For a list of available actions read [Actions reference](https://docs.launchdarkly.com/home/account-security/custom-roles/actions#actions-reference).",
+					Validators: []validator.List{
+						listvalidator.SizeAtLeast(1),
+					},
+				},
+				NOT_ACTIONS: rsschema.ListAttribute{
+					Optional:    true,
+					ElementType: types.StringType,
+					Description: "The list of action specifiers defining the actions to which the statement does not apply.",
+					Validators: []validator.List{
+						listvalidator.SizeAtLeast(1),
+					},
+				},
+				EFFECT: rsschema.StringAttribute{
+					Required:    true,
+					Description: "Either `allow` or `deny`. This argument defines whether the statement allows or denies access to the named resources and actions.",
+					Validators: []validator.String{
+						oneOfValidator{allowed: []string{"allow", "deny"}},
+					},
+				},
+			},
+		},
+	}
+	if required {
+		// SDKv2 emits MinItems=1 on the outer block when the schema is
+		// not Computed (see policyStatementsSchema). Mirror that for
+		// the resource variant via a list-size validator.
+		block.Validators = []validator.List{listvalidator.SizeAtLeast(1)}
+	}
+	return block
+}
+
+// frameworkPolicyStatementsFromList converts a framework types.List of
+// policy-statement objects back into an []ldapi.StatementPost (used by
+// resource Create/Update calls).
+func frameworkPolicyStatementsFromList(ctx context.Context, list types.List) ([]ldapi.StatementPost, diag.Diagnostics) {
+	var diags diag.Diagnostics
+	if list.IsNull() || list.IsUnknown() {
+		return nil, diags
+	}
+	var elements []frameworkPolicyStatementModel
+	diags.Append(list.ElementsAs(ctx, &elements, false)...)
+	if diags.HasError() {
+		return nil, diags
+	}
+	out := make([]ldapi.StatementPost, 0, len(elements))
+	for _, e := range elements {
+		stmt, d := e.toLDAPI()
+		diags.Append(d...)
+		if diags.HasError() {
+			return nil, diags
+		}
+		out = append(out, stmt)
+	}
+	return out, diags
+}
+
+type frameworkPolicyStatementModel struct {
+	Resources    []string `tfsdk:"resources"`
+	NotResources []string `tfsdk:"not_resources"`
+	Actions      []string `tfsdk:"actions"`
+	NotActions   []string `tfsdk:"not_actions"`
+	Effect       string   `tfsdk:"effect"`
+}
+
+func (m frameworkPolicyStatementModel) toLDAPI() (ldapi.StatementPost, diag.Diagnostics) {
+	var diags diag.Diagnostics
+	if len(m.Resources) > 0 && len(m.NotResources) > 0 {
+		diags.AddError("Invalid policy statement", errors.New("policy statements cannot contain both 'resources' and 'not_resources'").Error())
+	}
+	if len(m.Resources) == 0 && len(m.NotResources) == 0 {
+		diags.AddError("Invalid policy statement", errors.New("policy statements must contain either 'resources' or 'not_resources'").Error())
+	}
+	if len(m.Actions) > 0 && len(m.NotActions) > 0 {
+		diags.AddError("Invalid policy statement", errors.New("policy statements cannot contain both 'actions' and 'not_actions'").Error())
+	}
+	if len(m.Actions) == 0 && len(m.NotActions) == 0 {
+		diags.AddError("Invalid policy statement", errors.New("policy statements must contain either 'actions' or 'not_actions'").Error())
+	}
+	if diags.HasError() {
+		return ldapi.StatementPost{}, diags
+	}
+	stmt := ldapi.StatementPost{Effect: m.Effect}
+	if len(m.Resources) > 0 {
+		stmt.SetResources(m.Resources)
+	}
+	if len(m.NotResources) > 0 {
+		stmt.SetNotResources(m.NotResources)
+	}
+	if len(m.Actions) > 0 {
+		stmt.SetActions(m.Actions)
+	}
+	if len(m.NotActions) > 0 {
+		stmt.SetNotActions(m.NotActions)
+	}
+	return stmt, diags
+}
+
 // frameworkPolicyStatementsValue converts an LD-API []Statement into a
 // framework types.List of objects matching
-// frameworkPolicyStatementsObjectAttrTypes. Empty slice maps to an
-// empty list (not null) so state writes stay deterministic across
-// plans.
+// frameworkPolicyStatementsObjectAttrTypes. Empty inner slices project
+// to null lists (matching SDKv2 Optional-only semantics where absent
+// inner attrs are not present in state).
 func frameworkPolicyStatementsValue(ctx context.Context, statements []ldapi.Statement) (basetypes.ListValue, diag.Diagnostics) {
 	objectType := types.ObjectType{AttrTypes: frameworkPolicyStatementsObjectAttrTypes}
 
@@ -87,14 +219,30 @@ func frameworkPolicyStatementsValue(ctx context.Context, statements []ldapi.Stat
 	var diags diag.Diagnostics
 
 	for _, s := range statements {
-		resources, d := listFromStringSlice(ctx, s.Resources)
-		diags.Append(d...)
-		notResources, d := listFromStringSlice(ctx, s.NotResources)
-		diags.Append(d...)
-		actions, d := listFromStringSlice(ctx, s.Actions)
-		diags.Append(d...)
-		notActions, d := listFromStringSlice(ctx, s.NotActions)
-		diags.Append(d...)
+		resources := types.ListNull(types.StringType)
+		if len(s.Resources) > 0 {
+			v, d := listFromStringSlice(ctx, s.Resources)
+			diags.Append(d...)
+			resources = v
+		}
+		notResources := types.ListNull(types.StringType)
+		if len(s.NotResources) > 0 {
+			v, d := listFromStringSlice(ctx, s.NotResources)
+			diags.Append(d...)
+			notResources = v
+		}
+		actions := types.ListNull(types.StringType)
+		if len(s.Actions) > 0 {
+			v, d := listFromStringSlice(ctx, s.Actions)
+			diags.Append(d...)
+			actions = v
+		}
+		notActions := types.ListNull(types.StringType)
+		if len(s.NotActions) > 0 {
+			v, d := listFromStringSlice(ctx, s.NotActions)
+			diags.Append(d...)
+			notActions = v
+		}
 
 		obj, d := types.ObjectValue(frameworkPolicyStatementsObjectAttrTypes, map[string]attr.Value{
 			RESOURCES:     resources,

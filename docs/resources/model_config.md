@@ -5,7 +5,6 @@ subcategory: ""
 description: |-
   Provides a LaunchDarkly model config resource.
   This resource allows you to create and manage AI model configurations within your LaunchDarkly project. Since the API does not support updates, any field change will force recreation of the resource.
-  ~> Important: If an launchdarkly_ai_config_variation references this model config via model_config_key, use a Terraform resource reference (e.g. launchdarkly_model_config.example.key) so Terraform can order destruction correctly. A literal string key will cause the delete to fail because the API rejects deleting a model config that is still in use.
 ---
 
 # launchdarkly_model_config (Resource)
@@ -13,8 +12,6 @@ description: |-
 Provides a LaunchDarkly model config resource.
 
 This resource allows you to create and manage AI model configurations within your LaunchDarkly project. Since the API does not support updates, any field change will force recreation of the resource.
-
-~> **Important:** If an `launchdarkly_ai_config_variation` references this model config via `model_config_key`, use a Terraform resource reference (e.g. `launchdarkly_model_config.example.key`) so Terraform can order destruction correctly. A literal string key will cause the delete to fail because the API rejects deleting a model config that is still in use.
 
 ## Example Usage
 
@@ -48,12 +45,12 @@ resource "launchdarkly_model_config" "example" {
 - `icon` (String) The icon for the model config. A change in this field will force the destruction of the existing resource and the creation of a new one.
 - `model_provider` (String) The provider name for the model config (e.g. `openai`, `anthropic`). A change in this field will force the destruction of the existing resource and the creation of a new one.
 - `params` (String) A JSON string representing the model parameters (e.g. `{"temperature": 0.7, "maxTokens": 4096}`). A change in this field will force the destruction of the existing resource and the creation of a new one.
-- `tags` (Set of String) Tags associated with your resource.
+- `tags` (Set of String) Tags associated with your resource. A change in this field will force the destruction of the existing resource and the creation of a new one.
 
 ### Read-Only
 
 - `global` (Boolean) Whether the model config is available globally.
-- `id` (String) The ID of this resource.
+- `id` (String) The ID in the format `project_key/key`.
 - `version` (Number) The version of the model config.
 
 ## Import

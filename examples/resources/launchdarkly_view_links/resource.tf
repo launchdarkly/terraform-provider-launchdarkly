@@ -15,7 +15,7 @@ resource "launchdarkly_view_links" "frontend_team" {
     "feature-filters",
     "feature-analytics",
     "feature-dark-mode",
-    # ... can easily scale to 100+ flags
+    # Add more flag keys here to scale beyond 100 flags
   ]
 
   # Link segments relevant to this team's view

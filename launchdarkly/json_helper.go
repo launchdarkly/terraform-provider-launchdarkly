@@ -50,11 +50,6 @@ func validateJsonSchemaStringFunc(v interface{}, k string) (warns []string, errs
 	return nil, nil
 }
 
-// validateJsonSchemaStringDiagFunc returns a ValidateDiagFunc that validates a string is valid JSON Schema.
-func validateJsonSchemaStringDiagFunc() schema.SchemaValidateDiagFunc {
-	return validation.ToDiagFunc(validateJsonSchemaStringFunc)
-}
-
 // suppressEquivalentJsonDiffs suppresses diffs caused by semantically equivalent JSON values
 // (e.g., different key ordering).
 func suppressEquivalentJsonDiffs(k, old, new string, d *schema.ResourceData) bool {

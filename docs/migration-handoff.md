@@ -1,11 +1,11 @@
-# Migration handoff — session 2026-05-12
+# Migration handoff
 
 > Live status doc. Each session updates this; check git log on the
 > moonshots branches for ground truth.
 
 ## Phase 0 — Foundation: COMPLETE
 
-Stack: `moonshots/tpf/0.1-branch-ci` → ... → `moonshots/tpf/0.9a-parity-bootstrap`.
+Stack: `moonshots/tpf/0.1-branch-ci` → … → `moonshots/tpf/0.9a-parity-bootstrap`.
 9 branches, 9 commits, all green on local `make fmtcheck && go vet && go build`.
 
 | Sub-phase | Branch | Status |
@@ -20,91 +20,119 @@ Stack: `moonshots/tpf/0.1-branch-ci` → ... → `moonshots/tpf/0.9a-parity-boot
 | 0.8 | `moonshots/tpf/0.8-contributor-docs` | done — `CONTRIBUTING.md` + PR template migration metadata |
 | 0.9a | `moonshots/tpf/0.9a-parity-bootstrap` | done — set-hash parity inventory + deprecation carry-forward docs |
 
-**Phase 0 promotion gate**: ready. Recommended next action is `gh stack
-submit --auto --draft` from the 0.9a branch (with the maintainer's
-review) so CI runs against the full stack on the moonshots integration
-branch.
+## Phase 1 — Data Source Migration: COMPLETE (19/19)
 
-## Phase 1 — Data Source Migration: STARTED (1 of 19)
+Stack: `moonshots/tpf/1.1.4-ds-model-config` → ... → `moonshots/tpf/1.3.7-ds-feature-flag-environment`.
 
-Stack: `moonshots/tpf/1.1.4-ds-model-config` (currently a 1-branch stack
-rooted on `moonshots/tpf/0.9a-parity-bootstrap`).
+| Sub-phase | Data source | Branch |
+|---|---|---|
+| 1.1.4 | model_config | `moonshots/tpf/1.1.4-ds-model-config` |
+| 1.1.1 | relay_proxy_configuration | `moonshots/tpf/1.1.1-ds-relay-proxy` |
+| 1.1.2 | webhook | `moonshots/tpf/1.1.2-ds-webhook` |
+| 1.1.3 | flag_trigger | `moonshots/tpf/1.1.3-ds-flag-trigger` |
+| 1.1.5 | audit_log_subscription | `moonshots/tpf/1.1.5-ds-audit-log-subscription` |
+| 1.1.6 | metric | `moonshots/tpf/1.1.6-ds-metric` |
+| 1.1.7 | ai_config | `moonshots/tpf/1.1.7-ds-ai-config` |
+| 1.1.8 | ai_config_variation | `moonshots/tpf/1.1.8-ds-ai-config-variation` |
+| 1.1.9 | ai_tool | `moonshots/tpf/1.1.9-ds-ai-tool` |
+| 1.2.1 | environment | `moonshots/tpf/1.2.1-ds-environment` |
+| 1.2.2 | project | `moonshots/tpf/1.2.2-ds-project` |
+| 1.2.3 | flag_templates | `moonshots/tpf/1.2.3-ds-flag-templates` |
+| 1.3.1 | team | `moonshots/tpf/1.3.1-ds-team` |
+| 1.3.2 | team_member | `moonshots/tpf/1.3.2-ds-team-member` |
+| 1.3.3 | team_members | `moonshots/tpf/1.3.3-ds-team-members` |
+| 1.3.4 | view | `moonshots/tpf/1.3.4-ds-view` |
+| 1.3.5 | segment | `moonshots/tpf/1.3.5-ds-segment` |
+| 1.3.6 | feature_flag | `moonshots/tpf/1.3.6-ds-feature-flag` |
+| 1.3.7 | feature_flag_environment | `moonshots/tpf/1.3.7-ds-feature-flag-environment` |
 
-| Sub-phase | Status |
-|---|---|
-| 1.1.4 `launchdarkly_model_config` | done — `data_source_model_config_framework.go`; SDKv2 file deleted; registered on framework provider; existing acceptance test compiles against the new factory |
-| 1.1.1 `launchdarkly_relay_proxy_configuration` | pending |
-| 1.1.2 `launchdarkly_webhook` | pending |
-| 1.1.3 `launchdarkly_flag_trigger` | pending |
-| 1.1.5 `launchdarkly_audit_log_subscription` | pending |
-| 1.1.6 `launchdarkly_metric` | pending |
-| 1.1.7 `launchdarkly_ai_config` | pending |
-| 1.1.8 `launchdarkly_ai_config_variation` | pending |
-| 1.1.9 `launchdarkly_ai_tool` | pending |
-| 1.2.x (nested-shape) | pending — `environment`, `project`, `flag_templates`, `ai_config_variation` data source |
-| 1.3.x (complex) | pending — `segment`, `feature_flag`, `feature_flag_environment`, `view` |
+Shared framework helpers introduced during Phase 1 (reused by the
+upcoming resource migrations in Phases 2-4):
 
-**Pattern is proven by 1.1.4.** The model_config migration commit is
-the template for the remaining 18 data sources. Per-data-source effort
-estimate (after pattern is internalised): 30-60 min for 1.1.x sources,
-1-2 hours for 1.2.x, 2-4 hours for 1.3.x sources.
+- `policy_statements_framework.go` — block schema + value converter
+  for the `policy` / `statements` block.
+- `approvals_framework.go` — `approval_settings` block schema and
+  ApprovalSettings -> framework value converter.
+- `role_attributes_framework.go` — `role_attributes` set block.
+- `clauses_framework.go` — clauses ListNestedBlock + Clause slice
+  converter (consumed by segment + feature_flag_environment).
+- `team_member_helper.go` — extracted `getTeamMemberByEmail` +
+  `getAllTeamMembers` so the legacy SDKv2 data source files could be
+  deleted while preserving the helpers for the resource side.
+- `stringValueFromPointer` (in `data_source_team_framework.go`) — used
+  across resources whose ldapi fields are `*string`.
 
-## Phases 2-7: NOT STARTED
+## Phase 2 — Leaf Resource Migration: STARTED (2 of 9)
 
-Per the plan, these depend on Phase 1 being live and require:
+Stack: `moonshots/tpf/2.5-resource-model-config` → `moonshots/tpf/2.3-resource-ai-tool`.
 
-- Phase 2 (9 leaf resources): each migration writes a state-compat
-  fixture; effort ~2-4 days per resource for a human, hard to compress
-  in an autonomous session because each needs a v2.29 fixture captured
-  against a real LD test account.
-- Phase 3 (10 medium resources): same risks; CustomizeDiff →
-  ModifyPlan needs careful per-resource thought.
-- Phase 4 (4 complex resources): project / segment / feature_flag /
-  feature_flag_environment. 1-2 weeks per resource.
-- Phase 5 (cutover): only viable once Phases 2-4 land.
-- Phase 6 (additive features): post-cutover.
-- Phase 7 (release): rolling per-phase soak.
+| Sub-phase | Resource | Status |
+|---|---|---|
+| 2.5 | `launchdarkly_model_config` | done — full Create/Read/Update/Delete/ImportState; API has no update so every attr carries `RequiresReplace`; Delete preserves "still in use" guidance |
+| 2.3 | `launchdarkly_ai_tool` | done — full Create/Read/Update (PATCH-style)/Delete; ConflictsWith between maintainer_id and maintainer_team_key implemented as `resource.ConfigValidator` |
+| 2.1 | `launchdarkly_relay_proxy_configuration` | pending |
+| 2.2 | `launchdarkly_webhook` | pending |
+| 2.4 | `launchdarkly_flag_trigger` | pending |
+| 2.6 | `launchdarkly_team_member` | pending |
+| 2.7 | `launchdarkly_custom_role` | pending — carry `policy` deprecation forward |
+| 2.8 | `launchdarkly_access_token` | pending — carry `expire` + `policy_statements` deprecations forward |
+| 2.9 | `launchdarkly_view` | pending |
 
-**Honest scoping note**: Phases 2-7 are months of engineering work even
-for an experienced human. Attempting them in autonomous batches risks
-shipping unsafe migrations (state-fixture parity is the existence test
-— without LD account access the harness can't run end-to-end).
+**State-compat fixtures**: NONE of the Phase 2 migrations have a
+fixture captured under `launchdarkly/testdata/state-fixtures/` yet —
+this requires running `scripts/capture-state-fixtures/capture.sh`
+against a real LD test account, which the autonomous-session execution
+could not perform. Per the per-PR checklist in
+MIGRATION_PLAN_NON_BREAKING.md §Per-PR, fixtures must be captured
+before each Phase 2 PR is promoted to `main`.
+
+## Phases 3-7: NOT STARTED
+
+| Phase | Scope | Blocker |
+|---|---|---|
+| 3 | 10 medium-complexity resources (destination, audit_log_subscription, metric, environment, ai_config, ai_config_variation, team, view_links / view_filter_links, ip_allowlist_*, flag_templates) | requires state-fixture parity per-resource |
+| 4.1 | `launchdarkly_project` (398 LOC + `customizeProjectDiff`) | high-risk; needs careful ModifyPlan port and fixtures for IIS / CSA edge cases |
+| 4.2 | `launchdarkly_segment` (419 LOC) | nested rules + clauses; existing shared helpers from Phase 1.3.5 reused |
+| 4.3 | `launchdarkly_feature_flag` (475 LOC) | variations + customPropertyHash parity; deprecated `include_in_snippet` carry-forward |
+| 4.4 | `launchdarkly_feature_flag_environment` (327 LOC + sprawling helpers) | deepest schema; CustomizeDiff -> ModifyPlan |
+| 5 | SDKv2 drop, test-pkg unification, protocol v6 cutover | unblocks after Phase 4 lands |
+| 6 | Additive features (write-only attrs, ephemeral resources, provider functions, actions) | post-cutover, ongoing |
+| 7 | Release ceremony | rolling per phase |
 
 ## How to continue
 
-### Land Phase 0
-1. Review the 9 Phase 0 commits (`git log moonshots/tpf/0.9a-parity-bootstrap`).
-2. From `moonshots/tpf/0.9a-parity-bootstrap`: `gh stack submit --auto
-   --draft`. Each sub-phase becomes one PR targeting
-   `moonshots/terraform-plugin-framework`.
-3. Wait for CI to go green on each PR; merge in order
-   (`gh stack` enforces base-branch chaining automatically).
+### Land what's done
 
-### Resume Phase 1
-1. `gh stack checkout moonshots/tpf/1.1.4-ds-model-config` (after Phase
-   0 lands; or work in parallel with the moonshots branch updated).
-2. For each pending data source: copy the model_config migration as a
-   template:
-   - Create `data_source_<name>_framework.go` with a
-     `datasource.DataSource` implementation.
-   - Add `Newxxx` to `plugin_provider.go::DataSources()`.
-   - Remove entry from `provider.go::DataSourcesMap`.
-   - Delete the old `data_source_launchdarkly_<name>.go`.
-   - Run `go build ./...`, `go vet ./...`, `make fmtcheck`.
-   - `gh stack add 1.1.N-ds-<name>` to push to the next branch in
-     this stack.
-   - Commit per data source.
-3. Promote to `main` as v2.30.0 after Phase 1.3 closes.
+From the top of each stack run `gh stack submit --auto --draft`. Each
+sub-phase becomes one PR targeting `moonshots/terraform-plugin-framework`.
+The stacks are independent (each phase rooted on the previous phase's
+top branch) so the order is:
 
-### Schema-compat callout
+1. Phase 0 stack (9 PRs)
+2. Phase 1 stack (19 PRs)
+3. Phase 2 stack (2 PRs)
 
-If Crossplane Upjet responds confirming framework-side runtime
-stripping behaves identically to SDKv2 (see
-`docs/migration-schema-compat-upjet.md`), tighten the matchers in
-`framework_schema_compat.go` against the live error shape. If they
-confirm it does *not* affect framework, schedule `schema_compat.go`
-deletion for Phase 5.2 and consider deleting
-`framework_schema_compat.go` too.
+Promotion to `main` follows the soak-then-batch rhythm in
+MIGRATION_PLAN_NON_BREAKING.md §Phase 7.
+
+### Resume Phase 2
+
+The model_config + ai_tool commits are the template. For each remaining
+leaf resource:
+
+1. Read the SDKv2 resource file + its `*_helper.go`.
+2. Create `resource_<name>_framework.go` mirroring the pattern:
+   - Model struct with `tfsdk` tags matching `keys.go`.
+   - `Schema()` with the same Required/Optional/Computed flags;
+     ForceNew → RequiresReplace plan modifier; Deprecated →
+     DeprecationMessage verbatim.
+   - Create/Read/Update/Delete/ImportState ports of the SDKv2 funcs.
+   - `readIntoModel` helper shared between Create and Read.
+3. Register on framework, remove from SDKv2 `ResourcesMap`, delete
+   SDKv2 file, build/vet/fmt, commit.
+4. Capture state-fixture via `scripts/capture-state-fixtures/capture.sh`
+   against a test LD account; assert via the
+   `launchdarkly/statecompat/` harness.
 
 ### Open items recorded in commit log
 
@@ -117,3 +145,25 @@ deletion for Phase 5.2 and consider deleting
   0.4 and rejected because it forced a grpc upgrade incompatible
   with terraform-plugin-sdk/v2. Re-evaluate after Phase 5.1 drops
   SDKv2.
+- The fork PR workflow (`.github/workflows/test-fork-pr.yml`) was
+  inspected during Phase 0.1 and confirmed not to filter on base ref
+  — it should accept fork PRs against the moonshots integration
+  branch without modification, but this was not verified end-to-end.
+
+### Stack inventory
+
+31 branches under `moonshots/tpf/*` plus the integration trunk
+`moonshots/terraform-plugin-framework`. Verify with:
+
+```bash
+git branch | grep moonshots/tpf | wc -l
+gh stack view --json | jq '.branches[].name'
+```
+
+### Crossplane coordination still open
+
+`docs/migration-schema-compat-upjet.md` notes the open question for
+the Crossplane provider-launchdarkly maintainers: does Upjet's
+runtime-schema-stripping behaviour reproduce on framework-served
+schemas? The defensive shim ships either way; this only affects whether
+`schema_compat.go` (the SDKv2 shim) can retire in Phase 5.2.

@@ -1,14 +1,10 @@
 package launchdarkly
 
 import (
-	"context"
 	"fmt"
-	"log"
 	"net/http"
 	"strings"
 
-	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	ldapi "github.com/launchdarkly/api-client-go/v22"
 )
 
@@ -18,107 +14,6 @@ func setViewRequestHeaders(req *http.Request, apiKey string) {
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("LD-API-Version", "beta")
 	req.Header.Set("User-Agent", fmt.Sprintf("launchdarkly-terraform-provider/%s", version))
-}
-
-func viewRead(ctx context.Context, d *schema.ResourceData, meta interface{}, isDataSource bool) diag.Diagnostics {
-	var diags diag.Diagnostics
-	client := meta.(*Client)
-	betaClient, err := newBetaClient(client.apiKey, client.apiHost, false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
-	if err != nil {
-		return diag.FromErr(err)
-	}
-
-	projectKey := d.Get(PROJECT_KEY).(string)
-	viewKey := d.Get(KEY).(string)
-
-	view, res, err := getView(betaClient, projectKey, viewKey)
-
-	if isStatusNotFound(res) && !isDataSource {
-		log.Printf("[WARN] failed to find view with key %q in project %q, removing from state if present", viewKey, projectKey)
-		diags = append(diags, diag.Diagnostic{
-			Severity: diag.Warning,
-			Summary:  fmt.Sprintf("[WARN] failed to find view with key %q in project %q, removing from state if present", viewKey, projectKey),
-		})
-		d.SetId("")
-		return diags
-	}
-	if err != nil {
-		return diag.Errorf("failed to get view with key %q in project %q: %v", viewKey, projectKey, err)
-	}
-
-	if isDataSource {
-		d.SetId(view.Id)
-	}
-	_ = d.Set(PROJECT_KEY, view.ProjectKey)
-	_ = d.Set(KEY, view.Key)
-	_ = d.Set(NAME, view.Name)
-	description := ""
-	if view.Description != nil {
-		description = *view.Description
-	}
-	_ = d.Set(DESCRIPTION, description)
-	archived := false
-	if view.Archived != nil {
-		archived = *view.Archived
-	}
-	_ = d.Set(ARCHIVED, archived)
-
-	// Set maintainer fields in state based on API response
-	// Since ExactlyOneOf validation ensures one maintainer field is always set,
-	// we can safely set the appropriate field and clear the other
-	if view.Maintainer != nil {
-		if view.Maintainer.Kind == "member" && view.Maintainer.MaintainerMember != nil {
-			_ = d.Set(MAINTAINER_ID, view.Maintainer.MaintainerMember.Id)
-			_ = d.Set(MAINTAINER_TEAM_KEY, "")
-		} else if view.Maintainer.Kind == "team" && view.Maintainer.MaintainerTeam != nil {
-			_ = d.Set(MAINTAINER_TEAM_KEY, view.Maintainer.MaintainerTeam.Key)
-			_ = d.Set(MAINTAINER_ID, "")
-		}
-	}
-
-	err = d.Set(TAGS, view.Tags)
-	if err != nil {
-		return diag.Errorf("could not set tags on view with key %q: %v", view.Key, err)
-	}
-
-	// For data sources, also fetch and set linked flags for discovery
-	if isDataSource {
-		linkedFlags, err := getLinkedResources(betaClient, projectKey, viewKey, FLAGS)
-		if err != nil {
-			// Log warning but don't fail the read for discovery data
-			log.Printf("[WARN] failed to get linked flags for view %q in project %q: %v", viewKey, projectKey, err)
-		} else {
-			flagKeys := make([]string, len(linkedFlags))
-			for i, flag := range linkedFlags {
-				flagKeys[i] = flag.ResourceKey
-			}
-			err = d.Set(LINKED_FLAGS, flagKeys)
-			if err != nil {
-				return diag.Errorf("could not set linked_flags on view with key %q: %v", view.Key, err)
-			}
-		}
-
-		// Also fetch and set linked segments for discovery
-		linkedSegments, err := getLinkedResources(betaClient, projectKey, viewKey, SEGMENTS)
-		if err != nil {
-			// Log warning but don't fail the read for discovery data
-			log.Printf("[WARN] failed to get linked segments for view %q in project %q: %v", viewKey, projectKey, err)
-		} else {
-			segments := make([]map[string]interface{}, len(linkedSegments))
-			for i, segment := range linkedSegments {
-				segments[i] = map[string]interface{}{
-					SEGMENT_ENVIRONMENT_ID: segment.EnvironmentId,
-					SEGMENT_KEY:            segment.ResourceKey,
-				}
-			}
-			err = d.Set(LINKED_SEGMENTS, segments)
-			if err != nil {
-				return diag.Errorf("could not set linked_segments on view with key %q: %v", view.Key, err)
-			}
-		}
-	}
-
-	return diags
 }
 
 type View struct {

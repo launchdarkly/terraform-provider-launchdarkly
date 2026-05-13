@@ -40,11 +40,11 @@ func (d *TeamMemberDataSource) Schema(_ context.Context, _ datasource.SchemaRequ
 			EMAIL:      schema.StringAttribute{Required: true, Description: "The unique email address associated with the team member."},
 			FIRST_NAME: schema.StringAttribute{Computed: true, Description: "First name."},
 			LAST_NAME:  schema.StringAttribute{Computed: true, Description: "Last name."},
-			ROLE:       schema.StringAttribute{Computed: true, Description: "The member's role (owner, reader, writer, admin)."},
+			ROLE:       schema.StringAttribute{Computed: true, Description: "The role associated with the team member. Possible roles are `owner`, `reader`, `writer`, or `admin`."},
 			CUSTOM_ROLES: schema.SetAttribute{
 				Computed:    true,
 				ElementType: types.StringType,
-				Description: "Custom role keys associated with the team member.",
+				Description: "The list of custom roles keys associated with the team member. Custom roles are only available to customers on an Enterprise plan. To learn more, [read about our pricing](https://launchdarkly.com/pricing/). To upgrade your plan, [contact LaunchDarkly Sales](https://launchdarkly.com/contact-sales/).",
 			},
 		},
 		Blocks: map[string]schema.Block{

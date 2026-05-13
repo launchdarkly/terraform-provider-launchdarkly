@@ -11,6 +11,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -25,10 +26,6 @@ type diagnosticsSink interface {
 	AddError(summary, detail string)
 }
 
-// configureResourceClient pulls the configured *Client out of a
-// resource.ConfigureRequest. Returns nil when the provider has not yet
-// supplied ResourceData (which Terraform Framework signals on the first
-// Configure pass) so callers can early-return without an error.
 func configureResourceClient(req resource.ConfigureRequest, resp *resource.ConfigureResponse) *Client {
 	if req.ProviderData == nil {
 		return nil
@@ -44,9 +41,6 @@ func configureResourceClient(req resource.ConfigureRequest, resp *resource.Confi
 	return client
 }
 
-// configureDataSourceClient is the data source analogue of
-// configureResourceClient. The framework distinguishes the two via different
-// request types so we expose a matching pair rather than a generic.
 func configureDataSourceClient(req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) *Client {
 	if req.ProviderData == nil {
 		return nil
@@ -62,10 +56,6 @@ func configureDataSourceClient(req datasource.ConfigureRequest, resp *datasource
 	return client
 }
 
-// addLdapiError appends an LD API error to a diagnostics sink, routing the
-// raw error through handleLdapiErr so the response body of a
-// GenericOpenAPIError surfaces to the user. The summary follows the framework
-// convention of a short headline; the detail is the unwrapped error string.
 func addLdapiError(diags diagnosticsSink, summary string, err error) {
 	if err == nil {
 		return
@@ -73,9 +63,8 @@ func addLdapiError(diags diagnosticsSink, summary string, err error) {
 	diags.AddError(summary, handleLdapiErr(err).Error())
 }
 
-// stringSliceFromSet converts a framework types.Set whose elements are
-// types.String into a plain []string. Null / unknown sets return an empty
-// slice rather than nil so callers can use len() uniformly.
+// stringSliceFromSet returns an empty (not nil) slice for null / unknown
+// inputs so callers can use len() uniformly.
 func stringSliceFromSet(ctx context.Context, set types.Set) ([]string, diag.Diagnostics) {
 	if set.IsNull() || set.IsUnknown() {
 		return []string{}, nil
@@ -85,17 +74,15 @@ func stringSliceFromSet(ctx context.Context, set types.Set) ([]string, diag.Diag
 	return out, diags
 }
 
-// setFromStringSlice builds a types.Set of types.String from a Go slice.
-// A nil input produces a non-null empty set so state writes don't flip
-// between null and empty across plans.
+// setFromStringSlice produces a non-null empty Set for nil input so state
+// writes don't flip between null and empty across plans.
 func setFromStringSlice(ctx context.Context, vals []string) (types.Set, diag.Diagnostics) {
-	if vals == nil {
-		vals = []string{}
+	if len(vals) == 0 {
+		return types.SetValueMust(types.StringType, []attr.Value{}), nil
 	}
 	return types.SetValueFrom(ctx, types.StringType, vals)
 }
 
-// stringSliceFromList is stringSliceFromSet for ordered lists.
 func stringSliceFromList(ctx context.Context, list types.List) ([]string, diag.Diagnostics) {
 	if list.IsNull() || list.IsUnknown() {
 		return []string{}, nil
@@ -105,7 +92,6 @@ func stringSliceFromList(ctx context.Context, list types.List) ([]string, diag.D
 	return out, diags
 }
 
-// listFromStringSlice is setFromStringSlice for ordered lists.
 func listFromStringSlice(ctx context.Context, vals []string) (types.List, diag.Diagnostics) {
 	if vals == nil {
 		vals = []string{}
@@ -113,14 +99,70 @@ func listFromStringSlice(ctx context.Context, vals []string) (types.List, diag.D
 	return types.ListValueFrom(ctx, types.StringType, vals)
 }
 
-// stringValueOrNull returns a non-null types.String when v != "", else
-// types.StringNull(). Use when mapping API responses that distinguish
-// "absent" from "empty string" into framework state.
+// stringValueFromPointer dereferences a *string into a non-null
+// types.String, defaulting to empty when the pointer is nil. Use for
+// Computed attributes where "" is the intended state for an absent API
+// field — Computed absorbs the plan-vs-apply mismatch null and "" would
+// otherwise produce.
+func stringValueFromPointer(s *string) types.String {
+	if s == nil {
+		return types.StringValue("")
+	}
+	return types.StringValue(*s)
+}
+
+// stringValueOrNull returns null when v == "", else types.StringValue(v).
+// Use when mapping API responses that distinguish "absent" from "empty
+// string" into framework state for Optional-only attributes.
 func stringValueOrNull(v string) types.String {
 	if v == "" {
 		return types.StringNull()
 	}
 	return types.StringValue(v)
+}
+
+// stringValueOrNullFromPointer is stringValueOrNull for *string inputs:
+// null when the pointer is nil or points to "". Use for Optional
+// (non-Computed) string attributes; writing "" would trip
+// terraform-core's plan-apply consistency check on plan-null configs.
+func stringValueOrNullFromPointer(p *string) types.String {
+	if p == nil {
+		return types.StringNull()
+	}
+	return stringValueOrNull(*p)
+}
+
+// setFromStringSliceOrNull returns a null Set on empty input. Use for
+// Optional (non-Computed) Set attributes whose user omits-the-attribute
+// case must round-trip null. See setFromStringSlicePreservingPlan for
+// the variant that also accommodates explicit `attr = []` HCL.
+func setFromStringSliceOrNull(ctx context.Context, vals []string) (types.Set, diag.Diagnostics) {
+	if len(vals) == 0 {
+		return types.SetNull(types.StringType), nil
+	}
+	return types.SetValueFrom(ctx, types.StringType, vals)
+}
+
+// setFromStringSlicePreservingPlan preserves the user's null-vs-empty
+// intent when the API returns nothing for an Optional Set attribute,
+// using `existing` (the plan value during Create, state value during
+// Read-refresh) to disambiguate:
+//
+//   - API has values → return the populated Set.
+//   - API empty AND existing is null → null (user omitted the attribute).
+//   - API empty AND existing is non-null → empty Set (covers explicit
+//     `attr = []` plans and drift from populated → empty).
+//
+// Writing the wrong null/empty form trips terraform-core's plan-apply
+// consistency check.
+func setFromStringSlicePreservingPlan(ctx context.Context, vals []string, existing types.Set) (types.Set, diag.Diagnostics) {
+	if len(vals) > 0 {
+		return types.SetValueFrom(ctx, types.StringType, vals)
+	}
+	if existing.IsNull() {
+		return types.SetNull(types.StringType), nil
+	}
+	return types.SetValueMust(types.StringType, []attr.Value{}), nil
 }
 
 // stringPointerFromAttr is the inverse: null / unknown framework values

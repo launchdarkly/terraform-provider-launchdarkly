@@ -11,8 +11,10 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	dsschema "github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
+	rsschema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
+	ldapi "github.com/launchdarkly/api-client-go/v22"
 )
 
 var frameworkRoleAttributeAttrTypes = map[string]attr.Type{
@@ -24,21 +26,81 @@ var frameworkRoleAttributeAttrTypes = map[string]attr.Type{
 // schema mirroring the SDKv2 TypeSet of role_attribute objects.
 func frameworkRoleAttributesDataSourceBlock() dsschema.SetNestedBlock {
 	return dsschema.SetNestedBlock{
-		Description: "Role attributes for the team. Keyed by attribute name with a list of resource-key values.",
+		Description: "A role attributes block. One block must be defined per role attribute. The key is the role attribute key and the value is a string array of resource keys that apply.",
 		NestedObject: dsschema.NestedBlockObject{
 			Attributes: map[string]dsschema.Attribute{
 				KEY: dsschema.StringAttribute{
 					Computed:    true,
-					Description: "The role attribute key.",
+					Description: "The key / name of your role attribute. In the example `$${roleAttribute/testAttribute}`, the key is `testAttribute`.",
 				},
 				VALUES: dsschema.ListAttribute{
 					Computed:    true,
 					ElementType: types.StringType,
-					Description: "List of resource-key values for the attribute.",
+					Description: "A list of values for your role attribute. For example, if your policy statement defines the resource `\"proj/$${roleAttribute/testAttribute}\"`, the values would be the keys of the projects you wanted to assign access to.",
 				},
 			},
 		},
 	}
+}
+
+// frameworkRoleAttributesResourceBlock returns a SetNestedBlock for
+// use in resource.Schema.
+func frameworkRoleAttributesResourceBlock() rsschema.SetNestedBlock {
+	return rsschema.SetNestedBlock{
+		Description: "A role attributes block. One block must be defined per role attribute. The key is the role attribute key and the value is a string array of resource keys that apply.",
+		NestedObject: rsschema.NestedBlockObject{
+			Attributes: map[string]rsschema.Attribute{
+				KEY: rsschema.StringAttribute{
+					Required:    true,
+					Description: "The key / name of your role attribute. In the example `$${roleAttribute/testAttribute}`, the key is `testAttribute`.",
+				},
+				VALUES: rsschema.ListAttribute{
+					Required:    true,
+					ElementType: types.StringType,
+					Description: "A list of values for your role attribute. For example, if your policy statement defines the resource `\"proj/$${roleAttribute/testAttribute}\"`, the values would be the keys of the projects you wanted to assign access to.",
+				},
+			},
+		},
+	}
+}
+
+type frameworkRoleAttributeModel struct {
+	Key    string   `tfsdk:"key"`
+	Values []string `tfsdk:"values"`
+}
+
+// frameworkRoleAttributesFromSet converts a framework types.Set of
+// role_attribute objects back into the LD-API map[string][]string
+// shape used by NewMemberForm.RoleAttributes etc.
+func frameworkRoleAttributesFromSet(ctx context.Context, set types.Set) (*map[string][]string, diag.Diagnostics) {
+	var diags diag.Diagnostics
+	if set.IsNull() || set.IsUnknown() || len(set.Elements()) == 0 {
+		return nil, diags
+	}
+	var entries []frameworkRoleAttributeModel
+	diags.Append(set.ElementsAs(ctx, &entries, false)...)
+	if diags.HasError() {
+		return nil, diags
+	}
+	out := make(map[string][]string, len(entries))
+	for _, e := range entries {
+		out[e.Key] = append(out[e.Key], e.Values...)
+	}
+	return &out, diags
+}
+
+// frameworkRoleAttributePatches generates the patch operations to
+// replace /roleAttributes on the server. Matches getRoleAttributePatches
+// from role_attributes_helper.go.
+func frameworkRoleAttributePatches(ctx context.Context, planSet, stateSet types.Set) []ldapi.PatchOperation {
+	if planSet.Equal(stateSet) {
+		return nil
+	}
+	plan, _ := frameworkRoleAttributesFromSet(ctx, planSet)
+	if plan != nil {
+		return []ldapi.PatchOperation{patchReplace("/roleAttributes", plan)}
+	}
+	return []ldapi.PatchOperation{patchReplace("/roleAttributes", make(map[string][]string))}
 }
 
 // frameworkRoleAttributesValue converts an LD-API role_attributes map

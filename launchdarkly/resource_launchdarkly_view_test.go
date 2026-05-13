@@ -224,7 +224,12 @@ func TestAccView_WithMaintainer(t *testing.T) {
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckViewExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, MAINTAINER_TEAM_KEY, teamKey),
-					resource.TestCheckResourceAttr(resourceName, MAINTAINER_ID, ""),
+					// Framework-served resource: the unused maintainer side is
+					// null (absent), not "". The view Read picks one side per
+					// API response; the other stays unset. See
+					// resource_view_framework.go (default both to null, then
+					// switch on Maintainer.Kind).
+					resource.TestCheckNoResourceAttr(resourceName, MAINTAINER_ID),
 				),
 			},
 			{
@@ -238,7 +243,7 @@ func TestAccView_WithMaintainer(t *testing.T) {
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckViewExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, MAINTAINER_ID, maintainerId),
-					resource.TestCheckResourceAttr(resourceName, MAINTAINER_TEAM_KEY, ""),
+					resource.TestCheckNoResourceAttr(resourceName, MAINTAINER_TEAM_KEY),
 				),
 			},
 			{
@@ -252,7 +257,7 @@ func TestAccView_WithMaintainer(t *testing.T) {
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckViewExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, MAINTAINER_TEAM_KEY, teamKey),
-					resource.TestCheckResourceAttr(resourceName, MAINTAINER_ID, ""),
+					resource.TestCheckNoResourceAttr(resourceName, MAINTAINER_ID),
 				),
 			},
 			{

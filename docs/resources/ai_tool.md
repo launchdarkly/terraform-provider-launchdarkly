@@ -52,7 +52,7 @@ resource "launchdarkly_ai_tool" "example" {
 ### Read-Only
 
 - `creation_date` (Number) The creation timestamp of the AI tool.
-- `id` (String) The ID of this resource.
+- `id` (String) Composite ID `project_key/key`.
 - `version` (Number) The version of the AI tool.
 
 ## Import

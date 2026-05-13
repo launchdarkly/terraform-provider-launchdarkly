@@ -2,7 +2,6 @@ package launchdarkly
 
 import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	ldapi "github.com/launchdarkly/api-client-go/v22"
 )
 
 func roleAttributesSchema(isDataSource bool) *schema.Schema {
@@ -64,17 +63,4 @@ func roleAttributesToResourceData(roleAttributes *map[string][]string) *[]interf
 		})
 	}
 	return &resourceData
-}
-
-func getRoleAttributePatches(d *schema.ResourceData) []ldapi.PatchOperation {
-	var patch []ldapi.PatchOperation
-	if o, n := d.GetChange(ROLE_ATTRIBUTES); o != n {
-		new := roleAttributesFromResourceData(optionalSetList(d, ROLE_ATTRIBUTES))
-		if new != nil {
-			patch = append(patch, patchReplace("/roleAttributes", new))
-		} else {
-			patch = append(patch, patchReplace("/roleAttributes", make(map[string][]string)))
-		}
-	}
-	return patch
 }
