@@ -215,6 +215,38 @@ type ViewSegmentIdentifier struct {
 	SegmentKey    string `json:"segmentKey"`
 }
 
+// difference returns the elements in slice1 that are not in slice2.
+func difference(slice1, slice2 []string) []string {
+	set2 := make(map[string]bool, len(slice2))
+	for _, item := range slice2 {
+		set2[item] = true
+	}
+	var diff []string
+	for _, item := range slice1 {
+		if !set2[item] {
+			diff = append(diff, item)
+		}
+	}
+	return diff
+}
+
+// differenceSegmentIdentifiers returns the ViewSegmentIdentifier values
+// in slice1 that are not in slice2 (compared by environment_id/segment_key).
+func differenceSegmentIdentifiers(slice1, slice2 []ViewSegmentIdentifier) []ViewSegmentIdentifier {
+	set2 := make(map[string]bool, len(slice2))
+	for _, item := range slice2 {
+		set2[item.EnvironmentId+":"+item.SegmentKey] = true
+	}
+	var diff []ViewSegmentIdentifier
+	for _, item := range slice1 {
+		key := item.EnvironmentId + ":" + item.SegmentKey
+		if !set2[key] {
+			diff = append(diff, item)
+		}
+	}
+	return diff
+}
+
 // chunkStringSlice splits a string slice into chunks of the specified size
 func chunkStringSlice(slice []string, chunkSize int) [][]string {
 	var chunks [][]string

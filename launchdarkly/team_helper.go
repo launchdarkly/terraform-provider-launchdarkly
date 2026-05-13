@@ -16,6 +16,48 @@ const (
 	teamMaintainersPageLimit = int64(100)
 )
 
+// interfaceToArr coerces a *schema.Set-style slice of strings into a
+// plain []string. Used by SDKv2 resources that still reference team
+// schema helpers (notably resource_team_role_mapping).
+func interfaceToArr(old interface{}) []string {
+	set := optionalSchemaSetFromInterface(old)
+	if set == nil {
+		return []string{}
+	}
+	interfaceArr := set.List()
+	stringArr := make([]string, len(interfaceArr))
+	for i, str := range interfaceArr {
+		stringArr[i] = str.(string)
+	}
+	return stringArr
+}
+
+// makeAddAndRemoveArrays returns the set difference (old\new, new\old).
+// Used by SDKv2 resources that still reference team schema helpers.
+func makeAddAndRemoveArrays(old, updated []string) (remove, add []string) {
+	intersection := make(map[string]bool, len(old))
+	oldSet := make(map[string]bool, len(old))
+	for _, item := range old {
+		oldSet[item] = true
+	}
+	for _, item := range updated {
+		if oldSet[item] {
+			intersection[item] = true
+		}
+	}
+	for _, item := range old {
+		if !intersection[item] {
+			remove = append(remove, item)
+		}
+	}
+	for _, item := range updated {
+		if !intersection[item] {
+			add = append(add, item)
+		}
+	}
+	return remove, add
+}
+
 // getAllTeamCustomRoleKeys fetches all custom role keys for a team using pagination.
 // The LaunchDarkly API returns a maximum of 25 roles by default when using the expand=roles
 // parameter on GetTeam.
