@@ -29,6 +29,7 @@ var (
 
 type ViewLinksResource struct {
 	client *Client
+	beta   *Client
 }
 
 type ViewLinksResourceModel struct {
@@ -101,6 +102,22 @@ func (r *ViewLinksResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 
 func (r *ViewLinksResource) Configure(_ context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
 	r.client = configureResourceClient(req, resp)
+	if r.client == nil {
+		return
+	}
+	beta, err := newBetaClient(r.client.apiKey, r.client.apiHost, false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
+	if err != nil {
+		resp.Diagnostics.AddError("Failed to build LaunchDarkly beta client", err.Error())
+		return
+	}
+	r.beta = beta
+}
+
+func (r *ViewLinksResource) betaClient() (*Client, error) {
+	if r.beta != nil {
+		return r.beta, nil
+	}
+	return newBetaClient(r.client.apiKey, r.client.apiHost, false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
 }
 
 func (r *ViewLinksResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
@@ -110,9 +127,9 @@ func (r *ViewLinksResource) Create(ctx context.Context, req resource.CreateReque
 		return
 	}
 
-	betaClient, err := newBetaClient(r.client.apiKey, r.client.apiHost, false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
+	betaClient, err := r.betaClient()
 	if err != nil {
-		resp.Diagnostics.AddError("Failed to create beta client", err.Error())
+		resp.Diagnostics.AddError("Failed to build beta client", err.Error())
 		return
 	}
 
@@ -164,9 +181,9 @@ func (r *ViewLinksResource) Read(ctx context.Context, req resource.ReadRequest, 
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	betaClient, err := newBetaClient(r.client.apiKey, r.client.apiHost, false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
+	betaClient, err := r.betaClient()
 	if err != nil {
-		resp.Diagnostics.AddError("Failed to create beta client", err.Error())
+		resp.Diagnostics.AddError("Failed to build beta client", err.Error())
 		return
 	}
 	projectKey := data.ProjectKey.ValueString()
@@ -195,9 +212,9 @@ func (r *ViewLinksResource) Update(ctx context.Context, req resource.UpdateReque
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	betaClient, err := newBetaClient(r.client.apiKey, r.client.apiHost, false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
+	betaClient, err := r.betaClient()
 	if err != nil {
-		resp.Diagnostics.AddError("Failed to create beta client", err.Error())
+		resp.Diagnostics.AddError("Failed to build beta client", err.Error())
 		return
 	}
 	projectKey := plan.ProjectKey.ValueString()
@@ -264,9 +281,9 @@ func (r *ViewLinksResource) Delete(ctx context.Context, req resource.DeleteReque
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	betaClient, err := newBetaClient(r.client.apiKey, r.client.apiHost, false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
+	betaClient, err := r.betaClient()
 	if err != nil {
-		resp.Diagnostics.AddError("Failed to create beta client", err.Error())
+		resp.Diagnostics.AddError("Failed to build beta client", err.Error())
 		return
 	}
 	projectKey := data.ProjectKey.ValueString()
@@ -404,6 +421,7 @@ var (
 
 type ViewFilterLinksResource struct {
 	client *Client
+	beta   *Client
 }
 
 type ViewFilterLinksResourceModel struct {
@@ -530,6 +548,22 @@ func (r *ViewFilterLinksResource) ModifyPlan(ctx context.Context, req resource.M
 
 func (r *ViewFilterLinksResource) Configure(_ context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
 	r.client = configureResourceClient(req, resp)
+	if r.client == nil {
+		return
+	}
+	beta, err := newBetaClient(r.client.apiKey, r.client.apiHost, false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
+	if err != nil {
+		resp.Diagnostics.AddError("Failed to build LaunchDarkly beta client", err.Error())
+		return
+	}
+	r.beta = beta
+}
+
+func (r *ViewFilterLinksResource) betaClient() (*Client, error) {
+	if r.beta != nil {
+		return r.beta, nil
+	}
+	return newBetaClient(r.client.apiKey, r.client.apiHost, false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
 }
 
 func (r *ViewFilterLinksResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
@@ -538,9 +572,9 @@ func (r *ViewFilterLinksResource) Create(ctx context.Context, req resource.Creat
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	betaClient, err := newBetaClient(r.client.apiKey, r.client.apiHost, false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
+	betaClient, err := r.betaClient()
 	if err != nil {
-		resp.Diagnostics.AddError("Failed to create beta client", err.Error())
+		resp.Diagnostics.AddError("Failed to build beta client", err.Error())
 		return
 	}
 	projectKey := plan.ProjectKey.ValueString()
@@ -584,9 +618,9 @@ func (r *ViewFilterLinksResource) Read(ctx context.Context, req resource.ReadReq
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	betaClient, err := newBetaClient(r.client.apiKey, r.client.apiHost, false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
+	betaClient, err := r.betaClient()
 	if err != nil {
-		resp.Diagnostics.AddError("Failed to create beta client", err.Error())
+		resp.Diagnostics.AddError("Failed to build beta client", err.Error())
 		return
 	}
 	exists, err := viewExists(data.ProjectKey.ValueString(), data.ViewKey.ValueString(), betaClient)
@@ -610,9 +644,9 @@ func (r *ViewFilterLinksResource) Update(ctx context.Context, req resource.Updat
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	betaClient, err := newBetaClient(r.client.apiKey, r.client.apiHost, false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
+	betaClient, err := r.betaClient()
 	if err != nil {
-		resp.Diagnostics.AddError("Failed to create beta client", err.Error())
+		resp.Diagnostics.AddError("Failed to build beta client", err.Error())
 		return
 	}
 	projectKey := plan.ProjectKey.ValueString()
@@ -692,9 +726,9 @@ func (r *ViewFilterLinksResource) Delete(ctx context.Context, req resource.Delet
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	betaClient, err := newBetaClient(r.client.apiKey, r.client.apiHost, false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
+	betaClient, err := r.betaClient()
 	if err != nil {
-		resp.Diagnostics.AddError("Failed to create beta client", err.Error())
+		resp.Diagnostics.AddError("Failed to build beta client", err.Error())
 		return
 	}
 	projectKey := data.ProjectKey.ValueString()

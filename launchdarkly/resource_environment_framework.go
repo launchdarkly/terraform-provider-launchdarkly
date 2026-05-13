@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -394,7 +395,7 @@ func (r *EnvironmentResource) readIntoModel(
 	ctx context.Context,
 	projectKey, envKey string,
 	data *EnvironmentResourceModel,
-	diags interface{ AddError(string, string) },
+	diags *diag.Diagnostics,
 ) {
 	var env *ldapi.Environment
 	var res *http.Response
@@ -427,18 +428,10 @@ func (r *EnvironmentResource) readIntoModel(
 	data.Critical = types.BoolValue(env.Critical)
 
 	tagsSet, d := setFromStringSlice(ctx, env.Tags)
-	if d.HasError() {
-		for _, e := range d.Errors() {
-			diags.AddError(e.Summary(), e.Detail())
-		}
-	}
+	diags.Append(d...)
 	data.Tags = tagsSet
 
 	approvals, d := frameworkApprovalSettingsValue(ctx, env.ApprovalSettings)
-	if d.HasError() {
-		for _, e := range d.Errors() {
-			diags.AddError(e.Summary(), e.Detail())
-		}
-	}
+	diags.Append(d...)
 	data.ApprovalSettings = approvals
 }

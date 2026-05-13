@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -96,7 +97,7 @@ type flagTemplatesBooleanDefaultsModel struct {
 	OffVariation     int64  `tfsdk:"off_variation"`
 }
 
-func (r *FlagTemplatesResource) upsert(ctx context.Context, plan *FlagTemplatesResourceModel, diags interface{ AddError(string, string) }) error {
+func (r *FlagTemplatesResource) upsert(ctx context.Context, plan *FlagTemplatesResourceModel, diags *diag.Diagnostics) error {
 	projectKey := plan.ProjectKey.ValueString()
 
 	csa, err := getCurrentCSA(r.client, projectKey)
@@ -197,7 +198,7 @@ func (r *FlagTemplatesResource) readIntoModel(
 	ctx context.Context,
 	projectKey string,
 	data *FlagTemplatesResourceModel,
-	diags interface{ AddError(string, string) },
+	diags *diag.Diagnostics,
 ) {
 	var flagDefaults *ldapi.FlagDefaultsRep
 	var res *http.Response

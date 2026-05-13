@@ -3,6 +3,7 @@ package launchdarkly
 import (
 	"context"
 
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -147,7 +148,7 @@ func (r *IPAllowlistConfigResource) ImportState(ctx context.Context, req resourc
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }
 
-func (r *IPAllowlistConfigResource) readIntoModel(data *IPAllowlistConfigResourceModel, diags interface{ AddError(string, string) }) {
+func (r *IPAllowlistConfigResource) readIntoModel(data *IPAllowlistConfigResourceModel, diags *diag.Diagnostics) {
 	allowlist, err := getIpAllowlist(r.client)
 	if err != nil {
 		diags.AddError("Failed to read IP allowlist config", err.Error())
@@ -297,7 +298,7 @@ func (r *IPAllowlistEntryResource) ImportState(ctx context.Context, req resource
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }
 
-func (r *IPAllowlistEntryResource) readIntoModel(id string, data *IPAllowlistEntryResourceModel, diags interface{ AddError(string, string) }) {
+func (r *IPAllowlistEntryResource) readIntoModel(id string, data *IPAllowlistEntryResourceModel, diags *diag.Diagnostics) {
 	allowlist, err := getIpAllowlist(r.client)
 	if err != nil {
 		diags.AddError("Failed to read IP allowlist", err.Error())
@@ -310,9 +311,5 @@ func (r *IPAllowlistEntryResource) readIntoModel(id string, data *IPAllowlistEnt
 	}
 	data.ID = types.StringValue(entry.ID)
 	data.IPAddress = types.StringValue(entry.IpAddress)
-	if entry.Description != nil {
-		data.Description = types.StringValue(*entry.Description)
-	} else {
-		data.Description = types.StringValue("")
-	}
+	data.Description = stringValueFromPointer(entry.Description)
 }

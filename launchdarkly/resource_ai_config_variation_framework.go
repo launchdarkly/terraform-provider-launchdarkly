@@ -94,7 +94,7 @@ func (r *AIConfigVariationResource) Schema(_ context.Context, _ resource.SchemaR
 				Description: "A JSON string representing the inline model configuration for the variation. Conflicts with `model_config_key`.",
 				Validators:  []validator.String{jsonStringValidator{}},
 				PlanModifiers: []planmodifier.String{
-					jsonEquivalentPlanModifier{},
+					jsonNormalizePlanModifier{},
 				},
 			},
 			MODEL_CONFIG_KEY: schema.StringAttribute{
@@ -587,42 +587,4 @@ func jsonEqual(a, b string) bool {
 		return false
 	}
 	return reflect.DeepEqual(av, bv)
-}
-
-// jsonStringValidator validates that a string parses as JSON.
-type jsonStringValidator struct{}
-
-func (jsonStringValidator) Description(context.Context) string         { return "must be valid JSON" }
-func (jsonStringValidator) MarkdownDescription(context.Context) string { return "must be valid JSON" }
-func (jsonStringValidator) ValidateString(_ context.Context, req validator.StringRequest, resp *validator.StringResponse) {
-	if req.ConfigValue.IsNull() || req.ConfigValue.IsUnknown() {
-		return
-	}
-	s := req.ConfigValue.ValueString()
-	if s == "" {
-		return
-	}
-	var v interface{}
-	if err := json.Unmarshal([]byte(s), &v); err != nil {
-		resp.Diagnostics.AddAttributeError(req.Path, "Invalid JSON", err.Error())
-	}
-}
-
-// jsonEquivalentPlanModifier collapses semantically-equivalent JSON
-// changes (key reordering, whitespace) so the plan doesn't flap.
-type jsonEquivalentPlanModifier struct{}
-
-func (jsonEquivalentPlanModifier) Description(context.Context) string {
-	return "suppress diffs when state and plan parse to the same JSON"
-}
-func (jsonEquivalentPlanModifier) MarkdownDescription(ctx context.Context) string {
-	return ""
-}
-func (jsonEquivalentPlanModifier) PlanModifyString(_ context.Context, req planmodifier.StringRequest, resp *planmodifier.StringResponse) {
-	if req.StateValue.IsNull() || req.PlanValue.IsNull() || req.PlanValue.IsUnknown() {
-		return
-	}
-	if jsonEqual(req.StateValue.ValueString(), req.PlanValue.ValueString()) {
-		resp.PlanValue = req.StateValue
-	}
 }
