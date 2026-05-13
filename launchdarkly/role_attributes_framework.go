@@ -26,17 +26,17 @@ var frameworkRoleAttributeAttrTypes = map[string]attr.Type{
 // schema mirroring the SDKv2 TypeSet of role_attribute objects.
 func frameworkRoleAttributesDataSourceBlock() dsschema.SetNestedBlock {
 	return dsschema.SetNestedBlock{
-		Description: "Role attributes for the team. Keyed by attribute name with a list of resource-key values.",
+		Description: "A role attributes block. One block must be defined per role attribute. The key is the role attribute key and the value is a string array of resource keys that apply.",
 		NestedObject: dsschema.NestedBlockObject{
 			Attributes: map[string]dsschema.Attribute{
 				KEY: dsschema.StringAttribute{
 					Computed:    true,
-					Description: "The role attribute key.",
+					Description: "The key / name of your role attribute. In the example `$${roleAttribute/testAttribute}`, the key is `testAttribute`.",
 				},
 				VALUES: dsschema.ListAttribute{
 					Computed:    true,
 					ElementType: types.StringType,
-					Description: "List of resource-key values for the attribute.",
+					Description: "A list of values for your role attribute. For example, if your policy statement defines the resource `\"proj/$${roleAttribute/testAttribute}\"`, the values would be the keys of the projects you wanted to assign access to.",
 				},
 			},
 		},
@@ -47,17 +47,17 @@ func frameworkRoleAttributesDataSourceBlock() dsschema.SetNestedBlock {
 // use in resource.Schema.
 func frameworkRoleAttributesResourceBlock() rsschema.SetNestedBlock {
 	return rsschema.SetNestedBlock{
-		Description: "Role attributes for the resource. Keyed by attribute name with a list of resource-key values.",
+		Description: "A role attributes block. One block must be defined per role attribute. The key is the role attribute key and the value is a string array of resource keys that apply.",
 		NestedObject: rsschema.NestedBlockObject{
 			Attributes: map[string]rsschema.Attribute{
 				KEY: rsschema.StringAttribute{
 					Required:    true,
-					Description: "The role attribute key.",
+					Description: "The key / name of your role attribute. In the example `$${roleAttribute/testAttribute}`, the key is `testAttribute`.",
 				},
 				VALUES: rsschema.ListAttribute{
 					Required:    true,
 					ElementType: types.StringType,
-					Description: "List of resource-key values for the attribute.",
+					Description: "A list of values for your role attribute. For example, if your policy statement defines the resource `\"proj/$${roleAttribute/testAttribute}\"`, the values would be the keys of the projects you wanted to assign access to.",
 				},
 			},
 		},

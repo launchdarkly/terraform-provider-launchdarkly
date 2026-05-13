@@ -40,7 +40,13 @@ func (r *RelayProxyConfigResource) Metadata(_ context.Context, req resource.Meta
 
 func (r *RelayProxyConfigResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "Provides a LaunchDarkly Relay Proxy configuration resource.",
+		Description: `Provides a LaunchDarkly Relay Proxy configuration resource for use with the Relay Proxy's [automatic configuration feature](https://docs.launchdarkly.com/home/relay-proxy/automatic-configuration).
+
+-> **Note:** Relay Proxy automatic configuration is available to customers on an Enterprise LaunchDarkly plan. To learn more, [read about our pricing](https://launchdarkly.com/pricing/). To upgrade your plan, [contact LaunchDarkly Sales](https://launchdarkly.com/contact-sales/).
+
+This resource allows you to create and manage Relay Proxy configurations within your LaunchDarkly organization.
+
+-> **Note:** This resource will store the full plaintext secret for your Relay Proxy configuration's unique key in Terraform state. Be sure your state is configured securely before using this resource. See https://www.terraform.io/docs/state/sensitive-data.html for more details.`,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				Computed:      true,
@@ -54,17 +60,17 @@ func (r *RelayProxyConfigResource) Schema(_ context.Context, _ resource.SchemaRe
 			FULL_KEY: schema.StringAttribute{
 				Computed:      true,
 				Sensitive:     true,
-				Description:   "The Relay Proxy configuration's unique key. Only exposed upon creation; not available on import.",
+				Description:   "The Relay Proxy configuration's unique key. Because the `full_key` is only exposed upon creation, it will not be available if the resource is imported.",
 				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
 			DISPLAY_KEY: schema.StringAttribute{
 				Computed:      true,
-				Description:   "The last 4 characters of the unique key.",
+				Description:   "The last 4 characters of the Relay Proxy configuration's unique key.",
 				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
 		},
 		Blocks: map[string]schema.Block{
-			POLICY: frameworkPolicyStatementsResourceBlock(true, "Rule policy block determining what content the Relay Proxy receives.", ""),
+			POLICY: frameworkPolicyStatementsResourceBlock(true, "The Relay Proxy configuration's rule policy block. This determines what content the Relay Proxy receives. To learn more, read [Understanding policies](https://docs.launchdarkly.com/home/members/role-policies#understanding-policies).", ""),
 		},
 	}
 }
@@ -210,6 +216,7 @@ func (r *RelayProxyConfigResource) readIntoModel(
 		for _, e := range d.Errors() {
 			diags.AddError(e.Summary(), e.Detail())
 		}
+		return
 	}
 	data.Policy = policyList
 }

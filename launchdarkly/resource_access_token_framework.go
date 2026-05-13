@@ -9,10 +9,13 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/hashicorp/terraform-plugin-framework-validators/resourcevalidator"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
@@ -22,8 +25,9 @@ import (
 )
 
 var (
-	_ resource.Resource                = &AccessTokenResource{}
-	_ resource.ResourceWithImportState = &AccessTokenResource{}
+	_ resource.Resource                     = &AccessTokenResource{}
+	_ resource.ResourceWithImportState      = &AccessTokenResource{}
+	_ resource.ResourceWithConfigValidators = &AccessTokenResource{}
 )
 
 // resourceAccessToken + validateAccessTokenResource are compat shims
@@ -93,7 +97,13 @@ func (r *AccessTokenResource) Metadata(_ context.Context, req resource.MetadataR
 
 func (r *AccessTokenResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "Provides a LaunchDarkly access token resource.",
+		Description: `Provides a LaunchDarkly access token resource.
+
+This resource allows you to create and manage access tokens within your LaunchDarkly organization.
+
+-> **Note:** This resource will store the full plaintext secret for your access token in Terraform state. Be sure your state is configured securely before using this resource. See https://www.terraform.io/docs/state/sensitive-data.html for more details.
+
+The resource must contain either a "role", "custom_role" or an "inline_roles" (previously "policy_statements") block. As of v1.7.0, "policy_statements" has been deprecated in favor of "inline_roles".`,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				Computed:      true,
@@ -101,11 +111,11 @@ func (r *AccessTokenResource) Schema(_ context.Context, _ resource.SchemaRequest
 			},
 			NAME: schema.StringAttribute{
 				Optional:    true,
-				Description: "Human-friendly name for the access token.",
+				Description: "A human-friendly name for the access token.",
 			},
 			ROLE: schema.StringAttribute{
 				Optional:    true,
-				Description: "Built-in role: reader, writer, or admin.",
+				Description: "A built-in LaunchDarkly role. Can be `reader`, `writer`, or `admin`",
 				Validators: []validator.String{
 					oneOfValidator{allowed: []string{"reader", "writer", "admin"}},
 				},
@@ -113,58 +123,65 @@ func (r *AccessTokenResource) Schema(_ context.Context, _ resource.SchemaRequest
 			CUSTOM_ROLES: schema.SetAttribute{
 				Optional:    true,
 				ElementType: types.StringType,
-				Description: "Custom role IDs used as access limits.",
+				Description: "A list of custom role IDs to use as access limits for the access token.",
 			},
 			SERVICE_TOKEN: schema.BoolAttribute{
 				Optional:    true,
-				Computed:    true,
 				Default:     booldefault.StaticBool(false),
-				Description: "Whether the token is a service token.",
+				Description: addForceNewDescription("Whether the token will be a [service token](https://docs.launchdarkly.com/home/account-security/api-access-tokens#service-tokens).", true),
 				PlanModifiers: []planmodifier.Bool{
-					&forceReplaceBool{},
+					boolplanmodifier.RequiresReplace(),
 				},
 			},
 			DEFAULT_API_VERSION: schema.Int64Attribute{
 				Optional:    true,
 				Computed:    true,
-				Description: "Default API version for this token.",
+				Description: addForceNewDescription("The default API version for this token. Defaults to the latest API version.", true),
+				PlanModifiers: []planmodifier.Int64{
+					int64planmodifier.RequiresReplace(),
+				},
+				Validators: []validator.Int64{
+					apiVersionValidator{},
+				},
 			},
 			TOKEN: schema.StringAttribute{
 				Computed:      true,
 				Sensitive:     true,
-				Description:   "The plaintext token. Only exposed on create / reset.",
+				Description:   "The access token used to authorize usage of the LaunchDarkly API.",
 				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
 			EXPIRE: schema.Int64Attribute{
 				Optional:           true,
-				Description:        "Deprecated. Expiry epoch — setting it resets the token.",
+				Description:        "An expiration time for the current token secret, expressed as a Unix epoch time. Replace the computed token secret with a new value. The expired secret will no longer be able to authorize usage of the LaunchDarkly API. This field argument is **deprecated**. Please update your config to remove `expire` to maintain compatibility with future versions",
 				DeprecationMessage: "'expire' is deprecated and will be removed in the next major release of the LaunchDarkly provider",
+				Validators: []validator.Int64{
+					noZeroValuesInt64Validator{},
+				},
 			},
 		},
 		Blocks: map[string]schema.Block{
 			POLICY_STATEMENTS: frameworkPolicyStatementsResourceBlock(
 				false,
-				"Deprecated inline-role definition; use inline_roles.",
+				"Define inline custom roles. An array of statements represented as config blocks with three attributes: effect, resources, actions. May be used in place of a built-in or custom role. May be specified more than once. This field argument is **deprecated**. Update your config to use `inline_role` to maintain compatibility with future versions.",
 				"'policy_statements' is deprecated in favor of 'inline_roles'. This field will be removed in the next major release of the LaunchDarkly provider",
 			),
-			INLINE_ROLES: frameworkPolicyStatementsResourceBlock(false, "Inline custom-role policy statements.", ""),
+			INLINE_ROLES: frameworkPolicyStatementsResourceBlock(
+				false,
+				"Define inline custom roles. An array of statements represented as config blocks with three attributes: effect, resources, actions. May be used in place of a built-in or custom role. [Using polices](https://docs.launchdarkly.com/home/members/role-policies). May be specified more than once.",
+				"",
+			),
 		},
 	}
 }
 
-// forceReplaceBool is a tiny inline replacement for
-// boolplanmodifier.RequiresReplace; vendored to avoid pulling in the
-// import while keeping the schema declaration above tidy.
-type forceReplaceBool struct{}
-
-func (forceReplaceBool) Description(context.Context) string         { return "service_token forces replace" }
-func (forceReplaceBool) MarkdownDescription(context.Context) string { return "" }
-func (forceReplaceBool) PlanModifyBool(_ context.Context, req planmodifier.BoolRequest, resp *planmodifier.BoolResponse) {
-	if req.StateValue.IsNull() || req.PlanValue.IsNull() {
-		return
-	}
-	if !req.PlanValue.Equal(req.StateValue) {
-		resp.RequiresReplace = true
+func (r *AccessTokenResource) ConfigValidators(_ context.Context) []resource.ConfigValidator {
+	return []resource.ConfigValidator{
+		resourcevalidator.Conflicting(
+			path.MatchRoot(ROLE),
+			path.MatchRoot(CUSTOM_ROLES),
+			path.MatchRoot(POLICY_STATEMENTS),
+			path.MatchRoot(INLINE_ROLES),
+		),
 	}
 }
 
@@ -315,7 +332,13 @@ func (r *AccessTokenResource) Update(ctx context.Context, req resource.UpdateReq
 		return
 	}
 
-	// expire reset
+	r.readIntoModel(ctx, id, &plan, &resp.Diagnostics)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	// expire reset — must come AFTER readIntoModel so that plan.Token set
+	// here is not overwritten by the GET response (which omits the secret).
 	if !plan.Expire.Equal(state.Expire) {
 		newExpire := plan.Expire.ValueInt64()
 		if newExpire != 0 {
@@ -328,10 +351,6 @@ func (r *AccessTokenResource) Update(ctx context.Context, req resource.UpdateReq
 		}
 	}
 
-	r.readIntoModel(ctx, id, &plan, &resp.Diagnostics)
-	if resp.Diagnostics.HasError() {
-		return
-	}
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 }
 
@@ -405,6 +424,56 @@ func (r *AccessTokenResource) readIntoModel(
 		} else {
 			data.InlineRoles = stmts
 		}
+	}
+}
+
+// apiVersionValidator mirrors validateAPIVersion from SDKv2.
+// Accepts 0 (unset), 20240415, 20191212, 20160426.
+type apiVersionValidator struct{}
+
+func (apiVersionValidator) Description(_ context.Context) string {
+	return "value must be one of `20240415`, `20191212`, or `20160426`"
+}
+func (apiVersionValidator) MarkdownDescription(ctx context.Context) string {
+	return apiVersionValidator{}.Description(ctx)
+}
+func (apiVersionValidator) ValidateInt64(_ context.Context, req validator.Int64Request, resp *validator.Int64Response) {
+	if req.ConfigValue.IsNull() || req.ConfigValue.IsUnknown() {
+		return
+	}
+	v := req.ConfigValue.ValueInt64()
+	switch v {
+	case 0, 20240415, 20191212, 20160426:
+		// valid
+	default:
+		resp.Diagnostics.AddAttributeError(
+			req.Path,
+			"Invalid API version",
+			fmt.Errorf("%q must be one of `20240415`, `20191212`, or `20160426`. Got: %v", DEFAULT_API_VERSION, v).Error(),
+		)
+	}
+}
+
+// noZeroValuesInt64Validator mirrors validation.NoZeroValues for int64.
+type noZeroValuesInt64Validator struct{}
+
+func (noZeroValuesInt64Validator) Description(_ context.Context) string {
+	return "value must not be zero"
+}
+func (noZeroValuesInt64Validator) MarkdownDescription(ctx context.Context) string {
+	return noZeroValuesInt64Validator{}.Description(ctx)
+}
+func (noZeroValuesInt64Validator) ValidateInt64(_ context.Context, req validator.Int64Request, resp *validator.Int64Response) {
+	if req.ConfigValue.IsNull() || req.ConfigValue.IsUnknown() {
+		return
+	}
+	v := req.ConfigValue.ValueInt64()
+	if v == 0 {
+		resp.Diagnostics.AddAttributeError(
+			req.Path,
+			"Invalid value",
+			fmt.Errorf("expected %q to not be an empty value, got %v", EXPIRE, v).Error(),
+		)
 	}
 }
 

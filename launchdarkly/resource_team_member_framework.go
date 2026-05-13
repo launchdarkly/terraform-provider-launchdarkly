@@ -8,7 +8,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/setplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -16,8 +15,9 @@ import (
 )
 
 var (
-	_ resource.Resource                = &TeamMemberResource{}
-	_ resource.ResourceWithImportState = &TeamMemberResource{}
+	_ resource.Resource                     = &TeamMemberResource{}
+	_ resource.ResourceWithImportState      = &TeamMemberResource{}
+	_ resource.ResourceWithConfigValidators = &TeamMemberResource{}
 )
 
 type TeamMemberResource struct {
@@ -44,32 +44,36 @@ func (r *TeamMemberResource) Metadata(_ context.Context, req resource.MetadataRe
 
 func (r *TeamMemberResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "Provides a LaunchDarkly team member resource.",
+		Description: `Provides a LaunchDarkly team member resource.
+
+This resource allows you to create and manage team members within your LaunchDarkly organization.
+
+-> **Note:** You can only manage team members with "admin" level personal access tokens. To learn more, read [Managing Teams](https://docs.launchdarkly.com/home/teams/managing).`,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				Computed:      true,
-				Description:   "The 24-character member ID.",
+				Description:   "The 24 character alphanumeric ID of the team member.",
 				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
 			EMAIL: schema.StringAttribute{
 				Required:    true,
-				Description: "Email associated with the team member.",
+				Description: addForceNewDescription("The unique email address associated with the team member.", true),
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.RequiresReplace(),
 				},
 			},
 			FIRST_NAME: schema.StringAttribute{
 				Optional:    true,
-				Description: "Given name. Cannot be updated except by the member themselves.",
+				Description: "The team member's given name. Once created, this cannot be updated except by the team member.",
 			},
 			LAST_NAME: schema.StringAttribute{
 				Optional:    true,
-				Description: "Family name. Cannot be updated except by the member themselves.",
+				Description: "TThe team member's family name. Once created, this cannot be updated except by the team member.",
 			},
 			ROLE: schema.StringAttribute{
 				Optional:    true,
 				Computed:    true,
-				Description: "reader, writer, no_access, or admin.",
+				Description: "The role associated with team member. Supported roles are `reader`, `writer`, `no_access`, or `admin`. If you don't specify a role, `reader` is assigned by default.",
 				Validators: []validator.String{
 					oneOfValidator{allowed: []string{"reader", "writer", "admin", "no_access"}},
 				},
@@ -79,12 +83,8 @@ func (r *TeamMemberResource) Schema(_ context.Context, _ resource.SchemaRequest,
 			},
 			CUSTOM_ROLES: schema.SetAttribute{
 				Optional:    true,
-				Computed:    true,
 				ElementType: types.StringType,
-				Description: "Custom role keys associated with the member.",
-				PlanModifiers: []planmodifier.Set{
-					setplanmodifier.UseStateForUnknown(),
-				},
+				Description: "The list of custom roles keys associated with the team member. Custom roles are only available to customers on an Enterprise plan. To learn more, [read about our pricing](https://launchdarkly.com/pricing/). To upgrade your plan, [contact LaunchDarkly Sales](https://launchdarkly.com/contact-sales/).\n\n-> **Note:** each `launchdarkly_team_member` must have either a `role` or `custom_roles` argument.",
 			},
 		},
 		Blocks: map[string]schema.Block{
@@ -227,6 +227,38 @@ func (r *TeamMemberResource) Delete(ctx context.Context, req resource.DeleteRequ
 
 func (r *TeamMemberResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
+}
+
+func (r *TeamMemberResource) ConfigValidators(_ context.Context) []resource.ConfigValidator {
+	return []resource.ConfigValidator{teamMemberRoleOrCustomRolesValidator{}}
+}
+
+// teamMemberRoleOrCustomRolesValidator enforces the SDKv2 AtLeastOneOf
+// constraint: either role or custom_roles must be set.
+type teamMemberRoleOrCustomRolesValidator struct{}
+
+func (teamMemberRoleOrCustomRolesValidator) Description(context.Context) string {
+	return "at least one of role or custom_roles must be set"
+}
+
+func (teamMemberRoleOrCustomRolesValidator) MarkdownDescription(ctx context.Context) string {
+	return teamMemberRoleOrCustomRolesValidator{}.Description(ctx)
+}
+
+func (teamMemberRoleOrCustomRolesValidator) ValidateResource(ctx context.Context, req resource.ValidateConfigRequest, resp *resource.ValidateConfigResponse) {
+	var data TeamMemberResourceModel
+	resp.Diagnostics.Append(req.Config.Get(ctx, &data)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	roleSet := !data.Role.IsNull() && !data.Role.IsUnknown() && data.Role.ValueString() != ""
+	customRolesSet := !data.CustomRoles.IsNull() && !data.CustomRoles.IsUnknown() && len(data.CustomRoles.Elements()) > 0
+	if !roleSet && !customRolesSet {
+		resp.Diagnostics.AddError(
+			"Missing required attribute",
+			"At least one of role or custom_roles must be set.",
+		)
+	}
 }
 
 func (r *TeamMemberResource) readIntoModel(

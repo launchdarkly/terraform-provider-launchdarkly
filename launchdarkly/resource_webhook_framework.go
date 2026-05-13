@@ -4,12 +4,14 @@ import (
 	"context"
 	"net/http"
 
+	"github.com/hashicorp/terraform-plugin-framework-validators/setvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	ldapi "github.com/launchdarkly/api-client-go/v22"
 )
@@ -43,7 +45,7 @@ func (r *WebhookResource) Metadata(_ context.Context, req resource.MetadataReque
 
 func (r *WebhookResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "Provides a LaunchDarkly webhook resource.",
+		Description: "Provides a LaunchDarkly webhook resource.\n\nThis resource allows you to create and manage webhooks within your LaunchDarkly organization.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				Computed:      true,
@@ -62,25 +64,23 @@ func (r *WebhookResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 				Optional:    true,
 				Computed:    true,
 				Default:     booldefault.StaticBool(false),
-				Description: "Whether the webhook is enabled.",
+				Description: "Specifies whether the webhook is enabled.",
 			},
 			NAME: schema.StringAttribute{
 				Optional:    true,
-				Computed:    true,
-				Description: "Human-readable name.",
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.UseStateForUnknown(),
-				},
+				Description: "The webhook's human-readable name.",
 			},
 			TAGS: schema.SetAttribute{
 				Optional:    true,
-				Computed:    true,
 				ElementType: types.StringType,
-				Description: "Tags.",
+				Description: "Tags associated with your resource.",
+				Validators: []validator.Set{
+					setvalidator.ValueStringsAre(tagValidator()),
+				},
 			},
 		},
 		Blocks: map[string]schema.Block{
-			STATEMENTS: frameworkPolicyStatementsResourceBlock(false, "Policy statement blocks filtering webhook events.", ""),
+			STATEMENTS: frameworkPolicyStatementsResourceBlock(false, "List of policy statement blocks used to filter webhook events. For more information on webhook policy filters read [Adding a policy filter](https://docs.launchdarkly.com/integrations/webhooks#adding-a-policy-filter).", ""),
 		},
 	}
 }

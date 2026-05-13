@@ -58,7 +58,7 @@ func (r *AIToolResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 			},
 			PROJECT_KEY: schema.StringAttribute{
 				Required:    true,
-				Description: "The project key.",
+				Description: "The project key. A change in this field will force the destruction of the existing resource and the creation of a new one.",
 				Validators:  []validator.String{keyValidator()},
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.RequiresReplace(),
@@ -66,7 +66,7 @@ func (r *AIToolResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 			},
 			KEY: schema.StringAttribute{
 				Required:    true,
-				Description: "The AI tool's unique key.",
+				Description: "The AI tool's unique key. A change in this field will force the destruction of the existing resource and the creation of a new one.",
 				Validators:  []validator.String{keyValidator()},
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.RequiresReplace(),
@@ -74,28 +74,28 @@ func (r *AIToolResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 			},
 			DESCRIPTION: schema.StringAttribute{
 				Optional:    true,
-				Computed:    true,
 				Description: "The AI tool's description.",
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.UseStateForUnknown(),
-				},
 			},
 			SCHEMA_JSON: schema.StringAttribute{
 				Required:    true,
-				Description: "JSON Schema for the tool's parameters.",
+				Description: "A JSON string representing the JSON Schema for the tool's parameters.",
+				Validators:  []validator.String{jsonSchemaStringValidator{}},
+				PlanModifiers: []planmodifier.String{
+					jsonNormalizePlanModifier{},
+				},
 			},
 			CUSTOM_PARAMETERS: schema.StringAttribute{
 				Optional:    true,
-				Computed:    true,
-				Description: "JSON string of custom application-level metadata.",
+				Description: "A JSON string representing custom application-level metadata for the AI tool.",
+				Validators:  []validator.String{jsonStringValidator{}},
 				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.UseStateForUnknown(),
+					jsonNormalizePlanModifier{},
 				},
 			},
 			MAINTAINER_ID: schema.StringAttribute{
 				Optional:    true,
 				Computed:    true,
-				Description: "Member ID of the maintainer (conflicts with maintainer_team_key).",
+				Description: "The member ID of the maintainer for this AI tool. Conflicts with `maintainer_team_key`.",
 				Validators:  []validator.String{idValidator()},
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
@@ -104,13 +104,13 @@ func (r *AIToolResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 			MAINTAINER_TEAM_KEY: schema.StringAttribute{
 				Optional:    true,
 				Computed:    true,
-				Description: "Team key of the maintainer team (conflicts with maintainer_id).",
+				Description: "The team key of the maintainer team for this AI tool. Conflicts with `maintainer_id`.",
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
 				},
 			},
 			VERSION:       schema.Int64Attribute{Computed: true, Description: "The version of the AI tool."},
-			CREATION_DATE: schema.Int64Attribute{Computed: true, Description: "Creation timestamp."},
+			CREATION_DATE: schema.Int64Attribute{Computed: true, Description: "The creation timestamp of the AI tool."},
 		},
 	}
 }
@@ -262,6 +262,9 @@ func (r *AIToolResource) Update(ctx context.Context, req resource.UpdateRequest,
 		}
 		patch.CustomParameters = m
 	}
+	// Use ValueString() so that removing a maintainer from config sends an
+	// empty string to the API, clearing it server-side — matching SDKv2 behaviour
+	// which uses d.Get() instead of d.GetOk().
 	if !plan.MaintainerID.Equal(state.MaintainerID) {
 		v := plan.MaintainerID.ValueString()
 		patch.MaintainerId = &v

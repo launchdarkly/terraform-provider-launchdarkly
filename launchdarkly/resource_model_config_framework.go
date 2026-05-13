@@ -15,6 +15,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/hashicorp/terraform-plugin-framework-validators/setvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -73,7 +74,7 @@ func (r *ModelConfigResource) Schema(_ context.Context, _ resource.SchemaRequest
 			},
 			PROJECT_KEY: schema.StringAttribute{
 				Required:    true,
-				Description: "The project key.",
+				Description: addForceNewDescription("The project key.", true),
 				Validators:  []validator.String{keyValidator()},
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.RequiresReplace(),
@@ -81,7 +82,7 @@ func (r *ModelConfigResource) Schema(_ context.Context, _ resource.SchemaRequest
 			},
 			KEY: schema.StringAttribute{
 				Required:    true,
-				Description: "The model config's unique key.",
+				Description: addForceNewDescription("The model config's unique key.", true),
 				Validators:  []validator.String{keyValidator()},
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.RequiresReplace(),
@@ -89,14 +90,14 @@ func (r *ModelConfigResource) Schema(_ context.Context, _ resource.SchemaRequest
 			},
 			NAME: schema.StringAttribute{
 				Required:    true,
-				Description: "The model config's human-readable name.",
+				Description: addForceNewDescription("The model config's human-readable name.", true),
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.RequiresReplace(),
 				},
 			},
 			MODEL_ID: schema.StringAttribute{
 				Required:    true,
-				Description: "The model identifier (e.g. `gpt-4`, `claude-3`).",
+				Description: addForceNewDescription("The model identifier (e.g. `gpt-4`, `claude-3`).", true),
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.RequiresReplace(),
 				},
@@ -104,7 +105,7 @@ func (r *ModelConfigResource) Schema(_ context.Context, _ resource.SchemaRequest
 			ICON: schema.StringAttribute{
 				Optional:    true,
 				Computed:    true,
-				Description: "The icon for the model config.",
+				Description: addForceNewDescription("The icon for the model config.", true),
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.RequiresReplace(),
 					stringplanmodifier.UseStateForUnknown(),
@@ -113,7 +114,7 @@ func (r *ModelConfigResource) Schema(_ context.Context, _ resource.SchemaRequest
 			PROVIDER_NAME: schema.StringAttribute{
 				Optional:    true,
 				Computed:    true,
-				Description: "The provider name (e.g. `openai`, `anthropic`).",
+				Description: addForceNewDescription("The provider name for the model config (e.g. `openai`, `anthropic`).", true),
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.RequiresReplace(),
 					stringplanmodifier.UseStateForUnknown(),
@@ -126,8 +127,10 @@ func (r *ModelConfigResource) Schema(_ context.Context, _ resource.SchemaRequest
 			PARAMS: schema.StringAttribute{
 				Optional:    true,
 				Computed:    true,
-				Description: "A JSON string representing model parameters.",
+				Description: addForceNewDescription("A JSON string representing the model parameters (e.g. `{\"temperature\": 0.7, \"maxTokens\": 4096}`).", true),
+				Validators:  []validator.String{jsonStringValidator{}},
 				PlanModifiers: []planmodifier.String{
+					jsonNormalizePlanModifier{},
 					stringplanmodifier.RequiresReplace(),
 					stringplanmodifier.UseStateForUnknown(),
 				},
@@ -135,8 +138,10 @@ func (r *ModelConfigResource) Schema(_ context.Context, _ resource.SchemaRequest
 			CUSTOM_PARAMETERS: schema.StringAttribute{
 				Optional:    true,
 				Computed:    true,
-				Description: "A JSON string representing custom parameters.",
+				Description: addForceNewDescription("A JSON string representing custom parameters for the model config.", true),
+				Validators:  []validator.String{jsonStringValidator{}},
 				PlanModifiers: []planmodifier.String{
+					jsonNormalizePlanModifier{},
 					stringplanmodifier.RequiresReplace(),
 					stringplanmodifier.UseStateForUnknown(),
 				},
@@ -145,7 +150,8 @@ func (r *ModelConfigResource) Schema(_ context.Context, _ resource.SchemaRequest
 				Optional:    true,
 				Computed:    true,
 				ElementType: types.StringType,
-				Description: "Tags associated with the model config.",
+				Description: addForceNewDescription("Tags associated with your resource.", true),
+				Validators:  []validator.Set{setvalidator.ValueStringsAre(tagValidator())},
 				PlanModifiers: []planmodifier.Set{
 					setplanmodifier.RequiresReplace(),
 					setplanmodifier.UseStateForUnknown(),
@@ -158,12 +164,12 @@ func (r *ModelConfigResource) Schema(_ context.Context, _ resource.SchemaRequest
 			COST_PER_INPUT_TOKEN: schema.Float64Attribute{
 				Optional:    true,
 				Computed:    true,
-				Description: "The cost per input token for the model.",
+				Description: addForceNewDescription("The cost per input token for the model.", true),
 			},
 			COST_PER_OUTPUT_TOKEN: schema.Float64Attribute{
 				Optional:    true,
 				Computed:    true,
-				Description: "The cost per output token for the model.",
+				Description: addForceNewDescription("The cost per output token for the model.", true),
 			},
 		},
 	}
@@ -268,16 +274,11 @@ func (r *ModelConfigResource) Read(ctx context.Context, req resource.ReadRequest
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
-// Update: API has no update; ForceNew on every attr means terraform
-// will tear down + recreate before this is called. Implementation is a
-// pass-through guard.
-func (r *ModelConfigResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
-	var plan ModelConfigResourceModel
-	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
-	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
+func (r *ModelConfigResource) Update(_ context.Context, _ resource.UpdateRequest, resp *resource.UpdateResponse) {
+	resp.Diagnostics.AddError(
+		"Unexpected Update call",
+		"All attributes of launchdarkly_model_config are ForceNew; Update should never be invoked. This is a provider bug.",
+	)
 }
 
 func (r *ModelConfigResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {

@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/hashicorp/terraform-plugin-framework-validators/resourcevalidator"
+	"github.com/hashicorp/terraform-plugin-framework-validators/setvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -16,8 +18,9 @@ import (
 )
 
 var (
-	_ resource.Resource                = &ViewResource{}
-	_ resource.ResourceWithImportState = &ViewResource{}
+	_ resource.Resource                     = &ViewResource{}
+	_ resource.ResourceWithImportState      = &ViewResource{}
+	_ resource.ResourceWithConfigValidators = &ViewResource{}
 )
 
 type ViewResource struct {
@@ -46,7 +49,13 @@ func (r *ViewResource) Metadata(_ context.Context, req resource.MetadataRequest,
 
 func (r *ViewResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "Provides a LaunchDarkly view resource (Enterprise, beta API).",
+		Description: `Provides a LaunchDarkly view resource.
+
+-> **Note:** Views are available to customers on an Enterprise LaunchDarkly plan. To learn more, [read about our pricing](https://launchdarkly.com/pricing/). To upgrade your plan, [contact LaunchDarkly Sales](https://launchdarkly.com/contact-sales/).
+
+~> **Beta:** This resource uses a beta API. Beta resources may change or be removed in future versions.
+
+This resource allows you to create and manage views within your LaunchDarkly project.`,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				Computed:      true,
@@ -54,45 +63,39 @@ func (r *ViewResource) Schema(_ context.Context, _ resource.SchemaRequest, resp 
 			},
 			PROJECT_KEY: schema.StringAttribute{
 				Required:      true,
-				Description:   "The project key.",
+				Description:   addForceNewDescription("The project key.", true),
 				Validators:    []validator.String{keyValidator()},
 				PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
 			},
 			KEY: schema.StringAttribute{
 				Required:      true,
-				Description:   "The view's unique key.",
+				Description:   addForceNewDescription("The view's unique key.", true),
 				Validators:    []validator.String{keyValidator()},
 				PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
 			},
 			NAME: schema.StringAttribute{
 				Required:    true,
-				Description: "View's name.",
+				Description: "The view's name.",
 			},
 			DESCRIPTION: schema.StringAttribute{
 				Optional:    true,
-				Description: "View's description.",
+				Description: "The view's description.",
 			},
 			MAINTAINER_ID: schema.StringAttribute{
 				Optional:    true,
-				Computed:    true,
-				Description: "Member ID of the maintainer. Exactly one of maintainer_id / maintainer_team_key must be set.",
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.UseStateForUnknown(),
-				},
+				Description: "The member ID of the maintainer for this view. Exactly one of `maintainer_id` and `maintainer_team_key` must be set.",
 			},
 			MAINTAINER_TEAM_KEY: schema.StringAttribute{
 				Optional:    true,
-				Computed:    true,
-				Description: "Team key of the maintainer team.",
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.UseStateForUnknown(),
-				},
+				Description: "The team key of the maintainer team for this view. Exactly one of `maintainer_id` and `maintainer_team_key` must be set.",
 			},
 			TAGS: schema.SetAttribute{
 				Optional:    true,
-				Computed:    true,
 				ElementType: types.StringType,
-				Description: "Tags.",
+				Description: "Tags associated with your resource.",
+				Validators: []validator.Set{
+					setvalidator.ValueStringsAre(tagValidator()),
+				},
 			},
 			ARCHIVED: schema.BoolAttribute{
 				Optional:    true,
@@ -105,30 +108,11 @@ func (r *ViewResource) Schema(_ context.Context, _ resource.SchemaRequest, resp 
 }
 
 func (r *ViewResource) ConfigValidators(_ context.Context) []resource.ConfigValidator {
-	return []resource.ConfigValidator{viewMaintainerExactlyOneValidator{}}
-}
-
-type viewMaintainerExactlyOneValidator struct{}
-
-func (viewMaintainerExactlyOneValidator) Description(context.Context) string {
-	return "exactly one of maintainer_id or maintainer_team_key must be set"
-}
-func (viewMaintainerExactlyOneValidator) MarkdownDescription(ctx context.Context) string {
-	return ""
-}
-func (viewMaintainerExactlyOneValidator) ValidateResource(ctx context.Context, req resource.ValidateConfigRequest, resp *resource.ValidateConfigResponse) {
-	var data ViewResourceModel
-	resp.Diagnostics.Append(req.Config.Get(ctx, &data)...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
-	idSet := !data.MaintainerID.IsNull() && !data.MaintainerID.IsUnknown() && data.MaintainerID.ValueString() != ""
-	teamSet := !data.MaintainerTeamKey.IsNull() && !data.MaintainerTeamKey.IsUnknown() && data.MaintainerTeamKey.ValueString() != ""
-	if idSet == teamSet {
-		resp.Diagnostics.AddError(
-			"Maintainer configuration",
-			"Exactly one of maintainer_id or maintainer_team_key must be set.",
-		)
+	return []resource.ConfigValidator{
+		resourcevalidator.ExactlyOneOf(
+			path.MatchRoot(MAINTAINER_ID),
+			path.MatchRoot(MAINTAINER_TEAM_KEY),
+		),
 	}
 }
 
@@ -176,10 +160,10 @@ func (r *ViewResource) Create(ctx context.Context, req resource.CreateRequest, r
 	if plan.Description.ValueString() != "" {
 		viewPost["description"] = plan.Description.ValueString()
 	}
-	if plan.MaintainerID.ValueString() != "" {
+	if !plan.MaintainerID.IsNull() && plan.MaintainerID.ValueString() != "" {
 		viewPost["maintainerId"] = plan.MaintainerID.ValueString()
 	}
-	if plan.MaintainerTeamKey.ValueString() != "" {
+	if !plan.MaintainerTeamKey.IsNull() && plan.MaintainerTeamKey.ValueString() != "" {
 		viewPost["maintainerTeamKey"] = plan.MaintainerTeamKey.ValueString()
 	}
 	tags, diags := stringSliceFromSet(ctx, plan.Tags)
@@ -210,8 +194,13 @@ func (r *ViewResource) Read(ctx context.Context, req resource.ReadRequest, resp 
 	if resp.Diagnostics.HasError() {
 		return
 	}
+	id := fmt.Sprintf("%s/%s", data.ProjectKey.ValueString(), data.Key.ValueString())
 	r.readIntoModel(ctx, data.ProjectKey.ValueString(), data.Key.ValueString(), &data, &resp.Diagnostics)
 	if data.ID.IsNull() {
+		resp.Diagnostics.AddWarning(
+			"View not found",
+			fmt.Sprintf("View %q not found, removing from state", id),
+		)
 		resp.State.RemoveResource(ctx)
 		return
 	}
@@ -242,10 +231,12 @@ func (r *ViewResource) Update(ctx context.Context, req resource.UpdateRequest, r
 	if !plan.Description.Equal(state.Description) {
 		patch["description"] = plan.Description.ValueString()
 	}
-	if !plan.MaintainerID.Equal(state.MaintainerID) && plan.MaintainerID.ValueString() != "" {
+	// Send maintainerId whenever the field changed — even on clear/swap, so the
+	// API receives an explicit empty string to unset it.
+	if !plan.MaintainerID.Equal(state.MaintainerID) {
 		patch["maintainerId"] = plan.MaintainerID.ValueString()
 	}
-	if !plan.MaintainerTeamKey.Equal(state.MaintainerTeamKey) && plan.MaintainerTeamKey.ValueString() != "" {
+	if !plan.MaintainerTeamKey.Equal(state.MaintainerTeamKey) {
 		patch["maintainerTeamKey"] = plan.MaintainerTeamKey.ValueString()
 	}
 	if !plan.Tags.Equal(state.Tags) {
@@ -333,8 +324,9 @@ func (r *ViewResource) readIntoModel(
 		data.Archived = types.BoolValue(false)
 	}
 
-	data.MaintainerID = types.StringValue("")
-	data.MaintainerTeamKey = types.StringValue("")
+	// Default both to null; set only the active one based on API response.
+	data.MaintainerID = types.StringNull()
+	data.MaintainerTeamKey = types.StringNull()
 	if view.Maintainer != nil {
 		switch view.Maintainer.Kind {
 		case "member":

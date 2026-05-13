@@ -3,6 +3,7 @@ package launchdarkly
 import (
 	"context"
 	"net/http"
+	"sort"
 
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -65,7 +66,7 @@ func (r *CustomRoleResource) Metadata(_ context.Context, req resource.MetadataRe
 
 func (r *CustomRoleResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "Provides a LaunchDarkly custom role resource (Enterprise plan).",
+		Description: "Provides a LaunchDarkly custom role resource.\n\n-> **Note:** Custom roles are available to customers on an Enterprise LaunchDarkly plan. To learn more, [read about our pricing](https://launchdarkly.com/pricing/). To upgrade your plan, [contact LaunchDarkly Sales](https://launchdarkly.com/contact-sales/).\n\nThis resource allows you to create and manage custom roles within your LaunchDarkly organization.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				Computed:      true,
@@ -73,7 +74,7 @@ func (r *CustomRoleResource) Schema(_ context.Context, _ resource.SchemaRequest,
 			},
 			KEY: schema.StringAttribute{
 				Required:    true,
-				Description: "A unique key used to reference the custom role in code.",
+				Description: addForceNewDescription("A unique key that will be used to reference the custom role in your code.", true),
 				Validators:  []validator.String{keyValidator()},
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.RequiresReplace(),
@@ -81,21 +82,17 @@ func (r *CustomRoleResource) Schema(_ context.Context, _ resource.SchemaRequest,
 			},
 			NAME: schema.StringAttribute{
 				Required:    true,
-				Description: "A name for the custom role.",
+				Description: "A name for the custom role. This must be unique within your organization.",
 			},
 			DESCRIPTION: schema.StringAttribute{
 				Optional:    true,
-				Computed:    true,
 				Description: "Description of the custom role.",
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.UseStateForUnknown(),
-				},
 			},
 			BASE_PERMISSIONS: schema.StringAttribute{
 				Optional:    true,
-				Computed:    true,
 				Default:     stringdefault.StaticString("reader"),
-				Description: "Base permission level (`reader` or `no_access`). Defaults to `reader`.",
+				Computed:    true,
+				Description: "The base permission level - either `reader` or `no_access`. While newer API versions default to `no_access`, this field defaults to `reader` in keeping with previous API versions.",
 				Validators: []validator.String{
 					oneOfValidator{allowed: []string{"reader", "no_access"}},
 				},
@@ -103,7 +100,6 @@ func (r *CustomRoleResource) Schema(_ context.Context, _ resource.SchemaRequest,
 		},
 		Blocks: map[string]schema.Block{
 			POLICY: schema.SetNestedBlock{
-				Description:        "Deprecated: use policy_statements.",
 				DeprecationMessage: "'policy' is now deprecated. Please migrate to 'policy_statements' to maintain future compatability.",
 				NestedObject: schema.NestedBlockObject{
 					Attributes: map[string]schema.Attribute{
@@ -121,7 +117,7 @@ func (r *CustomRoleResource) Schema(_ context.Context, _ resource.SchemaRequest,
 					},
 				},
 			},
-			POLICY_STATEMENTS: frameworkPolicyStatementsResourceBlock(false, "Policy statements defining the role's permissions.", ""),
+			POLICY_STATEMENTS: frameworkPolicyStatementsResourceBlock(false, "An array of the policy statements that define the permissions for the custom role. This field accepts [role attributes](https://docs.launchdarkly.com/home/getting-started/vocabulary#role-attribute). To use role attributes, use the syntax `$${roleAttribute/<YOUR_ROLE_ATTRIBUTE>}` in lieu of your usual resource keys.", ""),
 		},
 	}
 }
@@ -182,9 +178,17 @@ func (r *CustomRoleResource) policiesFromModel(ctx context.Context, data *Custom
 	data.Policy.ElementsAs(ctx, &policies, false)
 	out := make([]ldapi.StatementPost, 0, len(policies))
 	for _, p := range policies {
+		resources := make([]string, len(p.Resources))
+		copy(resources, p.Resources)
+		sort.Strings(resources)
+
+		actions := make([]string, len(p.Actions))
+		copy(actions, p.Actions)
+		sort.Strings(actions)
+
 		stmt := ldapi.StatementPost{Effect: p.Effect}
-		stmt.SetResources(p.Resources)
-		stmt.SetActions(p.Actions)
+		stmt.SetResources(resources)
+		stmt.SetActions(actions)
 		out = append(out, stmt)
 	}
 	return out
@@ -351,12 +355,33 @@ func (r *CustomRoleResource) readIntoModel(
 	// If neither was set, default to policy_statements (the modern path).
 	policySet := !data.Policy.IsNull() && len(data.Policy.Elements()) > 0
 	if policySet {
-		// Refresh deprecated policy block.
-		// (We need an attr.Value list for the Set.)
-		// Leave existing policy set as-is; the API doesn't distinguish
-		// between policy and policy_statements at read time, so keeping
-		// state stable avoids drift.
-		_ = policySet
+		// Refresh deprecated policy block from API response.
+		// Sort Resources and Actions alphabetically to match policyHash parity
+		// (SDKv2 sorts in policiesFromResourceData/policyFromResourceData).
+		elems := make([]customRolePolicyModel, 0, len(customRole.Policy))
+		for _, stmt := range customRole.Policy {
+			resources := make([]string, len(stmt.Resources))
+			copy(resources, stmt.Resources)
+			sort.Strings(resources)
+
+			actions := make([]string, len(stmt.Actions))
+			copy(actions, stmt.Actions)
+			sort.Strings(actions)
+
+			elems = append(elems, customRolePolicyModel{
+				Resources: resources,
+				Actions:   actions,
+				Effect:    stmt.Effect,
+			})
+		}
+		setVal, d := types.SetValueFrom(ctx, data.Policy.ElementType(ctx), elems)
+		if d.HasError() {
+			for _, e := range d.Errors() {
+				diags.AddError(e.Summary(), e.Detail())
+			}
+			return
+		}
+		data.Policy = setVal
 	} else {
 		stmts, d := frameworkPolicyStatementsValue(ctx, customRole.Policy)
 		if d.HasError() {

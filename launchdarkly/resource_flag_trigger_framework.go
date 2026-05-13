@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -48,7 +49,13 @@ func (r *FlagTriggerResource) Metadata(_ context.Context, req resource.MetadataR
 
 func (r *FlagTriggerResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "Provides a LaunchDarkly flag trigger resource (Enterprise plan only).",
+		Description: `Provides a LaunchDarkly flag trigger resource.
+
+-> **Note:** Flag triggers are available to customers on an Enterprise LaunchDarkly plan. To learn more, [read about our pricing](https://launchdarkly.com/pricing/). To upgrade your plan, [contact LaunchDarkly Sales](https://launchdarkly.com/contact-sales/).
+
+This resource allows you to create and manage flag triggers within your LaunchDarkly organization.
+
+-> **Note:** This resource will store sensitive unique trigger URL value in plaintext in your Terraform state. Be sure your state is configured securely before using this resource. See https://www.terraform.io/docs/state/sensitive-data.html for more details.`,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				Computed:      true,
@@ -56,7 +63,7 @@ func (r *FlagTriggerResource) Schema(_ context.Context, _ resource.SchemaRequest
 			},
 			PROJECT_KEY: schema.StringAttribute{
 				Required:    true,
-				Description: "The project key.",
+				Description: addForceNewDescription("The unique key of the project encompassing the associated flag.", true),
 				Validators:  []validator.String{keyValidator()},
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.RequiresReplace(),
@@ -64,22 +71,24 @@ func (r *FlagTriggerResource) Schema(_ context.Context, _ resource.SchemaRequest
 			},
 			ENV_KEY: schema.StringAttribute{
 				Required:    true,
-				Description: "The environment key.",
+				Description: addForceNewDescription("The unique key of the environment the flag trigger will work in.", true),
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.RequiresReplace(),
 				},
 			},
 			FLAG_KEY: schema.StringAttribute{
 				Required:    true,
-				Description: "The flag key.",
+				Description: addForceNewDescription("The unique key of the associated flag.", true),
 				Validators:  []validator.String{keyValidator()},
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.RequiresReplace(),
 				},
 			},
 			INTEGRATION_KEY: schema.StringAttribute{
-				Required:    true,
-				Description: fmt.Sprintf("The integration key. Supported: %s.", oxfordCommaJoin(VALID_TRIGGER_INTEGRATIONS)),
+				Required: true,
+				Description: addForceNewDescription(
+					fmt.Sprintf("The unique identifier of the integration you intend to set your trigger up with. Currently supported are %s. `generic-trigger` should be used for integrations not explicitly supported.", oxfordCommaJoin(VALID_TRIGGER_INTEGRATIONS)), true),
+				Validators: []validator.String{oneOfValidator{allowed: VALID_TRIGGER_INTEGRATIONS}},
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.RequiresReplace(),
 				},
@@ -87,27 +96,32 @@ func (r *FlagTriggerResource) Schema(_ context.Context, _ resource.SchemaRequest
 			TRIGGER_URL: schema.StringAttribute{
 				Computed:      true,
 				Sensitive:     true,
-				Description:   "The unique URL used to invoke the trigger. Exposed once.",
+				Description:   "The unique URL used to invoke the trigger.",
 				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
 			MAINTAINER_ID: schema.StringAttribute{
 				Computed:      true,
-				Description:   "Member ID maintaining the trigger.",
+				Description:   "The ID of the member responsible for maintaining the flag trigger. If created via Terraform, this value will be the ID of the member associated with the API key used for your provider configuration.",
 				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
 			ENABLED: schema.BoolAttribute{
 				Required:    true,
-				Description: "Whether the trigger is enabled.",
+				Description: "Whether the trigger is currently active or not.",
 			},
 		},
 		Blocks: map[string]schema.Block{
 			INSTRUCTIONS: schema.ListNestedBlock{
-				Description: "Instructions specifying the action to perform.",
+				Description: "Instructions containing the action to perform when invoking the trigger. Currently supported flag actions are `turnFlagOn` and `turnFlagOff`. This must be passed as the key-value pair `{ kind = \"<flag_action>\" }`.",
+				Validators: []validator.List{
+					listvalidator.SizeAtLeast(1),
+					listvalidator.SizeAtMost(1),
+				},
 				NestedObject: schema.NestedBlockObject{
 					Attributes: map[string]schema.Attribute{
 						KIND: schema.StringAttribute{
 							Required:    true,
-							Description: "Currently `turnFlagOn` or `turnFlagOff`.",
+							Description: "The action to perform when triggering. Currently supported flag actions are `turnFlagOn` and `turnFlagOff`.",
+							Validators:  []validator.String{oneOfValidator{allowed: []string{"turnFlagOn", "turnFlagOff"}}},
 						},
 					},
 				},
