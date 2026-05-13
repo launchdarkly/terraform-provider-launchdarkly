@@ -8,6 +8,7 @@ import (
 	"math/rand"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -21,9 +22,20 @@ import (
 // powers fallbackClient does not retry 409s, so a single lost race is enough
 // to fail the build.
 //
-// We treat write 409s as transient and retry with jittered backoff, capped
-// at 4 attempts (~3s total worst case). Read 409s would be unusual but the
-// same loop applies to keep the helper uniform.
+// Belt-and-suspenders mitigation:
+//
+//  1. ipAllowlistWriteMu serialises POST/PATCH/DELETE so two goroutines
+//     inside one test binary (e.g. resource.ParallelTest steps that
+//     overlap) take turns. This eliminates the dominant in-process race
+//     that CI's terraform-plugin-testing matrix surfaced.
+//  2. ipAllowlistRequest retries 409 with jittered backoff so any
+//     remaining cross-process contention (concurrent CI runs against the
+//     same account, etc.) still converges.
+//
+// Reads (GET) skip the mutex; 409 retry stays uniform for the rare case
+// the API surfaces a transient read conflict.
+var ipAllowlistWriteMu sync.Mutex
+
 const (
 	ipAllowlistMaxAttempts = 4
 	ipAllowlistBaseBackoff = 200 * time.Millisecond
@@ -33,6 +45,14 @@ func ipAllowlistBackoff(attempt int) time.Duration {
 	d := ipAllowlistBaseBackoff * time.Duration(1<<attempt) //nolint:gosec // attempt is bounded by ipAllowlistMaxAttempts
 	jitter := time.Duration(rand.Int63n(int64(ipAllowlistBaseBackoff)))
 	return d + jitter
+}
+
+func ipAllowlistMethodMutates(method string) bool {
+	switch method {
+	case http.MethodPost, http.MethodPatch, http.MethodPut, http.MethodDelete:
+		return true
+	}
+	return false
 }
 
 type ipAllowlistResponse struct {
@@ -83,6 +103,14 @@ func ipAllowlistRequest(client *Client, method, path string, body interface{}) (
 	endpoint := fmt.Sprintf("%s%s", client.apiHost, path)
 	if !strings.HasPrefix(endpoint, "http") {
 		endpoint = "https://" + endpoint
+	}
+
+	// Mutating calls serialise in-process so two goroutines inside the
+	// same test binary don't race the LD account allowlist version.
+	// Cross-process contention falls back to the 409 retry loop below.
+	if ipAllowlistMethodMutates(method) {
+		ipAllowlistWriteMu.Lock()
+		defer ipAllowlistWriteMu.Unlock()
 	}
 
 	var (
