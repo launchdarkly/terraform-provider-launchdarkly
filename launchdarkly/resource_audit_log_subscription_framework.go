@@ -77,7 +77,7 @@ func (r *AuditLogSubscriptionResource) Schema(_ context.Context, _ resource.Sche
 				Optional:    true,
 				Computed:    true,
 				ElementType: types.StringType,
-				Description: "Tags associated with the audit log subscription.",
+				Description: "Tags associated with your resource.",
 			},
 		},
 		Blocks: map[string]schema.Block{
