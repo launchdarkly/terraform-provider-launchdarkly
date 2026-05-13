@@ -8,6 +8,45 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 )
 
+// testAccIpAllowlistEntryTestIPs are the IPs / CIDRs the acceptance
+// tests in this file create. The LD account allowlist is a single
+// shared document; if a previous CI run's Create succeeded but a
+// later test step failed before the framework recorded state, the
+// orphan entry survives and poisons the next run with a 409
+// optimistic_locking_error (LD's API reuses the code for both
+// genuine version races and duplicate-IP rejections).
+//
+// cleanupOrphanIpAllowlistEntries runs as part of each test's
+// PreCheck and DELETEs any entry whose ipAddress matches one of
+// these tests' targets. Best-effort: a missing entry is success,
+// transient errors are logged and ignored so the test still gets
+// a chance to surface a real-account problem.
+var testAccIpAllowlistEntryTestIPs = []string{"52.1.1.1", "54.0.0.0/24"}
+
+func cleanupOrphanIpAllowlistEntries(t *testing.T) {
+	t.Helper()
+	client := testAccProvider.Meta().(*Client)
+	allowlist, err := getIpAllowlist(client)
+	if err != nil {
+		t.Logf("ip-allowlist cleanup probe failed (continuing): %s", err)
+		return
+	}
+	targets := map[string]struct{}{}
+	for _, ip := range testAccIpAllowlistEntryTestIPs {
+		targets[ip] = struct{}{}
+	}
+	for _, entry := range allowlist.Entries {
+		if _, hit := targets[entry.IpAddress]; !hit {
+			continue
+		}
+		if delErr := deleteIpAllowlistEntry(client, entry.ID); delErr != nil {
+			t.Logf("ip-allowlist cleanup: failed to delete orphan %s (%s): %s", entry.ID, entry.IpAddress, delErr)
+			continue
+		}
+		t.Logf("ip-allowlist cleanup: deleted orphan entry %s for %s", entry.ID, entry.IpAddress)
+	}
+}
+
 const (
 	testAccIpAllowlistEntryCreate = `
 resource "launchdarkly_ip_allowlist_entry" "test" {
@@ -42,6 +81,7 @@ func TestAccIpAllowlistEntry_CreateAndUpdate(t *testing.T) {
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
 			testAccPreCheck(t)
+			cleanupOrphanIpAllowlistEntries(t)
 		},
 		Providers: testAccProviders,
 		Steps: []resource.TestStep{
@@ -105,6 +145,7 @@ func TestAccIpAllowlistEntry_CIDRBlock(t *testing.T) {
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
 			testAccPreCheck(t)
+			cleanupOrphanIpAllowlistEntries(t)
 		},
 		Providers: testAccProviders,
 		Steps: []resource.TestStep{

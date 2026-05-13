@@ -7,7 +7,30 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"sync"
 )
+
+// LD's IP allowlist API persists the whole allowlist as a single account
+// document with optimistic concurrency. Two truly-simultaneous writes can
+// race that version. ipAllowlistWriteMu serialises POST/PATCH/PUT/DELETE
+// in-process so two test goroutines (e.g. parallel TestCases inside one
+// test binary) never race the version. GETs skip the mutex.
+//
+// Note: the API returns 409 `optimistic_locking_error` for BOTH genuine
+// version races AND attempts to insert a duplicate IP. The two are
+// indistinguishable from the error body, so we don't auto-retry — a
+// retry on a duplicate-IP 409 is a no-op that wastes time and can mask
+// orphans from prior failed tests. Cleanup hooks in test PreChecks
+// handle the orphan scenario.
+var ipAllowlistWriteMu sync.Mutex
+
+func ipAllowlistMethodMutates(method string) bool {
+	switch method {
+	case http.MethodPost, http.MethodPatch, http.MethodPut, http.MethodDelete:
+		return true
+	}
+	return false
+}
 
 type ipAllowlistResponse struct {
 	SessionAllowlistEnabled  bool                       `json:"sessionAllowlistEnabled"`
@@ -64,6 +87,13 @@ func ipAllowlistRequest(client *Client, method, path string, body interface{}) (
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", client.apiKey)
 	req.Header.Set("LD-API-Version", "beta")
+
+	// Mutating calls serialise in-process so two test goroutines don't
+	// race the LD account allowlist version. GETs skip the mutex.
+	if ipAllowlistMethodMutates(method) {
+		ipAllowlistWriteMu.Lock()
+		defer ipAllowlistWriteMu.Unlock()
+	}
 
 	var resp *http.Response
 	err = client.withConcurrency(client.ctx, func() error {
