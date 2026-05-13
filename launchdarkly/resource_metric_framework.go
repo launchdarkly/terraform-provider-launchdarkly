@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"reflect"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
@@ -119,7 +120,6 @@ func (r *MetricResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 			IS_ACTIVE: schema.BoolAttribute{
 				Optional:           true,
 				Computed:           true,
-				Default:            booldefault.StaticBool(false),
 				Description:        "Ignored. All metrics are considered active.",
 				DeprecationMessage: "No longer in use. This field will be removed in a future major release of the LaunchDarkly provider.",
 			},
@@ -335,44 +335,63 @@ func (r *MetricResource) ModifyPlan(ctx context.Context, req resource.ModifyPlan
 		}
 	}
 
-	// Any non-null state means version should be recomputed. Mark unknown
-	// so the framework re-reads it from the API. Skip when this is a
-	// destroy plan (Plan.Raw is null, caught above).
+	// SDKv2's customizeMetricDiff did `diff.SetNewComputed(VERSION)`
+	// only when something *other than* version changed. Mirror that:
+	// only mark version unknown when the plan diverges from state on
+	// some other attribute. Skip when this is a destroy plan
+	// (Plan.Raw is null, caught above) or a fresh create (no state).
 	if !req.State.Raw.IsNull() {
-		plan.Version = types.Int64Unknown()
+		var state MetricResourceModel
+		resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+		// Compare without version: temporarily mirror state.Version
+		// into plan, check equality, restore.
+		planVersion := plan.Version
+		plan.Version = state.Version
+		if !reflect.DeepEqual(plan, state) {
+			plan.Version = types.Int64Unknown()
+		} else {
+			plan.Version = planVersion
+		}
 	}
 
 	resp.Diagnostics.Append(resp.Plan.Set(ctx, &plan)...)
 }
 
 type metricURLModel struct {
-	Kind      string `tfsdk:"kind"`
-	URL       string `tfsdk:"url"`
-	Substring string `tfsdk:"substring"`
-	Pattern   string `tfsdk:"pattern"`
+	Kind      types.String `tfsdk:"kind"`
+	URL       types.String `tfsdk:"url"`
+	Substring types.String `tfsdk:"substring"`
+	Pattern   types.String `tfsdk:"pattern"`
 }
 
 func metricURLEntryValid(u metricURLModel) bool {
-	switch u.Kind {
+	kind := u.Kind.ValueString()
+	url := u.URL.ValueString()
+	substring := u.Substring.ValueString()
+	pattern := u.Pattern.ValueString()
+	switch kind {
 	case "exact", "canonical":
-		if u.URL == "" {
+		if url == "" {
 			return false
 		}
-		if u.Pattern != "" || u.Substring != "" {
+		if pattern != "" || substring != "" {
 			return false
 		}
 	case "substring":
-		if u.Substring == "" {
+		if substring == "" {
 			return false
 		}
-		if u.Pattern != "" || u.URL != "" {
+		if pattern != "" || url != "" {
 			return false
 		}
 	case "regex":
-		if u.Pattern == "" {
+		if pattern == "" {
 			return false
 		}
-		if u.Substring != "" || u.URL != "" {
+		if substring != "" || url != "" {
 			return false
 		}
 	}
@@ -735,11 +754,14 @@ func (r *MetricResource) readIntoModel(
 func stringFromMap(m map[string]interface{}, key string) types.String {
 	v, ok := m[key]
 	if !ok || v == nil {
-		return types.StringValue("")
+		return types.StringNull()
 	}
 	s, ok := v.(string)
 	if !ok {
-		return types.StringValue("")
+		return types.StringNull()
+	}
+	if s == "" {
+		return types.StringNull()
 	}
 	return types.StringValue(s)
 }
@@ -747,13 +769,21 @@ func stringFromMap(m map[string]interface{}, key string) types.String {
 func metricURLPostsFromModels(in []metricURLModel) []ldapi.UrlPost {
 	out := make([]ldapi.UrlPost, len(in))
 	for i, u := range in {
-		k, url, sub, pat := u.Kind, u.URL, u.Substring, u.Pattern
-		out[i] = ldapi.UrlPost{
-			Kind:      &k,
-			Url:       &url,
-			Substring: &sub,
-			Pattern:   &pat,
+		k := u.Kind.ValueString()
+		url := u.URL.ValueString()
+		sub := u.Substring.ValueString()
+		pat := u.Pattern.ValueString()
+		post := ldapi.UrlPost{Kind: &k}
+		if url != "" {
+			post.Url = &url
 		}
+		if sub != "" {
+			post.Substring = &sub
+		}
+		if pat != "" {
+			post.Pattern = &pat
+		}
+		out[i] = post
 	}
 	return out
 }

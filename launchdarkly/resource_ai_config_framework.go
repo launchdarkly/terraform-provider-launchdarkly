@@ -82,7 +82,6 @@ func (r *AIConfigResource) Schema(_ context.Context, _ resource.SchemaRequest, r
 			},
 			DESCRIPTION: schema.StringAttribute{
 				Optional:    true,
-				Computed:    true,
 				Description: "The AI Config's description.",
 			},
 			MODE: schema.StringAttribute{
@@ -118,12 +117,10 @@ func (r *AIConfigResource) Schema(_ context.Context, _ resource.SchemaRequest, r
 			},
 			EVALUATION_METRIC_KEY: schema.StringAttribute{
 				Optional:    true,
-				Computed:    true,
 				Description: "The key of the evaluation metric associated with this AI Config.",
 			},
 			IS_INVERTED: schema.BoolAttribute{
 				Optional:    true,
-				Computed:    true,
 				Description: "Whether the evaluation metric is inverted.",
 			},
 			VERSION: schema.Int64Attribute{
@@ -134,16 +131,10 @@ func (r *AIConfigResource) Schema(_ context.Context, _ resource.SchemaRequest, r
 				Computed:    true,
 				Description: "A timestamp of when the AI Config was created.",
 			},
-			VARIATIONS: schema.ListNestedAttribute{
+			VARIATIONS: schema.ListAttribute{
 				Computed:    true,
 				Description: "A list of variation summaries for this AI Config.",
-				NestedObject: schema.NestedAttributeObject{
-					Attributes: map[string]schema.Attribute{
-						KEY:          schema.StringAttribute{Computed: true, Description: "The variation's key."},
-						NAME:         schema.StringAttribute{Computed: true, Description: "The variation's name."},
-						VARIATION_ID: schema.StringAttribute{Computed: true, Description: "The variation's ID."},
-					},
-				},
+				ElementType: types.ObjectType{AttrTypes: aiConfigVariationSummaryAttrTypes},
 			},
 		},
 	}
@@ -419,7 +410,7 @@ func (r *AIConfigResource) readIntoModel(
 	data.ProjectKey = types.StringValue(projectKey)
 	data.Key = types.StringValue(cfg.Key)
 	data.Name = types.StringValue(cfg.Name)
-	data.Description = types.StringValue(cfg.Description)
+	data.Description = stringValueOrNull(cfg.Description)
 	data.Version = types.Int64Value(int64(cfg.Version))
 	data.CreationDate = types.Int64Value(cfg.CreatedAt)
 
@@ -429,15 +420,11 @@ func (r *AIConfigResource) readIntoModel(
 	}
 	data.Mode = types.StringValue(mode)
 
-	if cfg.EvaluationMetricKey != nil {
-		data.EvaluationMetricKey = types.StringValue(*cfg.EvaluationMetricKey)
-	} else {
-		data.EvaluationMetricKey = types.StringValue("")
-	}
+	data.EvaluationMetricKey = stringValueOrNullFromPointer(cfg.EvaluationMetricKey)
 	if cfg.IsInverted != nil {
 		data.IsInverted = types.BoolValue(*cfg.IsInverted)
 	} else {
-		data.IsInverted = types.BoolValue(false)
+		data.IsInverted = types.BoolNull()
 	}
 
 	// Clear both maintainer fields first, then set the one returned by

@@ -115,7 +115,11 @@ func (r *AuditLogSubscriptionResource) Create(ctx context.Context, req resource.
 
 	apiConfig, err := convertSubscriptionConfigToAPI(integrationKey, rawConfig)
 	if err != nil {
-		resp.Diagnostics.AddError(fmt.Sprintf("failed to create %s integration with name %s", integrationKey, name), err.Error())
+		// SDKv2 wrapped the underlying validation error into the summary
+		// (`Error: failed to ... %s` with the colon-joined detail), so
+		// keep the ExpectError regex shape stable across provider
+		// implementations.
+		resp.Diagnostics.AddError(fmt.Sprintf("failed to create %s integration with name %s: %s", integrationKey, name, err.Error()), "")
 		return
 	}
 

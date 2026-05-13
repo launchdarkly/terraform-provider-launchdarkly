@@ -2,8 +2,11 @@ package launchdarkly
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"net/http"
 	"os"
+	"strings"
 	"sync"
 	"testing"
 
@@ -64,4 +67,51 @@ func mustTestAccClient() *Client {
 		testAccClientInst = client
 	})
 	return testAccClientInst
+}
+
+// firstMemberIDForTest fetches the first account member via raw HTTP so
+// tests can pick up a valid maintainer ID without tripping the
+// api-client-go strict UnmarshalJSON guards, which currently reject
+// responses that include any member missing a required nested-struct
+// field (e.g. integrationMetadata.externalId). Returns the first
+// member's `_id`; tests that need an email/role can extend the struct.
+func firstMemberIDForTest(t *testing.T) string {
+	t.Helper()
+	host := os.Getenv(LAUNCHDARKLY_API_HOST)
+	if host == "" {
+		host = DEFAULT_LAUNCHDARKLY_HOST
+	}
+	if !strings.HasPrefix(host, "http://") && !strings.HasPrefix(host, "https://") {
+		host = "https://" + host
+	}
+	token := os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN)
+	if token == "" {
+		t.Fatalf("%s env var must be set for acceptance tests", LAUNCHDARKLY_ACCESS_TOKEN)
+	}
+	req, err := http.NewRequest(http.MethodGet, host+"/api/v2/members?limit=1", nil)
+	if err != nil {
+		t.Fatalf("firstMemberIDForTest: build request: %s", err)
+	}
+	req.Header.Set("Authorization", token)
+	req.Header.Set("LD-API-Version", APIVersion)
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("firstMemberIDForTest: GET /members: %s", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode >= 400 {
+		t.Fatalf("firstMemberIDForTest: unexpected status %d", resp.StatusCode)
+	}
+	var out struct {
+		Items []struct {
+			ID string `json:"_id"`
+		} `json:"items"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
+		t.Fatalf("firstMemberIDForTest: decode: %s", err)
+	}
+	if len(out.Items) == 0 {
+		t.Fatalf("firstMemberIDForTest: no members in account")
+	}
+	return out.Items[0].ID
 }

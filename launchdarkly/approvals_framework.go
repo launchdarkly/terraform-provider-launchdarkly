@@ -85,7 +85,14 @@ func frameworkApprovalSettingsDataSourceBlock() dsschema.ListNestedBlock {
 // produce an empty list, not null, so wire shape is stable.
 func frameworkApprovalSettingsValue(ctx context.Context, settings *ldapi.ApprovalSettings) (basetypes.ListValue, diag.Diagnostics) {
 	objectType := types.ObjectType{AttrTypes: frameworkApprovalSettingsObjectAttrTypes}
-	if settings == nil {
+	// SDKv2 carried Optional+Computed on the TypeList, so omitted-config
+	// envs ended up with an unknown plan that absorbed whatever LD's
+	// approval doc looked like. Framework blocks can't be Computed at
+	// the block level, so emit empty when LD's struct is the
+	// zero-value default (effectively "no approval configured") to
+	// match the omitted-config plan shape and avoid a
+	// "block count changed from 0 to 1" inconsistency.
+	if settings == nil || isZeroApprovalSettings(settings) {
 		return types.ListValue(objectType, []attr.Value{})
 	}
 
@@ -106,7 +113,11 @@ func frameworkApprovalSettingsValue(ctx context.Context, settings *ldapi.Approva
 	serviceConfigVal, d := types.MapValueFrom(ctx, types.StringType, serviceConfig)
 	diags.Append(d...)
 
-	autoApply := types.BoolNull()
+	// Schema declares a default of false on auto_apply_approved_changes;
+	// LD may return nil when unset, but Plan applies the default, so
+	// mirror it on Read to avoid a "Provider produced inconsistent
+	// result after apply" mismatch.
+	autoApply := types.BoolValue(false)
 	if settings.AutoApplyApprovedChanges != nil {
 		autoApply = types.BoolValue(*settings.AutoApplyApprovedChanges)
 	}
@@ -126,4 +137,33 @@ func frameworkApprovalSettingsValue(ctx context.Context, settings *ldapi.Approva
 	list, d := types.ListValue(objectType, []attr.Value{obj})
 	diags.Append(d...)
 	return list, diags
+}
+
+// isZeroApprovalSettings reports whether the LD approval-settings doc is
+// effectively unconfigured. LD now returns a struct rather than nil
+// (with API-applied defaults like minNumApprovals=1) even for envs
+// without approvals enabled; SDKv2 hid that via Computed semantics on
+// the TypeList. We treat the doc as "absent" when no approval gate is
+// active and no service integration has been configured — the rest are
+// defaults LD always echoes back.
+func isZeroApprovalSettings(s *ldapi.ApprovalSettings) bool {
+	if s == nil {
+		return true
+	}
+	if s.Required {
+		return false
+	}
+	if len(s.RequiredApprovalTags) > 0 {
+		return false
+	}
+	if s.ServiceKind != "" && s.ServiceKind != "launchdarkly" {
+		return false
+	}
+	if len(s.ServiceConfig) > 0 {
+		return false
+	}
+	if s.AutoApplyApprovedChanges != nil && *s.AutoApplyApprovedChanges {
+		return false
+	}
+	return true
 }

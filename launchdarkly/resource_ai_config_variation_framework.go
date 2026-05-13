@@ -16,6 +16,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/setplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -107,12 +108,10 @@ func (r *AIConfigVariationResource) Schema(_ context.Context, _ resource.SchemaR
 			},
 			DESCRIPTION: schema.StringAttribute{
 				Optional:    true,
-				Computed:    true,
 				Description: "The variation's description (used in agent mode).",
 			},
 			INSTRUCTIONS: schema.StringAttribute{
 				Optional:    true,
-				Computed:    true,
 				Description: "The variation's instructions (used in agent mode).",
 			},
 			TOOL_KEYS: schema.SetAttribute{
@@ -120,12 +119,18 @@ func (r *AIConfigVariationResource) Schema(_ context.Context, _ resource.SchemaR
 				Computed:    true,
 				ElementType: types.StringType,
 				Description: "A set of AI tool keys to associate with this variation. **Note:** The API does not currently return tool associations on read, so Terraform cannot detect drift for this field. Changes made outside of Terraform will not be reflected in state.",
+				PlanModifiers: []planmodifier.Set{
+					setplanmodifier.UseStateForUnknown(),
+				},
 			},
 			STATE: schema.StringAttribute{
 				Optional:    true,
 				Computed:    true,
 				Description: "The state of the variation. Must be `archived` or `published`.",
 				Validators:  []validator.String{oneOfValidator{allowed: []string{"archived", "published"}}},
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
 			},
 			VARIATION_ID: schema.StringAttribute{
 				Computed:      true,
@@ -473,16 +478,8 @@ func (r *AIConfigVariationResource) readIntoModel(
 	data.Version = types.Int64Value(int64(variation.Version))
 	data.CreationDate = types.Int64Value(variation.CreatedAt)
 
-	if variation.Description != nil {
-		data.Description = types.StringValue(*variation.Description)
-	} else {
-		data.Description = types.StringValue("")
-	}
-	if variation.Instructions != nil {
-		data.Instructions = types.StringValue(*variation.Instructions)
-	} else {
-		data.Instructions = types.StringValue("")
-	}
+	data.Description = stringValueOrNullFromPointer(variation.Description)
+	data.Instructions = stringValueOrNullFromPointer(variation.Instructions)
 	if variation.ModelConfigKey != nil {
 		data.ModelConfigKey = types.StringValue(*variation.ModelConfigKey)
 	} else {

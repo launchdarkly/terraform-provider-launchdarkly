@@ -346,15 +346,18 @@ func (r *EnvironmentResource) applyApprovalPatch(ctx context.Context, projectKey
 		})
 	}
 
+	// Use framework types in the intermediate model so Computed inner
+	// attrs (which can be Unknown at plan time) don't trip the strict
+	// `[]string` / `map[string]string` decoders in ElementsAs.
 	type approvalModel struct {
-		Required                 bool              `tfsdk:"required"`
-		CanReviewOwnRequest      bool              `tfsdk:"can_review_own_request"`
-		MinNumApprovals          int64             `tfsdk:"min_num_approvals"`
-		CanApplyDeclinedChanges  bool              `tfsdk:"can_apply_declined_changes"`
-		RequiredApprovalTags     []string          `tfsdk:"required_approval_tags"`
-		ServiceKind              string            `tfsdk:"service_kind"`
-		ServiceConfig            map[string]string `tfsdk:"service_config"`
-		AutoApplyApprovedChanges bool              `tfsdk:"auto_apply_approved_changes"`
+		Required                 types.Bool   `tfsdk:"required"`
+		CanReviewOwnRequest      types.Bool   `tfsdk:"can_review_own_request"`
+		MinNumApprovals          types.Int64  `tfsdk:"min_num_approvals"`
+		CanApplyDeclinedChanges  types.Bool   `tfsdk:"can_apply_declined_changes"`
+		RequiredApprovalTags     types.List   `tfsdk:"required_approval_tags"`
+		ServiceKind              types.String `tfsdk:"service_kind"`
+		ServiceConfig            types.Map    `tfsdk:"service_config"`
+		AutoApplyApprovedChanges types.Bool   `tfsdk:"auto_apply_approved_changes"`
 	}
 	var models []approvalModel
 	if d := planList.ElementsAs(ctx, &models, false); d.HasError() {
@@ -364,26 +367,39 @@ func (r *EnvironmentResource) applyApprovalPatch(ctx context.Context, projectKey
 		return nil
 	}
 	m := models[0]
-	if m.Required && len(m.RequiredApprovalTags) > 0 {
+
+	requiredApprovalTags, d := stringSliceFromList(ctx, m.RequiredApprovalTags)
+	if d.HasError() {
+		return fmt.Errorf("decode required_approval_tags: %v", d)
+	}
+	if m.Required.ValueBool() && len(requiredApprovalTags) > 0 {
 		return fmt.Errorf("invalid approval_settings config: required and required_approval_tags cannot be set simultaneously")
 	}
-	if m.ServiceKind == "launchdarkly" && m.AutoApplyApprovedChanges {
+	serviceKind := m.ServiceKind.ValueString()
+	autoApply := m.AutoApplyApprovedChanges.ValueBool()
+	if serviceKind == "launchdarkly" && autoApply {
 		return fmt.Errorf("invalid approval_settings config: auto_apply_approved_changes cannot be set to true for service_kind of launchdarkly")
 	}
 
-	serviceConfig := make(map[string]interface{}, len(m.ServiceConfig))
-	for k, v := range m.ServiceConfig {
-		serviceConfig[k] = v
+	serviceConfig := make(map[string]interface{})
+	if !m.ServiceConfig.IsNull() && !m.ServiceConfig.IsUnknown() {
+		raw, d := mapStringFromAttr(ctx, m.ServiceConfig)
+		if d.HasError() {
+			return fmt.Errorf("decode service_config: %v", d)
+		}
+		for k, v := range raw {
+			serviceConfig[k] = v
+		}
 	}
 	patch := []ldapi.PatchOperation{
-		patchReplace("/approvalSettings/required", m.Required),
-		patchReplace("/approvalSettings/canReviewOwnRequest", m.CanReviewOwnRequest),
-		patchReplace("/approvalSettings/minNumApprovals", m.MinNumApprovals),
-		patchReplace("/approvalSettings/canApplyDeclinedChanges", m.CanApplyDeclinedChanges),
-		patchReplace("/approvalSettings/requiredApprovalTags", m.RequiredApprovalTags),
-		patchReplace("/approvalSettings/serviceKind", m.ServiceKind),
+		patchReplace("/approvalSettings/required", m.Required.ValueBool()),
+		patchReplace("/approvalSettings/canReviewOwnRequest", m.CanReviewOwnRequest.ValueBool()),
+		patchReplace("/approvalSettings/minNumApprovals", m.MinNumApprovals.ValueInt64()),
+		patchReplace("/approvalSettings/canApplyDeclinedChanges", m.CanApplyDeclinedChanges.ValueBool()),
+		patchReplace("/approvalSettings/requiredApprovalTags", requiredApprovalTags),
+		patchReplace("/approvalSettings/serviceKind", serviceKind),
 		patchReplace("/approvalSettings/serviceConfig", serviceConfig),
-		patchReplace("/approvalSettings/autoApplyApprovedChanges", m.AutoApplyApprovedChanges),
+		patchReplace("/approvalSettings/autoApplyApprovedChanges", autoApply),
 	}
 	return r.client.withConcurrency(r.client.ctx, func() error {
 		_, _, e := r.client.ld.EnvironmentsApi.PatchEnvironment(r.client.ctx, projectKey, envKey).PatchOperation(patch).Execute()

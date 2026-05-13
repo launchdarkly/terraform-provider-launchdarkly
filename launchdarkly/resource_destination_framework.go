@@ -22,6 +22,7 @@ import (
 var (
 	_ resource.Resource                = &DestinationResource{}
 	_ resource.ResourceWithImportState = &DestinationResource{}
+	_ resource.ResourceWithModifyPlan  = &DestinationResource{}
 )
 
 type DestinationResource struct {
@@ -106,6 +107,56 @@ func (r *DestinationResource) Configure(_ context.Context, req resource.Configur
 	r.client = configureResourceClient(req, resp)
 }
 
+// ModifyPlan normalizes JSON-shaped config map entries (currently
+// `user_identities` for the mparticle kind) so the planned value
+// matches whatever the API will round-trip to in state. Without this
+// terraform-plugin-framework's strict plan-apply consistency check
+// trips on whitespace differences between the user's heredoc HCL and
+// the API's compact JSON response.
+func (r *DestinationResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
+	if req.Plan.Raw.IsNull() {
+		return
+	}
+	var plan DestinationResourceModel
+	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	if plan.Kind.ValueString() != "mparticle" || plan.Config.IsNull() || plan.Config.IsUnknown() {
+		return
+	}
+	cfg, d := mapStringFromAttr(ctx, plan.Config)
+	resp.Diagnostics.Append(d...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	raw, ok := cfg["user_identities"]
+	if !ok {
+		return
+	}
+	var identities []map[string]interface{}
+	if err := json.Unmarshal([]byte(raw), &identities); err != nil {
+		// Validation runs later; leave the raw value so the user sees the
+		// proper "is not valid" error rather than a silent mutation.
+		return
+	}
+	normalised, err := json.Marshal(identities)
+	if err != nil {
+		return
+	}
+	if string(normalised) == raw {
+		return
+	}
+	cfg["user_identities"] = string(normalised)
+	newMap, d := types.MapValueFrom(ctx, types.StringType, cfg)
+	resp.Diagnostics.Append(d...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	plan.Config = newMap
+	resp.Diagnostics.Append(resp.Plan.Set(ctx, &plan)...)
+}
+
 func (r *DestinationResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	var plan DestinationResourceModel
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
@@ -122,7 +173,10 @@ func (r *DestinationResource) Create(ctx context.Context, req resource.CreateReq
 	kind := plan.Kind.ValueString()
 	apiConfig, err := destinationConfigMapToAPI(kind, rawConfig)
 	if err != nil {
-		resp.Diagnostics.AddError("Invalid destination config", err.Error())
+		// SDKv2 surfaced this as `diag.FromErr(err)`, i.e. the raw
+		// error string as the summary with no detail. Match that shape
+		// so the existing ExpectError regex still fits on one line.
+		resp.Diagnostics.AddError(err.Error(), "")
 		return
 	}
 
@@ -194,7 +248,7 @@ func (r *DestinationResource) Update(ctx context.Context, req resource.UpdateReq
 	kind := plan.Kind.ValueString()
 	apiConfig, err := destinationConfigMapToAPI(kind, rawConfig)
 	if err != nil {
-		resp.Diagnostics.AddError("Invalid destination config", err.Error())
+		resp.Diagnostics.AddError(err.Error(), "")
 		return
 	}
 
