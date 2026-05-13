@@ -119,7 +119,12 @@ func TestAccCustomRole_CreateAndUpdate(t *testing.T) {
 					testAccCheckCustomRoleExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, KEY, key),
 					resource.TestCheckResourceAttr(resourceName, NAME, "Updated - "+name),
-					resource.TestCheckResourceAttr(resourceName, DESCRIPTION, ""), // should be empty after removal
+					// Removed from config; framework writes null (absent) on Read
+					// when the API returns empty description. SDKv2 used to write
+					// "" here, but null is the framework-correct state for an
+					// Optional-only attribute. See framework_helpers.go for
+					// stringValueOrNullFromPointer.
+					resource.TestCheckNoResourceAttr(resourceName, DESCRIPTION),
 					resource.TestCheckResourceAttr(resourceName, BASE_PERMISSIONS, "reader"),
 					resource.TestCheckResourceAttr(resourceName, "policy.#", "1"),
 					resource.TestCheckResourceAttr(resourceName, "policy.0.actions.#", "1"),
