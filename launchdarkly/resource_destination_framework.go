@@ -122,9 +122,8 @@ func (r *DestinationResource) Create(ctx context.Context, req resource.CreateReq
 	kind := plan.Kind.ValueString()
 	apiConfig, err := destinationConfigMapToAPI(kind, rawConfig)
 	if err != nil {
-		// SDKv2 surfaced this as `diag.FromErr(err)`, i.e. the raw
-		// error string as the summary with no detail. Match that shape
-		// so the existing ExpectError regex still fits on one line.
+		// One-line form matches SDKv2 diag.FromErr — ExpectError regex
+		// can't span the framework's summary→detail wrap.
 		resp.Diagnostics.AddError(err.Error(), "")
 		return
 	}

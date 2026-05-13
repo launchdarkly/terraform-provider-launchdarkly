@@ -335,11 +335,8 @@ func (r *MetricResource) ModifyPlan(ctx context.Context, req resource.ModifyPlan
 		}
 	}
 
-	// SDKv2's customizeMetricDiff did `diff.SetNewComputed(VERSION)`
-	// only when something *other than* version changed. Mirror that:
-	// only mark version unknown when the plan diverges from state on
-	// some other attribute. Skip when this is a destroy plan
-	// (Plan.Raw is null, caught above) or a fresh create (no state).
+	// Mirror SDKv2's diff.SetNewComputed(VERSION) — only mark version
+	// Unknown when something *other than* version actually changed.
 	if !req.State.Raw.IsNull() {
 		var state MetricResourceModel
 		resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
@@ -661,11 +658,7 @@ func (r *MetricResource) readIntoModel(
 	data.ProjectKey = types.StringValue(projectKey)
 	data.Key = types.StringValue(metric.Key)
 	data.Name = types.StringValue(metric.Name)
-	if metric.Description != nil {
-		data.Description = types.StringValue(*metric.Description)
-	} else {
-		data.Description = types.StringValue("")
-	}
+	data.Description = stringValueFromPointer(metric.Description)
 	data.Kind = types.StringValue(metric.Kind)
 	if metric.IsActive != nil {
 		data.IsActive = types.BoolValue(*metric.IsActive)
@@ -677,26 +670,10 @@ func (r *MetricResource) readIntoModel(
 	} else {
 		data.IsNumeric = types.BoolValue(false)
 	}
-	if metric.Selector != nil {
-		data.Selector = types.StringValue(*metric.Selector)
-	} else {
-		data.Selector = types.StringValue("")
-	}
-	if metric.Unit != nil {
-		data.Unit = types.StringValue(*metric.Unit)
-	} else {
-		data.Unit = types.StringValue("")
-	}
-	if metric.EventKey != nil {
-		data.EventKey = types.StringValue(*metric.EventKey)
-	} else {
-		data.EventKey = types.StringValue("")
-	}
-	if metric.SuccessCriteria != nil {
-		data.SuccessCriteria = types.StringValue(*metric.SuccessCriteria)
-	} else {
-		data.SuccessCriteria = types.StringValue("")
-	}
+	data.Selector = stringValueFromPointer(metric.Selector)
+	data.Unit = stringValueFromPointer(metric.Unit)
+	data.EventKey = stringValueFromPointer(metric.EventKey)
+	data.SuccessCriteria = stringValueFromPointer(metric.SuccessCriteria)
 	if metric.EventDefault != nil && metric.EventDefault.Disabled != nil {
 		data.IncludeUnitsWithoutEvents = types.BoolValue(!*metric.EventDefault.Disabled)
 	}

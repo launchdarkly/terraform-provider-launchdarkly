@@ -115,10 +115,8 @@ func (r *AuditLogSubscriptionResource) Create(ctx context.Context, req resource.
 
 	apiConfig, err := convertSubscriptionConfigToAPI(integrationKey, rawConfig)
 	if err != nil {
-		// SDKv2 wrapped the underlying validation error into the summary
-		// (`Error: failed to ... %s` with the colon-joined detail), so
-		// keep the ExpectError regex shape stable across provider
-		// implementations.
+		// One-line form matches SDKv2 diag.Errorf — ExpectError regex
+		// can't span the framework's summary→detail wrap.
 		resp.Diagnostics.AddError(fmt.Sprintf("failed to create %s integration with name %s: %s", integrationKey, name, err.Error()), "")
 		return
 	}
@@ -389,15 +387,4 @@ func convertSubscriptionConfigFromAPI(integrationKey string, apiConfig map[strin
 		out[key] = fmt.Sprintf("%v", v)
 	}
 	return out, nil
-}
-
-// mapStringFromAttr converts a framework types.Map (String elements) into
-// a Go map. Null / unknown returns an empty (non-nil) map.
-func mapStringFromAttr(ctx context.Context, m types.Map) (map[string]string, diag.Diagnostics) {
-	out := make(map[string]string, len(m.Elements()))
-	if m.IsNull() || m.IsUnknown() {
-		return out, nil
-	}
-	d := m.ElementsAs(ctx, &out, false)
-	return out, d
 }
