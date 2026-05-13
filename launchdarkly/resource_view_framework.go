@@ -231,13 +231,21 @@ func (r *ViewResource) Update(ctx context.Context, req resource.UpdateRequest, r
 	if !plan.Description.Equal(state.Description) {
 		patch["description"] = plan.Description.ValueString()
 	}
-	// Send maintainerId whenever the field changed — even on clear/swap, so the
-	// API receives an explicit empty string to unset it.
-	if !plan.MaintainerID.Equal(state.MaintainerID) {
-		patch["maintainerId"] = plan.MaintainerID.ValueString()
-	}
-	if !plan.MaintainerTeamKey.Equal(state.MaintainerTeamKey) {
-		patch["maintainerTeamKey"] = plan.MaintainerTeamKey.ValueString()
+	// The LD API rejects PATCH bodies containing BOTH maintainerId and
+	// maintainerTeamKey ("Team maintainer key and member maintainer ID
+	// cannot both be set" — 400). ExactlyOneOf guarantees at most one
+	// side is populated in plan; send only that side and let the API
+	// atomically replace whatever maintainer was previously stored.
+	// Sending the cleared side as "" trips the same validation.
+	switch {
+	case plan.MaintainerID.ValueString() != "":
+		if !plan.MaintainerID.Equal(state.MaintainerID) {
+			patch["maintainerId"] = plan.MaintainerID.ValueString()
+		}
+	case plan.MaintainerTeamKey.ValueString() != "":
+		if !plan.MaintainerTeamKey.Equal(state.MaintainerTeamKey) {
+			patch["maintainerTeamKey"] = plan.MaintainerTeamKey.ValueString()
+		}
 	}
 	if !plan.Tags.Equal(state.Tags) {
 		tags, diags := stringSliceFromSet(ctx, plan.Tags)
