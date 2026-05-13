@@ -5,47 +5,24 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"math/rand"
 	"net/http"
 	"strings"
 	"sync"
-	"time"
 )
 
 // LD's IP allowlist API persists the whole allowlist as a single account
-// document. Concurrent writes (POST/PATCH/DELETE on /api/v2/account/ip-allowlist)
-// race on the document's underlying version and the loser comes back with a
-// 409 "Conflict creating IP allowlist entry" even when the IPs themselves
-// don't collide. The acceptance tests in this file each call resource.ParallelTest
-// so they fan out within a single shard, and concurrent CI runs against the
-// same blitz LD account add more contention. The retryablehttp policy that
-// powers fallbackClient does not retry 409s, so a single lost race is enough
-// to fail the build.
+// document with optimistic concurrency. Two truly-simultaneous writes can
+// race that version. ipAllowlistWriteMu serialises POST/PATCH/PUT/DELETE
+// in-process so two test goroutines (e.g. parallel TestCases inside one
+// test binary) never race the version. GETs skip the mutex.
 //
-// Belt-and-suspenders mitigation:
-//
-//  1. ipAllowlistWriteMu serialises POST/PATCH/DELETE so two goroutines
-//     inside one test binary (e.g. resource.ParallelTest steps that
-//     overlap) take turns. This eliminates the dominant in-process race
-//     that CI's terraform-plugin-testing matrix surfaced.
-//  2. ipAllowlistRequest retries 409 with jittered backoff so any
-//     remaining cross-process contention (concurrent CI runs against the
-//     same account, etc.) still converges.
-//
-// Reads (GET) skip the mutex; 409 retry stays uniform for the rare case
-// the API surfaces a transient read conflict.
+// Note: the API returns 409 `optimistic_locking_error` for BOTH genuine
+// version races AND attempts to insert a duplicate IP. The two are
+// indistinguishable from the error body, so we don't auto-retry — a
+// retry on a duplicate-IP 409 is a no-op that wastes time and can mask
+// orphans from prior failed tests. Cleanup hooks in test PreChecks
+// handle the orphan scenario.
 var ipAllowlistWriteMu sync.Mutex
-
-const (
-	ipAllowlistMaxAttempts = 4
-	ipAllowlistBaseBackoff = 200 * time.Millisecond
-)
-
-func ipAllowlistBackoff(attempt int) time.Duration {
-	d := ipAllowlistBaseBackoff * time.Duration(1<<attempt) //nolint:gosec // attempt is bounded by ipAllowlistMaxAttempts
-	jitter := time.Duration(rand.Int63n(int64(ipAllowlistBaseBackoff)))
-	return d + jitter
-}
 
 func ipAllowlistMethodMutates(method string) bool {
 	switch method {
@@ -89,65 +66,34 @@ type ipAllowlistErrorResponse struct {
 const ipAllowlistBasePath = "/api/v2/account/ip-allowlist"
 
 func ipAllowlistRequest(client *Client, method, path string, body interface{}) (*http.Response, []byte, error) {
-	// Marshal once; the request body itself is short and re-using the
-	// buffer per attempt is simpler than serializing on every retry.
-	var rawBody []byte
-	if body != nil {
-		var err error
-		rawBody, err = json.Marshal(body)
-		if err != nil {
-			return nil, nil, fmt.Errorf("failed to marshal request body: %w", err)
-		}
-	}
-
 	endpoint := fmt.Sprintf("%s%s", client.apiHost, path)
 	if !strings.HasPrefix(endpoint, "http") {
 		endpoint = "https://" + endpoint
 	}
 
-	// Mutating calls serialise in-process so two goroutines inside the
-	// same test binary don't race the LD account allowlist version.
-	// Cross-process contention falls back to the 409 retry loop below.
-	if ipAllowlistMethodMutates(method) {
-		ipAllowlistWriteMu.Lock()
-		defer ipAllowlistWriteMu.Unlock()
+	var bodyReader io.Reader
+	if body != nil {
+		rawBody, err := json.Marshal(body)
+		if err != nil {
+			return nil, nil, fmt.Errorf("failed to marshal request body: %w", err)
+		}
+		bodyReader = bytes.NewBuffer(rawBody)
 	}
 
-	var (
-		resp     *http.Response
-		respBody []byte
-		lastErr  error
-	)
-	for attempt := 0; attempt < ipAllowlistMaxAttempts; attempt++ {
-		var bodyReader io.Reader
-		if rawBody != nil {
-			bodyReader = bytes.NewReader(rawBody)
-		}
-		resp, respBody, lastErr = ipAllowlistDoOnce(client, method, endpoint, bodyReader)
-		// Retry only on 409 Conflict, which we know LD returns for
-		// optimistic-concurrency races on the account allowlist
-		// document. Everything else (transport errors, 4xx other
-		// than 409, 5xx) falls back to the underlying retryablehttp
-		// policy already applied by fallbackClient.
-		if resp == nil || resp.StatusCode != http.StatusConflict {
-			return resp, respBody, lastErr
-		}
-		if attempt == ipAllowlistMaxAttempts-1 {
-			return resp, respBody, lastErr
-		}
-		time.Sleep(ipAllowlistBackoff(attempt))
-	}
-	return resp, respBody, lastErr
-}
-
-func ipAllowlistDoOnce(client *Client, method, endpoint string, body io.Reader) (*http.Response, []byte, error) {
-	req, err := http.NewRequest(method, endpoint, body)
+	req, err := http.NewRequest(method, endpoint, bodyReader)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to create request: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", client.apiKey)
 	req.Header.Set("LD-API-Version", "beta")
+
+	// Mutating calls serialise in-process so two test goroutines don't
+	// race the LD account allowlist version. GETs skip the mutex.
+	if ipAllowlistMethodMutates(method) {
+		ipAllowlistWriteMu.Lock()
+		defer ipAllowlistWriteMu.Unlock()
+	}
 
 	var resp *http.Response
 	err = client.withConcurrency(client.ctx, func() error {
@@ -158,10 +104,10 @@ func ipAllowlistDoOnce(client *Client, method, endpoint string, body io.Reader) 
 		return resp, nil, fmt.Errorf("request failed: %w", err)
 	}
 
-	respBody, readErr := io.ReadAll(resp.Body)
+	respBody, err := io.ReadAll(resp.Body)
 	defer resp.Body.Close()
-	if readErr != nil {
-		return resp, nil, fmt.Errorf("failed to read response body: %w", readErr)
+	if err != nil {
+		return resp, nil, fmt.Errorf("failed to read response body: %w", err)
 	}
 
 	if resp.StatusCode >= 400 {
