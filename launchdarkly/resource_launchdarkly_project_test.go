@@ -18,11 +18,11 @@ resource "launchdarkly_project" "test" {
 	name = "test project"
 	include_in_snippet = false
 	tags = [ "terraform", "test" ]
-	environments {
+	environments = [{
 	  name  = "Test Environment"
 	  key   = "test-env"
 	  color = "010101"
-	}
+	}]
 }
 `
 	testAccProjectUpdate = `
@@ -31,11 +31,11 @@ resource "launchdarkly_project" "test" {
 	name = "awesome test project"
 	include_in_snippet = true
 	tags = [ "terraform" ]
-	environments {
+	environments = [{
 	  name  = "Test Environment 2.0"
 	  key   = "test-env"
 	  color = "020202"
-	}
+	}]
 }
 `
 
@@ -43,11 +43,11 @@ resource "launchdarkly_project" "test" {
 resource "launchdarkly_project" "test" {
 	key = "%s"
 	name = "awesome test project"
-	environments {
+	environments = [{
 		name  = "Test Environment 2.0"
 		key   = "test-env"
 		color = "020202"
-	  }
+	  }]
 }
 `
 
@@ -55,12 +55,12 @@ resource "launchdarkly_project" "test" {
 resource "launchdarkly_project" "env_test" {
 	key = "%s"
 	name = "test project"
-	environments {
+	environments = [{
 		key = "test-env"
 		name = "test environment"
 		color = "000000"
 		tags = ["terraform", "test"]
-	}
+	}]
 }	
 `
 
@@ -68,7 +68,7 @@ resource "launchdarkly_project" "env_test" {
 resource "launchdarkly_project" "env_test" {
 	key = "%s"
 	name = "test project"
-	environments {
+	environments = [{
 		key = "test-env"
 		name = "test environment updated"
 		color = "AAAAAA"
@@ -78,18 +78,17 @@ resource "launchdarkly_project" "env_test" {
 		default_track_events = true
 		require_comments = true
 		confirm_changes = true
-	}
-	environments {
+	}, {
 		key = "new-approvals-env"
 		name = "New approvals environment"
 		color = "EEEEEE"
 		tags = ["new"]
-		approval_settings {
+		approval_settings = [{
 			required                   = true
 			can_review_own_request     = true
 			min_num_approvals          = 2
-		  }
-	}
+		  }]
+	}]
 }	
 `
 
@@ -97,7 +96,7 @@ resource "launchdarkly_project" "env_test" {
 resource "launchdarkly_project" "env_test" {
 	key = "%s"
 	name = "test project"
-	environments {
+	environments = [{
 		key = "test-env"
 		name = "test environment updated"
 		color = "AAAAAA"
@@ -107,19 +106,18 @@ resource "launchdarkly_project" "env_test" {
 		default_track_events = true
 		require_comments = true
 		confirm_changes = true
-	}
-	environments {
+	}, {
 		key = "new-approvals-env"
 		name = "New approvals environment"
 		color = "EEEEEE"
 		tags = ["new"]
-		approval_settings {
+		approval_settings = [{
 			required_approval_tags     = ["approvals_required"]
 			can_review_own_request     = false
 			min_num_approvals          = 1
 			can_apply_declined_changes = false
-		  }
-	}
+		  }]
+	}]
 }	
 `
 
@@ -127,11 +125,11 @@ resource "launchdarkly_project" "env_test" {
 resource "launchdarkly_project" "env_test" {
 	key = "%s"
 	name = "test project"
-	environments {
+	environments = [{
 		key = "test-env"
 		name = "test environment updated"
 		color = "AAAAAA"
-	}
+	}]
 }	
 `
 
@@ -139,16 +137,16 @@ resource "launchdarkly_project" "env_test" {
 resource "launchdarkly_project" "test" {
 	key = "%s"
 	name = "test project"
-	default_client_side_availability {
+	default_client_side_availability = [{
 		using_environment_id = true
 		using_mobile_key = true
-	}
+	}]
 	tags = [ "terraform", "test" ]
-	environments {
+	environments = [{
 	  name  = "Test Environment"
 	  key   = "test-env"
 	  color = "010101"
-	}
+	}]
 }
 `
 
@@ -178,55 +176,52 @@ resource "launchdarkly_project" "many_envs" {
 resource "launchdarkly_project" "approval_env_test" {
 	key = "%s"
 	name = "test project"
-	environments {
+	environments = [{
 		key = "approval-env"
 		name = "env with approval settings"
 		color = "AAAAAA"
-		approval_settings {
+		approval_settings = [{
       can_review_own_request     = false
       can_apply_declined_changes = false
       min_num_approvals          = 2
       required                   = true
-    }
-	}
-	environments {
+    }]
+	}, {
 		key = "default-env"
 		name = "env with default approval settings"
 		color = "AAAAAA"
-	}
+	}]
 }`
 
 	testAccProjectWithEnvApprovalSettingsUpdate = `
 resource "launchdarkly_project" "approval_env_test" {
 	key = "%s"
 	name = "test project"
-	environments {
+	environments = [{
 		key = "new-env"
 		name = "New env with approval settings"
 		color = "AAAAAA"
-		approval_settings {
+		approval_settings = [{
       can_review_own_request     = false
       can_apply_declined_changes = false
       min_num_approvals          = 1
       required                   = false
-    }
-	}
-	environments {
+    }]
+	}, {
 		key = "approval-env"
 		name = "env with approval settings"
 		color = "AAAAAA"
-		approval_settings {
+		approval_settings = [{
       can_review_own_request     = false
       can_apply_declined_changes = false
       min_num_approvals          = 2
       required                   = true
-    }
-	}
-	environments {
+    }]
+	}, {
 		key = "default-env"
 		name = "env with default approval settings"
 		color = "AAAAAA"
-	}
+	}]
 }`
 )
 
@@ -628,11 +623,11 @@ func TestAccProject_ViewAssociationRequirement(t *testing.T) {
 resource "launchdarkly_project" "view_req_test" {
 	key  = "%s"
 	name = "View Requirement Test"
-	environments {
+	environments = [{
 		key   = "test-env"
 		name  = "Test Environment"
 		color = "010101"
-	}
+	}]
 }
 `, projectKey)
 
@@ -643,11 +638,11 @@ resource "launchdarkly_project" "view_req_test" {
 	name = "View Requirement Test"
 	require_view_association_for_new_flags    = true
 	require_view_association_for_new_segments = true
-	environments {
+	environments = [{
 		key   = "test-env"
 		name  = "Test Environment"
 		color = "010101"
-	}
+	}]
 }
 `, projectKey)
 
@@ -658,11 +653,11 @@ resource "launchdarkly_project" "view_req_test" {
 	name = "View Requirement Test"
 	require_view_association_for_new_flags    = true
 	require_view_association_for_new_segments = false
-	environments {
+	environments = [{
 		key   = "test-env"
 		name  = "Test Environment"
 		color = "010101"
-	}
+	}]
 }
 `, projectKey)
 

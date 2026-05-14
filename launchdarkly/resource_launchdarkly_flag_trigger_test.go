@@ -16,9 +16,9 @@ resource "launchdarkly_flag_trigger" "basic" {
 	env_key = "test"
 	flag_key = launchdarkly_feature_flag.trigger_flag.key
 	integration_key = "generic-trigger"
-	instructions {
+	instructions = [{
 		kind = "turnFlagOn"
-	}
+	}]
 	enabled = false
 }
 `
@@ -29,9 +29,9 @@ resource "launchdarkly_flag_trigger" "basic" {
 	env_key = "test"
 	flag_key = launchdarkly_feature_flag.trigger_flag.key
 	integration_key = "generic-trigger"
-	instructions {
+	instructions = [{
 		kind = "turnFlagOff"
-	}
+	}]
 	enabled = true
 }
 `
@@ -42,9 +42,9 @@ resource "launchdarkly_flag_trigger" "basic" {
 	env_key = "test"
 	flag_key = launchdarkly_feature_flag.trigger_flag.key
 	integration_key = "generic-trigger"
-	instructions {
+	instructions = [{
 		kind = "turnFlagOff"
-	}
+	}]
 	enabled = true
 }
 `
@@ -55,9 +55,9 @@ resource "launchdarkly_flag_trigger" "basic" {
 	env_key = "test"
 	flag_key = launchdarkly_feature_flag.trigger_flag.key
 	integration_key = "generic-trigger"
-	instructions {
+	instructions = [{
 		kind = "turnFlagOff"
-	}
+	}]
 	enabled = false
 }
 `

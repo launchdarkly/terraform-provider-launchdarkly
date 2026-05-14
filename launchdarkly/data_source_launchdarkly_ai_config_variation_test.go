@@ -72,10 +72,10 @@ resource "launchdarkly_ai_config_variation" "test" {
 	config_key  = launchdarkly_ai_config.test.key
 	key         = "%s"
 	name        = "Test Variation"
-	messages {
+	messages = [{
 		role    = "system"
 		content = "You are a helpful assistant."
-	}
+	}]
 }
 
 data "launchdarkly_ai_config_variation" "test" {

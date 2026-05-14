@@ -17,11 +17,11 @@ resource "launchdarkly_project" "test" {
 	}
 	name = "Flag Templates Test Project"
 	key  = "%s"
-	environments {
+	environments = [{
 		name  = "testEnvironment"
 		key   = "test"
 		color = "000000"
-	}
+	}]
 }
 
 resource "launchdarkly_flag_templates" "test" {
@@ -30,14 +30,14 @@ resource "launchdarkly_flag_templates" "test" {
 	tags      = ["terraform"]
 	temporary = false
 
-	boolean_defaults {
+	boolean_defaults = [{
 		true_display_name  = "True"
 		false_display_name = "False"
 		true_description   = ""
 		false_description  = ""
 		on_variation       = 0
 		off_variation      = 1
-	}
+	}]
 }
 `, projectKey)
 }
@@ -50,11 +50,11 @@ resource "launchdarkly_project" "test" {
 	}
 	name = "Flag Templates Test Project"
 	key  = "%s"
-	environments {
+	environments = [{
 		name  = "testEnvironment"
 		key   = "test"
 		color = "000000"
-	}
+	}]
 }
 
 resource "launchdarkly_flag_templates" "test" {
@@ -63,14 +63,14 @@ resource "launchdarkly_flag_templates" "test" {
 	tags      = ["terraform", "updated"]
 	temporary = true
 
-	boolean_defaults {
+	boolean_defaults = [{
 		true_display_name  = "Enabled"
 		false_display_name = "Disabled"
 		true_description   = "Flag is enabled"
 		false_description  = "Flag is disabled"
 		on_variation       = 0
 		off_variation      = 1
-	}
+	}]
 }
 `, projectKey)
 }

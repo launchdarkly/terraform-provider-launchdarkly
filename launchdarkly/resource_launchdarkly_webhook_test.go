@@ -43,11 +43,11 @@ resource "launchdarkly_webhook" "with_statements" {
 	name    = "Webhook with policy statements"
 	url     = "http://webhooks.com"
 	on      = true
-	statements {
+	statements = [{
 		actions   = ["*"]	
 		effect    = "allow"
 		resources = ["proj/*:env/production:flag/*"]
-	}
+	}]
 }
 `
 
@@ -64,11 +64,11 @@ resource "launchdarkly_webhook" "with_statements" {
 	name    = "Webhook with policy statements"
 	url     = "http://webhooks.com"
 	on      = true
-	statements {
+	statements = [{
 		actions   = ["*"]	
 		effect    = "allow"
 		resources = ["proj/*:env/production:flag/*"]
-	}
+	}]
 }
 `
 
@@ -77,16 +77,15 @@ resource "launchdarkly_webhook" "with_statements" {
 	name    = "Webhook with policy statements"
 	url     = "http://webhooks.com"
 	on      = true
-	statements {
+	statements = [{
 		actions   = ["*"]
 		effect    = "allow"
 		resources = ["proj/test:env/production:flag/*"]
-	}
-	statements {
+	}, {
 		actions   = ["*"]
 		effect    = "allow"
 		resources = ["proj/test:env/production:segment/*"]
-	}
+	}]
 } 
 `
 
@@ -95,12 +94,12 @@ resource "launchdarkly_webhook" "with_statements" {
 	name    = "Webhook with policy statements"
 	url     = "http://webhooks.com"
 	on      = true
-	statements {
+	statements = [{
 		actions   = ["*"]
 		not_actions = ["*"]
 		effect    = "allow"
 		resources = ["proj/*:env/production:flag/*"]
-	}
+	}]
 }
 `
 )

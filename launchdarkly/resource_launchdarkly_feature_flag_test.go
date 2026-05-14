@@ -60,10 +60,10 @@ resource "launchdarkly_feature_flag" "basic" {
 	variation_type = "boolean"
 	tags = ["test"]
 
-	client_side_availability {
+	client_side_availability = [{
 		using_environment_id = true
 		using_mobile_key = true
-	}
+	}]
 }
 `
 
@@ -77,10 +77,10 @@ resource "launchdarkly_feature_flag" "basic" {
 	tags = ["update", "terraform"]
 	include_in_snippet = true
 	temporary = true
-	defaults {
+	defaults = [{
 		on_variation = 1
 		off_variation = 1
-	}
+	}]
 }
 `
 
@@ -91,12 +91,11 @@ resource "launchdarkly_feature_flag" "number" {
 	name        = "Number feature flag"
   
 	variation_type = "number"
-	variations {
+	variations = [{
 	  value = 12.5
-	}
-	variations {
+	}, {
 	  value = 0
-	}
+	}]
   }
 `
 	testAccFeatureFlagJsonBasic = `
@@ -106,19 +105,18 @@ resource "launchdarkly_feature_flag" "json_basic" {
 	name        = "Basic JSON feature flag"
   
 	variation_type = "json"
-	variations {
+	variations = [{
 	  value = <<EOF
 	  {"foo": "bar"}
 	  EOF
-	}
-	variations {
+	}, {
 	  value = <<EOF
 	  {
 		"bar": "foo",
 		"bars": "foos"
 	  }
 	  EOF
-	}
+	}]
   }
 `
 
@@ -129,34 +127,31 @@ resource "launchdarkly_feature_flag" "json" {
 	name        = "JSON feature flag"
   
 	variation_type = "json"
-	variations {
+	variations = [{
 	  value = <<EOF
 	  [
 		"foo",
 		"baz"
 	  ]
 	  EOF
-	}
-	variations {
+	}, {
 	  value = <<EOF
 	  {"foo": "bar"}
 	  EOF
-	}
-	variations {
+	}, {
 	  value = <<EOF
 	  {
 		"foo": "baz",
 		"extra": {"nested": "json"}
 	  }
 	  EOF
-	}
-	variations {
+	}, {
 		value = <<EOF
 		{
 		  "foo": ["nested", "array"]
 		}
 		EOF
-	  }
+	  }]
   }
 `
 
@@ -254,23 +249,22 @@ resource "launchdarkly_feature_flag" "multivariate" {
 	name = "multivariate flag 1 name"
 	description = "this is a multivariate flag because we explicitly define the variations"
 	variation_type = "string"
-	variations {
+	variations = [{
 		name = "variation1"
 		description = "a description"
 		value = "string1"
-	}
-    variations {
+	}]
+    variations = [{
 		value = "string2"
-	}
-    variations {
+	}, {
 		value = "another option"
-	}
+	}]
   	tags = [
     	"this",
     	"is",
     	"unordered"
   	]
-  	custom_properties {
+  	custom_properties = [{
 		key = "some.property"
 		name = "Some Property"
 		value = [
@@ -278,12 +272,12 @@ resource "launchdarkly_feature_flag" "multivariate" {
 			"value2",
 			"value3"
 		]
-	}
-	custom_properties {
+	}]
+	custom_properties = [{
 		key = "some.property2"
 		name = "Some Property"
 		value = ["very special custom property"]
-	}
+	}]
 }
 `
 
@@ -294,17 +288,16 @@ resource "launchdarkly_feature_flag" "multivariate_numbers" {
 	name = "multivariate flag 2 name"
 	description = "this is a multivariate flag to test big number values"
 	variation_type = "number"
-	variations {
+	variations = [{
 		name = "variation1"
 		description = "a description"
 		value = 86400000
-	}
-    variations {
+	}]
+    variations = [{
 		value = 123
-	}
-    variations {
+	}, {
 		value = 123456789
-	}
+	}]
   	tags = [
     	"this",
     	"is",
@@ -320,40 +313,37 @@ resource "launchdarkly_feature_flag" "multivariate" {
 	name = "multivariate flag 1 name"
 	description = "this is a multivariate flag because we explicitly define the variations"
 	variation_type = "string"
-	variations {
+	variations = [{
 		name = "variation1"
 		description = "a description"
 		value = "string1"
-	}
-	variations {
+	}, {
 		value = "string2"
 		description = "a new description"
-	}
-	variations {
+	}, {
 		value = "another option"
-	}
-	variations {
+	}, {
 		value = "a new variation"
 		description = "This one was added upon update"
 		name = "the new variation"
-	}
+	}]
   	tags = [
     	"this",
     	"is",
     	"unordered"
   	]
-  	custom_properties {
+  	custom_properties = [{
 		key = "some.property"
 		name = "Some Property Updated"
 		value = [
 			"value1",
 			"value3"
 		]
-	}
-	defaults {
+	}]
+	defaults = [{
 		on_variation = 2
 		off_variation = 1
-	}
+	}]
 }
 `
 
@@ -363,10 +353,10 @@ resource "launchdarkly_feature_flag" "defaults" {
 	key = "defaults-flag"
 	name = "Feature flag with defaults"
 	variation_type = "boolean"
-	defaults {
+	defaults = [{
 		on_variation = 1
 		off_variation = 1
-	}
+	}]
 }
 `
 	testAccFeatureFlagDefaultsUpdate = `
@@ -375,10 +365,10 @@ resource "launchdarkly_feature_flag" "defaults" {
 	key = "defaults-flag"
 	name = "Feature flag with defaults"
 	variation_type = "boolean"
-	defaults {
+	defaults = [{
 		on_variation = 0
 		off_variation = 0
-	}
+	}]
 }
 `
 	testAccFeatureFlagDefaultsMultivariate = `
@@ -387,22 +377,19 @@ resource "launchdarkly_feature_flag" "defaults-multivariate" {
 	key = "defaults-multivariate-flag"
 	name = "Multivariate feature flag with defaults"
 	variation_type = "string"
-	defaults {
+	defaults = [{
 		on_variation = 1
 		off_variation = 1
-	}
-	variations {
+	}]
+	variations = [{
 		value = "a"
-	}
-	variations {
+	}, {
 		value = "b"
-	}
-	variations {
+	}, {
 		value = "c"
-	}
-	variations {
+	}, {
 		value = "d"
-	}
+	}]
 }
 `
 	testAccFeatureFlagDefaultsMultivariateUpdate = `
@@ -411,22 +398,19 @@ resource "launchdarkly_feature_flag" "defaults-multivariate" {
 	key = "defaults-multivariate-flag"
 	name = "Multivariate feature flag with defaults"
 	variation_type = "string"
-	defaults {
+	defaults = [{
 		on_variation = 2
 		off_variation = 2
-	}
-	variations {
+	}]
+	variations = [{
 		value = "a"
-	}
-	variations {
+	}, {
 		value = "b"
-	}
-	variations {
+	}, {
 		value = "c"
-	}
-	variations {
+	}, {
 		value = "d"
-	}
+	}]
 }
 `
 	testAccFeatureFlagDefaultsMultivariateUpdateRemoveVariation = `
@@ -435,19 +419,17 @@ resource "launchdarkly_feature_flag" "defaults-multivariate" {
 	key = "defaults-multivariate-flag"
 	name = "Multivariate fature flag with defaults"
 	variation_type = "string"
-	defaults {
+	defaults = [{
 		on_variation = 2
 		off_variation = 2
-	}
-	variations {
+	}]
+	variations = [{
 		value = "b"
-	}
-	variations {
+	}, {
 		value = "c"
-	}
-	variations {
+	}, {
 		value = "d"
-	}
+	}]
 }
 `
 	testAccFeatureFlagEmptyStringVariation = `
@@ -456,12 +438,11 @@ resource "launchdarkly_feature_flag" "empty_string_variation" {
 	key = "empty-variation"
 	name = "string flag with empty string variation"
 	variation_type = "string"
-	variations {
+	variations = [{
 		value = ""
-	}
-	variations {
+	}, {
 		value = "non-empty"
-	}
+	}]
 }
 `
 	testAccFeatureFlagIncludeInSnippet = `
@@ -496,10 +477,10 @@ resource "launchdarkly_feature_flag" "sdk_settings" {
 	key = "basic-flag-sdk-settings"
 	name = "Basic feature flag"
 	variation_type = "boolean"
-	client_side_availability {
+	client_side_availability = [{
 		using_environment_id = true
 		using_mobile_key = true
-	}
+	}]
 }
 `
 	testAccFeatureFlagClientSideAvailabilityUpdate = `
@@ -508,10 +489,10 @@ resource "launchdarkly_feature_flag" "sdk_settings" {
 	key = "basic-flag-sdk-settings"
 	name = "Basic feature flag"
 	variation_type = "boolean"
-	client_side_availability {
+	client_side_availability = [{
 		using_environment_id = false
 		using_mobile_key = false
-	}
+	}]
 }
 `
 )
@@ -524,11 +505,11 @@ func withRandomProject(randomProject, resource string) string {
 		}
 		name = "testProject"
 		key = "%s"
-		environments {
+		environments = [{
 			name  = "testEnvironment"
 			key   = "test"
 			color = "000000"
-		}
+		}]
 	}
 	
 	%s`, randomProject, resource)
@@ -542,15 +523,15 @@ func withProjectWithSpecifiedCSADefaults(randomProject string, resource string, 
 		}
 		name = "testProject"
 		key = "%s"
-		default_client_side_availability {
+		default_client_side_availability = [{
 			using_environment_id = %v
 			using_mobile_key = %v
-		}
-		environments {
+		}]
+		environments = [{
 			name  = "testEnvironment"
 			key   = "test"
 			color = "000000"
-		}
+		}]
 	}
 	
 	%s`, randomProject, usingEnvironmentId, usingMobileKey, resource)
@@ -564,11 +545,11 @@ func withRandomProjectAndEnv(randomProject, randomEnvironment, resource string) 
 		}
 		name = "testProject"
 		key = "%s"
-		environments {
+		environments = [{
 			name  = "testEnvironment"
 			key   = "%s"
 			color = "000000"
-		}
+		}]
 	}
 	
 	%s`, randomProject, randomEnvironment, resource)
@@ -583,11 +564,11 @@ func withRandomProjectIncludeInSnippetTrue(randomProject, resource string) strin
 		include_in_snippet = true
 		name = "testProject"
 		key = "%s"
-		environments {
+		environments = [{
 			name  = "testEnvironment"
 			key   = "test"
 			color = "000000"
-		}
+		}]
 	}
 	
 	%s`, randomProject, resource)
@@ -1676,11 +1657,11 @@ resource "launchdarkly_project" "test" {
 	key  = "%s"
 	name = "View Requirement Test"
 	require_view_association_for_new_flags = true
-	environments {
+	environments = [{
 		key   = "test-env"
 		name  = "Test Environment"
 		color = "010101"
-	}
+	}]
 }
 
 resource "launchdarkly_feature_flag" "test" {
@@ -1697,11 +1678,11 @@ resource "launchdarkly_project" "test" {
 	key  = "%s"
 	name = "View Requirement Test"
 	require_view_association_for_new_flags = true
-	environments {
+	environments = [{
 		key   = "test-env"
 		name  = "Test Environment"
 		color = "010101"
-	}
+	}]
 }
 
 resource "launchdarkly_view" "test" {

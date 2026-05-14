@@ -93,11 +93,11 @@ resource "launchdarkly_environment" "approvals_test" {
 	key = "approvals-test"
 	color = "ababab"
 	project_key = launchdarkly_project.test.key
-	approval_settings {
+	approval_settings = [{
 		can_review_own_request = false
 		min_num_approvals = 2
 		required_approval_tags = ["approvals_required"]
-	}
+	}]
 }
 `
 	testAccEnvironmentWithApprovalsUpdate = `
@@ -106,12 +106,12 @@ resource "launchdarkly_environment" "approvals_test" {
 	key = "approvals-test"
 	color = "bababa"
 	project_key = launchdarkly_project.test.key
-	approval_settings {
+	approval_settings = [{
 		required = true
 		can_review_own_request = true
 		min_num_approvals = 1
 		can_apply_declined_changes = false
-	}
+	}]
 }
 `
 
@@ -132,7 +132,7 @@ resource "launchdarkly_environment" "auto_apply_test" {
 	key = "auto-apply-test"
 	color = "ababab"
 	project_key = launchdarkly_project.test.key
-	approval_settings {
+	approval_settings = [{
 		service_kind = "servicenow"
 		service_config = {
 			template = "b1c8d15147810200e90d87e8dee490f7"
@@ -143,7 +143,7 @@ resource "launchdarkly_environment" "auto_apply_test" {
 		min_num_approvals = 1
 		required_approval_tags = ["approvals_required", "auto_apply"]
 		auto_apply_approved_changes = true
-	}
+	}]
 }
 `
 
@@ -153,7 +153,7 @@ resource "launchdarkly_environment" "auto_apply_test" {
 	key = "auto-apply-test"
 	color = "bababa"
 	project_key = launchdarkly_project.test.key
-	approval_settings {
+	approval_settings = [{
 		service_kind = "servicenow"
 		service_config = {
 			template = "508e02ec47410200e90d87e8dee49058"
@@ -163,7 +163,7 @@ resource "launchdarkly_environment" "auto_apply_test" {
 		can_review_own_request = true
 		min_num_approvals = 2
 		auto_apply_approved_changes = false
-  }
+  }]
 }
 `
 	testAccEnvironmentCritical = `
@@ -187,12 +187,12 @@ resource "launchdarkly_environment" "critical_env" {
   critical = false
   project_key = launchdarkly_project.test.key
 
-  approval_settings {
+  approval_settings = [{
 		required = true
 		can_review_own_request = false
 		min_num_approvals = 3
 		can_apply_declined_changes = true
-	}
+	}]
 }
 `
 )
