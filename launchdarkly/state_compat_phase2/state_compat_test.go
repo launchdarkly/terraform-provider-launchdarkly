@@ -24,7 +24,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-framework/providerserver"
-	"github.com/hashicorp/terraform-plugin-go/tfprotov5"
+	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 
 	"github.com/launchdarkly/terraform-provider-launchdarkly/launchdarkly"
 	"github.com/launchdarkly/terraform-provider-launchdarkly/launchdarkly/statecompat"
@@ -32,11 +32,11 @@ import (
 
 const stateCompatProviderVersion = "2.29.0"
 
-// protoV5Factories serves the framework provider as v5, matching main.go's
+// protoV6Factories serves the framework provider as v6, matching main.go's
 // wire protocol. Defined here (not borrowed from launchdarkly/provider_test.go)
 // because package-scoped test symbols don't cross package boundaries.
-var protoV5Factories = map[string]func() (tfprotov5.ProviderServer, error){
-	"launchdarkly": providerserver.NewProtocol5WithError(launchdarkly.NewPluginProvider("test")()),
+var protoV6Factories = map[string]func() (tfprotov6.ProviderServer, error){
+	"launchdarkly": providerserver.NewProtocol6WithError(launchdarkly.NewPluginProvider("test")()),
 }
 
 const accessTokenEnvVar = "LAUNCHDARKLY_ACCESS_TOKEN"
@@ -93,7 +93,7 @@ func runCase(t *testing.T, c stateCompatCase) {
 		HCLConfig:                c.hcl(t),
 		FixtureFile:              c.fixtureFile(),
 		PreviousVersion:          stateCompatProviderVersion,
-		ProtoV5ProviderFactories: protoV5Factories,
+		ProtoV6ProviderFactories: protoV6Factories,
 		PreCheck:                 func() { preCheck(t) },
 	})
 }

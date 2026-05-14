@@ -238,7 +238,7 @@ func TestAccFeatureFlagViewKeys_CreateAndUpdate(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories,
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		CheckDestroy:             testAccCheckFeatureFlagDestroy,
 		Steps: []resource.TestStep{
 			{
@@ -296,7 +296,7 @@ func TestAccFeatureFlagViewKeys_NonexistentView(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories,
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		CheckDestroy:             testAccCheckFeatureFlagDestroy,
 		Steps: []resource.TestStep{
 			// Step 1: Create project and view first
@@ -335,7 +335,7 @@ func TestAccFeatureFlagViewKeys_ReconcileUnexpectedViewAssociation(t *testing.T)
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories,
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		CheckDestroy:             testAccCheckFeatureFlagDestroy,
 		Steps: []resource.TestStep{
 			{

@@ -24,7 +24,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/hashicorp/terraform-plugin-go/tfprotov5"
+	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 )
@@ -44,7 +44,7 @@ const FixturesDir = "testdata/state-fixtures"
 //     themselves are exercised via the ExternalProviders apply step.
 //   - PreviousVersion: SDKv2-only provider version (e.g. "2.29.0") used
 //     to seed legacy-encoded state via the upstream registry.
-//   - ProtoV5ProviderFactories: factory map for the in-tree
+//   - ProtoV6ProviderFactories: factory map for the in-tree
 //     framework-served provider. Pass the same value
 //     launchdarkly/provider_test.go uses for acceptance tests.
 //   - PreCheck: invoked before the test runs; usually wraps
@@ -53,7 +53,7 @@ type Case struct {
 	HCLConfig                string
 	FixtureFile              string
 	PreviousVersion          string
-	ProtoV5ProviderFactories map[string]func() (tfprotov5.ProviderServer, error)
+	ProtoV6ProviderFactories map[string]func() (tfprotov6.ProviderServer, error)
 	PreCheck                 func()
 }
 
@@ -65,7 +65,7 @@ type Case struct {
 //     before terraform-plugin-testing panics on parse).
 //  2. ExternalProviders pins the previous SDKv2 release; the harness
 //     applies HCLConfig against it, producing legacy-encoded state.
-//  3. A second TestStep switches to ProtoV5ProviderFactories pointed
+//  3. A second TestStep switches to ProtoV6ProviderFactories pointed
 //     at the in-tree framework-served provider. ExpectEmptyPlan
 //     asserts zero diff — the round-trip success signal.
 //
@@ -83,8 +83,8 @@ func Run(t *testing.T, c Case) {
 	if c.FixtureFile == "" {
 		t.Fatalf("statecompat.Case.FixtureFile must be set")
 	}
-	if c.ProtoV5ProviderFactories == nil {
-		t.Fatalf("statecompat.Case.ProtoV5ProviderFactories must be supplied")
+	if c.ProtoV6ProviderFactories == nil {
+		t.Fatalf("statecompat.Case.ProtoV6ProviderFactories must be supplied")
 	}
 
 	path := filepath.Join("..", FixturesDir, c.FixtureFile)
@@ -105,7 +105,7 @@ func Run(t *testing.T, c Case) {
 				Config: c.HCLConfig,
 			},
 			{
-				ProtoV5ProviderFactories: c.ProtoV5ProviderFactories,
+				ProtoV6ProviderFactories: c.ProtoV6ProviderFactories,
 				Config:                   c.HCLConfig,
 				ConfigPlanChecks: resource.ConfigPlanChecks{
 					PreApply: []plancheck.PlanCheck{

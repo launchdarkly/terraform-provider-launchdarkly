@@ -11,15 +11,15 @@ import (
 	"time"
 
 	"github.com/hashicorp/terraform-plugin-framework/providerserver"
-	"github.com/hashicorp/terraform-plugin-go/tfprotov5"
+	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 )
 
-// testAccProtoV5ProviderFactories serves the framework provider as v5,
+// testAccProtoV6ProviderFactories serves the framework provider as v6,
 // matching main.go's wire protocol. Used in resource.TestCase via:
 //
-//	ProtoV5ProviderFactories: testAccProtoV5ProviderFactories,
-var testAccProtoV5ProviderFactories = map[string]func() (tfprotov5.ProviderServer, error){
-	"launchdarkly": providerserver.NewProtocol5WithError(NewPluginProvider("test")()),
+//	ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+var testAccProtoV6ProviderFactories = map[string]func() (tfprotov6.ProviderServer, error){
+	"launchdarkly": providerserver.NewProtocol6WithError(NewPluginProvider("test")()),
 }
 
 func testAccPreCheck(t *testing.T) {

@@ -83,7 +83,7 @@ func TestAccFlagTrigger_CreateUpdate(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories,
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config: withRandomProject(projectKey, withRandomFlag(flagKey, testAccFlagTriggerCreate)),
@@ -149,7 +149,7 @@ func TestAccFlagTrigger_CreateEnabled(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories,
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config: withRandomProject(projectKey, withRandomFlag(flagKey, testAccFlagTriggerCreateEnabled)),

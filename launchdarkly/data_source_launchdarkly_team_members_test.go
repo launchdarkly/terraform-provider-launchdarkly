@@ -36,7 +36,7 @@ func TestAccDataSourceTeamMembers_noMatchReturnsError(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories,
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config:      testAccDataSourceTeamMembersConfig(emails),
@@ -52,7 +52,7 @@ func TestAccDataSourceTeamMembers_noMatchReturnsNoErrorIfIgnoreMissing(t *testin
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories,
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config: testAccDataSourceTeamMembersConfigIgnoreMissing(emails),
@@ -88,7 +88,7 @@ func TestAccDataSourceTeamMembers_exists(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories,
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config: testAccDataSourceTeamMembersConfig(fmt.Sprintf(`["%s","%s","%s"]`, testMember.Email, testMember2.Email, testMember3.Email)),
