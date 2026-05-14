@@ -99,6 +99,19 @@ func listFromStringSlice(ctx context.Context, vals []string) (types.List, diag.D
 	return types.ListValueFrom(ctx, types.StringType, vals)
 }
 
+// listFromStringSliceAlwaysEmit returns null for empty input, populated
+// List otherwise. Used on Import paths where there is no prior state to
+// anchor on — matches SDKv2 Optional+Computed semantics where empty
+// list collapsed to absence in state.
+func listFromStringSliceAlwaysEmit(ctx context.Context, vals []string, diags *diag.Diagnostics) types.List {
+	if len(vals) == 0 {
+		return types.ListNull(types.StringType)
+	}
+	list, d := types.ListValueFrom(ctx, types.StringType, vals)
+	diags.Append(d...)
+	return list
+}
+
 // listFromStringSlicePreservingPlan is the list analogue of
 // setFromStringSlicePreservingPlan: API empty + existing null → null;
 // API empty + existing populated → empty list; API populated → list.

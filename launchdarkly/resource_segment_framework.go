@@ -564,6 +564,11 @@ func (r *SegmentResource) readIntoModel(ctx context.Context, data *SegmentResour
 		return
 	}
 
+	// Import context: data.Name null until this Read populates. Force-
+	// emit included/excluded from API on Import so ImportStateVerify
+	// matches the pre-import state (which had user-declared lists).
+	isImport := data.Name.IsNull()
+
 	data.ID = types.StringValue(projectKey + "/" + envKey + "/" + key)
 	data.Name = types.StringValue(segment.Name)
 	if segment.Description != nil {
@@ -588,12 +593,17 @@ func (r *SegmentResource) readIntoModel(ctx context.Context, data *SegmentResour
 		data.UnboundedContextKind = types.StringValue("")
 	}
 
-	includedList, d := listFromStringSlicePreservingPlan(ctx, segment.Included, data.Included)
-	diags.Append(d...)
-	data.Included = includedList
-	excludedList, d := listFromStringSlicePreservingPlan(ctx, segment.Excluded, data.Excluded)
-	diags.Append(d...)
-	data.Excluded = excludedList
+	if isImport {
+		data.Included = listFromStringSliceAlwaysEmit(ctx, segment.Included, diags)
+		data.Excluded = listFromStringSliceAlwaysEmit(ctx, segment.Excluded, diags)
+	} else {
+		includedList, d := listFromStringSlicePreservingPlan(ctx, segment.Included, data.Included)
+		diags.Append(d...)
+		data.Included = includedList
+		excludedList, d := listFromStringSlicePreservingPlan(ctx, segment.Excluded, data.Excluded)
+		diags.Append(d...)
+		data.Excluded = excludedList
+	}
 
 	data.IncludedContexts = segmentTargetsToFrameworkListImpl(ctx, segment.IncludedContexts)
 	data.ExcludedContexts = segmentTargetsToFrameworkListImpl(ctx, segment.ExcludedContexts)

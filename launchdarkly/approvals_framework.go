@@ -294,3 +294,32 @@ func frameworkApprovalSettingsDataSourceValue(ctx context.Context, settings *lda
 	priorList, _ := types.ListValue(objectType, []attr.Value{priorObj})
 	return frameworkApprovalSettingsValue(ctx, settings, priorList)
 }
+
+// isZeroApprovalSettings reports whether LD's approval-settings doc is
+// effectively unconfigured. LD returns a struct (with API defaults
+// like minNumApprovals=1) for envs without approvals; we treat the
+// doc as absent when no approval gate is active and no service
+// integration is wired up. Used on Import paths where there's no
+// prior state to anchor block presence on — matches SDKv2 Computed
+// TypeList semantics.
+func isZeroApprovalSettings(s *ldapi.ApprovalSettings) bool {
+	if s == nil {
+		return true
+	}
+	if s.Required {
+		return false
+	}
+	if len(s.RequiredApprovalTags) > 0 {
+		return false
+	}
+	if s.ServiceKind != "" && s.ServiceKind != "launchdarkly" {
+		return false
+	}
+	if len(s.ServiceConfig) > 0 {
+		return false
+	}
+	if s.AutoApplyApprovedChanges != nil && *s.AutoApplyApprovedChanges {
+		return false
+	}
+	return true
+}

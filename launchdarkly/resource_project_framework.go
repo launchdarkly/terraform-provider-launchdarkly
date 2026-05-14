@@ -172,6 +172,32 @@ func (r *ProjectResource) ModifyPlan(ctx context.Context, req resource.ModifyPla
 	resp.Diagnostics.Append(resp.Plan.Set(ctx, &plan)...)
 }
 
+// projectCSAValueAlwaysPopulated emits a populated CSA block from the
+// API response. Used on Import paths where there is no prior state to
+// anchor block presence on — matches SDKv2 Optional+Computed TypeList
+// semantics where Refresh always surfaced LD's CSA.
+func projectCSAValueAlwaysPopulated(ctx context.Context, csa *ldapi.ClientSideAvailability) (basetypes.ListValue, diag.Diagnostics) {
+	objectType := types.ObjectType{AttrTypes: projectCSAAttrTypes}
+	if csa == nil {
+		return types.ListValue(objectType, []attr.Value{})
+	}
+	usingEnv := false
+	if csa.UsingEnvironmentId != nil {
+		usingEnv = *csa.UsingEnvironmentId
+	}
+	usingMobile := false
+	if csa.UsingMobileKey != nil {
+		usingMobile = *csa.UsingMobileKey
+	}
+	obj, diags := types.ObjectValue(projectCSAAttrTypes, map[string]attr.Value{
+		USING_ENVIRONMENT_ID: types.BoolValue(usingEnv),
+		USING_MOBILE_KEY:     types.BoolValue(usingMobile),
+	})
+	list, d := types.ListValue(objectType, []attr.Value{obj})
+	diags.Append(d...)
+	return list, diags
+}
+
 // projectCSAValueFromAPI emits the CSA block matching the prior state
 // shape: if prior was empty (or null), keep empty so terraform doesn't
 // see a count-1 state for a count-0 plan; if prior was populated, emit
@@ -439,6 +465,14 @@ func (r *ProjectResource) applyProjectUpdates(ctx context.Context, projectKey st
 }
 
 func (r *ProjectResource) readIntoModel(ctx context.Context, projectKey string, data *ProjectResourceModel, diags *diag.Diagnostics) {
+	// Import context: ImportState sets only KEY/id. On Import, the
+	// prior-state-presence pattern would emit empty blocks/null sets,
+	// but pre-import state had whatever the user's last Apply produced.
+	// On the Import path force-emit from API so ImportStateVerify
+	// matches the pre-import state, deferring to isZero-style heuristics
+	// for nested approval_settings blocks (the same shape SDKv2 used).
+	isImport := data.Name.IsNull()
+
 	project, res, err := getFullProject(r.client, projectKey)
 	if isStatusNotFound(res) {
 		data.ID = types.StringNull()
@@ -453,13 +487,25 @@ func (r *ProjectResource) readIntoModel(ctx context.Context, projectKey string, 
 	data.Key = types.StringValue(project.Key)
 	data.Name = types.StringValue(project.Name)
 
-	tagsSet, d := setFromStringSlicePreservingPlan(ctx, project.Tags, data.Tags)
-	diags.Append(d...)
-	data.Tags = tagsSet
+	if isImport {
+		data.Tags = setFromStringSliceAlwaysEmit(ctx, project.Tags, diags)
+	} else {
+		tagsSet, d := setFromStringSlicePreservingPlan(ctx, project.Tags, data.Tags)
+		diags.Append(d...)
+		data.Tags = tagsSet
+	}
 
-	csaList, d := projectCSAValueFromAPI(ctx, project.DefaultClientSideAvailability, data.DefaultClientSideAvailability)
-	diags.Append(d...)
-	data.DefaultClientSideAvailability = csaList
+	if isImport {
+		// Always emit populated CSA on Import — LD always returns a
+		// populated struct, and pre-import state had it populated too.
+		csaList, d := projectCSAValueAlwaysPopulated(ctx, project.DefaultClientSideAvailability)
+		diags.Append(d...)
+		data.DefaultClientSideAvailability = csaList
+	} else {
+		csaList, d := projectCSAValueFromAPI(ctx, project.DefaultClientSideAvailability, data.DefaultClientSideAvailability)
+		diags.Append(d...)
+		data.DefaultClientSideAvailability = csaList
+	}
 
 	// include_in_snippet mirrors the deprecated API field; LD's
 	// IncludeInSnippetByDefault is the canonical source.
@@ -470,7 +516,7 @@ func (r *ProjectResource) readIntoModel(ctx context.Context, projectKey string, 
 	if project.Environments != nil {
 		envItems = project.Environments.Items
 	}
-	envList, d := environmentsListFromAPI(ctx, envItems, data.Environments)
+	envList, d := environmentsListFromAPI(ctx, envItems, data.Environments, isImport)
 	diags.Append(d...)
 	data.Environments = envList
 

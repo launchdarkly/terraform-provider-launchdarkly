@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -399,6 +400,16 @@ func (r *EnvironmentResource) readIntoModel(
 	data *EnvironmentResourceModel,
 	diags *diag.Diagnostics,
 ) {
+	// Import context: ImportState sets only KEY/PROJECT_KEY/id. Other
+	// fields are null/unknown until this Read populates them. On the
+	// Import refresh path the prior-state-presence pattern can't work
+	// (data has no prior); use the SDKv2-era isZero heuristic instead,
+	// matching what pre-import state looked like (always populated
+	// when LD has non-default approval settings; absent when LD has
+	// defaults). On all other Read paths (post-Create/Update/Refresh),
+	// fall back to prior-state-presence.
+	isImport := data.Name.IsNull() && data.Color.IsNull()
+
 	var env *ldapi.Environment
 	var res *http.Response
 	var err error
@@ -429,6 +440,18 @@ func (r *EnvironmentResource) readIntoModel(
 	data.ConfirmChanges = types.BoolValue(env.ConfirmChanges)
 	data.Critical = types.BoolValue(env.Critical)
 
+	if isImport {
+		// On Import the prior-state pattern would emit empty, but the
+		// pre-import state had whatever the user's last Apply produced.
+		// SDKv2 always emitted populated on Refresh (its Optional+Computed
+		// TypeList absorbed the count-mismatch). Reproduce that here by
+		// emitting populated when LD has non-default approval values, and
+		// empty when LD has defaults.
+		data.Tags = setFromStringSliceAlwaysEmit(ctx, env.Tags, diags)
+		data.ApprovalSettings = frameworkApprovalSettingsDataSourceValueIfNonZero(ctx, env.ApprovalSettings, diags)
+		return
+	}
+
 	tagsSet, d := setFromStringSlicePreservingPlan(ctx, env.Tags, data.Tags)
 	diags.Append(d...)
 	data.Tags = tagsSet
@@ -436,4 +459,31 @@ func (r *EnvironmentResource) readIntoModel(
 	approvals, d := frameworkApprovalSettingsValue(ctx, env.ApprovalSettings, data.ApprovalSettings)
 	diags.Append(d...)
 	data.ApprovalSettings = approvals
+}
+
+// setFromStringSliceAlwaysEmit emits a populated Set when vals is
+// non-empty and null when empty. Used on Import paths where there is
+// no prior state to anchor presence on — matches SDKv2 Optional+Computed
+// Set semantics where empty == null in state.
+func setFromStringSliceAlwaysEmit(ctx context.Context, vals []string, diags *diag.Diagnostics) types.Set {
+	if len(vals) == 0 {
+		return types.SetNull(types.StringType)
+	}
+	set, d := types.SetValueFrom(ctx, types.StringType, vals)
+	diags.Append(d...)
+	return set
+}
+
+// frameworkApprovalSettingsDataSourceValueIfNonZero emits populated
+// approval_settings when the API returned non-default values, and
+// empty when LD returned its zero/default struct. Used on Import paths
+// where the prior-state-presence helper has no anchor.
+func frameworkApprovalSettingsDataSourceValueIfNonZero(ctx context.Context, settings *ldapi.ApprovalSettings, diags *diag.Diagnostics) types.List {
+	objectType := types.ObjectType{AttrTypes: frameworkApprovalSettingsObjectAttrTypes}
+	if settings == nil || isZeroApprovalSettings(settings) {
+		return types.ListValueMust(objectType, []attr.Value{})
+	}
+	list, d := frameworkApprovalSettingsDataSourceValue(ctx, settings)
+	diags.Append(d...)
+	return list
 }

@@ -682,6 +682,11 @@ func (r *FeatureFlagResource) readIntoModel(ctx context.Context, data *FeatureFl
 		return
 	}
 
+	// Import context: data.Name is null until this Read populates it.
+	// On Import the prior-state-presence pattern emits empty for blocks
+	// the user originally declared; force-emit from API instead.
+	isImport := data.Name.IsNull()
+
 	data.ID = types.StringValue(projectKey + "/" + key)
 	data.Key = types.StringValue(flag.Key)
 	data.Name = types.StringValue(flag.Name)
@@ -695,7 +700,18 @@ func (r *FeatureFlagResource) readIntoModel(ctx context.Context, data *FeatureFl
 	data.Tags = tagsSet
 
 	// CSA + IIS — emit both so plan/state remains stable.
-	csaList, d := featureFlagCSAListFromAPI(ctx, flag.ClientSideAvailability, data.ClientSideAvailability)
+	priorCSA := data.ClientSideAvailability
+	if isImport {
+		// Synthetic populated prior so the helper emits populated.
+		priorCSA = types.ListValueMust(
+			types.ObjectType{AttrTypes: featureFlagCSAAttrTypes},
+			[]attr.Value{types.ObjectValueMust(featureFlagCSAAttrTypes, map[string]attr.Value{
+				USING_ENVIRONMENT_ID: types.BoolValue(false),
+				USING_MOBILE_KEY:     types.BoolValue(false),
+			})},
+		)
+	}
+	csaList, d := featureFlagCSAListFromAPI(ctx, flag.ClientSideAvailability, priorCSA)
 	diags.Append(d...)
 	data.ClientSideAvailability = csaList
 	usingEnvID := false
@@ -715,7 +731,19 @@ func (r *FeatureFlagResource) readIntoModel(ctx context.Context, data *FeatureFl
 		return
 	}
 	data.VariationType = types.StringValue(variationType)
-	variationsList, d := variationsListFromAPI(ctx, flag.Variations, variationType, data.Variations)
+	priorVariations := data.Variations
+	if isImport {
+		// Non-empty synthetic prior so the helper emits populated.
+		priorVariations = types.ListValueMust(
+			types.ObjectType{AttrTypes: featureFlagVariationAttrTypes},
+			[]attr.Value{types.ObjectValueMust(featureFlagVariationAttrTypes, map[string]attr.Value{
+				NAME:        types.StringNull(),
+				DESCRIPTION: types.StringNull(),
+				VALUE:       types.StringValue(""),
+			})},
+		)
+	}
+	variationsList, d := variationsListFromAPI(ctx, flag.Variations, variationType, priorVariations)
 	diags.Append(d...)
 	data.Variations = variationsList
 
@@ -725,7 +753,17 @@ func (r *FeatureFlagResource) readIntoModel(ctx context.Context, data *FeatureFl
 	data.CustomProperties = cpSet
 
 	// Defaults
-	defaultsList, d := defaultsListFromAPI(ctx, flag.Defaults, len(flag.Variations), data.Defaults)
+	priorDefaults := data.Defaults
+	if isImport {
+		priorDefaults = types.ListValueMust(
+			types.ObjectType{AttrTypes: featureFlagDefaultsAttrTypes},
+			[]attr.Value{types.ObjectValueMust(featureFlagDefaultsAttrTypes, map[string]attr.Value{
+				ON_VARIATION:  types.Int64Value(0),
+				OFF_VARIATION: types.Int64Value(0),
+			})},
+		)
+	}
+	defaultsList, d := defaultsListFromAPI(ctx, flag.Defaults, len(flag.Variations), priorDefaults)
 	diags.Append(d...)
 	data.Defaults = defaultsList
 
