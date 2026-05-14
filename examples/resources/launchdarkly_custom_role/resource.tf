@@ -3,14 +3,16 @@ resource "launchdarkly_custom_role" "example" {
   name        = "example role"
   description = "This is an example role"
 
-  policy_statements {
-    effect    = "allow"
-    resources = ["proj/*:env/production:flag/*"]
-    actions   = ["*"]
-  }
-  policy_statements {
-    effect    = "allow"
-    resources = ["proj/*:env/production"]
-    actions   = ["*"]
-  }
+  policy_statements = [
+    {
+      effect    = "allow"
+      resources = ["proj/*:env/production:flag/*"]
+      actions   = ["*"]
+    },
+    {
+      effect    = "allow"
+      resources = ["proj/*:env/production"]
+      actions   = ["*"]
+    },
+  ]
 }

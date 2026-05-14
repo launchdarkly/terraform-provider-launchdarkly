@@ -24,12 +24,12 @@ This data source allows you to retrieve the "Custom" flag template settings for 
 
 ### Read-Only
 
-- `boolean_defaults` (Block List) Default boolean flag variation settings. (see [below for nested schema](#nestedblock--boolean_defaults))
+- `boolean_defaults` (Attributes List) Default boolean flag variation settings. (see [below for nested schema](#nestedatt--boolean_defaults))
 - `id` (String) Project key (the ID).
 - `tags` (Set of String) Tags applied by default.
 - `temporary` (Boolean) Whether new flags should be temporary by default.
 
-<a id="nestedblock--boolean_defaults"></a>
+<a id="nestedatt--boolean_defaults"></a>
 ### Nested Schema for `boolean_defaults`
 
 Read-Only:

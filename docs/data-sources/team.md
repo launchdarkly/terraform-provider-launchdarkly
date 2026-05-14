@@ -36,12 +36,12 @@ data "launchdarkly_team" "platform_team" {
 - `custom_role_keys` (Set of String) The list of keys of the custom roles assigned to the team.
 - `description` (String) The team description.
 - `id` (String) The team key.
-- `maintainers` (Block Set) Team maintainers. (see [below for nested schema](#nestedblock--maintainers))
+- `maintainers` (Attributes Set) Team maintainers. (see [below for nested schema](#nestedatt--maintainers))
 - `name` (String) Human-readable name for the team.
 - `project_keys` (Set of String) The list of keys of the projects that the team has any write access to.
-- `role_attributes` (Block Set) A role attributes block. One block must be defined per role attribute. The key is the role attribute key and the value is a string array of resource keys that apply. (see [below for nested schema](#nestedblock--role_attributes))
+- `role_attributes` (Attributes Set) A role attributes block. One block must be defined per role attribute. The key is the role attribute key and the value is a string array of resource keys that apply. (see [below for nested schema](#nestedatt--role_attributes))
 
-<a id="nestedblock--maintainers"></a>
+<a id="nestedatt--maintainers"></a>
 ### Nested Schema for `maintainers`
 
 Read-Only:
@@ -53,7 +53,7 @@ Read-Only:
 - `role` (String) Role.
 
 
-<a id="nestedblock--role_attributes"></a>
+<a id="nestedatt--role_attributes"></a>
 ### Nested Schema for `role_attributes`
 
 Read-Only:

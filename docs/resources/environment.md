@@ -28,12 +28,12 @@ resource "launchdarkly_environment" "approvals_example" {
   color = "ff00ff"
   tags  = ["terraform", "staging"]
 
-  approval_settings {
+  approval_settings = [{
     required                   = true
     can_review_own_request     = true
     min_num_approvals          = 2
     can_apply_declined_changes = true
-  }
+  }]
 
   project_key = launchdarkly_project.example.key
 }
@@ -51,7 +51,7 @@ resource "launchdarkly_environment" "approvals_example" {
 
 ### Optional
 
-- `approval_settings` (Block List) (see [below for nested schema](#nestedblock--approval_settings))
+- `approval_settings` (Attributes List) (see [below for nested schema](#nestedatt--approval_settings))
 - `confirm_changes` (Boolean)
 - `critical` (Boolean)
 - `default_track_events` (Boolean)
@@ -67,7 +67,7 @@ resource "launchdarkly_environment" "approvals_example" {
 - `id` (String) The ID of this resource.
 - `mobile_key` (String, Sensitive)
 
-<a id="nestedblock--approval_settings"></a>
+<a id="nestedatt--approval_settings"></a>
 ### Nested Schema for `approval_settings`
 
 Optional:

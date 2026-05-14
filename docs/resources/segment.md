@@ -26,20 +26,20 @@ resource "launchdarkly_segment" "example" {
   tags        = ["segment-tag-1", "segment-tag-2"]
   included    = ["user1", "user2"]
   excluded    = ["user3", "user4"]
-  included_contexts {
+  included_contexts = [{
     values       = ["account1", "account2"]
     context_kind = "account"
-  }
+  }]
 
-  rules {
-    clauses {
+  rules = [{
+    clauses = [{
       attribute    = "country"
       op           = "startsWith"
       values       = ["en", "de", "un"]
       negate       = false
       context_kind = "location-data"
-    }
-  }
+    }]
+  }]
 }
 
 # This example shows a segment configured to have an unbounded number of individual targets
@@ -61,86 +61,88 @@ resource "launchdarkly_segment" "segment_with_all_clause_operators" {
   project_key = "projectx"
   env_key     = "development"
 
-  rules {
-    clauses {
-      attribute = "username"
-      op        = "in" // Maps to 'is one of' in the UI
-      values    = ["henrietta powell", "wally waterbear"]
-    }
-    clauses {
-      attribute = "username"
-      op        = "endsWith" // Maps to 'ends with' in the UI
-      values    = ["powell", "waterbear"]
-    }
-    clauses {
-      attribute = "username"
-      op        = "startsWith" // Maps to 'starts with' in the UI
-      values    = ["henrietta", "wally"]
-    }
-    clauses {
-      attribute = "username"
-      op        = "matches" // Maps to 'matches regex' in the UI
-      values    = ["henr*"]
-    }
-    clauses {
-      attribute = "username"
-      op        = "contains" // Maps to 'contains' in the UI
-      values    = ["water"]
-    }
-    clauses {
-      attribute = "pageVisits"
-      op        = "lessThan" // Maps to 'less than (<)' in the UI
-      values    = [100]
-    }
-    clauses {
-      attribute = "pageVisits"
-      op        = "lessThanOrEqual" // Maps to 'less than or equal to (<=)' in the UI
-      values    = [100]
-    }
-    clauses {
-      attribute = "pageVisits"
-      op        = "greaterThan" // Maps to 'greater than (>)' in the UI
-      values    = [100]
-    }
-    clauses {
-      attribute = "pageVisits"
-      op        = "greaterThanOrEqual" // Maps to 'greater than or equal to (>=)' in the UI
-      values    = [100]
-    }
-    clauses {
-      attribute = "creationDate"
-      op        = "before" // Maps to 'before' in the UI
-      values    = ["2024-05-03T15:57:30Z"]
-    }
-    clauses {
-      attribute = "creationDate"
-      op        = "after" // Maps to 'after' in the UI
-      values    = ["2024-05-03T15:57:30Z"]
-    }
-    clauses {
-      attribute    = "version"
-      op           = "semVerEqual" // Maps to 'semantic version is one of (=)' in the UI
-      values       = ["1.0.0", "1.0.1"]
-      context_kind = "application"
-    }
-    clauses {
-      attribute    = "version"
-      op           = "semVerLessThan" // Maps to 'semantic version less than (<)' in the UI
-      values       = ["1.0.0"]
-      context_kind = "application"
-    }
-    clauses {
-      attribute    = "version"
-      op           = "semVerGreaterThan" // Maps to 'semantic version greater than (>)' in the UI
-      values       = ["1.0.0"]
-      context_kind = "application"
-    }
-    clauses {
-      attribute = "context"
-      op        = "segmentMatch" // Maps to 'Context is in' in the UI
-      values    = ["test-segment"]
-    }
-  }
+  rules = [{
+    clauses = [
+      {
+        attribute = "username"
+        op        = "in" // Maps to 'is one of' in the UI
+        values    = ["henrietta powell", "wally waterbear"]
+      },
+      {
+        attribute = "username"
+        op        = "endsWith" // Maps to 'ends with' in the UI
+        values    = ["powell", "waterbear"]
+      },
+      {
+        attribute = "username"
+        op        = "startsWith" // Maps to 'starts with' in the UI
+        values    = ["henrietta", "wally"]
+      },
+      {
+        attribute = "username"
+        op        = "matches" // Maps to 'matches regex' in the UI
+        values    = ["henr*"]
+      },
+      {
+        attribute = "username"
+        op        = "contains" // Maps to 'contains' in the UI
+        values    = ["water"]
+      },
+      {
+        attribute = "pageVisits"
+        op        = "lessThan" // Maps to 'less than (<)' in the UI
+        values    = [100]
+      },
+      {
+        attribute = "pageVisits"
+        op        = "lessThanOrEqual" // Maps to 'less than or equal to (<=)' in the UI
+        values    = [100]
+      },
+      {
+        attribute = "pageVisits"
+        op        = "greaterThan" // Maps to 'greater than (>)' in the UI
+        values    = [100]
+      },
+      {
+        attribute = "pageVisits"
+        op        = "greaterThanOrEqual" // Maps to 'greater than or equal to (>=)' in the UI
+        values    = [100]
+      },
+      {
+        attribute = "creationDate"
+        op        = "before" // Maps to 'before' in the UI
+        values    = ["2024-05-03T15:57:30Z"]
+      },
+      {
+        attribute = "creationDate"
+        op        = "after" // Maps to 'after' in the UI
+        values    = ["2024-05-03T15:57:30Z"]
+      },
+      {
+        attribute    = "version"
+        op           = "semVerEqual" // Maps to 'semantic version is one of (=)' in the UI
+        values       = ["1.0.0", "1.0.1"]
+        context_kind = "application"
+      },
+      {
+        attribute    = "version"
+        op           = "semVerLessThan" // Maps to 'semantic version less than (<)' in the UI
+        values       = ["1.0.0"]
+        context_kind = "application"
+      },
+      {
+        attribute    = "version"
+        op           = "semVerGreaterThan" // Maps to 'semantic version greater than (>)' in the UI
+        values       = ["1.0.0"]
+        context_kind = "application"
+      },
+      {
+        attribute = "context"
+        op        = "segmentMatch" // Maps to 'Context is in' in the UI
+        values    = ["test-segment"]
+      },
+    ]
+  }]
 }
 
 # Example: Segment with view associations
@@ -161,13 +163,13 @@ resource "launchdarkly_segment" "premium_users" {
 
   tags = ["premium", "subscription"]
 
-  rules {
-    clauses {
+  rules = [{
+    clauses = [{
       attribute = "plan"
       op        = "in"
       values    = ["premium", "enterprise"]
-    }
-  }
+    }]
+  }]
 }
 
 # Example: Segment managed in a module that can specify its own views
@@ -207,10 +209,10 @@ resource "launchdarkly_segment" "beta_testers" {
 
 - `description` (String) The description of the segment's purpose.
 - `excluded` (List of String) List of user keys excluded from the segment. To target on other context kinds, use the excluded_contexts block attribute. This attribute is not valid when `unbounded` is set to `true`.
-- `excluded_contexts` (Block List) List of non-user target objects excluded from the segment. This attribute is not valid when `unbounded` is set to `true`. (see [below for nested schema](#nestedblock--excluded_contexts))
+- `excluded_contexts` (Attributes List) List of non-user target objects excluded from the segment. This attribute is not valid when `unbounded` is set to `true`. (see [below for nested schema](#nestedatt--excluded_contexts))
 - `included` (List of String) List of user keys included in the segment. To target on other context kinds, use the included_contexts block attribute. This attribute is not valid when `unbounded` is set to `true`.
-- `included_contexts` (Block List) List of non-user target objects included in the segment. This attribute is not valid when `unbounded` is set to `true`. (see [below for nested schema](#nestedblock--included_contexts))
-- `rules` (Block List) List of nested custom rule blocks to apply to the segment. This attribute is not valid when `unbounded` is set to `true`. (see [below for nested schema](#nestedblock--rules))
+- `included_contexts` (Attributes List) List of non-user target objects included in the segment. This attribute is not valid when `unbounded` is set to `true`. (see [below for nested schema](#nestedatt--included_contexts))
+- `rules` (Attributes List) List of custom rules to apply to the segment. This attribute is not valid when `unbounded` is set to `true`. (see [below for nested schema](#nestedatt--rules))
 - `tags` (Set of String) Tags associated with your resource.
 - `unbounded` (Boolean) Whether to create a standard segment (`false`) or a Big Segment (`true`). Standard segments include rule-based and smaller list-based segments. Big Segments include larger list-based segments and synced segments. Only use a Big Segment if you need to add more than 15,000 individual targets. It is not possible to manage the list of targeted contexts for Big Segments with Terraform. A change in this field will force the destruction of the existing resource and the creation of a new one.
 - `unbounded_context_kind` (String) For Big Segments, the targeted context kind. If this attribute is not specified it will default to `user`. A change in this field will force the destruction of the existing resource and the creation of a new one.
@@ -221,7 +223,7 @@ resource "launchdarkly_segment" "beta_testers" {
 - `creation_date` (Number) The segment's creation date represented as a UNIX epoch timestamp.
 - `id` (String) The ID of this resource.
 
-<a id="nestedblock--excluded_contexts"></a>
+<a id="nestedatt--excluded_contexts"></a>
 ### Nested Schema for `excluded_contexts`
 
 Required:
@@ -230,7 +232,7 @@ Required:
 - `values` (List of String) List of target object keys included in or excluded from the segment.
 
 
-<a id="nestedblock--included_contexts"></a>
+<a id="nestedatt--included_contexts"></a>
 ### Nested Schema for `included_contexts`
 
 Required:
@@ -239,17 +241,20 @@ Required:
 - `values` (List of String) List of target object keys included in or excluded from the segment.
 
 
-<a id="nestedblock--rules"></a>
+<a id="nestedatt--rules"></a>
 ### Nested Schema for `rules`
+
+Required:
+
+- `clauses` (Attributes List) List of clauses specifying the logical conditions to evaluate (see [below for nested schema](#nestedatt--rules--clauses))
 
 Optional:
 
 - `bucket_by` (String) The attribute by which to group contexts together.
-- `clauses` (Block List) List of nested blocks specifying the logical clauses to evaluate (see [below for nested schema](#nestedblock--rules--clauses))
 - `rollout_context_kind` (String) The context kind associated with this segment rule. This argument is only valid if `weight` is also specified. If omitted, defaults to `user`.
 - `weight` (Number) The integer weight of the rule (between 1 and 100000).
 
-<a id="nestedblock--rules--clauses"></a>
+<a id="nestedatt--rules--clauses"></a>
 ### Nested Schema for `rules.clauses`
 
 Required:

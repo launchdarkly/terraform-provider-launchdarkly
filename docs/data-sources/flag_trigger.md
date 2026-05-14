@@ -46,12 +46,12 @@ Please note that if you did not save this upon creation of the resource, you wil
 ### Read-Only
 
 - `enabled` (Boolean) Whether the trigger is currently active or not.
-- `instructions` (Block List) Instructions containing the action to perform when invoking the trigger. Currently supported flag actions are `turnFlagOn` and `turnFlagOff`. This must be passed as the key-value pair `{ kind = "<flag_action>" }`. (see [below for nested schema](#nestedblock--instructions))
+- `instructions` (Attributes List) Instructions containing the action to perform when invoking the trigger. Currently supported flag actions are `turnFlagOn` and `turnFlagOff`. This must be passed as the key-value pair `{ kind = "<flag_action>" }`. (see [below for nested schema](#nestedatt--instructions))
 - `integration_key` (String) The unique identifier of the integration you intend to set your trigger up with. Currently supported are `generic-trigger`, `datadog`, `dynatrace`, `dynatrace-cloud-automation`, `honeycomb`, `new-relic-apm`, and `signalfx`. `generic-trigger` should be used for integrations not explicitly supported.
 - `maintainer_id` (String) The ID of the member responsible for maintaining the flag trigger.
 - `trigger_url` (String, Sensitive) The unique URL used to invoke the trigger.
 
-<a id="nestedblock--instructions"></a>
+<a id="nestedatt--instructions"></a>
 ### Nested Schema for `instructions`
 
 Read-Only:
