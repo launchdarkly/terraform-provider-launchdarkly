@@ -1,9 +1,12 @@
 package launchdarkly
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"log"
 	"math"
 	"net/http"
@@ -43,6 +46,49 @@ type Client struct {
 	fallbackClient *http.Client
 
 	semaphore *semaphore.Weighted
+
+	// observabilityClient and observabilityHost are used for the observability
+	// platform's REST API (alert CRUD, etc.).  The existing apiKey is reused
+	// for auth via the Gonfalon-Authorization header.
+	observabilityClient *http.Client
+	observabilityHost   string
+}
+
+// observabilityRequest makes an authenticated HTTP request to the observability
+// backend.  The existing apiKey is sent as the Gonfalon-Authorization header
+// so that NewGonfalonOAuthMiddleware can validate it.  body may be nil for
+// requests that have no payload (GET, DELETE).
+func (c *Client) observabilityRequest(ctx context.Context, method, path string, body interface{}) (*http.Response, error) {
+	if c.observabilityHost == "" {
+		return nil, fmt.Errorf("observability_host must be configured to manage observability alerts")
+	}
+
+	var reqBody io.Reader
+	if body != nil {
+		encoded, err := json.Marshal(body)
+		if err != nil {
+			return nil, fmt.Errorf("failed to encode request body: %w", err)
+		}
+		reqBody = bytes.NewBuffer(encoded)
+	}
+
+	endpoint := strings.TrimRight(c.observabilityHost, "/") + path
+	req, err := http.NewRequestWithContext(ctx, method, endpoint, reqBody)
+	if err != nil {
+		return nil, fmt.Errorf("failed to build observability request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Gonfalon-Authorization", c.apiKey)
+
+	var resp *http.Response
+	err = c.withConcurrency(ctx, func() error {
+		resp, err = c.observabilityClient.Do(req)
+		return err
+	})
+	if err != nil {
+		return nil, err
+	}
+	return resp, nil
 }
 
 func (c *Client) withConcurrency(ctx context.Context, fn func() error) error {
@@ -114,14 +160,18 @@ func baseNewClient(token string, apiHost string, oauth bool, httpTimeoutSeconds 
 	fallbackClient := newRetryableClient(standardRetryPolicy)
 	fallbackClient.Timeout = time.Duration(5 * time.Second)
 
+	observabilityClient := newRetryableClient(standardRetryPolicy)
+	observabilityClient.Timeout = time.Duration(httpTimeoutSeconds) * time.Second
+
 	return &Client{
-		apiKey:         token,
-		apiHost:        apiHost,
-		ld:             ldapi.NewAPIClient(standardConfig),
-		ld404Retry:     ldapi.NewAPIClient(configWith404Retries),
-		ctx:            ctx,
-		fallbackClient: fallbackClient,
-		semaphore:      semaphore.NewWeighted(int64(maxConcurrent)),
+		apiKey:              token,
+		apiHost:             apiHost,
+		ld:                  ldapi.NewAPIClient(standardConfig),
+		ld404Retry:          ldapi.NewAPIClient(configWith404Retries),
+		ctx:                 ctx,
+		fallbackClient:      fallbackClient,
+		observabilityClient: observabilityClient,
+		semaphore:           semaphore.NewWeighted(int64(maxConcurrent)),
 	}, nil
 }
 

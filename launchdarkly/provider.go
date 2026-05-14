@@ -19,9 +19,10 @@ const (
 
 // Environment Variables
 const (
-	LAUNCHDARKLY_ACCESS_TOKEN = "LAUNCHDARKLY_ACCESS_TOKEN"
-	LAUNCHDARKLY_API_HOST     = "LAUNCHDARKLY_API_HOST"
-	LAUNCHDARKLY_OAUTH_TOKEN  = "LAUNCHDARKLY_OAUTH_TOKEN"
+	LAUNCHDARKLY_ACCESS_TOKEN       = "LAUNCHDARKLY_ACCESS_TOKEN"
+	LAUNCHDARKLY_API_HOST           = "LAUNCHDARKLY_API_HOST"
+	LAUNCHDARKLY_OAUTH_TOKEN        = "LAUNCHDARKLY_OAUTH_TOKEN"
+	LAUNCHDARKLY_OBSERVABILITY_HOST = "LAUNCHDARKLY_OBSERVABILITY_HOST"
 )
 
 // Provider keys
@@ -53,6 +54,11 @@ func providerSchema() map[string]*schema.Schema {
 			Type:        schema.TypeInt,
 			Optional:    true,
 			Description: "The HTTP timeout (in seconds) when making API calls to LaunchDarkly. Defaults to 20 seconds.",
+		},
+		OBSERVABILITY_HOST: {
+			Type:        schema.TypeString,
+			Optional:    true,
+			Description: "The LaunchDarkly Observability host address (e.g. `https://app.highlight.io`). Required when managing `launchdarkly_alert` resources. You can also set this with the `LAUNCHDARKLY_OBSERVABILITY_HOST` environment variable.",
 		},
 	}
 }
@@ -86,6 +92,7 @@ func Provider() *schema.Provider {
 			"launchdarkly_view":                      resourceView(),
 			"launchdarkly_view_filter_links":         resourceViewFilterLinks(),
 			"launchdarkly_view_links":                resourceViewLinks(),
+			"launchdarkly_alert":                     resourceAlert(),
 			"launchdarkly_webhook":                   resourceWebhook(),
 		},
 		DataSourcesMap: map[string]*schema.Resource{
@@ -120,6 +127,7 @@ func providerConfigure(ctx context.Context, d *schema.ResourceData) (interface{}
 	accessToken := os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN)
 	oauthToken := os.Getenv(LAUNCHDARKLY_OAUTH_TOKEN)
 	host := os.Getenv(LAUNCHDARKLY_API_HOST)
+	observabilityHost := os.Getenv(LAUNCHDARKLY_OBSERVABILITY_HOST)
 
 	if host == "" {
 		host = DEFAULT_LAUNCHDARKLY_HOST
@@ -148,22 +156,26 @@ func providerConfigure(ctx context.Context, d *schema.ResourceData) (interface{}
 		return nil, diag.Errorf("either an %q or %q must be specified", ACCESS_TOKEN, OAUTH_TOKEN)
 	}
 
+	configObservabilityHost := optionalStringAttr(d, OBSERVABILITY_HOST)
+	if configObservabilityHost != "" {
+		observabilityHost = configObservabilityHost
+	}
+
 	httpTimeoutSeconds := optionalIntFromResourceData(d, HTTP_TIMEOUT, 0)
 	if httpTimeoutSeconds == 0 {
 		httpTimeoutSeconds = DEFAULT_HTTP_TIMEOUT_S
 	}
 
+	var client *Client
+	var err error
 	if oauthToken != "" {
-		client, err := newClient(oauthToken, host, true, httpTimeoutSeconds, DEFAULT_MAX_CONCURRENCY)
-		if err != nil {
-			return client, diag.FromErr(err)
-		}
-		return client, diags
+		client, err = newClient(oauthToken, host, true, httpTimeoutSeconds, DEFAULT_MAX_CONCURRENCY)
+	} else {
+		client, err = newClient(accessToken, host, false, httpTimeoutSeconds, DEFAULT_MAX_CONCURRENCY)
 	}
-
-	client, err := newClient(accessToken, host, false, httpTimeoutSeconds, DEFAULT_MAX_CONCURRENCY)
 	if err != nil {
 		return client, diag.FromErr(err)
 	}
+	client.observabilityHost = observabilityHost
 	return client, diags
 }
