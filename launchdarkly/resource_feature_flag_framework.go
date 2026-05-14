@@ -164,11 +164,11 @@ This resource allows you to create and manage feature flags within your LaunchDa
 				ElementType: types.StringType,
 				Description: "A set of view keys to link this flag to. This is an alternative to using the `launchdarkly_view_links` resource for managing view associations. When set, this flag will be linked to the specified views. The field is also computed, meaning Terraform will read back the current view associations from LaunchDarkly to detect drift. To explicitly remove all view associations, set `view_keys = []`. Simply removing the field from your configuration will leave existing associations unchanged. **Important**: Avoid using both `view_keys` and `launchdarkly_view_links` to manage the same flag. Mixed ownership can cause conflicts; when detected, Terraform logs a warning and reconciles to the configured `view_keys`. Choose one approach per resource.",
 			},
-		},
-		Blocks: map[string]schema.Block{
-			VARIATIONS: schema.ListNestedBlock{
-				Description: "An array of possible variations for the flag",
-				NestedObject: schema.NestedBlockObject{
+			VARIATIONS: schema.ListNestedAttribute{
+				Required:    true,
+				Description: "An array of possible variations for the flag.",
+				Validators:  []validator.List{listvalidator.SizeAtLeast(1)},
+				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
 						NAME: schema.StringAttribute{
 							Optional:    true,
@@ -187,15 +187,16 @@ This resource allows you to create and manage feature flags within your LaunchDa
 							PlanModifiers: []planmodifier.String{
 								jsonNormalizePlanModifier{},
 							},
-							Description: fmt.Sprintf("The variation value. The value's type must correspond to the `variation_type` argument. For example: `variation_type = %q` accepts only `true` or `false`. The `number` variation type accepts both floats and ints, but please note that any trailing zeroes on floats will be trimmed (i.e. `1.1` and `1.100` will both be converted to `1.1`).\n\nIf you wish to define an empty string variation, you must still define the value field on the variations block like so:\n\n```terraform\nvariations {\n  value = %q\n}\n```\n\n-> **Note:** Terraform manages `variations` as an ordered array and identifies them by index. This means that if you change the order of your `variations` block, you may end up destroying and recreating those variations. Additionally, if you delete variations that have targets that have been attached outside of Terraform, those targets may be incorrectly reassigned to a different variation.", "boolean", ""),
+							Description: fmt.Sprintf("The variation value. The value's type must correspond to the `variation_type` argument. For example: `variation_type = %q` accepts only `true` or `false`. The `number` variation type accepts both floats and ints, but please note that any trailing zeroes on floats will be trimmed (i.e. `1.1` and `1.100` will both be converted to `1.1`).\n\nIf you wish to define an empty string variation, you must still define the value field like so:\n\n```terraform\nvariations = [{\n  value = %q\n}]\n```\n\n-> **Note:** Terraform manages `variations` as an ordered array and identifies them by index. Changing the order of `variations` may destroy and recreate variations. Deleted variations that still have targets attached outside of Terraform may have their targets reassigned to a different variation.", "boolean", ""),
 						},
 					},
 				},
 			},
-			CLIENT_SIDE_AVAILABILITY: schema.ListNestedBlock{
-				Description: "A block describing whether this flag should be made available to the client-side JavaScript SDK using the client-side Id, mobile key, or both. This value gets its default from your project configuration if not set. Once set, if removed, it will retain its last set value.",
+			CLIENT_SIDE_AVAILABILITY: schema.ListNestedAttribute{
+				Optional:    true,
+				Description: "Whether this flag should be made available to the client-side JavaScript SDK using the client-side Id, mobile key, or both. This value gets its default from your project configuration if not set. Once set, if removed, it will retain its last set value.",
 				Validators:  []validator.List{listvalidator.SizeAtMost(1)},
-				NestedObject: schema.NestedBlockObject{
+				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
 						USING_ENVIRONMENT_ID: schema.BoolAttribute{
 							Optional:    true,
@@ -210,10 +211,11 @@ This resource allows you to create and manage feature flags within your LaunchDa
 					},
 				},
 			},
-			CUSTOM_PROPERTIES: schema.SetNestedBlock{
-				Description: "List of nested blocks describing the feature flag's [custom properties](https://docs.launchdarkly.com/home/connecting/custom-properties)",
+			CUSTOM_PROPERTIES: schema.SetNestedAttribute{
+				Optional:    true,
+				Description: "The feature flag's [custom properties](https://docs.launchdarkly.com/home/connecting/custom-properties).",
 				Validators:  []validator.Set{setvalidator.SizeAtMost(CUSTOM_PROPERTY_ITEM_LIMIT)},
-				NestedObject: schema.NestedBlockObject{
+				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
 						KEY: schema.StringAttribute{
 							Required:    true,
@@ -237,10 +239,11 @@ This resource allows you to create and manage feature flags within your LaunchDa
 					},
 				},
 			},
-			DEFAULTS: schema.ListNestedBlock{
-				Description: "A block containing the indices of the variations to be used as the default on and off variations in all new environments. Flag configurations in existing environments will not be changed nor updated if the configuration block is removed.",
+			DEFAULTS: schema.ListNestedAttribute{
+				Optional:    true,
+				Description: "The indices of the variations to be used as the default on and off variations in all new environments. Flag configurations in existing environments will not be changed nor updated if removed.",
 				Validators:  []validator.List{listvalidator.SizeAtMost(1)},
-				NestedObject: schema.NestedBlockObject{
+				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
 						ON_VARIATION: schema.Int64Attribute{
 							Required:    true,

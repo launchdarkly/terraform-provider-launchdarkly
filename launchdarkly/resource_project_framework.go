@@ -103,18 +103,17 @@ This resource allows you to create and manage projects within your LaunchDarkly 
 				Default:     booldefault.StaticBool(false),
 				Description: "Whether new segments created in this project must be associated with at least one view.",
 			},
-		},
-		Blocks: map[string]schema.Block{
-			DEFAULT_CLIENT_SIDE_AVAILABILITY: schema.ListNestedBlock{
-				Description: "A block describing which client-side SDKs can use new flags by default.",
-				NestedObject: schema.NestedBlockObject{
+			DEFAULT_CLIENT_SIDE_AVAILABILITY: schema.ListNestedAttribute{
+				Optional:    true,
+				Description: "Which client-side SDKs can use new flags by default.",
+				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
 						USING_ENVIRONMENT_ID: schema.BoolAttribute{Required: true},
 						USING_MOBILE_KEY:     schema.BoolAttribute{Required: true},
 					},
 				},
 			},
-			ENVIRONMENTS: projectEnvironmentsBlock(),
+			ENVIRONMENTS: projectEnvironmentsAttribute(),
 		},
 	}
 }

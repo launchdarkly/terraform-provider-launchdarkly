@@ -115,9 +115,7 @@ func (r *EnvironmentResource) Schema(_ context.Context, _ resource.SchemaRequest
 				Optional:    true,
 				ElementType: types.StringType,
 			},
-		},
-		Blocks: map[string]schema.Block{
-			APPROVAL_SETTINGS: frameworkApprovalSettingsResourceBlock(),
+			APPROVAL_SETTINGS: frameworkApprovalSettingsResourceAttribute(),
 		},
 	}
 }

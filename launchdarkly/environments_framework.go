@@ -64,14 +64,15 @@ var environmentBlockAttrTypes = map[string]attr.Type{
 	APPROVAL_SETTINGS:    types.ListType{ElemType: types.ObjectType{AttrTypes: frameworkApprovalSettingsObjectAttrTypes}},
 }
 
-// projectEnvironmentsBlock returns the nested-environments block for the
-// project resource schema. It is Required (Min:1 enforced by the
-// nested-block validator).
-func projectEnvironmentsBlock() schema.ListNestedBlock {
-	return schema.ListNestedBlock{
-		Description: "List of nested `environments` blocks describing LaunchDarkly environments that belong to the project. When managing LaunchDarkly projects in Terraform, you should always manage your environments as nested project resources.\n\n-> **Note:** Mixing the use of nested `environments` blocks and [`launchdarkly_environment`](/docs/providers/launchdarkly/r/environment.html) resources is not recommended. `launchdarkly_environment` resources should only be used when the encapsulating project is not managed in Terraform.",
+// projectEnvironmentsAttribute returns the nested-environments attribute
+// for the project resource schema. It is Required (Min:1 enforced by
+// the list-size validator).
+func projectEnvironmentsAttribute() schema.ListNestedAttribute {
+	return schema.ListNestedAttribute{
+		Required:    true,
+		Description: "List of nested `environments` attributes describing LaunchDarkly environments that belong to the project. When managing LaunchDarkly projects in Terraform, you should always manage your environments as nested project resources.\n\n-> **Note:** Mixing the use of nested `environments` and [`launchdarkly_environment`](/docs/providers/launchdarkly/r/environment.html) resources is not recommended. `launchdarkly_environment` resources should only be used when the encapsulating project is not managed in Terraform.",
 		Validators:  []validator.List{listvalidator.SizeAtLeast(1)},
-		NestedObject: schema.NestedBlockObject{
+		NestedObject: schema.NestedAttributeObject{
 			Attributes: map[string]schema.Attribute{
 				KEY: schema.StringAttribute{
 					Required:    true,
@@ -132,9 +133,7 @@ func projectEnvironmentsBlock() schema.ListNestedBlock {
 					Validators:  []validator.Set{setvalidator.ValueStringsAre(tagValidator())},
 					Description: "Tags associated with your resource.",
 				},
-			},
-			Blocks: map[string]schema.Block{
-				APPROVAL_SETTINGS: frameworkApprovalSettingsResourceBlock(),
+				APPROVAL_SETTINGS: frameworkApprovalSettingsResourceAttribute(),
 			},
 		},
 	}

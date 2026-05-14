@@ -123,16 +123,14 @@ The resource must contain either a "role", "custom_role" or an "inline_roles" (p
 					noZeroValuesInt64Validator{},
 				},
 			},
-		},
-		Blocks: map[string]schema.Block{
-			POLICY_STATEMENTS: frameworkPolicyStatementsResourceBlock(
+			POLICY_STATEMENTS: frameworkPolicyStatementsResourceAttribute(
 				false,
-				"Define inline custom roles. An array of statements represented as config blocks with three attributes: effect, resources, actions. May be used in place of a built-in or custom role. May be specified more than once. This field argument is **deprecated**. Update your config to use `inline_role` to maintain compatibility with future versions.",
+				"Define inline custom roles. An array of statements with three attributes: effect, resources, actions. May be used in place of a built-in or custom role. This field argument is **deprecated**. Update your config to use `inline_role` to maintain compatibility with future versions.",
 				"'policy_statements' is deprecated in favor of 'inline_roles'. This field will be removed in the next major release of the LaunchDarkly provider",
 			),
-			INLINE_ROLES: frameworkPolicyStatementsResourceBlock(
+			INLINE_ROLES: frameworkPolicyStatementsResourceAttribute(
 				false,
-				"Define inline custom roles. An array of statements represented as config blocks with three attributes: effect, resources, actions. May be used in place of a built-in or custom role. [Using polices](https://docs.launchdarkly.com/home/members/role-policies). May be specified more than once.",
+				"Define inline custom roles. An array of statements with three attributes: effect, resources, actions. May be used in place of a built-in or custom role. [Using polices](https://docs.launchdarkly.com/home/members/role-policies).",
 				"",
 			),
 		},

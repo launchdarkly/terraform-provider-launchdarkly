@@ -137,11 +137,10 @@ This resource allows you to create and manage segments within your LaunchDarkly 
 				Description: "A set of view keys to link this segment to. This is an alternative to using the `launchdarkly_view_links` resource for managing view associations. When set, this segment will be linked to the specified views. The field is also computed, meaning Terraform will read back the current view associations from LaunchDarkly to detect drift. To explicitly remove all view associations, set `view_keys = []`. Simply removing the field from your configuration will leave existing associations unchanged. **Important**: Avoid using both `view_keys` and `launchdarkly_view_links` to manage the same segment. Mixed ownership can cause conflicts; when detected, Terraform logs a warning and reconciles to the configured `view_keys`. Choose one approach per resource.",
 				Validators:  []validator.Set{},
 			},
-		},
-		Blocks: map[string]schema.Block{
-			INCLUDED_CONTEXTS: schema.ListNestedBlock{
+			INCLUDED_CONTEXTS: schema.ListNestedAttribute{
+				Optional:    true,
 				Description: "List of non-user target objects included in the segment. This attribute is not valid when `unbounded` is set to `true`.",
-				NestedObject: schema.NestedBlockObject{
+				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
 						VALUES: schema.ListAttribute{
 							Required:    true,
@@ -155,9 +154,10 @@ This resource allows you to create and manage segments within your LaunchDarkly 
 					},
 				},
 			},
-			EXCLUDED_CONTEXTS: schema.ListNestedBlock{
+			EXCLUDED_CONTEXTS: schema.ListNestedAttribute{
+				Optional:    true,
 				Description: "List of non-user target objects excluded from the segment. This attribute is not valid when `unbounded` is set to `true`.",
-				NestedObject: schema.NestedBlockObject{
+				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
 						VALUES: schema.ListAttribute{
 							Required:    true,
@@ -171,7 +171,7 @@ This resource allows you to create and manage segments within your LaunchDarkly 
 					},
 				},
 			},
-			RULES: segmentRulesResourceBlock(),
+			RULES: segmentRulesResourceAttribute(),
 		},
 	}
 }
@@ -665,12 +665,13 @@ func segmentResourceRulesValue(ctx context.Context, rules []ldapi.UserSegmentRul
 	return list
 }
 
-// segmentRulesResourceBlock declares the framework block schema for
-// segment rules. Matches segmentRulesSchema in segment_rule_helper.go.
-func segmentRulesResourceBlock() schema.ListNestedBlock {
-	return schema.ListNestedBlock{
-		Description: "List of nested custom rule blocks to apply to the segment. This attribute is not valid when `unbounded` is set to `true`.",
-		NestedObject: schema.NestedBlockObject{
+// segmentRulesResourceAttribute declares the framework attribute schema
+// for segment rules. Matches segmentRulesSchema in segment_rule_helper.go.
+func segmentRulesResourceAttribute() schema.ListNestedAttribute {
+	return schema.ListNestedAttribute{
+		Optional:    true,
+		Description: "List of custom rules to apply to the segment. This attribute is not valid when `unbounded` is set to `true`.",
+		NestedObject: schema.NestedAttributeObject{
 			Attributes: map[string]schema.Attribute{
 				WEIGHT: schema.Int64Attribute{
 					Optional:    true,
@@ -686,9 +687,7 @@ func segmentRulesResourceBlock() schema.ListNestedBlock {
 					Default:     stringdefault.StaticString("user"),
 					Description: "The context kind associated with this segment rule. This argument is only valid if `weight` is also specified. If omitted, defaults to `user`.",
 				},
-			},
-			Blocks: map[string]schema.Block{
-				CLAUSES: frameworkClausesResourceBlock(),
+				CLAUSES: frameworkClausesResourceAttribute(),
 			},
 		},
 	}

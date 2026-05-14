@@ -65,11 +65,10 @@ func (r *FlagTemplatesResource) Schema(_ context.Context, _ resource.SchemaReque
 				Optional: true, Computed: true,
 				Default: booldefault.StaticBool(false),
 			},
-		},
-		Blocks: map[string]schema.Block{
-			BOOLEAN_DEFAULTS: schema.ListNestedBlock{
+			BOOLEAN_DEFAULTS: schema.ListNestedAttribute{
+				Optional:    true,
 				Description: "Default boolean variation settings.",
-				NestedObject: schema.NestedBlockObject{
+				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
 						TRUE_DISPLAY_NAME:  schema.StringAttribute{Required: true},
 						FALSE_DISPLAY_NAME: schema.StringAttribute{Required: true},

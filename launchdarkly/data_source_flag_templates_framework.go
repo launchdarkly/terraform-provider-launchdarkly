@@ -51,11 +51,10 @@ func (d *FlagTemplatesDataSource) Schema(_ context.Context, _ datasource.SchemaR
 			PROJECT_KEY: schema.StringAttribute{Required: true, Description: "The project key."},
 			TAGS:        schema.SetAttribute{Computed: true, ElementType: types.StringType, Description: "Tags applied by default."},
 			TEMPORARY:   schema.BoolAttribute{Computed: true, Description: "Whether new flags should be temporary by default."},
-		},
-		Blocks: map[string]schema.Block{
-			BOOLEAN_DEFAULTS: schema.ListNestedBlock{
+			BOOLEAN_DEFAULTS: schema.ListNestedAttribute{
+				Computed:    true,
 				Description: "Default boolean flag variation settings.",
-				NestedObject: schema.NestedBlockObject{
+				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
 						TRUE_DISPLAY_NAME:  schema.StringAttribute{Computed: true, Description: "Display name for the true variation."},
 						FALSE_DISPLAY_NAME: schema.StringAttribute{Computed: true, Description: "Display name for the false variation."},

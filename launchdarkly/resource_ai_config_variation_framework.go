@@ -144,11 +144,10 @@ func (r *AIConfigVariationResource) Schema(_ context.Context, _ resource.SchemaR
 				Computed:    true,
 				Description: "The creation timestamp of the variation.",
 			},
-		},
-		Blocks: map[string]schema.Block{
-			MESSAGES: schema.ListNestedBlock{
+			MESSAGES: schema.ListNestedAttribute{
+				Optional:    true,
 				Description: "A list of messages for completion mode. Each message has a `role` and `content`.",
-				NestedObject: schema.NestedBlockObject{
+				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
 						ROLE: schema.StringAttribute{
 							Required:    true,

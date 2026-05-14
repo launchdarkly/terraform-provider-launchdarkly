@@ -78,11 +78,10 @@ func (d *FlagTriggerDataSource) Schema(_ context.Context, _ datasource.SchemaReq
 				Computed:    true,
 				Description: "Whether the trigger is currently active or not.",
 			},
-		},
-		Blocks: map[string]schema.Block{
-			INSTRUCTIONS: schema.ListNestedBlock{
+			INSTRUCTIONS: schema.ListNestedAttribute{
+				Computed:    true,
 				Description: "Instructions containing the action to perform when invoking the trigger. Currently supported flag actions are `turnFlagOn` and `turnFlagOff`. This must be passed as the key-value pair `{ kind = \"<flag_action>\" }`.",
-				NestedObject: schema.NestedBlockObject{
+				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
 						KIND: schema.StringAttribute{
 							Computed:    true,

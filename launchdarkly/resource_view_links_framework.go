@@ -77,11 +77,11 @@ func (r *ViewLinksResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 				ElementType: types.StringType,
 				Description: "A set of feature flag keys to link to the view.",
 			},
-		},
-		Blocks: map[string]schema.Block{
-			SEGMENTS: schema.SetNestedBlock{
+			SEGMENTS: schema.SetNestedAttribute{
+				Optional:    true,
+				Computed:    true,
 				Description: "A set of segments to link to the view. Each segment is identified by its environment ID and segment key.",
-				NestedObject: schema.NestedBlockObject{
+				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
 						SEGMENT_ENVIRONMENT_ID: schema.StringAttribute{
 							Required:    true,

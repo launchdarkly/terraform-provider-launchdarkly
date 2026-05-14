@@ -46,9 +46,7 @@ func (d *TeamMemberDataSource) Schema(_ context.Context, _ datasource.SchemaRequ
 				ElementType: types.StringType,
 				Description: "The list of custom roles keys associated with the team member. Custom roles are only available to customers on an Enterprise plan. To learn more, [read about our pricing](https://launchdarkly.com/pricing/). To upgrade your plan, [contact LaunchDarkly Sales](https://launchdarkly.com/contact-sales/).",
 			},
-		},
-		Blocks: map[string]schema.Block{
-			ROLE_ATTRIBUTES: frameworkRoleAttributesDataSourceBlock(),
+			ROLE_ATTRIBUTES: frameworkRoleAttributesDataSourceAttribute(),
 		},
 	}
 }

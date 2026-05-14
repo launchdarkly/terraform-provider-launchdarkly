@@ -84,11 +84,10 @@ func (d *FeatureFlagEnvironmentDataSource) Schema(_ context.Context, _ datasourc
 				Computed:    true,
 				Description: "Variation index to serve when targeting is disabled.",
 			},
-		},
-		Blocks: map[string]schema.Block{
-			TARGETS: schema.SetNestedBlock{
+			TARGETS: schema.SetNestedAttribute{
+				Computed:    true,
 				Description: "Individual user targets per variation.",
-				NestedObject: schema.NestedBlockObject{
+				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
 						VALUES: schema.ListAttribute{
 							Computed:    true,
@@ -98,9 +97,10 @@ func (d *FeatureFlagEnvironmentDataSource) Schema(_ context.Context, _ datasourc
 					},
 				},
 			},
-			CONTEXT_TARGETS: schema.SetNestedBlock{
+			CONTEXT_TARGETS: schema.SetNestedAttribute{
+				Computed:    true,
 				Description: "Individual context-kind targets per variation.",
-				NestedObject: schema.NestedBlockObject{
+				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
 						VALUES: schema.ListAttribute{
 							Computed:    true,
@@ -111,18 +111,20 @@ func (d *FeatureFlagEnvironmentDataSource) Schema(_ context.Context, _ datasourc
 					},
 				},
 			},
-			PREREQUISITES: schema.ListNestedBlock{
+			PREREQUISITES: schema.ListNestedAttribute{
+				Computed:    true,
 				Description: "Prerequisite flag rules.",
-				NestedObject: schema.NestedBlockObject{
+				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
 						FLAG_KEY:  schema.StringAttribute{Computed: true},
 						VARIATION: schema.Int64Attribute{Computed: true},
 					},
 				},
 			},
-			RULES: schema.ListNestedBlock{
+			RULES: schema.ListNestedAttribute{
+				Computed:    true,
 				Description: "Logical targeting rules.",
-				NestedObject: schema.NestedBlockObject{
+				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
 						DESCRIPTION:  schema.StringAttribute{Computed: true},
 						VARIATION:    schema.Int64Attribute{Computed: true},
@@ -132,15 +134,14 @@ func (d *FeatureFlagEnvironmentDataSource) Schema(_ context.Context, _ datasourc
 							Computed:    true,
 							ElementType: types.Int64Type,
 						},
-					},
-					Blocks: map[string]schema.Block{
-						CLAUSES: frameworkClausesDataSourceBlock(),
+						CLAUSES: frameworkClausesDataSourceAttribute(),
 					},
 				},
 			},
-			FALLTHROUGH: schema.ListNestedBlock{
+			FALLTHROUGH: schema.ListNestedAttribute{
+				Computed:    true,
 				Description: "Default variation served when no other targeting applies (single element).",
-				NestedObject: schema.NestedBlockObject{
+				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
 						VARIATION:    schema.Int64Attribute{Computed: true},
 						BUCKET_BY:    schema.StringAttribute{Computed: true},

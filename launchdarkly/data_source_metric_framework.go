@@ -143,11 +143,10 @@ func (d *MetricDataSource) Schema(_ context.Context, _ datasource.SchemaRequest,
 				Computed:    true,
 				Description: "Version of the metric.",
 			},
-		},
-		Blocks: map[string]schema.Block{
-			URLS: schema.ListNestedBlock{
-				Description: "Nested `url` blocks describing URLs associated with the metric.",
-				NestedObject: schema.NestedBlockObject{
+			URLS: schema.ListNestedAttribute{
+				Computed:    true,
+				Description: "URLs associated with the metric.",
+				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
 						KIND:      schema.StringAttribute{Computed: true, Description: "The URL type."},
 						URL:       schema.StringAttribute{Computed: true, Description: "The exact or canonical URL."},

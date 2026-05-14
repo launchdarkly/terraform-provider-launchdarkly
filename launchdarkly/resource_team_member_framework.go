@@ -87,9 +87,7 @@ This resource allows you to create and manage team members within your LaunchDar
 				ElementType: types.StringType,
 				Description: "The list of custom roles keys associated with the team member. Custom roles are only available to customers on an Enterprise plan. To learn more, [read about our pricing](https://launchdarkly.com/pricing/). To upgrade your plan, [contact LaunchDarkly Sales](https://launchdarkly.com/contact-sales/).\n\n-> **Note:** each `launchdarkly_team_member` must have either a `role` or `custom_roles` argument.",
 			},
-		},
-		Blocks: map[string]schema.Block{
-			ROLE_ATTRIBUTES: frameworkRoleAttributesResourceBlock(),
+			ROLE_ATTRIBUTES: frameworkRoleAttributesResourceAttribute(),
 		},
 	}
 }

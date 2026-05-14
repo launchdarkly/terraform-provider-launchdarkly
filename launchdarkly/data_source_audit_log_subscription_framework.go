@@ -66,9 +66,7 @@ func (d *AuditLogSubscriptionDataSource) Schema(_ context.Context, _ datasource.
 				ElementType: types.StringType,
 				Description: "Tags associated with the audit log subscription.",
 			},
-		},
-		Blocks: map[string]schema.Block{
-			STATEMENTS: frameworkPolicyStatementsDataSourceBlock("A block representing the resources to which you wish to subscribe."),
+			STATEMENTS: frameworkPolicyStatementsDataSourceAttribute("A block representing the resources to which you wish to subscribe."),
 		},
 	}
 }

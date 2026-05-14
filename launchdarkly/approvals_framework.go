@@ -2,11 +2,11 @@ package launchdarkly
 
 // approvals_framework.go is the terraform-plugin-framework analogue of
 // approvals_helper.go (the schema + conversion helpers for
-// approval_settings blocks). Used by environment + project data sources
-// and (later) by the resource migrations of those types.
+// approval_settings nested attributes). Used by environment + project
+// data sources and resources.
 //
-// Block-style nesting preserved: `approval_settings { ... }` stays a
-// block, not a nested attribute, per the CLAUDE.md convention.
+// HCL surface: `approval_settings = [{ ... }]` — a single-element list
+// (preserving SDKv2 ListNestedBlock-with-MaxItems=1 semantics).
 
 import (
 	"context"
@@ -36,12 +36,13 @@ var frameworkApprovalSettingsObjectAttrTypes = map[string]attr.Type{
 	AUTO_APPLY_APPROVED_CHANGES: types.BoolType,
 }
 
-// frameworkApprovalSettingsDataSourceBlock returns a ListNestedBlock
+// frameworkApprovalSettingsDataSourceAttribute returns a ListNestedAttribute
 // schema for use in datasource.Schema. All inner attrs are Computed.
-func frameworkApprovalSettingsDataSourceBlock() dsschema.ListNestedBlock {
-	return dsschema.ListNestedBlock{
+func frameworkApprovalSettingsDataSourceAttribute() dsschema.ListNestedAttribute {
+	return dsschema.ListNestedAttribute{
+		Computed:    true,
 		Description: "Approval settings for this environment / project.",
-		NestedObject: dsschema.NestedBlockObject{
+		NestedObject: dsschema.NestedAttributeObject{
 			Attributes: map[string]dsschema.Attribute{
 				REQUIRED: dsschema.BoolAttribute{
 					Computed:    true,
@@ -83,14 +84,12 @@ func frameworkApprovalSettingsDataSourceBlock() dsschema.ListNestedBlock {
 }
 
 // frameworkApprovalSettingsValue converts an LD-API ApprovalSettings
-// into a single-element types.List, mirroring the prior state's block
-// presence. Framework blocks can't be Computed at the block level —
-// state must follow config-declared block count (Phase 4 plan gotcha
-// #3). The `prior` argument carries the plan's view of the block
-// (during Create/Update) or the previous state (during Refresh) so
-// the read can emit count=0 when user did not declare the block and
-// count=1 when they did, even when both branches resolve to LD-API
-// "default" approval values.
+// into a single-element types.List, mirroring the prior state's
+// attribute presence. The `prior` argument carries the plan's view of
+// the attribute (during Create/Update) or the previous state (during
+// Refresh) so the read can emit count=0 when user did not declare the
+// attribute and count=1 when they did, even when both branches resolve
+// to LD-API "default" approval values.
 func frameworkApprovalSettingsValue(ctx context.Context, settings *ldapi.ApprovalSettings, prior basetypes.ListValue) (basetypes.ListValue, diag.Diagnostics) {
 	objectType := types.ObjectType{AttrTypes: frameworkApprovalSettingsObjectAttrTypes}
 	priorEmpty := prior.IsNull() || prior.IsUnknown() || len(prior.Elements()) == 0
@@ -139,15 +138,16 @@ func frameworkApprovalSettingsValue(ctx context.Context, settings *ldapi.Approva
 	return list, diags
 }
 
-// frameworkApprovalSettingsResourceBlock returns the resource-side
-// ListNestedBlock schema for approval_settings. Shared between
-// project's nested-environments block, segment, FFE, and the standalone
-// environment resource going forward. Descriptions copied verbatim
-// from SDKv2 approvalSchema (approvals_helper.go) to keep
-// `make generate` zero-diff.
-func frameworkApprovalSettingsResourceBlock() schema.ListNestedBlock {
-	return schema.ListNestedBlock{
-		NestedObject: schema.NestedBlockObject{
+// frameworkApprovalSettingsResourceAttribute returns the resource-side
+// ListNestedAttribute schema for approval_settings. Shared between
+// project's nested-environments attribute, segment, FFE, and the
+// standalone environment resource. Descriptions copied verbatim from
+// SDKv2 approvalSchema (approvals_helper.go) to keep `make generate`
+// zero-diff.
+func frameworkApprovalSettingsResourceAttribute() schema.ListNestedAttribute {
+	return schema.ListNestedAttribute{
+		Optional: true,
+		NestedObject: schema.NestedAttributeObject{
 			Attributes: map[string]schema.Attribute{
 				REQUIRED: schema.BoolAttribute{
 					Optional:    true,

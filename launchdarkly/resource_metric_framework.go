@@ -188,11 +188,10 @@ func (r *MetricResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 					// Recomputed on any change. ModifyPlan flips this to unknown.
 				},
 			},
-		},
-		Blocks: map[string]schema.Block{
-			URLS: schema.ListNestedBlock{
-				Description: "List of nested `url` blocks describing URLs that you want to associate with the metric.",
-				NestedObject: schema.NestedBlockObject{
+			URLS: schema.ListNestedAttribute{
+				Optional:    true,
+				Description: "List of URLs that you want to associate with the metric.",
+				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
 						KIND: schema.StringAttribute{
 							Required:    true,
