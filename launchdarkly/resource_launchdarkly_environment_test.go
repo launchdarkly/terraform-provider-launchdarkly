@@ -226,7 +226,7 @@ func TestAccEnvironment_Create(t *testing.T) {
 				),
 			},
 			{
-				ResourceName:      resourceName,
+				ResourceName:            resourceName,
 				ImportState:             true,
 				ImportStateVerify:       true,
 				ImportStateVerifyIgnore: phase4EnvApprovalKeys,
@@ -379,7 +379,7 @@ func TestAccEnvironment_WithApprovals(t *testing.T) {
 				),
 			},
 			{
-				ResourceName:      resourceName,
+				ResourceName:            resourceName,
 				ImportState:             true,
 				ImportStateVerify:       true,
 				ImportStateVerifyIgnore: phase4EnvApprovalKeys,
@@ -401,7 +401,7 @@ func TestAccEnvironment_WithApprovals(t *testing.T) {
 				),
 			},
 			{
-				ResourceName:      resourceName,
+				ResourceName:            resourceName,
 				ImportState:             true,
 				ImportStateVerify:       true,
 				ImportStateVerifyIgnore: phase4EnvApprovalKeys,
@@ -419,7 +419,7 @@ func TestAccEnvironment_WithApprovals(t *testing.T) {
 				),
 			},
 			{
-				ResourceName:      resourceName,
+				ResourceName:            resourceName,
 				ImportState:             true,
 				ImportStateVerify:       true,
 				ImportStateVerifyIgnore: phase4EnvApprovalKeys,
@@ -442,7 +442,7 @@ func TestAccEnvironment_WithApprovals(t *testing.T) {
 				),
 			},
 			{
-				ResourceName:      resourceName,
+				ResourceName:            resourceName,
 				ImportState:             true,
 				ImportStateVerify:       true,
 				ImportStateVerifyIgnore: phase4EnvApprovalKeys,
@@ -483,7 +483,7 @@ func TestAccEnvironment_WithApprovalIntegrations(t *testing.T) {
 				),
 			},
 			{
-				ResourceName:      resourceName,
+				ResourceName:            resourceName,
 				ImportState:             true,
 				ImportStateVerify:       true,
 				ImportStateVerifyIgnore: phase4EnvApprovalKeys,
@@ -509,7 +509,7 @@ func TestAccEnvironment_WithApprovalIntegrations(t *testing.T) {
 				),
 			},
 			{
-				ResourceName:      resourceName,
+				ResourceName:            resourceName,
 				ImportState:             true,
 				ImportStateVerify:       true,
 				ImportStateVerifyIgnore: phase4EnvApprovalKeys,
@@ -543,7 +543,7 @@ func TestAccEnvironment_Critical(t *testing.T) {
 				),
 			},
 			{
-				ResourceName:      resourceName,
+				ResourceName:            resourceName,
 				ImportState:             true,
 				ImportStateVerify:       true,
 				ImportStateVerifyIgnore: phase4EnvApprovalKeys,
@@ -568,7 +568,7 @@ func TestAccEnvironment_Critical(t *testing.T) {
 				),
 			},
 			{
-				ResourceName:      resourceName,
+				ResourceName:            resourceName,
 				ImportState:             true,
 				ImportStateVerify:       true,
 				ImportStateVerifyIgnore: phase4EnvApprovalKeys,
@@ -589,7 +589,7 @@ func TestAccEnvironment_Critical(t *testing.T) {
 				),
 			},
 			{
-				ResourceName:      resourceName,
+				ResourceName:            resourceName,
 				ImportState:             true,
 				ImportStateVerify:       true,
 				ImportStateVerifyIgnore: phase4EnvApprovalKeys,

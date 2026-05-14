@@ -304,4 +304,3 @@ func environmentObjectFromAPI(ctx context.Context, e ldapi.Environment, prior *e
 	diags.Append(d...)
 	return obj, diags
 }
-

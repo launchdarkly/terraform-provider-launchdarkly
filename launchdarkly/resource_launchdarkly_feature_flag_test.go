@@ -620,7 +620,7 @@ func TestAccFeatureFlag_BasicCreateAndUpdate(t *testing.T) {
 				),
 			},
 			{
-				ResourceName:      resourceName,
+				ResourceName:            resourceName,
 				ImportState:             true,
 				ImportStateVerify:       true,
 				ImportStateVerifyIgnore: phase4InflatedBlockKeys,
@@ -644,7 +644,7 @@ func TestAccFeatureFlag_BasicCreateAndUpdate(t *testing.T) {
 				),
 			},
 			{
-				ResourceName:      resourceName,
+				ResourceName:            resourceName,
 				ImportState:             true,
 				ImportStateVerify:       true,
 				ImportStateVerifyIgnore: phase4InflatedBlockKeys,
@@ -682,7 +682,7 @@ func TestAccFeatureFlag_CSAInteractionWithProjectDefaults(t *testing.T) {
 				),
 			},
 			{
-				ResourceName:      resourceName,
+				ResourceName:            resourceName,
 				ImportState:             true,
 				ImportStateVerify:       true,
 				ImportStateVerifyIgnore: phase4InflatedBlockKeys,
@@ -703,7 +703,7 @@ func TestAccFeatureFlag_CSAInteractionWithProjectDefaults(t *testing.T) {
 				),
 			},
 			{
-				ResourceName:      resourceName,
+				ResourceName:            resourceName,
 				ImportState:             true,
 				ImportStateVerify:       true,
 				ImportStateVerifyIgnore: phase4InflatedBlockKeys,
@@ -725,7 +725,7 @@ func TestAccFeatureFlag_CSAInteractionWithProjectDefaults(t *testing.T) {
 				),
 			},
 			{
-				ResourceName:      resourceName,
+				ResourceName:            resourceName,
 				ImportState:             true,
 				ImportStateVerify:       true,
 				ImportStateVerifyIgnore: phase4InflatedBlockKeys,
@@ -750,7 +750,7 @@ func TestAccFeatureFlag_CSAInteractionWithProjectDefaults(t *testing.T) {
 				),
 			},
 			{
-				ResourceName:      resourceName,
+				ResourceName:            resourceName,
 				ImportState:             true,
 				ImportStateVerify:       true,
 				ImportStateVerifyIgnore: phase4InflatedBlockKeys,
@@ -1082,7 +1082,7 @@ func TestAccFeatureFlag_CreateAndUpdateMultivariate(t *testing.T) {
 				),
 			},
 			{
-				ResourceName:      resourceName,
+				ResourceName:            resourceName,
 				ImportState:             true,
 				ImportStateVerify:       true,
 				ImportStateVerifyIgnore: phase4InflatedBlockKeys,
@@ -1121,7 +1121,7 @@ func TestAccFeatureFlag_CreateAndUpdateMultivariate(t *testing.T) {
 				),
 			},
 			{
-				ResourceName:      resourceName,
+				ResourceName:            resourceName,
 				ImportState:             true,
 				ImportStateVerify:       true,
 				ImportStateVerifyIgnore: phase4InflatedBlockKeys,
@@ -1145,7 +1145,7 @@ func TestAccFeatureFlag_CreateAndUpdateMultivariate(t *testing.T) {
 				),
 			},
 			{
-				ResourceName:      resourceName,
+				ResourceName:            resourceName,
 				ImportState:             true,
 				ImportStateVerify:       true,
 				ImportStateVerifyIgnore: phase4InflatedBlockKeys,
@@ -1186,7 +1186,7 @@ func TestAccFeatureFlag_CreateMultivariate2(t *testing.T) {
 				),
 			},
 			{
-				ResourceName:      resourceName,
+				ResourceName:            resourceName,
 				ImportState:             true,
 				ImportStateVerify:       true,
 				ImportStateVerifyIgnore: phase4InflatedBlockKeys,
@@ -1214,7 +1214,7 @@ func TestAccFeatureFlag_UpdateDefaults(t *testing.T) {
 				),
 			},
 			{
-				ResourceName:      resourceName,
+				ResourceName:            resourceName,
 				ImportState:             true,
 				ImportStateVerify:       true,
 				ImportStateVerifyIgnore: phase4InflatedBlockKeys,
@@ -1229,7 +1229,7 @@ func TestAccFeatureFlag_UpdateDefaults(t *testing.T) {
 				),
 			},
 			{
-				ResourceName:      resourceName,
+				ResourceName:            resourceName,
 				ImportState:             true,
 				ImportStateVerify:       true,
 				ImportStateVerifyIgnore: phase4InflatedBlockKeys,
@@ -1257,7 +1257,7 @@ func TestAccFeatureFlag_UpdateMultivariateDefaults(t *testing.T) {
 				),
 			},
 			{
-				ResourceName:      resourceName,
+				ResourceName:            resourceName,
 				ImportState:             true,
 				ImportStateVerify:       true,
 				ImportStateVerifyIgnore: phase4InflatedBlockKeys,
@@ -1272,7 +1272,7 @@ func TestAccFeatureFlag_UpdateMultivariateDefaults(t *testing.T) {
 				),
 			},
 			{
-				ResourceName:      resourceName,
+				ResourceName:            resourceName,
 				ImportState:             true,
 				ImportStateVerify:       true,
 				ImportStateVerifyIgnore: phase4InflatedBlockKeys,
@@ -1287,7 +1287,7 @@ func TestAccFeatureFlag_UpdateMultivariateDefaults(t *testing.T) {
 				),
 			},
 			{
-				ResourceName:      resourceName,
+				ResourceName:            resourceName,
 				ImportState:             true,
 				ImportStateVerify:       true,
 				ImportStateVerifyIgnore: phase4InflatedBlockKeys,
@@ -1319,7 +1319,7 @@ func TestAccFeatureFlag_EmptyStringVariation(t *testing.T) {
 				),
 			},
 			{
-				ResourceName:      resourceName,
+				ResourceName:            resourceName,
 				ImportState:             true,
 				ImportStateVerify:       true,
 				ImportStateVerifyIgnore: phase4InflatedBlockKeys,
@@ -1354,7 +1354,7 @@ func TestAccFeatureFlag_ClientSideAvailabilityUpdate(t *testing.T) {
 				),
 			},
 			{
-				ResourceName:      resourceName,
+				ResourceName:            resourceName,
 				ImportState:             true,
 				ImportStateVerify:       true,
 				ImportStateVerifyIgnore: phase4InflatedBlockKeys,
@@ -1375,7 +1375,7 @@ func TestAccFeatureFlag_ClientSideAvailabilityUpdate(t *testing.T) {
 				),
 			},
 			{
-				ResourceName:      resourceName,
+				ResourceName:            resourceName,
 				ImportState:             true,
 				ImportStateVerify:       true,
 				ImportStateVerifyIgnore: phase4InflatedBlockKeys,
@@ -1411,7 +1411,7 @@ func TestAccFeatureFlag_IncludeInSnippetToClientSide(t *testing.T) {
 				),
 			},
 			{
-				ResourceName:      resourceName,
+				ResourceName:            resourceName,
 				ImportState:             true,
 				ImportStateVerify:       true,
 				ImportStateVerifyIgnore: phase4InflatedBlockKeys,
@@ -1433,7 +1433,7 @@ func TestAccFeatureFlag_IncludeInSnippetToClientSide(t *testing.T) {
 				),
 			},
 			{
-				ResourceName:      resourceName,
+				ResourceName:            resourceName,
 				ImportState:             true,
 				ImportStateVerify:       true,
 				ImportStateVerifyIgnore: phase4InflatedBlockKeys,
@@ -1455,7 +1455,7 @@ func TestAccFeatureFlag_IncludeInSnippetToClientSide(t *testing.T) {
 				),
 			},
 			{
-				ResourceName:      resourceName,
+				ResourceName:            resourceName,
 				ImportState:             true,
 				ImportStateVerify:       true,
 				ImportStateVerifyIgnore: phase4InflatedBlockKeys,
@@ -1490,7 +1490,7 @@ func TestAccFeatureFlag_ClientSideToIncludeInSnippet(t *testing.T) {
 				),
 			},
 			{
-				ResourceName:      resourceName,
+				ResourceName:            resourceName,
 				ImportState:             true,
 				ImportStateVerify:       true,
 				ImportStateVerifyIgnore: phase4InflatedBlockKeys,
@@ -1514,7 +1514,7 @@ func TestAccFeatureFlag_ClientSideToIncludeInSnippet(t *testing.T) {
 				),
 			},
 			{
-				ResourceName:      resourceName,
+				ResourceName:            resourceName,
 				ImportState:             true,
 				ImportStateVerify:       true,
 				ImportStateVerifyIgnore: phase4InflatedBlockKeys,
@@ -1549,7 +1549,7 @@ func TestAccFeatureFlag_IncludeInSnippet(t *testing.T) {
 				),
 			},
 			{
-				ResourceName:      resourceName,
+				ResourceName:            resourceName,
 				ImportState:             true,
 				ImportStateVerify:       true,
 				ImportStateVerifyIgnore: phase4InflatedBlockKeys,
@@ -1568,7 +1568,7 @@ func TestAccFeatureFlag_IncludeInSnippet(t *testing.T) {
 				),
 			},
 			{
-				ResourceName:      resourceName,
+				ResourceName:            resourceName,
 				ImportState:             true,
 				ImportStateVerify:       true,
 				ImportStateVerifyIgnore: phase4InflatedBlockKeys,
@@ -1587,7 +1587,7 @@ func TestAccFeatureFlag_IncludeInSnippet(t *testing.T) {
 				),
 			},
 			{
-				ResourceName:      resourceName,
+				ResourceName:            resourceName,
 				ImportState:             true,
 				ImportStateVerify:       true,
 				ImportStateVerifyIgnore: phase4InflatedBlockKeys,
@@ -1640,7 +1640,7 @@ func TestAccFeatureFlag_Deprecated(t *testing.T) {
 				),
 			},
 			{
-				ResourceName:      resourceName,
+				ResourceName:            resourceName,
 				ImportState:             true,
 				ImportStateVerify:       true,
 				ImportStateVerifyIgnore: phase4InflatedBlockKeys,
@@ -1654,7 +1654,7 @@ func TestAccFeatureFlag_Deprecated(t *testing.T) {
 				),
 			},
 			{
-				ResourceName:      resourceName,
+				ResourceName:            resourceName,
 				ImportState:             true,
 				ImportStateVerify:       true,
 				ImportStateVerifyIgnore: phase4InflatedBlockKeys,
