@@ -85,7 +85,10 @@ func frameworkApprovalSettingsDataSourceBlock() dsschema.ListNestedBlock {
 // produce an empty list, not null, so wire shape is stable.
 func frameworkApprovalSettingsValue(ctx context.Context, settings *ldapi.ApprovalSettings) (basetypes.ListValue, diag.Diagnostics) {
 	objectType := types.ObjectType{AttrTypes: frameworkApprovalSettingsObjectAttrTypes}
-	if settings == nil {
+	// Framework blocks can't be Computed at the block level (SDKv2 had
+	// Optional+Computed on the TypeList), so emit empty for LD's
+	// zero-default struct to keep omitted-config plans empty.
+	if settings == nil || isZeroApprovalSettings(settings) {
 		return types.ListValue(objectType, []attr.Value{})
 	}
 
@@ -106,7 +109,9 @@ func frameworkApprovalSettingsValue(ctx context.Context, settings *ldapi.Approva
 	serviceConfigVal, d := types.MapValueFrom(ctx, types.StringType, serviceConfig)
 	diags.Append(d...)
 
-	autoApply := types.BoolNull()
+	// Mirror schema Default(false) so plan-vs-apply matches when LD
+	// returns nil here.
+	autoApply := types.BoolValue(false)
 	if settings.AutoApplyApprovedChanges != nil {
 		autoApply = types.BoolValue(*settings.AutoApplyApprovedChanges)
 	}
@@ -126,4 +131,31 @@ func frameworkApprovalSettingsValue(ctx context.Context, settings *ldapi.Approva
 	list, d := types.ListValue(objectType, []attr.Value{obj})
 	diags.Append(d...)
 	return list, diags
+}
+
+// isZeroApprovalSettings reports whether LD's approval-settings doc is
+// effectively unconfigured. LD returns a struct (with API defaults
+// like minNumApprovals=1) for envs without approvals; we treat the
+// doc as absent when no approval gate is active and no service
+// integration is wired up.
+func isZeroApprovalSettings(s *ldapi.ApprovalSettings) bool {
+	if s == nil {
+		return true
+	}
+	if s.Required {
+		return false
+	}
+	if len(s.RequiredApprovalTags) > 0 {
+		return false
+	}
+	if s.ServiceKind != "" && s.ServiceKind != "launchdarkly" {
+		return false
+	}
+	if len(s.ServiceConfig) > 0 {
+		return false
+	}
+	if s.AutoApplyApprovedChanges != nil && *s.AutoApplyApprovedChanges {
+		return false
+	}
+	return true
 }

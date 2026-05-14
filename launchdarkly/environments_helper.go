@@ -1,12 +1,6 @@
 package launchdarkly
 
 import (
-	"context"
-	"fmt"
-	"log"
-	"net/http"
-
-	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 	ldapi "github.com/launchdarkly/api-client-go/v22"
@@ -245,56 +239,4 @@ func rawEnvironmentConfigsToKeyList(rawEnvs []interface{}) []string {
 		keys = append(keys, envKey)
 	}
 	return keys
-}
-
-func environmentRead(ctx context.Context, d *schema.ResourceData, meta interface{}, isDataSource bool) diag.Diagnostics {
-	var diags diag.Diagnostics
-	client := meta.(*Client)
-	projectKey := d.Get(PROJECT_KEY).(string)
-	key := d.Get(KEY).(string)
-
-	var env *ldapi.Environment
-	var res *http.Response
-	var err error
-	err = client.withConcurrency(client.ctx, func() error {
-		env, res, err = client.ld.EnvironmentsApi.GetEnvironment(client.ctx, projectKey, key).Execute()
-		return err
-	})
-
-	if isStatusNotFound(res) && !isDataSource {
-		log.Printf("[WARN] failed to find environment with key %q in project %q, removing from state", key, projectKey)
-		diags = append(diags, diag.Diagnostic{
-			Severity: diag.Warning,
-			Summary:  fmt.Sprintf("[WARN] failed to find environment with key %q in project %q, removing from state", key, projectKey),
-		})
-		d.SetId("")
-		return diags
-	}
-	if err != nil {
-		return diag.Errorf("failed to get environment with key %q for project key: %q: %v", key, projectKey, handleLdapiErr(err))
-	}
-
-	d.SetId(projectKey + "/" + key)
-	_ = d.Set(KEY, env.Key)
-	_ = d.Set(NAME, env.Name)
-	_ = d.Set(API_KEY, env.ApiKey)
-	_ = d.Set(MOBILE_KEY, env.MobileKey)
-	_ = d.Set(CLIENT_SIDE_ID, env.Id)
-	_ = d.Set(COLOR, env.Color)
-	_ = d.Set(DEFAULT_TTL, int(env.DefaultTtl))
-	_ = d.Set(SECURE_MODE, env.SecureMode)
-	_ = d.Set(DEFAULT_TRACK_EVENTS, env.DefaultTrackEvents)
-	_ = d.Set(CRITICAL, env.Critical)
-	_ = d.Set(TAGS, env.Tags)
-	_ = d.Set(REQUIRE_COMMENTS, env.RequireComments)
-	_ = d.Set(CONFIRM_CHANGES, env.ConfirmChanges)
-
-	if env.ApprovalSettings != nil {
-		err = d.Set(APPROVAL_SETTINGS, approvalSettingsToResourceData(*env.ApprovalSettings))
-		if err != nil {
-			return diag.FromErr(err)
-		}
-	}
-
-	return diags
 }

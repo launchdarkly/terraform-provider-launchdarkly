@@ -44,10 +44,10 @@ resource "launchdarkly_audit_log_subscription" "example" {
 - `integration_key` (String) The integration key. Supported integration keys are `chronosphere`, `cloudtrail`, `datadog`, `dynatrace`, `dynatrace-v2`, `elastic`, `grafana`, `honeycomb`, `jira`, `kosli`, `last9`, `logdna`, `msteams`, `new-relic-apm`, `pagerduty`, `signalfx`, `slack`, and `splunk`. A change in this field will force the destruction of the existing resource and the creation of a new one.
 - `name` (String) A human-friendly name for your audit log subscription viewable from within the LaunchDarkly Integrations page.
 - `on` (Boolean) Whether or not you want your subscription enabled, i.e. to actively send events.
-- `statements` (Block List, Min: 1) A block representing the resources to which you wish to subscribe. (see [below for nested schema](#nestedblock--statements))
 
 ### Optional
 
+- `statements` (Block List) A block representing the resources to which you wish to subscribe. (see [below for nested schema](#nestedblock--statements))
 - `tags` (Set of String) Tags associated with your resource.
 
 ### Read-Only

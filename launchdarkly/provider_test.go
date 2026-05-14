@@ -2,10 +2,14 @@ package launchdarkly
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"net/http"
 	"os"
+	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/hashicorp/terraform-plugin-framework/providerserver"
 	"github.com/hashicorp/terraform-plugin-go/tfprotov5"
@@ -64,4 +68,70 @@ func mustTestAccClient() *Client {
 		testAccClientInst = client
 	})
 	return testAccClientInst
+}
+
+// firstMemberIDForTest fetches the first account member via raw HTTP.
+// api-client-go's strict UnmarshalJSON guards reject responses that
+// include any member whose nested integrationMetadata lacks the
+// required externalId field, so we can't go through AccountMembersApi.
+// Result is memoised — the account's member set is effectively static
+// for a single `go test` invocation.
+var (
+	firstMemberIDOnce sync.Once
+	firstMemberIDInst string
+	firstMemberIDErr  error
+)
+
+func firstMemberIDForTest(t *testing.T) string {
+	t.Helper()
+	firstMemberIDOnce.Do(func() {
+		host := os.Getenv(LAUNCHDARKLY_API_HOST)
+		if host == "" {
+			host = DEFAULT_LAUNCHDARKLY_HOST
+		}
+		if !strings.HasPrefix(host, "http://") && !strings.HasPrefix(host, "https://") {
+			host = "https://" + host
+		}
+		token := os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN)
+		if token == "" {
+			firstMemberIDErr = fmt.Errorf("%s env var must be set for acceptance tests", LAUNCHDARKLY_ACCESS_TOKEN)
+			return
+		}
+		req, err := http.NewRequest(http.MethodGet, host+"/api/v2/members?limit=1", nil)
+		if err != nil {
+			firstMemberIDErr = fmt.Errorf("build request: %s", err)
+			return
+		}
+		req.Header.Set("Authorization", token)
+		req.Header.Set("LD-API-Version", APIVersion)
+		client := &http.Client{Timeout: 30 * time.Second}
+		resp, err := client.Do(req)
+		if err != nil {
+			firstMemberIDErr = fmt.Errorf("GET /members: %s", err)
+			return
+		}
+		defer resp.Body.Close()
+		if resp.StatusCode >= 400 {
+			firstMemberIDErr = fmt.Errorf("unexpected status %d", resp.StatusCode)
+			return
+		}
+		var out struct {
+			Items []struct {
+				ID string `json:"_id"`
+			} `json:"items"`
+		}
+		if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
+			firstMemberIDErr = fmt.Errorf("decode: %s", err)
+			return
+		}
+		if len(out.Items) == 0 {
+			firstMemberIDErr = fmt.Errorf("no members in account")
+			return
+		}
+		firstMemberIDInst = out.Items[0].ID
+	})
+	if firstMemberIDErr != nil {
+		t.Fatalf("firstMemberIDForTest: %s", firstMemberIDErr)
+	}
+	return firstMemberIDInst
 }

@@ -174,3 +174,14 @@ func stringPointerFromAttr(v types.String) *string {
 	s := v.ValueString()
 	return &s
 }
+
+// mapStringFromAttr converts a framework types.Map (String elements) into
+// a Go map. Null / unknown returns an empty (non-nil) map.
+func mapStringFromAttr(ctx context.Context, m types.Map) (map[string]string, diag.Diagnostics) {
+	out := make(map[string]string, len(m.Elements()))
+	if m.IsNull() || m.IsUnknown() {
+		return out, nil
+	}
+	d := m.ElementsAs(ctx, &out, false)
+	return out, d
+}

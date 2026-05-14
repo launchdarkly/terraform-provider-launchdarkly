@@ -4,13 +4,11 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"os"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
-	"github.com/stretchr/testify/require"
 )
 
 const (
@@ -180,13 +178,7 @@ func TestAccAIConfig_WithMaintainer(t *testing.T) {
 	configKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	resourceName := "launchdarkly_ai_config.test"
 
-	client, err := newClient(os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN), os.Getenv(LAUNCHDARKLY_API_HOST), false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
-	require.NoError(t, err)
-
-	members, _, err := client.ld.AccountMembersApi.GetMembers(client.ctx).Execute()
-	require.NoError(t, err)
-	require.True(t, len(members.Items) > 0, "This test requires at least one member in the account")
-	maintainerId := members.Items[0].Id
+	maintainerId := firstMemberIDForTest(t)
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
@@ -303,7 +295,10 @@ func TestAccAIConfig_RemoveOptionalFields(t *testing.T) {
 				Config: withAITestProject(projectKey, fmt.Sprintf(testAccAIConfigRemoveOptionals, configKey, "Full Config")),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckAIConfigExists(resourceName),
-					resource.TestCheckResourceAttr(resourceName, DESCRIPTION, ""),
+					// Framework Optional-only attrs round-trip to null state when
+					// the user removes them; SDKv2 had Computed semantics that
+					// surfaced "" instead. TestCheckNoResourceAttr matches both.
+					resource.TestCheckNoResourceAttr(resourceName, DESCRIPTION),
 					resource.TestCheckResourceAttr(resourceName, "tags.#", "0"),
 				),
 			},

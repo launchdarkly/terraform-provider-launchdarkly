@@ -63,29 +63,29 @@ func Provider() *schema.Provider {
 		Schema: providerSchema(),
 		ResourcesMap: map[string]*schema.Resource{
 			// launchdarkly_access_token now served by the framework provider; see resource_access_token_framework.go.
-			"launchdarkly_ai_config":           resourceAIConfig(),
-			"launchdarkly_ai_config_variation": resourceAIConfigVariation(),
+			// launchdarkly_ai_config now served by the framework provider; see resource_ai_config_framework.go.
+			// launchdarkly_ai_config_variation now served by the framework provider; see resource_ai_config_variation_framework.go.
 			// launchdarkly_ai_tool now served by the framework provider; see resource_ai_tool_framework.go.
-			"launchdarkly_audit_log_subscription": resourceAuditLogSubscription(),
+			// launchdarkly_audit_log_subscription now served by the framework provider; see resource_audit_log_subscription_framework.go.
 			// launchdarkly_custom_role now served by the framework provider; see resource_custom_role_framework.go.
-			"launchdarkly_destination":              resourceDestination(),
-			"launchdarkly_environment":              resourceEnvironment(),
-			"launchdarkly_feature_flag":             resourceFeatureFlag(),
-			"launchdarkly_flag_templates":           resourceFlagTemplates(),
+			// launchdarkly_destination now served by the framework provider; see resource_destination_framework.go.
+			// launchdarkly_environment now served by the framework provider; see resource_environment_framework.go.
+			"launchdarkly_feature_flag": resourceFeatureFlag(),
+			// launchdarkly_flag_templates now served by the framework provider; see resource_flag_templates_framework.go.
 			"launchdarkly_feature_flag_environment": resourceFeatureFlagEnvironment(),
 			// launchdarkly_flag_trigger now served by the framework provider; see resource_flag_trigger_framework.go.
-			"launchdarkly_ip_allowlist_config": resourceIpAllowlistConfig(),
-			"launchdarkly_ip_allowlist_entry":  resourceIpAllowlistEntry(),
-			"launchdarkly_metric":              resourceMetric(),
+			// launchdarkly_ip_allowlist_config now served by the framework provider; see resource_ip_allowlist_framework.go.
+			// launchdarkly_ip_allowlist_entry now served by the framework provider; see resource_ip_allowlist_framework.go.
+			// launchdarkly_metric now served by the framework provider; see resource_metric_framework.go.
 			// launchdarkly_model_config now served by the framework provider; see resource_model_config_framework.go.
 			"launchdarkly_project": resourceProject(),
 			// launchdarkly_relay_proxy_configuration now served by the framework provider; see resource_relay_proxy_configuration_framework.go.
 			"launchdarkly_segment": resourceSegment(),
-			"launchdarkly_team":    resourceTeam(),
+			// launchdarkly_team now served by the framework provider; see resource_team_framework.go.
 			// launchdarkly_team_member now served by the framework provider; see resource_team_member_framework.go.
 			// launchdarkly_view now served by the framework provider; see resource_view_framework.go.
-			"launchdarkly_view_filter_links": resourceViewFilterLinks(),
-			"launchdarkly_view_links":        resourceViewLinks(),
+			// launchdarkly_view_filter_links now served by the framework provider; see resource_view_links_framework.go.
+			// launchdarkly_view_links now served by the framework provider; see resource_view_links_framework.go.
 			// launchdarkly_webhook now served by the framework provider; see resource_webhook_framework.go.
 		},
 		DataSourcesMap: map[string]*schema.Resource{

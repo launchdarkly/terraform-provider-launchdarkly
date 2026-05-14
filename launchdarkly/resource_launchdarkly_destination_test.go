@@ -61,12 +61,14 @@ resource "launchdarkly_destination" "test" {
 	name = "mparticle-dest"
 	kind = "mparticle"
 	config = {
-		api_key       = "apiKeyfromMParticle"
-		secret        = "mParticleSecret"
-		user_identities = <<EOF
-			[{"ldContextKind":"user","mparticleUserIdentity":"customer_id"}]
-		EOF
-		environment   = "production"
+		api_key         = "apiKeyfromMParticle"
+		secret          = "mParticleSecret"
+		# Framework's per-Map-element plan-apply consistency check is
+		# byte-exact, unlike SDKv2's DiffSuppressFunc. The JSON below
+		# matches LD's compact response, so plan and applied state
+		# round-trip without whitespace drift.
+		user_identities = "[{\"ldContextKind\":\"user\",\"mparticleUserIdentity\":\"customer_id\"}]"
+		environment     = "production"
 	}
 	on = true
 }
@@ -189,13 +191,11 @@ resource "launchdarkly_destination" "test" {
 	name = "updated-mparticle-dest"
 	kind = "mparticle"
 	config = {
-		api_key = "updatedApiKey"
-		secret = "updatedSecret"
-		user_identities = <<EOF
-			[{"ldContextKind":"user","mparticleUserIdentity":"customer_id"},
-			{"ldContextKind":"device","mparticleUserIdentity":"google"}]
-		EOF
-		environment = "production"
+		api_key         = "updatedApiKey"
+		secret          = "updatedSecret"
+		# Compact JSON matches LD's response shape (see Create config).
+		user_identities = "[{\"ldContextKind\":\"user\",\"mparticleUserIdentity\":\"customer_id\"},{\"ldContextKind\":\"device\",\"mparticleUserIdentity\":\"google\"}]"
+		environment     = "production"
 	}
 	on = true
 }
@@ -419,9 +419,14 @@ func TestAccDestination_CreateAndUpdateMparticle(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "config.environment", "production"),
 					resource.TestCheckResourceAttr(resourceName, "config.api_key", "apiKeyfromMParticle"),
 					resource.TestCheckResourceAttr(resourceName, "config.user_identities", "[{\"ldContextKind\":\"user\",\"mparticleUserIdentity\":\"customer_id\"}]"),
-					resource.TestCheckResourceAttr(resourceName, "config.user_identity", "customer_id"),
+					// SDKv2's configDiffSuppressFunc let the API-derived
+					// `user_identity` scalar live in state alongside the
+					// user-set `user_identities` array. terraform-plugin-
+					// framework can't keep API-only Map entries that the
+					// user didn't set (Required + no per-element Computed),
+					// so the framework provider drops it on Read.
+					resource.TestCheckNoResourceAttr(resourceName, "config.user_identity"),
 				),
-				ExpectNonEmptyPlan: true,
 			},
 			{
 				ResourceName:            resourceName,
@@ -439,7 +444,6 @@ func TestAccDestination_CreateAndUpdateMparticle(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "config.secret", "updatedSecret"),
 					resource.TestCheckResourceAttr(resourceName, "config.environment", "production"),
 				),
-				ExpectNonEmptyPlan: true,
 			},
 			{
 				ResourceName:            resourceName,

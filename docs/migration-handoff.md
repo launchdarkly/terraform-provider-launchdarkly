@@ -86,11 +86,62 @@ could not perform. Per the per-PR checklist in
 MIGRATION_PLAN_NON_BREAKING.md §Per-PR, fixtures must be captured
 before each Phase 2 PR is promoted to `main`.
 
-## Phases 3-7: NOT STARTED
+## Phase 3 — Medium-complexity Resource Migration: COMPLETE (12/12)
+
+Branch: `moonshots/tpf/phase-3` (worked on locally; merges directly to
+the integration trunk rather than via sub-branches per phase).
+
+| Sub-phase | Resource | Status |
+|---|---|---|
+| 3.1 | `launchdarkly_destination` | done — kind enum + 5-vendor config converter; mparticle `user_identities` JSON + `user_identity` drift suppression; obfuscated-secret preservation (api_key/secret/write_key/policy_key) |
+| 3.2 | `launchdarkly_audit_log_subscription` | done — integration_key enum from `SUBSCRIPTION_CONFIGURATION_FIELDS` + extras; snake→camel/kebab config conversion; secret pass-through from prior state; statements via `frameworkPolicyStatementsResourceBlock` |
+| 3.3 | `launchdarkly_metric` | done — full `customizeMetricDiff` ported to `ModifyPlan` (kind→required-fields, percentile gating, defaults for unit_aggregation_type/analysis_type, include_units_without_events default by analysis_type) |
+| 3.4 | `launchdarkly_environment` | done — `applyApprovalPatch` preserves SDKv2 exclusivity rules (required vs required_approval_tags; launchdarkly service_kind vs auto_apply); environmentExists / environmentExistsInProject retained as package-level helpers for still-SDKv2 project/segment/FFE consumers |
+| 3.5 | `launchdarkly_ai_config` | done — ConflictsWith maintainer_id / maintainer_team_key implemented as `ConfigValidator`; `is_inverted` requires `evaluation_metric_key`; delete-retry on transient 400 ("Could not delete AI config") |
+| 3.6 | `launchdarkly_ai_config_variation` | done — versioned reads pick highest Items[] Version (per memory note); JSON-equivalence plan modifier suppresses spurious model diffs; ModelConfigKey/Model ConfigValidator; tool_keys preserved when API returns empty (API gap); strip_empty_model defaults parity |
+| 3.7 | `launchdarkly_team` | done — patch-with-instructions Update (`updateName`, `updateDescription`, `addMembers`/`removeMembers`, `addPermissionGrants`/`removePermissionGrants`, `addCustomRoles`/`removeCustomRoles`, `replaceRoleAttributes`); members + custom roles + maintainers paginated; `interfaceToArr` + `makeAddAndRemoveArrays` retained in `team_helper.go` for still-SDKv2 `resource_team_role_mapping.go` |
+| 3.8 | `launchdarkly_view_links` + `launchdarkly_view_filter_links` | done — both beta API; explicit-link drift detection for view_links; filter-based with optional `reconcile_on_apply` triggering `ModifyPlan` to mark `resolved_at` unknown; AtLeastOneOf / RequiredWith implemented as `ConfigValidator`; `difference` + `differenceSegmentIdentifiers` retained in `view_helper.go` for still-SDKv2 feature_flag/segment consumers |
+| 3.9 | `launchdarkly_ip_allowlist_config` + `launchdarkly_ip_allowlist_entry` | done — singleton config resource (Delete resets to defaults rather than removing server-side); entry uses RequiresReplace on ip_address (matches ForceNew); BETA API via custom client with `LD-API-Version: beta` header |
+| 3.10 | `launchdarkly_flag_templates` | done — Create/Update upsert collapse into PUT /flag-defaults; Delete is a no-op (templates always exist); CSA passed through from current API state to avoid conflict with launchdarkly_project ownership of CSA |
+
+All 10 SDKv2 source files deleted. Helpers (`difference`, `differenceSegmentIdentifiers`, `interfaceToArr`, `makeAddAndRemoveArrays`, `destinationImportIDtoKeys`, `CUSTOM_METRIC_DEFAULT_SUCCESS_CRITERIA`, `shouldRetryAIConfigDelete`) retained / relocated where Phase 4 SDKv2 code still depends on them. SDKv2 test files preserved — they continue to run through the mux factory (Phase 0.2).
+
+Build/vet/fmt all clean on the worktree. Acceptance tests not yet
+run; state-fixture configs prepared under
+`scripts/capture-state-fixtures/configs/` and ready for capture.
+
+## State-fixture status (Phase 2 + Phase 3)
+
+Synthetic v2.29-pinned configs land under `scripts/capture-state-fixtures/configs/`. Capture flow per `reference_ld_state_compat_capture.md`:
+
+```bash
+make build  # so $GOPATH/bin/terraform-provider-launchdarkly exists
+TF_CLI_CONFIG_FILE=/tmp/terraformrc-noop \
+  LAUNCHDARKLY_ACCESS_TOKEN=<test-account> \
+  LAUNCHDARKLY_API_HOST=app.launchdarkly.com \
+  ./scripts/capture-state-fixtures/capture.sh <fixture-name>
+```
+
+Configs prepared for Phase 3 (capture pending against a live LD test account):
+
+- `destination_basic.tf`
+- `audit_log_subscription_basic.tf`
+- `metric_custom_basic.tf`
+- `metric_pageview_basic.tf`
+- `environment_basic.tf`
+- `ai_config_basic.tf`
+- `ai_config_variation_basic.tf`
+- `team_basic.tf`
+- `view_links_basic.tf`
+- `view_filter_links_basic.tf`
+- `ip_allowlist_config_basic.tf`
+- `ip_allowlist_entry_basic.tf`
+- `flag_templates_basic.tf`
+
+## Phases 4-7: NOT STARTED
 
 | Phase | Scope | Blocker |
 |---|---|---|
-| 3 | 10 medium-complexity resources (destination, audit_log_subscription, metric, environment, ai_config, ai_config_variation, team, view_links / view_filter_links, ip_allowlist_*, flag_templates) | requires state-fixture parity per-resource |
 | 4.1 | `launchdarkly_project` (398 LOC + `customizeProjectDiff`) | high-risk; needs careful ModifyPlan port and fixtures for IIS / CSA edge cases |
 | 4.2 | `launchdarkly_segment` (419 LOC) | nested rules + clauses; existing shared helpers from Phase 1.3.5 reused |
 | 4.3 | `launchdarkly_feature_flag` (475 LOC) | variations + customPropertyHash parity; deprecated `include_in_snippet` carry-forward |
@@ -111,11 +162,12 @@ top branch) so the order is:
 1. Phase 0 stack (9 PRs)
 2. Phase 1 stack (19 PRs)
 3. Phase 2 stack (2 PRs)
+4. Phase 3 (single branch `moonshots/tpf/phase-3`; no sub-stack — all 12 resource migrations land as one PR against the integration trunk)
 
 Promotion to `main` follows the soak-then-batch rhythm in
 MIGRATION_PLAN_NON_BREAKING.md §Phase 7.
 
-### Resume Phase 2
+### Resume Phase 2 / Phase 3
 
 The model_config + ai_tool commits are the template. For each remaining
 leaf resource:
@@ -125,14 +177,29 @@ leaf resource:
    - Model struct with `tfsdk` tags matching `keys.go`.
    - `Schema()` with the same Required/Optional/Computed flags;
      ForceNew → RequiresReplace plan modifier; Deprecated →
-     DeprecationMessage verbatim.
+     DeprecationMessage verbatim. Per
+     `feedback_framework_default_computed.md`: any attribute with a
+     framework `Default` must also be `Computed: true`, even when the
+     SDKv2 schema isn't — this is the one forced exception to the
+     non-breaking-parity rule.
    - Create/Read/Update/Delete/ImportState ports of the SDKv2 funcs.
    - `readIntoModel` helper shared between Create and Read.
+   - `CustomizeDiff` → `ModifyPlan`; `ConflictsWith` /
+     `AtLeastOneOf` / `RequiredWith` → `ConfigValidator`;
+     `DiffSuppressFunc` → `planmodifier.String` (see
+     `jsonEquivalentPlanModifier` in
+     `resource_ai_config_variation_framework.go` for the JSON
+     equivalence pattern).
 3. Register on framework, remove from SDKv2 `ResourcesMap`, delete
-   SDKv2 file, build/vet/fmt, commit.
+   SDKv2 file, build/vet/fmt, commit. If the SDKv2 file carried
+   package-level helpers that Phase 4 SDKv2 code still references,
+   move them to a `*_helper.go` file rather than deleting them.
 4. Capture state-fixture via `scripts/capture-state-fixtures/capture.sh`
    against a test LD account; assert via the
-   `launchdarkly/statecompat/` harness.
+   `launchdarkly/statecompat/` harness. See
+   `reference_ld_state_compat_capture.md` for the `TF_CLI_CONFIG_FILE`
+   override (bypasses local `dev_overrides` so v2.29 SDKv2 produces
+   the legacy-shaped state).
 
 ### Open items recorded in commit log
 
