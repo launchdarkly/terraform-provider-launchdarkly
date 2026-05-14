@@ -1,10 +1,10 @@
 // Package state_compat_phase2 hosts the wire-compatibility regression
-// tests for every Phase 2 leaf resource. It lives in its own sub-package
-// because terraform-plugin-testing/helper/resource (used by
-// launchdarkly/statecompat) and terraform-plugin-sdk/v2/helper/resource
-// (used by the existing launchdarkly/* acceptance tests) both register a
-// `sweep` flag in init(). Importing both into one test binary panics —
-// statecompat.harness.go:7-11 documents the constraint.
+// tests for every Phase 2 leaf resource. Originally a sub-package because
+// terraform-plugin-testing/helper/resource and terraform-plugin-sdk/v2/
+// helper/resource both registered a `sweep` flag in init() and panicked
+// when imported together; Phase 5.1a swapped the root pkg off SDKv2 so
+// the constraint is gone. The sub-package remains for cohesion with the
+// fixture-capture flow described below.
 //
 // Capture flow (run once per resource against a disposable LD test
 // account):

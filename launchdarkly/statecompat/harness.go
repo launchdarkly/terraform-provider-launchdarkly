@@ -3,12 +3,12 @@
 // spurious plan diff once the corresponding resource migrates to
 // terraform-plugin-framework.
 //
-// It lives in its own sub-package because terraform-plugin-testing's
-// helper/resource and terraform-plugin-sdk/v2/helper/resource both
-// register a `sweep` flag in init() — importing both into one test
-// binary panics. Phase 0.2 keeps the existing acceptance tests under
-// the SDKv2 helper; this sub-package can adopt the newer
-// terraform-plugin-testing API independently.
+// Historically this lived in a sub-package because terraform-plugin-testing's
+// helper/resource and terraform-plugin-sdk/v2/helper/resource both register
+// a `sweep` flag in init(), and importing both into one test binary panics.
+// Phase 5.1a swapped the root pkg onto terraform-plugin-testing, so the
+// constraint is gone — the sub-package remains only because the captured
+// fixtures and reconstruction logic are cohesive here.
 //
 // Per-resource fixtures land under launchdarkly/testdata/state-fixtures/
 // captured by scripts/capture-state-fixtures/capture.sh and scanned by

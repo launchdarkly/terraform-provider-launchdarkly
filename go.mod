@@ -4,13 +4,11 @@ go 1.25.8
 
 require (
 	github.com/ashanbrown/gofmts v0.2.0
-	github.com/hashicorp/go-cty v1.5.0
+	github.com/hashicorp/go-cty v1.5.0 // indirect
 	github.com/hashicorp/go-retryablehttp v0.7.8
 	github.com/hashicorp/terraform-plugin-docs v0.19.4
 	github.com/hashicorp/terraform-plugin-framework v1.19.0
-	github.com/hashicorp/terraform-plugin-mux v0.23.1
-	github.com/hashicorp/terraform-plugin-sdk/v2 v2.40.1
-	github.com/hashicorp/terraform-plugin-testing v1.8.0
+	github.com/hashicorp/terraform-plugin-testing v1.13.3
 	github.com/stoewer/go-strcase v1.3.0
 	github.com/stretchr/testify v1.10.0
 )
@@ -29,6 +27,7 @@ require (
 	github.com/bmatcuk/doublestar/v4 v4.6.1 // indirect
 	github.com/dave/jennifer v1.7.0 // indirect
 	github.com/hashicorp/cli v1.1.7 // indirect
+	github.com/hashicorp/terraform-plugin-sdk/v2 v2.40.1 // indirect
 	github.com/mattn/go-runewidth v0.0.15 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/xeipuuv/gojsonpointer v0.0.0-20180127040702-4e3ac2762d5f // indirect
