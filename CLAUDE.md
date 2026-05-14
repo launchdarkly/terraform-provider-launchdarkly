@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Common commands
 
-Go version pinned in `.go-version`: **1.25.8** (bumped from 1.25.5 in Phase 2 after the `terraform-plugin-sdk/v2` v2.40.1 upgrade required it; `scripts/codegen/go.mod` and parent `go.mod` are aligned at `go 1.25.8`). Provider package: `launchdarkly` (PKG_NAME in the makefile).
+Go version pinned in `.go-version`: **1.25.8** (`scripts/codegen/go.mod` and parent `go.mod` are aligned at `go 1.25.8`). Provider package: `launchdarkly` (PKG_NAME in the makefile).
 
 - `make build` — `fmtcheck` then `go install` with `-ldflags` injecting the short git rev as `version`. Binary lands in `$GOPATH/bin`.
 - `make fmt` — runs `gofmts -w` (the constant-sorting linter from `github.com/ashanbrown/gofmts`, *not* `gofumpt`) **then** `gofmt -w`. Order matters: `gofmts` rewrites `//gofmts:sort` blocks (see `launchdarkly/keys.go`) and the second pass normalizes the result.
@@ -24,16 +24,11 @@ CI gate at `.github/workflows/test.yml`: build + lint (`golangci-lint v1.64.8`) 
 
 ## Architecture
 
-### Mux: two providers in one binary
+### Provider entrypoint
 
-`main.go` serves a `tf5muxserver` combining:
+`main.go` serves a single terraform-plugin-framework provider on protocol v6 via `providerserver.Serve`. The provider implementation is `launchdarkly.NewPluginProvider(version)` in `launchdarkly/plugin_provider.go`, which registers every resource and data source. The CLI sees the provider address `registry.terraform.io/launchdarkly/launchdarkly`.
 
-1. **`Provider()` in `launchdarkly/provider.go`** — terraform-plugin-sdk **v2** (the legacy SDK). Hosts the bulk of resources/data sources via the `ResourcesMap` / `DataSourcesMap` registration pattern.
-2. **`NewPluginProvider(version)` in `launchdarkly/plugin_provider.go`** — terraform-plugin-**framework**. Currently hosts only `launchdarkly_team_role_mapping` (`resource_team_role_mapping.go`). New resources that need the framework's richer plan-modifier / nested-attribute model go here.
-
-Both share the same `Client` and the same provider schema attributes (`access_token`, `oauth_token`, `api_host`, `http_timeout`); the framework version reads descriptions from `providerSchema()` to keep them aligned. The CLI sees a single provider address `registry.terraform.io/launchdarkly/launchdarkly`.
-
-When adding a resource, decide SDKv2 vs framework based on schema complexity; do **not** register the same resource on both.
+`launchdarkly/provider.go` is a constants-only file holding the env-var names and provider-schema attribute keys (`access_token`, `oauth_token`, `api_host`, `http_timeout`). There is no SDKv2 provider; the migration from `terraform-plugin-sdk/v2` finished in Phase 5 (see `.claude/MIGRATION_PLAN_NON_BREAKING.md` and `.claude/migration-archive/` for historical context).
 
 ### Client (`launchdarkly/config.go`)
 
@@ -49,43 +44,27 @@ Other invariants:
 - `newBetaClient` is the same constructor with `apiVersion = "beta"` — use it for endpoints not yet in the stable API surface (e.g. views).
 - OAuth and personal/service tokens both use the `ApiKey` header in v22; the `oauth` flag is currently a no-op for header construction (kept for clarity).
 
-### Resource conventions (SDKv2)
+### Resource / data-source conventions
 
-- File layout: `resource_launchdarkly_<name>.go` + `<name>_helper.go` (CRUD glue) + `resource_launchdarkly_<name>_test.go`. Data sources mirror: `data_source_launchdarkly_<name>.go`.
-- All terraform attribute names are `const` strings declared in `launchdarkly/keys.go` inside a `//gofmts:sort` block — **never inline a string literal for a schema key**. The constant name must equal its value. Adding a new key requires inserting it into that sorted block; `make fmt` will re-sort if you misplace it. (Phase 5.3 decision: `keys.go` is retained post-cutover. Framework `tfsdk:` tags hold the wire identifier; the Go-side constants give cross-file consistency. Don't introduce string-literal schema keys in new framework code either.)
-- `removeInvalidFieldsForDataSource` in `helper.go` strips `Default`, validation, diff suppression etc. from a schema map so the same nested schema can be reused for data sources (Terraform forbids those on computed-only attrs).
-- Patches use `patchReplace` / `patchAdd` / `patchRemove` helpers wrapping `ldapi.PatchOperation`; prefer these over hand-rolled structs.
+- File layout: `resource_<name>_framework.go` + (optionally) `<name>_helper.go` (CRUD glue, type-id parsing, etc.) + `resource_launchdarkly_<name>_test.go`. Data sources mirror: `data_source_<name>_framework.go`.
+- All terraform attribute names are `const` strings declared in `launchdarkly/keys.go` inside a `//gofmts:sort` block — **never inline a string literal for a schema key**. The constant name must equal its value. Adding a new key requires inserting it into that sorted block; `make fmt` will re-sort if you misplace it. Framework `tfsdk:` tags hold the wire identifier; the Go-side constants give cross-file consistency.
+- Patches use `patchReplace` / `patchAdd` / `patchRemove` helpers (in `launchdarkly/helper.go`) wrapping `ldapi.PatchOperation`; prefer these over hand-rolled structs.
 - `handleLdapiErr` unwraps `*ldapi.GenericOpenAPIError` to surface the response body — wrap raw API errors before returning to Terraform.
+- Schemas mirror the existing user-facing HCL surface for migrated resources: structures that were SDKv2 blocks remain framework `schema.Blocks` (`ListNestedBlock` / `SetNestedBlock` / `SingleNestedBlock`), not nested attributes. Changing block ↔ nested-attribute is a config-rewrite for users.
 
-### Framework schema conventions for SDKv2-parity migrations
+Shared framework utility surface:
 
-The provider is incrementally migrating from `terraform-plugin-sdk/v2` to `terraform-plugin-framework` per `.claude/MIGRATION_PLAN_NON_BREAKING.md`. Sub-phase branches use the naming convention `moonshots/tpf/<phase-id>-<slug>` (e.g. `moonshots/tpf/2.3-ai-tool`) and PR back into the long-lived `moonshots/terraform-plugin-framework` integration branch.
-
-Rules for resources / data sources migrated from SDKv2:
-
-- **Use `schema.Schema.Blocks`** (with `ListNestedBlock`, `SetNestedBlock`, `SingleNestedBlock`) for any SDKv2 nested structure that was a block in HCL. Nested attributes (`schema.ListNestedAttribute`, etc.) are a different user-facing config surface — switching breaks existing configs.
-- Worked example + SDKv2 → framework cheatsheet: `launchdarkly/framework_schema_reference.go`.
-- **Preserve every `Required`/`Optional`/`Computed`/`ForceNew`/`Default`/`ConflictsWith`/`ExactlyOneOf`/`Deprecated:` flag verbatim.** ForceNew becomes `stringplanmodifier.RequiresReplace()` (or the type-specific equivalent). Defaults become `<type>default.StaticX(...)`. Deprecated → `DeprecationMessage:` carries the SDKv2 string verbatim — see `docs/v2-deprecations-carryforward.md`.
-- **Don't bump `SchemaVersion`** during a migration PR — the wire format stays put. If the SDKv2 resource has `StateUpgraders`, port the chain to framework `UpgradeState` returning the same shape transformations.
-- **State-compat fixture required** for every Phase 2-4 PR. Drop the fixture under `launchdarkly/testdata/state-fixtures/`, captured via `scripts/capture-state-fixtures/capture.sh`, and exercise it from `launchdarkly/statecompat/`. See `scripts/capture-state-fixtures/README.md`.
-
-Shared utility surface (Phase 0 deliverables):
-
-- `launchdarkly/framework_helpers.go` — `*Client` extraction, set/list conversions, optional-attr helpers.
+- `launchdarkly/framework_helpers.go` — `*Client` extraction, set/list conversions, optional-attr helpers (e.g. `stringValueOrNullFromPointer`, `setFromStringSliceOrNull`).
 - `launchdarkly/framework_validators.go` — `keyValidator`, `idValidator`, `tagValidator`, `opValidator`, `keyAndLengthValidator`.
-- `launchdarkly/framework_schema_compat.go` — Upjet runtime-schema-stripping shim for deprecated attrs (decision in `docs/migration-schema-compat-upjet.md`).
-- `launchdarkly/statecompat/` — wire-compat regression harness (`statecompat.Run`).
+- `launchdarkly/framework_json_helpers.go` — JSON validators / plan modifiers (`jsonStringValidator`, `jsonNormalizePlanModifier`).
+- `launchdarkly/framework_schema_compat.go` — Crossplane-Upjet defensive shim; see Upjet section below.
+- `launchdarkly/statecompat/` — wire-compat regression harness (`statecompat.Run`). Fixtures live under `launchdarkly/testdata/state-fixtures/`; capture flow under `scripts/capture-state-fixtures/`.
 
-**Block-style schemas for resources migrated from SDKv2; nested attributes only for genuinely new resources.** Drift from this convention in a migration PR is a breaking change disguised as internal cleanup — flag it in review.
+### Crossplane / Upjet embedded-schema compatibility (`launchdarkly/framework_schema_compat.go`)
 
-### Upjet / embedded-schema compatibility (`launchdarkly/schema_compat.go`)
+This provider is embedded by Crossplane's Upjet, which historically strips deprecated attributes from the runtime schema. With SDKv2 this produced two error shapes that needed swallowing on writes to those attributes; the framework analogue lives in `framework_schema_compat.go` as `isOmittedFrameworkAttrDiag` + helpers, matching framework's `AttributeError` diagnostic shape.
 
-The provider is embedded by Crossplane's Upjet, which sometimes **strips deprecated attributes from the runtime schema**. Reads/writes against those keys then fail with very specific SDK errors:
-
-- `Invalid address to set: []string{"<attr>"}` (from `ResourceData.Set`)
-- `: invalid key: <attr>` (from `ResourceDiff.SetNew`)
-
-`resourceDataSetSkipMissingKey` and `resourceDiffSetNewSkipMissingKey` are the only sanctioned way to swallow these. **Don't** add generic "ignore error" wrappers around `d.Set` — the matchers in `isOmittedEmbeddedSchemaAttrErr` are intentionally narrow so unrelated errors surface. When you remove or deprecate an attribute, route writes through these helpers instead of deleting the references, so embedded users don't break.
+Use the helpers only on attributes that may be stripped by an embedder (typically `Deprecated:` ones). Matchers are intentionally narrow so unrelated errors still surface — don't broaden them without rationale. Background: `.claude/migration-archive/schema-compat-upjet.md`.
 
 ### Codegen for audit log subscriptions
 

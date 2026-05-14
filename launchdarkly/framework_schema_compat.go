@@ -1,30 +1,24 @@
 package launchdarkly
 
-// framework_schema_compat.go is the terraform-plugin-framework analogue
-// of schema_compat.go. The SDKv2 file exists because Crossplane's Upjet
-// embeds this provider and strips deprecated attributes from the runtime
-// schema; reads/writes against those keys then fail with very specific
-// SDK error shapes that we have to swallow rather than propagate.
+// framework_schema_compat.go shields this provider against Crossplane's
+// Upjet runtime-schema stripping. Upjet embeds the provider and removes
+// deprecated attributes from the schema it serves to its consumers;
+// reads/writes against those stripped keys then fail.
 //
-// Framework-side, the equivalent behaviour produces a different error
-// shape because framework data accessors (State / Plan / Config) route
-// through fwschemadata.SetAtPath, which emits an "<Description> Write
-// Error" attribute diagnostic via diag.NewAttributeErrorDiagnostic when
-// the requested path is not present in the schema (see
-// terraform-plugin-framework@v1.9.0/internal/fwschemadata/data_set_at_path.go).
+// Framework data accessors (State / Plan / Config) route through
+// fwschemadata.SetAtPath, which emits an "<Description> Write Error"
+// attribute diagnostic via diag.NewAttributeErrorDiagnostic when the
+// requested path is not present in the schema (see
+// terraform-plugin-framework internal/fwschemadata/data_set_at_path.go).
 //
-// Until Crossplane confirms whether their Upjet pipeline actually strips
-// attributes from framework-served schemas the same way it does for
-// SDKv2, this file ships defensively: callers route writes through
-// stateSetSkipMissingKey / planSetSkipMissingKey so deprecated-attribute
-// writes don't crash embedded users. If the Upjet investigation in
-// Phase 0.6 (see docs/migration-schema-compat-upjet.md) concludes the
-// shim is unnecessary, schedule deletion for Phase 5.2.
+// Callers route writes through stateSetSkipMissingKey /
+// planSetSkipMissingKey so deprecated-attribute writes don't crash
+// embedded users.
 //
-// Matchers are intentionally narrow — same discipline as schema_compat.go:
-// they only swallow the specific "write error" shape framework emits for
-// a missing-from-schema attribute, never a generic "AddAttributeError"
-// from somewhere else in the diagnostics list.
+// Matchers are intentionally narrow: they only swallow the specific
+// "write error" shape framework emits for a missing-from-schema
+// attribute, never a generic "AddAttributeError" from somewhere else in
+// the diagnostics list.
 
 import (
 	"strings"
