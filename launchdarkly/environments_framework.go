@@ -21,6 +21,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64default"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
@@ -93,9 +95,24 @@ func projectEnvironmentsAttribute() schema.ListNestedAttribute {
 					Default:     booldefault.StaticBool(false),
 					Description: "Denotes whether the environment is critical.",
 				},
-				API_KEY:        schema.StringAttribute{Computed: true, Sensitive: true, Description: "The environment's SDK key."},
-				MOBILE_KEY:     schema.StringAttribute{Computed: true, Sensitive: true, Description: "The environment's mobile key."},
-				CLIENT_SIDE_ID: schema.StringAttribute{Computed: true, Sensitive: true, Description: "The environment's client-side ID."},
+				API_KEY: schema.StringAttribute{
+					Computed:      true,
+					Sensitive:     true,
+					Description:   "The environment's SDK key.",
+					PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+				},
+				MOBILE_KEY: schema.StringAttribute{
+					Computed:      true,
+					Sensitive:     true,
+					Description:   "The environment's mobile key.",
+					PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+				},
+				CLIENT_SIDE_ID: schema.StringAttribute{
+					Computed:      true,
+					Sensitive:     true,
+					Description:   "The environment's client-side ID.",
+					PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+				},
 				DEFAULT_TTL: schema.Int64Attribute{
 					Optional:    true,
 					Computed:    true,
