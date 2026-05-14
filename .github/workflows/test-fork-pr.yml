@@ -6,6 +6,11 @@
 # Security: Only the "labeled" event triggers this workflow. New pushes to the fork do NOT
 # re-trigger tests — see remove-safe-to-test-label.yml which strips the label on new commits,
 # forcing a maintainer to re-review and re-label.
+#
+# Cache safety: Go module/build caching is explicitly disabled (cache: false) in this workflow.
+# pull_request_target runs share the base repo's cache scope — a fork's code could poison cache
+# entries that subsequent pushes to main would restore. See:
+# https://adnanthekhan.com/2024/05/06/the-monsters-in-your-build-cache-github-actions-cache-poisoning/
 name: "Test (Fork PRs)"
 
 on:
@@ -43,7 +48,7 @@ jobs:
       - uses: actions/setup-go@41dfa10bad2bb2ae585af6ee5bb4d7d973ad74ed # v5.1.0
         with:
           go-version-file: "go.mod"
-          cache: true
+          cache: false
       - uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3.1.2
         with:
           terraform_wrapper: false
@@ -114,6 +119,7 @@ jobs:
       - uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0
         with:
           go-version-file: "go.mod"
+          cache: false
       - run: go mod download
       - uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3.1.2
         with:
