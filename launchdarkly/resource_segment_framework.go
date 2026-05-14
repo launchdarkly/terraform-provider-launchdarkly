@@ -16,6 +16,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -98,7 +99,6 @@ This resource allows you to create and manage segments within your LaunchDarkly 
 			},
 			TAGS: schema.SetAttribute{
 				Optional:    true,
-				Computed:    true,
 				ElementType: types.StringType,
 				Validators:  []validator.Set{setvalidator.ValueStringsAre(tagValidator())},
 				Description: "Tags associated with your resource.",
@@ -564,11 +564,6 @@ func (r *SegmentResource) readIntoModel(ctx context.Context, data *SegmentResour
 		return
 	}
 
-	// Import context: data.Name null until this Read populates. Force-
-	// emit included/excluded from API on Import so ImportStateVerify
-	// matches the pre-import state (which had user-declared lists).
-	isImport := data.Name.IsNull()
-
 	data.ID = types.StringValue(projectKey + "/" + envKey + "/" + key)
 	data.Name = types.StringValue(segment.Name)
 	if segment.Description != nil {
@@ -578,7 +573,7 @@ func (r *SegmentResource) readIntoModel(ctx context.Context, data *SegmentResour
 	}
 	data.CreationDate = types.Int64Value(segment.CreationDate)
 
-	tagsSet, d := setFromStringSlice(ctx, segment.Tags)
+	tagsSet, d := setFromStringSliceOrNull(ctx, segment.Tags)
 	diags.Append(d...)
 	data.Tags = tagsSet
 
@@ -593,17 +588,12 @@ func (r *SegmentResource) readIntoModel(ctx context.Context, data *SegmentResour
 		data.UnboundedContextKind = types.StringValue("")
 	}
 
-	if isImport {
-		data.Included = listFromStringSliceAlwaysEmit(ctx, segment.Included, diags)
-		data.Excluded = listFromStringSliceAlwaysEmit(ctx, segment.Excluded, diags)
-	} else {
-		includedList, d := listFromStringSlicePreservingPlan(ctx, segment.Included, data.Included)
-		diags.Append(d...)
-		data.Included = includedList
-		excludedList, d := listFromStringSlicePreservingPlan(ctx, segment.Excluded, data.Excluded)
-		diags.Append(d...)
-		data.Excluded = excludedList
-	}
+	includedList, d := listFromStringSlicePreservingPlan(ctx, segment.Included, data.Included)
+	diags.Append(d...)
+	data.Included = includedList
+	excludedList, d := listFromStringSlicePreservingPlan(ctx, segment.Excluded, data.Excluded)
+	diags.Append(d...)
+	data.Excluded = excludedList
 
 	data.IncludedContexts = segmentTargetsToFrameworkListImpl(ctx, segment.IncludedContexts)
 	data.ExcludedContexts = segmentTargetsToFrameworkListImpl(ctx, segment.ExcludedContexts)
@@ -644,6 +634,9 @@ func (r *SegmentResource) readIntoModel(ctx context.Context, data *SegmentResour
 // as Computed-only and tolerates zero values; the resource declares
 // them Optional-only and must emit null when the API returned nil/zero
 // to satisfy terraform-core's plan-apply consistency check (gotcha #8).
+// rollout_context_kind is Optional+Computed+Default("user") at the
+// schema level so plan and state both end up at "user" when the user
+// omits it (SDKv2 used a DiffSuppressFunc for the same effect).
 func segmentResourceRulesValue(ctx context.Context, rules []ldapi.UserSegmentRule, diags *diag.Diagnostics) types.List {
 	objectType := types.ObjectType{AttrTypes: segmentRuleAttrTypes}
 	elements := make([]attr.Value, 0, len(rules))
@@ -654,11 +647,15 @@ func segmentResourceRulesValue(ctx context.Context, rules []ldapi.UserSegmentRul
 		if r.Weight != nil && *r.Weight > 0 {
 			weight = types.Int64Value(int64(*r.Weight))
 		}
+		rckValue := stringValueOrNullFromPointer(r.RolloutContextKind)
+		if rckValue.IsNull() {
+			rckValue = types.StringValue("user")
+		}
 		obj, d := types.ObjectValue(segmentRuleAttrTypes, map[string]attr.Value{
 			CLAUSES:              clauses,
 			WEIGHT:               weight,
 			BUCKET_BY:            stringValueOrNullFromPointer(r.BucketBy),
-			ROLLOUT_CONTEXT_KIND: stringValueOrNullFromPointer(r.RolloutContextKind),
+			ROLLOUT_CONTEXT_KIND: rckValue,
 		})
 		diags.Append(d...)
 		elements = append(elements, obj)
@@ -685,6 +682,8 @@ func segmentRulesResourceBlock() schema.ListNestedBlock {
 				},
 				ROLLOUT_CONTEXT_KIND: schema.StringAttribute{
 					Optional:    true,
+					Computed:    true,
+					Default:     stringdefault.StaticString("user"),
 					Description: "The context kind associated with this segment rule. This argument is only valid if `weight` is also specified. If omitted, defaults to `user`.",
 				},
 			},
