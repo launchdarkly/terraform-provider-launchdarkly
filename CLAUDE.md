@@ -52,7 +52,7 @@ Other invariants:
 ### Resource conventions (SDKv2)
 
 - File layout: `resource_launchdarkly_<name>.go` + `<name>_helper.go` (CRUD glue) + `resource_launchdarkly_<name>_test.go`. Data sources mirror: `data_source_launchdarkly_<name>.go`.
-- All terraform attribute names are `const` strings declared in `launchdarkly/keys.go` inside a `//gofmts:sort` block — **never inline a string literal for a schema key**. The constant name must equal its value. Adding a new key requires inserting it into that sorted block; `make fmt` will re-sort if you misplace it.
+- All terraform attribute names are `const` strings declared in `launchdarkly/keys.go` inside a `//gofmts:sort` block — **never inline a string literal for a schema key**. The constant name must equal its value. Adding a new key requires inserting it into that sorted block; `make fmt` will re-sort if you misplace it. (Phase 5.3 decision: `keys.go` is retained post-cutover. Framework `tfsdk:` tags hold the wire identifier; the Go-side constants give cross-file consistency. Don't introduce string-literal schema keys in new framework code either.)
 - `removeInvalidFieldsForDataSource` in `helper.go` strips `Default`, validation, diff suppression etc. from a schema map so the same nested schema can be reused for data sources (Terraform forbids those on computed-only attrs).
 - Patches use `patchReplace` / `patchAdd` / `patchRemove` helpers wrapping `ldapi.PatchOperation`; prefer these over hand-rolled structs.
 - `handleLdapiErr` unwraps `*ldapi.GenericOpenAPIError` to surface the response body — wrap raw API errors before returning to Terraform.
