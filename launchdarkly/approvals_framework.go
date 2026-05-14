@@ -87,14 +87,18 @@ func frameworkApprovalSettingsDataSourceAttribute() dsschema.ListNestedAttribute
 // into a single-element types.List, mirroring the prior state's
 // attribute presence. The `prior` argument carries the plan's view of
 // the attribute (during Create/Update) or the previous state (during
-// Refresh) so the read can emit count=0 when user did not declare the
-// attribute and count=1 when they did, even when both branches resolve
-// to LD-API "default" approval values.
+// Refresh) so the read can emit a null list when the user did not
+// declare the attribute and a populated single-element list when they
+// did, even when both branches resolve to LD-API "default" approval
+// values. Returning null (not an empty list) is important for plan
+// parity: the framework treats `attr = null` and `attr = []`
+// differently in the plan/apply consistency check, especially when
+// the parent object contains sensitive fields.
 func frameworkApprovalSettingsValue(ctx context.Context, settings *ldapi.ApprovalSettings, prior basetypes.ListValue) (basetypes.ListValue, diag.Diagnostics) {
 	objectType := types.ObjectType{AttrTypes: frameworkApprovalSettingsObjectAttrTypes}
 	priorEmpty := prior.IsNull() || prior.IsUnknown() || len(prior.Elements()) == 0
 	if settings == nil || priorEmpty {
-		return types.ListValue(objectType, []attr.Value{})
+		return types.ListNull(objectType), nil
 	}
 
 	requiredTagsList, diags := listFromStringSlice(ctx, settings.RequiredApprovalTags)

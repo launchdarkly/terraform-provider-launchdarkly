@@ -287,7 +287,7 @@ func environmentObjectFromAPI(ctx context.Context, e ldapi.Environment, prior *e
 		tags = tagsSet
 		objectType := types.ObjectType{AttrTypes: frameworkApprovalSettingsObjectAttrTypes}
 		if e.ApprovalSettings == nil || isZeroApprovalSettings(e.ApprovalSettings) {
-			approvals = types.ListValueMust(objectType, []attr.Value{})
+			approvals = types.ListNull(objectType)
 		} else {
 			list, d := frameworkApprovalSettingsDataSourceValue(ctx, e.ApprovalSettings)
 			diags.Append(d...)
