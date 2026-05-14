@@ -15,22 +15,22 @@ func testAccTeamRoleMappingSetup(uniqueRole0, uniqueRole1, teamKey string) strin
 		key              = "%s"
 		name             = "Custom Role 1 %s"
 		base_permissions = "no_access"
-		policy {
-			actions = ["*"]	
+		policy = [{
+			actions = ["*"]
 			effect = "deny"
 			resources = ["proj/*:env/production"]
-		}
+		}]
 	}
 
 	resource "launchdarkly_custom_role" "role_1" {
 		key              = "%s"
 		name             = "Custom Role 2 %s"
 		base_permissions = "no_access"
-		policy {
-			actions = ["*"]	
+		policy = [{
+			actions = ["*"]
 			effect = "deny"
 			resources = ["proj/*:env/test"]
-		}
+		}]
 	}
 
 	resource "launchdarkly_team" "test_team" {

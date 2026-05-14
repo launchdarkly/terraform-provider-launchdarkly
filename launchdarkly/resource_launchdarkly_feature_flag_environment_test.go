@@ -558,18 +558,20 @@ resource "launchdarkly_feature_flag_environment" "custom_context" {
 	env_key 		  = "test"
 	on = true
 	off_variation = 0
-	targets = [{
-		values    = ["user2"]
-		variation = 1
-	}]
+	targets = [
+		{
+			values    = ["user1"]
+			variation = 0
+		},
+		{
+			values    = ["user2"]
+			variation = 1
+		},
+	]
 	context_targets = [{
 		values = ["account1"]
 		variation = 1
 		context_kind = "%s"
-	}]
-	targets = [{
-		values    = ["user1"]
-		variation = 0
 	}]
 	fallthrough = [{
 		variation = 0
