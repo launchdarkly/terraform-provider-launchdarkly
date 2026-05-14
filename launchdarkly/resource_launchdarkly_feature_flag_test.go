@@ -609,12 +609,11 @@ func TestAccFeatureFlag_BasicCreateAndUpdate(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, KEY, "basic-flag"),
 					resource.TestCheckResourceAttr(resourceName, PROJECT_KEY, projectKey),
 					resource.TestCheckResourceAttr(resourceName, VARIATION_TYPE, "boolean"),
-					resource.TestCheckResourceAttr(resourceName, "variations.#", "2"),
-					resource.TestCheckResourceAttr(resourceName, "variations.0.value", "true"),
-					resource.TestCheckResourceAttr(resourceName, "variations.1.value", "false"),
-					// bool variation defaults should default to 0 and 1 if not set
-					resource.TestCheckResourceAttr(resourceName, "defaults.0.on_variation", "0"),
-					resource.TestCheckResourceAttr(resourceName, "defaults.0.off_variation", "1"),
+					// Phase 4 gotcha #3: framework blocks cannot inflate
+					// beyond config count, so omitted boolean variations
+					// stay count=0 in state (SDKv2 inflated to count=2).
+					resource.TestCheckNoResourceAttr(resourceName, "variations.#"),
+					resource.TestCheckNoResourceAttr(resourceName, "defaults.#"),
 					resource.TestCheckNoResourceAttr(resourceName, MAINTAINER_ID),
 				),
 			},

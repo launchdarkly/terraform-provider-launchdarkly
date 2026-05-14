@@ -140,7 +140,6 @@ This resource allows you to create and manage feature flags within your LaunchDa
 			},
 			TAGS: schema.SetAttribute{
 				Optional:    true,
-				Computed:    true,
 				ElementType: types.StringType,
 				Validators:  []validator.Set{setvalidator.ValueStringsAre(tagValidator())},
 				Description: "Tags associated with your resource.",
@@ -273,6 +272,14 @@ func (r *FeatureFlagResource) Configure(_ context.Context, req resource.Configur
 
 // ModifyPlan ports customizeFeatureFlagDiff: create-time view_keys
 // validation when the project requires view association.
+//
+// SDKv2 Optional+Computed-block inflation (variations, CSA, defaults)
+// cannot be replicated under the plugin framework — terraform-core
+// rejects plans whose block count differs from config block count, and
+// the framework forbids Computed at the block level. Read mirrors the
+// prior-state block presence to keep refresh stable; tests use
+// TestCheckNoResourceAttr / ImportStateVerifyIgnore to acknowledge the
+// behavioural delta when users omit these blocks (Phase 4 gotcha #3).
 func (r *FeatureFlagResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
 	if req.Plan.Raw.IsNull() {
 		return
@@ -682,11 +689,6 @@ func (r *FeatureFlagResource) readIntoModel(ctx context.Context, data *FeatureFl
 		return
 	}
 
-	// Import context: data.Name is null until this Read populates it.
-	// On Import the prior-state-presence pattern emits empty for blocks
-	// the user originally declared; force-emit from API instead.
-	isImport := data.Name.IsNull()
-
 	data.ID = types.StringValue(projectKey + "/" + key)
 	data.Key = types.StringValue(flag.Key)
 	data.Name = types.StringValue(flag.Name)
@@ -695,23 +697,12 @@ func (r *FeatureFlagResource) readIntoModel(ctx context.Context, data *FeatureFl
 	data.Archived = types.BoolValue(flag.Archived)
 	data.Deprecated = types.BoolValue(flag.GetDeprecated())
 
-	tagsSet, d := setFromStringSlice(ctx, flag.Tags)
+	tagsSet, d := setFromStringSliceOrNull(ctx, flag.Tags)
 	diags.Append(d...)
 	data.Tags = tagsSet
 
 	// CSA + IIS — emit both so plan/state remains stable.
-	priorCSA := data.ClientSideAvailability
-	if isImport {
-		// Synthetic populated prior so the helper emits populated.
-		priorCSA = types.ListValueMust(
-			types.ObjectType{AttrTypes: featureFlagCSAAttrTypes},
-			[]attr.Value{types.ObjectValueMust(featureFlagCSAAttrTypes, map[string]attr.Value{
-				USING_ENVIRONMENT_ID: types.BoolValue(false),
-				USING_MOBILE_KEY:     types.BoolValue(false),
-			})},
-		)
-	}
-	csaList, d := featureFlagCSAListFromAPI(ctx, flag.ClientSideAvailability, priorCSA)
+	csaList, d := featureFlagCSAListFromAPI(ctx, flag.ClientSideAvailability, data.ClientSideAvailability)
 	diags.Append(d...)
 	data.ClientSideAvailability = csaList
 	usingEnvID := false
@@ -720,9 +711,22 @@ func (r *FeatureFlagResource) readIntoModel(ctx context.Context, data *FeatureFl
 	}
 	data.IncludeInSnippet = types.BoolValue(usingEnvID)
 
-	// Maintainer fields — Optional+Computed; mirror what LD returned.
-	data.MaintainerID = stringValueOrNullFromPointer(flag.MaintainerId)
-	data.MaintainerTeamKey = stringValueOrNullFromPointer(flag.MaintainerTeamKey)
+	// Maintainer fields — Optional+Computed. SDKv2 only wrote these to
+	// state when the user declared them in config (its readFlag helper
+	// gated on GetOk); otherwise the TypeString zero value "" stayed
+	// in place. Mirror that: write API values when the user managed
+	// maintainer_id/maintainer_team_key, otherwise emit "" so omitted
+	// maintainer attrs match SDKv2's TestCheckNoResourceAttr semantics.
+	if priorMaintainerSet(data.MaintainerID) {
+		data.MaintainerID = stringValueOrNullFromPointer(flag.MaintainerId)
+	} else {
+		data.MaintainerID = types.StringValue("")
+	}
+	if priorMaintainerSet(data.MaintainerTeamKey) {
+		data.MaintainerTeamKey = stringValueOrNullFromPointer(flag.MaintainerTeamKey)
+	} else {
+		data.MaintainerTeamKey = types.StringValue("")
+	}
 
 	// Variations
 	variationType, vErr := variationsToVariationType(flag.Variations)
@@ -731,19 +735,7 @@ func (r *FeatureFlagResource) readIntoModel(ctx context.Context, data *FeatureFl
 		return
 	}
 	data.VariationType = types.StringValue(variationType)
-	priorVariations := data.Variations
-	if isImport {
-		// Non-empty synthetic prior so the helper emits populated.
-		priorVariations = types.ListValueMust(
-			types.ObjectType{AttrTypes: featureFlagVariationAttrTypes},
-			[]attr.Value{types.ObjectValueMust(featureFlagVariationAttrTypes, map[string]attr.Value{
-				NAME:        types.StringNull(),
-				DESCRIPTION: types.StringNull(),
-				VALUE:       types.StringValue(""),
-			})},
-		)
-	}
-	variationsList, d := variationsListFromAPI(ctx, flag.Variations, variationType, priorVariations)
+	variationsList, d := variationsListFromAPI(ctx, flag.Variations, variationType, data.Variations)
 	diags.Append(d...)
 	data.Variations = variationsList
 
@@ -753,17 +745,7 @@ func (r *FeatureFlagResource) readIntoModel(ctx context.Context, data *FeatureFl
 	data.CustomProperties = cpSet
 
 	// Defaults
-	priorDefaults := data.Defaults
-	if isImport {
-		priorDefaults = types.ListValueMust(
-			types.ObjectType{AttrTypes: featureFlagDefaultsAttrTypes},
-			[]attr.Value{types.ObjectValueMust(featureFlagDefaultsAttrTypes, map[string]attr.Value{
-				ON_VARIATION:  types.Int64Value(0),
-				OFF_VARIATION: types.Int64Value(0),
-			})},
-		)
-	}
-	defaultsList, d := defaultsListFromAPI(ctx, flag.Defaults, len(flag.Variations), priorDefaults)
+	defaultsList, d := defaultsListFromAPI(ctx, flag.Defaults, len(flag.Variations), data.Defaults)
 	diags.Append(d...)
 	data.Defaults = defaultsList
 
@@ -1035,6 +1017,10 @@ func defaultsFromList(ctx context.Context, list types.List) (*ldapi.Defaults, di
 	}, diags
 }
 
+// defaultsListFromAPI flattens LD-API Defaults into the single-element
+// list shape. Mirrors prior-state block presence (Phase 4 gotcha #3):
+// emit empty when the user did not declare a `defaults` block,
+// populated when they did.
 func defaultsListFromAPI(ctx context.Context, defaults *ldapi.Defaults, variationCount int, prior types.List) (types.List, diag.Diagnostics) {
 	objType := types.ObjectType{AttrTypes: featureFlagDefaultsAttrTypes}
 	var diags diag.Diagnostics
@@ -1063,6 +1049,15 @@ func defaultsListFromAPI(ctx context.Context, defaults *ldapi.Defaults, variatio
 	list, d := types.ListValue(objType, []attr.Value{obj})
 	diags.Append(d...)
 	return list, diags
+}
+
+// priorMaintainerSet returns true when the prior plan/state had a
+// concrete value for a maintainer attribute (i.e. the user managed it).
+// Unknown / Null / empty string mean the user never declared it; we
+// suppress those from state so unmanaged maintainer_id / team_key stay
+// absent (SDKv2 parity — see readFlagPartsToResourceData on main).
+func priorMaintainerSet(v types.String) bool {
+	return !v.IsNull() && !v.IsUnknown() && v.ValueString() != ""
 }
 
 // Suppress unused-import warning for strings when no strings.* used.
