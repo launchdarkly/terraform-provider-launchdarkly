@@ -27,10 +27,10 @@ import (
 	ldapi "github.com/launchdarkly/api-client-go/v22"
 )
 
-// environmentBlockModel matches the nested-environments block element
-// shape used in launchdarkly_project. Mirrors environment_helper.go's
-// SDKv2 environmentSchema (forProject: true), where KEY is NOT ForceNew.
-type environmentBlockModel struct {
+// environmentModel matches the nested-environments element shape used
+// in launchdarkly_project. KEY is intentionally NOT ForceNew here —
+// in the nested form, terraform tracks env identity by KEY across plans.
+type environmentModel struct {
 	Key                types.String `tfsdk:"key"`
 	Name               types.String `tfsdk:"name"`
 	Color              types.String `tfsdk:"color"`
@@ -47,7 +47,7 @@ type environmentBlockModel struct {
 	ApprovalSettings   types.List   `tfsdk:"approval_settings"`
 }
 
-var environmentBlockAttrTypes = map[string]attr.Type{
+var environmentAttrTypes = map[string]attr.Type{
 	KEY:                  types.StringType,
 	NAME:                 types.StringType,
 	COLOR:                types.StringType,
@@ -156,11 +156,11 @@ func projectEnvironmentsAttribute() schema.ListNestedAttribute {
 
 // environmentModelsFromList unpacks a framework ListValue of nested
 // environment blocks into a slice of typed models.
-func environmentModelsFromList(ctx context.Context, list types.List) ([]environmentBlockModel, diag.Diagnostics) {
+func environmentModelsFromList(ctx context.Context, list types.List) ([]environmentModel, diag.Diagnostics) {
 	if list.IsNull() || list.IsUnknown() {
 		return nil, nil
 	}
-	var models []environmentBlockModel
+	var models []environmentModel
 	diags := list.ElementsAs(ctx, &models, false)
 	return models, diags
 }
@@ -184,7 +184,7 @@ func environmentPostsFromPlan(ctx context.Context, list types.List) ([]ldapi.Env
 	return posts, diags
 }
 
-func environmentPostFromModel(_ context.Context, m environmentBlockModel) (ldapi.EnvironmentPost, diag.Diagnostics) {
+func environmentPostFromModel(_ context.Context, m environmentModel) (ldapi.EnvironmentPost, diag.Diagnostics) {
 	post := ldapi.EnvironmentPost{
 		Name:  m.Name.ValueString(),
 		Key:   m.Key.ValueString(),
@@ -197,9 +197,9 @@ func environmentPostFromModel(_ context.Context, m environmentBlockModel) (ldapi
 	return post, nil
 }
 
-// environmentPatchFromModels builds the PATCH document mirroring the
-// SDKv2 getEnvironmentUpdatePatches behaviour.
-func environmentPatchFromModels(ctx context.Context, old environmentBlockModel, hadOld bool, env environmentBlockModel) ([]ldapi.PatchOperation, diag.Diagnostics) {
+// environmentPatchFromModels builds the PATCH document applied when an
+// env's nested attributes change on an existing project.
+func environmentPatchFromModels(ctx context.Context, old environmentModel, hadOld bool, env environmentModel) ([]ldapi.PatchOperation, diag.Diagnostics) {
 	var diags diag.Diagnostics
 	patches := []ldapi.PatchOperation{
 		patchReplace("/name", env.Name.ValueString()),
@@ -238,7 +238,7 @@ func planOrNullList(hadOld bool, l types.List) types.List {
 // framework ListValue, preserving the order of envs already in `prior`
 // (the most recent state) then appending any unmanaged environments.
 func environmentsListFromAPI(ctx context.Context, envs []ldapi.Environment, prior types.List) (basetypes.ListValue, diag.Diagnostics) {
-	objType := types.ObjectType{AttrTypes: environmentBlockAttrTypes}
+	objType := types.ObjectType{AttrTypes: environmentAttrTypes}
 	envByKey := make(map[string]ldapi.Environment, len(envs))
 	for _, e := range envs {
 		envByKey[e.Key] = e
@@ -270,7 +270,7 @@ func environmentsListFromAPI(ctx context.Context, envs []ldapi.Environment, prio
 	return list, diags
 }
 
-func environmentObjectFromAPI(ctx context.Context, e ldapi.Environment, prior *environmentBlockModel) (basetypes.ObjectValue, diag.Diagnostics) {
+func environmentObjectFromAPI(ctx context.Context, e ldapi.Environment, prior *environmentModel) (basetypes.ObjectValue, diag.Diagnostics) {
 	var diags diag.Diagnostics
 	var (
 		tags      types.Set
@@ -299,7 +299,7 @@ func environmentObjectFromAPI(ctx context.Context, e ldapi.Environment, prior *e
 		diags.Append(d...)
 		approvals = list
 	}
-	obj, d := types.ObjectValue(environmentBlockAttrTypes, map[string]attr.Value{
+	obj, d := types.ObjectValue(environmentAttrTypes, map[string]attr.Value{
 		KEY:                  types.StringValue(e.Key),
 		NAME:                 types.StringValue(e.Name),
 		COLOR:                types.StringValue(e.Color),

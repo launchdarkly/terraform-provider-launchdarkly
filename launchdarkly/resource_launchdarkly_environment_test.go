@@ -10,14 +10,12 @@ import (
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 )
 
-// phase4EnvApprovalKeys is the canonical set of approval_settings
-// attribute paths that diverge on ImportStateVerify. SDKv2 inflated
-// approval_settings as Optional+Computed-at-TypeList from the API; the
-// plugin framework forbids block-level Computed, so the Import-side
-// Read can only emit count=0 when the user omits the block and the
-// API-declared all-defaults case can't be distinguished from omitted
-// (Phase 4 gotcha #3).
-var phase4EnvApprovalKeys = []string{
+// importIgnoreApprovalSettingsKeys lists the approval_settings attribute
+// paths suppressed by ImportStateVerify. Import has no prior state, so
+// the Read path can't distinguish "user omitted approval_settings" from
+// "user supplied approval_settings = [{...all defaults...}]" and may
+// diverge from the user-config-anchored state.
+var importIgnoreApprovalSettingsKeys = []string{
 	"approval_settings.#",
 	"approval_settings.0.%",
 	"approval_settings.0.required",
@@ -229,7 +227,7 @@ func TestAccEnvironment_Create(t *testing.T) {
 				ResourceName:            resourceName,
 				ImportState:             true,
 				ImportStateVerify:       true,
-				ImportStateVerifyIgnore: phase4EnvApprovalKeys,
+				ImportStateVerifyIgnore: importIgnoreApprovalSettingsKeys,
 			},
 		},
 	})
@@ -382,7 +380,7 @@ func TestAccEnvironment_WithApprovals(t *testing.T) {
 				ResourceName:            resourceName,
 				ImportState:             true,
 				ImportStateVerify:       true,
-				ImportStateVerifyIgnore: phase4EnvApprovalKeys,
+				ImportStateVerifyIgnore: importIgnoreApprovalSettingsKeys,
 			},
 			{
 				Config: withRandomProject(projectKey, testAccEnvironmentWithApprovalsUpdate),
@@ -404,7 +402,7 @@ func TestAccEnvironment_WithApprovals(t *testing.T) {
 				ResourceName:            resourceName,
 				ImportState:             true,
 				ImportStateVerify:       true,
-				ImportStateVerifyIgnore: phase4EnvApprovalKeys,
+				ImportStateVerifyIgnore: importIgnoreApprovalSettingsKeys,
 			},
 			{
 				Config: withRandomProject(projectKey, testAccEnvironmentWithApprovalsRemoved),
@@ -422,7 +420,7 @@ func TestAccEnvironment_WithApprovals(t *testing.T) {
 				ResourceName:            resourceName,
 				ImportState:             true,
 				ImportStateVerify:       true,
-				ImportStateVerifyIgnore: phase4EnvApprovalKeys,
+				ImportStateVerifyIgnore: importIgnoreApprovalSettingsKeys,
 			},
 			{ // reset back to original state
 				Config: withRandomProject(projectKey, testAccEnvironmentWithApprovals),
@@ -445,7 +443,7 @@ func TestAccEnvironment_WithApprovals(t *testing.T) {
 				ResourceName:            resourceName,
 				ImportState:             true,
 				ImportStateVerify:       true,
-				ImportStateVerifyIgnore: phase4EnvApprovalKeys,
+				ImportStateVerifyIgnore: importIgnoreApprovalSettingsKeys,
 			},
 		},
 	})
@@ -486,7 +484,7 @@ func TestAccEnvironment_WithApprovalIntegrations(t *testing.T) {
 				ResourceName:            resourceName,
 				ImportState:             true,
 				ImportStateVerify:       true,
-				ImportStateVerifyIgnore: phase4EnvApprovalKeys,
+				ImportStateVerifyIgnore: importIgnoreApprovalSettingsKeys,
 			},
 			{
 				Config: withRandomProject(projectKey, testAccEnvironmentWithServiceNowApprovalsUpdate),
@@ -512,7 +510,7 @@ func TestAccEnvironment_WithApprovalIntegrations(t *testing.T) {
 				ResourceName:            resourceName,
 				ImportState:             true,
 				ImportStateVerify:       true,
-				ImportStateVerifyIgnore: phase4EnvApprovalKeys,
+				ImportStateVerifyIgnore: importIgnoreApprovalSettingsKeys,
 			},
 		},
 	})
@@ -546,7 +544,7 @@ func TestAccEnvironment_Critical(t *testing.T) {
 				ResourceName:            resourceName,
 				ImportState:             true,
 				ImportStateVerify:       true,
-				ImportStateVerifyIgnore: phase4EnvApprovalKeys,
+				ImportStateVerifyIgnore: importIgnoreApprovalSettingsKeys,
 			},
 			{
 				Config: withRandomProject(projectKey, testAccEnvironmentCriticalUpdate),
@@ -571,7 +569,7 @@ func TestAccEnvironment_Critical(t *testing.T) {
 				ResourceName:            resourceName,
 				ImportState:             true,
 				ImportStateVerify:       true,
-				ImportStateVerifyIgnore: phase4EnvApprovalKeys,
+				ImportStateVerifyIgnore: importIgnoreApprovalSettingsKeys,
 			},
 			{
 				Config: withRandomProject(projectKey, testAccEnvironmentCritical),
@@ -592,7 +590,7 @@ func TestAccEnvironment_Critical(t *testing.T) {
 				ResourceName:            resourceName,
 				ImportState:             true,
 				ImportStateVerify:       true,
-				ImportStateVerifyIgnore: phase4EnvApprovalKeys,
+				ImportStateVerifyIgnore: importIgnoreApprovalSettingsKeys,
 			},
 		},
 	})

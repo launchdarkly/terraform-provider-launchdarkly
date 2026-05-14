@@ -54,8 +54,7 @@ func frameworkClausesDataSourceAttribute() dsschema.ListNestedAttribute {
 }
 
 // frameworkClausesResourceAttribute returns the resource-side
-// ListNestedAttribute for clauses. Required attributes match SDKv2
-// clauseSchema (attribute, op, values).
+// ListNestedAttribute for clauses.
 func frameworkClausesResourceAttribute() schema.ListNestedAttribute {
 	return schema.ListNestedAttribute{
 		Required:    true,

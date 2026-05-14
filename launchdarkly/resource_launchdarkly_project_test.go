@@ -331,13 +331,9 @@ func TestAccProject_CSA_Update_And_Revert(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, KEY, projectKey),
 					resource.TestCheckResourceAttr(resourceName, NAME, "test project"),
 					resource.TestCheckResourceAttr(resourceName, INCLUDE_IN_SNIPPET, "false"),
-					// framework migration: default_client_side_availability is a
-					// ListNestedBlock with no block-level Computed, so the LD-
-					// API defaults are not surfaced to state when the user
-					// omits the block (Phase 4 plan gotcha #3). The SDKv2
-					// assertions on inner attrs were testing
-					// Optional+Computed TypeList inflation, which framework
-					// cannot reproduce. See TestCheckNoResourceAttr below.
+					// default_client_side_availability is Optional-only; when
+					// the user omits it, state stays null and the LD-API
+					// defaults are not surfaced.
 					resource.TestCheckNoResourceAttr(resourceName, "default_client_side_availability.#"),
 				),
 			},
@@ -359,9 +355,8 @@ func TestAccProject_CSA_Update_And_Revert(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, KEY, projectKey),
 					resource.TestCheckResourceAttr(resourceName, NAME, "awesome test project"),
 					resource.TestCheckResourceAttr(resourceName, INCLUDE_IN_SNIPPET, "false"),
-					// framework migration: CSA block dropped when user removes
-					// it from config (Phase 4 plan gotcha #3); state mirrors
-					// config block count, not LD-API defaults.
+					// Removing default_client_side_availability from config
+					// drops it from state.
 					resource.TestCheckNoResourceAttr(resourceName, "default_client_side_availability.#"),
 				),
 			},
@@ -526,9 +521,7 @@ func TestAccProject_EnvApprovalUpdate(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "environments.0.approval_settings.0.min_num_approvals", "2"),
 					resource.TestCheckResourceAttr(resourceName, "environments.1.key", "default-env"),
 					resource.TestCheckResourceAttr(resourceName, "environments.1.name", "env with default approval settings"),
-					// framework migration: env[1] has no approval_settings
-					// block in config so state mirrors empty (Phase 4 plan
-					// gotcha #3 — block count must match config count).
+					// env[1] omits approval_settings so state stays null.
 					resource.TestCheckNoResourceAttr(resourceName, "environments.1.approval_settings.#"),
 				),
 			},
@@ -554,9 +547,7 @@ func TestAccProject_EnvApprovalUpdate(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "environments.1.approval_settings.0.min_num_approvals", "2"),
 					resource.TestCheckResourceAttr(resourceName, "environments.2.key", "default-env"),
 					resource.TestCheckResourceAttr(resourceName, "environments.2.name", "env with default approval settings"),
-					// framework migration: env[2] has no approval_settings
-					// block in config so state mirrors empty (Phase 4 plan
-					// gotcha #3 — block count must match config count).
+					// env[2] omits approval_settings so state stays null.
 					resource.TestCheckNoResourceAttr(resourceName, "environments.2.approval_settings.#"),
 				),
 			},
@@ -564,12 +555,11 @@ func TestAccProject_EnvApprovalUpdate(t *testing.T) {
 				ResourceName:      resourceName,
 				ImportState:       true,
 				ImportStateVerify: true,
-				// Framework migration: env[0] in Step 3 declares an
-				// approval_settings block whose values all happen to be
-				// LD's defaults. On Import we have no prior state to tell
-				// "user declared block" from "user omitted block", so we
-				// fall back to an isZero heuristic which collapses the
-				// all-defaults case to count=0. Ignore that drift here.
+				// env[0] in Step 3 declares an approval_settings whose values
+				// are all LD defaults. On Import we have no prior state to
+				// tell "user declared" from "user omitted", so we fall back
+				// to an isZero heuristic that collapses the all-defaults
+				// case to null. Ignore that drift here.
 				ImportStateVerifyIgnore: []string{"environments.0.approval_settings.#", "environments.0.approval_settings.0.%", "environments.0.approval_settings.0.required", "environments.0.approval_settings.0.min_num_approvals", "environments.0.approval_settings.0.can_review_own_request", "environments.0.approval_settings.0.can_apply_declined_changes", "environments.0.approval_settings.0.auto_apply_approved_changes", "environments.0.approval_settings.0.service_kind", "environments.0.approval_settings.0.service_config.%", "environments.0.approval_settings.0.required_approval_tags.#"},
 			},
 		},

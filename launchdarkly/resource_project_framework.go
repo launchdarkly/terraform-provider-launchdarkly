@@ -209,7 +209,7 @@ func markEnvSecretsUnknown(ctx context.Context, planList, stateList types.List) 
 	if planList.IsNull() || planList.IsUnknown() {
 		return planList, diags
 	}
-	objType := types.ObjectType{AttrTypes: environmentBlockAttrTypes}
+	objType := types.ObjectType{AttrTypes: environmentAttrTypes}
 	planEls := planList.Elements()
 	if len(planEls) == 0 {
 		return planList, diags
@@ -258,7 +258,7 @@ func markEnvSecretsUnknown(ctx context.Context, planList, stateList types.List) 
 			attrs[MOBILE_KEY] = types.StringUnknown()
 			attrs[CLIENT_SIDE_ID] = types.StringUnknown()
 		}
-		newObj, d := types.ObjectValue(environmentBlockAttrTypes, attrs)
+		newObj, d := types.ObjectValue(environmentAttrTypes, attrs)
 		diags.Append(d...)
 		out = append(out, newObj)
 	}
@@ -462,7 +462,7 @@ func (r *ProjectResource) applyProjectUpdates(ctx context.Context, projectKey st
 	if diags.HasError() {
 		return diags
 	}
-	stateEnvs := map[string]environmentBlockModel{}
+	stateEnvs := map[string]environmentModel{}
 	if !isCreate {
 		stateEnvList, d := environmentModelsFromList(ctx, state.Environments)
 		diags.Append(d...)

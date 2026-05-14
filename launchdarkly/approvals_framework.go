@@ -4,9 +4,7 @@ package launchdarkly
 // + conversion helpers. Used by the environment, project, segment, and
 // feature_flag_environment resources and data sources.
 //
-// HCL surface: `approval_settings = [{ ... }]` — a single-element
-// list (preserving the legacy max-1 cardinality from when it was a
-// ListNestedBlock).
+// HCL surface: `approval_settings = [{ ... }]` — a single-element list.
 
 import (
 	"context"
@@ -23,8 +21,7 @@ import (
 )
 
 // frameworkApprovalSettingsObjectAttrTypes is the attribute-type map
-// every approval_settings list-nested-block element conforms to. Single-
-// element list shape preserves the SDKv2 TypeList{MaxItems:1} pattern.
+// every approval_settings list element conforms to.
 var frameworkApprovalSettingsObjectAttrTypes = map[string]attr.Type{
 	REQUIRED:                    types.BoolType,
 	CAN_REVIEW_OWN_REQUEST:      types.BoolType,

@@ -113,9 +113,8 @@ func (r *ViewResource) ConfigValidators(_ context.Context) []resource.ConfigVali
 	}
 }
 
-// viewExists is retained as a package-level helper because the
-// view_links / view_filter_links SDKv2 resources still reference it.
-// Moves with those resources in Phase 3.8.
+// viewExists is a shared package-level helper used by the view_links
+// and view_filter_links resources.
 func viewExists(projectKey, viewKey string, client *Client) (bool, error) {
 	_, res, err := getViewRaw(client, projectKey, viewKey)
 	if isStatusNotFound(res) {

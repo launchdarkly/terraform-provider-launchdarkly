@@ -633,7 +633,7 @@ func (r *SegmentResource) readIntoModel(ctx context.Context, data *SegmentResour
 // The data source declares weight / bucket_by / rollout_context_kind
 // as Computed-only and tolerates zero values; the resource declares
 // them Optional-only and must emit null when the API returned nil/zero
-// to satisfy terraform-core's plan-apply consistency check (gotcha #8).
+// to satisfy terraform-core's plan-apply consistency check.
 // rollout_context_kind is Optional+Computed+Default("user") at the
 // schema level so plan and state both end up at "user" when the user
 // omits it (SDKv2 used a DiffSuppressFunc for the same effect).

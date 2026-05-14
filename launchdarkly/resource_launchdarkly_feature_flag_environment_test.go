@@ -1268,7 +1268,7 @@ func TestAccFeatureFlagEnvironment_OffVariationResetsToCorrectDefaultOnDelete(t 
 				ResourceName:            globalFlagResourceName,
 				ImportState:             true,
 				ImportStateVerify:       true,
-				ImportStateVerifyIgnore: phase4InflatedBlockKeys,
+				ImportStateVerifyIgnore: importIgnoreOptionalComputedKeys,
 			},
 		},
 	})

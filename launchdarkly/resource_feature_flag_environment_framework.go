@@ -542,13 +542,13 @@ type noopDiagSink struct{}
 
 func (noopDiagSink) AddError(string, string) {}
 
-// ffeResourceRulesValue mirrors ffeRulesValue but emits null for
-// Optional-only attributes the user did not configure. SDKv2 emits a
-// shape where variation is null when a rollout is present, bucket_by /
-// context_kind are null when not a rollout, and description is null
-// when nil. The data-source-side ffeRulesValue emits zero values
-// instead — that's fine for Computed-only data source attrs but trips
-// the plan-apply consistency check on resource Optional-only attrs.
+// ffeResourceRulesValue emits null for Optional-only attributes the
+// user did not configure: variation is null when a rollout is present,
+// bucket_by / context_kind are null when not a rollout, description is
+// null when nil. The data-source-side ffeRulesValue emits zero values
+// instead — fine for Computed-only data source attrs but would trip
+// the plan-apply consistency check on the resource's Optional-only
+// attrs.
 func ffeResourceRulesValue(ctx context.Context, rules []ldapi.Rule, diags *diag.Diagnostics) types.List {
 	objectType := types.ObjectType{AttrTypes: ffeRuleAttrTypes}
 	elements := make([]attr.Value, 0, len(rules))
@@ -669,8 +669,9 @@ type ffeFallthroughPayload struct {
 	Rollout   *ldapi.Rollout `json:"rollout,omitempty"`
 }
 
-// buildFFEPatches mirrors the SDKv2 Create+Update patch construction.
-// Each block is patched only when it differs from state (or on create).
+// buildFFEPatches assembles the JSON-Patch document applied at
+// Create/Update. Each attribute is patched only when it differs from
+// state (or unconditionally on create).
 func buildFFEPatches(ctx context.Context, envKey string, plan, state FeatureFlagEnvironmentResourceModel, isCreate bool) ([]ldapi.PatchOperation, diag.Diagnostics) {
 	var diags diag.Diagnostics
 	patches := make([]ldapi.PatchOperation, 0)
@@ -892,7 +893,7 @@ func ffeTargetsFromSet(ctx context.Context, set types.Set, isContextTarget bool)
 func ffeFallthroughFromList(ctx context.Context, list types.List) (ffeFallthroughPayload, diag.Diagnostics) {
 	var diags diag.Diagnostics
 	if list.IsNull() || list.IsUnknown() || len(list.Elements()) == 0 {
-		diags.AddError("feature flag fallthrough block cannot be empty. Please specify at least one of variation or rollout_weights", "")
+		diags.AddError("feature flag fallthrough cannot be empty. Please specify at least one of variation or rollout_weights", "")
 		return ffeFallthroughPayload{}, diags
 	}
 	type fallthroughModel struct {

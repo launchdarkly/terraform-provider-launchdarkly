@@ -118,9 +118,7 @@ func (r *AIToolResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 
 func (r *AIToolResource) ConfigValidators(_ context.Context) []resource.ConfigValidator {
 	return []resource.ConfigValidator{
-		// Match SDKv2 ConflictsWith between maintainer_id and maintainer_team_key.
-		// Implemented inline because the helper validator package is intentionally
-		// not vendored — see Phase 0.4 commit on the moonshots branch.
+		// maintainer_id and maintainer_team_key are mutually exclusive.
 		conflictingMaintainerValidator{},
 	}
 }
