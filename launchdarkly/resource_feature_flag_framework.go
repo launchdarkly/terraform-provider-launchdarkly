@@ -695,7 +695,7 @@ func (r *FeatureFlagResource) readIntoModel(ctx context.Context, data *FeatureFl
 	data.Tags = tagsSet
 
 	// CSA + IIS — emit both so plan/state remains stable.
-	csaList, d := featureFlagCSAListFromAPI(ctx, flag.ClientSideAvailability)
+	csaList, d := featureFlagCSAListFromAPI(ctx, flag.ClientSideAvailability, data.ClientSideAvailability)
 	diags.Append(d...)
 	data.ClientSideAvailability = csaList
 	usingEnvID := false
@@ -715,7 +715,7 @@ func (r *FeatureFlagResource) readIntoModel(ctx context.Context, data *FeatureFl
 		return
 	}
 	data.VariationType = types.StringValue(variationType)
-	variationsList, d := variationsListFromAPI(ctx, flag.Variations, variationType)
+	variationsList, d := variationsListFromAPI(ctx, flag.Variations, variationType, data.Variations)
 	diags.Append(d...)
 	data.Variations = variationsList
 
@@ -725,7 +725,7 @@ func (r *FeatureFlagResource) readIntoModel(ctx context.Context, data *FeatureFl
 	data.CustomProperties = cpSet
 
 	// Defaults
-	defaultsList, d := defaultsListFromAPI(ctx, flag.Defaults, len(flag.Variations))
+	defaultsList, d := defaultsListFromAPI(ctx, flag.Defaults, len(flag.Variations), data.Defaults)
 	diags.Append(d...)
 	data.Defaults = defaultsList
 
@@ -747,11 +747,17 @@ func (r *FeatureFlagResource) readIntoModel(ctx context.Context, data *FeatureFl
 }
 
 // featureFlagCSAListFromAPI flattens LD's ClientSideAvailability into
-// the single-element list shape used by the framework schema.
-func featureFlagCSAListFromAPI(ctx context.Context, csa *ldapi.ClientSideAvailability) (types.List, diag.Diagnostics) {
+// the single-element list shape used by the framework schema. Mirrors
+// the prior state's block presence: emit empty when the user did not
+// manage the block, populated when they did. Framework forbids
+// block-level Computed (Phase 3 gotcha #3), so emitting a count=1
+// block where config has count=0 fails terraform-core's consistency
+// check.
+func featureFlagCSAListFromAPI(ctx context.Context, csa *ldapi.ClientSideAvailability, prior types.List) (types.List, diag.Diagnostics) {
 	objType := types.ObjectType{AttrTypes: featureFlagCSAAttrTypes}
 	var diags diag.Diagnostics
-	if csa == nil {
+	priorEmpty := prior.IsNull() || prior.IsUnknown() || len(prior.Elements()) == 0
+	if priorEmpty || csa == nil {
 		list, d := types.ListValue(objType, []attr.Value{})
 		diags.Append(d...)
 		return list, diags
@@ -876,9 +882,19 @@ func variationPatchesFromLists(ctx context.Context, oldList, newList types.List,
 
 // variationsListFromAPI flattens LD-API variations into a framework
 // List<variation>. Value coercion mirrors variationsToResourceData.
-func variationsListFromAPI(ctx context.Context, variations []ldapi.Variation, variationType string) (types.List, diag.Diagnostics) {
+// Mirrors prior-state block presence: when the user omits the
+// variations block (SDKv2 Optional+Computed at TypeList level allowed
+// auto-defaults for boolean flags), state remains empty even though
+// the API populates the underlying variations.
+func variationsListFromAPI(ctx context.Context, variations []ldapi.Variation, variationType string, prior types.List) (types.List, diag.Diagnostics) {
 	objType := types.ObjectType{AttrTypes: featureFlagVariationAttrTypes}
 	var diags diag.Diagnostics
+	priorEmpty := prior.IsNull() || prior.IsUnknown() || len(prior.Elements()) == 0
+	if priorEmpty {
+		list, d := types.ListValue(objType, []attr.Value{})
+		diags.Append(d...)
+		return list, diags
+	}
 	elements := make([]attr.Value, 0, len(variations))
 	for _, v := range variations {
 		valueStr, err := variationValueToString(&v.Value, variationType)
@@ -989,9 +1005,15 @@ func defaultsFromList(ctx context.Context, list types.List) (*ldapi.Defaults, di
 	}, diags
 }
 
-func defaultsListFromAPI(ctx context.Context, defaults *ldapi.Defaults, variationCount int) (types.List, diag.Diagnostics) {
+func defaultsListFromAPI(ctx context.Context, defaults *ldapi.Defaults, variationCount int, prior types.List) (types.List, diag.Diagnostics) {
 	objType := types.ObjectType{AttrTypes: featureFlagDefaultsAttrTypes}
 	var diags diag.Diagnostics
+	priorEmpty := prior.IsNull() || prior.IsUnknown() || len(prior.Elements()) == 0
+	if priorEmpty {
+		list, d := types.ListValue(objType, []attr.Value{})
+		diags.Append(d...)
+		return list, diags
+	}
 	var on, off int64
 	if defaults != nil {
 		on = int64(defaults.OnVariation)
