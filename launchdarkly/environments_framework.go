@@ -128,7 +128,6 @@ func projectEnvironmentsBlock() schema.ListNestedBlock {
 				},
 				TAGS: schema.SetAttribute{
 					Optional:    true,
-					Computed:    true,
 					ElementType: types.StringType,
 					Validators:  []validator.Set{setvalidator.ValueStringsAre(tagValidator())},
 					Description: "Tags associated with your resource.",
@@ -224,10 +223,7 @@ func planOrNullList(hadOld bool, l types.List) types.List {
 // environmentsListFromAPI flattens the LD environments slice back into a
 // framework ListValue, preserving the order of envs already in `prior`
 // (the most recent state) then appending any unmanaged environments.
-// When isImport is true, blocks/sets inside each env emit using
-// SDKv2-style isZero detection instead of prior-state-presence
-// (Import has no prior state to anchor on).
-func environmentsListFromAPI(ctx context.Context, envs []ldapi.Environment, prior types.List, isImport bool) (basetypes.ListValue, diag.Diagnostics) {
+func environmentsListFromAPI(ctx context.Context, envs []ldapi.Environment, prior types.List) (basetypes.ListValue, diag.Diagnostics) {
 	objType := types.ObjectType{AttrTypes: environmentBlockAttrTypes}
 	envByKey := make(map[string]ldapi.Environment, len(envs))
 	for _, e := range envs {
@@ -243,7 +239,7 @@ func environmentsListFromAPI(ctx context.Context, envs []ldapi.Environment, prio
 			continue
 		}
 		added[envKey] = true
-		obj, d := environmentObjectFromAPI(ctx, envAPI, &p, isImport)
+		obj, d := environmentObjectFromAPI(ctx, envAPI, &p)
 		diags.Append(d...)
 		ordered = append(ordered, obj)
 	}
@@ -251,7 +247,7 @@ func environmentsListFromAPI(ctx context.Context, envs []ldapi.Environment, prio
 		if added[e.Key] {
 			continue
 		}
-		obj, d := environmentObjectFromAPI(ctx, e, nil, isImport)
+		obj, d := environmentObjectFromAPI(ctx, e, nil)
 		diags.Append(d...)
 		ordered = append(ordered, obj)
 	}
@@ -260,27 +256,34 @@ func environmentsListFromAPI(ctx context.Context, envs []ldapi.Environment, prio
 	return list, diags
 }
 
-func environmentObjectFromAPI(ctx context.Context, e ldapi.Environment, prior *environmentBlockModel, isImport bool) (basetypes.ObjectValue, diag.Diagnostics) {
+func environmentObjectFromAPI(ctx context.Context, e ldapi.Environment, prior *environmentBlockModel) (basetypes.ObjectValue, diag.Diagnostics) {
+	var diags diag.Diagnostics
 	var (
 		tags      types.Set
 		approvals basetypes.ListValue
-		diags     diag.Diagnostics
 	)
-	if isImport {
-		tags = setFromStringSliceAlwaysEmit(ctx, e.Tags, &diags)
-		approvals = frameworkApprovalSettingsDataSourceValueIfNonZero(ctx, e.ApprovalSettings, &diags)
-	} else {
-		priorTags := types.SetNull(types.StringType)
-		priorApprovals := types.ListNull(types.ObjectType{AttrTypes: frameworkApprovalSettingsObjectAttrTypes})
-		if prior != nil {
-			priorTags = prior.Tags
-			priorApprovals = prior.ApprovalSettings
+	if prior == nil {
+		// No prior state for this env (Import context or new env added
+		// outside config): emit using SDKv2-style isZero detection so the
+		// shape matches what the user's last Apply produced.
+		tagsSet, d := setFromStringSliceOrNull(ctx, e.Tags)
+		diags.Append(d...)
+		tags = tagsSet
+		objectType := types.ObjectType{AttrTypes: frameworkApprovalSettingsObjectAttrTypes}
+		if e.ApprovalSettings == nil || isZeroApprovalSettings(e.ApprovalSettings) {
+			approvals = types.ListValueMust(objectType, []attr.Value{})
+		} else {
+			list, d := frameworkApprovalSettingsDataSourceValue(ctx, e.ApprovalSettings)
+			diags.Append(d...)
+			approvals = list
 		}
-		var d diag.Diagnostics
-		tags, d = setFromStringSlicePreservingPlan(ctx, e.Tags, priorTags)
+	} else {
+		tagsSet, d := setFromStringSlicePreservingPlan(ctx, e.Tags, prior.Tags)
 		diags.Append(d...)
-		approvals, d = frameworkApprovalSettingsValue(ctx, e.ApprovalSettings, priorApprovals)
+		tags = tagsSet
+		list, d := frameworkApprovalSettingsValue(ctx, e.ApprovalSettings, prior.ApprovalSettings)
 		diags.Append(d...)
+		approvals = list
 	}
 	obj, d := types.ObjectValue(environmentBlockAttrTypes, map[string]attr.Value{
 		KEY:                  types.StringValue(e.Key),
@@ -301,3 +304,4 @@ func environmentObjectFromAPI(ctx context.Context, e ldapi.Environment, prior *e
 	diags.Append(d...)
 	return obj, diags
 }
+

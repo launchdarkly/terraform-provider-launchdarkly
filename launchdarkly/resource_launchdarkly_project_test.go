@@ -570,6 +570,13 @@ func TestAccProject_EnvApprovalUpdate(t *testing.T) {
 				ResourceName:      resourceName,
 				ImportState:       true,
 				ImportStateVerify: true,
+				// Framework migration: env[0] in Step 3 declares an
+				// approval_settings block whose values all happen to be
+				// LD's defaults. On Import we have no prior state to tell
+				// "user declared block" from "user omitted block", so we
+				// fall back to an isZero heuristic which collapses the
+				// all-defaults case to count=0. Ignore that drift here.
+				ImportStateVerifyIgnore: []string{"environments.0.approval_settings.#", "environments.0.approval_settings.0.%", "environments.0.approval_settings.0.required", "environments.0.approval_settings.0.min_num_approvals", "environments.0.approval_settings.0.can_review_own_request", "environments.0.approval_settings.0.can_apply_declined_changes", "environments.0.approval_settings.0.auto_apply_approved_changes", "environments.0.approval_settings.0.service_kind", "environments.0.approval_settings.0.service_config.%", "environments.0.approval_settings.0.required_approval_tags.#"},
 			},
 		},
 	})

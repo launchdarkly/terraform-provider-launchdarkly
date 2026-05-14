@@ -296,12 +296,9 @@ func frameworkApprovalSettingsDataSourceValue(ctx context.Context, settings *lda
 }
 
 // isZeroApprovalSettings reports whether LD's approval-settings doc is
-// effectively unconfigured. LD returns a struct (with API defaults
-// like minNumApprovals=1) for envs without approvals; we treat the
-// doc as absent when no approval gate is active and no service
-// integration is wired up. Used on Import paths where there's no
-// prior state to anchor block presence on — matches SDKv2 Computed
-// TypeList semantics.
+// effectively unconfigured (no approval gate active and no service
+// integration wired up). Used on the Import-equivalent path inside
+// project envs where there's no prior state to anchor block presence.
 func isZeroApprovalSettings(s *ldapi.ApprovalSettings) bool {
 	if s == nil {
 		return true
