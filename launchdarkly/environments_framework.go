@@ -1,14 +1,12 @@
 package launchdarkly
 
-// environments_framework.go houses the framework-flavoured nested
-// environments block schema (used by launchdarkly_project) and the
-// conversion helpers between framework state values and the SDKv2
-// environment helpers in environments_helper.go.
+// environments_framework.go houses the nested environments schema used
+// by launchdarkly_project and the conversion helpers between framework
+// state values and the LD-API environment shapes.
 //
-// The standalone launchdarkly_environment resource (Phase 3) lives in
-// resource_environment_framework.go and uses its own ApprovalSettings
-// block defined inline; here we re-declare the equivalent shape so the
-// nested project block matches user HCL byte-for-byte.
+// The standalone launchdarkly_environment resource lives in
+// resource_environment_framework.go and uses the same approval_settings
+// shape as the nested-environments attribute here.
 
 import (
 	"context"

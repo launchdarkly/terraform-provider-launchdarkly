@@ -281,14 +281,6 @@ func (r *FeatureFlagResource) Configure(_ context.Context, req resource.Configur
 
 // ModifyPlan ports customizeFeatureFlagDiff: create-time view_keys
 // validation when the project requires view association.
-//
-// SDKv2 Optional+Computed-block inflation (variations, CSA, defaults)
-// cannot be replicated under the plugin framework — terraform-core
-// rejects plans whose block count differs from config block count, and
-// the framework forbids Computed at the block level. Read mirrors the
-// prior-state block presence to keep refresh stable; tests use
-// TestCheckNoResourceAttr / ImportStateVerifyIgnore to acknowledge the
-// behavioural delta when users omit these blocks (Phase 4 gotcha #3).
 func (r *FeatureFlagResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
 	if req.Plan.Raw.IsNull() {
 		return
@@ -910,11 +902,8 @@ func variationPatchesFromLists(ctx context.Context, oldList, newList types.List,
 }
 
 // variationsListFromAPI flattens LD-API variations into a framework
-// List<variation>. Value coercion mirrors variationsToResourceData.
-// Mirrors prior-state block presence: when the user omits the
-// variations block (SDKv2 Optional+Computed at TypeList level allowed
-// auto-defaults for boolean flags), state remains empty even though
-// the API populates the underlying variations.
+// List<variation>. Returns null when the API has no variations
+// (e.g. mid-create or for not-yet-saved flags).
 //
 // For JSON-typed variations, the LD API normalises the stored value
 // (e.g. collapses whitespace) which would otherwise diverge from the

@@ -1,9 +1,8 @@
 package launchdarkly
 
-// role_attributes_framework.go is the terraform-plugin-framework analogue
-// of role_attributes_helper.go's schema + conversion helpers. The
-// role_attributes block is shared across launchdarkly_team data source +
-// resource (Phase 3.7).
+// role_attributes_framework.go provides the shared role_attributes
+// schema builder and conversion helpers. Used by the team / team_member
+// resources and data sources.
 
 import (
 	"context"

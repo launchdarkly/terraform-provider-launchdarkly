@@ -1,19 +1,11 @@
 package launchdarkly
 
-// policy_statements_framework.go is the terraform-plugin-framework analogue
-// of policy_statements_helper.go. It provides:
-//
-//   - frameworkPolicyStatementsDataSourceAttribute / frameworkPolicyStatementsResourceAttribute:
-//     ListNestedAttribute schema producers (data-source variant: all
-//     Computed). The attribute name (e.g. POLICY_STATEMENTS, POLICY,
-//     STATEMENTS) is supplied by the caller so the same builder works for
-//     relay_proxy_configuration, webhook, audit_log_subscription, etc.
-//   - frameworkPolicyStatementsValue: converts []ldapi.Statement to a
-//     framework types.List of nested objects, suitable for assignment to
-//     the model field.
-//
-// SDKv2 source: policy_statements_helper.go (schema and
-// policyStatementsToResourceData).
+// policy_statements_framework.go provides shared policy_statements
+// schema builders and converters reused across access_token,
+// audit_log_subscription, custom_role, relay_proxy_configuration, and
+// webhook. The attribute name (e.g. POLICY_STATEMENTS, POLICY,
+// STATEMENTS, INLINE_ROLES) is supplied by the caller so the same
+// builder works everywhere.
 
 import (
 	"context"

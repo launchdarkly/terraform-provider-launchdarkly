@@ -1,9 +1,9 @@
 package launchdarkly
 
-// clauses_framework.go is the terraform-plugin-framework analogue of
-// clause_helper.go's schema + conversion helpers. Clauses are
-// nested inside segment rules and feature_flag/feature_flag_environment
-// rules; sharing the helper avoids per-resource drift.
+// clauses_framework.go provides the shared clauses schema + conversion
+// helpers. Clauses are nested inside segment rules and feature_flag /
+// feature_flag_environment rules; sharing the helper avoids per-resource
+// drift.
 
 import (
 	"context"

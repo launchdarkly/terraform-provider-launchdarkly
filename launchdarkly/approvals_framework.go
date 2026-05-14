@@ -1,12 +1,12 @@
 package launchdarkly
 
-// approvals_framework.go is the terraform-plugin-framework analogue of
-// approvals_helper.go (the schema + conversion helpers for
-// approval_settings nested attributes). Used by environment + project
-// data sources and resources.
+// approvals_framework.go provides the shared approval_settings schema
+// + conversion helpers. Used by the environment, project, segment, and
+// feature_flag_environment resources and data sources.
 //
-// HCL surface: `approval_settings = [{ ... }]` — a single-element list
-// (preserving SDKv2 ListNestedBlock-with-MaxItems=1 semantics).
+// HCL surface: `approval_settings = [{ ... }]` — a single-element
+// list (preserving the legacy max-1 cardinality from when it was a
+// ListNestedBlock).
 
 import (
 	"context"
@@ -302,7 +302,8 @@ func frameworkApprovalSettingsDataSourceValue(ctx context.Context, settings *lda
 // isZeroApprovalSettings reports whether LD's approval-settings doc is
 // effectively unconfigured (no approval gate active and no service
 // integration wired up). Used on the Import-equivalent path inside
-// project envs where there's no prior state to anchor block presence.
+// project envs where there's no prior state to anchor attribute
+// presence.
 func isZeroApprovalSettings(s *ldapi.ApprovalSettings) bool {
 	if s == nil {
 		return true

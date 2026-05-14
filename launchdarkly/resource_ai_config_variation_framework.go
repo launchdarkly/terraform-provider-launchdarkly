@@ -513,20 +513,26 @@ func (r *AIConfigVariationResource) readIntoModel(
 		data.Model = types.StringNull()
 	}
 
-	// Messages
+	// Messages — emit null when the API returns no messages so plan
+	// parity holds for Agent-mode variations (which never carry messages
+	// but contain other sensitive-adjacent state).
 	msgObj := types.ObjectType{AttrTypes: aiConfigVariationMessageAttrTypes}
-	elems := make([]attr.Value, 0, len(variation.Messages))
-	for _, m := range variation.Messages {
-		obj, d := types.ObjectValue(aiConfigVariationMessageAttrTypes, map[string]attr.Value{
-			ROLE:    types.StringValue(m.Role),
-			CONTENT: types.StringValue(m.Content),
-		})
+	if len(variation.Messages) == 0 {
+		data.Messages = types.ListNull(msgObj)
+	} else {
+		elems := make([]attr.Value, 0, len(variation.Messages))
+		for _, m := range variation.Messages {
+			obj, d := types.ObjectValue(aiConfigVariationMessageAttrTypes, map[string]attr.Value{
+				ROLE:    types.StringValue(m.Role),
+				CONTENT: types.StringValue(m.Content),
+			})
+			diags.Append(d...)
+			elems = append(elems, obj)
+		}
+		list, d := types.ListValue(msgObj, elems)
 		diags.Append(d...)
-		elems = append(elems, obj)
+		data.Messages = list
 	}
-	list, d := types.ListValue(msgObj, elems)
-	diags.Append(d...)
-	data.Messages = list
 
 	// Tool keys: SDKv2 preserved prior value when API returned empty.
 	if len(variation.Tools) > 0 {
