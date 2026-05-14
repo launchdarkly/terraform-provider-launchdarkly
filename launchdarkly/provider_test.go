@@ -1,7 +1,6 @@
 package launchdarkly
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -13,25 +12,14 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/providerserver"
 	"github.com/hashicorp/terraform-plugin-go/tfprotov5"
-	"github.com/hashicorp/terraform-plugin-mux/tf5muxserver"
 )
 
-// testAccProtoV5ProviderFactories serves the same tf5muxserver as main.go
-// so acceptance tests exercise the production protocol surface. Used in
-// resource.TestCase via:
+// testAccProtoV5ProviderFactories serves the framework provider as v5,
+// matching main.go's wire protocol. Used in resource.TestCase via:
 //
 //	ProtoV5ProviderFactories: testAccProtoV5ProviderFactories,
-//
-// The launchdarkly/tests sub-package maintains its own equivalent factory
-// because Go test symbols are package-scoped — keep the two wirings in sync.
 var testAccProtoV5ProviderFactories = map[string]func() (tfprotov5.ProviderServer, error){
-	"launchdarkly": func() (tfprotov5.ProviderServer, error) {
-		ctx := context.Background()
-		return tf5muxserver.NewMuxServer(ctx,
-			Provider().GRPCProvider,
-			providerserver.NewProtocol5(NewPluginProvider("test")()),
-		)
-	},
+	"launchdarkly": providerserver.NewProtocol5WithError(NewPluginProvider("test")()),
 }
 
 func testAccPreCheck(t *testing.T) {

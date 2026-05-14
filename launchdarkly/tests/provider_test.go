@@ -7,7 +7,6 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/providerserver"
 	"github.com/hashicorp/terraform-plugin-go/tfprotov5"
-	"github.com/hashicorp/terraform-plugin-mux/tf5muxserver"
 	"github.com/launchdarkly/terraform-provider-launchdarkly/launchdarkly"
 )
 
@@ -19,22 +18,14 @@ func testAccPreCheck(t *testing.T) {
 	}
 }
 
-// testAccFrameworkMuxProviders builds the same tf5muxserver as main.go.
-//
-// The root launchdarkly package owns the canonical wiring in its
-// _test.go file (TestAccProtoV5ProviderFactories), but Go test symbols are
-// package-scoped, so this sub-package rebuilds the mux locally rather than
-// importing across the test boundary. Keep both factories in sync.
-func testAccFrameworkMuxProviders(ctx context.Context, _ *testing.T) map[string]func() (tfprotov5.ProviderServer, error) {
-	sdkV2Provider := launchdarkly.Provider()
-	frameworkProvider := launchdarkly.NewPluginProvider("test")
-
+// testAccFrameworkMuxProviders serves the framework provider as v5,
+// matching main.go's wire protocol. The root launchdarkly package owns
+// the canonical wiring in provider_test.go, but Go test symbols are
+// package-scoped, so this sub-package rebuilds the factory locally.
+// (Slated for removal in 5.1a once this sub-package collapses back into
+// the root pkg.)
+func testAccFrameworkMuxProviders(_ context.Context, _ *testing.T) map[string]func() (tfprotov5.ProviderServer, error) {
 	return map[string]func() (tfprotov5.ProviderServer, error){
-		"launchdarkly": func() (tfprotov5.ProviderServer, error) {
-			return tf5muxserver.NewMuxServer(ctx,
-				sdkV2Provider.GRPCProvider,
-				providerserver.NewProtocol5(frameworkProvider()),
-			)
-		},
+		"launchdarkly": providerserver.NewProtocol5WithError(launchdarkly.NewPluginProvider("test")()),
 	}
 }

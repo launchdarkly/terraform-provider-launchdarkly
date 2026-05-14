@@ -17,7 +17,6 @@
 package state_compat_phase2
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -26,7 +25,6 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/providerserver"
 	"github.com/hashicorp/terraform-plugin-go/tfprotov5"
-	"github.com/hashicorp/terraform-plugin-mux/tf5muxserver"
 
 	"github.com/launchdarkly/terraform-provider-launchdarkly/launchdarkly"
 	"github.com/launchdarkly/terraform-provider-launchdarkly/launchdarkly/statecompat"
@@ -34,17 +32,11 @@ import (
 
 const stateCompatProviderVersion = "2.29.0"
 
-// protoV5Factories serves the same tf5muxserver as main.go. Defined
-// here (not borrowed from launchdarkly/provider_test.go) because
-// package-scoped test symbols don't cross package boundaries.
+// protoV5Factories serves the framework provider as v5, matching main.go's
+// wire protocol. Defined here (not borrowed from launchdarkly/provider_test.go)
+// because package-scoped test symbols don't cross package boundaries.
 var protoV5Factories = map[string]func() (tfprotov5.ProviderServer, error){
-	"launchdarkly": func() (tfprotov5.ProviderServer, error) {
-		ctx := context.Background()
-		return tf5muxserver.NewMuxServer(ctx,
-			launchdarkly.Provider().GRPCProvider,
-			providerserver.NewProtocol5(launchdarkly.NewPluginProvider("test")()),
-		)
-	},
+	"launchdarkly": providerserver.NewProtocol5WithError(launchdarkly.NewPluginProvider("test")()),
 }
 
 const accessTokenEnvVar = "LAUNCHDARKLY_ACCESS_TOKEN"
