@@ -57,7 +57,12 @@ func (jsonSchemaStringValidator) ValidateString(ctx context.Context, req validat
 	}
 }
 
-// jsonNormalizePlanModifier mirrors SDKv2 suppressEquivalentJsonDiffs.
+// jsonNormalizePlanModifier mirrors SDKv2 suppressEquivalentJsonDiffs:
+// when the state already has a semantically-equal JSON value but a
+// different textual form, re-use the state value so terraform doesn't
+// show spurious diffs. terraform-core enforces plan-equals-config for
+// Required attributes, so we can only swap in the state value, not
+// rewrite the plan to a canonical form.
 type jsonNormalizePlanModifier struct{}
 
 func (jsonNormalizePlanModifier) Description(context.Context) string {

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"reflect"
 	"sort"
 	"strconv"
 	"strings"
@@ -21,6 +22,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -170,10 +172,14 @@ This resource allows you to create and manage feature flags within your LaunchDa
 					Attributes: map[string]schema.Attribute{
 						NAME: schema.StringAttribute{
 							Optional:    true,
+							Computed:    true,
+							Default:     stringdefault.StaticString(""),
 							Description: "The name of the variation.",
 						},
 						DESCRIPTION: schema.StringAttribute{
 							Optional:    true,
+							Computed:    true,
+							Default:     stringdefault.StaticString(""),
 							Description: "The variation's description.",
 						},
 						VALUE: schema.StringAttribute{
@@ -712,20 +718,20 @@ func (r *FeatureFlagResource) readIntoModel(ctx context.Context, data *FeatureFl
 	data.IncludeInSnippet = types.BoolValue(usingEnvID)
 
 	// Maintainer fields — Optional+Computed. SDKv2 only wrote these to
-	// state when the user declared them in config (its readFlag helper
-	// gated on GetOk); otherwise the TypeString zero value "" stayed
-	// in place. Mirror that: write API values when the user managed
-	// maintainer_id/maintainer_team_key, otherwise emit "" so omitted
-	// maintainer attrs match SDKv2's TestCheckNoResourceAttr semantics.
-	if priorMaintainerSet(data.MaintainerID) {
-		data.MaintainerID = stringValueOrNullFromPointer(flag.MaintainerId)
+	// state when the user declared either maintainer_id or
+	// maintainer_team_key (its readFlag helper gated both writes on
+	// GetOk of either). Mirror that: if either attribute is managed,
+	// emit both API values (using "" for nil pointers so
+	// TestCheckResourceAttr(..., "") asserts pass); if neither is
+	// managed, emit null on both so TestCheckNoResourceAttr asserts
+	// pass.
+	maintainerManaged := priorMaintainerSet(data.MaintainerID) || priorMaintainerSet(data.MaintainerTeamKey)
+	if maintainerManaged {
+		data.MaintainerID = stringValueOrEmpty(flag.MaintainerId)
+		data.MaintainerTeamKey = stringValueOrEmpty(flag.MaintainerTeamKey)
 	} else {
-		data.MaintainerID = types.StringValue("")
-	}
-	if priorMaintainerSet(data.MaintainerTeamKey) {
-		data.MaintainerTeamKey = stringValueOrNullFromPointer(flag.MaintainerTeamKey)
-	} else {
-		data.MaintainerTeamKey = types.StringValue("")
+		data.MaintainerID = types.StringNull()
+		data.MaintainerTeamKey = types.StringNull()
 	}
 
 	// Variations
@@ -906,6 +912,14 @@ func variationPatchesFromLists(ctx context.Context, oldList, newList types.List,
 // variations block (SDKv2 Optional+Computed at TypeList level allowed
 // auto-defaults for boolean flags), state remains empty even though
 // the API populates the underlying variations.
+//
+// For JSON-typed variations, the LD API normalises the stored value
+// (e.g. collapses whitespace) which would otherwise diverge from the
+// HCL-supplied string. Mirror SDKv2's suppressEquivalentJsonDiffs:
+// when the prior value at the same index is semantically equal JSON,
+// re-emit the prior string so plan/state stay aligned. Variation
+// name/description fall back to "" (SDKv2 TypeString zero value) so
+// the schema-level Default+Computed semantics carry through Read.
 func variationsListFromAPI(ctx context.Context, variations []ldapi.Variation, variationType string, prior types.List) (types.List, diag.Diagnostics) {
 	objType := types.ObjectType{AttrTypes: featureFlagVariationAttrTypes}
 	var diags diag.Diagnostics
@@ -915,16 +929,31 @@ func variationsListFromAPI(ctx context.Context, variations []ldapi.Variation, va
 		diags.Append(d...)
 		return list, diags
 	}
+	priorByIdx := variationPriorByIndex(ctx, prior, &diags)
 	elements := make([]attr.Value, 0, len(variations))
-	for _, v := range variations {
+	for i, v := range variations {
 		valueStr, err := variationValueToString(&v.Value, variationType)
 		if err != nil {
 			diags.AddError("failed to serialise variation value", err.Error())
 			return types.ListNull(objType), diags
 		}
+		if variationType == JSON_VARIATION && i < len(priorByIdx) {
+			priorVal := priorByIdx[i].Value
+			if !priorVal.IsNull() && !priorVal.IsUnknown() && jsonSemanticallyEqual(priorVal.ValueString(), valueStr) {
+				valueStr = priorVal.ValueString()
+			}
+		}
+		nameVal := types.StringValue("")
+		if v.Name != nil {
+			nameVal = types.StringValue(*v.Name)
+		}
+		descVal := types.StringValue("")
+		if v.Description != nil {
+			descVal = types.StringValue(*v.Description)
+		}
 		obj, d := types.ObjectValue(featureFlagVariationAttrTypes, map[string]attr.Value{
-			NAME:        stringValueOrNullFromPointer(v.Name),
-			DESCRIPTION: stringValueOrNullFromPointer(v.Description),
+			NAME:        nameVal,
+			DESCRIPTION: descVal,
 			VALUE:       types.StringValue(valueStr),
 		})
 		diags.Append(d...)
@@ -933,6 +962,48 @@ func variationsListFromAPI(ctx context.Context, variations []ldapi.Variation, va
 	list, d := types.ListValue(objType, elements)
 	diags.Append(d...)
 	return list, diags
+}
+
+// variationPriorView is the slim subset of a variation we read off the
+// prior plan/state when reconciling JSON-equivalence on Read.
+type variationPriorView struct {
+	Name        types.String `tfsdk:"name"`
+	Description types.String `tfsdk:"description"`
+	Value       types.String `tfsdk:"value"`
+}
+
+func variationPriorByIndex(ctx context.Context, prior types.List, diags *diag.Diagnostics) []variationPriorView {
+	if prior.IsNull() || prior.IsUnknown() {
+		return nil
+	}
+	var rows []variationPriorView
+	d := prior.ElementsAs(ctx, &rows, false)
+	diags.Append(d...)
+	if diags.HasError() {
+		return nil
+	}
+	return rows
+}
+
+// jsonSemanticallyEqual reports whether two strings parse to equal JSON
+// documents. Mirrors framework_json_helpers.go's jsonNormalizePlanModifier
+// but operates inline during Read so we can preserve the user-formatted
+// string when the API normalises whitespace.
+func jsonSemanticallyEqual(a, b string) bool {
+	if a == b {
+		return true
+	}
+	if a == "" || b == "" {
+		return false
+	}
+	var aj, bj interface{}
+	if err := json.Unmarshal([]byte(a), &aj); err != nil {
+		return false
+	}
+	if err := json.Unmarshal([]byte(b), &bj); err != nil {
+		return false
+	}
+	return reflect.DeepEqual(aj, bj)
 }
 
 // customPropertiesFromSet converts the framework Set<custom_property>
@@ -1058,6 +1129,19 @@ func defaultsListFromAPI(ctx context.Context, defaults *ldapi.Defaults, variatio
 // absent (SDKv2 parity — see readFlagPartsToResourceData on main).
 func priorMaintainerSet(v types.String) bool {
 	return !v.IsNull() && !v.IsUnknown() && v.ValueString() != ""
+}
+
+// stringValueOrEmpty returns the API value as types.String, emitting
+// "" rather than null for nil pointers. SDKv2's TypeString zero value
+// is "", so we mirror that here to satisfy
+// TestCheckResourceAttr(..., "") in tests where the API returns nil
+// for an attribute the user is otherwise managing (e.g. maintainer_id
+// when only maintainer_team_key was set).
+func stringValueOrEmpty(p *string) types.String {
+	if p == nil {
+		return types.StringValue("")
+	}
+	return types.StringValue(*p)
 }
 
 // Suppress unused-import warning for strings when no strings.* used.
