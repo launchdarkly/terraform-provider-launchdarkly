@@ -60,7 +60,7 @@ func providerSchema() map[string]*schema.Schema {
 // Provider returns a *schema.Provider.
 func Provider() *schema.Provider {
 	return &schema.Provider{
-		Schema: providerSchema(),
+		Schema:       providerSchema(),
 		ResourcesMap: map[string]*schema.Resource{
 			// launchdarkly_access_token now served by the framework provider; see resource_access_token_framework.go.
 			// launchdarkly_ai_config now served by the framework provider; see resource_ai_config_framework.go.
@@ -70,17 +70,17 @@ func Provider() *schema.Provider {
 			// launchdarkly_custom_role now served by the framework provider; see resource_custom_role_framework.go.
 			// launchdarkly_destination now served by the framework provider; see resource_destination_framework.go.
 			// launchdarkly_environment now served by the framework provider; see resource_environment_framework.go.
-			"launchdarkly_feature_flag": resourceFeatureFlag(),
+			// launchdarkly_feature_flag now served by the framework provider; see resource_feature_flag_framework.go.
 			// launchdarkly_flag_templates now served by the framework provider; see resource_flag_templates_framework.go.
-			"launchdarkly_feature_flag_environment": resourceFeatureFlagEnvironment(),
+			// launchdarkly_feature_flag_environment now served by the framework provider; see resource_feature_flag_environment_framework.go.
 			// launchdarkly_flag_trigger now served by the framework provider; see resource_flag_trigger_framework.go.
 			// launchdarkly_ip_allowlist_config now served by the framework provider; see resource_ip_allowlist_framework.go.
 			// launchdarkly_ip_allowlist_entry now served by the framework provider; see resource_ip_allowlist_framework.go.
 			// launchdarkly_metric now served by the framework provider; see resource_metric_framework.go.
 			// launchdarkly_model_config now served by the framework provider; see resource_model_config_framework.go.
-			"launchdarkly_project": resourceProject(),
+			// launchdarkly_project now served by the framework provider; see resource_project_framework.go.
 			// launchdarkly_relay_proxy_configuration now served by the framework provider; see resource_relay_proxy_configuration_framework.go.
-			"launchdarkly_segment": resourceSegment(),
+			// launchdarkly_segment now served by the framework provider; see resource_segment_framework.go.
 			// launchdarkly_team now served by the framework provider; see resource_team_framework.go.
 			// launchdarkly_team_member now served by the framework provider; see resource_team_member_framework.go.
 			// launchdarkly_view now served by the framework provider; see resource_view_framework.go.

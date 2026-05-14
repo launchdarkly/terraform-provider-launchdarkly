@@ -14,6 +14,9 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	dsschema "github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64default"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	ldapi "github.com/launchdarkly/api-client-go/v22"
@@ -131,6 +134,98 @@ func frameworkApprovalSettingsValue(ctx context.Context, settings *ldapi.Approva
 	list, d := types.ListValue(objectType, []attr.Value{obj})
 	diags.Append(d...)
 	return list, diags
+}
+
+// frameworkApprovalSettingsResourceBlock returns the resource-side
+// ListNestedBlock schema for approval_settings. Shared between
+// project's nested-environments block, segment, FFE, and the standalone
+// environment resource going forward.
+func frameworkApprovalSettingsResourceBlock() schema.ListNestedBlock {
+	return schema.ListNestedBlock{
+		Description: "Approval settings (single element).",
+		NestedObject: schema.NestedBlockObject{
+			Attributes: map[string]schema.Attribute{
+				REQUIRED:                    schema.BoolAttribute{Optional: true, Computed: true, Default: booldefault.StaticBool(false)},
+				CAN_REVIEW_OWN_REQUEST:      schema.BoolAttribute{Optional: true, Computed: true, Default: booldefault.StaticBool(false)},
+				MIN_NUM_APPROVALS:           schema.Int64Attribute{Optional: true, Computed: true, Default: int64default.StaticInt64(1)},
+				CAN_APPLY_DECLINED_CHANGES:  schema.BoolAttribute{Optional: true, Computed: true, Default: booldefault.StaticBool(true)},
+				REQUIRED_APPROVAL_TAGS:      schema.ListAttribute{Optional: true, Computed: true, ElementType: types.StringType},
+				SERVICE_KIND:                schema.StringAttribute{Optional: true, Computed: true},
+				SERVICE_CONFIG:              schema.MapAttribute{Optional: true, Computed: true, ElementType: types.StringType},
+				AUTO_APPLY_APPROVED_CHANGES: schema.BoolAttribute{Optional: true, Computed: true, Default: booldefault.StaticBool(false)},
+			},
+		},
+	}
+}
+
+// approvalSettingsModel matches frameworkApprovalSettingsObjectAttrTypes.
+type approvalSettingsModel struct {
+	Required                 types.Bool   `tfsdk:"required"`
+	CanReviewOwnRequest      types.Bool   `tfsdk:"can_review_own_request"`
+	MinNumApprovals          types.Int64  `tfsdk:"min_num_approvals"`
+	CanApplyDeclinedChanges  types.Bool   `tfsdk:"can_apply_declined_changes"`
+	RequiredApprovalTags     types.List   `tfsdk:"required_approval_tags"`
+	ServiceKind              types.String `tfsdk:"service_kind"`
+	ServiceConfig            types.Map    `tfsdk:"service_config"`
+	AutoApplyApprovedChanges types.Bool   `tfsdk:"auto_apply_approved_changes"`
+}
+
+// approvalPatchesFromModels mirrors approvalPatchFromSettings in
+// approvals_helper.go but operates on framework List values directly.
+// Returns the patch operations needed to apply the difference between
+// the planned and prior state of an approval_settings block.
+func approvalPatchesFromModels(ctx context.Context, planList, stateList types.List) ([]ldapi.PatchOperation, diag.Diagnostics) {
+	var diags diag.Diagnostics
+	planEmpty := planList.IsNull() || planList.IsUnknown() || len(planList.Elements()) == 0
+	stateEmpty := stateList.IsNull() || stateList.IsUnknown() || len(stateList.Elements()) == 0
+	if planEmpty && stateEmpty {
+		return nil, diags
+	}
+	if planEmpty {
+		// Remove gates so LD returns to default approval state.
+		return []ldapi.PatchOperation{
+			patchRemove("/approvalSettings/required"),
+			patchRemove("/approvalSettings/requiredApprovalTags"),
+		}, diags
+	}
+	var models []approvalSettingsModel
+	d := planList.ElementsAs(ctx, &models, false)
+	diags.Append(d...)
+	if diags.HasError() || len(models) == 0 {
+		return nil, diags
+	}
+	m := models[0]
+	requiredApprovalTags, d := stringSliceFromList(ctx, m.RequiredApprovalTags)
+	diags.Append(d...)
+	if diags.HasError() {
+		return nil, diags
+	}
+	if m.Required.ValueBool() && len(requiredApprovalTags) > 0 {
+		diags.AddError("invalid approval_settings config", "required and required_approval_tags cannot be set simultaneously")
+		return nil, diags
+	}
+	serviceKind := m.ServiceKind.ValueString()
+	autoApply := m.AutoApplyApprovedChanges.ValueBool()
+	if serviceKind == "launchdarkly" && autoApply {
+		diags.AddError("invalid approval_settings config", "auto_apply_approved_changes cannot be set to true for service_kind of launchdarkly")
+		return nil, diags
+	}
+	serviceConfig := map[string]interface{}{}
+	raw, d := mapStringFromAttr(ctx, m.ServiceConfig)
+	diags.Append(d...)
+	for k, v := range raw {
+		serviceConfig[k] = v
+	}
+	return []ldapi.PatchOperation{
+		patchReplace("/approvalSettings/required", m.Required.ValueBool()),
+		patchReplace("/approvalSettings/canReviewOwnRequest", m.CanReviewOwnRequest.ValueBool()),
+		patchReplace("/approvalSettings/minNumApprovals", m.MinNumApprovals.ValueInt64()),
+		patchReplace("/approvalSettings/canApplyDeclinedChanges", m.CanApplyDeclinedChanges.ValueBool()),
+		patchReplace("/approvalSettings/requiredApprovalTags", requiredApprovalTags),
+		patchReplace("/approvalSettings/serviceKind", serviceKind),
+		patchReplace("/approvalSettings/serviceConfig", serviceConfig),
+		patchReplace("/approvalSettings/autoApplyApprovedChanges", autoApply),
+	}, diags
 }
 
 // isZeroApprovalSettings reports whether LD's approval-settings doc is

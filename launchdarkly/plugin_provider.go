@@ -170,6 +170,10 @@ func (p *launchdarklyProvider) Resources(_ context.Context) []func() resource.Re
 		NewFlagTriggerResource,
 		NewModelConfigResource,
 		NewTeamRoleMappingResource,
+		NewProjectResource,
+		NewSegmentResource,
+		NewFeatureFlagResource,
+		NewFeatureFlagEnvironmentResource,
 	}
 }
 

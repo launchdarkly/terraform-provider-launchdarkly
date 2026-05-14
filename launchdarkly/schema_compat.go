@@ -37,22 +37,6 @@ func isOmittedEmbeddedSchemaAttrErr(err error, attr string) bool {
 	return false
 }
 
-// resourceDiffSetNewSkipMissingKey runs diff.SetNew and treats a missing schema key as success.
-// Use when embedders remove deprecated attributes from the runtime schema while provider code
-// still references them for Terraform CLI compatibility. A suppressed error is logged at DEBUG
-// so the underlying mismatch remains observable.
-func resourceDiffSetNewSkipMissingKey(diff *schema.ResourceDiff, key string, value interface{}) error {
-	err := diff.SetNew(key, value)
-	if err == nil {
-		return nil
-	}
-	if isOmittedEmbeddedSchemaAttrErr(err, key) {
-		log.Printf("[DEBUG] schema_compat: suppressed SetNew(%q) on missing schema key: %v", key, err)
-		return nil
-	}
-	return err
-}
-
 // resourceDataSetSkipMissingKey runs d.Set and treats a missing schema key as success.
 // A suppressed error is logged at DEBUG.
 func resourceDataSetSkipMissingKey(d *schema.ResourceData, key string, value interface{}) error {

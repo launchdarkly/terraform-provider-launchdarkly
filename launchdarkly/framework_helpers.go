@@ -99,6 +99,19 @@ func listFromStringSlice(ctx context.Context, vals []string) (types.List, diag.D
 	return types.ListValueFrom(ctx, types.StringType, vals)
 }
 
+// listFromStringSlicePreservingPlan is the list analogue of
+// setFromStringSlicePreservingPlan: API empty + existing null → null;
+// API empty + existing populated → empty list; API populated → list.
+func listFromStringSlicePreservingPlan(ctx context.Context, vals []string, existing types.List) (types.List, diag.Diagnostics) {
+	if len(vals) > 0 {
+		return types.ListValueFrom(ctx, types.StringType, vals)
+	}
+	if existing.IsNull() {
+		return types.ListNull(types.StringType), nil
+	}
+	return types.ListValueMust(types.StringType, []attr.Value{}), nil
+}
+
 // stringValueFromPointer dereferences a *string into a non-null
 // types.String, defaulting to empty when the pointer is nil. Use for
 // Computed attributes where "" is the intended state for an absent API

@@ -8,7 +8,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	ldapi "github.com/launchdarkly/api-client-go/v22"
 )
 
@@ -17,8 +16,6 @@ func getRandomSleepDuration(maxDuration time.Duration) time.Duration {
 	n := rand.Int63n(int64(maxDuration))
 	return time.Duration(n)
 }
-
-func ptr(v interface{}) *interface{} { return &v }
 
 func intPtr(i int) *int {
 	return &i
@@ -98,52 +95,6 @@ func stringInSlice(a string, list []string) bool {
 		}
 	}
 	return false
-}
-
-func emptyValue[V any](v V) V {
-	var empty V
-	return empty
-}
-
-// emptyValueIfDataSource is a generic function that returns the empty value for the type. For example,
-// it returns 0 for an int, false for a bool and nil for an interface{}
-func emptyValueIfDataSource[V any](v V, isDataSource bool) V {
-	if isDataSource {
-		return emptyValue(v)
-	}
-	return v
-}
-
-// removeInvalidFieldsForDataSource removes all default and validation functions from the schema map.
-// This is done because Terraform requires defaults and validation functions to be nil for read-only data-source attributes.
-//
-// TODO(phase-5): all launchdarkly data sources are now served by the
-// terraform-plugin-framework provider (Phase 1). This helper is only
-// kept alive by SDKv2 *resource* schemas that still call it with
-// isDataSource=true for shape-shared construction. Once Phase 5 (SDKv2
-// cutover) lands, the call sites disappear and this function can be
-// deleted.
-func removeInvalidFieldsForDataSource(schemaMap map[string]*schema.Schema) map[string]*schema.Schema {
-	for k, v := range schemaMap {
-		if v.Computed {
-			v.Default = emptyValue(v.Default)
-			v.ValidateDiagFunc = emptyValue(v.ValidateDiagFunc)
-			v.DiffSuppressFunc = emptyValue(v.DiffSuppressFunc)
-			v.MinItems = emptyValue(v.MinItems)
-			v.MaxItems = emptyValue(v.MaxItems)
-			v.ConflictsWith = emptyValue(v.ConflictsWith)
-		}
-
-		// Recursively remove invalid fields from nested schema
-		if v.Elem != nil {
-			if elem, ok := v.Elem.(*schema.Resource); ok {
-				elem.Schema = removeInvalidFieldsForDataSource(elem.Schema)
-				v.Elem = elem
-			}
-		}
-		schemaMap[k] = v
-	}
-	return schemaMap
 }
 
 func addForceNewDescription(description string, forceNew bool) string {
