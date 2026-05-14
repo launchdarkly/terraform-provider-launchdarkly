@@ -453,7 +453,7 @@ func (r *ProjectResource) readIntoModel(ctx context.Context, projectKey string, 
 	data.Key = types.StringValue(project.Key)
 	data.Name = types.StringValue(project.Name)
 
-	tagsSet, d := setFromStringSlice(ctx, project.Tags)
+	tagsSet, d := setFromStringSlicePreservingPlan(ctx, project.Tags, data.Tags)
 	diags.Append(d...)
 	data.Tags = tagsSet
 
