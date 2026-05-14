@@ -146,10 +146,114 @@ func TestStateCompatView_Basic(t *testing.T) {
 	runCase(t, stateCompatCase{name: "view_basic"})
 }
 
-// phase2Inventory keys the Phase 2 fixture set.
+// Phase 4 fixtures.
+
+func TestStateCompatProject_Basic(t *testing.T) {
+	runCase(t, stateCompatCase{name: "project_basic"})
+}
+func TestStateCompatProject_IIS(t *testing.T) {
+	runCase(t, stateCompatCase{name: "project_iis"})
+}
+func TestStateCompatProject_CSA(t *testing.T) {
+	runCase(t, stateCompatCase{name: "project_csa"})
+}
+func TestStateCompatProject_MultiEnv(t *testing.T) {
+	runCase(t, stateCompatCase{name: "project_multi_env"})
+}
+func TestStateCompatProject_ViewAssociation(t *testing.T) {
+	runCase(t, stateCompatCase{name: "project_view_association"})
+}
+func TestStateCompatProject_EnvApprovals(t *testing.T) {
+	runCase(t, stateCompatCase{name: "project_env_approvals"})
+}
+
+func TestStateCompatSegment_Basic(t *testing.T) {
+	runCase(t, stateCompatCase{name: "segment_basic"})
+}
+func TestStateCompatSegment_IncludedExcluded(t *testing.T) {
+	runCase(t, stateCompatCase{name: "segment_included_excluded"})
+}
+func TestStateCompatSegment_Rules(t *testing.T) {
+	runCase(t, stateCompatCase{name: "segment_rules"})
+}
+func TestStateCompatSegment_RuleRollout(t *testing.T) {
+	runCase(t, stateCompatCase{name: "segment_rule_rollout"})
+}
+func TestStateCompatSegment_Contexts(t *testing.T) {
+	runCase(t, stateCompatCase{name: "segment_contexts"})
+}
+func TestStateCompatSegment_Big(t *testing.T) {
+	runCase(t, stateCompatCase{name: "segment_big"})
+}
+
+func TestStateCompatFeatureFlag_Boolean(t *testing.T) {
+	runCase(t, stateCompatCase{name: "feature_flag_boolean"})
+}
+func TestStateCompatFeatureFlag_String(t *testing.T) {
+	runCase(t, stateCompatCase{name: "feature_flag_string"})
+}
+func TestStateCompatFeatureFlag_Number(t *testing.T) {
+	runCase(t, stateCompatCase{name: "feature_flag_number"})
+}
+func TestStateCompatFeatureFlag_JSON(t *testing.T) {
+	runCase(t, stateCompatCase{name: "feature_flag_json"})
+}
+func TestStateCompatFeatureFlag_CustomProperties(t *testing.T) {
+	runCase(t, stateCompatCase{name: "feature_flag_custom_properties"})
+}
+func TestStateCompatFeatureFlag_CSA(t *testing.T) {
+	runCase(t, stateCompatCase{name: "feature_flag_csa"})
+}
+func TestStateCompatFeatureFlag_IIS(t *testing.T) {
+	runCase(t, stateCompatCase{name: "feature_flag_iis"})
+}
+func TestStateCompatFeatureFlag_Defaults(t *testing.T) {
+	runCase(t, stateCompatCase{name: "feature_flag_defaults"})
+}
+func TestStateCompatFeatureFlag_Tags(t *testing.T) {
+	runCase(t, stateCompatCase{name: "feature_flag_tags"})
+}
+func TestStateCompatFeatureFlag_Deprecated(t *testing.T) {
+	runCase(t, stateCompatCase{name: "feature_flag_deprecated"})
+}
+
+func TestStateCompatFFE_SimpleOn(t *testing.T) {
+	runCase(t, stateCompatCase{name: "ffe_simple_on"})
+}
+func TestStateCompatFFE_RulesSingle(t *testing.T) {
+	runCase(t, stateCompatCase{name: "ffe_rules_single"})
+}
+func TestStateCompatFFE_RulesMultiClause(t *testing.T) {
+	runCase(t, stateCompatCase{name: "ffe_rules_multi_clause"})
+}
+func TestStateCompatFFE_RuleRollout(t *testing.T) {
+	runCase(t, stateCompatCase{name: "ffe_rule_rollout"})
+}
+func TestStateCompatFFE_Targets(t *testing.T) {
+	runCase(t, stateCompatCase{name: "ffe_targets"})
+}
+func TestStateCompatFFE_ContextTargets(t *testing.T) {
+	runCase(t, stateCompatCase{name: "ffe_context_targets"})
+}
+func TestStateCompatFFE_Prerequisites(t *testing.T) {
+	runCase(t, stateCompatCase{name: "ffe_prerequisites"})
+}
+func TestStateCompatFFE_FallthroughRollout(t *testing.T) {
+	runCase(t, stateCompatCase{name: "ffe_fallthrough_rollout"})
+}
+func TestStateCompatFFE_OffVariation(t *testing.T) {
+	runCase(t, stateCompatCase{name: "ffe_off_variation"})
+}
+func TestStateCompatFFE_FullyLoaded(t *testing.T) {
+	runCase(t, stateCompatCase{name: "ffe_fully_loaded"})
+}
+
+// phase2Inventory keys the Phase 2 + Phase 4 fixture set.
 // TestStateCompatPhase2_Inventory below logs (but does not fail on) the
 // list of fixtures still to capture, giving operators a single
-// `go test`-driven checklist.
+// `go test`-driven checklist. The sub-package's name stuck at
+// state_compat_phase2 for backwards-compat — Phase 4 fixtures land
+// here too because the sweep-flag isolation argument is identical.
 var phase2Inventory = []string{
 	"access_token_basic",
 	"access_token_custom_roles",
@@ -161,6 +265,42 @@ var phase2Inventory = []string{
 	"team_member_basic",
 	"view_basic",
 	"webhook_basic",
+	// Phase 4 — project (6)
+	"project_basic",
+	"project_iis",
+	"project_csa",
+	"project_multi_env",
+	"project_view_association",
+	"project_env_approvals",
+	// Phase 4 — segment (6)
+	"segment_basic",
+	"segment_included_excluded",
+	"segment_rules",
+	"segment_rule_rollout",
+	"segment_contexts",
+	"segment_big",
+	// Phase 4 — feature_flag (10)
+	"feature_flag_boolean",
+	"feature_flag_string",
+	"feature_flag_number",
+	"feature_flag_json",
+	"feature_flag_custom_properties",
+	"feature_flag_csa",
+	"feature_flag_iis",
+	"feature_flag_defaults",
+	"feature_flag_tags",
+	"feature_flag_deprecated",
+	// Phase 4 — feature_flag_environment (10)
+	"ffe_simple_on",
+	"ffe_rules_single",
+	"ffe_rules_multi_clause",
+	"ffe_rule_rollout",
+	"ffe_targets",
+	"ffe_context_targets",
+	"ffe_prerequisites",
+	"ffe_fallthrough_rollout",
+	"ffe_off_variation",
+	"ffe_fully_loaded",
 }
 
 func TestStateCompatPhase2_Inventory(t *testing.T) {
