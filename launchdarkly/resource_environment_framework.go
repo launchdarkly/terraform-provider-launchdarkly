@@ -429,11 +429,11 @@ func (r *EnvironmentResource) readIntoModel(
 	data.ConfirmChanges = types.BoolValue(env.ConfirmChanges)
 	data.Critical = types.BoolValue(env.Critical)
 
-	tagsSet, d := setFromStringSlice(ctx, env.Tags)
+	tagsSet, d := setFromStringSlicePreservingPlan(ctx, env.Tags, data.Tags)
 	diags.Append(d...)
 	data.Tags = tagsSet
 
-	approvals, d := frameworkApprovalSettingsValue(ctx, env.ApprovalSettings)
+	approvals, d := frameworkApprovalSettingsValue(ctx, env.ApprovalSettings, data.ApprovalSettings)
 	diags.Append(d...)
 	data.ApprovalSettings = approvals
 }

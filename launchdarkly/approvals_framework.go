@@ -83,15 +83,18 @@ func frameworkApprovalSettingsDataSourceBlock() dsschema.ListNestedBlock {
 }
 
 // frameworkApprovalSettingsValue converts an LD-API ApprovalSettings
-// into a single-element types.List (matching the SDKv2 TypeList:1 shape
-// that approvalSettingsToResourceData produced). Empty / unset settings
-// produce an empty list, not null, so wire shape is stable.
-func frameworkApprovalSettingsValue(ctx context.Context, settings *ldapi.ApprovalSettings) (basetypes.ListValue, diag.Diagnostics) {
+// into a single-element types.List, mirroring the prior state's block
+// presence. Framework blocks can't be Computed at the block level —
+// state must follow config-declared block count (Phase 4 plan gotcha
+// #3). The `prior` argument carries the plan's view of the block
+// (during Create/Update) or the previous state (during Refresh) so
+// the read can emit count=0 when user did not declare the block and
+// count=1 when they did, even when both branches resolve to LD-API
+// "default" approval values.
+func frameworkApprovalSettingsValue(ctx context.Context, settings *ldapi.ApprovalSettings, prior basetypes.ListValue) (basetypes.ListValue, diag.Diagnostics) {
 	objectType := types.ObjectType{AttrTypes: frameworkApprovalSettingsObjectAttrTypes}
-	// Framework blocks can't be Computed at the block level (SDKv2 had
-	// Optional+Computed on the TypeList), so emit empty for LD's
-	// zero-default struct to keep omitted-config plans empty.
-	if settings == nil || isZeroApprovalSettings(settings) {
+	priorEmpty := prior.IsNull() || prior.IsUnknown() || len(prior.Elements()) == 0
+	if settings == nil || priorEmpty {
 		return types.ListValue(objectType, []attr.Value{})
 	}
 
@@ -268,29 +271,26 @@ func approvalPatchesFromModels(ctx context.Context, planList, stateList types.Li
 	}, diags
 }
 
-// isZeroApprovalSettings reports whether LD's approval-settings doc is
-// effectively unconfigured. LD returns a struct (with API defaults
-// like minNumApprovals=1) for envs without approvals; we treat the
-// doc as absent when no approval gate is active and no service
-// integration is wired up.
-func isZeroApprovalSettings(s *ldapi.ApprovalSettings) bool {
-	if s == nil {
-		return true
+// frameworkApprovalSettingsDataSourceValue is the data-source variant
+// that always emits the populated block when LD returns approval
+// settings, since data source attrs are Computed-only and don't go
+// through the resource block-presence consistency check.
+func frameworkApprovalSettingsDataSourceValue(ctx context.Context, settings *ldapi.ApprovalSettings) (basetypes.ListValue, diag.Diagnostics) {
+	// Synthetic "non-empty prior" so the helper emits populated.
+	objectType := types.ObjectType{AttrTypes: frameworkApprovalSettingsObjectAttrTypes}
+	if settings == nil {
+		return types.ListValue(objectType, []attr.Value{})
 	}
-	if s.Required {
-		return false
-	}
-	if len(s.RequiredApprovalTags) > 0 {
-		return false
-	}
-	if s.ServiceKind != "" && s.ServiceKind != "launchdarkly" {
-		return false
-	}
-	if len(s.ServiceConfig) > 0 {
-		return false
-	}
-	if s.AutoApplyApprovedChanges != nil && *s.AutoApplyApprovedChanges {
-		return false
-	}
-	return true
+	priorObj, _ := types.ObjectValue(frameworkApprovalSettingsObjectAttrTypes, map[string]attr.Value{
+		REQUIRED:                    types.BoolValue(false),
+		CAN_REVIEW_OWN_REQUEST:      types.BoolValue(false),
+		MIN_NUM_APPROVALS:           types.Int64Value(0),
+		CAN_APPLY_DECLINED_CHANGES:  types.BoolValue(false),
+		REQUIRED_APPROVAL_TAGS:      types.ListNull(types.StringType),
+		SERVICE_KIND:                types.StringValue(""),
+		SERVICE_CONFIG:              types.MapNull(types.StringType),
+		AUTO_APPLY_APPROVED_CHANGES: types.BoolValue(false),
+	})
+	priorList, _ := types.ListValue(objectType, []attr.Value{priorObj})
+	return frameworkApprovalSettingsValue(ctx, settings, priorList)
 }

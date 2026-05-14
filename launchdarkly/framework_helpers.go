@@ -172,7 +172,10 @@ func setFromStringSlicePreservingPlan(ctx context.Context, vals []string, existi
 	if len(vals) > 0 {
 		return types.SetValueFrom(ctx, types.StringType, vals)
 	}
-	if existing.IsNull() {
+	// Unknown (Optional+Computed plan value when user omits the attr)
+	// and Null (Optional-only plan value when user omits the attr) both
+	// mean "user did not declare this", so emit null in state.
+	if existing.IsNull() || existing.IsUnknown() {
 		return types.SetNull(types.StringType), nil
 	}
 	return types.SetValueMust(types.StringType, []attr.Value{}), nil

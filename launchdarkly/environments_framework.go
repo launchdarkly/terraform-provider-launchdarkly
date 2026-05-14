@@ -257,9 +257,15 @@ func environmentsListFromAPI(ctx context.Context, envs []ldapi.Environment, prio
 	return list, diags
 }
 
-func environmentObjectFromAPI(ctx context.Context, e ldapi.Environment, _ *environmentBlockModel) (basetypes.ObjectValue, diag.Diagnostics) {
-	tags, diags := setFromStringSlice(ctx, e.Tags)
-	approvals, d := frameworkApprovalSettingsValue(ctx, e.ApprovalSettings)
+func environmentObjectFromAPI(ctx context.Context, e ldapi.Environment, prior *environmentBlockModel) (basetypes.ObjectValue, diag.Diagnostics) {
+	priorTags := types.SetNull(types.StringType)
+	priorApprovals := types.ListNull(types.ObjectType{AttrTypes: frameworkApprovalSettingsObjectAttrTypes})
+	if prior != nil {
+		priorTags = prior.Tags
+		priorApprovals = prior.ApprovalSettings
+	}
+	tags, diags := setFromStringSlicePreservingPlan(ctx, e.Tags, priorTags)
+	approvals, d := frameworkApprovalSettingsValue(ctx, e.ApprovalSettings, priorApprovals)
 	diags.Append(d...)
 	obj, d := types.ObjectValue(environmentBlockAttrTypes, map[string]attr.Value{
 		KEY:                  types.StringValue(e.Key),
