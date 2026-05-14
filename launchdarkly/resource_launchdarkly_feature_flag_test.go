@@ -1750,3 +1750,89 @@ resource "launchdarkly_feature_flag" "test" {
 		},
 	})
 }
+
+// TestAccFeatureFlag_DeletePrerequisitePlanError exercises the
+// destroy-plan dependent-flag validator in FeatureFlagResource.ModifyPlan
+// (issue #372).
+func TestAccFeatureFlag_DeletePrerequisitePlanError(t *testing.T) {
+	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+
+	configFull := withRandomProject(projectKey, `
+resource "launchdarkly_feature_flag" "prereq" {
+	project_key    = launchdarkly_project.test.key
+	key            = "prereq-flag"
+	name           = "prerequisite flag"
+	variation_type = "boolean"
+}
+
+resource "launchdarkly_feature_flag" "dependent" {
+	project_key    = launchdarkly_project.test.key
+	key            = "dependent-flag"
+	name           = "dependent flag"
+	variation_type = "boolean"
+}
+
+resource "launchdarkly_feature_flag_environment" "dependent_env" {
+	flag_id = launchdarkly_feature_flag.dependent.id
+	env_key = "test"
+	on      = false
+	prerequisites {
+		flag_key  = launchdarkly_feature_flag.prereq.key
+		variation = 0
+	}
+	fallthrough {
+		variation = 0
+	}
+	off_variation = 1
+}
+`)
+
+	// Same project + dependent flag + FFE-with-prereq, but the prereq
+	// flag resource is removed from config. HCL keeps the literal flag
+	// key string in the prerequisites block so the file still compiles;
+	// Terraform plans destruction of `launchdarkly_feature_flag.prereq`
+	// and ModifyPlan should fail at plan time with the prerequisite
+	// hint rather than waiting for the apply-time 409.
+	configMissingPrereq := withRandomProject(projectKey, `
+resource "launchdarkly_feature_flag" "dependent" {
+	project_key    = launchdarkly_project.test.key
+	key            = "dependent-flag"
+	name           = "dependent flag"
+	variation_type = "boolean"
+}
+
+resource "launchdarkly_feature_flag_environment" "dependent_env" {
+	flag_id = launchdarkly_feature_flag.dependent.id
+	env_key = "test"
+	on      = false
+	prerequisites {
+		flag_key  = "prereq-flag"
+		variation = 0
+	}
+	fallthrough {
+		variation = 0
+	}
+	off_variation = 1
+}
+`)
+
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckProjectDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config: configFull,
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckFeatureFlagExists("launchdarkly_feature_flag.prereq"),
+					testAccCheckFeatureFlagExists("launchdarkly_feature_flag.dependent"),
+				),
+			},
+			{
+				Config:      configMissingPrereq,
+				PlanOnly:    true,
+				ExpectError: regexp.MustCompile(`is a prerequisite for other flags and cannot be destroyed`),
+			},
+		},
+	})
+}

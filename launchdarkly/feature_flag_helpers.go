@@ -185,3 +185,42 @@ func normalizeJSONString(input string) (string, error) {
 	}
 	return string(out), nil
 }
+
+// getDependentFlags returns the flags that reference the named flag as a
+// prerequisite, across every environment in the project. Backs the
+// plan-time destroy check in FeatureFlagResource.ModifyPlan so the
+// "Flag is still in use as a prerequisite" 409 from DELETE surfaces at
+// plan time instead of apply time.
+//
+// Enterprise-only beta endpoint; non-Enterprise tokens get a 403 which
+// the caller should degrade to a warning so apply behaviour is unchanged.
+func getDependentFlags(ctx context.Context, client *Client, projectKey, flagKey string) (*ldapi.MultiEnvironmentDependentFlags, error) {
+	var deps *ldapi.MultiEnvironmentDependentFlags
+	err := client.withConcurrency(ctx, func() error {
+		got, _, e := client.ld.FeatureFlagsBetaApi.GetDependentFlags(client.ctx, projectKey, flagKey).Execute()
+		if e != nil {
+			return e
+		}
+		deps = got
+		return nil
+	})
+	if err != nil {
+		return nil, handleLdapiErr(err)
+	}
+	return deps, nil
+}
+
+// formatDependentFlagsHint renders the diagnostic detail body for the
+// plan-time prerequisite-delete error. One bullet per (env, flag) pair,
+// followed by a remediation pointer.
+func formatDependentFlagsHint(items []ldapi.MultiEnvironmentDependentFlag) string {
+	var b strings.Builder
+	b.WriteString("The following flags reference this flag as a prerequisite:\n")
+	for _, item := range items {
+		for _, env := range item.Environments {
+			fmt.Fprintf(&b, "  - environment %q, flag %q\n", env.Key, item.Key)
+		}
+	}
+	b.WriteString("\nRemove the prerequisite from each listed flag (edit its launchdarkly_feature_flag_environment.prerequisites block) before destroying this flag.")
+	return b.String()
+}
