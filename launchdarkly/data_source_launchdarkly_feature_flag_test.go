@@ -148,6 +148,10 @@ resource "launchdarkly_feature_flag" "test" {
 	name           = "Test Flag with Views"
 	description    = "a flag to test views in the terraform flag data source"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 	temporary      = false
 }
 

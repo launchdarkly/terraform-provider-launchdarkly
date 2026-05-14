@@ -216,9 +216,14 @@ func (m frameworkPolicyStatementModel) toLDAPI() (ldapi.StatementPost, diag.Diag
 // framework types.List of objects matching
 // frameworkPolicyStatementsObjectAttrTypes. Empty inner slices project
 // to null lists (matching SDKv2 Optional-only semantics where absent
-// inner attrs are not present in state).
+// inner attrs are not present in state). When the API returns zero
+// statements, return null so plan-vs-apply consistency holds for
+// Optional-only callers (webhook, custom_role inline_roles, etc.).
 func frameworkPolicyStatementsValue(ctx context.Context, statements []ldapi.Statement) (basetypes.ListValue, diag.Diagnostics) {
 	objectType := types.ObjectType{AttrTypes: frameworkPolicyStatementsObjectAttrTypes}
+	if len(statements) == 0 {
+		return types.ListNull(objectType), nil
+	}
 
 	elements := make([]attr.Value, 0, len(statements))
 	var diags diag.Diagnostics

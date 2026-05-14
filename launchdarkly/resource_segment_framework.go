@@ -660,6 +660,9 @@ func segmentResourceRulesValue(ctx context.Context, rules []ldapi.UserSegmentRul
 		diags.Append(d...)
 		elements = append(elements, obj)
 	}
+	if len(elements) == 0 {
+		return types.ListNull(objectType)
+	}
 	list, d := types.ListValue(objectType, elements)
 	diags.Append(d...)
 	return list

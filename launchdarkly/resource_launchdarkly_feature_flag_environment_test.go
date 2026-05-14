@@ -154,6 +154,10 @@ resource "launchdarkly_feature_flag" "bool" {
 	key = "bool-flag"
 	name = "boolean flag"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 }
 
 resource "launchdarkly_feature_flag" "basic" {
@@ -191,6 +195,10 @@ resource "launchdarkly_feature_flag" "bool" {
 	key = "bool-flag"
 	name = "boolean flag"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 }
 
 resource "launchdarkly_feature_flag" "basic" {
@@ -223,6 +231,10 @@ resource "launchdarkly_feature_flag" "bool_flag" {
 	key = "bool-flag"
 	name = "boolean flag"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 }
 
 resource "launchdarkly_feature_flag_environment" "bool_clause" {
@@ -252,6 +264,10 @@ resource "launchdarkly_feature_flag" "bool_flag" {
 	key = "bool-flag"
 	name = "boolean flag"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 }
 
 resource "launchdarkly_feature_flag_environment" "bool_clause" {
@@ -282,6 +298,10 @@ resource "launchdarkly_feature_flag" "bool_flag" {
 	key = "bool-flag"
 	name = "boolean flag"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 }
 
 resource "launchdarkly_feature_flag_environment" "number_clause" {
@@ -456,6 +476,10 @@ resource "launchdarkly_feature_flag" "context_test" {
 	key = "test-flag"
 	name = "Context Kind Test Flag"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 }
 
 resource "launchdarkly_feature_flag_environment" "custom_context" {
@@ -488,6 +512,10 @@ resource "launchdarkly_feature_flag" "context_test" {
 	key = "test-flag"
 	name = "Context Kind Test Flag"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 }
 
 resource "launchdarkly_feature_flag_environment" "custom_context" {
@@ -519,6 +547,10 @@ resource "launchdarkly_feature_flag" "context_test" {
 	key = "test-flag"
 	name = "Context Kind Test Flag"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 }
 
 resource "launchdarkly_feature_flag_environment" "custom_context" {
@@ -551,6 +583,10 @@ resource "launchdarkly_feature_flag" "context_test" {
 	key = "test-flag"
 	name = "Context Kind Test Flag"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 }
 
 resource "launchdarkly_feature_flag_environment" "rules_custom_context" {

@@ -70,6 +70,10 @@ func withRandomFlag(randomFlag, resource string) string {
 			key = "%s"
 			name = "Basic feature flag"
 			variation_type = "boolean"
+			variations = [
+				{ value = "true" },
+				{ value = "false" },
+			]
 		}
 	
 	%s`, randomFlag, resource)

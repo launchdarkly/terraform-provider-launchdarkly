@@ -231,6 +231,9 @@ func (d *SegmentDataSource) Read(ctx context.Context, req datasource.ReadRequest
 
 func segmentTargetsToFrameworkListImpl(ctx context.Context, targets []ldapi.SegmentTarget) types.List {
 	objectType := types.ObjectType{AttrTypes: segmentTargetAttrTypes}
+	if len(targets) == 0 {
+		return types.ListNull(objectType)
+	}
 	elements := make([]attr.Value, 0, len(targets))
 	for _, t := range targets {
 		values := []string{}

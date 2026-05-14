@@ -107,11 +107,12 @@ func frameworkRoleAttributePatches(ctx context.Context, planSet, stateSet types.
 
 // frameworkRoleAttributesValue converts an LD-API role_attributes map
 // (map[key] -> []string values) into a framework types.Set of objects.
-// Nil input returns an empty set.
+// Nil or empty input returns a null set so plan-vs-apply consistency
+// holds for the resource variant (Optional-only schema).
 func frameworkRoleAttributesValue(ctx context.Context, roleAttributes *map[string][]string) (basetypes.SetValue, diag.Diagnostics) {
 	objectType := types.ObjectType{AttrTypes: frameworkRoleAttributeAttrTypes}
-	if roleAttributes == nil {
-		return types.SetValue(objectType, []attr.Value{})
+	if roleAttributes == nil || len(*roleAttributes) == 0 {
+		return types.SetNull(objectType), nil
 	}
 
 	var diags diag.Diagnostics

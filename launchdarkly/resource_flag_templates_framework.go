@@ -244,7 +244,6 @@ func (r *FlagTemplatesResource) readIntoModel(
 		list, _ := types.ListValue(objectType, []attr.Value{obj})
 		data.BooleanDefaults = list
 	} else {
-		empty, _ := types.ListValue(objectType, []attr.Value{})
-		data.BooleanDefaults = empty
+		data.BooleanDefaults = types.ListNull(objectType)
 	}
 }

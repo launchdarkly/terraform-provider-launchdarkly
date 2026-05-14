@@ -35,6 +35,10 @@ resource "launchdarkly_feature_flag" "test1" {
 	key         = "test-flag-1"
 	name        = "Test Flag 1"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 }
 
 resource "launchdarkly_feature_flag" "test2" {
@@ -42,6 +46,10 @@ resource "launchdarkly_feature_flag" "test2" {
 	key         = "test-flag-2"
 	name        = "Test Flag 2"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 }
 
 resource "launchdarkly_view_links" "test" {
@@ -79,6 +87,10 @@ resource "launchdarkly_feature_flag" "test1" {
 	key         = "test-flag-1"
 	name        = "Test Flag 1"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 }
 
 resource "launchdarkly_feature_flag" "test2" {
@@ -86,6 +98,10 @@ resource "launchdarkly_feature_flag" "test2" {
 	key         = "test-flag-2"
 	name        = "Test Flag 2"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 }
 
 resource "launchdarkly_feature_flag" "test3" {
@@ -93,6 +109,10 @@ resource "launchdarkly_feature_flag" "test3" {
 	key         = "test-flag-3"
 	name        = "Test Flag 3"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 }
 
 resource "launchdarkly_view_links" "test" {
@@ -130,6 +150,10 @@ resource "launchdarkly_feature_flag" "test1" {
 	key         = "test-flag-1"
 	name        = "Test Flag 1"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 }
 
 resource "launchdarkly_feature_flag" "test2" {
@@ -137,6 +161,10 @@ resource "launchdarkly_feature_flag" "test2" {
 	key         = "test-flag-2"
 	name        = "Test Flag 2"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 }
 
 resource "launchdarkly_feature_flag" "test3" {
@@ -144,6 +172,10 @@ resource "launchdarkly_feature_flag" "test3" {
 	key         = "test-flag-3"
 	name        = "Test Flag 3"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 }
 
 // Note: No launchdarkly_view_links resource - this should unlink all flags
@@ -177,6 +209,10 @@ resource "launchdarkly_feature_flag" "flag1" {
 	key            = "test-flag-1"
 	name           = "Test Flag 1"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 }
 
 resource "launchdarkly_feature_flag" "flag2" {
@@ -184,6 +220,10 @@ resource "launchdarkly_feature_flag" "flag2" {
 	key            = "test-flag-2"
 	name           = "Test Flag 2"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 }
 
 resource "launchdarkly_feature_flag" "flag3" {
@@ -191,6 +231,10 @@ resource "launchdarkly_feature_flag" "flag3" {
 	key            = "test-flag-3"
 	name           = "Test Flag 3"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 }
 
 resource "launchdarkly_segment" "segment1" {
@@ -264,6 +308,10 @@ resource "launchdarkly_feature_flag" "flag1" {
 	key            = "test-flag-1"
 	name           = "Test Flag 1"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 }
 
 resource "launchdarkly_feature_flag" "flag2" {
@@ -271,6 +319,10 @@ resource "launchdarkly_feature_flag" "flag2" {
 	key            = "test-flag-2"
 	name           = "Test Flag 2"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 }
 
 resource "launchdarkly_feature_flag" "flag3" {
@@ -278,6 +330,10 @@ resource "launchdarkly_feature_flag" "flag3" {
 	key            = "test-flag-3"
 	name           = "Test Flag 3"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 }
 
 resource "launchdarkly_segment" "segment1" {
@@ -351,6 +407,10 @@ resource "launchdarkly_feature_flag" "flag1" {
 	key            = "test-flag-1"
 	name           = "Test Flag 1"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 }
 
 resource "launchdarkly_feature_flag" "flag2" {
@@ -358,6 +418,10 @@ resource "launchdarkly_feature_flag" "flag2" {
 	key            = "test-flag-2"
 	name           = "Test Flag 2"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 }
 
 resource "launchdarkly_feature_flag" "flag3" {
@@ -365,6 +429,10 @@ resource "launchdarkly_feature_flag" "flag3" {
 	key            = "test-flag-3"
 	name           = "Test Flag 3"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 }
 
 resource "launchdarkly_segment" "segment1" {

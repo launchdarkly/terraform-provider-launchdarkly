@@ -160,14 +160,13 @@ resource "launchdarkly_project" "many_envs" {
   key  = "%s"
   name = "Project with many environments"
 
-  dynamic "environments" {
-    for_each = local.envs
-    content {
-      key   = format("env-%s", environments.key)
-      name  = format("Env %s", environments.key)
+  environments = [
+    for n in local.envs : {
+      key   = format("env-%s", n)
+      name  = format("Env %s", n)
       color = "000000"
     }
-  }
+  ]
 
 	tags = [ "terraform", "test" ]
 }

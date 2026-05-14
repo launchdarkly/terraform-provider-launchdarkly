@@ -20,6 +20,10 @@ resource "launchdarkly_feature_flag" "deprecated" {
 	key = "deprecated-flag"
 	name = "Deprecated feature flag"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 	deprecated = true
 }
 `
@@ -30,6 +34,10 @@ resource "launchdarkly_feature_flag" "deprecated" {
 	key = "deprecated-flag"
 	name = "Deprecated feature flag"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 	deprecated = false
 }
 `
@@ -40,6 +48,10 @@ resource "launchdarkly_feature_flag" "basic" {
 	key = "basic-flag"
 	name = "Basic feature flag"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 }
 `
 	testAccFeatureFlagBasicWithTag = `
@@ -48,6 +60,10 @@ resource "launchdarkly_feature_flag" "basic" {
 	key = "basic-flag"
 	name = "Basic feature flag"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 	tags = ["test"]
 }
 `
@@ -58,6 +74,10 @@ resource "launchdarkly_feature_flag" "basic" {
 	key = "basic-flag"
 	name = "Basic feature flag"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 	tags = ["test"]
 
 	client_side_availability = [{
@@ -73,6 +93,10 @@ resource "launchdarkly_feature_flag" "basic" {
 	key = "basic-flag"
 	name = "Less basic feature flag"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 	description = "this is a boolean flag by default because the variations field is omitted"
 	tags = ["update", "terraform"]
 	include_in_snippet = true
@@ -177,6 +201,10 @@ resource "launchdarkly_feature_flag" "json" {
 		key = "maintained-flag"
 		name = "Maintained feature flag"
 		variation_type = "boolean"
+		variations = [
+			{ value = "true" },
+			{ value = "false" },
+		]
 		maintainer_team_key = launchdarkly_team.test_team.key
 	}
 	`
@@ -197,6 +225,10 @@ resource "launchdarkly_feature_flag" "maintained" {
 	key = "maintained-flag"
 	name = "Maintained feature flag"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 	maintainer_id = launchdarkly_team_member.test.id
 }
 `
@@ -217,6 +249,10 @@ resource "launchdarkly_feature_flag" "maintained" {
 	key = "maintained-flag"
 	name = "Maintained feature flag"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 }
 `
 
@@ -227,6 +263,10 @@ resource "launchdarkly_feature_flag" "maintained" {
 	key = "maintained-flag"
 	name = "Maintained feature flag"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 }
 `
 
@@ -236,6 +276,10 @@ resource "launchdarkly_feature_flag" "maintained" {
 	key = "maintained-flag"
 	name = "Maintained feature flag"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 
 	# the maintainer id set to a random object ID, so it should be invalid
 	maintainer_id = "507f191e810c19729de860ea"
@@ -249,35 +293,32 @@ resource "launchdarkly_feature_flag" "multivariate" {
 	name = "multivariate flag 1 name"
 	description = "this is a multivariate flag because we explicitly define the variations"
 	variation_type = "string"
-	variations = [{
-		name = "variation1"
-		description = "a description"
-		value = "string1"
-	}]
-    variations = [{
-		value = "string2"
-	}, {
-		value = "another option"
-	}]
+	variations = [
+		{
+			name        = "variation1"
+			description = "a description"
+			value       = "string1"
+		},
+		{ value = "string2" },
+		{ value = "another option" },
+	]
   	tags = [
     	"this",
     	"is",
     	"unordered"
   	]
-  	custom_properties = [{
-		key = "some.property"
-		name = "Some Property"
-		value = [
-			"value1",
-			"value2",
-			"value3"
-		]
-	}]
-	custom_properties = [{
-		key = "some.property2"
-		name = "Some Property"
-		value = ["very special custom property"]
-	}]
+  	custom_properties = [
+		{
+			key   = "some.property"
+			name  = "Some Property"
+			value = ["value1", "value2", "value3"]
+		},
+		{
+			key   = "some.property2"
+			name  = "Some Property"
+			value = ["very special custom property"]
+		},
+	]
 }
 `
 
@@ -288,16 +329,19 @@ resource "launchdarkly_feature_flag" "multivariate_numbers" {
 	name = "multivariate flag 2 name"
 	description = "this is a multivariate flag to test big number values"
 	variation_type = "number"
-	variations = [{
-		name = "variation1"
-		description = "a description"
-		value = 86400000
-	}]
-    variations = [{
-		value = 123
-	}, {
-		value = 123456789
-	}]
+	variations = [
+		{
+			name        = "variation1"
+			description = "a description"
+			value       = 86400000
+		},
+		{
+			value = 123
+		},
+		{
+			value = 123456789
+		},
+	]
   	tags = [
     	"this",
     	"is",
@@ -353,6 +397,10 @@ resource "launchdarkly_feature_flag" "defaults" {
 	key = "defaults-flag"
 	name = "Feature flag with defaults"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 	defaults = [{
 		on_variation = 1
 		off_variation = 1
@@ -365,6 +413,10 @@ resource "launchdarkly_feature_flag" "defaults" {
 	key = "defaults-flag"
 	name = "Feature flag with defaults"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 	defaults = [{
 		on_variation = 0
 		off_variation = 0
@@ -451,6 +503,10 @@ resource "launchdarkly_feature_flag" "sdk_settings" {
 	key = "basic-flag-sdk-settings"
 	name = "Basic feature flag"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 	include_in_snippet = true
 }
 `
@@ -460,6 +516,10 @@ resource "launchdarkly_feature_flag" "sdk_settings" {
 	key = "basic-flag-sdk-settings"
 	name = "Basic feature flag"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 	include_in_snippet = false
 }
 `
@@ -469,6 +529,10 @@ resource "launchdarkly_feature_flag" "sdk_settings" {
 	key = "basic-flag-sdk-settings"
 	name = "Basic feature flag"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 }
 `
 	testAccFeatureFlagClientSideAvailability = `
@@ -477,6 +541,10 @@ resource "launchdarkly_feature_flag" "sdk_settings" {
 	key = "basic-flag-sdk-settings"
 	name = "Basic feature flag"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 	client_side_availability = [{
 		using_environment_id = true
 		using_mobile_key = true
@@ -489,6 +557,10 @@ resource "launchdarkly_feature_flag" "sdk_settings" {
 	key = "basic-flag-sdk-settings"
 	name = "Basic feature flag"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 	client_side_availability = [{
 		using_environment_id = false
 		using_mobile_key = false
@@ -595,7 +667,7 @@ func TestAccFeatureFlag_BasicCreateAndUpdate(t *testing.T) {
 					// Phase 4 gotcha #3: framework blocks cannot inflate
 					// beyond config count, so omitted boolean variations
 					// stay count=0 in state (SDKv2 inflated to count=2).
-					resource.TestCheckNoResourceAttr(resourceName, "variations.#"),
+					resource.TestCheckResourceAttr(resourceName, "variations.#", "2"),
 					resource.TestCheckNoResourceAttr(resourceName, "defaults.#"),
 					resource.TestCheckNoResourceAttr(resourceName, MAINTAINER_ID),
 				),
@@ -656,7 +728,7 @@ func TestAccFeatureFlag_CSAInteractionWithProjectDefaults(t *testing.T) {
 					// (variations / defaults / client_side_availability)
 					// stay count=0 in framework state because the framework
 					// forbids block-level Computed.
-					resource.TestCheckNoResourceAttr(resourceName, "variations.#"),
+					resource.TestCheckResourceAttr(resourceName, "variations.#", "2"),
 					resource.TestCheckNoResourceAttr(resourceName, "defaults.#"),
 					resource.TestCheckNoResourceAttr(resourceName, "client_side_availability.#"),
 					resource.TestCheckNoResourceAttr(resourceName, MAINTAINER_ID),
@@ -677,7 +749,7 @@ func TestAccFeatureFlag_CSAInteractionWithProjectDefaults(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, KEY, "basic-flag"),
 					resource.TestCheckResourceAttr(resourceName, PROJECT_KEY, projectKey),
 					resource.TestCheckResourceAttr(resourceName, VARIATION_TYPE, "boolean"),
-					resource.TestCheckNoResourceAttr(resourceName, "variations.#"),
+					resource.TestCheckResourceAttr(resourceName, "variations.#", "2"),
 					resource.TestCheckNoResourceAttr(resourceName, "defaults.#"),
 					resource.TestCheckNoResourceAttr(resourceName, "client_side_availability.#"),
 					resource.TestCheckNoResourceAttr(resourceName, MAINTAINER_ID),
@@ -698,7 +770,7 @@ func TestAccFeatureFlag_CSAInteractionWithProjectDefaults(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, KEY, "basic-flag"),
 					resource.TestCheckResourceAttr(resourceName, PROJECT_KEY, projectKey),
 					resource.TestCheckResourceAttr(resourceName, VARIATION_TYPE, "boolean"),
-					resource.TestCheckNoResourceAttr(resourceName, "variations.#"),
+					resource.TestCheckResourceAttr(resourceName, "variations.#", "2"),
 					resource.TestCheckNoResourceAttr(resourceName, "defaults.#"),
 					resource.TestCheckResourceAttr(resourceName, "client_side_availability.0.using_environment_id", "true"),
 					resource.TestCheckResourceAttr(resourceName, "client_side_availability.0.using_mobile_key", "true"),
@@ -720,7 +792,7 @@ func TestAccFeatureFlag_CSAInteractionWithProjectDefaults(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, KEY, "basic-flag"),
 					resource.TestCheckResourceAttr(resourceName, PROJECT_KEY, projectKey),
 					resource.TestCheckResourceAttr(resourceName, VARIATION_TYPE, "boolean"),
-					resource.TestCheckNoResourceAttr(resourceName, "variations.#"),
+					resource.TestCheckResourceAttr(resourceName, "variations.#", "2"),
 					resource.TestCheckNoResourceAttr(resourceName, "defaults.#"),
 					// Phase 4 gotcha #3: CSA "previously set value should
 					// remain" SDKv2 behaviour cannot be replicated by the
@@ -1328,7 +1400,7 @@ func TestAccFeatureFlag_ClientSideAvailabilityUpdate(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, PROJECT_KEY, projectKey),
 					resource.TestCheckResourceAttr(resourceName, VARIATION_TYPE, "boolean"),
 					// Phase 4 gotcha #3: omitted boolean variations stay count=0.
-					resource.TestCheckNoResourceAttr(resourceName, "variations.#"),
+					resource.TestCheckResourceAttr(resourceName, "variations.#", "2"),
 					resource.TestCheckNoResourceAttr(resourceName, MAINTAINER_ID),
 					resource.TestCheckResourceAttr(resourceName, "client_side_availability.0.using_environment_id", "true"),
 					resource.TestCheckResourceAttr(resourceName, "client_side_availability.0.using_mobile_key", "true"),
@@ -1349,7 +1421,7 @@ func TestAccFeatureFlag_ClientSideAvailabilityUpdate(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, KEY, "basic-flag-sdk-settings"),
 					resource.TestCheckResourceAttr(resourceName, PROJECT_KEY, projectKey),
 					resource.TestCheckResourceAttr(resourceName, VARIATION_TYPE, "boolean"),
-					resource.TestCheckNoResourceAttr(resourceName, "variations.#"),
+					resource.TestCheckResourceAttr(resourceName, "variations.#", "2"),
 					resource.TestCheckNoResourceAttr(resourceName, MAINTAINER_ID),
 					resource.TestCheckResourceAttr(resourceName, "client_side_availability.0.using_environment_id", "false"),
 					resource.TestCheckResourceAttr(resourceName, "client_side_availability.0.using_mobile_key", "false"),
@@ -1385,7 +1457,7 @@ func TestAccFeatureFlag_IncludeInSnippetToClientSide(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, VARIATION_TYPE, "boolean"),
 					// Phase 4 gotcha #3: omitted Optional+Computed blocks
 					// (variations / client_side_availability) stay count=0.
-					resource.TestCheckNoResourceAttr(resourceName, "variations.#"),
+					resource.TestCheckResourceAttr(resourceName, "variations.#", "2"),
 					resource.TestCheckNoResourceAttr(resourceName, "client_side_availability.#"),
 					resource.TestCheckNoResourceAttr(resourceName, MAINTAINER_ID),
 					resource.TestCheckResourceAttr(resourceName, INCLUDE_IN_SNIPPET, "true"),
@@ -1406,7 +1478,7 @@ func TestAccFeatureFlag_IncludeInSnippetToClientSide(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, KEY, "basic-flag-sdk-settings"),
 					resource.TestCheckResourceAttr(resourceName, PROJECT_KEY, projectKey),
 					resource.TestCheckResourceAttr(resourceName, VARIATION_TYPE, "boolean"),
-					resource.TestCheckNoResourceAttr(resourceName, "variations.#"),
+					resource.TestCheckResourceAttr(resourceName, "variations.#", "2"),
 					resource.TestCheckNoResourceAttr(resourceName, MAINTAINER_ID),
 					resource.TestCheckResourceAttr(resourceName, "client_side_availability.0.using_environment_id", "true"),
 					resource.TestCheckResourceAttr(resourceName, "client_side_availability.0.using_mobile_key", "true"),
@@ -1428,7 +1500,7 @@ func TestAccFeatureFlag_IncludeInSnippetToClientSide(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, KEY, "basic-flag-sdk-settings"),
 					resource.TestCheckResourceAttr(resourceName, PROJECT_KEY, projectKey),
 					resource.TestCheckResourceAttr(resourceName, VARIATION_TYPE, "boolean"),
-					resource.TestCheckNoResourceAttr(resourceName, "variations.#"),
+					resource.TestCheckResourceAttr(resourceName, "variations.#", "2"),
 					resource.TestCheckNoResourceAttr(resourceName, MAINTAINER_ID),
 					resource.TestCheckResourceAttr(resourceName, "client_side_availability.0.using_environment_id", "false"),
 					resource.TestCheckResourceAttr(resourceName, "client_side_availability.0.using_mobile_key", "false"),
@@ -1463,7 +1535,7 @@ func TestAccFeatureFlag_ClientSideToIncludeInSnippet(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, KEY, "basic-flag-sdk-settings"),
 					resource.TestCheckResourceAttr(resourceName, PROJECT_KEY, projectKey),
 					resource.TestCheckResourceAttr(resourceName, VARIATION_TYPE, "boolean"),
-					resource.TestCheckNoResourceAttr(resourceName, "variations.#"),
+					resource.TestCheckResourceAttr(resourceName, "variations.#", "2"),
 					resource.TestCheckNoResourceAttr(resourceName, MAINTAINER_ID),
 					resource.TestCheckResourceAttr(resourceName, "client_side_availability.0.using_environment_id", "true"),
 					resource.TestCheckResourceAttr(resourceName, "client_side_availability.0.using_mobile_key", "true"),
@@ -1485,7 +1557,7 @@ func TestAccFeatureFlag_ClientSideToIncludeInSnippet(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, KEY, "basic-flag-sdk-settings"),
 					resource.TestCheckResourceAttr(resourceName, PROJECT_KEY, projectKey),
 					resource.TestCheckResourceAttr(resourceName, VARIATION_TYPE, "boolean"),
-					resource.TestCheckNoResourceAttr(resourceName, "variations.#"),
+					resource.TestCheckResourceAttr(resourceName, "variations.#", "2"),
 					resource.TestCheckNoResourceAttr(resourceName, MAINTAINER_ID),
 					// Phase 4 gotcha #3: removing the CSA block drops it
 					// from state (framework cannot preserve previously-set
@@ -1669,6 +1741,10 @@ resource "launchdarkly_feature_flag" "test" {
 	key            = "test-flag-no-views"
 	name           = "Test Flag Without Views"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 }
 `, projectKey)
 
@@ -1697,6 +1773,10 @@ resource "launchdarkly_feature_flag" "test" {
 	key            = "test-flag-with-views"
 	name           = "Test Flag With Views"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 	view_keys      = [launchdarkly_view.test.key]
 }
 `

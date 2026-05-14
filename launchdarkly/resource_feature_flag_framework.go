@@ -777,19 +777,19 @@ func (r *FeatureFlagResource) readIntoModel(ctx context.Context, data *FeatureFl
 
 // featureFlagCSAListFromAPI flattens LD's ClientSideAvailability into
 // the single-element list shape used by the framework schema. Mirrors
-// the prior state's block presence: emit empty when the user did not
-// manage the block, populated when they did. Framework forbids
-// block-level Computed (Phase 3 gotcha #3), so emitting a count=1
-// block where config has count=0 fails terraform-core's consistency
-// check.
+// the prior state's attribute presence: emit null when the user did
+// not declare the attribute, populated when they did. For nested
+// attributes containing no sensitive fields the null-vs-empty
+// distinction is cosmetic; for objects containing Sensitive: true
+// inner fields, terraform-core treats null != [] as a sensitive-
+// attribute mismatch at the parent level
+// (see [[feedback-nested-attr-computed-sensitive]]).
 func featureFlagCSAListFromAPI(ctx context.Context, csa *ldapi.ClientSideAvailability, prior types.List) (types.List, diag.Diagnostics) {
 	objType := types.ObjectType{AttrTypes: featureFlagCSAAttrTypes}
 	var diags diag.Diagnostics
 	priorEmpty := prior.IsNull() || prior.IsUnknown() || len(prior.Elements()) == 0
 	if priorEmpty || csa == nil {
-		list, d := types.ListValue(objType, []attr.Value{})
-		diags.Append(d...)
-		return list, diags
+		return types.ListNull(objType), diags
 	}
 	usingEnv := false
 	if csa.UsingEnvironmentId != nil {
@@ -926,11 +926,8 @@ func variationPatchesFromLists(ctx context.Context, oldList, newList types.List,
 func variationsListFromAPI(ctx context.Context, variations []ldapi.Variation, variationType string, prior types.List) (types.List, diag.Diagnostics) {
 	objType := types.ObjectType{AttrTypes: featureFlagVariationAttrTypes}
 	var diags diag.Diagnostics
-	priorEmpty := prior.IsNull() || prior.IsUnknown() || len(prior.Elements()) == 0
-	if priorEmpty {
-		list, d := types.ListValue(objType, []attr.Value{})
-		diags.Append(d...)
-		return list, diags
+	if len(variations) == 0 {
+		return types.ListNull(objType), diags
 	}
 	priorByIdx := variationPriorByIndex(ctx, prior, &diags)
 	elements := make([]attr.Value, 0, len(variations))
@@ -1047,6 +1044,9 @@ func customPropertiesFromSet(ctx context.Context, set types.Set) (map[string]lda
 func customPropertiesSetFromAPI(ctx context.Context, props map[string]ldapi.CustomProperty) (types.Set, diag.Diagnostics) {
 	objType := types.ObjectType{AttrTypes: featureFlagCustomPropertyAttrTypes}
 	var diags diag.Diagnostics
+	if len(props) == 0 {
+		return types.SetNull(objType), diags
+	}
 	elements := make([]attr.Value, 0, len(props))
 	for k, cp := range props {
 		sortedValues := make([]string, len(cp.Value))
@@ -1092,17 +1092,14 @@ func defaultsFromList(ctx context.Context, list types.List) (*ldapi.Defaults, di
 }
 
 // defaultsListFromAPI flattens LD-API Defaults into the single-element
-// list shape. Mirrors prior-state block presence (Phase 4 gotcha #3):
-// emit empty when the user did not declare a `defaults` block,
-// populated when they did.
+// list shape. Mirrors prior-state attribute presence: emit null when
+// the user did not declare `defaults`, populated when they did.
 func defaultsListFromAPI(ctx context.Context, defaults *ldapi.Defaults, variationCount int, prior types.List) (types.List, diag.Diagnostics) {
 	objType := types.ObjectType{AttrTypes: featureFlagDefaultsAttrTypes}
 	var diags diag.Diagnostics
 	priorEmpty := prior.IsNull() || prior.IsUnknown() || len(prior.Elements()) == 0
 	if priorEmpty {
-		list, d := types.ListValue(objType, []attr.Value{})
-		diags.Append(d...)
-		return list, diags
+		return types.ListNull(objType), diags
 	}
 	var on, off int64
 	if defaults != nil {

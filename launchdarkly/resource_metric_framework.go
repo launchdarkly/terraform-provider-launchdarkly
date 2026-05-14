@@ -711,20 +711,24 @@ func (r *MetricResource) readIntoModel(
 	data.RandomizationUnits = ruSet
 
 	urlObjType := types.ObjectType{AttrTypes: metricUrlAttrTypes}
-	urlElems := make([]attr.Value, 0, len(metric.Urls))
-	for _, u := range metric.Urls {
-		obj, d := types.ObjectValue(metricUrlAttrTypes, map[string]attr.Value{
-			KIND:      stringFromMap(u, "kind"),
-			URL:       stringFromMap(u, "url"),
-			SUBSTRING: stringFromMap(u, "substring"),
-			PATTERN:   stringFromMap(u, "pattern"),
-		})
+	if len(metric.Urls) == 0 {
+		data.URLs = types.ListNull(urlObjType)
+	} else {
+		urlElems := make([]attr.Value, 0, len(metric.Urls))
+		for _, u := range metric.Urls {
+			obj, d := types.ObjectValue(metricUrlAttrTypes, map[string]attr.Value{
+				KIND:      stringFromMap(u, "kind"),
+				URL:       stringFromMap(u, "url"),
+				SUBSTRING: stringFromMap(u, "substring"),
+				PATTERN:   stringFromMap(u, "pattern"),
+			})
+			diags.Append(d...)
+			urlElems = append(urlElems, obj)
+		}
+		urlList, d := types.ListValue(urlObjType, urlElems)
 		diags.Append(d...)
-		urlElems = append(urlElems, obj)
+		data.URLs = urlList
 	}
-	urlList, d := types.ListValue(urlObjType, urlElems)
-	diags.Append(d...)
-	data.URLs = urlList
 }
 
 func stringFromMap(m map[string]interface{}, key string) types.String {

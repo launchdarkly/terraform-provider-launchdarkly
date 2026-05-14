@@ -35,6 +35,10 @@ resource "launchdarkly_feature_flag" "test1" {
 	key            = "filter-test-flag-1"
 	name           = "Filter Test Flag 1"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 	tags           = ["filter-test"]
 }
 
@@ -43,6 +47,10 @@ resource "launchdarkly_feature_flag" "test2" {
 	key            = "filter-test-flag-2"
 	name           = "Filter Test Flag 2"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 	tags           = ["filter-test"]
 }
 
@@ -82,6 +90,10 @@ resource "launchdarkly_feature_flag" "test1" {
 	key            = "filter-test-flag-1"
 	name           = "Filter Test Flag 1"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 	tags           = ["filter-test"]
 }
 
@@ -90,6 +102,10 @@ resource "launchdarkly_feature_flag" "test2" {
 	key            = "filter-test-flag-2"
 	name           = "Filter Test Flag 2"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 	tags           = ["filter-test"]
 }
 
@@ -98,6 +114,10 @@ resource "launchdarkly_feature_flag" "test3" {
 	key            = "filter-test-flag-3"
 	name           = "Filter Test Flag 3"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 	tags           = ["filter-test-v2"]
 }
 
@@ -138,6 +158,10 @@ resource "launchdarkly_feature_flag" "test1" {
 	key            = "filter-test-flag-1"
 	name           = "Filter Test Flag 1"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 	tags           = ["filter-test"]
 }
 
@@ -146,6 +170,10 @@ resource "launchdarkly_feature_flag" "test2" {
 	key            = "filter-test-flag-2"
 	name           = "Filter Test Flag 2"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 	tags           = ["other-tag"]
 }
 
@@ -154,6 +182,10 @@ resource "launchdarkly_feature_flag" "test3" {
 	key            = "filter-test-flag-3"
 	name           = "Filter Test Flag 3"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 	tags           = ["filter-test-v2"]
 }
 
@@ -233,6 +265,10 @@ resource "launchdarkly_feature_flag" "test1" {
 	key            = "both-filter-flag-1"
 	name           = "Both Filter Flag 1"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 	tags           = ["both-filter-test"]
 }
 
@@ -282,6 +318,10 @@ resource "launchdarkly_feature_flag" "trigger1" {
 	key            = "trigger-flag-1"
 	name           = "Trigger Flag 1"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 	tags           = ["trigger-test"]
 }
 
@@ -290,6 +330,10 @@ resource "launchdarkly_feature_flag" "trigger2" {
 	key            = "trigger-flag-2"
 	name           = "Trigger Flag 2"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 	tags           = ["trigger-test"]
 }
 
@@ -330,6 +374,10 @@ resource "launchdarkly_feature_flag" "trigger1" {
 	key            = "trigger-flag-1"
 	name           = "Trigger Flag 1"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 	tags           = ["trigger-test"]
 }
 
@@ -338,6 +386,10 @@ resource "launchdarkly_feature_flag" "trigger2" {
 	key            = "trigger-flag-2"
 	name           = "Trigger Flag 2"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 	tags           = ["other-tag"]
 }
 
@@ -378,6 +430,10 @@ resource "launchdarkly_feature_flag" "toggle1" {
 	key            = "toggle-flag-1"
 	name           = "Toggle Flag 1"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 	tags           = ["toggle-test"]
 }
 
@@ -386,6 +442,10 @@ resource "launchdarkly_feature_flag" "toggle2" {
 	key            = "toggle-flag-2"
 	name           = "Toggle Flag 2"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 	tags           = ["toggle-test"]
 }
 
@@ -426,6 +486,10 @@ resource "launchdarkly_feature_flag" "toggle1" {
 	key            = "toggle-flag-1"
 	name           = "Toggle Flag 1"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 	tags           = ["toggle-test"]
 }
 
@@ -434,6 +498,10 @@ resource "launchdarkly_feature_flag" "toggle2" {
 	key            = "toggle-flag-2"
 	name           = "Toggle Flag 2"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 	tags           = ["toggle-test"]
 }
 
@@ -572,6 +640,10 @@ resource "launchdarkly_feature_flag" "test1" {
 	key            = "both-filter-flag-1"
 	name           = "Both Filter Flag 1"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 	tags           = ["both-filter-test"]
 }
 

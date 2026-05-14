@@ -526,9 +526,13 @@ func (r *FeatureFlagEnvironmentResource) readIntoModel(ctx context.Context, proj
 		diags.Append(d...)
 		prereqElements = append(prereqElements, obj)
 	}
-	prereqList, d := types.ListValue(prereqObjectType, prereqElements)
-	diags.Append(d...)
-	data.Prerequisites = prereqList
+	if len(prereqElements) == 0 {
+		data.Prerequisites = types.ListNull(prereqObjectType)
+	} else {
+		prereqList, d := types.ListValue(prereqObjectType, prereqElements)
+		diags.Append(d...)
+		data.Prerequisites = prereqList
+	}
 }
 
 // noopDiagSink absorbs diags from ffe* helpers that take a sink
@@ -597,6 +601,9 @@ func ffeResourceRulesValue(ctx context.Context, rules []ldapi.Rule, diags *diag.
 		})
 		diags.Append(d...)
 		elements = append(elements, obj)
+	}
+	if len(elements) == 0 {
+		return types.ListNull(objectType)
 	}
 	list, d := types.ListValue(objectType, elements)
 	diags.Append(d...)

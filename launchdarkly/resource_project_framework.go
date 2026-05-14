@@ -191,10 +191,19 @@ func (r *ProjectResource) ModifyPlan(ctx context.Context, req resource.ModifyPla
 	resp.Diagnostics.Append(resp.Plan.Set(ctx, &plan)...)
 }
 
-// markEnvSecretsUnknown rewrites plan.Environments so any env whose key
-// has no matching state entry has its api_key / mobile_key /
-// client_side_id set to Unknown. Existing envs keep whatever the plan
-// already computed (UseStateForUnknown handles the refresh stability).
+// markEnvSecretsUnknown rewrites plan.Environments so api_key /
+// mobile_key / client_side_id reflect the right env for each list
+// position. The framework's UseStateForUnknown plan modifier on those
+// inner attributes is index-based: when the user reorders envs, the
+// modifier paints state[i]'s sensitive values onto plan[i] regardless
+// of whether plan[i].key actually matches state[i].key. The result is
+// post-Apply state pulling fresh API values that don't match the
+// index-aligned plan and tripping the framework's plan-vs-apply
+// consistency check.
+//
+// Fix: match by env key. For each plan env, if state has an env with
+// the same key, use that state env's sensitive values; otherwise
+// mark them Unknown so Apply can fill them in.
 func markEnvSecretsUnknown(ctx context.Context, planList, stateList types.List) (types.List, diag.Diagnostics) {
 	var diags diag.Diagnostics
 	if planList.IsNull() || planList.IsUnknown() {
@@ -206,16 +215,23 @@ func markEnvSecretsUnknown(ctx context.Context, planList, stateList types.List) 
 		return planList, diags
 	}
 
-	stateKeys := make(map[string]bool)
+	type envSecrets struct{ api, mobile, csid attr.Value }
+	stateByKey := make(map[string]envSecrets)
 	if !stateList.IsNull() && !stateList.IsUnknown() {
-		var stateModels []environmentBlockModel
-		diags.Append(stateList.ElementsAs(ctx, &stateModels, false)...)
-		if diags.HasError() {
-			return planList, diags
-		}
-		for _, m := range stateModels {
-			if !m.Key.IsNull() && !m.Key.IsUnknown() {
-				stateKeys[m.Key.ValueString()] = true
+		for _, el := range stateList.Elements() {
+			obj, ok := el.(basetypes.ObjectValue)
+			if !ok {
+				continue
+			}
+			a := obj.Attributes()
+			keyVal, _ := a[KEY].(basetypes.StringValue)
+			if keyVal.IsNull() || keyVal.IsUnknown() {
+				continue
+			}
+			stateByKey[keyVal.ValueString()] = envSecrets{
+				api:    a[API_KEY],
+				mobile: a[MOBILE_KEY],
+				csid:   a[CLIENT_SIDE_ID],
 			}
 		}
 	}
@@ -233,13 +249,15 @@ func markEnvSecretsUnknown(ctx context.Context, planList, stateList types.List) 
 		if !keyVal.IsNull() && !keyVal.IsUnknown() {
 			envKey = keyVal.ValueString()
 		}
-		if envKey != "" && stateKeys[envKey] {
-			out = append(out, el)
-			continue
+		if secrets, ok := stateByKey[envKey]; ok {
+			attrs[API_KEY] = secrets.api
+			attrs[MOBILE_KEY] = secrets.mobile
+			attrs[CLIENT_SIDE_ID] = secrets.csid
+		} else {
+			attrs[API_KEY] = types.StringUnknown()
+			attrs[MOBILE_KEY] = types.StringUnknown()
+			attrs[CLIENT_SIDE_ID] = types.StringUnknown()
 		}
-		attrs[API_KEY] = types.StringUnknown()
-		attrs[MOBILE_KEY] = types.StringUnknown()
-		attrs[CLIENT_SIDE_ID] = types.StringUnknown()
 		newObj, d := types.ObjectValue(environmentBlockAttrTypes, attrs)
 		diags.Append(d...)
 		out = append(out, newObj)
@@ -249,17 +267,15 @@ func markEnvSecretsUnknown(ctx context.Context, planList, stateList types.List) 
 	return newList, diags
 }
 
-// projectCSAValueFromAPI emits the CSA block matching the prior state
-// shape: if prior was empty (or null), keep empty so terraform doesn't
-// see a count-1 state for a count-0 plan; if prior was populated, emit
-// the API's current values. Framework analogue of SDKv2's
-// Optional+Computed TypeList for blocks — framework blocks can't be
-// Computed at the block level (Phase 4 gotcha #3).
+// projectCSAValueFromAPI emits the CSA attribute matching the prior
+// state shape: if prior was empty (or null), keep null so terraform
+// doesn't see a populated state for a null plan; if prior was
+// populated, emit the API's current values.
 func projectCSAValueFromAPI(ctx context.Context, csa *ldapi.ClientSideAvailability, prior basetypes.ListValue) (basetypes.ListValue, diag.Diagnostics) {
 	objectType := types.ObjectType{AttrTypes: projectCSAAttrTypes}
 	priorEmpty := prior.IsNull() || prior.IsUnknown() || len(prior.Elements()) == 0
 	if priorEmpty || csa == nil {
-		return types.ListValue(objectType, []attr.Value{})
+		return types.ListNull(objectType), nil
 	}
 	usingEnv := false
 	if csa.UsingEnvironmentId != nil {

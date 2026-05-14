@@ -287,6 +287,9 @@ func ffeTargetsValue(ctx context.Context, targets []ldapi.Target, isContextTarge
 			elements = append(elements, obj)
 		}
 	}
+	if len(elements) == 0 {
+		return types.SetNull(objectType)
+	}
 	set, _ := types.SetValue(objectType, elements)
 	return set
 }
