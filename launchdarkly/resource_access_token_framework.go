@@ -21,7 +21,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
-	sdkschema "github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	ldapi "github.com/launchdarkly/api-client-go/v22"
 )
 
@@ -30,46 +29,6 @@ var (
 	_ resource.ResourceWithImportState      = &AccessTokenResource{}
 	_ resource.ResourceWithConfigValidators = &AccessTokenResource{}
 )
-
-// resourceAccessToken + validateAccessTokenResource are compat shims
-// retained for SDKv2-bound test files (embedded_schema_compat_test.go).
-// Full cleanup happens in Phase 5.1a.
-func resourceAccessToken() *sdkschema.Resource {
-	return &sdkschema.Resource{
-		Schema: map[string]*sdkschema.Schema{
-			NAME:         {Type: sdkschema.TypeString, Optional: true},
-			ROLE:         {Type: sdkschema.TypeString, Optional: true},
-			CUSTOM_ROLES: {Type: sdkschema.TypeSet, Set: sdkschema.HashString, Elem: &sdkschema.Schema{Type: sdkschema.TypeString}, Optional: true},
-			POLICY_STATEMENTS: policyStatementsSchema(policyStatementSchemaOptions{
-				optional: true,
-			}),
-			INLINE_ROLES: policyStatementsSchema(policyStatementSchemaOptions{
-				optional: true,
-			}),
-			SERVICE_TOKEN:       {Type: sdkschema.TypeBool, Optional: true, ForceNew: true, Default: false},
-			DEFAULT_API_VERSION: {Type: sdkschema.TypeInt, Optional: true, Computed: true, ForceNew: true},
-			TOKEN:               {Type: sdkschema.TypeString, Computed: true, Sensitive: true},
-			EXPIRE:              {Type: sdkschema.TypeInt, Optional: true},
-		},
-	}
-}
-
-func validateAccessTokenResource(d *sdkschema.ResourceData) error {
-	accessTokenRole := optionalStringAttr(d, ROLE)
-	customRolesRaw := optionalSetList(d, CUSTOM_ROLES)
-	policyStatements, err := policyStatementsFromResourceData(getOptionalInterfaceSlice(d, POLICY_STATEMENTS))
-	if err != nil {
-		return err
-	}
-	inlineRoles, err := policyStatementsFromResourceData(getOptionalInterfaceSlice(d, INLINE_ROLES))
-	if err != nil {
-		return err
-	}
-	if accessTokenRole == "" && len(customRolesRaw) == 0 && len(policyStatements) == 0 && len(inlineRoles) == 0 {
-		return fmt.Errorf("access_token must contain either 'role', 'custom_roles', 'policy_statements', or 'inline_roles'")
-	}
-	return nil
-}
 
 type AccessTokenResource struct {
 	client *Client

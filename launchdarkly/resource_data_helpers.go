@@ -53,16 +53,6 @@ func interfaceSliceFromAny(v interface{}) []interface{} {
 	return s
 }
 
-// stringListFromOptionalSetValue returns nil (not empty) for nil sets — LD API treats nil and
-// empty []string identically and a few callers depend on the nil signal.
-func stringListFromOptionalSetValue(v interface{}) []string {
-	s := optionalSchemaSetFromInterface(v)
-	if s == nil {
-		return nil
-	}
-	return stringsFromSchemaSet(s)
-}
-
 // optionalIntFromResourceData uses defaultVal when the schema is missing the key (Upjet-embedded
 // provider returns nil from d.Get). Wrong-type values log at WARN so regressions stay visible.
 func optionalIntFromResourceData(d *schema.ResourceData, key string, defaultVal int) int {

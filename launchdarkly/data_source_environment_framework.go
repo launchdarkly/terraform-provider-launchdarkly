@@ -127,7 +127,7 @@ func (d *EnvironmentDataSource) Read(ctx context.Context, req datasource.ReadReq
 	resp.Diagnostics.Append(diags...)
 	data.Tags = tagsSet
 
-	approvals, diags := frameworkApprovalSettingsValue(ctx, env.ApprovalSettings)
+	approvals, diags := frameworkApprovalSettingsDataSourceValue(ctx, env.ApprovalSettings)
 	resp.Diagnostics.Append(diags...)
 	data.ApprovalSettings = approvals
 

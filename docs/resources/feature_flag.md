@@ -136,9 +136,9 @@ resource "launchdarkly_feature_flag" "mobile_app_feature" {
 ### Optional
 
 - `archived` (Boolean) Specifies whether the flag is archived or not. Note that you cannot create a new flag that is archived, but can update a flag to be archived.
-- `client_side_availability` (Block List) (see [below for nested schema](#nestedblock--client_side_availability))
-- `custom_properties` (Block Set, Max: 64) List of nested blocks describing the feature flag's [custom properties](https://docs.launchdarkly.com/home/connecting/custom-properties) (see [below for nested schema](#nestedblock--custom_properties))
-- `defaults` (Block List, Max: 1) A block containing the indices of the variations to be used as the default on and off variations in all new environments. Flag configurations in existing environments will not be changed nor updated if the configuration block is removed. (see [below for nested schema](#nestedblock--defaults))
+- `client_side_availability` (Block List) A block describing whether this flag should be made available to the client-side JavaScript SDK using the client-side Id, mobile key, or both. This value gets its default from your project configuration if not set. Once set, if removed, it will retain its last set value. (see [below for nested schema](#nestedblock--client_side_availability))
+- `custom_properties` (Block Set) List of nested blocks describing the feature flag's [custom properties](https://docs.launchdarkly.com/home/connecting/custom-properties) (see [below for nested schema](#nestedblock--custom_properties))
+- `defaults` (Block List) A block containing the indices of the variations to be used as the default on and off variations in all new environments. Flag configurations in existing environments will not be changed nor updated if the configuration block is removed. (see [below for nested schema](#nestedblock--defaults))
 - `deprecated` (Boolean) Specifies whether the flag is deprecated or not. Note that you cannot create a new flag that is deprecated, but can update a flag to be deprecated.
 - `description` (String) The feature flag's description.
 - `include_in_snippet` (Boolean, Deprecated) Specifies whether this flag should be made available to the client-side JavaScript SDK using the client-side Id. This value gets its default from your project configuration if not set. `include_in_snippet` is now deprecated. Please migrate to `client_side_availability.using_environment_id` to maintain future compatibility.

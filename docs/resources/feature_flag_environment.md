@@ -188,13 +188,13 @@ resource "launchdarkly_feature_flag_environment" "big_flag_environment" {
 ### Required
 
 - `env_key` (String) The environment key. A change in this field will force the destruction of the existing resource and the creation of a new one.
-- `fallthrough` (Block List, Min: 1, Max: 1) Nested block describing the default variation to serve if no `prerequisites`, `target`, or `rules` apply. (see [below for nested schema](#nestedblock--fallthrough))
 - `flag_id` (String) The feature flag's unique `id` in the format `project_key/flag_key`. A change in this field will force the destruction of the existing resource and the creation of a new one.
 - `off_variation` (Number) The index of the variation to serve if targeting is disabled.
 
 ### Optional
 
 - `context_targets` (Block Set) The set of nested blocks describing the individual targets for non-user context kinds for each variation. (see [below for nested schema](#nestedblock--context_targets))
+- `fallthrough` (Block List) Nested block describing the default variation to serve if no `prerequisites`, `target`, or `rules` apply. (see [below for nested schema](#nestedblock--fallthrough))
 - `on` (Boolean) Whether targeting is enabled. Defaults to `false` if not set.
 - `prerequisites` (Block List) List of nested blocks describing prerequisite feature flags rules. (see [below for nested schema](#nestedblock--prerequisites))
 - `rules` (Block List) List of logical targeting rules. (see [below for nested schema](#nestedblock--rules))
@@ -205,6 +205,16 @@ resource "launchdarkly_feature_flag_environment" "big_flag_environment" {
 
 - `id` (String) The ID of this resource.
 
+<a id="nestedblock--context_targets"></a>
+### Nested Schema for `context_targets`
+
+Required:
+
+- `context_kind` (String) The context kind on which the flag should target in this environment. User (`user`) targets should be specified as `targets` attribute blocks.
+- `values` (List of String) List of `user` strings to target.
+- `variation` (Number) The index of the variation to serve if a user target value is matched.
+
+
 <a id="nestedblock--fallthrough"></a>
 ### Nested Schema for `fallthrough`
 
@@ -214,16 +224,6 @@ Optional:
 - `context_kind` (String) The context kind associated with the specified rollout. This argument is only valid if rollout_weights is also specified. If omitted, defaults to `user`.
 - `rollout_weights` (List of Number) List of integer percentage rollout weights (in thousandths of a percent) to apply to each variation if the rule clauses evaluates to `true`. The sum of the `rollout_weights` must equal 100000 and the number of rollout weights specified in the array must match the number of flag variations. You must specify either `variation` or `rollout_weights`.
 - `variation` (Number) The default integer variation index to serve if no `prerequisites`, `target`, or `rules` apply. You must specify either `variation` or `rollout_weights`.
-
-
-<a id="nestedblock--context_targets"></a>
-### Nested Schema for `context_targets`
-
-Required:
-
-- `context_kind` (String) The context kind on which the flag should target in this environment. User (`user`) targets should be specified as `targets` attribute blocks.
-- `values` (List of String) List of `user` strings to target.
-- `variation` (Number) The index of the variation to serve if a user target value is matched.
 
 
 <a id="nestedblock--prerequisites"></a>
