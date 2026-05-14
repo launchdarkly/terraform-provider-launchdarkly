@@ -117,21 +117,7 @@ func (r *EnvironmentResource) Schema(_ context.Context, _ resource.SchemaRequest
 			},
 		},
 		Blocks: map[string]schema.Block{
-			APPROVAL_SETTINGS: schema.ListNestedBlock{
-				Description: "Approval settings (single element).",
-				NestedObject: schema.NestedBlockObject{
-					Attributes: map[string]schema.Attribute{
-						REQUIRED:                    schema.BoolAttribute{Optional: true, Computed: true, Default: booldefault.StaticBool(false)},
-						CAN_REVIEW_OWN_REQUEST:      schema.BoolAttribute{Optional: true, Computed: true, Default: booldefault.StaticBool(false)},
-						MIN_NUM_APPROVALS:           schema.Int64Attribute{Optional: true, Computed: true, Default: int64default.StaticInt64(1)},
-						CAN_APPLY_DECLINED_CHANGES:  schema.BoolAttribute{Optional: true, Computed: true, Default: booldefault.StaticBool(true)},
-						REQUIRED_APPROVAL_TAGS:      schema.ListAttribute{Optional: true, Computed: true, ElementType: types.StringType},
-						SERVICE_KIND:                schema.StringAttribute{Optional: true, Computed: true},
-						SERVICE_CONFIG:              schema.MapAttribute{Optional: true, Computed: true, ElementType: types.StringType},
-						AUTO_APPLY_APPROVED_CHANGES: schema.BoolAttribute{Optional: true, Computed: true, Default: booldefault.StaticBool(false)},
-					},
-				},
-			},
+			APPROVAL_SETTINGS: frameworkApprovalSettingsResourceBlock(),
 		},
 	}
 }

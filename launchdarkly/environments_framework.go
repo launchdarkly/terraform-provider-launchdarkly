@@ -75,7 +75,7 @@ func projectEnvironmentsBlock() schema.ListNestedBlock {
 			Attributes: map[string]schema.Attribute{
 				KEY: schema.StringAttribute{
 					Required:    true,
-					Description: "The project-unique key for the environment.",
+					Description: addForceNewDescription("The project-unique key for the environment.", true),
 					Validators:  []validator.String{keyValidator()},
 				},
 				NAME: schema.StringAttribute{

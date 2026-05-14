@@ -139,20 +139,60 @@ func frameworkApprovalSettingsValue(ctx context.Context, settings *ldapi.Approva
 // frameworkApprovalSettingsResourceBlock returns the resource-side
 // ListNestedBlock schema for approval_settings. Shared between
 // project's nested-environments block, segment, FFE, and the standalone
-// environment resource going forward.
+// environment resource going forward. Descriptions copied verbatim
+// from SDKv2 approvalSchema (approvals_helper.go) to keep
+// `make generate` zero-diff.
 func frameworkApprovalSettingsResourceBlock() schema.ListNestedBlock {
 	return schema.ListNestedBlock{
-		Description: "Approval settings (single element).",
 		NestedObject: schema.NestedBlockObject{
 			Attributes: map[string]schema.Attribute{
-				REQUIRED:                    schema.BoolAttribute{Optional: true, Computed: true, Default: booldefault.StaticBool(false)},
-				CAN_REVIEW_OWN_REQUEST:      schema.BoolAttribute{Optional: true, Computed: true, Default: booldefault.StaticBool(false)},
-				MIN_NUM_APPROVALS:           schema.Int64Attribute{Optional: true, Computed: true, Default: int64default.StaticInt64(1)},
-				CAN_APPLY_DECLINED_CHANGES:  schema.BoolAttribute{Optional: true, Computed: true, Default: booldefault.StaticBool(true)},
-				REQUIRED_APPROVAL_TAGS:      schema.ListAttribute{Optional: true, Computed: true, ElementType: types.StringType},
-				SERVICE_KIND:                schema.StringAttribute{Optional: true, Computed: true},
-				SERVICE_CONFIG:              schema.MapAttribute{Optional: true, Computed: true, ElementType: types.StringType},
-				AUTO_APPLY_APPROVED_CHANGES: schema.BoolAttribute{Optional: true, Computed: true, Default: booldefault.StaticBool(false)},
+				REQUIRED: schema.BoolAttribute{
+					Optional:    true,
+					Computed:    true,
+					Default:     booldefault.StaticBool(false),
+					Description: "Set to `true` for changes to flags in this environment to require approval. You may only set `required` to true if `required_approval_tags` is not set and vice versa. Defaults to `false`.",
+				},
+				CAN_REVIEW_OWN_REQUEST: schema.BoolAttribute{
+					Optional:    true,
+					Computed:    true,
+					Default:     booldefault.StaticBool(false),
+					Description: "Set to `true` if requesters can approve or decline their own request. They may always comment. Defaults to `false`.",
+				},
+				MIN_NUM_APPROVALS: schema.Int64Attribute{
+					Optional:    true,
+					Computed:    true,
+					Default:     int64default.StaticInt64(1),
+					Description: "The number of approvals required before an approval request can be applied. This number must be between 1 and 5. Defaults to 1.",
+				},
+				CAN_APPLY_DECLINED_CHANGES: schema.BoolAttribute{
+					Optional:    true,
+					Computed:    true,
+					Default:     booldefault.StaticBool(true),
+					Description: "Set to `true` if changes can be applied as long as the `min_num_approvals` is met, regardless of whether any reviewers have declined a request. Defaults to `true`.",
+				},
+				REQUIRED_APPROVAL_TAGS: schema.ListAttribute{
+					Optional:    true,
+					Computed:    true,
+					ElementType: types.StringType,
+					Description: "An array of tags used to specify which flags with those tags require approval. You may only set `required_approval_tags` if `required` is set to `false` and vice versa.",
+				},
+				SERVICE_KIND: schema.StringAttribute{
+					Optional:    true,
+					Computed:    true,
+					Description: "The kind of service associated with this approval. This determines which platform is used for requesting approval. Valid values are `servicenow`, `launchdarkly`. If you use a value other than `launchdarkly`, you must have already configured the integration in the LaunchDarkly UI or your apply will fail.",
+				},
+				SERVICE_CONFIG: schema.MapAttribute{
+					Optional:    true,
+					Computed:    true,
+					ElementType: types.StringType,
+					Description: "The configuration for the service associated with this approval. This is specific to each approval service. For a `service_kind` of `servicenow`, the following fields apply:\n\n\t - `template` (String) The sys_id of the Standard Change Request Template in ServiceNow that LaunchDarkly will use when creating the change request.\n\t - `detail_column` (String) The name of the ServiceNow Change Request column LaunchDarkly uses to populate detailed approval request information. This is most commonly \"justification\".",
+				},
+				AUTO_APPLY_APPROVED_CHANGES: schema.BoolAttribute{
+					Optional:    true,
+					Computed:    true,
+					Default:     booldefault.StaticBool(false),
+					Description: "Automatically apply changes that have been approved by all reviewers. This field is only applicable for approval service kinds other than `launchdarkly`.",
+				},
 			},
 		},
 	}

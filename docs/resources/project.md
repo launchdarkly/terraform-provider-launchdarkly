@@ -54,15 +54,15 @@ resource "launchdarkly_project" "example" {
 
 ### Required
 
-- `environments` (Block List, Min: 1) List of nested `environments` blocks describing LaunchDarkly environments that belong to the project. When managing LaunchDarkly projects in Terraform, you should always manage your environments as nested project resources.
-
--> **Note:** Mixing the use of nested `environments` blocks and [`launchdarkly_environment`](/docs/providers/launchdarkly/r/environment.html) resources is not recommended. `launchdarkly_environment` resources should only be used when the encapsulating project is not managed in Terraform. (see [below for nested schema](#nestedblock--environments))
 - `key` (String) The project's unique key. A change in this field will force the destruction of the existing resource and the creation of a new one.
 - `name` (String) The project's name.
 
 ### Optional
 
 - `default_client_side_availability` (Block List) A block describing which client-side SDKs can use new flags by default. (see [below for nested schema](#nestedblock--default_client_side_availability))
+- `environments` (Block List) List of nested `environments` blocks describing LaunchDarkly environments that belong to the project. When managing LaunchDarkly projects in Terraform, you should always manage your environments as nested project resources.
+
+-> **Note:** Mixing the use of nested `environments` blocks and [`launchdarkly_environment`](/docs/providers/launchdarkly/r/environment.html) resources is not recommended. `launchdarkly_environment` resources should only be used when the encapsulating project is not managed in Terraform. (see [below for nested schema](#nestedblock--environments))
 - `include_in_snippet` (Boolean, Deprecated) Whether feature flags created under the project should be available to client-side SDKs by default. Please migrate to `default_client_side_availability` to maintain future compatibility.
 - `require_view_association_for_new_flags` (Boolean) Whether new flags created in this project must be associated with at least one view.
 - `require_view_association_for_new_segments` (Boolean) Whether new segments created in this project must be associated with at least one view.
@@ -71,6 +71,15 @@ resource "launchdarkly_project" "example" {
 ### Read-Only
 
 - `id` (String) The ID of this resource.
+
+<a id="nestedblock--default_client_side_availability"></a>
+### Nested Schema for `default_client_side_availability`
+
+Required:
+
+- `using_environment_id` (Boolean)
+- `using_mobile_key` (Boolean)
+
 
 <a id="nestedblock--environments"></a>
 ### Nested Schema for `environments`
@@ -114,16 +123,6 @@ Optional:
 	 - `template` (String) The sys_id of the Standard Change Request Template in ServiceNow that LaunchDarkly will use when creating the change request.
 	 - `detail_column` (String) The name of the ServiceNow Change Request column LaunchDarkly uses to populate detailed approval request information. This is most commonly "justification".
 - `service_kind` (String) The kind of service associated with this approval. This determines which platform is used for requesting approval. Valid values are `servicenow`, `launchdarkly`. If you use a value other than `launchdarkly`, you must have already configured the integration in the LaunchDarkly UI or your apply will fail.
-
-
-
-<a id="nestedblock--default_client_side_availability"></a>
-### Nested Schema for `default_client_side_availability`
-
-Required:
-
-- `using_environment_id` (Boolean)
-- `using_mobile_key` (Boolean)
 
 ## Import
 

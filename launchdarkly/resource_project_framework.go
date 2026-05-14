@@ -133,11 +133,16 @@ func (r *ProjectResource) Configure(_ context.Context, req resource.ConfigureReq
 	r.client = configureResourceClient(req, resp)
 }
 
-// ModifyPlan ports customizeProjectDiff: when neither IIS nor CSA is
-// declared in config (relying on LD backend defaults), force
-// default_client_side_availability = {usingEnvironmentId:false,
-// usingMobileKey:true} and include_in_snippet = false in the plan so
-// terraform sees a stable plan that matches the LD default response.
+// ModifyPlan ports the IIS-side half of customizeProjectDiff: when
+// neither IIS nor CSA is declared in config, set include_in_snippet =
+// false so terraform sees a stable Computed value matching LD's
+// backend default. The CSA half of customizeProjectDiff cannot be
+// ported: framework ListNestedBlock cannot be Computed at the block
+// level, so emitting a block when config has zero blocks fails
+// terraform-core's "plan count must match config count" gate (Phase 3
+// gotcha #3). The block-shape parity is preserved by Read mirroring
+// the prior state's block presence (see readIntoModel + the CSA
+// helpers below).
 func (r *ProjectResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
 	if req.Plan.Raw.IsNull() {
 		return
@@ -164,26 +169,19 @@ func (r *ProjectResource) ModifyPlan(ctx context.Context, req resource.ModifyPla
 		return
 	}
 	plan.IncludeInSnippet = types.BoolValue(false)
-	csa, d := projectCSAValueDefault(ctx)
-	resp.Diagnostics.Append(d...)
-	plan.DefaultClientSideAvailability = csa
 	resp.Diagnostics.Append(resp.Plan.Set(ctx, &plan)...)
 }
 
-func projectCSAValueDefault(ctx context.Context) (basetypes.ListValue, diag.Diagnostics) {
+// projectCSAValueFromAPI emits the CSA block matching the prior state
+// shape: if prior was empty (or null), keep empty so terraform doesn't
+// see a count-1 state for a count-0 plan; if prior was populated, emit
+// the API's current values. This is the framework analogue of SDKv2's
+// Optional+Computed TypeList for blocks — framework blocks can't be
+// Computed at the block level.
+func projectCSAValueFromAPI(ctx context.Context, csa *ldapi.ClientSideAvailability, prior basetypes.ListValue) (basetypes.ListValue, diag.Diagnostics) {
 	objectType := types.ObjectType{AttrTypes: projectCSAAttrTypes}
-	obj, diags := types.ObjectValue(projectCSAAttrTypes, map[string]attr.Value{
-		USING_ENVIRONMENT_ID: types.BoolValue(false),
-		USING_MOBILE_KEY:     types.BoolValue(true),
-	})
-	list, d := types.ListValue(objectType, []attr.Value{obj})
-	diags.Append(d...)
-	return list, diags
-}
-
-func projectCSAValueFromAPI(ctx context.Context, csa *ldapi.ClientSideAvailability) (basetypes.ListValue, diag.Diagnostics) {
-	objectType := types.ObjectType{AttrTypes: projectCSAAttrTypes}
-	if csa == nil {
+	priorEmpty := prior.IsNull() || prior.IsUnknown() || len(prior.Elements()) == 0
+	if priorEmpty || csa == nil {
 		return types.ListValue(objectType, []attr.Value{})
 	}
 	usingEnv := false
@@ -459,7 +457,7 @@ func (r *ProjectResource) readIntoModel(ctx context.Context, projectKey string, 
 	diags.Append(d...)
 	data.Tags = tagsSet
 
-	csaList, d := projectCSAValueFromAPI(ctx, project.DefaultClientSideAvailability)
+	csaList, d := projectCSAValueFromAPI(ctx, project.DefaultClientSideAvailability, data.DefaultClientSideAvailability)
 	diags.Append(d...)
 	data.DefaultClientSideAvailability = csaList
 
