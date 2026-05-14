@@ -155,6 +155,8 @@ func (r *FeatureFlagEnvironmentResource) Schema(_ context.Context, _ resource.Sc
 					Attributes: map[string]schema.Attribute{
 						DESCRIPTION: schema.StringAttribute{
 							Optional:    true,
+							Computed:    true,
+							Default:     stringdefault.StaticString(""),
 							Description: "A human-readable description of the targeting rule.",
 						},
 						VARIATION: schema.Int64Attribute{
@@ -549,9 +551,11 @@ func ffeResourceRulesValue(ctx context.Context, rules []ldapi.Rule, diags *diag.
 		clauses, d := frameworkClausesValue(ctx, r.Clauses)
 		diags.Append(d...)
 
-		// context_kind / variation always emitted (schema Default+Computed).
-		// bucket_by stays nullable (no Default), as does rollout_weights.
-		variation := types.Int64Value(0)
+		// variation / rollout_weights are mutually exclusive; emit null
+		// for whichever the user did not configure so plan and state
+		// match. context_kind has Default+Computed at the schema level,
+		// so we always emit a value (defaults to "user").
+		variation := types.Int64Null()
 		bucketBy := types.StringNull()
 		contextKind := types.StringValue("user")
 		weights := types.ListNull(types.Int64Type)
@@ -573,7 +577,12 @@ func ffeResourceRulesValue(ctx context.Context, rules []ldapi.Rule, diags *diag.
 		if r.Variation != nil {
 			variation = types.Int64Value(int64(*r.Variation))
 		}
-		description := types.StringNull()
+		// SDKv2 stored the empty string for unset rule descriptions
+		// (TypeString zero value); framework defaults to null. The
+		// schema declares Optional+Computed+Default("") so the plan and
+		// the post-apply state stay aligned even when the user omits
+		// description.
+		description := types.StringValue("")
 		if r.Description != nil {
 			description = types.StringValue(*r.Description)
 		}

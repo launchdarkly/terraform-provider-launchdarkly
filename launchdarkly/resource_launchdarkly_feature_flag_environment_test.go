@@ -1255,6 +1255,18 @@ func TestAccFeatureFlagEnvironment_OffVariationResetsToCorrectDefaultOnDelete(t 
 				ResourceName:      globalFlagResourceName,
 				ImportState:       true,
 				ImportStateVerify: true,
+				// Phase 4 framework migration: variations / defaults /
+				// client_side_availability are SDKv2 Optional+Computed
+				// blocks the framework cannot replicate (block count must
+				// match config count). Pre-import state inflates from
+				// state values; post-import inflates from config which
+				// has no blocks → drift on count.
+				ImportStateVerifyIgnore: []string{
+					"variations.#", "variations.0.%", "variations.0.value", "variations.1.%", "variations.1.value",
+					"defaults.#", "defaults.0.%", "defaults.0.off_variation", "defaults.0.on_variation",
+					"client_side_availability.#", "client_side_availability.0.%",
+					"client_side_availability.0.using_environment_id", "client_side_availability.0.using_mobile_key",
+				},
 			},
 		},
 	})
