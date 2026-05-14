@@ -1,10 +1,10 @@
 // Package state_compat_phase2 hosts the wire-compatibility regression
-// tests for every Phase 2 leaf resource. It lives in its own sub-package
-// because terraform-plugin-testing/helper/resource (used by
-// launchdarkly/statecompat) and terraform-plugin-sdk/v2/helper/resource
-// (used by the existing launchdarkly/* acceptance tests) both register a
-// `sweep` flag in init(). Importing both into one test binary panics —
-// statecompat.harness.go:7-11 documents the constraint.
+// tests for every Phase 2 leaf resource. Originally a sub-package because
+// terraform-plugin-testing/helper/resource and terraform-plugin-sdk/v2/
+// helper/resource both registered a `sweep` flag in init() and panicked
+// when imported together; Phase 5.1a swapped the root pkg off SDKv2 so
+// the constraint is gone. The sub-package remains for cohesion with the
+// fixture-capture flow described below.
 //
 // Capture flow (run once per resource against a disposable LD test
 // account):
@@ -17,7 +17,6 @@
 package state_compat_phase2
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -25,8 +24,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-framework/providerserver"
-	"github.com/hashicorp/terraform-plugin-go/tfprotov5"
-	"github.com/hashicorp/terraform-plugin-mux/tf5muxserver"
+	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 
 	"github.com/launchdarkly/terraform-provider-launchdarkly/launchdarkly"
 	"github.com/launchdarkly/terraform-provider-launchdarkly/launchdarkly/statecompat"
@@ -34,17 +32,11 @@ import (
 
 const stateCompatProviderVersion = "2.29.0"
 
-// protoV5Factories serves the same tf5muxserver as main.go. Defined
-// here (not borrowed from launchdarkly/provider_test.go) because
-// package-scoped test symbols don't cross package boundaries.
-var protoV5Factories = map[string]func() (tfprotov5.ProviderServer, error){
-	"launchdarkly": func() (tfprotov5.ProviderServer, error) {
-		ctx := context.Background()
-		return tf5muxserver.NewMuxServer(ctx,
-			launchdarkly.Provider().GRPCProvider,
-			providerserver.NewProtocol5(launchdarkly.NewPluginProvider("test")()),
-		)
-	},
+// protoV6Factories serves the framework provider as v6, matching main.go's
+// wire protocol. Defined here (not borrowed from launchdarkly/provider_test.go)
+// because package-scoped test symbols don't cross package boundaries.
+var protoV6Factories = map[string]func() (tfprotov6.ProviderServer, error){
+	"launchdarkly": providerserver.NewProtocol6WithError(launchdarkly.NewPluginProvider("test")()),
 }
 
 const accessTokenEnvVar = "LAUNCHDARKLY_ACCESS_TOKEN"
@@ -101,7 +93,7 @@ func runCase(t *testing.T, c stateCompatCase) {
 		HCLConfig:                c.hcl(t),
 		FixtureFile:              c.fixtureFile(),
 		PreviousVersion:          stateCompatProviderVersion,
-		ProtoV5ProviderFactories: protoV5Factories,
+		ProtoV6ProviderFactories: protoV6Factories,
 		PreCheck:                 func() { preCheck(t) },
 	})
 }

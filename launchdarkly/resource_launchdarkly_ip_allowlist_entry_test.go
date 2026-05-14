@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
+	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/terraform"
 )
 
 // testAccIpAllowlistEntryTestIPs are the IPs / CIDRs the acceptance
@@ -83,7 +83,7 @@ func TestAccIpAllowlistEntry_CreateAndUpdate(t *testing.T) {
 			testAccPreCheck(t)
 			cleanupOrphanIpAllowlistEntries(t)
 		},
-		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories,
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config: testAccIpAllowlistEntryCreate,
@@ -147,7 +147,7 @@ func TestAccIpAllowlistEntry_CIDRBlock(t *testing.T) {
 			testAccPreCheck(t)
 			cleanupOrphanIpAllowlistEntries(t)
 		},
-		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories,
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config: testAccIpAllowlistEntryCIDR,

@@ -37,24 +37,23 @@ func (p *launchdarklyProvider) Metadata(_ context.Context, _ provider.MetadataRe
 
 // Schema defines the provider-level schema for configuration data.
 func (p *launchdarklyProvider) Schema(_ context.Context, _ provider.SchemaRequest, resp *provider.SchemaResponse) {
-	sdkProviderSchema := providerSchema()
 	resp.Schema = schema.Schema{
 		Attributes: map[string]schema.Attribute{
 			ACCESS_TOKEN: schema.StringAttribute{
 				Optional:    true,
-				Description: sdkProviderSchema[ACCESS_TOKEN].Description,
+				Description: "The [personal access token](https://docs.launchdarkly.com/home/account-security/api-access-tokens#personal-tokens) or [service token](https://docs.launchdarkly.com/home/account-security/api-access-tokens#service-tokens) used to authenticate with LaunchDarkly. You can also set this with the `LAUNCHDARKLY_ACCESS_TOKEN` environment variable. You must provide either `access_token` or `oauth_token`.",
 			},
 			OAUTH_TOKEN: schema.StringAttribute{
 				Optional:    true,
-				Description: sdkProviderSchema[OAUTH_TOKEN].Description,
+				Description: "An OAuth V2 token you use to authenticate with LaunchDarkly. You can also set this with the `LAUNCHDARKLY_OAUTH_TOKEN` environment variable. You must provide either `access_token` or `oauth_token`.",
 			},
 			API_HOST: schema.StringAttribute{
 				Optional:    true,
-				Description: sdkProviderSchema[API_HOST].Description,
+				Description: "The LaunchDarkly host address. If this argument is not specified, the default host address is `https://app.launchdarkly.com`",
 			},
 			HTTP_TIMEOUT: schema.Int64Attribute{
 				Optional:    true,
-				Description: sdkProviderSchema[HTTP_TIMEOUT].Description,
+				Description: "The HTTP timeout (in seconds) when making API calls to LaunchDarkly. Defaults to 20 seconds.",
 			},
 		},
 	}

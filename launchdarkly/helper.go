@@ -23,8 +23,6 @@ func intPtr(i int) *int {
 
 func strPtr(v string) *string { return &v }
 
-func strArrayPtr(v []string) *[]string { return &v }
-
 func patchReplace(path string, value interface{}) ldapi.PatchOperation {
 	return ldapi.PatchOperation{
 		Op:    "replace",
@@ -70,14 +68,6 @@ func isStatusNotFound(response *http.Response) bool {
 		return true
 	}
 	return false
-}
-
-func stringSliceToInterfaceSlice(input []string) []interface{} {
-	o := make([]interface{}, 0, len(input))
-	for _, v := range input {
-		o = append(o, v)
-	}
-	return o
 }
 
 func interfaceSliceToStringSlice(input []interface{}) []string {
