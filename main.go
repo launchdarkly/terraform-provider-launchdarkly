@@ -29,7 +29,7 @@ func main() {
 	opts := providerserver.ServeOpts{
 		Address:         "registry.terraform.io/launchdarkly/launchdarkly",
 		Debug:           *debugFlag,
-		ProtocolVersion: 5,
+		ProtocolVersion: 6,
 	}
 
 	if err := providerserver.Serve(context.Background(), launchdarkly.NewPluginProvider(version), opts); err != nil {
