@@ -597,7 +597,7 @@ func (r *SegmentResource) readIntoModel(ctx context.Context, data *SegmentResour
 
 	data.IncludedContexts = segmentTargetsToFrameworkListImpl(ctx, segment.IncludedContexts)
 	data.ExcludedContexts = segmentTargetsToFrameworkListImpl(ctx, segment.ExcludedContexts)
-	data.Rules = segmentRulesToFrameworkList(ctx, segment.Rules)
+	data.Rules = segmentResourceRulesValue(ctx, segment.Rules, diags)
 
 	// View association reads — best-effort.
 	betaClient, bcErr := newBetaClient(r.client.apiKey, r.client.apiHost, false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
@@ -626,6 +626,36 @@ func (r *SegmentResource) readIntoModel(ctx context.Context, data *SegmentResour
 	viewKeysSet, d := setFromStringSlice(ctx, viewKeys)
 	diags.Append(d...)
 	data.ViewKeys = viewKeysSet
+}
+
+// segmentResourceRulesValue is the resource-side analogue of
+// segmentRulesToFrameworkList (which the segment data source uses).
+// The data source declares weight / bucket_by / rollout_context_kind
+// as Computed-only and tolerates zero values; the resource declares
+// them Optional-only and must emit null when the API returned nil/zero
+// to satisfy terraform-core's plan-apply consistency check (gotcha #8).
+func segmentResourceRulesValue(ctx context.Context, rules []ldapi.UserSegmentRule, diags *diag.Diagnostics) types.List {
+	objectType := types.ObjectType{AttrTypes: segmentRuleAttrTypes}
+	elements := make([]attr.Value, 0, len(rules))
+	for _, r := range rules {
+		clauses, d := frameworkClausesValue(ctx, r.Clauses)
+		diags.Append(d...)
+		weight := types.Int64Null()
+		if r.Weight != nil && *r.Weight > 0 {
+			weight = types.Int64Value(int64(*r.Weight))
+		}
+		obj, d := types.ObjectValue(segmentRuleAttrTypes, map[string]attr.Value{
+			CLAUSES:              clauses,
+			WEIGHT:               weight,
+			BUCKET_BY:            stringValueOrNullFromPointer(r.BucketBy),
+			ROLLOUT_CONTEXT_KIND: stringValueOrNullFromPointer(r.RolloutContextKind),
+		})
+		diags.Append(d...)
+		elements = append(elements, obj)
+	}
+	list, d := types.ListValue(objectType, elements)
+	diags.Append(d...)
+	return list
 }
 
 // segmentRulesResourceBlock declares the framework block schema for

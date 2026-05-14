@@ -902,17 +902,9 @@ func variationsListFromAPI(ctx context.Context, variations []ldapi.Variation, va
 			diags.AddError("failed to serialise variation value", err.Error())
 			return types.ListNull(objType), diags
 		}
-		nameStr := ""
-		if v.Name != nil {
-			nameStr = *v.Name
-		}
-		descStr := ""
-		if v.Description != nil {
-			descStr = *v.Description
-		}
 		obj, d := types.ObjectValue(featureFlagVariationAttrTypes, map[string]attr.Value{
-			NAME:        types.StringValue(nameStr),
-			DESCRIPTION: types.StringValue(descStr),
+			NAME:        stringValueOrNullFromPointer(v.Name),
+			DESCRIPTION: stringValueOrNullFromPointer(v.Description),
 			VALUE:       types.StringValue(valueStr),
 		})
 		diags.Append(d...)
