@@ -15,7 +15,9 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64default"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -166,6 +168,8 @@ func (r *FeatureFlagEnvironmentResource) Schema(_ context.Context, _ resource.Sc
 						},
 						CONTEXT_KIND: schema.StringAttribute{
 							Optional:    true,
+							Computed:    true,
+							Default:     stringdefault.StaticString("user"),
 							Description: "The context kind associated with the specified rollout. This argument is only valid if `rollout_weights` is also specified. Defaults to `user` if omitted.",
 						},
 						ROLLOUT_WEIGHTS: schema.ListAttribute{
@@ -189,6 +193,8 @@ func (r *FeatureFlagEnvironmentResource) Schema(_ context.Context, _ resource.Sc
 					Attributes: map[string]schema.Attribute{
 						VARIATION: schema.Int64Attribute{
 							Optional:    true,
+							Computed:    true,
+							Default:     int64default.StaticInt64(0),
 							Validators:  []validator.Int64{int64validator.AtLeast(0)},
 							Description: "The default integer variation index to serve if no `prerequisites`, `target`, or `rules` apply. You must specify either `variation` or `rollout_weights`.",
 						},
@@ -198,6 +204,8 @@ func (r *FeatureFlagEnvironmentResource) Schema(_ context.Context, _ resource.Sc
 						},
 						CONTEXT_KIND: schema.StringAttribute{
 							Optional:    true,
+							Computed:    true,
+							Default:     stringdefault.StaticString("user"),
 							Description: "The context kind associated with the specified rollout. This argument is only valid if rollout_weights is also specified. If omitted, defaults to `user`.",
 						},
 						ROLLOUT_WEIGHTS: schema.ListAttribute{
@@ -541,9 +549,11 @@ func ffeResourceRulesValue(ctx context.Context, rules []ldapi.Rule, diags *diag.
 		clauses, d := frameworkClausesValue(ctx, r.Clauses)
 		diags.Append(d...)
 
-		variation := types.Int64Null()
+		// context_kind / variation always emitted (schema Default+Computed).
+		// bucket_by stays nullable (no Default), as does rollout_weights.
+		variation := types.Int64Value(0)
 		bucketBy := types.StringNull()
-		contextKind := types.StringNull()
+		contextKind := types.StringValue("user")
 		weights := types.ListNull(types.Int64Type)
 		if r.Rollout != nil {
 			weightValues := make([]attr.Value, 0, len(r.Rollout.Variations))
@@ -556,10 +566,11 @@ func ffeResourceRulesValue(ctx context.Context, rules []ldapi.Rule, diags *diag.
 			if r.Rollout.BucketBy != nil {
 				bucketBy = types.StringValue(*r.Rollout.BucketBy)
 			}
-			if r.Rollout.ContextKind != nil && *r.Rollout.ContextKind != "user" {
+			if r.Rollout.ContextKind != nil {
 				contextKind = types.StringValue(*r.Rollout.ContextKind)
 			}
-		} else if r.Variation != nil {
+		}
+		if r.Variation != nil {
 			variation = types.Int64Value(int64(*r.Variation))
 		}
 		description := types.StringNull()
@@ -582,8 +593,11 @@ func ffeResourceRulesValue(ctx context.Context, rules []ldapi.Rule, diags *diag.
 	return list
 }
 
-// ffeResourceFallthroughValue mirrors ffeFallthroughValue with Optional-
-// only null preservation for the resource side.
+// ffeResourceFallthroughValue mirrors ffeFallthroughValue with the
+// SDKv2 default semantics: variation defaults to 0 and context_kind
+// defaults to "user" so plan-vs-state stays consistent when the user
+// omits these attrs (framework Default+Computed schema flags fill
+// plan, Read must emit matching values).
 func ffeResourceFallthroughValue(ctx context.Context, fallthroughRep *ldapi.VariationOrRolloutRep, diags *diag.Diagnostics) types.List {
 	objectType := types.ObjectType{AttrTypes: ffeFallthroughAttrTypes}
 	if fallthroughRep == nil {
@@ -591,9 +605,9 @@ func ffeResourceFallthroughValue(ctx context.Context, fallthroughRep *ldapi.Vari
 		diags.Append(d...)
 		return list
 	}
-	variation := types.Int64Null()
+	variation := types.Int64Value(0)
 	bucketBy := types.StringNull()
-	contextKind := types.StringNull()
+	contextKind := types.StringValue("user")
 	weights := types.ListNull(types.Int64Type)
 	if fallthroughRep.Rollout != nil {
 		weightValues := make([]attr.Value, 0, len(fallthroughRep.Rollout.Variations))
@@ -606,10 +620,11 @@ func ffeResourceFallthroughValue(ctx context.Context, fallthroughRep *ldapi.Vari
 		if fallthroughRep.Rollout.BucketBy != nil {
 			bucketBy = types.StringValue(*fallthroughRep.Rollout.BucketBy)
 		}
-		if fallthroughRep.Rollout.ContextKind != nil && *fallthroughRep.Rollout.ContextKind != "user" {
+		if fallthroughRep.Rollout.ContextKind != nil {
 			contextKind = types.StringValue(*fallthroughRep.Rollout.ContextKind)
 		}
-	} else if fallthroughRep.Variation != nil {
+	}
+	if fallthroughRep.Variation != nil {
 		variation = types.Int64Value(int64(*fallthroughRep.Variation))
 	}
 	obj, d := types.ObjectValue(ffeFallthroughAttrTypes, map[string]attr.Value{
