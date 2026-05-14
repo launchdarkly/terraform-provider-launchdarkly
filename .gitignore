@@ -22,9 +22,6 @@
 # .tfstate files
 *.tfstate
 *.tfstate.*
-# state-compat fixtures are committed deliberately; capture.sh + scan.sh
-# enforce that they only contain synthetic identifiers per Phase 0.5.
-!launchdarkly/testdata/state-fixtures/*.tfstate
 
 # Ignore any .tfvars files that are generated automatically for each Terraform run. Most
 # .tfvars files are managed as part of configuration and so should be included in

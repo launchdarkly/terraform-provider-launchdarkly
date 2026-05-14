@@ -31,8 +31,6 @@ jobs:
           cache: true
       - run: go mod download
       - run: go build -v .
-      - name: Fixture safety scan
-        run: ./scripts/capture-state-fixtures/scan.sh
       - name: Run linters
         uses: golangci/golangci-lint-action@971e284b6050e8a5849b72094c50ab08da042db8 # v6.1.1
         with:
