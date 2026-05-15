@@ -21,8 +21,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -164,43 +164,38 @@ This resource allows you to create and manage feature flags within your LaunchDa
 				ElementType: types.StringType,
 				Description: "A set of view keys to link this flag to. This is an alternative to using the `launchdarkly_view_links` resource for managing view associations. When set, this flag will be linked to the specified views. The field is also computed, meaning Terraform will read back the current view associations from LaunchDarkly to detect drift. To explicitly remove all view associations, set `view_keys = []`. Simply removing the field from your configuration will leave existing associations unchanged. **Important**: Avoid using both `view_keys` and `launchdarkly_view_links` to manage the same flag. Mixed ownership can cause conflicts; when detected, Terraform logs a warning and reconciles to the configured `view_keys`. Choose one approach per resource.",
 			},
-			VARIATIONS: schema.ListNestedAttribute{
-				Required:    true,
-				Description: "An array of possible variations for the flag.",
-				NestedObject: schema.NestedAttributeObject{
+		},
+		Blocks: map[string]schema.Block{
+			VARIATIONS: schema.ListNestedBlock{
+				Description: "An array of possible variations for the flag",
+				NestedObject: schema.NestedBlockObject{
 					Attributes: map[string]schema.Attribute{
 						NAME: schema.StringAttribute{
 							Optional:    true,
 							Computed:    true,
-							Description: "The name of the variation. When unset, LaunchDarkly may auto-derive a name (e.g. `True`/`False` for boolean-like values); the computed value is preserved across plans via `UseStateForUnknown`.",
-							PlanModifiers: []planmodifier.String{
-								stringplanmodifier.UseStateForUnknown(),
-							},
+							Default:     stringdefault.StaticString(""),
+							Description: "The name of the variation.",
 						},
 						DESCRIPTION: schema.StringAttribute{
 							Optional:    true,
 							Computed:    true,
+							Default:     stringdefault.StaticString(""),
 							Description: "The variation's description.",
-							PlanModifiers: []planmodifier.String{
-								stringplanmodifier.UseStateForUnknown(),
-							},
 						},
 						VALUE: schema.StringAttribute{
 							Required: true,
 							PlanModifiers: []planmodifier.String{
 								jsonNormalizePlanModifier{},
 							},
-							Description: fmt.Sprintf("The variation value. The value's type must correspond to the `variation_type` argument. For example: `variation_type = %q` accepts only `true` or `false`. The `number` variation type accepts both floats and ints, but please note that any trailing zeroes on floats will be trimmed (i.e. `1.1` and `1.100` will both be converted to `1.1`).\n\nIf you wish to define an empty string variation, you must still define the value field on the variations attribute like so:\n\n```terraform\nvariations = [{\n  value = %q\n}]\n```\n\n-> **Note:** Terraform manages `variations` as an ordered array and identifies them by index. This means that if you change the order of your `variations`, you may end up destroying and recreating those variations. Additionally, if you delete variations that have targets that have been attached outside of Terraform, those targets may be incorrectly reassigned to a different variation.", "boolean", ""),
+							Description: fmt.Sprintf("The variation value. The value's type must correspond to the `variation_type` argument. For example: `variation_type = %q` accepts only `true` or `false`. The `number` variation type accepts both floats and ints, but please note that any trailing zeroes on floats will be trimmed (i.e. `1.1` and `1.100` will both be converted to `1.1`).\n\nIf you wish to define an empty string variation, you must still define the value field on the variations block like so:\n\n```terraform\nvariations {\n  value = %q\n}\n```\n\n-> **Note:** Terraform manages `variations` as an ordered array and identifies them by index. This means that if you change the order of your `variations` block, you may end up destroying and recreating those variations. Additionally, if you delete variations that have targets that have been attached outside of Terraform, those targets may be incorrectly reassigned to a different variation.", "boolean", ""),
 						},
 					},
 				},
 			},
-			CLIENT_SIDE_AVAILABILITY: schema.ListNestedAttribute{
-				Optional:    true,
-				Computed:    true,
-				Description: "A list describing whether this flag should be made available to the client-side JavaScript SDK using the client-side Id, mobile key, or both. This value gets its default from your project configuration if not set. Once set, if removed, it will retain its last set value.",
+			CLIENT_SIDE_AVAILABILITY: schema.ListNestedBlock{
+				Description: "A block describing whether this flag should be made available to the client-side JavaScript SDK using the client-side Id, mobile key, or both. This value gets its default from your project configuration if not set. Once set, if removed, it will retain its last set value.",
 				Validators:  []validator.List{listvalidator.SizeAtMost(1)},
-				NestedObject: schema.NestedAttributeObject{
+				NestedObject: schema.NestedBlockObject{
 					Attributes: map[string]schema.Attribute{
 						USING_ENVIRONMENT_ID: schema.BoolAttribute{
 							Optional:    true,
@@ -214,15 +209,11 @@ This resource allows you to create and manage feature flags within your LaunchDa
 						},
 					},
 				},
-				PlanModifiers: []planmodifier.List{
-					listplanmodifier.UseStateForUnknown(),
-				},
 			},
-			CUSTOM_PROPERTIES: schema.SetNestedAttribute{
-				Optional:    true,
-				Description: "Set of nested objects describing the feature flag's [custom properties](https://docs.launchdarkly.com/home/connecting/custom-properties).",
+			CUSTOM_PROPERTIES: schema.SetNestedBlock{
+				Description: "List of nested blocks describing the feature flag's [custom properties](https://docs.launchdarkly.com/home/connecting/custom-properties)",
 				Validators:  []validator.Set{setvalidator.SizeAtMost(CUSTOM_PROPERTY_ITEM_LIMIT)},
-				NestedObject: schema.NestedAttributeObject{
+				NestedObject: schema.NestedBlockObject{
 					Attributes: map[string]schema.Attribute{
 						KEY: schema.StringAttribute{
 							Required:    true,
@@ -246,12 +237,10 @@ This resource allows you to create and manage feature flags within your LaunchDa
 					},
 				},
 			},
-			DEFAULTS: schema.ListNestedAttribute{
-				Optional:    true,
-				Computed:    true,
-				Description: "A list containing the indices of the variations to be used as the default on and off variations in all new environments. Flag configurations in existing environments will not be changed nor updated if the attribute is removed.",
+			DEFAULTS: schema.ListNestedBlock{
+				Description: "A block containing the indices of the variations to be used as the default on and off variations in all new environments. Flag configurations in existing environments will not be changed nor updated if the configuration block is removed.",
 				Validators:  []validator.List{listvalidator.SizeAtMost(1)},
-				NestedObject: schema.NestedAttributeObject{
+				NestedObject: schema.NestedBlockObject{
 					Attributes: map[string]schema.Attribute{
 						ON_VARIATION: schema.Int64Attribute{
 							Required:    true,
@@ -264,9 +253,6 @@ This resource allows you to create and manage feature flags within your LaunchDa
 							Description: "The index of the variation the flag will default to in all new environments when off.",
 						},
 					},
-				},
-				PlanModifiers: []planmodifier.List{
-					listplanmodifier.UseStateForUnknown(),
 				},
 			},
 		},
@@ -722,7 +708,7 @@ func (r *FeatureFlagResource) readIntoModel(ctx context.Context, data *FeatureFl
 	data.Tags = tagsSet
 
 	// CSA + IIS — emit both so plan/state remains stable.
-	csaList, d := featureFlagCSAListFromAPI(ctx, flag.ClientSideAvailability)
+	csaList, d := featureFlagCSAListFromAPI(ctx, flag.ClientSideAvailability, data.ClientSideAvailability)
 	diags.Append(d...)
 	data.ClientSideAvailability = csaList
 	usingEnvID := false
@@ -765,7 +751,7 @@ func (r *FeatureFlagResource) readIntoModel(ctx context.Context, data *FeatureFl
 	data.CustomProperties = cpSet
 
 	// Defaults
-	defaultsList, d := defaultsListFromAPI(ctx, flag.Defaults, len(flag.Variations))
+	defaultsList, d := defaultsListFromAPI(ctx, flag.Defaults, len(flag.Variations), data.Defaults)
 	diags.Append(d...)
 	data.Defaults = defaultsList
 
@@ -787,14 +773,17 @@ func (r *FeatureFlagResource) readIntoModel(ctx context.Context, data *FeatureFl
 }
 
 // featureFlagCSAListFromAPI flattens LD's ClientSideAvailability into
-// the single-element list shape used by the framework schema. With
-// nested attributes (v3+) we always emit the API value — the schema
-// declares the attribute Optional+Computed so a populated state is
-// consistent with an omitted-from-config plan.
-func featureFlagCSAListFromAPI(ctx context.Context, csa *ldapi.ClientSideAvailability) (types.List, diag.Diagnostics) {
+// the single-element list shape used by the framework schema. Mirrors
+// the prior state's block presence: emit empty when the user did not
+// manage the block, populated when they did. Framework forbids
+// block-level Computed (Phase 3 gotcha #3), so emitting a count=1
+// block where config has count=0 fails terraform-core's consistency
+// check.
+func featureFlagCSAListFromAPI(ctx context.Context, csa *ldapi.ClientSideAvailability, prior types.List) (types.List, diag.Diagnostics) {
 	objType := types.ObjectType{AttrTypes: featureFlagCSAAttrTypes}
 	var diags diag.Diagnostics
-	if csa == nil {
+	priorEmpty := prior.IsNull() || prior.IsUnknown() || len(prior.Elements()) == 0
+	if priorEmpty || csa == nil {
 		list, d := types.ListValue(objType, []attr.Value{})
 		diags.Append(d...)
 		return list, diags
@@ -919,18 +908,27 @@ func variationPatchesFromLists(ctx context.Context, oldList, newList types.List,
 
 // variationsListFromAPI flattens LD-API variations into a framework
 // List<variation>. Value coercion mirrors variationsToResourceData.
+// Mirrors prior-state block presence: when the user omits the
+// variations block (SDKv2 Optional+Computed at TypeList level allowed
+// auto-defaults for boolean flags), state remains empty even though
+// the API populates the underlying variations.
 //
 // For JSON-typed variations, the LD API normalises the stored value
 // (e.g. collapses whitespace) which would otherwise diverge from the
 // HCL-supplied string. Mirror SDKv2's suppressEquivalentJsonDiffs:
 // when the prior value at the same index is semantically equal JSON,
 // re-emit the prior string so plan/state stay aligned. Variation
-// name and description are Optional+Computed on the framework schema:
-// emit the API value, or null when LD has no value (no synthetic ""
-// fallback — terraform-plugin-framework distinguishes null from "").
+// name/description fall back to "" (SDKv2 TypeString zero value) so
+// the schema-level Default+Computed semantics carry through Read.
 func variationsListFromAPI(ctx context.Context, variations []ldapi.Variation, variationType string, prior types.List) (types.List, diag.Diagnostics) {
 	objType := types.ObjectType{AttrTypes: featureFlagVariationAttrTypes}
 	var diags diag.Diagnostics
+	priorEmpty := prior.IsNull() || prior.IsUnknown() || len(prior.Elements()) == 0
+	if priorEmpty {
+		list, d := types.ListValue(objType, []attr.Value{})
+		diags.Append(d...)
+		return list, diags
+	}
 	priorByIdx := variationPriorByIndex(ctx, prior, &diags)
 	elements := make([]attr.Value, 0, len(variations))
 	for i, v := range variations {
@@ -945,8 +943,14 @@ func variationsListFromAPI(ctx context.Context, variations []ldapi.Variation, va
 				valueStr = priorVal.ValueString()
 			}
 		}
-		nameVal := stringValueOrNullFromPointer(v.Name)
-		descVal := stringValueOrNullFromPointer(v.Description)
+		nameVal := types.StringValue("")
+		if v.Name != nil {
+			nameVal = types.StringValue(*v.Name)
+		}
+		descVal := types.StringValue("")
+		if v.Description != nil {
+			descVal = types.StringValue(*v.Description)
+		}
 		obj, d := types.ObjectValue(featureFlagVariationAttrTypes, map[string]attr.Value{
 			NAME:        nameVal,
 			DESCRIPTION: descVal,
@@ -1085,13 +1089,18 @@ func defaultsFromList(ctx context.Context, list types.List) (*ldapi.Defaults, di
 }
 
 // defaultsListFromAPI flattens LD-API Defaults into the single-element
-// list shape. v3 nested-attribute semantics: always emit, falling back
-// to (0, len-1) when the API returns nil. The schema declares the
-// attribute Optional+Computed so a populated state is consistent with
-// an omitted-from-config plan.
-func defaultsListFromAPI(ctx context.Context, defaults *ldapi.Defaults, variationCount int) (types.List, diag.Diagnostics) {
+// list shape. Mirrors prior-state block presence (Phase 4 gotcha #3):
+// emit empty when the user did not declare a `defaults` block,
+// populated when they did.
+func defaultsListFromAPI(ctx context.Context, defaults *ldapi.Defaults, variationCount int, prior types.List) (types.List, diag.Diagnostics) {
 	objType := types.ObjectType{AttrTypes: featureFlagDefaultsAttrTypes}
 	var diags diag.Diagnostics
+	priorEmpty := prior.IsNull() || prior.IsUnknown() || len(prior.Elements()) == 0
+	if priorEmpty {
+		list, d := types.ListValue(objType, []attr.Value{})
+		diags.Append(d...)
+		return list, diags
+	}
 	var on, off int64
 	if defaults != nil {
 		on = int64(defaults.OnVariation)

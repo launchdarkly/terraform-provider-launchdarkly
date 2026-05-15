@@ -104,10 +104,11 @@ func (d *FeatureFlagDataSource) Schema(_ context.Context, _ datasource.SchemaReq
 				ElementType: types.StringType,
 				Description: "Legacy view keys list.",
 			},
-			VARIATIONS: schema.ListNestedAttribute{
-				Computed:    true,
+		},
+		Blocks: map[string]schema.Block{
+			VARIATIONS: schema.ListNestedBlock{
 				Description: "Possible variations for the flag.",
-				NestedObject: schema.NestedAttributeObject{
+				NestedObject: schema.NestedBlockObject{
 					Attributes: map[string]schema.Attribute{
 						NAME:        schema.StringAttribute{Computed: true, Description: "Variation name."},
 						DESCRIPTION: schema.StringAttribute{Computed: true, Description: "Variation description."},
@@ -115,20 +116,18 @@ func (d *FeatureFlagDataSource) Schema(_ context.Context, _ datasource.SchemaReq
 					},
 				},
 			},
-			CLIENT_SIDE_AVAILABILITY: schema.ListNestedAttribute{
-				Computed:    true,
+			CLIENT_SIDE_AVAILABILITY: schema.ListNestedBlock{
 				Description: "Client-side availability settings.",
-				NestedObject: schema.NestedAttributeObject{
+				NestedObject: schema.NestedBlockObject{
 					Attributes: map[string]schema.Attribute{
 						USING_ENVIRONMENT_ID: schema.BoolAttribute{Computed: true},
 						USING_MOBILE_KEY:     schema.BoolAttribute{Computed: true},
 					},
 				},
 			},
-			CUSTOM_PROPERTIES: schema.SetNestedAttribute{
-				Computed:    true,
+			CUSTOM_PROPERTIES: schema.SetNestedBlock{
 				Description: "Custom properties.",
-				NestedObject: schema.NestedAttributeObject{
+				NestedObject: schema.NestedBlockObject{
 					Attributes: map[string]schema.Attribute{
 						KEY:  schema.StringAttribute{Computed: true},
 						NAME: schema.StringAttribute{Computed: true},
@@ -139,10 +138,9 @@ func (d *FeatureFlagDataSource) Schema(_ context.Context, _ datasource.SchemaReq
 					},
 				},
 			},
-			DEFAULTS: schema.ListNestedAttribute{
-				Computed:    true,
+			DEFAULTS: schema.ListNestedBlock{
 				Description: "Default variation indices for new environments.",
-				NestedObject: schema.NestedAttributeObject{
+				NestedObject: schema.NestedBlockObject{
 					Attributes: map[string]schema.Attribute{
 						ON_VARIATION:  schema.Int64Attribute{Computed: true},
 						OFF_VARIATION: schema.Int64Attribute{Computed: true},

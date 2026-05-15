@@ -20,17 +20,15 @@ resource "launchdarkly_feature_flag" "basic" {
 	key = "basic-flag"
 	name = "Basic feature flag"
 	variation_type = "number"
-	variations = [
-	{
+	variations {
 		value = 10
-	},
-	{
+	}
+	variations {
 		value = 20
-	},
-	{
+	}
+	variations {
 		value = 30
 	}
-	]
 }
 
 resource "launchdarkly_feature_flag_environment" "basic" {
@@ -54,17 +52,15 @@ resource "launchdarkly_feature_flag" "basic" {
 	key = "basic-flag"
 	name = "Basic feature flag"
 	variation_type = "number"
-	variations = [
-	{
+	variations {
 		value = 10
-	},
-	{
+	}
+	variations {
 		value = 20
-	},
-	{
+	}
+	variations {
 		value = 30
 	}
-	]
 }
 
 resource "launchdarkly_feature_flag_environment" "basic" {
@@ -83,17 +79,15 @@ resource "launchdarkly_feature_flag" "basic" {
 	key = "basic-flag"
 	name = "Basic feature flag"
 	variation_type = "number"
-	variations = [
-	{
+	variations {
 		value = 0
-	},
-	{
+	}
+	variations {
 		value = 10
-	},
-	{
+	}
+	variations {
 		value = 30
 	}
-	]
 }
 
 resource "launchdarkly_feature_flag_environment" "basic" {
@@ -142,14 +136,12 @@ resource "launchdarkly_feature_flag" "json" {
 	key            = "json-flag"
 	name           = "json flag"
 	variation_type = "json"
-	variations = [
-	{
+	variations {
 		value = jsonencode({ "foo" : "bar" })
-	},
-	{
+	}
+	variations {
 		value = jsonencode({ "bar" : "foo", "bars" : "foos" })
 	}
-	]
 }
 
 resource "launchdarkly_feature_flag_environment" "json_variations" {
@@ -177,17 +169,15 @@ resource "launchdarkly_feature_flag" "basic" {
 	key = "basic-flag"
 	name = "Basic feature flag"
 	variation_type = "number"
-	variations = [
-	{
+	variations {
 		value = 10
-	},
-	{
+	}
+	variations {
 		value = 20
-	},
-	{
+	}
+	variations {
 		value = 30
 	}
-	]
 }
 
 resource "launchdarkly_feature_flag_environment" "prereq" {
@@ -218,17 +208,15 @@ resource "launchdarkly_feature_flag" "basic" {
 	key = "basic-flag"
 	name = "Basic feature flag"
 	variation_type = "number"
-	variations = [
-	{
+	variations {
 		value = 10
-	},
-	{
+	}
+	variations {
 		value = 20
-	},
-	{
+	}
+	variations {
 		value = 30
 	}
-	]
 }
 
 resource "launchdarkly_feature_flag_environment" "prereq" {
@@ -335,17 +323,15 @@ resource "launchdarkly_feature_flag" "basic" {
 	key = "basic-flag"
 	name = "Basic feature flag"
 	variation_type = "number"
-	variations = [
-	{
+	variations {
 		value = 10
-	},
-	{
+	}
+	variations {
 		value = 20
-	},
-	{
+	}
+	variations {
 		value = 30
 	}
-	]
 }
 
 resource "launchdarkly_feature_flag_environment" "invalid_bucket_by" {
@@ -366,21 +352,17 @@ resource "launchdarkly_feature_flag" "rollout" {
 	key            = "bool-flag"
 	name           = "Basic boolean flag"
 	variation_type = "boolean"
-  variations = [
-  {
+  variations {
     value = true
-  },
-  {
+  }
+  variations {
     value = false
   }
-  ]
 
-  defaults = [
-  {
+  defaults {
     on_variation  = 1
     off_variation = 0
   }
-  ]
 }	
 
 resource "launchdarkly_feature_flag_environment" "rollout" {
@@ -412,21 +394,17 @@ resource "launchdarkly_feature_flag" "rollout" {
 	key            = "bool-flag"
 	name           = "Basic boolean flag"
 	variation_type = "boolean"
-  variations = [
-  {
+  variations {
     value = true
-  },
-  {
+  }
+  variations {
     value = false
   }
-  ]
 
-  defaults = [
-  {
+  defaults {
     on_variation  = 1
     off_variation = 0
   }
-  ]
 }	
 
 resource "launchdarkly_feature_flag_environment" "rollout" {
@@ -458,17 +436,15 @@ resource "launchdarkly_feature_flag" "basic" {
 	key = "basic-flag"
 	name = "Basic feature flag"
 	variation_type = "number"
-	variations = [
-	{
+	variations {
 		value = 10
-	},
-	{
+	}
+	variations {
 		value = 20
-	},
-	{
+	}
+	variations {
 		value = 30
 	}
-	]
 }
 
 resource "launchdarkly_feature_flag_environment" "invalid_bucket_by" {
@@ -632,27 +608,22 @@ resource "launchdarkly_feature_flag_environment" "rules_custom_context" {
 		name           = "off variation test"
 		variation_type = "boolean"
 	
-		variations = [
-		{
+		variations {
 			value = false
-		},
-		{
+		}
+	
+		variations {
 			value = true
 		}
-		]
 	
-		defaults = [
-		{
+		defaults {
 			off_variation = 0
 			on_variation  = 1
 		}
-		]
 	
-		client_side_availability = [
-		{
+		client_side_availability {
 			using_environment_id = true
 		}
-		]
 	}
 `
 
@@ -663,27 +634,22 @@ resource "launchdarkly_feature_flag" "off_variation_test" {
 	name           = "off variation test"
 	variation_type = "boolean"
 
-	variations = [
-	{
+	variations {
 		value = false
-	},
-	{
+	}
+
+	variations {
 		value = true
 	}
-	]
 
-	defaults = [
-	{
+	defaults {
 		off_variation = 0
 		on_variation  = 1
 	}
-	]
 
-	client_side_availability = [
-	{
+	client_side_availability {
 		using_environment_id = true
 	}
-	]
 }
 
 resource "launchdarkly_feature_flag_environment" "off_variation_test_configuration" {
