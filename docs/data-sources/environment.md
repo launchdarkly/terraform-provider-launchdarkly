@@ -37,7 +37,7 @@ data "launchdarkly_environment" "example" {
 ### Read-Only
 
 - `api_key` (String, Sensitive) The environment's SDK key.
-- `approval_settings` (Block List) Approval settings for this environment / project. (see [below for nested schema](#nestedblock--approval_settings))
+- `approval_settings` (Attributes List) Approval settings for this environment / project. (see [below for nested schema](#nestedatt--approval_settings))
 - `client_side_id` (String, Sensitive) The environment's client-side ID.
 - `color` (String) The color swatch as an RGB hex value with no leading `#`.
 - `confirm_changes` (Boolean) Whether flag/segment changes require confirmation.
@@ -50,7 +50,7 @@ data "launchdarkly_environment" "example" {
 - `secure_mode` (Boolean) Whether secure mode is enabled.
 - `tags` (Set of String) Tags.
 
-<a id="nestedblock--approval_settings"></a>
+<a id="nestedatt--approval_settings"></a>
 ### Nested Schema for `approval_settings`
 
 Read-Only:

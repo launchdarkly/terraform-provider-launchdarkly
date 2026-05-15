@@ -24,16 +24,18 @@ resource "launchdarkly_custom_role" "example" {
   name        = "example role"
   description = "This is an example role"
 
-  policy_statements {
-    effect    = "allow"
-    resources = ["proj/*:env/production:flag/*"]
-    actions   = ["*"]
-  }
-  policy_statements {
-    effect    = "allow"
-    resources = ["proj/*:env/production"]
-    actions   = ["*"]
-  }
+  policy_statements = [
+    {
+      effect    = "allow"
+      resources = ["proj/*:env/production:flag/*"]
+      actions   = ["*"]
+    },
+    {
+      effect    = "allow"
+      resources = ["proj/*:env/production"]
+      actions   = ["*"]
+    },
+  ]
 }
 ```
 
@@ -49,14 +51,15 @@ resource "launchdarkly_custom_role" "example" {
 
 - `base_permissions` (String) The base permission level - either `reader` or `no_access`. While newer API versions default to `no_access`, this field defaults to `reader` in keeping with previous API versions.
 - `description` (String) Description of the custom role.
-- `policy` (Block Set, Deprecated) (see [below for nested schema](#nestedblock--policy))
-- `policy_statements` (Block List) An array of the policy statements that define the permissions for the custom role. This field accepts [role attributes](https://docs.launchdarkly.com/home/getting-started/vocabulary#role-attribute). To use role attributes, use the syntax `$${roleAttribute/<YOUR_ROLE_ATTRIBUTE>}` in lieu of your usual resource keys. (see [below for nested schema](#nestedblock--policy_statements))
+- `policy` (Attributes Set, Deprecated) (see [below for nested schema](#nestedatt--policy))
+- `policy_statements` (Attributes List) An array of the policy statements that define the permissions for the custom role. This field accepts [role attributes](https://docs.launchdarkly.com/home/getting-started/vocabulary#role-attribute). To use role attributes, use the syntax `$${roleAttribute/<YOUR_ROLE_ATTRIBUTE>}` in lieu of your usual resource keys. (see [below for nested schema](#nestedatt--policy_statements))
+- `policy_statements_json` (String) Policy statements expressed as a single JSON document — an array of statement objects with the same keys as the `policy_statements` attribute (`resources`, `not_resources`, `actions`, `not_actions`, `effect`). Mutually exclusive with `policy_statements` and `policy`. Use this form when reading the policy from a file or templating it dynamically (for example with `jsonencode(...)` or `file("policy.json")`). To use [role attributes](https://docs.launchdarkly.com/home/getting-started/vocabulary#role-attribute), escape the `$` as `$${roleAttribute/<YOUR_ROLE_ATTRIBUTE>}` inside HCL strings.
 
 ### Read-Only
 
 - `id` (String) The ID of this resource.
 
-<a id="nestedblock--policy"></a>
+<a id="nestedatt--policy"></a>
 ### Nested Schema for `policy`
 
 Required:
@@ -66,7 +69,7 @@ Required:
 - `resources` (List of String)
 
 
-<a id="nestedblock--policy_statements"></a>
+<a id="nestedatt--policy_statements"></a>
 ### Nested Schema for `policy_statements`
 
 Required:

@@ -28,6 +28,7 @@ var (
 	_ resource.Resource                     = &AccessTokenResource{}
 	_ resource.ResourceWithImportState      = &AccessTokenResource{}
 	_ resource.ResourceWithConfigValidators = &AccessTokenResource{}
+	_ resource.ResourceWithModifyPlan       = &AccessTokenResource{}
 )
 
 type AccessTokenResource struct {
@@ -103,6 +104,13 @@ The resource must contain either a "role", "custom_role" or an "inline_roles" (p
 				Computed:    true,
 				Description: addForceNewDescription("The default API version for this token. Defaults to the latest API version.", true),
 				PlanModifiers: []planmodifier.Int64{
+					// Per-attribute UseStateForUnknown here trips the
+					// .token inconsistent-sensitive-attr check on
+					// expire-triggered resets (TestAccAccessToken_Reset).
+					// Use resource-level ModifyPlan instead — it runs
+					// after per-attribute modifiers and doesn't disturb
+					// the framework's Computed-coupling that the token
+					// reset path relies on.
 					int64planmodifier.RequiresReplace(),
 				},
 				Validators: []validator.Int64{
@@ -123,16 +131,14 @@ The resource must contain either a "role", "custom_role" or an "inline_roles" (p
 					noZeroValuesInt64Validator{},
 				},
 			},
-		},
-		Blocks: map[string]schema.Block{
-			POLICY_STATEMENTS: frameworkPolicyStatementsResourceBlock(
+			POLICY_STATEMENTS: frameworkPolicyStatementsResourceAttribute(
 				false,
-				"Define inline custom roles. An array of statements represented as config blocks with three attributes: effect, resources, actions. May be used in place of a built-in or custom role. May be specified more than once. This field argument is **deprecated**. Update your config to use `inline_role` to maintain compatibility with future versions.",
+				"Define inline custom roles. An array of statements with three attributes: effect, resources, actions. May be used in place of a built-in or custom role. This field argument is **deprecated**. Update your config to use `inline_role` to maintain compatibility with future versions.",
 				"'policy_statements' is deprecated in favor of 'inline_roles'. This field will be removed in the next major release of the LaunchDarkly provider",
 			),
-			INLINE_ROLES: frameworkPolicyStatementsResourceBlock(
+			INLINE_ROLES: frameworkPolicyStatementsResourceAttribute(
 				false,
-				"Define inline custom roles. An array of statements represented as config blocks with three attributes: effect, resources, actions. May be used in place of a built-in or custom role. [Using polices](https://docs.launchdarkly.com/home/members/role-policies). May be specified more than once.",
+				"Define inline custom roles. An array of statements with three attributes: effect, resources, actions. May be used in place of a built-in or custom role. [Using polices](https://docs.launchdarkly.com/home/members/role-policies).",
 				"",
 			),
 		},
@@ -152,6 +158,41 @@ func (r *AccessTokenResource) ConfigValidators(_ context.Context) []resource.Con
 
 func (r *AccessTokenResource) Configure(_ context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
 	r.client = configureResourceClient(req, resp)
+}
+
+// ModifyPlan preserves default_api_version across upgrades from v2.x
+// state where the attribute was implicit. Per-attribute
+// UseStateForUnknown on default_api_version trips the .token
+// inconsistent-sensitive-attr check in TestAccAccessToken_Reset, so
+// this resource-level plan modifier replicates UseStateForUnknown's
+// behaviour selectively — skipped when expire is changing (the path
+// that triggers a token reset and needs the framework's default
+// Computed-coupling intact).
+func (r *AccessTokenResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
+	if req.Plan.Raw.IsNull() || req.State.Raw.IsNull() {
+		return
+	}
+	var config, state, plan AccessTokenResourceModel
+	resp.Diagnostics.Append(req.Config.Get(ctx, &config)...)
+	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
+	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	if !plan.Expire.Equal(state.Expire) {
+		return
+	}
+	if !config.DefaultAPIVersion.IsNull() {
+		return
+	}
+	if state.DefaultAPIVersion.IsNull() || state.DefaultAPIVersion.IsUnknown() {
+		return
+	}
+	if !plan.DefaultAPIVersion.IsUnknown() {
+		return
+	}
+	plan.DefaultAPIVersion = state.DefaultAPIVersion
+	resp.Diagnostics.Append(resp.Plan.Set(ctx, &plan)...)
 }
 
 func (r *AccessTokenResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
@@ -280,9 +321,21 @@ func (r *AccessTokenResource) Update(ctx context.Context, req resource.UpdateReq
 			patch = append(patch, patchReplace("/customRoleIds", &customRoleIds))
 		}
 	}
-	if !plan.PolicyStatements.Equal(state.PolicyStatements) || !plan.InlineRoles.Equal(state.InlineRoles) {
+	// Patch inlineRole only when the semantic value actually changes.
+	// state == [] and plan == null both mean "no inline roles"; treating
+	// them as different (framework Equal does) and issuing patchRemove
+	// for a token that never had an inline role returns 422 from LD.
+	emptyList := func(l types.List) bool {
+		return l.IsNull() || l.IsUnknown() || len(l.Elements()) == 0
+	}
+	hadInline := !emptyList(state.PolicyStatements) || !emptyList(state.InlineRoles)
+	wantInline := !emptyList(plan.PolicyStatements) || !emptyList(plan.InlineRoles)
+	if hadInline != wantInline ||
+		(wantInline && (!plan.PolicyStatements.Equal(state.PolicyStatements) || !plan.InlineRoles.Equal(state.InlineRoles))) {
 		if len(inline) == 0 {
-			patch = append(patch, patchRemove("/inlineRole"))
+			if hadInline {
+				patch = append(patch, patchRemove("/inlineRole"))
+			}
 		} else {
 			patch = append(patch, patchReplace("/inlineRole", &inline))
 		}

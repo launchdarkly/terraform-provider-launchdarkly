@@ -20,29 +20,27 @@ resource "launchdarkly_feature_flag" "basic" {
 	key = "basic-flag"
 	name = "Basic feature flag"
 	variation_type = "number"
-	variations {
+	variations = [{
 		value = 10
-	}
-	variations {
+	}, {
 		value = 20
-	}
-	variations {
+	}, {
 		value = 30
-	}
+	}]
 }
 
 resource "launchdarkly_feature_flag_environment" "basic" {
 	flag_id 		  = launchdarkly_feature_flag.basic.id
 	env_key 		  = "test"
 	on = false
-  	fallthrough {
+  	fallthrough = [{
     	variation = 1
-  	}
+  	}]
 	off_variation = 2
-	targets {
+	targets = [{
 		values    = ["user1"]
 		variation = 0
-	}
+	}]
 }
 `
 
@@ -52,23 +50,21 @@ resource "launchdarkly_feature_flag" "basic" {
 	key = "basic-flag"
 	name = "Basic feature flag"
 	variation_type = "number"
-	variations {
+	variations = [{
 		value = 10
-	}
-	variations {
+	}, {
 		value = 20
-	}
-	variations {
+	}, {
 		value = 30
-	}
+	}]
 }
 
 resource "launchdarkly_feature_flag_environment" "basic" {
 	flag_id 		  = launchdarkly_feature_flag.basic.id
 	env_key 		  = "test"
-	fallthrough {
+	fallthrough = [{
 		variation = 0
-	}
+	}]
 	off_variation = 2
 }
 `
@@ -79,15 +75,13 @@ resource "launchdarkly_feature_flag" "basic" {
 	key = "basic-flag"
 	name = "Basic feature flag"
 	variation_type = "number"
-	variations {
+	variations = [{
 		value = 0
-	}
-	variations {
+	}, {
 		value = 10
-	}
-	variations {
+	}, {
 		value = 30
-	}
+	}]
 }
 
 resource "launchdarkly_feature_flag_environment" "basic" {
@@ -95,37 +89,36 @@ resource "launchdarkly_feature_flag_environment" "basic" {
 	env_key 		  = "test"
 	on = true
 	track_events = true
-	targets {
+	targets = [{
 		values    = ["user1", "user2"]
 		variation = 1
-	}
-	rules {
-		clauses {
+	}]
+	rules = [{
+		clauses = [{
 			attribute = "country"
 			op        = "startsWith"
 			values    = ["great", "amazing"]
 			negate    = false
-		}
+		}]
 		variation = 0
-	}
-	rules {
+	}, {
 		description = "names that start with 'h'"
-		clauses {
+		clauses = [{
 			attribute = "name"
 			op        = "startsWith"
 			values    = ["h"]
 			negate    = false
-		}
+		}]
 		rollout_weights = [90000, 10000, 0]
 		bucket_by = "email"
 		context_kind = "account"
-	}
+	}]
 
-	fallthrough {
+	fallthrough = [{
 		rollout_weights = [60000, 40000, 0]
 		bucket_by = "email"
 		context_kind = "user"
-	}
+	}]
 	off_variation = 1
 }
 `
@@ -136,21 +129,20 @@ resource "launchdarkly_feature_flag" "json" {
 	key            = "json-flag"
 	name           = "json flag"
 	variation_type = "json"
-	variations {
+	variations = [{
 		value = jsonencode({ "foo" : "bar" })
-	}
-	variations {
+	}, {
 		value = jsonencode({ "bar" : "foo", "bars" : "foos" })
-	}
+	}]
 }
 
 resource "launchdarkly_feature_flag_environment" "json_variations" {
 	flag_id = launchdarkly_feature_flag.json.id
 	env_key = "test"
 
-	fallthrough {
+	fallthrough = [{
 		variation = 1
-	}
+	}]
 	
 	off_variation = 0
 }
@@ -162,6 +154,10 @@ resource "launchdarkly_feature_flag" "bool" {
 	key = "bool-flag"
 	name = "boolean flag"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 }
 
 resource "launchdarkly_feature_flag" "basic" {
@@ -169,28 +165,26 @@ resource "launchdarkly_feature_flag" "basic" {
 	key = "basic-flag"
 	name = "Basic feature flag"
 	variation_type = "number"
-	variations {
+	variations = [{
 		value = 10
-	}
-	variations {
+	}, {
 		value = 20
-	}
-	variations {
+	}, {
 		value = 30
-	}
+	}]
 }
 
 resource "launchdarkly_feature_flag_environment" "prereq" {
 	flag_id 		  = launchdarkly_feature_flag.basic.id
 	env_key 		  = "test"
 	on = true
-	prerequisites {
+	prerequisites = [{
 		flag_key = launchdarkly_feature_flag.bool.key
 		variation = 0
-	}
-	fallthrough {
+	}]
+	fallthrough = [{
 		variation = 1
-	}
+	}]
 	off_variation = 0
 }
 `
@@ -201,6 +195,10 @@ resource "launchdarkly_feature_flag" "bool" {
 	key = "bool-flag"
 	name = "boolean flag"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 }
 
 resource "launchdarkly_feature_flag" "basic" {
@@ -208,23 +206,21 @@ resource "launchdarkly_feature_flag" "basic" {
 	key = "basic-flag"
 	name = "Basic feature flag"
 	variation_type = "number"
-	variations {
+	variations = [{
 		value = 10
-	}
-	variations {
+	}, {
 		value = 20
-	}
-	variations {
+	}, {
 		value = 30
-	}
+	}]
 }
 
 resource "launchdarkly_feature_flag_environment" "prereq" {
 	flag_id 		  = launchdarkly_feature_flag.basic.id
 	env_key 		  = "test"
-	fallthrough {
+	fallthrough = [{
 		variation = 1
-	}
+	}]
 	off_variation = 0
 }
 `
@@ -235,25 +231,29 @@ resource "launchdarkly_feature_flag" "bool_flag" {
 	key = "bool-flag"
 	name = "boolean flag"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 }
 
 resource "launchdarkly_feature_flag_environment" "bool_clause" {
 	flag_id 		  = launchdarkly_feature_flag.bool_flag.id
 	env_key 		  = "test"
 	on = true
-	rules {
-		clauses {
+	rules = [{
+		clauses = [{
 			attribute  = "is_vip"
 			op         = "startsWith"
 			values     = [true]
 			value_type = "boolean"
 			negate     = false
-		}
+		}]
 		variation = 0
-	}
-	fallthrough {
+	}]
+	fallthrough = [{
 		variation = 0
-	}
+	}]
 	off_variation = 1
 }
 `
@@ -264,26 +264,30 @@ resource "launchdarkly_feature_flag" "bool_flag" {
 	key = "bool-flag"
 	name = "boolean flag"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 }
 
 resource "launchdarkly_feature_flag_environment" "bool_clause" {
 	flag_id 		  = launchdarkly_feature_flag.bool_flag.id
 	env_key 		  = "test"
 	on = true
-	rules {
-		clauses {
+	rules = [{
+		clauses = [{
 			attribute  = "is_vip"
 			op         = "startsWith"
 			values     = [true]
 			value_type = "boolean"
 			negate     = false
-		}
+		}]
 		rollout_weights = [60000, 40000]
 		bucket_by = "email"
-	}
-	fallthrough {
+	}]
+	fallthrough = [{
 		variation = 0
-	}
+	}]
 	off_variation = 1
 }
 `
@@ -294,25 +298,29 @@ resource "launchdarkly_feature_flag" "bool_flag" {
 	key = "bool-flag"
 	name = "boolean flag"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 }
 
 resource "launchdarkly_feature_flag_environment" "number_clause" {
 	flag_id 		  = launchdarkly_feature_flag.bool_flag.id
 	env_key 		  = "test"
 	on = true
-	rules {
-		clauses {
+	rules = [{
+		clauses = [{
 			attribute  = "answer"
 			op         = "in"
 			values     = [42,84]
 			value_type = "number"
 			negate     = false
-		}
+		}]
 		variation = 0
-	}
-	fallthrough {
+	}]
+	fallthrough = [{
 		variation = 0
-	}
+	}]
 	off_variation = 1
 }
 `
@@ -323,15 +331,13 @@ resource "launchdarkly_feature_flag" "basic" {
 	key = "basic-flag"
 	name = "Basic feature flag"
 	variation_type = "number"
-	variations {
+	variations = [{
 		value = 10
-	}
-	variations {
+	}, {
 		value = 20
-	}
-	variations {
+	}, {
 		value = 30
-	}
+	}]
 }
 
 resource "launchdarkly_feature_flag_environment" "invalid_bucket_by" {
@@ -339,9 +345,9 @@ resource "launchdarkly_feature_flag_environment" "invalid_bucket_by" {
 	env_key 		  = "test"
 	on = true
 	  
-	fallthrough {
+	fallthrough = [{
 		bucket_by = "email"
-	}
+	}]
 	off_variation = 0
 }
 `
@@ -352,38 +358,37 @@ resource "launchdarkly_feature_flag" "rollout" {
 	key            = "bool-flag"
 	name           = "Basic boolean flag"
 	variation_type = "boolean"
-  variations {
+  variations = [{
     value = true
-  }
-  variations {
+  }, {
     value = false
-  }
+  }]
 
-  defaults {
+  defaults = [{
     on_variation  = 1
     off_variation = 0
-  }
+  }]
 }	
 
 resource "launchdarkly_feature_flag_environment" "rollout" {
 	flag_id = launchdarkly_feature_flag.rollout.id
 	env_key = "test"
 	on      = true	  
-	rules {
-		clauses {
+	rules = [{
+		clauses = [{
 			attribute = "country"
 			op        = "startsWith"
 			values    = ["aus", "nz", "united"]
 			negate    = false
-		}
+		}]
 		variation = 0
-	}
-	fallthrough {
+	}]
+	fallthrough = [{
 		variation       = 0
 		rollout_weights = [60000, 40000]
 		bucket_by       = "country"
 		context_kind = "other"
-	}
+	}]
   off_variation = 1
 }
 `
@@ -394,38 +399,37 @@ resource "launchdarkly_feature_flag" "rollout" {
 	key            = "bool-flag"
 	name           = "Basic boolean flag"
 	variation_type = "boolean"
-  variations {
+  variations = [{
     value = true
-  }
-  variations {
+  }, {
     value = false
-  }
+  }]
 
-  defaults {
+  defaults = [{
     on_variation  = 1
     off_variation = 0
-  }
+  }]
 }	
 
 resource "launchdarkly_feature_flag_environment" "rollout" {
 	flag_id = launchdarkly_feature_flag.rollout.id
 	env_key = "test"
 	on      = true	  
-	rules {
-		clauses {
+	rules = [{
+		clauses = [{
 			attribute = "country"
 			op        = "startsWith"
 			values    = ["aus", "us", "united"]
 			negate    = false
-		}
+		}]
 		variation = 0
-	}
-	fallthrough {
+	}]
+	fallthrough = [{
 		variation       = 0
 		rollout_weights = [60000, 40000]
 		bucket_by       = "country"
 		context_kind = "other"
-	}
+	}]
   off_variation = 1
 }
 `
@@ -436,34 +440,32 @@ resource "launchdarkly_feature_flag" "basic" {
 	key = "basic-flag"
 	name = "Basic feature flag"
 	variation_type = "number"
-	variations {
+	variations = [{
 		value = 10
-	}
-	variations {
+	}, {
 		value = 20
-	}
-	variations {
+	}, {
 		value = 30
-	}
+	}]
 }
 
 resource "launchdarkly_feature_flag_environment" "invalid_bucket_by" {
 	flag_id 		  = launchdarkly_feature_flag.basic.id
 	env_key 		  = "test"
 	on = true	  
-	rules {
-		clauses {
+	rules = [{
+		clauses = [{
 			attribute = "name"
 			op        = "startsWith"
 			values    = ["h"]
 			negate    = false
-		}
+		}]
 		variation = 0
 		bucket_by = "name"
-	}
-	fallthrough {
+	}]
+	fallthrough = [{
 		variation = 0
-	}
+	}]
 	off_variation = 1
 }
 `
@@ -474,6 +476,10 @@ resource "launchdarkly_feature_flag" "context_test" {
 	key = "test-flag"
 	name = "Context Kind Test Flag"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 }
 
 resource "launchdarkly_feature_flag_environment" "custom_context" {
@@ -481,23 +487,22 @@ resource "launchdarkly_feature_flag_environment" "custom_context" {
 	env_key 		  = "test"
 	on = true
 	off_variation = 0
-	targets {
+	targets = [{
 		values    = ["user1", "user2"]
 		variation = 1
-	}
-	context_targets {
+	}]
+	context_targets = [{
 		values = ["account1", "account2"]
 		variation = 0
 		context_kind = "%s"
-	}
-	context_targets {
+	}, {
 		values = ["other1", "other2"]
 		variation = 1
 		context_kind = "%s"
-	}
-	fallthrough {
+	}]
+	fallthrough = [{
 		variation = 0
-	}
+	}]
 }
 `
 
@@ -507,6 +512,10 @@ resource "launchdarkly_feature_flag" "context_test" {
 	key = "test-flag"
 	name = "Context Kind Test Flag"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 }
 
 resource "launchdarkly_feature_flag_environment" "custom_context" {
@@ -514,22 +523,21 @@ resource "launchdarkly_feature_flag_environment" "custom_context" {
 	env_key 		  = "test"
 	on = true
 	off_variation = 0
-	targets {
+	targets = [{
 		values    = ["user1"]
 		variation = 0
-	}
-	targets {
+	}, {
 		values    = ["user2"]
 		variation = 1
-	}
-	context_targets {
+	}]
+	context_targets = [{
 		values = ["account1"]
 		variation = 1
 		context_kind = "%s"
-	}
-	fallthrough {
+	}]
+	fallthrough = [{
 		variation = 0
-	}
+	}]
 }
 `
 
@@ -539,6 +547,10 @@ resource "launchdarkly_feature_flag" "context_test" {
 	key = "test-flag"
 	name = "Context Kind Test Flag"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 }
 
 resource "launchdarkly_feature_flag_environment" "custom_context" {
@@ -546,22 +558,24 @@ resource "launchdarkly_feature_flag_environment" "custom_context" {
 	env_key 		  = "test"
 	on = true
 	off_variation = 0
-	targets {
-		values    = ["user2"]
-		variation = 1
-	}
-	context_targets {
+	targets = [
+		{
+			values    = ["user1"]
+			variation = 0
+		},
+		{
+			values    = ["user2"]
+			variation = 1
+		},
+	]
+	context_targets = [{
 		values = ["account1"]
 		variation = 1
 		context_kind = "%s"
-	}
-	targets {
-		values    = ["user1"]
+	}]
+	fallthrough = [{
 		variation = 0
-	}
-	fallthrough {
-		variation = 0
-	}
+	}]
 }
 `
 
@@ -571,6 +585,10 @@ resource "launchdarkly_feature_flag" "context_test" {
 	key = "test-flag"
 	name = "Context Kind Test Flag"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 }
 
 resource "launchdarkly_feature_flag_environment" "rules_custom_context" {
@@ -578,26 +596,25 @@ resource "launchdarkly_feature_flag_environment" "rules_custom_context" {
 	env_key 		  = "production"
 	on = false
 	off_variation = 1
-	rules {
-		clauses {
+	rules = [{
+		clauses = [{
 			attribute = "name"
 			op = "startsWith"
 			values = ["X", "O"]
 			negate = true
-		}
-		clauses {
+		}, {
 			attribute = "account_type"
 			op = "matches"
 			values = ["professional", "enterprise"]
 			negate = false
 			context_kind = "%s"
-		}
+		}]
 		variation = 0
-	}
-	fallthrough {
+	}]
+	fallthrough = [{
 		rollout_weights = [30000, 70000]
 		bucket_by = "account_id"
-	}
+	}]
 }
 `
 
@@ -608,22 +625,20 @@ resource "launchdarkly_feature_flag_environment" "rules_custom_context" {
 		name           = "off variation test"
 		variation_type = "boolean"
 	
-		variations {
+		variations = [{
 			value = false
-		}
-	
-		variations {
+		}, {
 			value = true
-		}
+		}]
 	
-		defaults {
+		defaults = [{
 			off_variation = 0
 			on_variation  = 1
-		}
+		}]
 	
-		client_side_availability {
+		client_side_availability = [{
 			using_environment_id = true
-		}
+		}]
 	}
 `
 
@@ -634,22 +649,20 @@ resource "launchdarkly_feature_flag" "off_variation_test" {
 	name           = "off variation test"
 	variation_type = "boolean"
 
-	variations {
+	variations = [{
 		value = false
-	}
-
-	variations {
+	}, {
 		value = true
-	}
+	}]
 
-	defaults {
+	defaults = [{
 		off_variation = 0
 		on_variation  = 1
-	}
+	}]
 
-	client_side_availability {
+	client_side_availability = [{
 		using_environment_id = true
-	}
+	}]
 }
 
 resource "launchdarkly_feature_flag_environment" "off_variation_test_configuration" {
@@ -658,14 +671,14 @@ resource "launchdarkly_feature_flag_environment" "off_variation_test_configurati
 	on            = true
 	off_variation = 0
 
-	targets {
+	targets = [{
 		values    = ["context-value"]
 		variation = 1
-	}
+	}]
 
-	fallthrough {
+	fallthrough = [{
 		variation = 0
-	}
+	}]
 }
 `
 )
@@ -1255,7 +1268,7 @@ func TestAccFeatureFlagEnvironment_OffVariationResetsToCorrectDefaultOnDelete(t 
 				ResourceName:            globalFlagResourceName,
 				ImportState:             true,
 				ImportStateVerify:       true,
-				ImportStateVerifyIgnore: phase4InflatedBlockKeys,
+				ImportStateVerifyIgnore: importIgnoreOptionalComputedKeys,
 			},
 		},
 	})

@@ -70,9 +70,7 @@ func (d *EnvironmentDataSource) Schema(_ context.Context, _ datasource.SchemaReq
 				ElementType: types.StringType,
 				Description: "Tags.",
 			},
-		},
-		Blocks: map[string]schema.Block{
-			APPROVAL_SETTINGS: frameworkApprovalSettingsDataSourceBlock(),
+			APPROVAL_SETTINGS: frameworkApprovalSettingsDataSourceAttribute(),
 		},
 	}
 }

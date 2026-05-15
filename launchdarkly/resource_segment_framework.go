@@ -15,7 +15,9 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/setplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
@@ -104,8 +106,9 @@ This resource allows you to create and manage segments within your LaunchDarkly 
 				Description: "Tags associated with your resource.",
 			},
 			CREATION_DATE: schema.Int64Attribute{
-				Computed:    true,
-				Description: "The segment's creation date represented as a UNIX epoch timestamp.",
+				Computed:      true,
+				Description:   "The segment's creation date represented as a UNIX epoch timestamp.",
+				PlanModifiers: []planmodifier.Int64{int64planmodifier.UseStateForUnknown()},
 			},
 			INCLUDED: schema.ListAttribute{
 				Optional:    true,
@@ -125,23 +128,26 @@ This resource allows you to create and manage segments within your LaunchDarkly 
 				PlanModifiers: []planmodifier.Bool{boolplanmodifier.RequiresReplace()},
 			},
 			UNBOUNDED_CONTEXT_KIND: schema.StringAttribute{
-				Optional:      true,
-				Computed:      true,
-				Description:   addForceNewDescription("For Big Segments, the targeted context kind. If this attribute is not specified it will default to `user`.", true),
-				PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
-			},
-			VIEW_KEYS: schema.SetAttribute{
 				Optional:    true,
 				Computed:    true,
-				ElementType: types.StringType,
-				Description: "A set of view keys to link this segment to. This is an alternative to using the `launchdarkly_view_links` resource for managing view associations. When set, this segment will be linked to the specified views. The field is also computed, meaning Terraform will read back the current view associations from LaunchDarkly to detect drift. To explicitly remove all view associations, set `view_keys = []`. Simply removing the field from your configuration will leave existing associations unchanged. **Important**: Avoid using both `view_keys` and `launchdarkly_view_links` to manage the same segment. Mixed ownership can cause conflicts; when detected, Terraform logs a warning and reconciles to the configured `view_keys`. Choose one approach per resource.",
-				Validators:  []validator.Set{},
+				Description: addForceNewDescription("For Big Segments, the targeted context kind. If this attribute is not specified it will default to `user`.", true),
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+					stringplanmodifier.RequiresReplace(),
+				},
 			},
-		},
-		Blocks: map[string]schema.Block{
-			INCLUDED_CONTEXTS: schema.ListNestedBlock{
+			VIEW_KEYS: schema.SetAttribute{
+				Optional:      true,
+				Computed:      true,
+				ElementType:   types.StringType,
+				Description:   "A set of view keys to link this segment to. This is an alternative to using the `launchdarkly_view_links` resource for managing view associations. When set, this segment will be linked to the specified views. The field is also computed, meaning Terraform will read back the current view associations from LaunchDarkly to detect drift. To explicitly remove all view associations, set `view_keys = []`. Simply removing the field from your configuration will leave existing associations unchanged. **Important**: Avoid using both `view_keys` and `launchdarkly_view_links` to manage the same segment. Mixed ownership can cause conflicts; when detected, Terraform logs a warning and reconciles to the configured `view_keys`. Choose one approach per resource.",
+				Validators:    []validator.Set{},
+				PlanModifiers: []planmodifier.Set{setplanmodifier.UseStateForUnknown()},
+			},
+			INCLUDED_CONTEXTS: schema.ListNestedAttribute{
+				Optional:    true,
 				Description: "List of non-user target objects included in the segment. This attribute is not valid when `unbounded` is set to `true`.",
-				NestedObject: schema.NestedBlockObject{
+				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
 						VALUES: schema.ListAttribute{
 							Required:    true,
@@ -155,9 +161,10 @@ This resource allows you to create and manage segments within your LaunchDarkly 
 					},
 				},
 			},
-			EXCLUDED_CONTEXTS: schema.ListNestedBlock{
+			EXCLUDED_CONTEXTS: schema.ListNestedAttribute{
+				Optional:    true,
 				Description: "List of non-user target objects excluded from the segment. This attribute is not valid when `unbounded` is set to `true`.",
-				NestedObject: schema.NestedBlockObject{
+				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
 						VALUES: schema.ListAttribute{
 							Required:    true,
@@ -171,7 +178,7 @@ This resource allows you to create and manage segments within your LaunchDarkly 
 					},
 				},
 			},
-			RULES: segmentRulesResourceBlock(),
+			RULES: segmentRulesResourceAttribute(),
 		},
 	}
 }
@@ -633,7 +640,7 @@ func (r *SegmentResource) readIntoModel(ctx context.Context, data *SegmentResour
 // The data source declares weight / bucket_by / rollout_context_kind
 // as Computed-only and tolerates zero values; the resource declares
 // them Optional-only and must emit null when the API returned nil/zero
-// to satisfy terraform-core's plan-apply consistency check (gotcha #8).
+// to satisfy terraform-core's plan-apply consistency check.
 // rollout_context_kind is Optional+Computed+Default("user") at the
 // schema level so plan and state both end up at "user" when the user
 // omits it (SDKv2 used a DiffSuppressFunc for the same effect).
@@ -660,17 +667,21 @@ func segmentResourceRulesValue(ctx context.Context, rules []ldapi.UserSegmentRul
 		diags.Append(d...)
 		elements = append(elements, obj)
 	}
+	if len(elements) == 0 {
+		return types.ListNull(objectType)
+	}
 	list, d := types.ListValue(objectType, elements)
 	diags.Append(d...)
 	return list
 }
 
-// segmentRulesResourceBlock declares the framework block schema for
-// segment rules. Matches segmentRulesSchema in segment_rule_helper.go.
-func segmentRulesResourceBlock() schema.ListNestedBlock {
-	return schema.ListNestedBlock{
-		Description: "List of nested custom rule blocks to apply to the segment. This attribute is not valid when `unbounded` is set to `true`.",
-		NestedObject: schema.NestedBlockObject{
+// segmentRulesResourceAttribute declares the framework attribute schema
+// for segment rules. Matches segmentRulesSchema in segment_rule_helper.go.
+func segmentRulesResourceAttribute() schema.ListNestedAttribute {
+	return schema.ListNestedAttribute{
+		Optional:    true,
+		Description: "List of custom rules to apply to the segment. This attribute is not valid when `unbounded` is set to `true`.",
+		NestedObject: schema.NestedAttributeObject{
 			Attributes: map[string]schema.Attribute{
 				WEIGHT: schema.Int64Attribute{
 					Optional:    true,
@@ -686,9 +697,7 @@ func segmentRulesResourceBlock() schema.ListNestedBlock {
 					Default:     stringdefault.StaticString("user"),
 					Description: "The context kind associated with this segment rule. This argument is only valid if `weight` is also specified. If omitted, defaults to `user`.",
 				},
-			},
-			Blocks: map[string]schema.Block{
-				CLAUSES: frameworkClausesResourceBlock(),
+				CLAUSES: frameworkClausesResourceAttribute(),
 			},
 		},
 	}

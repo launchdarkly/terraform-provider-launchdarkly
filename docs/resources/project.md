@@ -27,25 +27,26 @@ resource "launchdarkly_project" "example" {
   require_view_association_for_new_flags    = false
   require_view_association_for_new_segments = false
 
-  environments {
-    key   = "production"
-    name  = "Production"
-    color = "EEEEEE"
-    tags  = ["terraform"]
-    approval_settings {
-      can_review_own_request     = false
-      can_apply_declined_changes = false
-      min_num_approvals          = 3
-      required_approval_tags     = ["approvals_required"]
-    }
-  }
-
-  environments {
-    key   = "staging"
-    name  = "Staging"
-    color = "000000"
-    tags  = ["terraform"]
-  }
+  environments = [
+    {
+      key   = "production"
+      name  = "Production"
+      color = "EEEEEE"
+      tags  = ["terraform"]
+      approval_settings = [{
+        can_review_own_request     = false
+        can_apply_declined_changes = false
+        min_num_approvals          = 3
+        required_approval_tags     = ["approvals_required"]
+      }]
+    },
+    {
+      key   = "staging"
+      name  = "Staging"
+      color = "000000"
+      tags  = ["terraform"]
+    },
+  ]
 }
 ```
 
@@ -54,15 +55,15 @@ resource "launchdarkly_project" "example" {
 
 ### Required
 
+- `environments` (Attributes List) List of nested `environments` attributes describing LaunchDarkly environments that belong to the project. When managing LaunchDarkly projects in Terraform, you should always manage your environments as nested project resources.
+
+-> **Note:** Mixing the use of nested `environments` and [`launchdarkly_environment`](/docs/providers/launchdarkly/r/environment.html) resources is not recommended. `launchdarkly_environment` resources should only be used when the encapsulating project is not managed in Terraform. (see [below for nested schema](#nestedatt--environments))
 - `key` (String) The project's unique key. A change in this field will force the destruction of the existing resource and the creation of a new one.
 - `name` (String) The project's name.
 
 ### Optional
 
-- `default_client_side_availability` (Block List) A block describing which client-side SDKs can use new flags by default. (see [below for nested schema](#nestedblock--default_client_side_availability))
-- `environments` (Block List) List of nested `environments` blocks describing LaunchDarkly environments that belong to the project. When managing LaunchDarkly projects in Terraform, you should always manage your environments as nested project resources.
-
--> **Note:** Mixing the use of nested `environments` blocks and [`launchdarkly_environment`](/docs/providers/launchdarkly/r/environment.html) resources is not recommended. `launchdarkly_environment` resources should only be used when the encapsulating project is not managed in Terraform. (see [below for nested schema](#nestedblock--environments))
+- `default_client_side_availability` (Attributes List) Which client-side SDKs can use new flags by default. (see [below for nested schema](#nestedatt--default_client_side_availability))
 - `include_in_snippet` (Boolean, Deprecated) Whether feature flags created under the project should be available to client-side SDKs by default. Please migrate to `default_client_side_availability` to maintain future compatibility.
 - `require_view_association_for_new_flags` (Boolean) Whether new flags created in this project must be associated with at least one view.
 - `require_view_association_for_new_segments` (Boolean) Whether new segments created in this project must be associated with at least one view.
@@ -72,16 +73,7 @@ resource "launchdarkly_project" "example" {
 
 - `id` (String) The ID of this resource.
 
-<a id="nestedblock--default_client_side_availability"></a>
-### Nested Schema for `default_client_side_availability`
-
-Required:
-
-- `using_environment_id` (Boolean)
-- `using_mobile_key` (Boolean)
-
-
-<a id="nestedblock--environments"></a>
+<a id="nestedatt--environments"></a>
 ### Nested Schema for `environments`
 
 Required:
@@ -92,7 +84,7 @@ Required:
 
 Optional:
 
-- `approval_settings` (Block List) (see [below for nested schema](#nestedblock--environments--approval_settings))
+- `approval_settings` (Attributes List) (see [below for nested schema](#nestedatt--environments--approval_settings))
 - `confirm_changes` (Boolean) Set to `true` if this environment requires confirmation for flag and segment changes. This field will default to `false` when not set.
 - `critical` (Boolean) Denotes whether the environment is critical.
 - `default_track_events` (Boolean) Set to `true` to enable data export for every flag created in this environment after you configure this argument. This field will default to `false` when not set. To learn more, read [Data Export](https://docs.launchdarkly.com/home/data-export).
@@ -107,7 +99,7 @@ Read-Only:
 - `client_side_id` (String, Sensitive) The environment's client-side ID.
 - `mobile_key` (String, Sensitive) The environment's mobile key.
 
-<a id="nestedblock--environments--approval_settings"></a>
+<a id="nestedatt--environments--approval_settings"></a>
 ### Nested Schema for `environments.approval_settings`
 
 Optional:
@@ -123,6 +115,16 @@ Optional:
 	 - `template` (String) The sys_id of the Standard Change Request Template in ServiceNow that LaunchDarkly will use when creating the change request.
 	 - `detail_column` (String) The name of the ServiceNow Change Request column LaunchDarkly uses to populate detailed approval request information. This is most commonly "justification".
 - `service_kind` (String) The kind of service associated with this approval. This determines which platform is used for requesting approval. Valid values are `servicenow`, `launchdarkly`. If you use a value other than `launchdarkly`, you must have already configured the integration in the LaunchDarkly UI or your apply will fail.
+
+
+
+<a id="nestedatt--default_client_side_availability"></a>
+### Nested Schema for `default_client_side_availability`
+
+Required:
+
+- `using_environment_id` (Boolean)
+- `using_mobile_key` (Boolean)
 
 ## Import
 

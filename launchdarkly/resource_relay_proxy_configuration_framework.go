@@ -69,9 +69,7 @@ This resource allows you to create and manage Relay Proxy configurations within 
 				Description:   "The last 4 characters of the Relay Proxy configuration's unique key.",
 				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
-		},
-		Blocks: map[string]schema.Block{
-			POLICY: frameworkPolicyStatementsResourceBlock(true, "The Relay Proxy configuration's rule policy block. This determines what content the Relay Proxy receives. To learn more, read [Understanding policies](https://docs.launchdarkly.com/home/members/role-policies#understanding-policies).", ""),
+			POLICY: frameworkPolicyStatementsResourceAttribute(true, "The Relay Proxy configuration's rule policy. This determines what content the Relay Proxy receives. To learn more, read [Understanding policies](https://docs.launchdarkly.com/home/members/role-policies#understanding-policies).", ""),
 		},
 	}
 }

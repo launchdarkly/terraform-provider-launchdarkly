@@ -26,31 +26,33 @@ resource "launchdarkly_feature_flag" "building_materials" {
   description = "this is a multivariate flag with string variations."
 
   variation_type = "string"
-  variations {
-    value       = "straw"
-    name        = "Straw"
-    description = "Watch out for wind."
-  }
-  variations {
-    value       = "sticks"
-    name        = "Sticks"
-    description = "Sturdier than straw"
-  }
-  variations {
-    value       = "bricks"
-    name        = "Bricks"
-    description = "The strongest variation"
-  }
+  variations = [
+    {
+      value       = "straw"
+      name        = "Straw"
+      description = "Watch out for wind."
+    },
+    {
+      value       = "sticks"
+      name        = "Sticks"
+      description = "Sturdier than straw"
+    },
+    {
+      value       = "bricks"
+      name        = "Bricks"
+      description = "The strongest variation"
+    },
+  ]
 
-  client_side_availability {
+  client_side_availability = [{
     using_environment_id = false
     using_mobile_key     = true
-  }
+  }]
 
-  defaults {
+  defaults = [{
     on_variation  = 2
     off_variation = 0
-  }
+  }]
 
   tags = [
     "example",
@@ -66,19 +68,21 @@ resource "launchdarkly_feature_flag" "json_example" {
   name        = "JSON example flag"
 
   variation_type = "json"
-  variations {
-    name  = "Single foo"
-    value = jsonencode({ "foo" : "bar" })
-  }
-  variations {
-    name  = "Multiple foos"
-    value = jsonencode({ "foos" : ["bar1", "bar2"] })
-  }
+  variations = [
+    {
+      name  = "Single foo"
+      value = jsonencode({ "foo" : "bar" })
+    },
+    {
+      name  = "Multiple foos"
+      value = jsonencode({ "foos" : ["bar1", "bar2"] })
+    },
+  ]
 
-  defaults {
+  defaults = [{
     on_variation  = 1
     off_variation = 0
-  }
+  }]
 }
 
 # Example: Feature flag with view associations
@@ -132,13 +136,14 @@ resource "launchdarkly_feature_flag" "mobile_app_feature" {
 - `name` (String) The human-readable name of the feature flag.
 - `project_key` (String) The feature flag's project key. A change in this field will force the destruction of the existing resource and the creation of a new one.
 - `variation_type` (String) The feature flag's variation type: `boolean`, `string`, `number` or `json`. A change in this field will force the destruction of the existing resource and the creation of a new one.
+- `variations` (Attributes List) An array of possible variations for the flag. (see [below for nested schema](#nestedatt--variations))
 
 ### Optional
 
 - `archived` (Boolean) Specifies whether the flag is archived or not. Note that you cannot create a new flag that is archived, but can update a flag to be archived.
-- `client_side_availability` (Block List) A block describing whether this flag should be made available to the client-side JavaScript SDK using the client-side Id, mobile key, or both. This value gets its default from your project configuration if not set. Once set, if removed, it will retain its last set value. (see [below for nested schema](#nestedblock--client_side_availability))
-- `custom_properties` (Block Set) List of nested blocks describing the feature flag's [custom properties](https://docs.launchdarkly.com/home/connecting/custom-properties) (see [below for nested schema](#nestedblock--custom_properties))
-- `defaults` (Block List) A block containing the indices of the variations to be used as the default on and off variations in all new environments. Flag configurations in existing environments will not be changed nor updated if the configuration block is removed. (see [below for nested schema](#nestedblock--defaults))
+- `client_side_availability` (Attributes List) Whether this flag should be made available to the client-side JavaScript SDK using the client-side Id, mobile key, or both. This value gets its default from your project configuration if not set. Once set, if removed, it will retain its last set value. (see [below for nested schema](#nestedatt--client_side_availability))
+- `custom_properties` (Attributes Set) The feature flag's [custom properties](https://docs.launchdarkly.com/home/connecting/custom-properties). (see [below for nested schema](#nestedatt--custom_properties))
+- `defaults` (Attributes List) The indices of the variations to be used as the default on and off variations in all new environments. Flag configurations in existing environments will not be changed nor updated if removed. (see [below for nested schema](#nestedatt--defaults))
 - `deprecated` (Boolean) Specifies whether the flag is deprecated or not. Note that you cannot create a new flag that is deprecated, but can update a flag to be deprecated.
 - `description` (String) The feature flag's description.
 - `include_in_snippet` (Boolean, Deprecated) Specifies whether this flag should be made available to the client-side JavaScript SDK using the client-side Id. This value gets its default from your project configuration if not set. `include_in_snippet` is now deprecated. Please migrate to `client_side_availability.using_environment_id` to maintain future compatibility.
@@ -146,14 +151,36 @@ resource "launchdarkly_feature_flag" "mobile_app_feature" {
 - `maintainer_team_key` (String) The key of the associated team that maintains this feature flag. `maintainer_id` cannot be set if `maintainer_team_key` is set
 - `tags` (Set of String) Tags associated with your resource.
 - `temporary` (Boolean) Specifies whether the flag is a temporary flag.
-- `variations` (Block List) An array of possible variations for the flag (see [below for nested schema](#nestedblock--variations))
 - `view_keys` (Set of String) A set of view keys to link this flag to. This is an alternative to using the `launchdarkly_view_links` resource for managing view associations. When set, this flag will be linked to the specified views. The field is also computed, meaning Terraform will read back the current view associations from LaunchDarkly to detect drift. To explicitly remove all view associations, set `view_keys = []`. Simply removing the field from your configuration will leave existing associations unchanged. **Important**: Avoid using both `view_keys` and `launchdarkly_view_links` to manage the same flag. Mixed ownership can cause conflicts; when detected, Terraform logs a warning and reconciles to the configured `view_keys`. Choose one approach per resource.
 
 ### Read-Only
 
 - `id` (String) The ID of this resource.
 
-<a id="nestedblock--client_side_availability"></a>
+<a id="nestedatt--variations"></a>
+### Nested Schema for `variations`
+
+Required:
+
+- `value` (String) The variation value. The value's type must correspond to the `variation_type` argument. For example: `variation_type = "boolean"` accepts only `true` or `false`. The `number` variation type accepts both floats and ints, but please note that any trailing zeroes on floats will be trimmed (i.e. `1.1` and `1.100` will both be converted to `1.1`).
+
+If you wish to define an empty string variation, you must still define the value field like so:
+
+```terraform
+variations = [{
+  value = ""
+}]
+```
+
+-> **Note:** Terraform manages `variations` as an ordered array and identifies them by index. Changing the order of `variations` may destroy and recreate variations. Deleted variations that still have targets attached outside of Terraform may have their targets reassigned to a different variation.
+
+Optional:
+
+- `description` (String) The variation's description.
+- `name` (String) The name of the variation.
+
+
+<a id="nestedatt--client_side_availability"></a>
 ### Nested Schema for `client_side_availability`
 
 Optional:
@@ -162,7 +189,7 @@ Optional:
 - `using_mobile_key` (Boolean) Whether this flag is available to SDKs using a mobile key.
 
 
-<a id="nestedblock--custom_properties"></a>
+<a id="nestedatt--custom_properties"></a>
 ### Nested Schema for `custom_properties`
 
 Required:
@@ -172,36 +199,13 @@ Required:
 - `value` (List of String) The list of custom property value strings.
 
 
-<a id="nestedblock--defaults"></a>
+<a id="nestedatt--defaults"></a>
 ### Nested Schema for `defaults`
 
 Required:
 
 - `off_variation` (Number) The index of the variation the flag will default to in all new environments when off.
 - `on_variation` (Number) The index of the variation the flag will default to in all new environments when on.
-
-
-<a id="nestedblock--variations"></a>
-### Nested Schema for `variations`
-
-Required:
-
-- `value` (String) The variation value. The value's type must correspond to the `variation_type` argument. For example: `variation_type = "boolean"` accepts only `true` or `false`. The `number` variation type accepts both floats and ints, but please note that any trailing zeroes on floats will be trimmed (i.e. `1.1` and `1.100` will both be converted to `1.1`).
-
-If you wish to define an empty string variation, you must still define the value field on the variations block like so:
-
-```terraform
-variations {
-  value = ""
-}
-```
-
--> **Note:** Terraform manages `variations` as an ordered array and identifies them by index. This means that if you change the order of your `variations` block, you may end up destroying and recreating those variations. Additionally, if you delete variations that have targets that have been attached outside of Terraform, those targets may be incorrectly reassigned to a different variation.
-
-Optional:
-
-- `description` (String) The variation's description.
-- `name` (String) The name of the variation.
 
 ## Import
 

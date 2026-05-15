@@ -52,10 +52,10 @@ data "launchdarkly_metric" "example" {
 - `tags` (Set of String) Tags associated with the metric.
 - `unit` (String) The unit for numeric `custom` metrics.
 - `unit_aggregation_type` (String) The method by which multiple unit event values are aggregated.
-- `urls` (Block List) Nested `url` blocks describing URLs associated with the metric. (see [below for nested schema](#nestedblock--urls))
+- `urls` (Attributes List) URLs associated with the metric. (see [below for nested schema](#nestedatt--urls))
 - `version` (Number) Version of the metric.
 
-<a id="nestedblock--urls"></a>
+<a id="nestedatt--urls"></a>
 ### Nested Schema for `urls`
 
 Read-Only:

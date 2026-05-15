@@ -34,11 +34,11 @@ resource "launchdarkly_custom_role" "test" {
 	key = "%s"
 	name = "Updated - %s"
 	description= "Allow all actions on staging environments"
-	policy_statements {
+	policy_statements = [{
 		actions = ["*"]	
 		effect = "allow"
 		resources = ["proj/*:env/staging"]
-	}
+	}]
 }
 
 resource "launchdarkly_team_member" "custom_role_test" {
@@ -53,22 +53,22 @@ resource "launchdarkly_custom_role" "test" {
 	key = "%s"
 	name = "Updated - %s"
 	description= "Allow all actions on staging environments"
-	policy_statements {
+	policy_statements = [{
 		actions = ["*"]	
 		effect = "allow"
 		resources = ["proj/*:env/staging"]
-	}
+	}]
 }
 
 resource "launchdarkly_custom_role" "test_2" {
 	key = "%s"
 	name = "Updated - %s"
 	description= "Allow all actions on production environments"
-	policy_statements {
+	policy_statements = [{
 		actions = ["*"]	
 		effect = "allow"
 		resources = ["proj/*:env/production"]
-	}
+	}]
 }
 
 resource "launchdarkly_team_member" "custom_role_test" {
@@ -83,11 +83,11 @@ resource "launchdarkly_custom_role" "test" {
 	key = "%s"
 	name = "Updated - %s"
 	description= "Allow all actions on testAttribute environments"
-	policy_statements {
+	policy_statements = [{
 		actions = ["*"]	
 		effect = "allow"
 		resources = ["proj/*:env/$${roleAttribute/testAttribute}"]
-	}
+	}]
 }
 
 resource "launchdarkly_team_member" "custom_role_test" {
@@ -95,14 +95,13 @@ resource "launchdarkly_team_member" "custom_role_test" {
 	first_name = "first"
 	last_name = "last"
 	custom_roles = [launchdarkly_custom_role.test.key]
-	role_attributes {
+	role_attributes = [{
 		key = "testAttribute"
 		values = ["staging", "production"]
-	}
-	role_attributes {
+	}, {
 		key = "nonexistentAttribute"
 		values = ["someValue"]
-	}
+	}]
 }
 `
 	testAccTeamMemberCustomRoleWithRoleAttributesUpdate = `
@@ -110,11 +109,11 @@ resource "launchdarkly_custom_role" "test" {
 	key = "%s"
 	name = "Updated - %s"
 	description= "Allow all actions on testAttribute environments"
-	policy_statements {
+	policy_statements = [{
 		actions = ["*"]	
 		effect = "allow"
 		resources = ["proj/*:env/$${roleAttribute/testAttribute}"]
-	}
+	}]
 }
 
 resource "launchdarkly_team_member" "custom_role_test" {
@@ -122,14 +121,13 @@ resource "launchdarkly_team_member" "custom_role_test" {
 	first_name = "first"
 	last_name = "last"
 	custom_roles = [launchdarkly_custom_role.test.key]
-	role_attributes {
+	role_attributes = [{
 		key = "newAttribute"
 		values = ["value1", "value2"]
-	}
-	role_attributes {
+	}, {
 		key = "testAttribute"
 		values = ["staging"]
-	}
+	}]
 }
 `
 	testAccTeamMemberCustomRoleWithRoleAttributesRemove = `
@@ -137,11 +135,11 @@ resource "launchdarkly_custom_role" "test" {
 	key = "%s"
 	name = "Updated - %s"
 	description= "Allow all actions on testAttribute environments"
-	policy_statements {
+	policy_statements = [{
 		actions = ["*"]	
 		effect = "allow"
 		resources = ["proj/*:env/$${roleAttribute/testAttribute}"]
-	}
+	}]
 }
 
 resource "launchdarkly_team_member" "custom_role_test" {

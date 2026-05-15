@@ -93,6 +93,7 @@ jobs:
           - TestAccDataSource
           - TestAccAccessToken
           - TestAccAuditLogSubscription
+          - TestAccContextKind
           - TestAccCustomRole
           - TestAccDestination
           - TestAccEnvironment

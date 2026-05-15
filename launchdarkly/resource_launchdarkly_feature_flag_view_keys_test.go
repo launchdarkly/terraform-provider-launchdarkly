@@ -47,6 +47,10 @@ resource "launchdarkly_feature_flag" "test" {
 	key         = "test-flag-with-views"
 	name        = "Test Flag with Views"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 	
 	view_keys = [
 		launchdarkly_view.view1.key,
@@ -89,6 +93,10 @@ resource "launchdarkly_feature_flag" "test" {
 	key         = "test-flag-with-views"
 	name        = "Test Flag with Views"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 	
 	view_keys = [
 		launchdarkly_view.view1.key,
@@ -131,6 +139,10 @@ resource "launchdarkly_feature_flag" "test" {
 	key         = "test-flag-with-views"
 	name        = "Test Flag with Views"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 	
 	view_keys = []
 	
@@ -170,6 +182,10 @@ resource "launchdarkly_feature_flag" "test" {
 	key         = "test-flag-with-views"
 	name        = "Test Flag with Views"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 
 	view_keys = [
 		launchdarkly_view.view1.key
@@ -213,6 +229,10 @@ resource "launchdarkly_feature_flag" "test" {
 	key         = "test-flag-bad-view"
 	name        = "Test Flag with Bad View"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 	
 	view_keys = [
 		launchdarkly_view.view1.key,

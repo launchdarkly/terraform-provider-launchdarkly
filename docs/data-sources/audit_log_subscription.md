@@ -35,10 +35,10 @@ data "launchdarkly_audit_log_subscription" "test" {
 - `config` (Map of String) The set of configuration fields corresponding to the value defined for `integration_key`.
 - `name` (String) A human-friendly name for your audit log subscription.
 - `on` (Boolean) Whether or not the subscription is enabled.
-- `statements` (Block List) A block representing the resources to which you wish to subscribe. (see [below for nested schema](#nestedblock--statements))
+- `statements` (Attributes List) A block representing the resources to which you wish to subscribe. (see [below for nested schema](#nestedatt--statements))
 - `tags` (Set of String) Tags associated with the audit log subscription.
 
-<a id="nestedblock--statements"></a>
+<a id="nestedatt--statements"></a>
 ### Nested Schema for `statements`
 
 Read-Only:

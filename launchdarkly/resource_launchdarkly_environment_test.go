@@ -10,14 +10,12 @@ import (
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 )
 
-// phase4EnvApprovalKeys is the canonical set of approval_settings
-// attribute paths that diverge on ImportStateVerify. SDKv2 inflated
-// approval_settings as Optional+Computed-at-TypeList from the API; the
-// plugin framework forbids block-level Computed, so the Import-side
-// Read can only emit count=0 when the user omits the block and the
-// API-declared all-defaults case can't be distinguished from omitted
-// (Phase 4 gotcha #3).
-var phase4EnvApprovalKeys = []string{
+// importIgnoreApprovalSettingsKeys lists the approval_settings attribute
+// paths suppressed by ImportStateVerify. Import has no prior state, so
+// the Read path can't distinguish "user omitted approval_settings" from
+// "user supplied approval_settings = [{...all defaults...}]" and may
+// diverge from the user-config-anchored state.
+var importIgnoreApprovalSettingsKeys = []string{
 	"approval_settings.#",
 	"approval_settings.0.%",
 	"approval_settings.0.required",
@@ -93,11 +91,11 @@ resource "launchdarkly_environment" "approvals_test" {
 	key = "approvals-test"
 	color = "ababab"
 	project_key = launchdarkly_project.test.key
-	approval_settings {
+	approval_settings = [{
 		can_review_own_request = false
 		min_num_approvals = 2
 		required_approval_tags = ["approvals_required"]
-	}
+	}]
 }
 `
 	testAccEnvironmentWithApprovalsUpdate = `
@@ -106,12 +104,12 @@ resource "launchdarkly_environment" "approvals_test" {
 	key = "approvals-test"
 	color = "bababa"
 	project_key = launchdarkly_project.test.key
-	approval_settings {
+	approval_settings = [{
 		required = true
 		can_review_own_request = true
 		min_num_approvals = 1
 		can_apply_declined_changes = false
-	}
+	}]
 }
 `
 
@@ -132,7 +130,7 @@ resource "launchdarkly_environment" "auto_apply_test" {
 	key = "auto-apply-test"
 	color = "ababab"
 	project_key = launchdarkly_project.test.key
-	approval_settings {
+	approval_settings = [{
 		service_kind = "servicenow"
 		service_config = {
 			template = "b1c8d15147810200e90d87e8dee490f7"
@@ -143,7 +141,7 @@ resource "launchdarkly_environment" "auto_apply_test" {
 		min_num_approvals = 1
 		required_approval_tags = ["approvals_required", "auto_apply"]
 		auto_apply_approved_changes = true
-	}
+	}]
 }
 `
 
@@ -153,7 +151,7 @@ resource "launchdarkly_environment" "auto_apply_test" {
 	key = "auto-apply-test"
 	color = "bababa"
 	project_key = launchdarkly_project.test.key
-	approval_settings {
+	approval_settings = [{
 		service_kind = "servicenow"
 		service_config = {
 			template = "508e02ec47410200e90d87e8dee49058"
@@ -163,7 +161,7 @@ resource "launchdarkly_environment" "auto_apply_test" {
 		can_review_own_request = true
 		min_num_approvals = 2
 		auto_apply_approved_changes = false
-  }
+  }]
 }
 `
 	testAccEnvironmentCritical = `
@@ -187,12 +185,12 @@ resource "launchdarkly_environment" "critical_env" {
   critical = false
   project_key = launchdarkly_project.test.key
 
-  approval_settings {
+  approval_settings = [{
 		required = true
 		can_review_own_request = false
 		min_num_approvals = 3
 		can_apply_declined_changes = true
-	}
+	}]
 }
 `
 )
@@ -229,7 +227,7 @@ func TestAccEnvironment_Create(t *testing.T) {
 				ResourceName:            resourceName,
 				ImportState:             true,
 				ImportStateVerify:       true,
-				ImportStateVerifyIgnore: phase4EnvApprovalKeys,
+				ImportStateVerifyIgnore: importIgnoreApprovalSettingsKeys,
 			},
 		},
 	})
@@ -382,7 +380,7 @@ func TestAccEnvironment_WithApprovals(t *testing.T) {
 				ResourceName:            resourceName,
 				ImportState:             true,
 				ImportStateVerify:       true,
-				ImportStateVerifyIgnore: phase4EnvApprovalKeys,
+				ImportStateVerifyIgnore: importIgnoreApprovalSettingsKeys,
 			},
 			{
 				Config: withRandomProject(projectKey, testAccEnvironmentWithApprovalsUpdate),
@@ -404,7 +402,7 @@ func TestAccEnvironment_WithApprovals(t *testing.T) {
 				ResourceName:            resourceName,
 				ImportState:             true,
 				ImportStateVerify:       true,
-				ImportStateVerifyIgnore: phase4EnvApprovalKeys,
+				ImportStateVerifyIgnore: importIgnoreApprovalSettingsKeys,
 			},
 			{
 				Config: withRandomProject(projectKey, testAccEnvironmentWithApprovalsRemoved),
@@ -422,7 +420,7 @@ func TestAccEnvironment_WithApprovals(t *testing.T) {
 				ResourceName:            resourceName,
 				ImportState:             true,
 				ImportStateVerify:       true,
-				ImportStateVerifyIgnore: phase4EnvApprovalKeys,
+				ImportStateVerifyIgnore: importIgnoreApprovalSettingsKeys,
 			},
 			{ // reset back to original state
 				Config: withRandomProject(projectKey, testAccEnvironmentWithApprovals),
@@ -445,7 +443,7 @@ func TestAccEnvironment_WithApprovals(t *testing.T) {
 				ResourceName:            resourceName,
 				ImportState:             true,
 				ImportStateVerify:       true,
-				ImportStateVerifyIgnore: phase4EnvApprovalKeys,
+				ImportStateVerifyIgnore: importIgnoreApprovalSettingsKeys,
 			},
 		},
 	})
@@ -486,7 +484,7 @@ func TestAccEnvironment_WithApprovalIntegrations(t *testing.T) {
 				ResourceName:            resourceName,
 				ImportState:             true,
 				ImportStateVerify:       true,
-				ImportStateVerifyIgnore: phase4EnvApprovalKeys,
+				ImportStateVerifyIgnore: importIgnoreApprovalSettingsKeys,
 			},
 			{
 				Config: withRandomProject(projectKey, testAccEnvironmentWithServiceNowApprovalsUpdate),
@@ -512,7 +510,7 @@ func TestAccEnvironment_WithApprovalIntegrations(t *testing.T) {
 				ResourceName:            resourceName,
 				ImportState:             true,
 				ImportStateVerify:       true,
-				ImportStateVerifyIgnore: phase4EnvApprovalKeys,
+				ImportStateVerifyIgnore: importIgnoreApprovalSettingsKeys,
 			},
 		},
 	})
@@ -546,7 +544,7 @@ func TestAccEnvironment_Critical(t *testing.T) {
 				ResourceName:            resourceName,
 				ImportState:             true,
 				ImportStateVerify:       true,
-				ImportStateVerifyIgnore: phase4EnvApprovalKeys,
+				ImportStateVerifyIgnore: importIgnoreApprovalSettingsKeys,
 			},
 			{
 				Config: withRandomProject(projectKey, testAccEnvironmentCriticalUpdate),
@@ -571,7 +569,7 @@ func TestAccEnvironment_Critical(t *testing.T) {
 				ResourceName:            resourceName,
 				ImportState:             true,
 				ImportStateVerify:       true,
-				ImportStateVerifyIgnore: phase4EnvApprovalKeys,
+				ImportStateVerifyIgnore: importIgnoreApprovalSettingsKeys,
 			},
 			{
 				Config: withRandomProject(projectKey, testAccEnvironmentCritical),
@@ -592,7 +590,7 @@ func TestAccEnvironment_Critical(t *testing.T) {
 				ResourceName:            resourceName,
 				ImportState:             true,
 				ImportStateVerify:       true,
-				ImportStateVerifyIgnore: phase4EnvApprovalKeys,
+				ImportStateVerifyIgnore: importIgnoreApprovalSettingsKeys,
 			},
 		},
 	})

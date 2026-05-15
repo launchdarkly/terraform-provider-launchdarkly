@@ -63,11 +63,11 @@ func TestAccDataSourceView_exists(t *testing.T) {
 resource "launchdarkly_project" "test" {
 	name = "%s"
 	key  = "%s"
-	environments {
+	environments = [{
 		name  = "Test Environment"
 		key   = "test-env"
 		color = "000000"
-	}
+	}]
 }
 
 resource "launchdarkly_view" "test" {
@@ -124,11 +124,11 @@ func TestAccDataSourceView_withLinkedFlags(t *testing.T) {
 resource "launchdarkly_project" "test" {
 	name = "%s"
 	key  = "%s"
-	environments {
+	environments = [{
 		name  = "Test Environment"
 		key   = "test-env"
 		color = "000000"
-	}
+	}]
 }
 
 resource "launchdarkly_view" "test" {
@@ -144,6 +144,10 @@ resource "launchdarkly_feature_flag" "test1" {
 	key         = "test-flag-1"
 	name        = "Test Flag 1"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 }
 
 resource "launchdarkly_feature_flag" "test2" {
@@ -151,6 +155,10 @@ resource "launchdarkly_feature_flag" "test2" {
 	key         = "test-flag-2"
 	name        = "Test Flag 2"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 }
 
 resource "launchdarkly_view_links" "test" {

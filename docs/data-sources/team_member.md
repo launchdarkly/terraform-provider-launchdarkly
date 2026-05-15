@@ -35,9 +35,9 @@ data "launchdarkly_team_member" "example" {
 - `id` (String) The 24-character member ID.
 - `last_name` (String) Last name.
 - `role` (String) The role associated with the team member. Possible roles are `owner`, `reader`, `writer`, or `admin`.
-- `role_attributes` (Block Set) A role attributes block. One block must be defined per role attribute. The key is the role attribute key and the value is a string array of resource keys that apply. (see [below for nested schema](#nestedblock--role_attributes))
+- `role_attributes` (Attributes Set) A role attributes block. One block must be defined per role attribute. The key is the role attribute key and the value is a string array of resource keys that apply. (see [below for nested schema](#nestedatt--role_attributes))
 
-<a id="nestedblock--role_attributes"></a>
+<a id="nestedatt--role_attributes"></a>
 ### Nested Schema for `role_attributes`
 
 Read-Only:

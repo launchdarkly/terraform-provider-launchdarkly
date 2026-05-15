@@ -42,9 +42,9 @@ https://app.launchdarkly.com/settings/relay/THIS_IS_YOUR_RELAY_PROXY_ID/edit
 
 - `display_key` (String) The last 4 characters of the Relay Proxy configuration's unique key.
 - `name` (String) The human-readable name for your Relay Proxy configuration.
-- `policy` (Block List) The Relay Proxy configuration's rule policy block. This determines what content the Relay Proxy receives. To learn more, read [Understanding policies](https://docs.launchdarkly.com/home/members/role-policies#understanding-policies). (see [below for nested schema](#nestedblock--policy))
+- `policy` (Attributes List) The Relay Proxy configuration's rule policy block. This determines what content the Relay Proxy receives. To learn more, read [Understanding policies](https://docs.launchdarkly.com/home/members/role-policies#understanding-policies). (see [below for nested schema](#nestedatt--policy))
 
-<a id="nestedblock--policy"></a>
+<a id="nestedatt--policy"></a>
 ### Nested Schema for `policy`
 
 Read-Only:

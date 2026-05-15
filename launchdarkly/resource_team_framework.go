@@ -85,9 +85,7 @@ This resource allows you to create and manage a team within your LaunchDarkly or
 				ElementType: types.StringType,
 				Description: "List of custom role keys the team will access. The referenced custom roles must already exist in LaunchDarkly. If they don't, the provider may behave unexpectedly.",
 			},
-		},
-		Blocks: map[string]schema.Block{
-			ROLE_ATTRIBUTES: frameworkRoleAttributesResourceBlock(),
+			ROLE_ATTRIBUTES: frameworkRoleAttributesResourceAttribute(),
 		},
 	}
 }

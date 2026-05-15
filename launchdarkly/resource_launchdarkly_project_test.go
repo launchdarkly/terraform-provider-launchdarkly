@@ -18,11 +18,11 @@ resource "launchdarkly_project" "test" {
 	name = "test project"
 	include_in_snippet = false
 	tags = [ "terraform", "test" ]
-	environments {
+	environments = [{
 	  name  = "Test Environment"
 	  key   = "test-env"
 	  color = "010101"
-	}
+	}]
 }
 `
 	testAccProjectUpdate = `
@@ -31,11 +31,11 @@ resource "launchdarkly_project" "test" {
 	name = "awesome test project"
 	include_in_snippet = true
 	tags = [ "terraform" ]
-	environments {
+	environments = [{
 	  name  = "Test Environment 2.0"
 	  key   = "test-env"
 	  color = "020202"
-	}
+	}]
 }
 `
 
@@ -43,11 +43,11 @@ resource "launchdarkly_project" "test" {
 resource "launchdarkly_project" "test" {
 	key = "%s"
 	name = "awesome test project"
-	environments {
+	environments = [{
 		name  = "Test Environment 2.0"
 		key   = "test-env"
 		color = "020202"
-	  }
+	  }]
 }
 `
 
@@ -55,12 +55,12 @@ resource "launchdarkly_project" "test" {
 resource "launchdarkly_project" "env_test" {
 	key = "%s"
 	name = "test project"
-	environments {
+	environments = [{
 		key = "test-env"
 		name = "test environment"
 		color = "000000"
 		tags = ["terraform", "test"]
-	}
+	}]
 }	
 `
 
@@ -68,7 +68,7 @@ resource "launchdarkly_project" "env_test" {
 resource "launchdarkly_project" "env_test" {
 	key = "%s"
 	name = "test project"
-	environments {
+	environments = [{
 		key = "test-env"
 		name = "test environment updated"
 		color = "AAAAAA"
@@ -78,18 +78,17 @@ resource "launchdarkly_project" "env_test" {
 		default_track_events = true
 		require_comments = true
 		confirm_changes = true
-	}
-	environments {
+	}, {
 		key = "new-approvals-env"
 		name = "New approvals environment"
 		color = "EEEEEE"
 		tags = ["new"]
-		approval_settings {
+		approval_settings = [{
 			required                   = true
 			can_review_own_request     = true
 			min_num_approvals          = 2
-		  }
-	}
+		  }]
+	}]
 }	
 `
 
@@ -97,7 +96,7 @@ resource "launchdarkly_project" "env_test" {
 resource "launchdarkly_project" "env_test" {
 	key = "%s"
 	name = "test project"
-	environments {
+	environments = [{
 		key = "test-env"
 		name = "test environment updated"
 		color = "AAAAAA"
@@ -107,19 +106,18 @@ resource "launchdarkly_project" "env_test" {
 		default_track_events = true
 		require_comments = true
 		confirm_changes = true
-	}
-	environments {
+	}, {
 		key = "new-approvals-env"
 		name = "New approvals environment"
 		color = "EEEEEE"
 		tags = ["new"]
-		approval_settings {
+		approval_settings = [{
 			required_approval_tags     = ["approvals_required"]
 			can_review_own_request     = false
 			min_num_approvals          = 1
 			can_apply_declined_changes = false
-		  }
-	}
+		  }]
+	}]
 }	
 `
 
@@ -127,11 +125,11 @@ resource "launchdarkly_project" "env_test" {
 resource "launchdarkly_project" "env_test" {
 	key = "%s"
 	name = "test project"
-	environments {
+	environments = [{
 		key = "test-env"
 		name = "test environment updated"
 		color = "AAAAAA"
-	}
+	}]
 }	
 `
 
@@ -139,16 +137,16 @@ resource "launchdarkly_project" "env_test" {
 resource "launchdarkly_project" "test" {
 	key = "%s"
 	name = "test project"
-	default_client_side_availability {
+	default_client_side_availability = [{
 		using_environment_id = true
 		using_mobile_key = true
-	}
+	}]
 	tags = [ "terraform", "test" ]
-	environments {
+	environments = [{
 	  name  = "Test Environment"
 	  key   = "test-env"
 	  color = "010101"
-	}
+	}]
 }
 `
 
@@ -162,14 +160,13 @@ resource "launchdarkly_project" "many_envs" {
   key  = "%s"
   name = "Project with many environments"
 
-  dynamic "environments" {
-    for_each = local.envs
-    content {
-      key   = format("env-%s", environments.key)
-      name  = format("Env %s", environments.key)
+  environments = [
+    for n in local.envs : {
+      key   = format("env-%s", n)
+      name  = format("Env %s", n)
       color = "000000"
     }
-  }
+  ]
 
 	tags = [ "terraform", "test" ]
 }
@@ -178,55 +175,52 @@ resource "launchdarkly_project" "many_envs" {
 resource "launchdarkly_project" "approval_env_test" {
 	key = "%s"
 	name = "test project"
-	environments {
+	environments = [{
 		key = "approval-env"
 		name = "env with approval settings"
 		color = "AAAAAA"
-		approval_settings {
+		approval_settings = [{
       can_review_own_request     = false
       can_apply_declined_changes = false
       min_num_approvals          = 2
       required                   = true
-    }
-	}
-	environments {
+    }]
+	}, {
 		key = "default-env"
 		name = "env with default approval settings"
 		color = "AAAAAA"
-	}
+	}]
 }`
 
 	testAccProjectWithEnvApprovalSettingsUpdate = `
 resource "launchdarkly_project" "approval_env_test" {
 	key = "%s"
 	name = "test project"
-	environments {
+	environments = [{
 		key = "new-env"
 		name = "New env with approval settings"
 		color = "AAAAAA"
-		approval_settings {
+		approval_settings = [{
       can_review_own_request     = false
       can_apply_declined_changes = false
       min_num_approvals          = 1
       required                   = false
-    }
-	}
-	environments {
+    }]
+	}, {
 		key = "approval-env"
 		name = "env with approval settings"
 		color = "AAAAAA"
-		approval_settings {
+		approval_settings = [{
       can_review_own_request     = false
       can_apply_declined_changes = false
       min_num_approvals          = 2
       required                   = true
-    }
-	}
-	environments {
+    }]
+	}, {
 		key = "default-env"
 		name = "env with default approval settings"
 		color = "AAAAAA"
-	}
+	}]
 }`
 )
 
@@ -337,13 +331,9 @@ func TestAccProject_CSA_Update_And_Revert(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, KEY, projectKey),
 					resource.TestCheckResourceAttr(resourceName, NAME, "test project"),
 					resource.TestCheckResourceAttr(resourceName, INCLUDE_IN_SNIPPET, "false"),
-					// framework migration: default_client_side_availability is a
-					// ListNestedBlock with no block-level Computed, so the LD-
-					// API defaults are not surfaced to state when the user
-					// omits the block (Phase 4 plan gotcha #3). The SDKv2
-					// assertions on inner attrs were testing
-					// Optional+Computed TypeList inflation, which framework
-					// cannot reproduce. See TestCheckNoResourceAttr below.
+					// default_client_side_availability is Optional-only; when
+					// the user omits it, state stays null and the LD-API
+					// defaults are not surfaced.
 					resource.TestCheckNoResourceAttr(resourceName, "default_client_side_availability.#"),
 				),
 			},
@@ -365,9 +355,8 @@ func TestAccProject_CSA_Update_And_Revert(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, KEY, projectKey),
 					resource.TestCheckResourceAttr(resourceName, NAME, "awesome test project"),
 					resource.TestCheckResourceAttr(resourceName, INCLUDE_IN_SNIPPET, "false"),
-					// framework migration: CSA block dropped when user removes
-					// it from config (Phase 4 plan gotcha #3); state mirrors
-					// config block count, not LD-API defaults.
+					// Removing default_client_side_availability from config
+					// drops it from state.
 					resource.TestCheckNoResourceAttr(resourceName, "default_client_side_availability.#"),
 				),
 			},
@@ -532,9 +521,7 @@ func TestAccProject_EnvApprovalUpdate(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "environments.0.approval_settings.0.min_num_approvals", "2"),
 					resource.TestCheckResourceAttr(resourceName, "environments.1.key", "default-env"),
 					resource.TestCheckResourceAttr(resourceName, "environments.1.name", "env with default approval settings"),
-					// framework migration: env[1] has no approval_settings
-					// block in config so state mirrors empty (Phase 4 plan
-					// gotcha #3 — block count must match config count).
+					// env[1] omits approval_settings so state stays null.
 					resource.TestCheckNoResourceAttr(resourceName, "environments.1.approval_settings.#"),
 				),
 			},
@@ -560,9 +547,7 @@ func TestAccProject_EnvApprovalUpdate(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "environments.1.approval_settings.0.min_num_approvals", "2"),
 					resource.TestCheckResourceAttr(resourceName, "environments.2.key", "default-env"),
 					resource.TestCheckResourceAttr(resourceName, "environments.2.name", "env with default approval settings"),
-					// framework migration: env[2] has no approval_settings
-					// block in config so state mirrors empty (Phase 4 plan
-					// gotcha #3 — block count must match config count).
+					// env[2] omits approval_settings so state stays null.
 					resource.TestCheckNoResourceAttr(resourceName, "environments.2.approval_settings.#"),
 				),
 			},
@@ -570,12 +555,11 @@ func TestAccProject_EnvApprovalUpdate(t *testing.T) {
 				ResourceName:      resourceName,
 				ImportState:       true,
 				ImportStateVerify: true,
-				// Framework migration: env[0] in Step 3 declares an
-				// approval_settings block whose values all happen to be
-				// LD's defaults. On Import we have no prior state to tell
-				// "user declared block" from "user omitted block", so we
-				// fall back to an isZero heuristic which collapses the
-				// all-defaults case to count=0. Ignore that drift here.
+				// env[0] in Step 3 declares an approval_settings whose values
+				// are all LD defaults. On Import we have no prior state to
+				// tell "user declared" from "user omitted", so we fall back
+				// to an isZero heuristic that collapses the all-defaults
+				// case to null. Ignore that drift here.
 				ImportStateVerifyIgnore: []string{"environments.0.approval_settings.#", "environments.0.approval_settings.0.%", "environments.0.approval_settings.0.required", "environments.0.approval_settings.0.min_num_approvals", "environments.0.approval_settings.0.can_review_own_request", "environments.0.approval_settings.0.can_apply_declined_changes", "environments.0.approval_settings.0.auto_apply_approved_changes", "environments.0.approval_settings.0.service_kind", "environments.0.approval_settings.0.service_config.%", "environments.0.approval_settings.0.required_approval_tags.#"},
 			},
 		},
@@ -628,11 +612,11 @@ func TestAccProject_ViewAssociationRequirement(t *testing.T) {
 resource "launchdarkly_project" "view_req_test" {
 	key  = "%s"
 	name = "View Requirement Test"
-	environments {
+	environments = [{
 		key   = "test-env"
 		name  = "Test Environment"
 		color = "010101"
-	}
+	}]
 }
 `, projectKey)
 
@@ -643,11 +627,11 @@ resource "launchdarkly_project" "view_req_test" {
 	name = "View Requirement Test"
 	require_view_association_for_new_flags    = true
 	require_view_association_for_new_segments = true
-	environments {
+	environments = [{
 		key   = "test-env"
 		name  = "Test Environment"
 		color = "010101"
-	}
+	}]
 }
 `, projectKey)
 
@@ -658,11 +642,11 @@ resource "launchdarkly_project" "view_req_test" {
 	name = "View Requirement Test"
 	require_view_association_for_new_flags    = true
 	require_view_association_for_new_segments = false
-	environments {
+	environments = [{
 		key   = "test-env"
 		name  = "Test Environment"
 		color = "010101"
-	}
+	}]
 }
 `, projectKey)
 

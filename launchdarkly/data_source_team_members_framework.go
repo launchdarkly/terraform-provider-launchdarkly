@@ -60,11 +60,10 @@ func (d *TeamMembersDataSource) Schema(_ context.Context, _ datasource.SchemaReq
 				Computed:    true,
 				Description: "A boolean to determine whether to ignore members that weren't found.",
 			},
-		},
-		Blocks: map[string]schema.Block{
-			TEAM_MEMBERS: schema.ListNestedBlock{
+			TEAM_MEMBERS: schema.ListNestedAttribute{
+				Computed:    true,
 				Description: "The members that were found. The following attributes are available for each member:\n\n- `id` - The 24 character alphanumeric ID of the team member.\n\n- `first_name` - The team member's given name.\n\n- `last_name` - The team member's family name.\n\n- `role` - The role associated with team member. Possible roles are `owner`, `reader`, `writer`, or `admin`.\n\n- `custom_roles` - (Optional) The list of custom roles keys associated with the team member. Custom roles are only available to customers on an Enterprise plan. To learn more, [read about our pricing](https://launchdarkly.com/pricing/). To upgrade your plan, [contact LaunchDarkly Sales](https://launchdarkly.com/contact-sales/).\n",
-				NestedObject: schema.NestedBlockObject{
+				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
 						ID:         schema.StringAttribute{Computed: true, Description: "The 24 character alphanumeric ID of the team member."},
 						EMAIL:      schema.StringAttribute{Computed: true, Description: "The unique email address associated with the team member."},
@@ -76,9 +75,7 @@ func (d *TeamMembersDataSource) Schema(_ context.Context, _ datasource.SchemaReq
 							ElementType: types.StringType,
 							Description: "The list of custom roles keys associated with the team member. Custom roles are only available to customers on an Enterprise plan. To learn more, [read about our pricing](https://launchdarkly.com/pricing/). To upgrade your plan, [contact LaunchDarkly Sales](https://launchdarkly.com/contact-sales/).",
 						},
-					},
-					Blocks: map[string]schema.Block{
-						ROLE_ATTRIBUTES: frameworkRoleAttributesDataSourceBlock(),
+						ROLE_ATTRIBUTES: frameworkRoleAttributesDataSourceAttribute(),
 					},
 				},
 			},

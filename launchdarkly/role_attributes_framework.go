@@ -1,9 +1,8 @@
 package launchdarkly
 
-// role_attributes_framework.go is the terraform-plugin-framework analogue
-// of role_attributes_helper.go's schema + conversion helpers. The
-// role_attributes block is shared across launchdarkly_team data source +
-// resource (Phase 3.7).
+// role_attributes_framework.go provides the shared role_attributes
+// schema builder and conversion helpers. Used by the team / team_member
+// resources and data sources.
 
 import (
 	"context"
@@ -22,12 +21,13 @@ var frameworkRoleAttributeAttrTypes = map[string]attr.Type{
 	VALUES: types.ListType{ElemType: types.StringType},
 }
 
-// frameworkRoleAttributesDataSourceBlock returns a SetNestedBlock
+// frameworkRoleAttributesDataSourceAttribute returns a SetNestedAttribute
 // schema mirroring the SDKv2 TypeSet of role_attribute objects.
-func frameworkRoleAttributesDataSourceBlock() dsschema.SetNestedBlock {
-	return dsschema.SetNestedBlock{
+func frameworkRoleAttributesDataSourceAttribute() dsschema.SetNestedAttribute {
+	return dsschema.SetNestedAttribute{
+		Computed:    true,
 		Description: "A role attributes block. One block must be defined per role attribute. The key is the role attribute key and the value is a string array of resource keys that apply.",
-		NestedObject: dsschema.NestedBlockObject{
+		NestedObject: dsschema.NestedAttributeObject{
 			Attributes: map[string]dsschema.Attribute{
 				KEY: dsschema.StringAttribute{
 					Computed:    true,
@@ -43,12 +43,13 @@ func frameworkRoleAttributesDataSourceBlock() dsschema.SetNestedBlock {
 	}
 }
 
-// frameworkRoleAttributesResourceBlock returns a SetNestedBlock for
+// frameworkRoleAttributesResourceAttribute returns a SetNestedAttribute for
 // use in resource.Schema.
-func frameworkRoleAttributesResourceBlock() rsschema.SetNestedBlock {
-	return rsschema.SetNestedBlock{
+func frameworkRoleAttributesResourceAttribute() rsschema.SetNestedAttribute {
+	return rsschema.SetNestedAttribute{
+		Optional:    true,
 		Description: "A role attributes block. One block must be defined per role attribute. The key is the role attribute key and the value is a string array of resource keys that apply.",
-		NestedObject: rsschema.NestedBlockObject{
+		NestedObject: rsschema.NestedAttributeObject{
 			Attributes: map[string]rsschema.Attribute{
 				KEY: rsschema.StringAttribute{
 					Required:    true,
@@ -105,11 +106,12 @@ func frameworkRoleAttributePatches(ctx context.Context, planSet, stateSet types.
 
 // frameworkRoleAttributesValue converts an LD-API role_attributes map
 // (map[key] -> []string values) into a framework types.Set of objects.
-// Nil input returns an empty set.
+// Nil or empty input returns a null set so plan-vs-apply consistency
+// holds for the resource variant (Optional-only schema).
 func frameworkRoleAttributesValue(ctx context.Context, roleAttributes *map[string][]string) (basetypes.SetValue, diag.Diagnostics) {
 	objectType := types.ObjectType{AttrTypes: frameworkRoleAttributeAttrTypes}
-	if roleAttributes == nil {
-		return types.SetValue(objectType, []attr.Value{})
+	if roleAttributes == nil || len(*roleAttributes) == 0 {
+		return types.SetNull(objectType), nil
 	}
 
 	var diags diag.Diagnostics
