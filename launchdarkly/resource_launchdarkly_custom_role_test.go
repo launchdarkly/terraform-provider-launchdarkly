@@ -369,7 +369,7 @@ func TestAccCustomRole_JSONPolicy(t *testing.T) {
 	})
 }
 
-func TestAccCustomRole_JSONPolicyConflictsWithBlock(t *testing.T) {
+func TestAccCustomRole_JSONPolicyConflictsWithPolicyStatements(t *testing.T) {
 	key := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	name := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	resource.ParallelTest(t, resource.TestCase{
