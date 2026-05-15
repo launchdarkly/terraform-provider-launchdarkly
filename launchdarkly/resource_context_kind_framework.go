@@ -164,6 +164,10 @@ func (r *ContextKindResource) Create(ctx context.Context, req resource.CreateReq
 		)
 		return
 	}
+	// Resurrecting an archived kind via PUT bumps its existing version. Track the pre-PUT
+	// version so the post-write hydrate doesn't accept a stale list entry left over from
+	// before this Create.
+	var priorVersion int64
 	if found, ok := findContextKindByKey(existing, key); ok {
 		archived := false
 		if found.Archived != nil {
@@ -177,6 +181,7 @@ func (r *ContextKindResource) Create(ctx context.Context, req resource.CreateReq
 			)
 			return
 		}
+		priorVersion = int64(found.Version)
 	}
 
 	payload := buildUpsertContextKindPayload(
@@ -198,7 +203,7 @@ func (r *ContextKindResource) Create(ctx context.Context, req resource.CreateReq
 	planDescription := data.Description
 	planArchived := data.Archived
 
-	r.hydrateFromAPI(ctx, projectKey, key, &data, &resp.Diagnostics, false)
+	r.hydrateFromAPI(ctx, projectKey, key, &data, &resp.Diagnostics, false, priorVersion+1)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -225,8 +230,13 @@ func (r *ContextKindResource) Read(ctx context.Context, req resource.ReadRequest
 	}
 	projectKey := data.ProjectKey.ValueString()
 	key := data.Key.ValueString()
+	// Require the list endpoint to be at least as fresh as our existing state. Without this
+	// floor, the refresh that runs between Apply and Plan can read a pre-PUT list and overwrite
+	// the user-controlled fields that Update just trusted from the plan, producing a spurious
+	// non-empty plan in the next step. state.Version is 0 on import (no floor enforced).
+	minVersion := data.Version.ValueInt64()
 	removed := false
-	r.hydrateFromAPI(ctx, projectKey, key, &data, &resp.Diagnostics, true)
+	r.hydrateFromAPI(ctx, projectKey, key, &data, &resp.Diagnostics, true, minVersion)
 	if data.Key.IsNull() {
 		removed = true
 	}
@@ -243,6 +253,12 @@ func (r *ContextKindResource) Read(ctx context.Context, req resource.ReadRequest
 func (r *ContextKindResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	var data ContextKindResourceModel
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &data)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	var state ContextKindResourceModel
+	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -269,7 +285,7 @@ func (r *ContextKindResource) Update(ctx context.Context, req resource.UpdateReq
 	planDescription := data.Description
 	planArchived := data.Archived
 
-	r.hydrateFromAPI(ctx, projectKey, key, &data, &resp.Diagnostics, false)
+	r.hydrateFromAPI(ctx, projectKey, key, &data, &resp.Diagnostics, false, state.Version.ValueInt64()+1)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -366,19 +382,28 @@ func (r *ContextKindResource) putContextKind(_ context.Context, projectKey, key 
 }
 
 // hydrateFromAPI reads the canonical kind from the project list and writes the result back
-// into data. If allowMissing is true, a missing kind sets data.Key to null so the caller can
-// distinguish "not found" from "error" (Read path).
+// into data. allowMissing=true is the Read path: a missing kind sets data.Key to null so the
+// caller can distinguish "not found" from "error".
 //
-// If allowMissing is false (post-write), the call retries with bounded backoff to absorb the
-// eventual-consistency window between PUT /context-kinds/<key> and the project-scoped list
-// reflecting the write — observed empirically at ~150-500ms on prod LD.
-func (r *ContextKindResource) hydrateFromAPI(ctx context.Context, projectKey, key string, data *ContextKindResourceModel, diags *diag.Diagnostics, allowMissing bool) {
+// minVersion is the freshness floor: the loop treats a kind whose API version is below
+// minVersion as "not visible yet" and keeps retrying. LD bumps version on every PUT, so the
+// post-write callers (Create / Update) pass priorVersion+1 to ensure they don't read pre-PUT
+// state through the project-scoped list, which lags writes by ~150ms-5s. Read passes the
+// current state.Version so a refresh between Update and Plan can't accept a stale list result
+// that would mask the apply's user-controlled fields.
+//
+// allowMissing=true callers accept a stale-but-found result if the retry budget is exhausted —
+// better to refresh with the last value LD gave us than to error a Read on transient lag.
+// allowMissing=false callers surface a diagnostic on exhaustion because the apply already
+// claimed success.
+func (r *ContextKindResource) hydrateFromAPI(ctx context.Context, projectKey, key string, data *ContextKindResourceModel, diags *diag.Diagnostics, allowMissing bool, minVersion int64) {
 	const maxAttempts = 6
 	backoff := 200 * time.Millisecond
 
 	var (
 		kind     *ldapi.ContextKindRep
 		found    bool
+		stale    bool
 		lastErr  error
 		lastRes  *http.Response
 		lastKeys []string
@@ -395,20 +420,24 @@ func (r *ContextKindResource) hydrateFromAPI(ctx context.Context, projectKey, ke
 			if k, ok := findContextKindByKey(items, key); ok {
 				kind = k
 				found = true
-				break
+				if int64(k.Version) >= minVersion {
+					stale = false
+					break
+				}
+				stale = true
 			}
 		}
-		if allowMissing {
-			break // Read path: single-shot.
+		if !found && allowMissing {
+			break // Read path: kind genuinely absent; surface deletion.
 		}
-		log.Printf("[DEBUG] context_kind hydrate retry: project=%s want=%s attempt=%d keys=%v err=%v", projectKey, key, attempt, lastKeys, err)
+		log.Printf("[DEBUG] context_kind hydrate retry: project=%s want=%s minVersion=%d attempt=%d stale=%v keys=%v err=%v", projectKey, key, minVersion, attempt, stale, lastKeys, err)
 		time.Sleep(backoff)
 		if backoff < 2*time.Second {
 			backoff *= 2
 		}
 	}
 
-	if lastErr != nil {
+	if lastErr != nil && !found {
 		if isStatusNotFound(lastRes) && allowMissing {
 			data.Key = types.StringNull()
 			return
@@ -427,6 +456,13 @@ func (r *ContextKindResource) hydrateFromAPI(ctx context.Context, projectKey, ke
 		diags.AddError(
 			"Context kind not found after write",
 			fmt.Sprintf("Wrote context kind %q to project %q but the project-scoped list still does not return it after %d attempts. Keys observed: %v", key, projectKey, maxAttempts, lastKeys),
+		)
+		return
+	}
+	if stale && !allowMissing {
+		diags.AddError(
+			"Context kind not yet visible at expected version",
+			fmt.Sprintf("Wrote context kind %q to project %q but after %d attempts the project-scoped list still returns version %d (need >= %d). LD's list endpoint is eventually consistent — re-run terraform apply.", key, projectKey, maxAttempts, kind.Version, minVersion),
 		)
 		return
 	}
