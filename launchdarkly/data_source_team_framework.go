@@ -62,11 +62,10 @@ func (d *TeamDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, r
 				ElementType: types.StringType,
 				Description: "The list of keys of the custom roles assigned to the team.",
 			},
-		},
-		Blocks: map[string]schema.Block{
-			MAINTAINERS: schema.SetNestedBlock{
+			MAINTAINERS: schema.SetNestedAttribute{
+				Computed:    true,
 				Description: "Team maintainers.",
-				NestedObject: schema.NestedBlockObject{
+				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
 						EMAIL:      schema.StringAttribute{Computed: true, Description: "Email of the maintainer."},
 						ID:         schema.StringAttribute{Computed: true, Description: "Member ID."},
@@ -76,7 +75,7 @@ func (d *TeamDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, r
 					},
 				},
 			},
-			ROLE_ATTRIBUTES: frameworkRoleAttributesDataSourceBlock(),
+			ROLE_ATTRIBUTES: frameworkRoleAttributesDataSourceAttribute(),
 		},
 	}
 }

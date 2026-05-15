@@ -115,17 +115,13 @@ func (r *EnvironmentResource) Schema(_ context.Context, _ resource.SchemaRequest
 				Optional:    true,
 				ElementType: types.StringType,
 			},
-		},
-		Blocks: map[string]schema.Block{
-			APPROVAL_SETTINGS: frameworkApprovalSettingsResourceBlock(),
+			APPROVAL_SETTINGS: frameworkApprovalSettingsResourceAttribute(),
 		},
 	}
 }
 
-// environmentExists + environmentExistsInProject are package-level
-// helpers retained because the still-SDKv2 project/segment/FFE
-// resources reference them. They move with those resources in
-// Phases 4.1, 4.2, and 4.4 respectively.
+// environmentExists + environmentExistsInProject are shared helpers
+// used by the project, segment, and feature_flag_environment resources.
 func environmentExists(projectKey, envKey string, client *Client) (bool, error) {
 	var res *http.Response
 	var err error

@@ -50,21 +50,21 @@ func (d *ProjectDataSource) Schema(_ context.Context, _ datasource.SchemaRequest
 			TAGS:                                   schema.SetAttribute{Computed: true, ElementType: types.StringType, Description: "Tags."},
 			REQUIRE_VIEW_ASSOCIATION_FOR_NEW_FLAGS: schema.BoolAttribute{Computed: true, Description: "Whether new flags created in this project must be associated with at least one view."},
 			REQUIRE_VIEW_ASSOCIATION_FOR_NEW_SEGMENTS: schema.BoolAttribute{Computed: true, Description: "Whether new segments created in this project must be associated with at least one view."},
-		},
-		Blocks: map[string]schema.Block{
-			CLIENT_SIDE_AVAILABILITY: schema.ListNestedBlock{
+			CLIENT_SIDE_AVAILABILITY: schema.ListNestedAttribute{
+				Computed:           true,
 				DeprecationMessage: "'client_side_availability' is now deprecated. Please migrate to 'default_client_side_availability' to maintain future compatibility.",
 				Description:        "Deprecated. Use `default_client_side_availability`.",
-				NestedObject: schema.NestedBlockObject{
+				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
 						USING_ENVIRONMENT_ID: schema.BoolAttribute{Computed: true},
 						USING_MOBILE_KEY:     schema.BoolAttribute{Computed: true},
 					},
 				},
 			},
-			DEFAULT_CLIENT_SIDE_AVAILABILITY: schema.ListNestedBlock{
-				Description: "A block describing which client-side SDKs can use new flags by default.",
-				NestedObject: schema.NestedBlockObject{
+			DEFAULT_CLIENT_SIDE_AVAILABILITY: schema.ListNestedAttribute{
+				Computed:    true,
+				Description: "Which client-side SDKs can use new flags by default.",
+				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
 						USING_ENVIRONMENT_ID: schema.BoolAttribute{Computed: true},
 						USING_MOBILE_KEY:     schema.BoolAttribute{Computed: true},

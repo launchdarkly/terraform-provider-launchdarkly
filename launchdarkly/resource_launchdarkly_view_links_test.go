@@ -15,11 +15,11 @@ const (
 resource "launchdarkly_project" "test" {
 	name = "%s"
 	key  = "%s"
-	environments {
+	environments = [{
 		name  = "Test Environment"
 		key   = "test-env"
 		color = "000000"
-	}
+	}]
 }
 
 resource "launchdarkly_view" "test" {
@@ -35,6 +35,10 @@ resource "launchdarkly_feature_flag" "test1" {
 	key         = "test-flag-1"
 	name        = "Test Flag 1"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 }
 
 resource "launchdarkly_feature_flag" "test2" {
@@ -42,6 +46,10 @@ resource "launchdarkly_feature_flag" "test2" {
 	key         = "test-flag-2"
 	name        = "Test Flag 2"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 }
 
 resource "launchdarkly_view_links" "test" {
@@ -59,11 +67,11 @@ resource "launchdarkly_view_links" "test" {
 resource "launchdarkly_project" "test" {
 	name = "%s"
 	key  = "%s"
-	environments {
+	environments = [{
 		name  = "Test Environment"
 		key   = "test-env"
 		color = "000000"
-	}
+	}]
 }
 
 resource "launchdarkly_view" "test" {
@@ -79,6 +87,10 @@ resource "launchdarkly_feature_flag" "test1" {
 	key         = "test-flag-1"
 	name        = "Test Flag 1"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 }
 
 resource "launchdarkly_feature_flag" "test2" {
@@ -86,6 +98,10 @@ resource "launchdarkly_feature_flag" "test2" {
 	key         = "test-flag-2"
 	name        = "Test Flag 2"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 }
 
 resource "launchdarkly_feature_flag" "test3" {
@@ -93,6 +109,10 @@ resource "launchdarkly_feature_flag" "test3" {
 	key         = "test-flag-3"
 	name        = "Test Flag 3"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 }
 
 resource "launchdarkly_view_links" "test" {
@@ -110,11 +130,11 @@ resource "launchdarkly_view_links" "test" {
 resource "launchdarkly_project" "test" {
 	name = "%s"
 	key  = "%s"
-	environments {
+	environments = [{
 		name  = "Test Environment"
 		key   = "test-env"
 		color = "000000"
-	}
+	}]
 }
 
 resource "launchdarkly_view" "test" {
@@ -130,6 +150,10 @@ resource "launchdarkly_feature_flag" "test1" {
 	key         = "test-flag-1"
 	name        = "Test Flag 1"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 }
 
 resource "launchdarkly_feature_flag" "test2" {
@@ -137,6 +161,10 @@ resource "launchdarkly_feature_flag" "test2" {
 	key         = "test-flag-2"
 	name        = "Test Flag 2"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 }
 
 resource "launchdarkly_feature_flag" "test3" {
@@ -144,6 +172,10 @@ resource "launchdarkly_feature_flag" "test3" {
 	key         = "test-flag-3"
 	name        = "Test Flag 3"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 }
 
 // Note: No launchdarkly_view_links resource - this should unlink all flags
@@ -153,16 +185,15 @@ resource "launchdarkly_feature_flag" "test3" {
 resource "launchdarkly_project" "test" {
 	name = "%s"
 	key  = "%s"
-	environments {
+	environments = [{
 		name  = "Test Environment"
 		key   = "test-env"
 		color = "000000"
-	}
-	environments {
+	}, {
 		name  = "Production"
 		key   = "production"
 		color = "AAAAAA"
-	}
+	}]
 }
 
 resource "launchdarkly_view" "test" {
@@ -178,6 +209,10 @@ resource "launchdarkly_feature_flag" "flag1" {
 	key            = "test-flag-1"
 	name           = "Test Flag 1"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 }
 
 resource "launchdarkly_feature_flag" "flag2" {
@@ -185,6 +220,10 @@ resource "launchdarkly_feature_flag" "flag2" {
 	key            = "test-flag-2"
 	name           = "Test Flag 2"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 }
 
 resource "launchdarkly_feature_flag" "flag3" {
@@ -192,6 +231,10 @@ resource "launchdarkly_feature_flag" "flag3" {
 	key            = "test-flag-3"
 	name           = "Test Flag 3"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 }
 
 resource "launchdarkly_segment" "segment1" {
@@ -227,15 +270,13 @@ resource "launchdarkly_view_links" "test" {
 		launchdarkly_feature_flag.flag2.key
 	]
 
-	segments {
+	segments = [{
 		environment_id = launchdarkly_project.test.environments[0].client_side_id
 		segment_key    = launchdarkly_segment.segment1.key
-	}
-
-	segments {
+	}, {
 		environment_id = launchdarkly_project.test.environments[0].client_side_id
 		segment_key    = launchdarkly_segment.segment2.key
-	}
+	}]
 }
 `
 
@@ -243,16 +284,15 @@ resource "launchdarkly_view_links" "test" {
 resource "launchdarkly_project" "test" {
 	name = "%s"
 	key  = "%s"
-	environments {
+	environments = [{
 		name  = "Test Environment"
 		key   = "test-env"
 		color = "000000"
-	}
-	environments {
+	}, {
 		name  = "Production"
 		key   = "production"
 		color = "AAAAAA"
-	}
+	}]
 }
 
 resource "launchdarkly_view" "test" {
@@ -268,6 +308,10 @@ resource "launchdarkly_feature_flag" "flag1" {
 	key            = "test-flag-1"
 	name           = "Test Flag 1"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 }
 
 resource "launchdarkly_feature_flag" "flag2" {
@@ -275,6 +319,10 @@ resource "launchdarkly_feature_flag" "flag2" {
 	key            = "test-flag-2"
 	name           = "Test Flag 2"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 }
 
 resource "launchdarkly_feature_flag" "flag3" {
@@ -282,6 +330,10 @@ resource "launchdarkly_feature_flag" "flag3" {
 	key            = "test-flag-3"
 	name           = "Test Flag 3"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 }
 
 resource "launchdarkly_segment" "segment1" {
@@ -317,15 +369,13 @@ resource "launchdarkly_view_links" "test" {
 		launchdarkly_feature_flag.flag3.key
 	]
 
-	segments {
+	segments = [{
 		environment_id = launchdarkly_project.test.environments[0].client_side_id
 		segment_key    = launchdarkly_segment.segment1.key
-	}
-
-	segments {
+	}, {
 		environment_id = launchdarkly_project.test.environments[1].client_side_id
 		segment_key    = launchdarkly_segment.segment3.key
-	}
+	}]
 }
 `
 
@@ -333,16 +383,15 @@ resource "launchdarkly_view_links" "test" {
 resource "launchdarkly_project" "test" {
 	name = "%s"
 	key  = "%s"
-	environments {
+	environments = [{
 		name  = "Test Environment"
 		key   = "test-env"
 		color = "000000"
-	}
-	environments {
+	}, {
 		name  = "Production"
 		key   = "production"
 		color = "AAAAAA"
-	}
+	}]
 }
 
 resource "launchdarkly_view" "test" {
@@ -358,6 +407,10 @@ resource "launchdarkly_feature_flag" "flag1" {
 	key            = "test-flag-1"
 	name           = "Test Flag 1"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 }
 
 resource "launchdarkly_feature_flag" "flag2" {
@@ -365,6 +418,10 @@ resource "launchdarkly_feature_flag" "flag2" {
 	key            = "test-flag-2"
 	name           = "Test Flag 2"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 }
 
 resource "launchdarkly_feature_flag" "flag3" {
@@ -372,6 +429,10 @@ resource "launchdarkly_feature_flag" "flag3" {
 	key            = "test-flag-3"
 	name           = "Test Flag 3"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 }
 
 resource "launchdarkly_segment" "segment1" {
@@ -407,20 +468,16 @@ resource "launchdarkly_view_links" "test" {
 		launchdarkly_feature_flag.flag3.key
 	]
 
-	segments {
+	segments = [{
 		environment_id = launchdarkly_project.test.environments[0].client_side_id
 		segment_key    = launchdarkly_segment.segment2.key
-	}
-
-	segments {
+	}, {
 		environment_id = launchdarkly_project.test.environments[1].client_side_id
 		segment_key    = launchdarkly_segment.segment3.key
-	}
-
-	segments {
+	}, {
 		environment_id = launchdarkly_project.test.environments[0].client_side_id
 		segment_key    = launchdarkly_segment.segment1.key
-	}
+	}]
 }
 `
 )

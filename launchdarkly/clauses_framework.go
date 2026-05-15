@@ -1,9 +1,9 @@
 package launchdarkly
 
-// clauses_framework.go is the terraform-plugin-framework analogue of
-// clause_helper.go's schema + conversion helpers. Clauses are
-// nested inside segment rules and feature_flag/feature_flag_environment
-// rules; sharing the helper avoids per-resource drift.
+// clauses_framework.go provides the shared clauses schema + conversion
+// helpers. Clauses are nested inside segment rules and feature_flag /
+// feature_flag_environment rules; sharing the helper avoids per-resource
+// drift.
 
 import (
 	"context"
@@ -30,12 +30,13 @@ var frameworkClauseAttrTypes = map[string]attr.Type{
 	CONTEXT_KIND: types.StringType,
 }
 
-// frameworkClausesDataSourceBlock returns the schema for a list-nested
-// block of clauses suitable for use in datasource.Schema.
-func frameworkClausesDataSourceBlock() dsschema.ListNestedBlock {
-	return dsschema.ListNestedBlock{
+// frameworkClausesDataSourceAttribute returns the schema for a list-nested
+// attribute of clauses suitable for use in datasource.Schema.
+func frameworkClausesDataSourceAttribute() dsschema.ListNestedAttribute {
+	return dsschema.ListNestedAttribute{
+		Computed:    true,
 		Description: "Clauses applied as the rule's logical condition.",
-		NestedObject: dsschema.NestedBlockObject{
+		NestedObject: dsschema.NestedAttributeObject{
 			Attributes: map[string]dsschema.Attribute{
 				ATTRIBUTE: dsschema.StringAttribute{Computed: true, Description: "User attribute to operate on."},
 				OP:        dsschema.StringAttribute{Computed: true, Description: "The operator associated with the rule clause. Available options are `in`, `endsWith`, `startsWith`, `matches`, `contains`, `lessThan`, `greaterThan`, `lessThanOrEqual`, `greaterThanOrEqual`, `before`, `after`, `segmentMatch`, `semVerEqual`, `semVerLessThan`, and `semVerGreaterThan`. To learn more, read [Operators](https://docs.launchdarkly.com/sdk/concepts/flag-evaluation-rules#operators)."},
@@ -52,13 +53,13 @@ func frameworkClausesDataSourceBlock() dsschema.ListNestedBlock {
 	}
 }
 
-// frameworkClausesResourceBlock returns the resource-side
-// ListNestedBlock for clauses. Required attributes match SDKv2
-// clauseSchema (attribute, op, values).
-func frameworkClausesResourceBlock() schema.ListNestedBlock {
-	return schema.ListNestedBlock{
-		Description: "List of nested blocks specifying the logical clauses to evaluate",
-		NestedObject: schema.NestedBlockObject{
+// frameworkClausesResourceAttribute returns the resource-side
+// ListNestedAttribute for clauses.
+func frameworkClausesResourceAttribute() schema.ListNestedAttribute {
+	return schema.ListNestedAttribute{
+		Required:    true,
+		Description: "List of clauses specifying the logical conditions to evaluate",
+		NestedObject: schema.NestedAttributeObject{
 			Attributes: map[string]schema.Attribute{
 				ATTRIBUTE: schema.StringAttribute{
 					Required:    true,

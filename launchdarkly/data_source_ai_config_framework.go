@@ -68,11 +68,10 @@ func (d *AIConfigDataSource) Schema(_ context.Context, _ datasource.SchemaReques
 			IS_INVERTED:           schema.BoolAttribute{Computed: true, Description: "Whether the evaluation metric is inverted."},
 			VERSION:               schema.Int64Attribute{Computed: true, Description: "The version of the AI Config."},
 			CREATION_DATE:         schema.Int64Attribute{Computed: true, Description: "A timestamp of when the AI Config was created."},
-		},
-		Blocks: map[string]schema.Block{
-			VARIATIONS: schema.ListNestedBlock{
+			VARIATIONS: schema.ListNestedAttribute{
+				Computed:    true,
 				Description: "A list of variation summaries for this AI Config.",
-				NestedObject: schema.NestedBlockObject{
+				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
 						KEY:          schema.StringAttribute{Computed: true, Description: "The variation's key."},
 						NAME:         schema.StringAttribute{Computed: true, Description: "The variation's name."},

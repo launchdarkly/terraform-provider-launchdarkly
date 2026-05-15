@@ -32,17 +32,17 @@ data "launchdarkly_feature_flag_environment" "example" {
 
 ### Read-Only
 
-- `context_targets` (Block Set) Individual context-kind targets per variation. (see [below for nested schema](#nestedblock--context_targets))
-- `fallthrough` (Block List) Default variation served when no other targeting applies (single element). (see [below for nested schema](#nestedblock--fallthrough))
+- `context_targets` (Attributes Set) Individual context-kind targets per variation. (see [below for nested schema](#nestedatt--context_targets))
+- `fallthrough` (Attributes List) Default variation served when no other targeting applies (single element). (see [below for nested schema](#nestedatt--fallthrough))
 - `id` (String) Composite ID `project_key/env_key/flag_key`.
 - `off_variation` (Number) Variation index to serve when targeting is disabled.
 - `on` (Boolean) Whether targeting is enabled.
-- `prerequisites` (Block List) Prerequisite flag rules. (see [below for nested schema](#nestedblock--prerequisites))
-- `rules` (Block List) Logical targeting rules. (see [below for nested schema](#nestedblock--rules))
-- `targets` (Block Set) Individual user targets per variation. (see [below for nested schema](#nestedblock--targets))
+- `prerequisites` (Attributes List) Prerequisite flag rules. (see [below for nested schema](#nestedatt--prerequisites))
+- `rules` (Attributes List) Logical targeting rules. (see [below for nested schema](#nestedatt--rules))
+- `targets` (Attributes Set) Individual user targets per variation. (see [below for nested schema](#nestedatt--targets))
 - `track_events` (Boolean) Whether to send event data back to LaunchDarkly.
 
-<a id="nestedblock--context_targets"></a>
+<a id="nestedatt--context_targets"></a>
 ### Nested Schema for `context_targets`
 
 Read-Only:
@@ -52,7 +52,7 @@ Read-Only:
 - `variation` (Number)
 
 
-<a id="nestedblock--fallthrough"></a>
+<a id="nestedatt--fallthrough"></a>
 ### Nested Schema for `fallthrough`
 
 Read-Only:
@@ -63,7 +63,7 @@ Read-Only:
 - `variation` (Number)
 
 
-<a id="nestedblock--prerequisites"></a>
+<a id="nestedatt--prerequisites"></a>
 ### Nested Schema for `prerequisites`
 
 Read-Only:
@@ -72,19 +72,19 @@ Read-Only:
 - `variation` (Number)
 
 
-<a id="nestedblock--rules"></a>
+<a id="nestedatt--rules"></a>
 ### Nested Schema for `rules`
 
 Read-Only:
 
 - `bucket_by` (String)
-- `clauses` (Block List) Clauses applied as the rule's logical condition. (see [below for nested schema](#nestedblock--rules--clauses))
+- `clauses` (Attributes List) Clauses applied as the rule's logical condition. (see [below for nested schema](#nestedatt--rules--clauses))
 - `context_kind` (String)
 - `description` (String)
 - `rollout_weights` (List of Number)
 - `variation` (Number)
 
-<a id="nestedblock--rules--clauses"></a>
+<a id="nestedatt--rules--clauses"></a>
 ### Nested Schema for `rules.clauses`
 
 Read-Only:
@@ -98,7 +98,7 @@ Read-Only:
 
 
 
-<a id="nestedblock--targets"></a>
+<a id="nestedatt--targets"></a>
 ### Nested Schema for `targets`
 
 Read-Only:

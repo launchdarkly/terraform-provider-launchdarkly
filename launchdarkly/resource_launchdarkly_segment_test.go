@@ -34,23 +34,22 @@ resource "launchdarkly_segment" "test" {
 	tags        = ["segmentTag1", ".segmentTag2"]
 	included    = ["user1", "user2", "user3", "user4"]
 	excluded    = []
-	rules {
-		clauses {
+	rules = [{
+		clauses = [{
 			attribute = "test_att"
 			op = "in"
 			values = ["test"]
-		}
-		clauses {
+		}, {
 			attribute = "test_att_1"
 			op = "endsWith"
 			values = ["test2"]
 			negate = true
 			context_kind = "user"
-		}
+		}]
 		weight = 50000
 		bucket_by = "bucket"
 		rollout_context_kind = "other"
-	}
+	}]
 }`
 
 	testAccSegmentUpdateWithContextTargets = `
@@ -61,34 +60,32 @@ resource "launchdarkly_segment" "test" {
 		name        = "segment name"
 		description = "segment description"
 		included = ["user1", "user2"]
-		included_contexts {
+		included_contexts = [{
 			values = ["account1", "account2"]
 			context_kind = "account"
-		}
-		included_contexts {
+		}, {
 			values = ["other_value"]
 			context_kind = "other"
-		}
-		excluded_contexts {
+		}]
+		excluded_contexts = [{
 			values = ["bad_account"]
 			context_kind = "account"
-		}
-		rules {
-			clauses {
+		}]
+		rules = [{
+			clauses = [{
 				attribute = "test_att"
 				op = "in"
 				values = ["test"]
-			}
-			clauses {
+			}, {
 				attribute = "test_att_1"
 				op = "endsWith"
 				values = ["test2"]
 				negate = true
 				context_kind = "user"
-			}
+			}]
 			weight = 50000
 			bucket_by = "bucket"
-		}
+		}]
 	}`
 
 	testAccSegmentCreateWithRules = `
@@ -102,32 +99,30 @@ resource "launchdarkly_segment" "test" {
 	included    = ["user1", "user2"]
 	excluded    = ["user3", "user4"]
 	unbounded = false
-	rules {
-		clauses {
+	rules = [{
+		clauses = [{
 			attribute = "test_att"
 			op        = "endsWith"
 			values    = ["test"]
 			negate    = false
-		}
-	}
-	rules {
-		clauses {
+		}]
+	}, {
+		clauses = [{
 			attribute  = "is_vip"
 			op         = "in"
 			values     = [true]
 			value_type = "boolean"
 			negate     = false
 			context_kind = "account"
-		}
-		clauses {
+		}, {
 			attribute  = "answer"
 			op         = "in"
 			values     = [42, 84.68]
 			value_type = "number"
 			negate     = true
 			context_kind = "survey"
-		}
-	}
+		}]
+	}]
 }`
 
 	testAccSegmentCreateWithContextTargets = `
@@ -137,18 +132,17 @@ resource "launchdarkly_segment" "test" {
 	env_key     = "test"
 	name        = "segment name"
 	excluded = ["user1", "user2"]
-	included_contexts {
+	included_contexts = [{
 		values = ["account1"]
 		context_kind = "account"
-	}
-	excluded_contexts {
+	}]
+	excluded_contexts = [{
 		values = ["bad_account"]
 		context_kind = "account"
-	}
-	excluded_contexts {
+	}, {
 		values = ["meanie", "beanie"]
 		context_kind = "eanies"
-	}
+	}]
 }`
 
 	testAccSegmentCreateWithUnbounded = `
@@ -181,16 +175,16 @@ resource "launchdarkly_segment" "anon" {
 	project_key            	= launchdarkly_project.test.key
 	env_key                	= "test"
 	name 					= "anonymous segment"
-	rules {
-		clauses {
+	rules = [{
+		clauses = [{
 			attribute  = "anonymous"
 			op         = "in"
 			negate     = false
 			values = [
 				true
 			]
-		}
-	}
+		}]
+	}]
 }
 `
 )
@@ -663,11 +657,11 @@ resource "launchdarkly_project" "test" {
 	key  = "%s"
 	name = "View Requirement Test"
 	require_view_association_for_new_segments = true
-	environments {
+	environments = [{
 		key   = "test-env"
 		name  = "Test Environment"
 		color = "010101"
-	}
+	}]
 }
 
 resource "launchdarkly_segment" "test" {
@@ -684,11 +678,11 @@ resource "launchdarkly_project" "test" {
 	key  = "%s"
 	name = "View Requirement Test"
 	require_view_association_for_new_segments = true
-	environments {
+	environments = [{
 		key   = "test-env"
 		name  = "Test Environment"
 		color = "010101"
-	}
+	}]
 }
 
 resource "launchdarkly_view" "test" {

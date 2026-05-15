@@ -12,10 +12,10 @@ resource "launchdarkly_access_token" "custom_role_token" {
 # With an inline custom role (policy statements)
 resource "launchdarkly_access_token" "token_with_policy_statements" {
   name = "Integration service token"
-  inline_roles {
+  inline_roles = [{
     actions   = ["*"]
     effect    = "deny"
     resources = ["proj/*:env/production"]
-  }
+  }]
   service_token = true
 }

@@ -92,11 +92,10 @@ func (r *FeatureFlagEnvironmentResource) Schema(_ context.Context, _ resource.Sc
 				Validators:  []validator.Int64{int64validator.AtLeast(0)},
 				Description: "The index of the variation to serve if targeting is disabled.",
 			},
-		},
-		Blocks: map[string]schema.Block{
-			TARGETS: schema.SetNestedBlock{
-				Description: "Set of nested blocks describing the individual user targets for each variation.",
-				NestedObject: schema.NestedBlockObject{
+			TARGETS: schema.SetNestedAttribute{
+				Optional:    true,
+				Description: "Individual user targets for each variation.",
+				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
 						VALUES: schema.ListAttribute{
 							Required:    true,
@@ -111,9 +110,10 @@ func (r *FeatureFlagEnvironmentResource) Schema(_ context.Context, _ resource.Sc
 					},
 				},
 			},
-			CONTEXT_TARGETS: schema.SetNestedBlock{
-				Description: "The set of nested blocks describing the individual targets for non-user context kinds for each variation.",
-				NestedObject: schema.NestedBlockObject{
+			CONTEXT_TARGETS: schema.SetNestedAttribute{
+				Optional:    true,
+				Description: "Individual targets for non-user context kinds for each variation.",
+				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
 						VALUES: schema.ListAttribute{
 							Required:    true,
@@ -127,14 +127,15 @@ func (r *FeatureFlagEnvironmentResource) Schema(_ context.Context, _ resource.Sc
 						},
 						CONTEXT_KIND: schema.StringAttribute{
 							Required:    true,
-							Description: "The context kind on which the flag should target in this environment. User (`user`) targets should be specified as `targets` attribute blocks.",
+							Description: "The context kind on which the flag should target in this environment. User (`user`) targets should be specified as `targets`.",
 						},
 					},
 				},
 			},
-			PREREQUISITES: schema.ListNestedBlock{
-				Description: "List of nested blocks describing prerequisite feature flags rules.",
-				NestedObject: schema.NestedBlockObject{
+			PREREQUISITES: schema.ListNestedAttribute{
+				Optional:    true,
+				Description: "Prerequisite feature flag rules.",
+				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
 						FLAG_KEY: schema.StringAttribute{
 							Required:    true,
@@ -149,9 +150,10 @@ func (r *FeatureFlagEnvironmentResource) Schema(_ context.Context, _ resource.Sc
 					},
 				},
 			},
-			RULES: schema.ListNestedBlock{
+			RULES: schema.ListNestedAttribute{
+				Optional:    true,
 				Description: "List of logical targeting rules.",
-				NestedObject: schema.NestedBlockObject{
+				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
 						DESCRIPTION: schema.StringAttribute{
 							Optional:    true,
@@ -182,16 +184,15 @@ func (r *FeatureFlagEnvironmentResource) Schema(_ context.Context, _ resource.Sc
 							},
 							Description: "List of integer percentage rollout weights (in thousandths of a percent) to apply to each variation if the rule clauses evaluates to `true`. The sum of the `rollout_weights` must equal 100000 and the number of rollout weights specified in the array must match the number of flag variations. You must specify either `variation` or `rollout_weights`.",
 						},
-					},
-					Blocks: map[string]schema.Block{
-						CLAUSES: frameworkClausesResourceBlock(),
+						CLAUSES: frameworkClausesResourceAttribute(),
 					},
 				},
 			},
-			FALLTHROUGH: schema.ListNestedBlock{
-				Description: "Nested block describing the default variation to serve if no `prerequisites`, `target`, or `rules` apply.",
+			FALLTHROUGH: schema.ListNestedAttribute{
+				Required:    true,
+				Description: "The default variation to serve if no `prerequisites`, `target`, or `rules` apply.",
 				Validators:  []validator.List{listvalidator.SizeAtLeast(1), listvalidator.SizeAtMost(1)},
-				NestedObject: schema.NestedBlockObject{
+				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
 						VARIATION: schema.Int64Attribute{
 							Optional:    true,
@@ -525,9 +526,13 @@ func (r *FeatureFlagEnvironmentResource) readIntoModel(ctx context.Context, proj
 		diags.Append(d...)
 		prereqElements = append(prereqElements, obj)
 	}
-	prereqList, d := types.ListValue(prereqObjectType, prereqElements)
-	diags.Append(d...)
-	data.Prerequisites = prereqList
+	if len(prereqElements) == 0 {
+		data.Prerequisites = types.ListNull(prereqObjectType)
+	} else {
+		prereqList, d := types.ListValue(prereqObjectType, prereqElements)
+		diags.Append(d...)
+		data.Prerequisites = prereqList
+	}
 }
 
 // noopDiagSink absorbs diags from ffe* helpers that take a sink
@@ -537,13 +542,13 @@ type noopDiagSink struct{}
 
 func (noopDiagSink) AddError(string, string) {}
 
-// ffeResourceRulesValue mirrors ffeRulesValue but emits null for
-// Optional-only attributes the user did not configure. SDKv2 emits a
-// shape where variation is null when a rollout is present, bucket_by /
-// context_kind are null when not a rollout, and description is null
-// when nil. The data-source-side ffeRulesValue emits zero values
-// instead — that's fine for Computed-only data source attrs but trips
-// the plan-apply consistency check on resource Optional-only attrs.
+// ffeResourceRulesValue emits null for Optional-only attributes the
+// user did not configure: variation is null when a rollout is present,
+// bucket_by / context_kind are null when not a rollout, description is
+// null when nil. The data-source-side ffeRulesValue emits zero values
+// instead — fine for Computed-only data source attrs but would trip
+// the plan-apply consistency check on the resource's Optional-only
+// attrs.
 func ffeResourceRulesValue(ctx context.Context, rules []ldapi.Rule, diags *diag.Diagnostics) types.List {
 	objectType := types.ObjectType{AttrTypes: ffeRuleAttrTypes}
 	elements := make([]attr.Value, 0, len(rules))
@@ -596,6 +601,9 @@ func ffeResourceRulesValue(ctx context.Context, rules []ldapi.Rule, diags *diag.
 		})
 		diags.Append(d...)
 		elements = append(elements, obj)
+	}
+	if len(elements) == 0 {
+		return types.ListNull(objectType)
 	}
 	list, d := types.ListValue(objectType, elements)
 	diags.Append(d...)
@@ -661,8 +669,9 @@ type ffeFallthroughPayload struct {
 	Rollout   *ldapi.Rollout `json:"rollout,omitempty"`
 }
 
-// buildFFEPatches mirrors the SDKv2 Create+Update patch construction.
-// Each block is patched only when it differs from state (or on create).
+// buildFFEPatches assembles the JSON-Patch document applied at
+// Create/Update. Each attribute is patched only when it differs from
+// state (or unconditionally on create).
 func buildFFEPatches(ctx context.Context, envKey string, plan, state FeatureFlagEnvironmentResourceModel, isCreate bool) ([]ldapi.PatchOperation, diag.Diagnostics) {
 	var diags diag.Diagnostics
 	patches := make([]ldapi.PatchOperation, 0)
@@ -884,7 +893,7 @@ func ffeTargetsFromSet(ctx context.Context, set types.Set, isContextTarget bool)
 func ffeFallthroughFromList(ctx context.Context, list types.List) (ffeFallthroughPayload, diag.Diagnostics) {
 	var diags diag.Diagnostics
 	if list.IsNull() || list.IsUnknown() || len(list.Elements()) == 0 {
-		diags.AddError("feature flag fallthrough block cannot be empty. Please specify at least one of variation or rollout_weights", "")
+		diags.AddError("feature flag fallthrough cannot be empty. Please specify at least one of variation or rollout_weights", "")
 		return ffeFallthroughPayload{}, diags
 	}
 	type fallthroughModel struct {

@@ -31,11 +31,11 @@ resource "launchdarkly_custom_role" "role" {
 	key = "%s"
 	name = "Custom role - %s"
 	description = "Deny all actions on production environments"
-	policy_statements {
+	policy_statements = [{
 		actions = ["*"]
 		effect = "deny"
 		resources = ["proj/*:env/production"]
-	}
+	}]
 }
 
 resource "launchdarkly_access_token" "test" {
@@ -48,22 +48,22 @@ resource "launchdarkly_custom_role" "role" {
 	key = "%s"
 	name = "Custom role - %s"
 	description= "Deny all actions on production environments"
-	policy_statements {
+	policy_statements = [{
 		actions = ["*"]
 		effect = "deny"
 		resources = ["proj/*:env/production"]
-	}
+	}]
 }
 
 resource "launchdarkly_custom_role" "role2" {
 	key = "%s2"
 	name = "Custom role - %s2"
 	description= "Deny all actions on production environments"
-	policy_statements {
+	policy_statements = [{
 		actions = ["*"]
 		effect = "deny"
 		resources = ["proj/*:env/production"]
-	}
+	}]
 }
 
 resource "launchdarkly_access_token" "test" {
@@ -74,31 +74,31 @@ resource "launchdarkly_access_token" "test" {
 	testAccAccessTokenUpdate = `
 resource "launchdarkly_access_token" "test" {
 	name = "Updated - %s"
-	inline_roles {
+	inline_roles = [{
 		actions = ["*"]
 		effect = "deny"
 		resources = ["proj/*:env/production"]
-	}
+	}]
 }
 `
 	testAccAccessTokenCreateWithInlineRoles = `
 resource "launchdarkly_access_token" "test" {
 	name = "Access token - %s"
-	inline_roles {
+	inline_roles = [{
 		actions = ["*"]
 		effect = "allow"
 		resources = ["proj/*:env/staging"]
-	}
+	}]
 }
 `
 	testAccAccessTokenCreateWithPolicyStatements = `
 resource "launchdarkly_access_token" "test" {
 	name = "Access token - %s"
-	policy_statements {
+	policy_statements = [{
 		actions = ["*"]
 		effect = "allow"
 		resources = ["proj/*:env/staging"]
-	}
+	}]
 }
 `
 	testAccAccessTokenReset = `

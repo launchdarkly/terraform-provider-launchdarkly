@@ -5,8 +5,8 @@ resource "launchdarkly_metric" "example" {
   description = "Metric description."
   kind        = "pageview"
   tags        = ["example"]
-  urls {
+  urls = [{
     kind      = "substring"
     substring = "foo"
-  }
+  }]
 }

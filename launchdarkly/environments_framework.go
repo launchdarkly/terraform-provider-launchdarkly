@@ -1,14 +1,12 @@
 package launchdarkly
 
-// environments_framework.go houses the framework-flavoured nested
-// environments block schema (used by launchdarkly_project) and the
-// conversion helpers between framework state values and the SDKv2
-// environment helpers in environments_helper.go.
+// environments_framework.go houses the nested environments schema used
+// by launchdarkly_project and the conversion helpers between framework
+// state values and the LD-API environment shapes.
 //
-// The standalone launchdarkly_environment resource (Phase 3) lives in
-// resource_environment_framework.go and uses its own ApprovalSettings
-// block defined inline; here we re-declare the equivalent shape so the
-// nested project block matches user HCL byte-for-byte.
+// The standalone launchdarkly_environment resource lives in
+// resource_environment_framework.go and uses the same approval_settings
+// shape as the nested-environments attribute here.
 
 import (
 	"context"
@@ -21,16 +19,18 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64default"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	ldapi "github.com/launchdarkly/api-client-go/v22"
 )
 
-// environmentBlockModel matches the nested-environments block element
-// shape used in launchdarkly_project. Mirrors environment_helper.go's
-// SDKv2 environmentSchema (forProject: true), where KEY is NOT ForceNew.
-type environmentBlockModel struct {
+// environmentModel matches the nested-environments element shape used
+// in launchdarkly_project. KEY is intentionally NOT ForceNew here —
+// in the nested form, terraform tracks env identity by KEY across plans.
+type environmentModel struct {
 	Key                types.String `tfsdk:"key"`
 	Name               types.String `tfsdk:"name"`
 	Color              types.String `tfsdk:"color"`
@@ -47,7 +47,7 @@ type environmentBlockModel struct {
 	ApprovalSettings   types.List   `tfsdk:"approval_settings"`
 }
 
-var environmentBlockAttrTypes = map[string]attr.Type{
+var environmentAttrTypes = map[string]attr.Type{
 	KEY:                  types.StringType,
 	NAME:                 types.StringType,
 	COLOR:                types.StringType,
@@ -64,14 +64,15 @@ var environmentBlockAttrTypes = map[string]attr.Type{
 	APPROVAL_SETTINGS:    types.ListType{ElemType: types.ObjectType{AttrTypes: frameworkApprovalSettingsObjectAttrTypes}},
 }
 
-// projectEnvironmentsBlock returns the nested-environments block for the
-// project resource schema. It is Required (Min:1 enforced by the
-// nested-block validator).
-func projectEnvironmentsBlock() schema.ListNestedBlock {
-	return schema.ListNestedBlock{
-		Description: "List of nested `environments` blocks describing LaunchDarkly environments that belong to the project. When managing LaunchDarkly projects in Terraform, you should always manage your environments as nested project resources.\n\n-> **Note:** Mixing the use of nested `environments` blocks and [`launchdarkly_environment`](/docs/providers/launchdarkly/r/environment.html) resources is not recommended. `launchdarkly_environment` resources should only be used when the encapsulating project is not managed in Terraform.",
+// projectEnvironmentsAttribute returns the nested-environments attribute
+// for the project resource schema. It is Required (Min:1 enforced by
+// the list-size validator).
+func projectEnvironmentsAttribute() schema.ListNestedAttribute {
+	return schema.ListNestedAttribute{
+		Required:    true,
+		Description: "List of nested `environments` attributes describing LaunchDarkly environments that belong to the project. When managing LaunchDarkly projects in Terraform, you should always manage your environments as nested project resources.\n\n-> **Note:** Mixing the use of nested `environments` and [`launchdarkly_environment`](/docs/providers/launchdarkly/r/environment.html) resources is not recommended. `launchdarkly_environment` resources should only be used when the encapsulating project is not managed in Terraform.",
 		Validators:  []validator.List{listvalidator.SizeAtLeast(1)},
-		NestedObject: schema.NestedBlockObject{
+		NestedObject: schema.NestedAttributeObject{
 			Attributes: map[string]schema.Attribute{
 				KEY: schema.StringAttribute{
 					Required:    true,
@@ -92,9 +93,24 @@ func projectEnvironmentsBlock() schema.ListNestedBlock {
 					Default:     booldefault.StaticBool(false),
 					Description: "Denotes whether the environment is critical.",
 				},
-				API_KEY:        schema.StringAttribute{Computed: true, Sensitive: true, Description: "The environment's SDK key."},
-				MOBILE_KEY:     schema.StringAttribute{Computed: true, Sensitive: true, Description: "The environment's mobile key."},
-				CLIENT_SIDE_ID: schema.StringAttribute{Computed: true, Sensitive: true, Description: "The environment's client-side ID."},
+				API_KEY: schema.StringAttribute{
+					Computed:      true,
+					Sensitive:     true,
+					Description:   "The environment's SDK key.",
+					PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+				},
+				MOBILE_KEY: schema.StringAttribute{
+					Computed:      true,
+					Sensitive:     true,
+					Description:   "The environment's mobile key.",
+					PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+				},
+				CLIENT_SIDE_ID: schema.StringAttribute{
+					Computed:      true,
+					Sensitive:     true,
+					Description:   "The environment's client-side ID.",
+					PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+				},
 				DEFAULT_TTL: schema.Int64Attribute{
 					Optional:    true,
 					Computed:    true,
@@ -132,9 +148,7 @@ func projectEnvironmentsBlock() schema.ListNestedBlock {
 					Validators:  []validator.Set{setvalidator.ValueStringsAre(tagValidator())},
 					Description: "Tags associated with your resource.",
 				},
-			},
-			Blocks: map[string]schema.Block{
-				APPROVAL_SETTINGS: frameworkApprovalSettingsResourceBlock(),
+				APPROVAL_SETTINGS: frameworkApprovalSettingsResourceAttribute(),
 			},
 		},
 	}
@@ -142,11 +156,11 @@ func projectEnvironmentsBlock() schema.ListNestedBlock {
 
 // environmentModelsFromList unpacks a framework ListValue of nested
 // environment blocks into a slice of typed models.
-func environmentModelsFromList(ctx context.Context, list types.List) ([]environmentBlockModel, diag.Diagnostics) {
+func environmentModelsFromList(ctx context.Context, list types.List) ([]environmentModel, diag.Diagnostics) {
 	if list.IsNull() || list.IsUnknown() {
 		return nil, nil
 	}
-	var models []environmentBlockModel
+	var models []environmentModel
 	diags := list.ElementsAs(ctx, &models, false)
 	return models, diags
 }
@@ -170,7 +184,7 @@ func environmentPostsFromPlan(ctx context.Context, list types.List) ([]ldapi.Env
 	return posts, diags
 }
 
-func environmentPostFromModel(_ context.Context, m environmentBlockModel) (ldapi.EnvironmentPost, diag.Diagnostics) {
+func environmentPostFromModel(_ context.Context, m environmentModel) (ldapi.EnvironmentPost, diag.Diagnostics) {
 	post := ldapi.EnvironmentPost{
 		Name:  m.Name.ValueString(),
 		Key:   m.Key.ValueString(),
@@ -183,9 +197,9 @@ func environmentPostFromModel(_ context.Context, m environmentBlockModel) (ldapi
 	return post, nil
 }
 
-// environmentPatchFromModels builds the PATCH document mirroring the
-// SDKv2 getEnvironmentUpdatePatches behaviour.
-func environmentPatchFromModels(ctx context.Context, old environmentBlockModel, hadOld bool, env environmentBlockModel) ([]ldapi.PatchOperation, diag.Diagnostics) {
+// environmentPatchFromModels builds the PATCH document applied when an
+// env's nested attributes change on an existing project.
+func environmentPatchFromModels(ctx context.Context, old environmentModel, hadOld bool, env environmentModel) ([]ldapi.PatchOperation, diag.Diagnostics) {
 	var diags diag.Diagnostics
 	patches := []ldapi.PatchOperation{
 		patchReplace("/name", env.Name.ValueString()),
@@ -224,7 +238,7 @@ func planOrNullList(hadOld bool, l types.List) types.List {
 // framework ListValue, preserving the order of envs already in `prior`
 // (the most recent state) then appending any unmanaged environments.
 func environmentsListFromAPI(ctx context.Context, envs []ldapi.Environment, prior types.List) (basetypes.ListValue, diag.Diagnostics) {
-	objType := types.ObjectType{AttrTypes: environmentBlockAttrTypes}
+	objType := types.ObjectType{AttrTypes: environmentAttrTypes}
 	envByKey := make(map[string]ldapi.Environment, len(envs))
 	for _, e := range envs {
 		envByKey[e.Key] = e
@@ -256,7 +270,7 @@ func environmentsListFromAPI(ctx context.Context, envs []ldapi.Environment, prio
 	return list, diags
 }
 
-func environmentObjectFromAPI(ctx context.Context, e ldapi.Environment, prior *environmentBlockModel) (basetypes.ObjectValue, diag.Diagnostics) {
+func environmentObjectFromAPI(ctx context.Context, e ldapi.Environment, prior *environmentModel) (basetypes.ObjectValue, diag.Diagnostics) {
 	var diags diag.Diagnostics
 	var (
 		tags      types.Set
@@ -271,7 +285,7 @@ func environmentObjectFromAPI(ctx context.Context, e ldapi.Environment, prior *e
 		tags = tagsSet
 		objectType := types.ObjectType{AttrTypes: frameworkApprovalSettingsObjectAttrTypes}
 		if e.ApprovalSettings == nil || isZeroApprovalSettings(e.ApprovalSettings) {
-			approvals = types.ListValueMust(objectType, []attr.Value{})
+			approvals = types.ListNull(objectType)
 		} else {
 			list, d := frameworkApprovalSettingsDataSourceValue(ctx, e.ApprovalSettings)
 			diags.Append(d...)
@@ -285,7 +299,7 @@ func environmentObjectFromAPI(ctx context.Context, e ldapi.Environment, prior *e
 		diags.Append(d...)
 		approvals = list
 	}
-	obj, d := types.ObjectValue(environmentBlockAttrTypes, map[string]attr.Value{
+	obj, d := types.ObjectValue(environmentAttrTypes, map[string]attr.Value{
 		KEY:                  types.StringValue(e.Key),
 		NAME:                 types.StringValue(e.Name),
 		COLOR:                types.StringValue(e.Color),

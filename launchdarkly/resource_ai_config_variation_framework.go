@@ -97,6 +97,10 @@ func (r *AIConfigVariationResource) Schema(_ context.Context, _ resource.SchemaR
 				PlanModifiers: []planmodifier.String{
 					jsonNormalizePlanModifier{},
 				},
+				// Intentionally no UseStateForUnknown: model and
+				// model_config_key are mutually exclusive; switching
+				// from inline model to model_config_key must let plan
+				// recompute.
 			},
 			MODEL_CONFIG_KEY: schema.StringAttribute{
 				Optional:    true,
@@ -135,20 +139,26 @@ func (r *AIConfigVariationResource) Schema(_ context.Context, _ resource.SchemaR
 			VARIATION_ID: schema.StringAttribute{
 				Computed:    true,
 				Description: "The internal ID of the variation.",
+				// Intentionally no UseStateForUnknown: variation_id can
+				// change between PATCHes because the AI Config API
+				// versions variations as immutable entities — every
+				// update creates a new variation row with a new ID.
 			},
 			VERSION: schema.Int64Attribute{
 				Computed:    true,
 				Description: "The version number of the variation.",
+				// Increments on every PATCH; plan flap is the intended
+				// signal.
 			},
 			CREATION_DATE: schema.Int64Attribute{
 				Computed:    true,
 				Description: "The creation timestamp of the variation.",
+				// Refreshes on every PATCH (new version row).
 			},
-		},
-		Blocks: map[string]schema.Block{
-			MESSAGES: schema.ListNestedBlock{
+			MESSAGES: schema.ListNestedAttribute{
+				Optional:    true,
 				Description: "A list of messages for completion mode. Each message has a `role` and `content`.",
-				NestedObject: schema.NestedBlockObject{
+				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
 						ROLE: schema.StringAttribute{
 							Required:    true,
@@ -477,8 +487,17 @@ func (r *AIConfigVariationResource) readIntoModel(
 	data.Version = types.Int64Value(int64(variation.Version))
 	data.CreationDate = types.Int64Value(variation.CreatedAt)
 
-	data.Description = stringValueOrNullFromPointer(variation.Description)
-	data.Instructions = stringValueOrNullFromPointer(variation.Instructions)
+	// description and instructions are returned by POST/PATCH but not by
+	// GET /variations — see https://app.launchdarkly.com/api/v2 schema:
+	// the items array elides them. When the API omits them, preserve
+	// the caller-supplied value (plan during Update, state during
+	// Refresh) so terraform doesn't see a write-only attribute as drift.
+	if variation.Description != nil {
+		data.Description = types.StringValue(*variation.Description)
+	}
+	if variation.Instructions != nil {
+		data.Instructions = types.StringValue(*variation.Instructions)
+	}
 	if variation.ModelConfigKey != nil {
 		data.ModelConfigKey = types.StringValue(*variation.ModelConfigKey)
 	} else {
@@ -514,20 +533,26 @@ func (r *AIConfigVariationResource) readIntoModel(
 		data.Model = types.StringNull()
 	}
 
-	// Messages
+	// Messages — emit null when the API returns no messages so plan
+	// parity holds for Agent-mode variations (which never carry messages
+	// but contain other sensitive-adjacent state).
 	msgObj := types.ObjectType{AttrTypes: aiConfigVariationMessageAttrTypes}
-	elems := make([]attr.Value, 0, len(variation.Messages))
-	for _, m := range variation.Messages {
-		obj, d := types.ObjectValue(aiConfigVariationMessageAttrTypes, map[string]attr.Value{
-			ROLE:    types.StringValue(m.Role),
-			CONTENT: types.StringValue(m.Content),
-		})
+	if len(variation.Messages) == 0 {
+		data.Messages = types.ListNull(msgObj)
+	} else {
+		elems := make([]attr.Value, 0, len(variation.Messages))
+		for _, m := range variation.Messages {
+			obj, d := types.ObjectValue(aiConfigVariationMessageAttrTypes, map[string]attr.Value{
+				ROLE:    types.StringValue(m.Role),
+				CONTENT: types.StringValue(m.Content),
+			})
+			diags.Append(d...)
+			elems = append(elems, obj)
+		}
+		list, d := types.ListValue(msgObj, elems)
 		diags.Append(d...)
-		elems = append(elems, obj)
+		data.Messages = list
 	}
-	list, d := types.ListValue(msgObj, elems)
-	diags.Append(d...)
-	data.Messages = list
 
 	// Tool keys: SDKv2 preserved prior value when API returned empty.
 	if len(variation.Tools) > 0 {

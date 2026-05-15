@@ -23,11 +23,11 @@ This resource allows you to create and manage Relay Proxy configurations within 
 ```terraform
 resource "launchdarkly_relay_proxy_configuration" "example" {
   name = "example-config"
-  policy {
+  policy = [{
     actions   = ["*"]
     effect    = "allow"
     resources = ["proj/*:env/*"]
-  }
+  }]
 }
 ```
 
@@ -37,10 +37,7 @@ resource "launchdarkly_relay_proxy_configuration" "example" {
 ### Required
 
 - `name` (String) The human-readable name for your Relay Proxy configuration.
-
-### Optional
-
-- `policy` (Block List) The Relay Proxy configuration's rule policy block. This determines what content the Relay Proxy receives. To learn more, read [Understanding policies](https://docs.launchdarkly.com/home/members/role-policies#understanding-policies). (see [below for nested schema](#nestedblock--policy))
+- `policy` (Attributes List) The Relay Proxy configuration's rule policy. This determines what content the Relay Proxy receives. To learn more, read [Understanding policies](https://docs.launchdarkly.com/home/members/role-policies#understanding-policies). (see [below for nested schema](#nestedatt--policy))
 
 ### Read-Only
 
@@ -48,7 +45,7 @@ resource "launchdarkly_relay_proxy_configuration" "example" {
 - `full_key` (String, Sensitive) The Relay Proxy configuration's unique key. Because the `full_key` is only exposed upon creation, it will not be available if the resource is imported.
 - `id` (String) The Relay Proxy configuration's unique ID.
 
-<a id="nestedblock--policy"></a>
+<a id="nestedatt--policy"></a>
 ### Nested Schema for `policy`
 
 Required:

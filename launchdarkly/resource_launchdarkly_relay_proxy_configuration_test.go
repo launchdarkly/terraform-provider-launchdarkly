@@ -12,22 +12,22 @@ const (
 	testAccRelayProxyConfigCreate = `
 resource "launchdarkly_relay_proxy_configuration" "test" {
 	name = "example-config"
-	policy {
+	policy = [{
 		actions   = ["*"]	
 		effect    = "allow"
 		resources = ["proj/*:env/*"]
-	}
+	}]
 }
 `
 
 	testAccRelayProxyConfigUpdate = `
 resource "launchdarkly_relay_proxy_configuration" "test" {
 	name = "updated-config"
-	policy {
+	policy = [{
 		not_actions   = ["*"]	
 		effect        = "deny"
 		not_resources = ["proj/*:env/test"]
-	}
+	}]
 }
 `
 )

@@ -16,11 +16,11 @@ const (
 		name = "Custom role - %s"
 		description = "Deny all actions on production environments"
 		base_permissions = "no_access"
-		policy {
+		policy = [{
 			actions = ["*"]	
 			effect = "deny"
 			resources = ["proj/*:env/production"]
-		}
+		}]
 	}
 `
 	// IMPORTANT TO NOTE that the $ character must be escaped in terraform by using a double $$
@@ -29,11 +29,11 @@ const (
 resource "launchdarkly_custom_role" "test" {
 	key = "%s"
 	name = "Updated - %s"
-	policy {
+	policy = [{
 		actions = ["*"]	
 		effect = "allow"
 		resources = ["proj/*:env/$${roleAttribute/devEnvironments}"]
-	}
+	}]
 }
 `
 	testAccCustomRoleCreateWithStatements = `
@@ -41,11 +41,11 @@ resource "launchdarkly_custom_role" "test" {
 	key = "%s"
 	name = "Custom role - %s"
 	description = "Allow all actions on staging environments"
-	policy_statements {
+	policy_statements = [{
 		actions = ["*"]	
 		effect = "allow"
 		resources = ["proj/$${roleAttribute/devProjects}:env/staging"]
-	}
+	}]
 }
 `
 	testAccCustomRoleUpdateWithStatements = `
@@ -53,11 +53,11 @@ resource "launchdarkly_custom_role" "test" {
 	key = "%s"
 	name = "Updated role - %s"
 	description= "Deny all actions on production environments"
-	policy_statements {
+	policy_statements = [{
 		actions = ["*"]	
 		effect = "deny"
 		resources = ["proj/*:env/production"]
-	}
+	}]
 }
 `
 	testAccCustomRoleCreateWithNotStatements = `
@@ -65,11 +65,11 @@ resource "launchdarkly_custom_role" "test" {
 	key = "%s"
 	name = "Custom role - %s"
 	description = "Don't allow all actions on non-staging environments"
-	policy_statements {
+	policy_statements = [{
 		not_actions = ["*"]	
 		effect = "allow"
 		not_resources = ["proj/*:env/staging"]
-	}
+	}]
 }
 `
 	testAccCustomRoleUpdateWithNotStatements = `
@@ -77,11 +77,11 @@ resource "launchdarkly_custom_role" "test" {
 	key = "%s"
 	name = "Updated role - %s"
 	description= "Don't deny all actions on non production environments"
-	policy_statements {
+	policy_statements = [{
 		not_actions = ["*"]	
 		effect = "deny"
 		not_resources = ["proj/*:env/production"]
-	}
+	}]
 }
 `
 )
