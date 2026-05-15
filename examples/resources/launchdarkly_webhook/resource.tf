@@ -4,14 +4,16 @@ resource "launchdarkly_webhook" "example" {
   tags = ["terraform"]
   on   = true
 
-  statements {
-    actions   = ["*"]
-    effect    = "allow"
-    resources = ["proj/*:env/production:flag/*"]
-  }
-  statements {
-    actions   = ["*"]
-    effect    = "allow"
-    resources = ["proj/test:env/production:segment/*"]
-  }
+  statements = [
+    {
+      actions   = ["*"]
+      effect    = "allow"
+      resources = ["proj/*:env/production:flag/*"]
+    },
+    {
+      actions   = ["*"]
+      effect    = "allow"
+      resources = ["proj/test:env/production:segment/*"]
+    },
+  ]
 }

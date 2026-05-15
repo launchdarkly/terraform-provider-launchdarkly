@@ -64,11 +64,10 @@ func (d *ViewDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, r
 				ElementType: types.StringType,
 				Description: "Feature flag keys linked to this view.",
 			},
-		},
-		Blocks: map[string]schema.Block{
-			LINKED_SEGMENTS: schema.ListNestedBlock{
+			LINKED_SEGMENTS: schema.ListNestedAttribute{
+				Computed:    true,
 				Description: "Segments linked to this view.",
-				NestedObject: schema.NestedBlockObject{
+				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
 						SEGMENT_ENVIRONMENT_ID: schema.StringAttribute{Computed: true},
 						SEGMENT_KEY:            schema.StringAttribute{Computed: true},

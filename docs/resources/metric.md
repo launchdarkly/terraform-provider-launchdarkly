@@ -26,10 +26,10 @@ resource "launchdarkly_metric" "example" {
   description = "Metric description."
   kind        = "pageview"
   tags        = ["example"]
-  urls {
+  urls = [{
     kind      = "substring"
     substring = "foo"
-  }
+  }]
 }
 ```
 
@@ -59,14 +59,14 @@ resource "launchdarkly_metric" "example" {
 - `tags` (Set of String) Tags associated with this resource.
 - `unit` (String) (Required for kind `custom`) The unit for numeric `custom` metrics.
 - `unit_aggregation_type` (String) The method by which multiple unit event values are aggregated. Available choices are `average` and `sum`.
-- `urls` (Block List) List of nested `url` blocks describing URLs that you want to associate with the metric. (see [below for nested schema](#nestedblock--urls))
+- `urls` (Attributes List) List of URLs that you want to associate with the metric. (see [below for nested schema](#nestedatt--urls))
 
 ### Read-Only
 
 - `id` (String) The ID of this resource.
 - `version` (Number) Version of the metric
 
-<a id="nestedblock--urls"></a>
+<a id="nestedatt--urls"></a>
 ### Nested Schema for `urls`
 
 Required:

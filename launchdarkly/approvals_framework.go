@@ -1,12 +1,10 @@
 package launchdarkly
 
-// approvals_framework.go is the terraform-plugin-framework analogue of
-// approvals_helper.go (the schema + conversion helpers for
-// approval_settings blocks). Used by environment + project data sources
-// and (later) by the resource migrations of those types.
+// approvals_framework.go provides the shared approval_settings schema
+// + conversion helpers. Used by the environment, project, segment, and
+// feature_flag_environment resources and data sources.
 //
-// Block-style nesting preserved: `approval_settings { ... }` stays a
-// block, not a nested attribute, per the CLAUDE.md convention.
+// HCL surface: `approval_settings = [{ ... }]` — a single-element list.
 
 import (
 	"context"
@@ -23,8 +21,7 @@ import (
 )
 
 // frameworkApprovalSettingsObjectAttrTypes is the attribute-type map
-// every approval_settings list-nested-block element conforms to. Single-
-// element list shape preserves the SDKv2 TypeList{MaxItems:1} pattern.
+// every approval_settings list element conforms to.
 var frameworkApprovalSettingsObjectAttrTypes = map[string]attr.Type{
 	REQUIRED:                    types.BoolType,
 	CAN_REVIEW_OWN_REQUEST:      types.BoolType,
@@ -36,12 +33,13 @@ var frameworkApprovalSettingsObjectAttrTypes = map[string]attr.Type{
 	AUTO_APPLY_APPROVED_CHANGES: types.BoolType,
 }
 
-// frameworkApprovalSettingsDataSourceBlock returns a ListNestedBlock
+// frameworkApprovalSettingsDataSourceAttribute returns a ListNestedAttribute
 // schema for use in datasource.Schema. All inner attrs are Computed.
-func frameworkApprovalSettingsDataSourceBlock() dsschema.ListNestedBlock {
-	return dsschema.ListNestedBlock{
+func frameworkApprovalSettingsDataSourceAttribute() dsschema.ListNestedAttribute {
+	return dsschema.ListNestedAttribute{
+		Computed:    true,
 		Description: "Approval settings for this environment / project.",
-		NestedObject: dsschema.NestedBlockObject{
+		NestedObject: dsschema.NestedAttributeObject{
 			Attributes: map[string]dsschema.Attribute{
 				REQUIRED: dsschema.BoolAttribute{
 					Computed:    true,
@@ -83,19 +81,21 @@ func frameworkApprovalSettingsDataSourceBlock() dsschema.ListNestedBlock {
 }
 
 // frameworkApprovalSettingsValue converts an LD-API ApprovalSettings
-// into a single-element types.List, mirroring the prior state's block
-// presence. Framework blocks can't be Computed at the block level —
-// state must follow config-declared block count (Phase 4 plan gotcha
-// #3). The `prior` argument carries the plan's view of the block
-// (during Create/Update) or the previous state (during Refresh) so
-// the read can emit count=0 when user did not declare the block and
-// count=1 when they did, even when both branches resolve to LD-API
-// "default" approval values.
+// into a single-element types.List, mirroring the prior state's
+// attribute presence. The `prior` argument carries the plan's view of
+// the attribute (during Create/Update) or the previous state (during
+// Refresh) so the read can emit a null list when the user did not
+// declare the attribute and a populated single-element list when they
+// did, even when both branches resolve to LD-API "default" approval
+// values. Returning null (not an empty list) is important for plan
+// parity: the framework treats `attr = null` and `attr = []`
+// differently in the plan/apply consistency check, especially when
+// the parent object contains sensitive fields.
 func frameworkApprovalSettingsValue(ctx context.Context, settings *ldapi.ApprovalSettings, prior basetypes.ListValue) (basetypes.ListValue, diag.Diagnostics) {
 	objectType := types.ObjectType{AttrTypes: frameworkApprovalSettingsObjectAttrTypes}
 	priorEmpty := prior.IsNull() || prior.IsUnknown() || len(prior.Elements()) == 0
 	if settings == nil || priorEmpty {
-		return types.ListValue(objectType, []attr.Value{})
+		return types.ListNull(objectType), nil
 	}
 
 	requiredTagsList, diags := listFromStringSlice(ctx, settings.RequiredApprovalTags)
@@ -139,15 +139,16 @@ func frameworkApprovalSettingsValue(ctx context.Context, settings *ldapi.Approva
 	return list, diags
 }
 
-// frameworkApprovalSettingsResourceBlock returns the resource-side
-// ListNestedBlock schema for approval_settings. Shared between
-// project's nested-environments block, segment, FFE, and the standalone
-// environment resource going forward. Descriptions copied verbatim
-// from SDKv2 approvalSchema (approvals_helper.go) to keep
-// `make generate` zero-diff.
-func frameworkApprovalSettingsResourceBlock() schema.ListNestedBlock {
-	return schema.ListNestedBlock{
-		NestedObject: schema.NestedBlockObject{
+// frameworkApprovalSettingsResourceAttribute returns the resource-side
+// ListNestedAttribute schema for approval_settings. Shared between
+// project's nested-environments attribute, segment, FFE, and the
+// standalone environment resource. Descriptions copied verbatim from
+// SDKv2 approvalSchema (approvals_helper.go) to keep `make generate`
+// zero-diff.
+func frameworkApprovalSettingsResourceAttribute() schema.ListNestedAttribute {
+	return schema.ListNestedAttribute{
+		Optional: true,
+		NestedObject: schema.NestedAttributeObject{
 			Attributes: map[string]schema.Attribute{
 				REQUIRED: schema.BoolAttribute{
 					Optional:    true,
@@ -298,7 +299,8 @@ func frameworkApprovalSettingsDataSourceValue(ctx context.Context, settings *lda
 // isZeroApprovalSettings reports whether LD's approval-settings doc is
 // effectively unconfigured (no approval gate active and no service
 // integration wired up). Used on the Import-equivalent path inside
-// project envs where there's no prior state to anchor block presence.
+// project envs where there's no prior state to anchor attribute
+// presence.
 func isZeroApprovalSettings(s *ldapi.ApprovalSettings) bool {
 	if s == nil {
 		return true

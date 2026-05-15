@@ -20,11 +20,11 @@ resource "launchdarkly_audit_log_subscription" "%s_tf_test" {
 		"terraform"
 	]
 	on = true
-	statements {
+	statements = [{
 		actions = ["*"]
 		effect = "deny"
 		resources = ["proj/*:env/*:flag/*"]
-	}
+	}]
 }
 `
 
@@ -37,11 +37,11 @@ resource "launchdarkly_audit_log_subscription" "%s_tf_test" {
 	tags = [
 		"integrations"
 	]
-	statements {
+	statements = [{
 		actions = ["*"]
 		effect = "allow"
 		resources = ["proj/*:env/production"]
-	}
+	}]
 }
 `
 )

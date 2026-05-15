@@ -37,19 +37,19 @@ data "launchdarkly_segment" "example" {
 - `creation_date` (Number) UNIX epoch ms timestamp.
 - `description` (String) Segment description.
 - `excluded` (List of String) User keys excluded from the segment.
-- `excluded_contexts` (Block List) Non-user target objects excluded from the segment. (see [below for nested schema](#nestedblock--excluded_contexts))
+- `excluded_contexts` (Attributes List) Non-user target objects excluded from the segment. (see [below for nested schema](#nestedatt--excluded_contexts))
 - `id` (String) Composite ID `project_key/env_key/key`.
 - `included` (List of String) User keys included in the segment.
-- `included_contexts` (Block List) Non-user target objects included in the segment. (see [below for nested schema](#nestedblock--included_contexts))
+- `included_contexts` (Attributes List) Non-user target objects included in the segment. (see [below for nested schema](#nestedatt--included_contexts))
 - `name` (String) Human-friendly name for the segment.
-- `rules` (Block List) Custom rule blocks applied to the segment. (see [below for nested schema](#nestedblock--rules))
+- `rules` (Attributes List) Custom rules applied to the segment. (see [below for nested schema](#nestedatt--rules))
 - `tags` (Set of String) Tags.
 - `unbounded` (Boolean) Whether this is a Big Segment.
 - `unbounded_context_kind` (String) Context kind for the big segment.
 - `view_keys` (Set of String) View keys linked to this segment.
 - `views` (List of String) Legacy view keys list (backwards-compat).
 
-<a id="nestedblock--excluded_contexts"></a>
+<a id="nestedatt--excluded_contexts"></a>
 ### Nested Schema for `excluded_contexts`
 
 Read-Only:
@@ -58,7 +58,7 @@ Read-Only:
 - `values` (List of String)
 
 
-<a id="nestedblock--included_contexts"></a>
+<a id="nestedatt--included_contexts"></a>
 ### Nested Schema for `included_contexts`
 
 Read-Only:
@@ -67,17 +67,17 @@ Read-Only:
 - `values` (List of String)
 
 
-<a id="nestedblock--rules"></a>
+<a id="nestedatt--rules"></a>
 ### Nested Schema for `rules`
 
 Read-Only:
 
 - `bucket_by` (String) Attribute for bucketing contexts.
-- `clauses` (Block List) Clauses applied as the rule's logical condition. (see [below for nested schema](#nestedblock--rules--clauses))
+- `clauses` (Attributes List) Clauses applied as the rule's logical condition. (see [below for nested schema](#nestedatt--rules--clauses))
 - `rollout_context_kind` (String) Context kind for the rollout.
 - `weight` (Number) Rule weight (1-100000).
 
-<a id="nestedblock--rules--clauses"></a>
+<a id="nestedatt--rules--clauses"></a>
 ### Nested Schema for `rules.clauses`
 
 Read-Only:

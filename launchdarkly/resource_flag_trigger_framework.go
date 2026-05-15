@@ -109,15 +109,14 @@ This resource allows you to create and manage flag triggers within your LaunchDa
 				Required:    true,
 				Description: "Whether the trigger is currently active or not.",
 			},
-		},
-		Blocks: map[string]schema.Block{
-			INSTRUCTIONS: schema.ListNestedBlock{
+			INSTRUCTIONS: schema.ListNestedAttribute{
+				Required:    true,
 				Description: "Instructions containing the action to perform when invoking the trigger. Currently supported flag actions are `turnFlagOn` and `turnFlagOff`. This must be passed as the key-value pair `{ kind = \"<flag_action>\" }`.",
 				Validators: []validator.List{
 					listvalidator.SizeAtLeast(1),
 					listvalidator.SizeAtMost(1),
 				},
-				NestedObject: schema.NestedBlockObject{
+				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
 						KIND: schema.StringAttribute{
 							Required:    true,

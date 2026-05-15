@@ -54,9 +54,7 @@ func (d *RelayProxyConfigurationDataSource) Schema(_ context.Context, _ datasour
 				Computed:    true,
 				Description: "The last 4 characters of the Relay Proxy configuration's unique key.",
 			},
-		},
-		Blocks: map[string]schema.Block{
-			POLICY: frameworkPolicyStatementsDataSourceBlock("The Relay Proxy configuration's rule policy block. This determines what content the Relay Proxy receives. To learn more, read [Understanding policies](https://docs.launchdarkly.com/home/members/role-policies#understanding-policies)."),
+			POLICY: frameworkPolicyStatementsDataSourceAttribute("The Relay Proxy configuration's rule policy block. This determines what content the Relay Proxy receives. To learn more, read [Understanding policies](https://docs.launchdarkly.com/home/members/role-policies#understanding-policies)."),
 		},
 	}
 }

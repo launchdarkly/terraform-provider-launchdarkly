@@ -47,9 +47,9 @@ resource "launchdarkly_feature_flag_environment" "prod_config" {
   flag_id = data.launchdarkly_feature_flag.example.id
   env_key = "production"
   on      = true
-  fallthrough {
+  fallthrough = [{
     variation = 0
-  }
+  }]
   off_variation = 1
 }
 
@@ -82,9 +82,9 @@ output "team_notifications" {
 ### Read-Only
 
 - `archived` (Boolean) Whether the flag is archived.
-- `client_side_availability` (Block List) Client-side availability settings. (see [below for nested schema](#nestedblock--client_side_availability))
-- `custom_properties` (Block Set) Custom properties. (see [below for nested schema](#nestedblock--custom_properties))
-- `defaults` (Block List) Default variation indices for new environments. (see [below for nested schema](#nestedblock--defaults))
+- `client_side_availability` (Attributes List) Client-side availability settings. (see [below for nested schema](#nestedatt--client_side_availability))
+- `custom_properties` (Attributes Set) Custom properties. (see [below for nested schema](#nestedatt--custom_properties))
+- `defaults` (Attributes List) Default variation indices for new environments. (see [below for nested schema](#nestedatt--defaults))
 - `deprecated` (Boolean) Whether the flag is deprecated.
 - `description` (String) Feature flag description.
 - `id` (String) Composite ID `project_key/key`.
@@ -93,11 +93,11 @@ output "team_notifications" {
 - `tags` (Set of String) Tags.
 - `temporary` (Boolean) Whether the flag is temporary.
 - `variation_type` (String) Variation type: "boolean", "string", "number", or "json".
-- `variations` (Block List) Possible variations for the flag. (see [below for nested schema](#nestedblock--variations))
+- `variations` (Attributes List) Possible variations for the flag. (see [below for nested schema](#nestedatt--variations))
 - `view_keys` (Set of String) View keys linked to the flag.
 - `views` (List of String) Legacy view keys list.
 
-<a id="nestedblock--client_side_availability"></a>
+<a id="nestedatt--client_side_availability"></a>
 ### Nested Schema for `client_side_availability`
 
 Read-Only:
@@ -106,7 +106,7 @@ Read-Only:
 - `using_mobile_key` (Boolean)
 
 
-<a id="nestedblock--custom_properties"></a>
+<a id="nestedatt--custom_properties"></a>
 ### Nested Schema for `custom_properties`
 
 Read-Only:
@@ -116,7 +116,7 @@ Read-Only:
 - `value` (List of String)
 
 
-<a id="nestedblock--defaults"></a>
+<a id="nestedatt--defaults"></a>
 ### Nested Schema for `defaults`
 
 Read-Only:
@@ -125,7 +125,7 @@ Read-Only:
 - `on_variation` (Number)
 
 
-<a id="nestedblock--variations"></a>
+<a id="nestedatt--variations"></a>
 ### Nested Schema for `variations`
 
 Read-Only:

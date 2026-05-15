@@ -1,19 +1,11 @@
 package launchdarkly
 
-// policy_statements_framework.go is the terraform-plugin-framework analogue
-// of policy_statements_helper.go. It provides:
-//
-//   - frameworkPolicyStatementsBlock: a ListNestedBlock schema producer
-//     (data-source variant: all Computed). The block name (e.g.
-//     POLICY_STATEMENTS, POLICY, STATEMENTS) is supplied by the caller so
-//     the same builder works for relay_proxy_configuration (uses POLICY),
-//     webhook (uses STATEMENTS), audit_log_subscription, etc.
-//   - frameworkPolicyStatementsValue: converts []ldapi.Statement to a
-//     framework types.List of nested objects, suitable for assignment to
-//     the model field.
-//
-// SDKv2 source: policy_statements_helper.go (schema and
-// policyStatementsToResourceData).
+// policy_statements_framework.go provides shared policy_statements
+// schema builders and converters reused across access_token,
+// audit_log_subscription, custom_role, relay_proxy_configuration, and
+// webhook. The attribute name (e.g. POLICY_STATEMENTS, POLICY,
+// STATEMENTS, INLINE_ROLES) is supplied by the caller so the same
+// builder works everywhere.
 
 import (
 	"context"
@@ -41,14 +33,15 @@ var frameworkPolicyStatementsObjectAttrTypes = map[string]attr.Type{
 	EFFECT:        types.StringType,
 }
 
-// frameworkPolicyStatementsDataSourceBlock returns a ListNestedBlock
+// frameworkPolicyStatementsDataSourceAttribute returns a ListNestedAttribute
 // schema for use in datasource.Schema. All inner attrs are Computed
 // because data sources are read-only; the SDKv2 version distinguishes
 // computed-vs-optional via the options struct.
-func frameworkPolicyStatementsDataSourceBlock(description string) dsschema.ListNestedBlock {
-	return dsschema.ListNestedBlock{
+func frameworkPolicyStatementsDataSourceAttribute(description string) dsschema.ListNestedAttribute {
+	return dsschema.ListNestedAttribute{
+		Computed:    true,
 		Description: description,
-		NestedObject: dsschema.NestedBlockObject{
+		NestedObject: dsschema.NestedAttributeObject{
 			Attributes: map[string]dsschema.Attribute{
 				RESOURCES: dsschema.ListAttribute{
 					Computed:    true,
@@ -79,16 +72,17 @@ func frameworkPolicyStatementsDataSourceBlock(description string) dsschema.ListN
 	}
 }
 
-// frameworkPolicyStatementsResourceBlock returns a ListNestedBlock for
-// use in resource.Schema. The required flag controls whether the block
-// itself is required; inner attrs preserve the SDKv2 flag matrix
-// (Optional + MinItems=1 via list-size validator). Inner descriptions
-// and the effect enum validator mirror policy_statements_helper.go.
-func frameworkPolicyStatementsResourceBlock(required bool, description string, deprecated string) rsschema.ListNestedBlock {
-	block := rsschema.ListNestedBlock{
+// frameworkPolicyStatementsResourceAttribute returns a ListNestedAttribute
+// for use in resource.Schema. The required flag controls whether the
+// attribute itself is required; inner attrs preserve the SDKv2 flag
+// matrix (Optional + MinItems=1 via list-size validator). Inner
+// descriptions and the effect enum validator mirror
+// policy_statements_helper.go.
+func frameworkPolicyStatementsResourceAttribute(required bool, description string, deprecated string) rsschema.ListNestedAttribute {
+	attr := rsschema.ListNestedAttribute{
 		Description:        description,
 		DeprecationMessage: deprecated,
-		NestedObject: rsschema.NestedBlockObject{
+		NestedObject: rsschema.NestedAttributeObject{
 			Attributes: map[string]rsschema.Attribute{
 				RESOURCES: rsschema.ListAttribute{
 					Optional:    true,
@@ -135,10 +129,13 @@ func frameworkPolicyStatementsResourceBlock(required bool, description string, d
 	if required {
 		// SDKv2 emits MinItems=1 on the outer block when the schema is
 		// not Computed (see policyStatementsSchema). Mirror that for
-		// the resource variant via a list-size validator.
-		block.Validators = []validator.List{listvalidator.SizeAtLeast(1)}
+		// the resource variant via Required + list-size validator.
+		attr.Required = true
+		attr.Validators = []validator.List{listvalidator.SizeAtLeast(1)}
+	} else {
+		attr.Optional = true
 	}
-	return block
+	return attr
 }
 
 // frameworkPolicyStatementsFromList converts a framework types.List of
@@ -211,9 +208,14 @@ func (m frameworkPolicyStatementModel) toLDAPI() (ldapi.StatementPost, diag.Diag
 // framework types.List of objects matching
 // frameworkPolicyStatementsObjectAttrTypes. Empty inner slices project
 // to null lists (matching SDKv2 Optional-only semantics where absent
-// inner attrs are not present in state).
+// inner attrs are not present in state). When the API returns zero
+// statements, return null so plan-vs-apply consistency holds for
+// Optional-only callers (webhook, custom_role inline_roles, etc.).
 func frameworkPolicyStatementsValue(ctx context.Context, statements []ldapi.Statement) (basetypes.ListValue, diag.Diagnostics) {
 	objectType := types.ObjectType{AttrTypes: frameworkPolicyStatementsObjectAttrTypes}
+	if len(statements) == 0 {
+		return types.ListNull(objectType), nil
+	}
 
 	elements := make([]attr.Value, 0, len(statements))
 	var diags diag.Diagnostics

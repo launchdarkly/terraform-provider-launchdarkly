@@ -16,11 +16,11 @@ resource "launchdarkly_custom_role" "terraform_team_test" {
   key = "%s"
   name = "Teams test role %s"
   base_permissions = "no_access"
-  policy {
+  policy = [{
     actions = ["*"]
     effect = "deny"
     resources = ["proj/*:env/$${roleAttribute/developer-envs}"]
-  }
+  }]
 }
 
 resource "launchdarkly_team_member" "test_member_one" {
@@ -41,18 +41,16 @@ resource "launchdarkly_team" "test" {
   member_ids = [launchdarkly_team_member.test_member_one.id]
   maintainers = [launchdarkly_team_member.test_member_two.id]
   custom_role_keys = [launchdarkly_custom_role.terraform_team_test.key]
-  role_attributes {
+  role_attributes = [{
 	key = "fake-attribute"
 	values = ["fake-value"]
-  }
-  role_attributes {
+  }, {
 	key = "developer-envs"
 	values = ["development", "production"]
-  }
-  role_attributes {
+  }, {
 	key = "another-fake-attribute"
 	values = ["another-fake-value"]
-  }
+  }]
 }
 `
 	testAccTeamUpdateNameDescriptionRoleAttributes = `
@@ -60,11 +58,11 @@ resource "launchdarkly_custom_role" "terraform_team_test" {
   key = "%s"
   name = "Teams test role %s"
   base_permissions = "no_access"
-  policy {
+  policy = [{
     actions = ["*"]
     effect = "deny"
     resources = ["proj/*:env/$${roleAttribute/developer-envs}"]
-  }
+  }]
 }
 
 resource "launchdarkly_team_member" "test_member_one" {
@@ -85,14 +83,13 @@ resource "launchdarkly_team" "test" {
   member_ids = [launchdarkly_team_member.test_member_one.id]
   maintainers = [launchdarkly_team_member.test_member_two.id]
   custom_role_keys = [launchdarkly_custom_role.terraform_team_test.key]
-  role_attributes {
+  role_attributes = [{
 	key = "developer-envs"
 	values = ["development"]
-  }
-  role_attributes {
+  }, {
 	key = "fake-attribute"
 	values = ["faker-value", "fake-value"]
-  }
+  }]
 }
 `
 	testAccTeamUpdateRoles = `
@@ -100,22 +97,22 @@ resource "launchdarkly_custom_role" "terraform_team_test" {
   key = "%s"
   name = "Teams test role %s"
   base_permissions = "no_access"
-  policy {
+  policy = [{
     actions = ["*"]
     effect = "deny"
     resources = ["proj/*:env/production"]
-  }
+  }]
 }
 
 resource "launchdarkly_custom_role" "other_team_test" {
   key = "%s"
   name = "Other test role %s"
   base_permissions = "no_access"
-  policy {
+  policy = [{
     actions = ["*"]
     effect = "deny"
     resources = ["proj/*:env/production"]
-  }
+  }]
 }
 
 resource "launchdarkly_team_member" "test_member_one" {
@@ -143,11 +140,11 @@ resource "launchdarkly_custom_role" "other_team_test" {
   key = "%s"
   name = "Other test role %s"
   base_permissions = "no_access"
-  policy {
+  policy = [{
     actions = ["*"]
     effect = "deny"
     resources = ["proj/*:env/production"]
-  }
+  }]
 }
 
 resource "launchdarkly_team_member" "test_member_one" {
@@ -174,10 +171,10 @@ resource "launchdarkly_team" "test" {
   member_ids = [launchdarkly_team_member.test_member_two.id, launchdarkly_team_member.test_member_three.id]
   maintainers = [launchdarkly_team_member.test_member_two.id, launchdarkly_team_member.test_member_one.id]
   custom_role_keys = [launchdarkly_custom_role.other_team_test.key]
-  role_attributes {
+  role_attributes = [{
 	key = "testAttribute"
 	values = ["testValue"]
-  }
+  }]
 }
 `
 )

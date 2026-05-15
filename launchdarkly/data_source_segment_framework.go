@@ -91,11 +91,10 @@ func (d *SegmentDataSource) Schema(_ context.Context, _ datasource.SchemaRequest
 				ElementType: types.StringType,
 				Description: "Legacy view keys list (backwards-compat).",
 			},
-		},
-		Blocks: map[string]schema.Block{
-			INCLUDED_CONTEXTS: schema.ListNestedBlock{
+			INCLUDED_CONTEXTS: schema.ListNestedAttribute{
+				Computed:    true,
 				Description: "Non-user target objects included in the segment.",
-				NestedObject: schema.NestedBlockObject{
+				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
 						VALUES: schema.ListAttribute{
 							Computed:    true,
@@ -105,9 +104,10 @@ func (d *SegmentDataSource) Schema(_ context.Context, _ datasource.SchemaRequest
 					},
 				},
 			},
-			EXCLUDED_CONTEXTS: schema.ListNestedBlock{
+			EXCLUDED_CONTEXTS: schema.ListNestedAttribute{
+				Computed:    true,
 				Description: "Non-user target objects excluded from the segment.",
-				NestedObject: schema.NestedBlockObject{
+				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
 						VALUES: schema.ListAttribute{
 							Computed:    true,
@@ -117,16 +117,15 @@ func (d *SegmentDataSource) Schema(_ context.Context, _ datasource.SchemaRequest
 					},
 				},
 			},
-			RULES: schema.ListNestedBlock{
-				Description: "Custom rule blocks applied to the segment.",
-				NestedObject: schema.NestedBlockObject{
+			RULES: schema.ListNestedAttribute{
+				Computed:    true,
+				Description: "Custom rules applied to the segment.",
+				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
 						WEIGHT:               schema.Int64Attribute{Computed: true, Description: "Rule weight (1-100000)."},
 						BUCKET_BY:            schema.StringAttribute{Computed: true, Description: "Attribute for bucketing contexts."},
 						ROLLOUT_CONTEXT_KIND: schema.StringAttribute{Computed: true, Description: "Context kind for the rollout."},
-					},
-					Blocks: map[string]schema.Block{
-						CLAUSES: frameworkClausesDataSourceBlock(),
+						CLAUSES:              frameworkClausesDataSourceAttribute(),
 					},
 				},
 			},
@@ -232,6 +231,9 @@ func (d *SegmentDataSource) Read(ctx context.Context, req datasource.ReadRequest
 
 func segmentTargetsToFrameworkListImpl(ctx context.Context, targets []ldapi.SegmentTarget) types.List {
 	objectType := types.ObjectType{AttrTypes: segmentTargetAttrTypes}
+	if len(targets) == 0 {
+		return types.ListNull(objectType)
+	}
 	elements := make([]attr.Value, 0, len(targets))
 	for _, t := range targets {
 		values := []string{}

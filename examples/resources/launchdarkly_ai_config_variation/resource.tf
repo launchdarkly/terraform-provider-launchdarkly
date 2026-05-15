@@ -5,13 +5,14 @@ resource "launchdarkly_ai_config_variation" "example" {
   name             = "Helpful V1"
   model_config_key = launchdarkly_model_config.example.key
 
-  messages {
-    role    = "system"
-    content = "You are a helpful customer support assistant."
-  }
-
-  messages {
-    role    = "user"
-    content = "{{ ldctx.query }}"
-  }
+  messages = [
+    {
+      role    = "system"
+      content = "You are a helpful customer support assistant."
+    },
+    {
+      role    = "user"
+      content = "{{ ldctx.query }}"
+    },
+  ]
 }

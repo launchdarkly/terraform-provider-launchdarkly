@@ -24,10 +24,10 @@ resource "launchdarkly_ai_config_variation" "test" {
 	config_key  = launchdarkly_ai_config.test.key
 	key         = "%s"
 	name        = "%s"
-	messages {
+	messages = [{
 		role    = "system"
 		content = "You are a helpful assistant."
-	}
+	}]
 }
 `
 
@@ -45,14 +45,13 @@ resource "launchdarkly_ai_config_variation" "test" {
 	config_key  = launchdarkly_ai_config.test.key
 	key         = "%s"
 	name        = "%s"
-	messages {
+	messages = [{
 		role    = "system"
 		content = "You are an expert assistant."
-	}
-	messages {
+	}, {
 		role    = "user"
 		content = "Hello!"
-	}
+	}]
 }
 `
 	testAccAIConfigVariationWithModelConfigKey = `
@@ -79,10 +78,10 @@ resource "launchdarkly_ai_config_variation" "test" {
 	key              = "%s"
 	name             = "Variation with model config"
 	model_config_key = launchdarkly_model_config.test.key
-	messages {
+	messages = [{
 		role    = "system"
 		content = "You are a helpful assistant."
-	}
+	}]
 }
 `
 
@@ -121,10 +120,10 @@ resource "launchdarkly_ai_config_variation" "test" {
 		modelName  = "gpt-4"
 		parameters = { temperature = 0.7 }
 	})
-	messages {
+	messages = [{
 		role    = "system"
 		content = "You are a helpful assistant."
-	}
+	}]
 }
 `
 
@@ -155,10 +154,10 @@ resource "launchdarkly_ai_config_variation" "test" {
 	key         = "%s"
 	name        = "Variation with tools"
 	tool_keys   = [launchdarkly_ai_tool.test.key]
-	messages {
+	messages = [{
 		role    = "system"
 		content = "You are a helpful assistant."
-	}
+	}]
 }
 `
 )

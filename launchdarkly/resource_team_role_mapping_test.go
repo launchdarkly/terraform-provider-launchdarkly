@@ -15,22 +15,22 @@ func testAccTeamRoleMappingSetup(uniqueRole0, uniqueRole1, teamKey string) strin
 		key              = "%s"
 		name             = "Custom Role 1 %s"
 		base_permissions = "no_access"
-		policy {
-			actions = ["*"]	
+		policy = [{
+			actions = ["*"]
 			effect = "deny"
 			resources = ["proj/*:env/production"]
-		}
+		}]
 	}
 
 	resource "launchdarkly_custom_role" "role_1" {
 		key              = "%s"
 		name             = "Custom Role 2 %s"
 		base_permissions = "no_access"
-		policy {
-			actions = ["*"]	
+		policy = [{
+			actions = ["*"]
 			effect = "deny"
 			resources = ["proj/*:env/test"]
-		}
+		}]
 	}
 
 	resource "launchdarkly_team" "test_team" {
@@ -44,8 +44,9 @@ func testAccTeamRoleMappingSetup(uniqueRole0, uniqueRole1, teamKey string) strin
 
     lifecycle {
       ignore_changes = [
-        # Ignore changes custom_role_keys because we are using the mapping resource
-        custom_role_keys
+        # Ignore changes custom_role_keys and role_attributes because we are using the mapping resource
+        custom_role_keys,
+        role_attributes,
       ]
     }
 
@@ -170,6 +171,160 @@ func TestAccTeamRoleMapping_empty(t *testing.T) {
 				ResourceName:      resourceName,
 				ImportState:       true,
 				ImportStateVerify: true,
+			},
+		},
+	})
+}
+
+func testAccTeamRoleMappingConfigWithRoleAttributes(uniqueRole0, uniqueRole1, teamKey string) string {
+	return fmt.Sprintf(`
+	%s
+
+	resource "launchdarkly_team_role_mapping" "basic" {
+		team_key = launchdarkly_team.test_team.key
+
+		custom_role_keys = [
+			launchdarkly_custom_role.role_0.key,
+		]
+
+		role_attributes = {
+			domain = ["DomainX"]
+		}
+	}
+	`, testAccTeamRoleMappingSetup(uniqueRole0, uniqueRole1, teamKey))
+}
+
+func testAccTeamRoleMappingConfigWithRoleAttributesUpdated(uniqueRole0, uniqueRole1, teamKey string) string {
+	return fmt.Sprintf(`
+	%s
+
+	resource "launchdarkly_team_role_mapping" "basic" {
+		team_key = launchdarkly_team.test_team.key
+
+		custom_role_keys = [
+			launchdarkly_custom_role.role_0.key,
+		]
+
+		role_attributes = {
+			domain = ["DomainX", "DomainY"]
+			region = ["us-east-1"]
+		}
+	}
+	`, testAccTeamRoleMappingSetup(uniqueRole0, uniqueRole1, teamKey))
+}
+
+func testAccTeamRoleMappingConfigWithRoleAttributesUnset(uniqueRole0, uniqueRole1, teamKey string) string {
+	return fmt.Sprintf(`
+	%s
+
+	resource "launchdarkly_team_role_mapping" "basic" {
+		team_key = launchdarkly_team.test_team.key
+
+		custom_role_keys = [
+			launchdarkly_custom_role.role_0.key,
+		]
+	}
+	`, testAccTeamRoleMappingSetup(uniqueRole0, uniqueRole1, teamKey))
+}
+
+func TestAccTeamRoleMapping_WithRoleAttributes(t *testing.T) {
+	t.Parallel()
+	resourceName := "launchdarkly_team_role_mapping.basic"
+	role0 := "ra-role-0-" + acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	role1 := "ra-role-1-" + acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	teamKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		PreCheck:                 func() { testAccPreCheck(t) },
+		Steps: []resource.TestStep{
+			{
+				Config: testAccTeamRoleMappingConfigWithRoleAttributes(role0, role1, teamKey),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(resourceName, "team_key", teamKey),
+					resource.TestCheckResourceAttr(resourceName, "custom_role_keys.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "role_attributes.domain.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "role_attributes.domain.0", "DomainX"),
+				),
+			},
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
+				// role_attributes is intentionally not claimed by import (dual
+				// ownership with launchdarkly_team — Read only refreshes when
+				// state already has a non-null value). Next Apply opts in via
+				// the prior-null + plan-set Update transition.
+				ImportStateVerifyIgnore: []string{"role_attributes"},
+			},
+		},
+	})
+}
+
+func TestAccTeamRoleMapping_RoleAttributesUpdate(t *testing.T) {
+	t.Parallel()
+	resourceName := "launchdarkly_team_role_mapping.basic"
+	role0 := "rau-role-0-" + acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	role1 := "rau-role-1-" + acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	teamKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		PreCheck:                 func() { testAccPreCheck(t) },
+		Steps: []resource.TestStep{
+			{
+				Config: testAccTeamRoleMappingConfigWithRoleAttributes(role0, role1, teamKey),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(resourceName, "role_attributes.domain.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "role_attributes.%", "1"),
+				),
+			},
+			{
+				Config: testAccTeamRoleMappingConfigWithRoleAttributesUpdated(role0, role1, teamKey),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(resourceName, "role_attributes.%", "2"),
+					resource.TestCheckResourceAttr(resourceName, "role_attributes.domain.#", "2"),
+					resource.TestCheckResourceAttr(resourceName, "role_attributes.region.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "role_attributes.region.0", "us-east-1"),
+				),
+			},
+			{
+				ResourceName:            resourceName,
+				ImportState:             true,
+				ImportStateVerify:       true,
+				ImportStateVerifyIgnore: []string{"role_attributes"},
+			},
+		},
+	})
+}
+
+func TestAccTeamRoleMapping_RoleAttributesUnset(t *testing.T) {
+	t.Parallel()
+	resourceName := "launchdarkly_team_role_mapping.basic"
+	role0 := "rax-role-0-" + acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	role1 := "rax-role-1-" + acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	teamKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		PreCheck:                 func() { testAccPreCheck(t) },
+		Steps: []resource.TestStep{
+			{
+				Config: testAccTeamRoleMappingConfigWithRoleAttributes(role0, role1, teamKey),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(resourceName, "role_attributes.domain.0", "DomainX"),
+				),
+			},
+			{
+				Config: testAccTeamRoleMappingConfigWithRoleAttributesUnset(role0, role1, teamKey),
+				Check: resource.ComposeTestCheckFunc(
+					// When the attribute is removed from config, terraform's diff
+					// engine reports role_attributes as null. The provider Update
+					// step leaves the team's stored attributes alone in that case
+					// (state-not-null → owned; null → not owned). Assert state is
+					// null on the resource side.
+					resource.TestCheckNoResourceAttr(resourceName, "role_attributes.%"),
+				),
 			},
 		},
 	})

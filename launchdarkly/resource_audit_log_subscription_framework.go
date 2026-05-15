@@ -79,9 +79,7 @@ func (r *AuditLogSubscriptionResource) Schema(_ context.Context, _ resource.Sche
 				ElementType: types.StringType,
 				Description: "Tags associated with your resource.",
 			},
-		},
-		Blocks: map[string]schema.Block{
-			STATEMENTS: frameworkPolicyStatementsResourceBlock(true, "A block representing the resources to which you wish to subscribe.", ""),
+			STATEMENTS: frameworkPolicyStatementsResourceAttribute(true, "The resources to which you wish to subscribe.", ""),
 		},
 	}
 }

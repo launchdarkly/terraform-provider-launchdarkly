@@ -103,18 +103,17 @@ This resource allows you to create and manage projects within your LaunchDarkly 
 				Default:     booldefault.StaticBool(false),
 				Description: "Whether new segments created in this project must be associated with at least one view.",
 			},
-		},
-		Blocks: map[string]schema.Block{
-			DEFAULT_CLIENT_SIDE_AVAILABILITY: schema.ListNestedBlock{
-				Description: "A block describing which client-side SDKs can use new flags by default.",
-				NestedObject: schema.NestedBlockObject{
+			DEFAULT_CLIENT_SIDE_AVAILABILITY: schema.ListNestedAttribute{
+				Optional:    true,
+				Description: "Which client-side SDKs can use new flags by default.",
+				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
 						USING_ENVIRONMENT_ID: schema.BoolAttribute{Required: true},
 						USING_MOBILE_KEY:     schema.BoolAttribute{Required: true},
 					},
 				},
 			},
-			ENVIRONMENTS: projectEnvironmentsBlock(),
+			ENVIRONMENTS: projectEnvironmentsAttribute(),
 		},
 	}
 }
@@ -132,16 +131,22 @@ func (r *ProjectResource) Configure(_ context.Context, req resource.ConfigureReq
 	r.client = configureResourceClient(req, resp)
 }
 
-// ModifyPlan ports the IIS-side half of customizeProjectDiff: when
-// neither IIS nor CSA is declared in config, set include_in_snippet =
-// false so terraform sees a stable Computed value matching LD's
-// backend default. The CSA half of customizeProjectDiff cannot be
-// ported: framework ListNestedBlock cannot be Computed at the block
-// level, so emitting a block when config has zero blocks fails
-// terraform-core's "plan count must match config count" gate (Phase 4
-// gotcha #3). The block-shape parity is preserved by Read mirroring
-// the prior state's block presence (see readIntoModel + the CSA
-// helpers below).
+// ModifyPlan handles two plan-time concerns:
+//
+//  1. include_in_snippet default: when neither IIS nor CSA is declared
+//     in config, set include_in_snippet = false so terraform sees a
+//     stable Computed value matching LD's backend default. (Port of the
+//     IIS-side half of the legacy customizeProjectDiff.)
+//
+//  2. Environments-level sensitive Unknowns: nested-attribute schemas
+//     synthesize zero values for inner Computed fields once the user
+//     supplies the required ones (key/name/color). For api_key,
+//     mobile_key, client_side_id — secrets only LD can mint — this
+//     produces a "" plan value that Apply replaces with the real
+//     secret, tripping the framework's plan-vs-apply consistency
+//     check (see [[feedback-nested-attr-computed-sensitive]]). Mark
+//     these fields Unknown whenever there's no prior state entry for
+//     the same env key.
 func (r *ProjectResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
 	if req.Plan.Raw.IsNull() {
 		return
@@ -154,34 +159,123 @@ func (r *ProjectResource) ModifyPlan(ctx context.Context, req resource.ModifyPla
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	iisNotSet := config.IncludeInSnippet.IsNull() || config.IncludeInSnippet.IsUnknown()
-	csaEmpty := config.DefaultClientSideAvailability.IsNull() ||
-		config.DefaultClientSideAvailability.IsUnknown() ||
-		len(config.DefaultClientSideAvailability.Elements()) == 0
-	if !(iisNotSet && csaEmpty) {
-		return
-	}
-
 	var plan ProjectResourceModel
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	plan.IncludeInSnippet = types.BoolValue(false)
+
+	iisNotSet := config.IncludeInSnippet.IsNull() || config.IncludeInSnippet.IsUnknown()
+	csaEmpty := config.DefaultClientSideAvailability.IsNull() ||
+		config.DefaultClientSideAvailability.IsUnknown() ||
+		len(config.DefaultClientSideAvailability.Elements()) == 0
+	if iisNotSet && csaEmpty {
+		plan.IncludeInSnippet = types.BoolValue(false)
+	}
+
+	var state ProjectResourceModel
+	stateAbsent := req.State.Raw.IsNull()
+	if !stateAbsent {
+		resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+	}
+	envs, diags := markEnvSecretsUnknown(ctx, plan.Environments, state.Environments)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	plan.Environments = envs
+
 	resp.Diagnostics.Append(resp.Plan.Set(ctx, &plan)...)
 }
 
-// projectCSAValueFromAPI emits the CSA block matching the prior state
-// shape: if prior was empty (or null), keep empty so terraform doesn't
-// see a count-1 state for a count-0 plan; if prior was populated, emit
-// the API's current values. Framework analogue of SDKv2's
-// Optional+Computed TypeList for blocks — framework blocks can't be
-// Computed at the block level (Phase 4 gotcha #3).
+// markEnvSecretsUnknown rewrites plan.Environments so api_key /
+// mobile_key / client_side_id reflect the right env for each list
+// position. The framework's UseStateForUnknown plan modifier on those
+// inner attributes is index-based: when the user reorders envs, the
+// modifier paints state[i]'s sensitive values onto plan[i] regardless
+// of whether plan[i].key actually matches state[i].key. The result is
+// post-Apply state pulling fresh API values that don't match the
+// index-aligned plan and tripping the framework's plan-vs-apply
+// consistency check.
+//
+// Fix: match by env key. For each plan env, if state has an env with
+// the same key, use that state env's sensitive values; otherwise
+// mark them Unknown so Apply can fill them in.
+func markEnvSecretsUnknown(ctx context.Context, planList, stateList types.List) (types.List, diag.Diagnostics) {
+	var diags diag.Diagnostics
+	if planList.IsNull() || planList.IsUnknown() {
+		return planList, diags
+	}
+	objType := types.ObjectType{AttrTypes: environmentAttrTypes}
+	planEls := planList.Elements()
+	if len(planEls) == 0 {
+		return planList, diags
+	}
+
+	type envSecrets struct{ api, mobile, csid attr.Value }
+	stateByKey := make(map[string]envSecrets)
+	if !stateList.IsNull() && !stateList.IsUnknown() {
+		for _, el := range stateList.Elements() {
+			obj, ok := el.(basetypes.ObjectValue)
+			if !ok {
+				continue
+			}
+			a := obj.Attributes()
+			keyVal, _ := a[KEY].(basetypes.StringValue)
+			if keyVal.IsNull() || keyVal.IsUnknown() {
+				continue
+			}
+			stateByKey[keyVal.ValueString()] = envSecrets{
+				api:    a[API_KEY],
+				mobile: a[MOBILE_KEY],
+				csid:   a[CLIENT_SIDE_ID],
+			}
+		}
+	}
+
+	out := make([]attr.Value, 0, len(planEls))
+	for _, el := range planEls {
+		obj, ok := el.(basetypes.ObjectValue)
+		if !ok {
+			out = append(out, el)
+			continue
+		}
+		attrs := obj.Attributes()
+		keyVal, _ := attrs[KEY].(basetypes.StringValue)
+		envKey := ""
+		if !keyVal.IsNull() && !keyVal.IsUnknown() {
+			envKey = keyVal.ValueString()
+		}
+		if secrets, ok := stateByKey[envKey]; ok {
+			attrs[API_KEY] = secrets.api
+			attrs[MOBILE_KEY] = secrets.mobile
+			attrs[CLIENT_SIDE_ID] = secrets.csid
+		} else {
+			attrs[API_KEY] = types.StringUnknown()
+			attrs[MOBILE_KEY] = types.StringUnknown()
+			attrs[CLIENT_SIDE_ID] = types.StringUnknown()
+		}
+		newObj, d := types.ObjectValue(environmentAttrTypes, attrs)
+		diags.Append(d...)
+		out = append(out, newObj)
+	}
+	newList, d := types.ListValue(objType, out)
+	diags.Append(d...)
+	return newList, diags
+}
+
+// projectCSAValueFromAPI emits the CSA attribute matching the prior
+// state shape: if prior was empty (or null), keep null so terraform
+// doesn't see a populated state for a null plan; if prior was
+// populated, emit the API's current values.
 func projectCSAValueFromAPI(ctx context.Context, csa *ldapi.ClientSideAvailability, prior basetypes.ListValue) (basetypes.ListValue, diag.Diagnostics) {
 	objectType := types.ObjectType{AttrTypes: projectCSAAttrTypes}
 	priorEmpty := prior.IsNull() || prior.IsUnknown() || len(prior.Elements()) == 0
 	if priorEmpty || csa == nil {
-		return types.ListValue(objectType, []attr.Value{})
+		return types.ListNull(objectType), nil
 	}
 	usingEnv := false
 	if csa.UsingEnvironmentId != nil {
@@ -368,7 +462,7 @@ func (r *ProjectResource) applyProjectUpdates(ctx context.Context, projectKey st
 	if diags.HasError() {
 		return diags
 	}
-	stateEnvs := map[string]environmentBlockModel{}
+	stateEnvs := map[string]environmentModel{}
 	if !isCreate {
 		stateEnvList, d := environmentModelsFromList(ctx, state.Environments)
 		diags.Append(d...)

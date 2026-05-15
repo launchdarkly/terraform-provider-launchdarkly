@@ -22,16 +22,18 @@ resource "launchdarkly_webhook" "example" {
   tags = ["terraform"]
   on   = true
 
-  statements {
-    actions   = ["*"]
-    effect    = "allow"
-    resources = ["proj/*:env/production:flag/*"]
-  }
-  statements {
-    actions   = ["*"]
-    effect    = "allow"
-    resources = ["proj/test:env/production:segment/*"]
-  }
+  statements = [
+    {
+      actions   = ["*"]
+      effect    = "allow"
+      resources = ["proj/*:env/production:flag/*"]
+    },
+    {
+      actions   = ["*"]
+      effect    = "allow"
+      resources = ["proj/test:env/production:segment/*"]
+    },
+  ]
 }
 ```
 
@@ -47,14 +49,14 @@ resource "launchdarkly_webhook" "example" {
 - `name` (String) The webhook's human-readable name.
 - `on` (Boolean) Specifies whether the webhook is enabled.
 - `secret` (String, Sensitive) The secret used to sign the webhook.
-- `statements` (Block List) List of policy statement blocks used to filter webhook events. For more information on webhook policy filters read [Adding a policy filter](https://docs.launchdarkly.com/integrations/webhooks#adding-a-policy-filter). (see [below for nested schema](#nestedblock--statements))
+- `statements` (Attributes List) List of policy statements used to filter webhook events. For more information on webhook policy filters read [Adding a policy filter](https://docs.launchdarkly.com/integrations/webhooks#adding-a-policy-filter). (see [below for nested schema](#nestedatt--statements))
 - `tags` (Set of String) Tags associated with your resource.
 
 ### Read-Only
 
 - `id` (String) The ID of this resource.
 
-<a id="nestedblock--statements"></a>
+<a id="nestedatt--statements"></a>
 ### Nested Schema for `statements`
 
 Required:

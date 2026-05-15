@@ -24,14 +24,13 @@ resource "launchdarkly_metric" "basic" {
 	tags           = [
 	  "test"
 	]
-	urls {
+	urls = [{
 	  kind = "substring"
 	  substring = "foo"
-	}
-	urls {
+	}, {
 		kind = "regex"
 		pattern = "foo"
-	  }
+	  }]
 }
 `
 	testAccMetricUpdate = `
@@ -44,14 +43,13 @@ resource "launchdarkly_metric" "basic" {
 	tags           = [
 	  "test"
 	]
-	urls {
+	urls = [{
 	  kind = "substring"
 	  substring = "bar"
-	}
-	urls {
+	}, {
 		kind = "regex"
 		pattern = "bar"
-	  }
+	  }]
 }
 `
 

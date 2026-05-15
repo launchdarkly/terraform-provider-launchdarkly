@@ -79,19 +79,10 @@ func (r *CustomRoleResource) Schema(_ context.Context, _ resource.SchemaRequest,
 					oneOfValidator{allowed: []string{"reader", "no_access"}},
 				},
 			},
-			POLICY_STATEMENTS_JSON: schema.StringAttribute{
-				Optional:    true,
-				Description: "Policy statements expressed as a single JSON document — an array of statement objects with the same keys as the `policy_statements` blocks (`resources`, `not_resources`, `actions`, `not_actions`, `effect`). Mutually exclusive with `policy_statements` and `policy`. Use this form when reading the policy from a file or templating it dynamically (for example with `jsonencode(...)` or `file(\"policy.json\")`). To use [role attributes](https://docs.launchdarkly.com/home/getting-started/vocabulary#role-attribute), escape the `$` as `$${roleAttribute/<YOUR_ROLE_ATTRIBUTE>}` inside HCL strings.",
-				Validators:  []validator.String{jsonStringValidator{}},
-				PlanModifiers: []planmodifier.String{
-					jsonNormalizePlanModifier{},
-				},
-			},
-		},
-		Blocks: map[string]schema.Block{
-			POLICY: schema.SetNestedBlock{
+			POLICY: schema.SetNestedAttribute{
+				Optional:           true,
 				DeprecationMessage: "'policy' is now deprecated. Please migrate to 'policy_statements' to maintain future compatability.",
-				NestedObject: schema.NestedBlockObject{
+				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
 						RESOURCES: schema.ListAttribute{
 							Required:    true,
@@ -107,7 +98,15 @@ func (r *CustomRoleResource) Schema(_ context.Context, _ resource.SchemaRequest,
 					},
 				},
 			},
-			POLICY_STATEMENTS: frameworkPolicyStatementsResourceBlock(false, "An array of the policy statements that define the permissions for the custom role. This field accepts [role attributes](https://docs.launchdarkly.com/home/getting-started/vocabulary#role-attribute). To use role attributes, use the syntax `$${roleAttribute/<YOUR_ROLE_ATTRIBUTE>}` in lieu of your usual resource keys.", ""),
+			POLICY_STATEMENTS: frameworkPolicyStatementsResourceAttribute(false, "An array of the policy statements that define the permissions for the custom role. This field accepts [role attributes](https://docs.launchdarkly.com/home/getting-started/vocabulary#role-attribute). To use role attributes, use the syntax `$${roleAttribute/<YOUR_ROLE_ATTRIBUTE>}` in lieu of your usual resource keys.", ""),
+			POLICY_STATEMENTS_JSON: schema.StringAttribute{
+				Optional:    true,
+				Description: "Policy statements expressed as a single JSON document — an array of statement objects with the same keys as the `policy_statements` attribute (`resources`, `not_resources`, `actions`, `not_actions`, `effect`). Mutually exclusive with `policy_statements` and `policy`. Use this form when reading the policy from a file or templating it dynamically (for example with `jsonencode(...)` or `file(\"policy.json\")`). To use [role attributes](https://docs.launchdarkly.com/home/getting-started/vocabulary#role-attribute), escape the `$` as `$${roleAttribute/<YOUR_ROLE_ATTRIBUTE>}` inside HCL strings.",
+				Validators:  []validator.String{jsonStringValidator{}},
+				PlanModifiers: []planmodifier.String{
+					jsonNormalizePlanModifier{},
+				},
+			},
 		},
 	}
 }

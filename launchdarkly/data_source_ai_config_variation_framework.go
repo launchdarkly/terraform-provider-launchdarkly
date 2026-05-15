@@ -73,11 +73,10 @@ func (d *AIConfigVariationDataSource) Schema(_ context.Context, _ datasource.Sch
 			VARIATION_ID:  schema.StringAttribute{Computed: true, Description: "The internal ID of the variation."},
 			VERSION:       schema.Int64Attribute{Computed: true, Description: "The version number of the variation."},
 			CREATION_DATE: schema.Int64Attribute{Computed: true, Description: "The creation timestamp of the variation."},
-		},
-		Blocks: map[string]schema.Block{
-			MESSAGES: schema.ListNestedBlock{
+			MESSAGES: schema.ListNestedAttribute{
+				Computed:    true,
 				Description: "A list of messages for completion mode.",
-				NestedObject: schema.NestedBlockObject{
+				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
 						ROLE:    schema.StringAttribute{Computed: true, Description: "Role of the message."},
 						CONTENT: schema.StringAttribute{Computed: true, Description: "Content of the message."},

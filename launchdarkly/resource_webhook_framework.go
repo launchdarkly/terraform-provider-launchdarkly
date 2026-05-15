@@ -79,9 +79,7 @@ func (r *WebhookResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 					setvalidator.ValueStringsAre(tagValidator()),
 				},
 			},
-		},
-		Blocks: map[string]schema.Block{
-			STATEMENTS: frameworkPolicyStatementsResourceBlock(false, "List of policy statement blocks used to filter webhook events. For more information on webhook policy filters read [Adding a policy filter](https://docs.launchdarkly.com/integrations/webhooks#adding-a-policy-filter).", ""),
+			STATEMENTS: frameworkPolicyStatementsResourceAttribute(false, "List of policy statements used to filter webhook events. For more information on webhook policy filters read [Adding a policy filter](https://docs.launchdarkly.com/integrations/webhooks#adding-a-policy-filter).", ""),
 		},
 	}
 }

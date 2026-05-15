@@ -42,10 +42,10 @@ data "launchdarkly_ai_config" "example" {
 - `mode` (String) The AI Config's mode. Must be `completion`, `agent`, or `judge`.
 - `name` (String) The AI Config's human-readable name.
 - `tags` (Set of String) Tags associated with your resource.
-- `variations` (Block List) A list of variation summaries for this AI Config. (see [below for nested schema](#nestedblock--variations))
+- `variations` (Attributes List) A list of variation summaries for this AI Config. (see [below for nested schema](#nestedatt--variations))
 - `version` (Number) The version of the AI Config.
 
-<a id="nestedblock--variations"></a>
+<a id="nestedatt--variations"></a>
 ### Nested Schema for `variations`
 
 Read-Only:

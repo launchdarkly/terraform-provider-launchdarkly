@@ -50,7 +50,7 @@ Other invariants:
 - All terraform attribute names are `const` strings declared in `launchdarkly/keys.go` inside a `//gofmts:sort` block — **never inline a string literal for a schema key**. The constant name must equal its value. Adding a new key requires inserting it into that sorted block; `make fmt` will re-sort if you misplace it. Framework `tfsdk:` tags hold the wire identifier; the Go-side constants give cross-file consistency.
 - Patches use `patchReplace` / `patchAdd` / `patchRemove` helpers (in `launchdarkly/helper.go`) wrapping `ldapi.PatchOperation`; prefer these over hand-rolled structs.
 - `handleLdapiErr` unwraps `*ldapi.GenericOpenAPIError` to surface the response body — wrap raw API errors before returning to Terraform.
-- Schemas mirror the existing user-facing HCL surface for migrated resources: structures that were SDKv2 blocks remain framework `schema.Blocks` (`ListNestedBlock` / `SetNestedBlock` / `SingleNestedBlock`), not nested attributes. Changing block ↔ nested-attribute is a config-rewrite for users.
+- All nested-object structures are framework `*NestedAttribute` (`ListNestedAttribute` / `SetNestedAttribute`). The provider has **zero** `schema.Blocks` declarations as of v3.0.0 — the block→nested-attribute migration completed alongside the SDKv2→framework cutover. User HCL uses `name = { ... }` / `name = [{ ... }, ...]` syntax everywhere; legacy `name { ... }` block syntax does not parse against current schemas.
 
 Shared framework utility surface:
 
