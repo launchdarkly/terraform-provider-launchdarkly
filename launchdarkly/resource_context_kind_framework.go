@@ -102,7 +102,7 @@ func (r *ContextKindResource) Schema(_ context.Context, _ resource.SchemaRequest
 				Computed:            true,
 				MarkdownDescription: "Server-side mirror of `archived`. LaunchDarkly aliases `hideInTargeting` to `archived` on writes, so this attribute is read-only. Use `archived` to control targeting visibility.",
 				PlanModifiers: []planmodifier.Bool{
-					boolplanmodifier.UseStateForUnknown(),
+					mirrorArchivedPlanModifier{},
 				},
 			},
 			ARCHIVED: schema.BoolAttribute{
@@ -486,6 +486,32 @@ func (r *ContextKindResource) hydrateFromAPI(ctx context.Context, projectKey, ke
 	data.LastModified = types.Int64Value(kind.LastModified)
 	data.CreatedFrom = types.StringValue(kind.CreatedFrom)
 	data.ID = types.StringValue(projectKey + "/" + key)
+}
+
+// mirrorArchivedPlanModifier sets hide_in_targeting's plan value to whatever archived resolves
+// to in the same plan. LD aliases the two server-side, so a plan that left hide_in_targeting
+// at its prior state value would mispredict the API's response and trip terraform-core's
+// post-apply consistency check (was X, but now Y).
+type mirrorArchivedPlanModifier struct{}
+
+func (mirrorArchivedPlanModifier) Description(_ context.Context) string {
+	return "mirrors the plan's archived value into hide_in_targeting (LD aliases the two server-side)"
+}
+
+func (mirrorArchivedPlanModifier) MarkdownDescription(_ context.Context) string {
+	return "Mirrors the plan's `archived` value into `hide_in_targeting` (LD aliases the two server-side)."
+}
+
+func (mirrorArchivedPlanModifier) PlanModifyBool(ctx context.Context, req planmodifier.BoolRequest, resp *planmodifier.BoolResponse) {
+	var planArchived types.Bool
+	resp.Diagnostics.Append(req.Plan.GetAttribute(ctx, path.Root(ARCHIVED), &planArchived)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	if planArchived.IsNull() || planArchived.IsUnknown() {
+		return
+	}
+	resp.PlanValue = planArchived
 }
 
 // contextKindKeyValidator rejects keys that would shadow LaunchDarkly's built-in `user` kind.
