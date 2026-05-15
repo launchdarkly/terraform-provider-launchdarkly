@@ -97,6 +97,10 @@ func (r *AIConfigVariationResource) Schema(_ context.Context, _ resource.SchemaR
 				PlanModifiers: []planmodifier.String{
 					jsonNormalizePlanModifier{},
 				},
+				// Intentionally no UseStateForUnknown: model and
+				// model_config_key are mutually exclusive; switching
+				// from inline model to model_config_key must let plan
+				// recompute.
 			},
 			MODEL_CONFIG_KEY: schema.StringAttribute{
 				Optional:    true,
@@ -135,14 +139,21 @@ func (r *AIConfigVariationResource) Schema(_ context.Context, _ resource.SchemaR
 			VARIATION_ID: schema.StringAttribute{
 				Computed:    true,
 				Description: "The internal ID of the variation.",
+				// Intentionally no UseStateForUnknown: variation_id can
+				// change between PATCHes because the AI Config API
+				// versions variations as immutable entities — every
+				// update creates a new variation row with a new ID.
 			},
 			VERSION: schema.Int64Attribute{
 				Computed:    true,
 				Description: "The version number of the variation.",
+				// Increments on every PATCH; plan flap is the intended
+				// signal.
 			},
 			CREATION_DATE: schema.Int64Attribute{
 				Computed:    true,
 				Description: "The creation timestamp of the variation.",
+				// Refreshes on every PATCH (new version row).
 			},
 			MESSAGES: schema.ListNestedAttribute{
 				Optional:    true,

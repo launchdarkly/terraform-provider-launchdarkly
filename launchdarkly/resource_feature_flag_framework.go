@@ -22,6 +22,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/setplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
@@ -113,12 +114,18 @@ This resource allows you to create and manage feature flags within your LaunchDa
 				Computed:    true,
 				Description: "The feature flag maintainer's 24 character alphanumeric team member ID. `maintainer_team_key` cannot be set if `maintainer_id` is set. If neither is set, it will automatically be or stay set to the member ID associated with the API key used by your LaunchDarkly Terraform provider or the most recently-set maintainer.",
 				Validators:  []validator.String{idValidator()},
+				// Intentionally no UseStateForUnknown: maintainer_id and
+				// maintainer_team_key are mutually exclusive, so when the
+				// user switches from one to the other the unused field
+				// must transition to "" (LD's "no value" form) rather than
+				// retain the previous state value.
 			},
 			MAINTAINER_TEAM_KEY: schema.StringAttribute{
 				Optional:    true,
 				Computed:    true,
 				Description: "The key of the associated team that maintains this feature flag. `maintainer_id` cannot be set if `maintainer_team_key` is set",
 				Validators:  []validator.String{keyAndLengthValidator(1, 256)},
+				// See maintainer_id above — same mutual-exclusion reason.
 			},
 			VARIATION_TYPE: schema.StringAttribute{
 				Required:      true,
@@ -139,6 +146,11 @@ This resource allows you to create and manage feature flags within your LaunchDa
 				Computed:           true,
 				Description:        "Specifies whether this flag should be made available to the client-side JavaScript SDK using the client-side Id. This value gets its default from your project configuration if not set. `include_in_snippet` is now deprecated. Please migrate to `client_side_availability.using_environment_id` to maintain future compatibility.",
 				DeprecationMessage: "'include_in_snippet' is now deprecated. Please migrate to 'client_side_availability' to maintain future compatability.",
+				// Intentionally no UseStateForUnknown: include_in_snippet
+				// and client_side_availability are mutually exclusive
+				// (ConfigValidators.Conflicting). When the user switches
+				// between them, plan must recompute rather than preserve
+				// the previous state's value.
 			},
 			TAGS: schema.SetAttribute{
 				Optional:    true,
@@ -159,10 +171,11 @@ This resource allows you to create and manage feature flags within your LaunchDa
 				Description: "Specifies whether the flag is deprecated or not. Note that you cannot create a new flag that is deprecated, but can update a flag to be deprecated.",
 			},
 			VIEW_KEYS: schema.SetAttribute{
-				Optional:    true,
-				Computed:    true,
-				ElementType: types.StringType,
-				Description: "A set of view keys to link this flag to. This is an alternative to using the `launchdarkly_view_links` resource for managing view associations. When set, this flag will be linked to the specified views. The field is also computed, meaning Terraform will read back the current view associations from LaunchDarkly to detect drift. To explicitly remove all view associations, set `view_keys = []`. Simply removing the field from your configuration will leave existing associations unchanged. **Important**: Avoid using both `view_keys` and `launchdarkly_view_links` to manage the same flag. Mixed ownership can cause conflicts; when detected, Terraform logs a warning and reconciles to the configured `view_keys`. Choose one approach per resource.",
+				Optional:      true,
+				Computed:      true,
+				ElementType:   types.StringType,
+				Description:   "A set of view keys to link this flag to. This is an alternative to using the `launchdarkly_view_links` resource for managing view associations. When set, this flag will be linked to the specified views. The field is also computed, meaning Terraform will read back the current view associations from LaunchDarkly to detect drift. To explicitly remove all view associations, set `view_keys = []`. Simply removing the field from your configuration will leave existing associations unchanged. **Important**: Avoid using both `view_keys` and `launchdarkly_view_links` to manage the same flag. Mixed ownership can cause conflicts; when detected, Terraform logs a warning and reconciles to the configured `view_keys`. Choose one approach per resource.",
+				PlanModifiers: []planmodifier.Set{setplanmodifier.UseStateForUnknown()},
 			},
 			VARIATIONS: schema.ListNestedAttribute{
 				Required:    true,

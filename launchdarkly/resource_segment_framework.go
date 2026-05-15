@@ -15,7 +15,9 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/setplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
@@ -104,8 +106,9 @@ This resource allows you to create and manage segments within your LaunchDarkly 
 				Description: "Tags associated with your resource.",
 			},
 			CREATION_DATE: schema.Int64Attribute{
-				Computed:    true,
-				Description: "The segment's creation date represented as a UNIX epoch timestamp.",
+				Computed:      true,
+				Description:   "The segment's creation date represented as a UNIX epoch timestamp.",
+				PlanModifiers: []planmodifier.Int64{int64planmodifier.UseStateForUnknown()},
 			},
 			INCLUDED: schema.ListAttribute{
 				Optional:    true,
@@ -125,17 +128,21 @@ This resource allows you to create and manage segments within your LaunchDarkly 
 				PlanModifiers: []planmodifier.Bool{boolplanmodifier.RequiresReplace()},
 			},
 			UNBOUNDED_CONTEXT_KIND: schema.StringAttribute{
-				Optional:      true,
-				Computed:      true,
-				Description:   addForceNewDescription("For Big Segments, the targeted context kind. If this attribute is not specified it will default to `user`.", true),
-				PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
-			},
-			VIEW_KEYS: schema.SetAttribute{
 				Optional:    true,
 				Computed:    true,
-				ElementType: types.StringType,
-				Description: "A set of view keys to link this segment to. This is an alternative to using the `launchdarkly_view_links` resource for managing view associations. When set, this segment will be linked to the specified views. The field is also computed, meaning Terraform will read back the current view associations from LaunchDarkly to detect drift. To explicitly remove all view associations, set `view_keys = []`. Simply removing the field from your configuration will leave existing associations unchanged. **Important**: Avoid using both `view_keys` and `launchdarkly_view_links` to manage the same segment. Mixed ownership can cause conflicts; when detected, Terraform logs a warning and reconciles to the configured `view_keys`. Choose one approach per resource.",
-				Validators:  []validator.Set{},
+				Description: addForceNewDescription("For Big Segments, the targeted context kind. If this attribute is not specified it will default to `user`.", true),
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+					stringplanmodifier.RequiresReplace(),
+				},
+			},
+			VIEW_KEYS: schema.SetAttribute{
+				Optional:      true,
+				Computed:      true,
+				ElementType:   types.StringType,
+				Description:   "A set of view keys to link this segment to. This is an alternative to using the `launchdarkly_view_links` resource for managing view associations. When set, this segment will be linked to the specified views. The field is also computed, meaning Terraform will read back the current view associations from LaunchDarkly to detect drift. To explicitly remove all view associations, set `view_keys = []`. Simply removing the field from your configuration will leave existing associations unchanged. **Important**: Avoid using both `view_keys` and `launchdarkly_view_links` to manage the same segment. Mixed ownership can cause conflicts; when detected, Terraform logs a warning and reconciles to the configured `view_keys`. Choose one approach per resource.",
+				Validators:    []validator.Set{},
+				PlanModifiers: []planmodifier.Set{setplanmodifier.UseStateForUnknown()},
 			},
 			INCLUDED_CONTEXTS: schema.ListNestedAttribute{
 				Optional:    true,
