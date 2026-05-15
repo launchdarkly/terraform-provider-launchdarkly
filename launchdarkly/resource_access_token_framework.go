@@ -321,9 +321,21 @@ func (r *AccessTokenResource) Update(ctx context.Context, req resource.UpdateReq
 			patch = append(patch, patchReplace("/customRoleIds", &customRoleIds))
 		}
 	}
-	if !plan.PolicyStatements.Equal(state.PolicyStatements) || !plan.InlineRoles.Equal(state.InlineRoles) {
+	// Patch inlineRole only when the semantic value actually changes.
+	// state == [] and plan == null both mean "no inline roles"; treating
+	// them as different (framework Equal does) and issuing patchRemove
+	// for a token that never had an inline role returns 422 from LD.
+	emptyList := func(l types.List) bool {
+		return l.IsNull() || l.IsUnknown() || len(l.Elements()) == 0
+	}
+	hadInline := !emptyList(state.PolicyStatements) || !emptyList(state.InlineRoles)
+	wantInline := !emptyList(plan.PolicyStatements) || !emptyList(plan.InlineRoles)
+	if hadInline != wantInline ||
+		(wantInline && (!plan.PolicyStatements.Equal(state.PolicyStatements) || !plan.InlineRoles.Equal(state.InlineRoles))) {
 		if len(inline) == 0 {
-			patch = append(patch, patchRemove("/inlineRole"))
+			if hadInline {
+				patch = append(patch, patchRemove("/inlineRole"))
+			}
 		} else {
 			patch = append(patch, patchReplace("/inlineRole", &inline))
 		}

@@ -487,8 +487,17 @@ func (r *AIConfigVariationResource) readIntoModel(
 	data.Version = types.Int64Value(int64(variation.Version))
 	data.CreationDate = types.Int64Value(variation.CreatedAt)
 
-	data.Description = stringValueOrNullFromPointer(variation.Description)
-	data.Instructions = stringValueOrNullFromPointer(variation.Instructions)
+	// description and instructions are returned by POST/PATCH but not by
+	// GET /variations — see https://app.launchdarkly.com/api/v2 schema:
+	// the items array elides them. When the API omits them, preserve
+	// the caller-supplied value (plan during Update, state during
+	// Refresh) so terraform doesn't see a write-only attribute as drift.
+	if variation.Description != nil {
+		data.Description = types.StringValue(*variation.Description)
+	}
+	if variation.Instructions != nil {
+		data.Instructions = types.StringValue(*variation.Instructions)
+	}
 	if variation.ModelConfigKey != nil {
 		data.ModelConfigKey = types.StringValue(*variation.ModelConfigKey)
 	} else {
