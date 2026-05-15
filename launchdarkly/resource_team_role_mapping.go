@@ -49,7 +49,7 @@ func (r *TeamRoleMappingResource) Schema(ctx context.Context, req resource.Schem
 				Description: "A set of custom role keys to assign to the team.",
 				Required:    true,
 			},
-			"role_attributes": schema.MapAttribute{
+			ROLE_ATTRIBUTES: schema.MapAttribute{
 				ElementType: types.ListType{ElemType: types.StringType},
 				Optional:    true,
 				Description: "Map of role-attribute keys to lists of resource keys. Applied to the team as a whole — every custom role granted to this team gets these scopes (see https://launchdarkly.com/docs/home/account/roles/role-scope). Conflicts with `role_attributes` on `launchdarkly_team`; if you manage the team via `launchdarkly_team`, set `role_attributes` there instead, or add `lifecycle { ignore_changes = [role_attributes] }` on the `launchdarkly_team` to avoid plan churn.",
