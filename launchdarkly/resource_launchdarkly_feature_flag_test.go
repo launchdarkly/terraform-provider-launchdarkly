@@ -1810,6 +1810,10 @@ resource "launchdarkly_feature_flag" "prereq" {
 	key            = "prereq-flag"
 	name           = "prerequisite flag"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 }
 
 resource "launchdarkly_feature_flag" "dependent" {
@@ -1817,19 +1821,23 @@ resource "launchdarkly_feature_flag" "dependent" {
 	key            = "dependent-flag"
 	name           = "dependent flag"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 }
 
 resource "launchdarkly_feature_flag_environment" "dependent_env" {
 	flag_id = launchdarkly_feature_flag.dependent.id
 	env_key = "test"
 	on      = false
-	prerequisites {
+	prerequisites = [{
 		flag_key  = launchdarkly_feature_flag.prereq.key
 		variation = 0
-	}
-	fallthrough {
+	}]
+	fallthrough = [{
 		variation = 0
-	}
+	}]
 	off_variation = 1
 }
 `)
@@ -1846,19 +1854,23 @@ resource "launchdarkly_feature_flag" "dependent" {
 	key            = "dependent-flag"
 	name           = "dependent flag"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 }
 
 resource "launchdarkly_feature_flag_environment" "dependent_env" {
 	flag_id = launchdarkly_feature_flag.dependent.id
 	env_key = "test"
 	on      = false
-	prerequisites {
+	prerequisites = [{
 		flag_key  = "prereq-flag"
 		variation = 0
-	}
-	fallthrough {
+	}]
+	fallthrough = [{
 		variation = 0
-	}
+	}]
 	off_variation = 1
 }
 `)
