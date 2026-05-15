@@ -28,6 +28,7 @@ var (
 	_ resource.Resource                     = &AccessTokenResource{}
 	_ resource.ResourceWithImportState      = &AccessTokenResource{}
 	_ resource.ResourceWithConfigValidators = &AccessTokenResource{}
+	_ resource.ResourceWithModifyPlan       = &AccessTokenResource{}
 )
 
 type AccessTokenResource struct {
@@ -103,16 +104,13 @@ The resource must contain either a "role", "custom_role" or an "inline_roles" (p
 				Computed:    true,
 				Description: addForceNewDescription("The default API version for this token. Defaults to the latest API version.", true),
 				PlanModifiers: []planmodifier.Int64{
-					// Plain RequiresReplace (no UseStateForUnknown).
-					// Adding UseStateForUnknown here trips the
+					// Per-attribute UseStateForUnknown here trips the
 					// .token inconsistent-sensitive-attr check on
-					// expire-triggered resets — see
-					// TestAccAccessToken_Reset. v2.x → v3.x upgrade
-					// caveat: customers with implicit
-					// default_api_version may see a forced replace
-					// on first plan. Document mitigation: add
-					// `default_api_version = 20240415` to config
-					// before upgrade.
+					// expire-triggered resets (TestAccAccessToken_Reset).
+					// Use resource-level ModifyPlan instead — it runs
+					// after per-attribute modifiers and doesn't disturb
+					// the framework's Computed-coupling that the token
+					// reset path relies on.
 					int64planmodifier.RequiresReplace(),
 				},
 				Validators: []validator.Int64{
@@ -160,6 +158,41 @@ func (r *AccessTokenResource) ConfigValidators(_ context.Context) []resource.Con
 
 func (r *AccessTokenResource) Configure(_ context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
 	r.client = configureResourceClient(req, resp)
+}
+
+// ModifyPlan preserves default_api_version across upgrades from v2.x
+// state where the attribute was implicit. Per-attribute
+// UseStateForUnknown on default_api_version trips the .token
+// inconsistent-sensitive-attr check in TestAccAccessToken_Reset, so
+// this resource-level plan modifier replicates UseStateForUnknown's
+// behaviour selectively — skipped when expire is changing (the path
+// that triggers a token reset and needs the framework's default
+// Computed-coupling intact).
+func (r *AccessTokenResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
+	if req.Plan.Raw.IsNull() || req.State.Raw.IsNull() {
+		return
+	}
+	var config, state, plan AccessTokenResourceModel
+	resp.Diagnostics.Append(req.Config.Get(ctx, &config)...)
+	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
+	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	if !plan.Expire.Equal(state.Expire) {
+		return
+	}
+	if !config.DefaultAPIVersion.IsNull() {
+		return
+	}
+	if state.DefaultAPIVersion.IsNull() || state.DefaultAPIVersion.IsUnknown() {
+		return
+	}
+	if !plan.DefaultAPIVersion.IsUnknown() {
+		return
+	}
+	plan.DefaultAPIVersion = state.DefaultAPIVersion
+	resp.Diagnostics.Append(resp.Plan.Set(ctx, &plan)...)
 }
 
 func (r *AccessTokenResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
