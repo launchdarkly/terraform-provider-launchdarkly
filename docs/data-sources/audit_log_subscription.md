@@ -28,7 +28,7 @@ data "launchdarkly_audit_log_subscription" "test" {
 ### Required
 
 - `id` (String) The audit log subscription ID.
-- `integration_key` (String) The integration key. Supported integration keys are `appoptics`, `chronosphere`, `cloudtrail`, `datadog`, `datadog-private`, `dynatrace`, `dynatrace-v2`, `elastic`, `grafana`, `honeycomb`, `jira`, `kosli`, `last9`, `ld-to-git`, `logdna`, `msteams`, `new-relic`, `new-relic-apm`, `new-relic-apm-insights`, `pagerduty`, `sample-integration`, `signalfx`, `slack`, `splunk`, `terraform-cloud`, and `vercel-native`.
+- `integration_key` (String) The integration key. Supported integration keys are `chronosphere`, `cloudtrail`, `datadog`, `dynatrace`, `dynatrace-v2`, `elastic`, `grafana`, `honeycomb`, `jira`, `kosli`, `last9`, `logdna`, `msteams`, `new-relic-apm`, `pagerduty`, `signalfx`, `slack`, and `splunk`.
 
 ### Read-Only
 
