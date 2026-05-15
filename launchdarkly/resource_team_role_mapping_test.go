@@ -251,6 +251,11 @@ func TestAccTeamRoleMapping_WithRoleAttributes(t *testing.T) {
 				ResourceName:      resourceName,
 				ImportState:       true,
 				ImportStateVerify: true,
+				// role_attributes is intentionally not claimed by import (dual
+				// ownership with launchdarkly_team — Read only refreshes when
+				// state already has a non-null value). Next Apply opts in via
+				// the prior-null + plan-set Update transition.
+				ImportStateVerifyIgnore: []string{"role_attributes"},
 			},
 		},
 	})
@@ -284,9 +289,10 @@ func TestAccTeamRoleMapping_RoleAttributesUpdate(t *testing.T) {
 				),
 			},
 			{
-				ResourceName:      resourceName,
-				ImportState:       true,
-				ImportStateVerify: true,
+				ResourceName:            resourceName,
+				ImportState:             true,
+				ImportStateVerify:       true,
+				ImportStateVerifyIgnore: []string{"role_attributes"},
 			},
 		},
 	})
