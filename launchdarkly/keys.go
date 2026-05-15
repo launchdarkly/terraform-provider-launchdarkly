@@ -112,6 +112,7 @@ const (
 	PERCENTILE_VALUE                          = "percentile_value"
 	POLICY                                    = "policy"
 	POLICY_STATEMENTS                         = "policy_statements"
+	POLICY_STATEMENTS_JSON                    = "policy_statements_json"
 	PREREQUISITES                             = "prerequisites"
 	PROGRESSIVE_RELEASE_CONFIG                = "progressive_release_config"
 	PROJECT_KEY                               = "project_key"
