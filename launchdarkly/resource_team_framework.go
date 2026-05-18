@@ -105,14 +105,6 @@ func (r *TeamResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRe
 	// Destroy plan: plan is null, state is not.
 	// Pre-flight for team stil having members at deletion time
 	if req.Plan.Raw.IsNull() && !req.State.Raw.IsNull() {
-		// When config is present, this is typically a full destroy (e.g. `terraform destroy`
-		// or test cleanup). In that case, dependent member resources may be destroyed in
-		// the same apply, so we warn instead of hard-failing plan.
-		//
-		// When config is absent, the team was removed from config directly; keep hard-fail
-		// behavior to prevent accidental deletion of a team that still has members.
-		configRemoved := req.Config.Raw.IsNull()
-
 		var state TeamResourceModel
 		resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
 		if resp.Diagnostics.HasError() {
@@ -136,14 +128,10 @@ func (r *TeamResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRe
 		if len(members) > 0 {
 			summary := fmt.Sprintf("team %q still has members and cannot be destroyed", teamKey)
 			detail := formatStillAssignedTeamMembersHint(members)
-			if configRemoved {
-				resp.Diagnostics.AddAttributeError(path.Root(KEY), summary, detail)
-			} else {
-				resp.Diagnostics.AddWarning(
-					summary,
-					detail+"\n\nAllowing destroy to continue because this resource is still configured; related member resources in the same apply may remove these assignments before team deletion.",
-				)
-			}
+			resp.Diagnostics.AddWarning(
+				summary,
+				detail+"\n\nDestroy will continue. On delete conflict, provider will attempt to detach remaining members/maintainers from the team and retry deletion.",
+			)
 		}
 		return
 	}
