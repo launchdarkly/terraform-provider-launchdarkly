@@ -176,7 +176,7 @@ func getAllTeamMembers(client *Client, teamKey string) ([]ldapi.Member, error) {
 			break
 		}
 
-		offset += teamMaintainersPageLimit
+		offset += teamMemberLimit
 	}
 
 	return allTeamMembers, nil

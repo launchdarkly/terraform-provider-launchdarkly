@@ -8,6 +8,8 @@ import (
 	ldapi "github.com/launchdarkly/api-client-go/v22"
 )
 
+const viewAssociationsPageLimit = int32(100)
+
 // setViewRequestHeaders sets the common headers for View API requests
 func setViewRequestHeaders(req *http.Request, apiKey string) {
 	req.Header.Set("Authorization", apiKey)
@@ -464,23 +466,36 @@ func unlinkSegmentChunkFromView(client *Client, projectKey, viewKey string, segm
 
 // getLinkedResources gets all linked resources of a specific type for a view
 func getLinkedResources(client *Client, projectKey, viewKey, resourceType string) ([]ViewLinkedResource, error) {
-	var (
-		apiLinkedResources *ldapi.ViewLinkedResources
-		err                error
-	)
+	allItems := make([]ldapi.ViewLinkedResource, 0)
+	offset := int32(0)
 
-	err = client.withConcurrency(client.ctx, func() error {
-		apiLinkedResources, _, err = client.ld.ViewsBetaApi.GetLinkedResources(client.ctx, projectKey, viewKey, resourceType).
-			LDAPIVersion("beta").
-			Execute()
-		return err
-	})
-	if err != nil {
-		return nil, err
+	for {
+		var (
+			apiLinkedResources *ldapi.ViewLinkedResources
+			err                error
+		)
+		err = client.withConcurrency(client.ctx, func() error {
+			apiLinkedResources, _, err = client.ld.ViewsBetaApi.GetLinkedResources(client.ctx, projectKey, viewKey, resourceType).
+				LDAPIVersion("beta").
+				Limit(viewAssociationsPageLimit).
+				Offset(offset).
+				Execute()
+			return err
+		})
+		if err != nil {
+			return nil, err
+		}
+
+		allItems = append(allItems, apiLinkedResources.Items...)
+		if int32(len(allItems)) >= apiLinkedResources.TotalCount {
+			break
+		}
+
+		offset += viewAssociationsPageLimit
 	}
 
-	linkedResources := make([]ViewLinkedResource, len(apiLinkedResources.Items))
-	for i, resource := range apiLinkedResources.Items {
+	linkedResources := make([]ViewLinkedResource, len(allItems))
+	for i, resource := range allItems {
 		environmentID := ""
 		if resource.EnvironmentId != nil {
 			environmentID = *resource.EnvironmentId
@@ -505,6 +520,41 @@ func viewIdToKeys(id string) (projectKey string, viewKey string, err error) {
 	return parts[0], parts[1], nil
 }
 
+func getAllLinkedViews(client *Client, projectKey, resourceType, resourceKey, environmentId string) ([]ldapi.View, error) {
+	allItems := make([]ldapi.View, 0)
+	offset := int32(0)
+
+	for {
+		var (
+			viewsResponse *ldapi.Views
+			err           error
+		)
+		err = client.withConcurrency(client.ctx, func() error {
+			request := client.ld.ViewsBetaApi.GetLinkedViews(client.ctx, projectKey, resourceType, resourceKey).
+				LDAPIVersion("beta").
+				Limit(viewAssociationsPageLimit).
+				Offset(offset)
+			if environmentId != "" {
+				request = request.EnvironmentId(environmentId)
+			}
+			viewsResponse, _, err = request.Execute()
+			return err
+		})
+		if err != nil {
+			return nil, err
+		}
+
+		allItems = append(allItems, viewsResponse.Items...)
+		if int32(len(allItems)) >= viewsResponse.TotalCount {
+			break
+		}
+
+		offset += viewAssociationsPageLimit
+	}
+
+	return allItems, nil
+}
+
 // ViewsResponse represents the response from getting all views
 type ViewsResponse struct {
 	Items []View `json:"items"`
@@ -512,24 +562,14 @@ type ViewsResponse struct {
 
 // getViewsContainingFlag finds all views that contain a specific flag using the view-associations endpoint
 func getViewsContainingFlag(client *Client, projectKey, flagKey string) ([]string, error) {
-	var (
-		viewsResponse *ldapi.Views
-		err           error
-	)
-
-	err = client.withConcurrency(client.ctx, func() error {
-		viewsResponse, _, err = client.ld.ViewsBetaApi.GetLinkedViews(client.ctx, projectKey, FLAGS, flagKey).
-			LDAPIVersion("beta").
-			Execute()
-		return err
-	})
+	views, err := getAllLinkedViews(client, projectKey, FLAGS, flagKey, "")
 	if err != nil {
 		return nil, err
 	}
 
 	// Extract view keys from the response
-	viewKeys := make([]string, len(viewsResponse.Items))
-	for i, view := range viewsResponse.Items {
+	viewKeys := make([]string, len(views))
+	for i, view := range views {
 		viewKeys[i] = view.Key
 	}
 
@@ -538,27 +578,14 @@ func getViewsContainingFlag(client *Client, projectKey, flagKey string) ([]strin
 
 // getViewsContainingSegment finds all views that contain a specific segment using the view-associations endpoint
 func getViewsContainingSegment(client *Client, projectKey, environmentId, segmentKey string) ([]string, error) {
-	var (
-		viewsResponse *ldapi.Views
-		err           error
-	)
-
-	err = client.withConcurrency(client.ctx, func() error {
-		request := client.ld.ViewsBetaApi.GetLinkedViews(client.ctx, projectKey, SEGMENTS, segmentKey).
-			LDAPIVersion("beta")
-		if environmentId != "" {
-			request = request.EnvironmentId(environmentId)
-		}
-		viewsResponse, _, err = request.Execute()
-		return err
-	})
+	views, err := getAllLinkedViews(client, projectKey, SEGMENTS, segmentKey, environmentId)
 	if err != nil {
 		return nil, err
 	}
 
 	// Extract view keys from the response
-	viewKeys := make([]string, len(viewsResponse.Items))
-	for i, view := range viewsResponse.Items {
+	viewKeys := make([]string, len(views))
+	for i, view := range views {
 		viewKeys[i] = view.Key
 	}
 

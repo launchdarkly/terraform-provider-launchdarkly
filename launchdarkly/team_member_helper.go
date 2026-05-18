@@ -3,7 +3,6 @@ package launchdarkly
 import (
 	"fmt"
 	"net/http"
-	"net/url"
 	"strings"
 
 	ldapi "github.com/launchdarkly/api-client-go/v22"
@@ -16,12 +15,14 @@ import (
 // data sources consume it after the data source was migrated to
 // terraform-plugin-framework in Phase 1.3.2.
 func getTeamMemberByEmail(client *Client, memberEmail string) (*ldapi.Member, error) {
-	teamMemberLimit := int64(1000)
-
 	var members *ldapi.Members
 	var err error
 	err = client.withConcurrency(client.ctx, func() error {
-		members, _, err = client.ld.AccountMembersApi.GetMembers(client.ctx).Filter(fmt.Sprintf("query:%s", url.QueryEscape(memberEmail))).Expand("roleAttributes").Execute()
+		members, _, err = client.ld.AccountMembersApi.GetMembers(client.ctx).
+			Limit(teamMemberLimit).
+			Filter(fmt.Sprintf("email:%s", memberEmail)).
+			Expand("roleAttributes").
+			Execute()
 		return err
 	})
 	if err != nil {
@@ -35,7 +36,12 @@ func getTeamMemberByEmail(client *Client, memberEmail string) (*ldapi.Member, er
 		offset := int64(membersPulled)
 		var newMembers *ldapi.Members
 		err = client.withConcurrency(client.ctx, func() error {
-			newMembers, _, err = client.ld.AccountMembersApi.GetMembers(client.ctx).Limit(teamMemberLimit).Offset(offset).Filter(fmt.Sprintf("query:%s", url.QueryEscape(memberEmail))).Execute()
+			newMembers, _, err = client.ld.AccountMembersApi.GetMembers(client.ctx).
+				Limit(teamMemberLimit).
+				Offset(offset).
+				Filter(fmt.Sprintf("email:%s", memberEmail)).
+				Expand("roleAttributes").
+				Execute()
 			return err
 		})
 		if err != nil {
@@ -54,14 +60,20 @@ func getTeamMemberByEmail(client *Client, memberEmail string) (*ldapi.Member, er
 }
 
 func getTeamMembersByEmail(client *Client, memberEmails []string) ([]ldapi.Member, error) {
-	teamMemberLimit := int64(1000)
+	if len(memberEmails) == 0 {
+		return []ldapi.Member{}, nil
+	}
 
 	var members *ldapi.Members
 	var err error
 	// Email filter takes in array of emails by using | as separator - build appropriate filter string
 	emailFilter := fmt.Sprintf("email:%s", strings.Join(memberEmails, "|"))
 	err = client.withConcurrency(client.ctx, func() error {
-		members, _, err = client.ld.AccountMembersApi.GetMembers(client.ctx).Filter(emailFilter).Expand("roleAttributes").Execute()
+		members, _, err = client.ld.AccountMembersApi.GetMembers(client.ctx).
+			Limit(teamMemberLimit).
+			Filter(emailFilter).
+			Expand("roleAttributes").
+			Execute()
 		return err
 	})
 	if err != nil {
@@ -75,7 +87,12 @@ func getTeamMembersByEmail(client *Client, memberEmails []string) ([]ldapi.Membe
 		offset := int64(membersPulled)
 		var newMembers *ldapi.Members
 		err = client.withConcurrency(client.ctx, func() error {
-			newMembers, _, err = client.ld.AccountMembersApi.GetMembers(client.ctx).Limit(teamMemberLimit).Offset(offset).Filter(emailFilter).Execute()
+			newMembers, _, err = client.ld.AccountMembersApi.GetMembers(client.ctx).
+				Limit(teamMemberLimit).
+				Offset(offset).
+				Filter(emailFilter).
+				Expand("roleAttributes").
+				Execute()
 			return err
 		})
 		if err != nil {
