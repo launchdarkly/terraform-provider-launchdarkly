@@ -139,11 +139,6 @@ func (r *TeamResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRe
 	if !req.State.Raw.IsNull() {
 		return
 	}
-	var plan FeatureFlagResourceModel
-	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
 }
 
 func formatStillAssignedTeamMembersHint(items []ldapi.Member) string {
