@@ -15,71 +15,54 @@ import (
 // data sources consume it after the data source was migrated to
 // terraform-plugin-framework in Phase 1.3.2.
 func getTeamMemberByEmail(client *Client, memberEmail string) (*ldapi.Member, error) {
-	var members *ldapi.Members
-	var err error
-	err = client.withConcurrency(client.ctx, func() error {
-		members, _, err = client.ld.AccountMembersApi.GetMembers(client.ctx).
-			Limit(teamMemberLimit).
-			Filter(fmt.Sprintf("email:%s", memberEmail)).
-			Expand("roleAttributes").
-			Execute()
-		return err
-	})
+	emailFilter := fmt.Sprintf("email:%s", memberEmail)
+	expand := "roleAttributes"
+	members, err := getMembersPaginated(client, &emailFilter, &expand, nil, 1, nil)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read team member with email: %s: %v", memberEmail, handleLdapiErr(err))
+		return nil, fmt.Errorf("Failed to get team member %q: %v", memberEmail, handleLdapiErr(err))
 	}
-
-	totalMemberCount := int(*members.TotalCount)
-	memberItems := members.Items
-	membersPulled := len(memberItems)
-	for membersPulled < totalMemberCount {
-		offset := int64(membersPulled)
-		var newMembers *ldapi.Members
-		err = client.withConcurrency(client.ctx, func() error {
-			newMembers, _, err = client.ld.AccountMembersApi.GetMembers(client.ctx).
-				Limit(teamMemberLimit).
-				Offset(offset).
-				Filter(fmt.Sprintf("email:%s", memberEmail)).
-				Expand("roleAttributes").
-				Execute()
-			return err
-		})
-		if err != nil {
-			return nil, fmt.Errorf("failed to read team member with email: %s: %v", memberEmail, handleLdapiErr(err))
-		}
-		memberItems = append(memberItems, newMembers.Items...)
-		membersPulled = len(memberItems)
+	if len(members) < 1 {
+		return nil, fmt.Errorf("No member found with email %q", memberEmail)
 	}
-
-	for _, member := range memberItems {
-		if member.Email == memberEmail {
-			return &member, nil
-		}
-	}
-	return nil, fmt.Errorf("failed to find team member with email: %s", memberEmail)
+	return &members[0], nil
 }
 
 func getTeamMembersByEmail(client *Client, memberEmails []string) ([]ldapi.Member, error) {
 	if len(memberEmails) == 0 {
 		return []ldapi.Member{}, nil
 	}
+	emailFilter := fmt.Sprintf("email:%s", strings.Join(memberEmails, "|"))
+	expand := "roleAttributes"
+	members, err := getMembersPaginated(client, &emailFilter, &expand, nil, teamMemberLimit, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get team members by emails: %v", handleLdapiErr(err))
+	}
+	return members, nil
+}
 
+func getMembersPaginated(client *Client, filter, expand, sort *string, limit int64, initialOffset *int64) ([]ldapi.Member, error) {
 	var members *ldapi.Members
 	var err error
-	// Email filter takes in array of emails by using | as separator - build appropriate filter string
-	emailFilter := fmt.Sprintf("email:%s", strings.Join(memberEmails, "|"))
 	err = client.withConcurrency(client.ctx, func() error {
-		members, _, err = client.ld.AccountMembersApi.GetMembers(client.ctx).
-			Limit(teamMemberLimit).
-			Filter(emailFilter).
-			Expand("roleAttributes").
-			Execute()
+		request := client.ld.AccountMembersApi.GetMembers(client.ctx).Limit(limit)
+		if filter != nil {
+			request = request.Filter(*filter)
+		}
+		if expand != nil {
+			request = request.Expand(*expand)
+		}
+		if sort != nil {
+			request = request.Sort(*sort)
+		}
+		if initialOffset != nil {
+			request = request.Offset(*initialOffset)
+		}
+		members, _, err = request.Execute()
 		return err
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to get team members by emails: %v", handleLdapiErr(err))
 	}
-
 	totalMemberCount := int(*members.TotalCount)
 	memberItems := members.Items
 	membersPulled := len(memberItems)
@@ -87,12 +70,17 @@ func getTeamMembersByEmail(client *Client, memberEmails []string) ([]ldapi.Membe
 		offset := int64(membersPulled)
 		var newMembers *ldapi.Members
 		err = client.withConcurrency(client.ctx, func() error {
-			newMembers, _, err = client.ld.AccountMembersApi.GetMembers(client.ctx).
-				Limit(teamMemberLimit).
-				Offset(offset).
-				Filter(emailFilter).
-				Expand("roleAttributes").
-				Execute()
+			request := client.ld.AccountMembersApi.GetMembers(client.ctx).Offset(offset).Limit(limit)
+			if filter != nil {
+				request = request.Filter(*filter)
+			}
+			if expand != nil {
+				request = request.Expand(*expand)
+			}
+			if sort != nil {
+				request = request.Sort(*sort)
+			}
+			newMembers, _, err = request.Execute()
 			return err
 		})
 		if err != nil {
@@ -101,7 +89,6 @@ func getTeamMembersByEmail(client *Client, memberEmails []string) ([]ldapi.Membe
 		memberItems = append(memberItems, newMembers.Items...)
 		membersPulled = len(memberItems)
 	}
-
 	return memberItems, nil
 }
 
