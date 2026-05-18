@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"strings"
 
 	ldapi "github.com/launchdarkly/api-client-go/v22"
 )
@@ -52,20 +53,19 @@ func getTeamMemberByEmail(client *Client, memberEmail string) (*ldapi.Member, er
 	return nil, fmt.Errorf("failed to find team member with email: %s", memberEmail)
 }
 
-// getAllTeamMembers paginates GetMembers and returns every member in
-// the org. Used by data_source_team_members_framework.go for bulk
-// lookup against a supplied list of emails.
-func getAllTeamMembers(client *Client) ([]ldapi.Member, error) {
+func getTeamMembersByEmail(client *Client, memberEmails []string) ([]ldapi.Member, error) {
 	teamMemberLimit := int64(1000)
 
 	var members *ldapi.Members
 	var err error
+	// Email filter takes in array of emails by using | as separator - build appropriate filter string
+	emailFilter := fmt.Sprintf("email:%s", strings.Join(memberEmails, "|"))
 	err = client.withConcurrency(client.ctx, func() error {
-		members, _, err = client.ld.AccountMembersApi.GetMembers(client.ctx).Limit(teamMemberLimit).Execute()
+		members, _, err = client.ld.AccountMembersApi.GetMembers(client.ctx).Filter(emailFilter).Expand("roleAttributes").Execute()
 		return err
 	})
 	if err != nil {
-		return nil, fmt.Errorf("failed to read team members: %v", handleLdapiErr(err))
+		return nil, fmt.Errorf("failed to get team members by emails: %v", handleLdapiErr(err))
 	}
 
 	totalMemberCount := int(*members.TotalCount)
@@ -75,15 +75,16 @@ func getAllTeamMembers(client *Client) ([]ldapi.Member, error) {
 		offset := int64(membersPulled)
 		var newMembers *ldapi.Members
 		err = client.withConcurrency(client.ctx, func() error {
-			newMembers, _, err = client.ld.AccountMembersApi.GetMembers(client.ctx).Limit(teamMemberLimit).Offset(offset).Execute()
+			newMembers, _, err = client.ld.AccountMembersApi.GetMembers(client.ctx).Limit(teamMemberLimit).Offset(offset).Filter(emailFilter).Execute()
 			return err
 		})
 		if err != nil {
-			return nil, fmt.Errorf("failed to read team members: %v", handleLdapiErr(err))
+			return nil, fmt.Errorf("failed to get team members by emails: %v", handleLdapiErr(err))
 		}
 		memberItems = append(memberItems, newMembers.Items...)
 		membersPulled = len(memberItems)
 	}
+
 	return memberItems, nil
 }
 

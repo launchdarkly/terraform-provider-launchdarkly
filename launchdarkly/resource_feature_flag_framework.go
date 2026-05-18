@@ -292,8 +292,9 @@ func (r *FeatureFlagResource) Configure(_ context.Context, req resource.Configur
 	r.client = configureResourceClient(req, resp)
 }
 
-// ModifyPlan ports customizeFeatureFlagDiff: create-time view_keys
-// validation when the project requires view association.
+// Check for various 400/409 issues at plan time
+// * Whether project requires view association on flag creation
+// * Whether flag has dependent flags on flag deletion
 func (r *FeatureFlagResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
 	if r.client == nil {
 		return

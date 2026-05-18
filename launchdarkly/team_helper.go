@@ -14,6 +14,10 @@ const (
 	// teamMaintainersPageLimit is the number of maintainers to fetch per API request
 	// The expand=maintainers parameter has the same 25 item limit as roles
 	teamMaintainersPageLimit = int64(100)
+
+	// teamMemberLimit is the number of members to fetch per API request
+	// The API max is 1000
+	teamMemberLimit = int64(1000)
 )
 
 // makeAddAndRemoveArrays returns the set difference (old\new, new\old).
@@ -136,6 +140,47 @@ func getAllTeamCustomRoleKeysWithRetry(client *Client, teamKey string) ([]string
 	}
 
 	return allRoleKeys, nil
+}
+
+func getAllTeamMembers(client *Client, teamKey string) ([]ldapi.Member, error) {
+	allTeamMembers := []ldapi.Member{}
+	offset := int64(0)
+
+	for {
+		var membersResponse *ldapi.Members
+		var err error
+
+		err = client.withConcurrency(client.ctx, func() error {
+			membersResponse, _, err = client.ld.AccountMembersApi.GetMembers(client.ctx).
+				Filter(fmt.Sprintf("team:%s", teamKey)).
+				Limit(teamMemberLimit).
+				Offset(offset).
+				Execute()
+			return err
+		})
+
+		if err != nil {
+			return nil, fmt.Errorf("failed to get members for team %q: %s", teamKey, handleLdapiErr(err))
+		}
+
+		// Append maintainers from this page
+		allTeamMembers = append(allTeamMembers, membersResponse.Items...)
+
+		// Check if we've fetched all members
+		totalCount := int64(0)
+		if membersResponse.TotalCount != nil {
+			totalCount = int64(*membersResponse.TotalCount)
+		}
+
+		if int64(len(allTeamMembers)) >= totalCount {
+			break
+		}
+
+		offset += teamMaintainersPageLimit
+	}
+
+	return allTeamMembers, nil
+
 }
 
 // getAllTeamMaintainers fetches all maintainers for a team using pagination.

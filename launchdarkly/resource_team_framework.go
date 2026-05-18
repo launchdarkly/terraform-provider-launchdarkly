@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
@@ -92,6 +93,67 @@ This resource allows you to create and manage a team within your LaunchDarkly or
 
 func (r *TeamResource) Configure(_ context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
 	r.client = configureResourceClient(req, resp)
+}
+
+// Check for various 400/409 issues at plan time
+// * Whether team still has members at deletion time
+func (r *TeamResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
+	if r.client == nil {
+		return
+	}
+	// Destroy plan: plan is null, state is not.
+	// Pre-flight for team stil having members at deletion time
+	if req.Plan.Raw.IsNull() && !req.State.Raw.IsNull() {
+		var state TeamResourceModel
+		resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+		teamKey := state.Key.ValueString()
+		if teamKey == "" {
+			return
+		}
+		members, err := getAllTeamMembers(r.client, teamKey)
+		if err != nil {
+			// Non-Enterprise tokens 403 here. Degrade to a warning so the
+			// destroy still proceeds; the existing apply-time 409 path
+			// remains as defence-in-depth.
+			resp.Diagnostics.AddWarning(
+				fmt.Sprintf("could not check team members for %q during plan", teamKey),
+				err.Error()+"\n\nApply may still fail with a 409 conflict if this team still has members.",
+			)
+			return
+		}
+		if len(members) > 0 {
+			resp.Diagnostics.AddAttributeError(
+				path.Root(KEY),
+				fmt.Sprintf("team %q still has members and cannot be destroyed", teamKey),
+				formatStillAssignedTeamMembersHint(members),
+			)
+		}
+		return
+	}
+	if req.Plan.Raw.IsNull() {
+		return
+	}
+	if !req.State.Raw.IsNull() {
+		return
+	}
+	var plan FeatureFlagResourceModel
+	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+}
+
+func formatStillAssignedTeamMembersHint(items []ldapi.Member) string {
+	var b strings.Builder
+	b.WriteString("The following members are still assigned to the team:\n")
+	for _, item := range items {
+		fmt.Fprintf(&b, "  - member %q\n", item.Email)
+	}
+	b.WriteString("\nRemove the members from the team (edit its launchdarkly_team_member block) before destroying this team.")
+	return b.String()
 }
 
 func (r *TeamResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
@@ -309,30 +371,10 @@ func (r *TeamResource) readIntoModel(
 	}
 
 	// Paginate team members.
-	members := make([]ldapi.Member, 0)
-	offset := int64(0)
-	empty := ""
-	next := &empty
-	filter := fmt.Sprintf("team:%s", teamKey)
-	for next != nil {
-		var memberResp *ldapi.Members
-		var memberRes *http.Response
-		var memberErr error
-		memberErr = r.client.withConcurrency(r.client.ctx, func() error {
-			memberResp, memberRes, memberErr = r.client.ld.AccountMembersApi.GetMembers(r.client.ctx).Limit(50).Offset(offset * 50).Filter(filter).Execute()
-			return memberErr
-		})
-		if memberErr != nil {
-			if isStatusNotFound(memberRes) {
-				data.ID = types.StringNull()
-				return
-			}
-			diags.AddError(fmt.Sprintf("failed to get members for team %q", teamKey), handleLdapiErr(memberErr).Error())
-			return
-		}
-		members = append(members, memberResp.Items...)
-		next = memberResp.Links["next"].Href
-		offset++
+	members, err := getAllTeamMembers(r.client, teamKey)
+	if err != nil {
+		diags.AddError(fmt.Sprintf("failed to get members for team %q", teamKey), err.Error())
+		return
 	}
 
 	customRoleKeys, err := getAllTeamCustomRoleKeys(r.client, teamKey)
