@@ -7,6 +7,7 @@ import (
 	"reflect"
 	"regexp"
 	"testing"
+	"time"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
@@ -1888,10 +1889,46 @@ resource "launchdarkly_feature_flag_environment" "dependent_env" {
 				),
 			},
 			{
+				// The dependent-flags beta endpoint is eventually
+				// consistent: writes from Step 1 take ~10-30s to
+				// index. Poll until the dependency is visible so the
+				// plan-time validator in Step 2 sees it; otherwise
+				// the destroy plan slips through with no error.
+				PreConfig:   waitForDependentFlagIndexed(t, projectKey, "prereq-flag"),
 				Config:      configMissingPrereq,
 				PlanOnly:    true,
 				ExpectError: regexp.MustCompile(`is a prerequisite for other flags and cannot be destroyed`),
 			},
 		},
 	})
+}
+
+// waitForDependentFlagIndexed polls the beta dependent-flags endpoint
+// until at least one dependent is visible, or a timeout elapses. Used
+// before TestAccFeatureFlag_DeletePrerequisitePlanError's Step 2 plan
+// because the prereq written during Step 1's Apply takes ~10-30s to
+// index server-side.
+func waitForDependentFlagIndexed(t *testing.T, projectKey, flagKey string) func() {
+	return func() {
+		host := os.Getenv(LAUNCHDARKLY_API_HOST)
+		if host == "" {
+			host = DEFAULT_LAUNCHDARKLY_HOST
+		}
+		token := os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN)
+		betaClient, err := newBetaClient(token, host, false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
+		if err != nil {
+			t.Fatalf("waitForDependentFlagIndexed: failed to construct beta client: %s", err)
+		}
+		deadline := time.Now().Add(90 * time.Second)
+		for {
+			deps, _, err := betaClient.ld.FeatureFlagsBetaApi.GetDependentFlags(betaClient.ctx, projectKey, flagKey).Execute()
+			if err == nil && deps != nil && len(deps.Items) > 0 {
+				return
+			}
+			if time.Now().After(deadline) {
+				t.Fatalf("waitForDependentFlagIndexed: %s/%s never became indexed within 90s (last err: %v)", projectKey, flagKey, err)
+			}
+			time.Sleep(3 * time.Second)
+		}
+	}
 }

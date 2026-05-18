@@ -192,12 +192,19 @@ func normalizeJSONString(input string) (string, error) {
 // "Flag is still in use as a prerequisite" 409 from DELETE surfaces at
 // plan time instead of apply time.
 //
-// Enterprise-only beta endpoint; non-Enterprise tokens get a 403 which
-// the caller should degrade to a warning so apply behaviour is unchanged.
+// The endpoint lives behind LD-API-Version: beta, so this uses a
+// dedicated beta client rather than the standard one (which pins the
+// version header to a stable date and is rejected with 403).
+// Enterprise-only; non-Enterprise tokens get a 403 which the caller
+// should degrade to a warning so apply behaviour is unchanged.
 func getDependentFlags(ctx context.Context, client *Client, projectKey, flagKey string) (*ldapi.MultiEnvironmentDependentFlags, error) {
+	betaClient, err := newBetaClient(client.apiKey, client.apiHost, false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create beta client for dependent-flags lookup: %w", err)
+	}
 	var deps *ldapi.MultiEnvironmentDependentFlags
-	err := client.withConcurrency(ctx, func() error {
-		got, _, e := client.ld.FeatureFlagsBetaApi.GetDependentFlags(client.ctx, projectKey, flagKey).Execute()
+	err = betaClient.withConcurrency(ctx, func() error {
+		got, _, e := betaClient.ld.FeatureFlagsBetaApi.GetDependentFlags(betaClient.ctx, projectKey, flagKey).Execute()
 		if e != nil {
 			return e
 		}
