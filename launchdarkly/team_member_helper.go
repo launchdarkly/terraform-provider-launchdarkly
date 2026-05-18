@@ -41,34 +41,14 @@ func getTeamMembersByEmail(client *Client, memberEmails []string) ([]ldapi.Membe
 }
 
 func getMembersPaginated(client *Client, filter, expand, sort *string, limit int64, initialOffset *int64) ([]ldapi.Member, error) {
-	var members *ldapi.Members
-	var err error
-	err = client.withConcurrency(client.ctx, func() error {
-		request := client.ld.AccountMembersApi.GetMembers(client.ctx).Limit(limit)
-		if filter != nil {
-			request = request.Filter(*filter)
-		}
-		if expand != nil {
-			request = request.Expand(*expand)
-		}
-		if sort != nil {
-			request = request.Sort(*sort)
-		}
-		if initialOffset != nil {
-			request = request.Offset(*initialOffset)
-		}
-		members, _, err = request.Execute()
-		return err
-	})
-	if err != nil {
-		return nil, fmt.Errorf("failed to get team members by emails: %v", handleLdapiErr(err))
+	offset := int64(0)
+	if initialOffset != nil {
+		offset = *initialOffset
 	}
-	totalMemberCount := int(*members.TotalCount)
-	memberItems := members.Items
-	membersPulled := len(memberItems)
-	for membersPulled < totalMemberCount {
-		offset := int64(membersPulled)
-		var newMembers *ldapi.Members
+
+	memberItems, err := fetchAllOffsetPagesWithOptionalInt32Total[ldapi.Member](limit, offset, func(offset, limit int64) ([]ldapi.Member, *int32, error) {
+		var members *ldapi.Members
+		var err error
 		err = client.withConcurrency(client.ctx, func() error {
 			request := client.ld.AccountMembersApi.GetMembers(client.ctx).Offset(offset).Limit(limit)
 			if filter != nil {
@@ -80,15 +60,18 @@ func getMembersPaginated(client *Client, filter, expand, sort *string, limit int
 			if sort != nil {
 				request = request.Sort(*sort)
 			}
-			newMembers, _, err = request.Execute()
+			members, _, err = request.Execute()
 			return err
 		})
 		if err != nil {
-			return nil, fmt.Errorf("failed to get team members by emails: %v", handleLdapiErr(err))
+			return nil, nil, fmt.Errorf("failed to get team members by emails: %v", handleLdapiErr(err))
 		}
-		memberItems = append(memberItems, newMembers.Items...)
-		membersPulled = len(memberItems)
+		return members.Items, members.TotalCount, nil
+	})
+	if err != nil {
+		return nil, err
 	}
+
 	return memberItems, nil
 }
 

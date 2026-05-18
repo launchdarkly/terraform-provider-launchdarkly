@@ -70,25 +70,24 @@ func getFullProject(client *Client, projectKey string) (*ldapi.Project, *http.Re
 }
 
 func getAllEnvironments(client *Client, projectKey string) (ldapi.Environments, *http.Response, error) {
-	envItems := make([]ldapi.Environment, 0)
-	pageLimit := int64(20)
-	allFetched := false
-	for currentPage := int64(0); !allFetched; currentPage++ {
+	var lastResp *http.Response
+	envItems, err := fetchAllOffsetPagesWithOptionalInt32Total[ldapi.Environment](20, 0, func(offset, limit int64) ([]ldapi.Environment, *int32, error) {
 		var envPage *ldapi.Environments
 		var resp *http.Response
 		var err error
 		err = client.withConcurrency(client.ctx, func() error {
 			envPage, resp, err = client.ld.EnvironmentsApi.GetEnvironmentsByProject(
-				client.ctx, projectKey).Limit(pageLimit).Offset(currentPage * pageLimit).Execute()
+				client.ctx, projectKey).Limit(limit).Offset(offset).Execute()
 			return err
 		})
+		lastResp = resp
 		if err != nil {
-			return *ldapi.NewEnvironments(envItems), resp, err
+			return nil, nil, err
 		}
-		envItems = append(envItems, envPage.Items...)
-		if len(envItems) >= int(envPage.GetTotalCount()) {
-			allFetched = true
-		}
+		return envPage.Items, envPage.TotalCount, nil
+	})
+	if err != nil {
+		return *ldapi.NewEnvironments(envItems), lastResp, err
 	}
 
 	envs := *ldapi.NewEnvironments(envItems)

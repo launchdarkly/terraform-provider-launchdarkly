@@ -371,11 +371,12 @@ type mockTeamMaintainersResponse struct {
 }
 
 type mockMemberSummary struct {
-	Id        string `json:"_id"`
-	Email     string `json:"email"`
-	FirstName string `json:"firstName,omitempty"`
-	LastName  string `json:"lastName,omitempty"`
-	Role      string `json:"role"`
+	Links     map[string]link `json:"_links"`
+	Id        string          `json:"_id"`
+	Email     string          `json:"email"`
+	FirstName string          `json:"firstName,omitempty"`
+	LastName  string          `json:"lastName,omitempty"`
+	Role      string          `json:"role"`
 }
 
 // generateMockMaintainers creates a slice of mock maintainers with sequential IDs
@@ -384,6 +385,9 @@ func generateMockMaintainers(startIndex, count int) []mockMemberSummary {
 	for i := 0; i < count; i++ {
 		idx := startIndex + i
 		maintainers[i] = mockMemberSummary{
+			Links: map[string]link{
+				"self": {Href: "/api/v2/members/member-" + strconv.Itoa(idx), Type: "application/json"},
+			},
 			Id:        "member-" + strconv.Itoa(idx),
 			Email:     "member" + strconv.Itoa(idx) + "@example.com",
 			FirstName: "First" + strconv.Itoa(idx),
@@ -407,6 +411,9 @@ func TestGetAllTeamMaintainers_SinglePage(t *testing.T) {
 		response := mockTeamMaintainersResponse{
 			TotalCount: totalMaintainers,
 			Items:      generateMockMaintainers(1, totalMaintainers),
+			Links: map[string]link{
+				"self": {Href: "/api/v2/teams/test-team/maintainers", Type: "application/json"},
+			},
 		}
 
 		w.Header().Set("Content-Type", "application/json")
@@ -454,6 +461,9 @@ func TestGetAllTeamMaintainers_MultiplePages(t *testing.T) {
 		response := mockTeamMaintainersResponse{
 			TotalCount: totalMaintainers,
 			Items:      generateMockMaintainers(startIdx, itemCount),
+			Links: map[string]link{
+				"self": {Href: "/api/v2/teams/test-team/maintainers", Type: "application/json"},
+			},
 		}
 
 		w.Header().Set("Content-Type", "application/json")
@@ -484,6 +494,9 @@ func TestGetAllTeamMaintainers_EmptyTeam(t *testing.T) {
 		response := mockTeamMaintainersResponse{
 			TotalCount: 0,
 			Items:      []mockMemberSummary{},
+			Links: map[string]link{
+				"self": {Href: "/api/v2/teams/test-team/maintainers", Type: "application/json"},
+			},
 		}
 
 		w.Header().Set("Content-Type", "application/json")

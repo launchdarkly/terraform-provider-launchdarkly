@@ -466,10 +466,7 @@ func unlinkSegmentChunkFromView(client *Client, projectKey, viewKey string, segm
 
 // getLinkedResources gets all linked resources of a specific type for a view
 func getLinkedResources(client *Client, projectKey, viewKey, resourceType string) ([]ViewLinkedResource, error) {
-	allItems := make([]ldapi.ViewLinkedResource, 0)
-	offset := int32(0)
-
-	for {
+	allItems, err := fetchAllOffsetPagesWithInt32Total[ldapi.ViewLinkedResource](int64(viewAssociationsPageLimit), 0, func(offset, limit int64) ([]ldapi.ViewLinkedResource, int32, error) {
 		var (
 			apiLinkedResources *ldapi.ViewLinkedResources
 			err                error
@@ -477,21 +474,19 @@ func getLinkedResources(client *Client, projectKey, viewKey, resourceType string
 		err = client.withConcurrency(client.ctx, func() error {
 			apiLinkedResources, _, err = client.ld.ViewsBetaApi.GetLinkedResources(client.ctx, projectKey, viewKey, resourceType).
 				LDAPIVersion("beta").
-				Limit(viewAssociationsPageLimit).
-				Offset(offset).
+				Limit(int32(limit)).
+				Offset(int32(offset)).
 				Execute()
 			return err
 		})
 		if err != nil {
-			return nil, err
+			return nil, 0, err
 		}
 
-		allItems = append(allItems, apiLinkedResources.Items...)
-		if int32(len(allItems)) >= apiLinkedResources.TotalCount {
-			break
-		}
-
-		offset += viewAssociationsPageLimit
+		return apiLinkedResources.Items, apiLinkedResources.TotalCount, nil
+	})
+	if err != nil {
+		return nil, err
 	}
 
 	linkedResources := make([]ViewLinkedResource, len(allItems))
@@ -521,10 +516,7 @@ func viewIdToKeys(id string) (projectKey string, viewKey string, err error) {
 }
 
 func getAllLinkedViews(client *Client, projectKey, resourceType, resourceKey, environmentId string) ([]ldapi.View, error) {
-	allItems := make([]ldapi.View, 0)
-	offset := int32(0)
-
-	for {
+	allItems, err := fetchAllOffsetPagesWithInt32Total[ldapi.View](int64(viewAssociationsPageLimit), 0, func(offset, limit int64) ([]ldapi.View, int32, error) {
 		var (
 			viewsResponse *ldapi.Views
 			err           error
@@ -532,8 +524,8 @@ func getAllLinkedViews(client *Client, projectKey, resourceType, resourceKey, en
 		err = client.withConcurrency(client.ctx, func() error {
 			request := client.ld.ViewsBetaApi.GetLinkedViews(client.ctx, projectKey, resourceType, resourceKey).
 				LDAPIVersion("beta").
-				Limit(viewAssociationsPageLimit).
-				Offset(offset)
+				Limit(int32(limit)).
+				Offset(int32(offset))
 			if environmentId != "" {
 				request = request.EnvironmentId(environmentId)
 			}
@@ -541,15 +533,13 @@ func getAllLinkedViews(client *Client, projectKey, resourceType, resourceKey, en
 			return err
 		})
 		if err != nil {
-			return nil, err
+			return nil, 0, err
 		}
 
-		allItems = append(allItems, viewsResponse.Items...)
-		if int32(len(allItems)) >= viewsResponse.TotalCount {
-			break
-		}
-
-		offset += viewAssociationsPageLimit
+		return viewsResponse.Items, viewsResponse.TotalCount, nil
+	})
+	if err != nil {
+		return nil, err
 	}
 
 	return allItems, nil
