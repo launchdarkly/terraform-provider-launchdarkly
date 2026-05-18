@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
@@ -104,6 +105,14 @@ func (r *TeamResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRe
 	// Destroy plan: plan is null, state is not.
 	// Pre-flight for team stil having members at deletion time
 	if req.Plan.Raw.IsNull() && !req.State.Raw.IsNull() {
+		// When config is present, this is typically a full destroy (e.g. `terraform destroy`
+		// or test cleanup). In that case, dependent member resources may be destroyed in
+		// the same apply, so we warn instead of hard-failing plan.
+		//
+		// When config is absent, the team was removed from config directly; keep hard-fail
+		// behavior to prevent accidental deletion of a team that still has members.
+		configRemoved := req.Config.Raw.IsNull()
+
 		var state TeamResourceModel
 		resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
 		if resp.Diagnostics.HasError() {
@@ -125,11 +134,16 @@ func (r *TeamResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRe
 			return
 		}
 		if len(members) > 0 {
-			resp.Diagnostics.AddAttributeError(
-				path.Root(KEY),
-				fmt.Sprintf("team %q still has members and cannot be destroyed", teamKey),
-				formatStillAssignedTeamMembersHint(members),
-			)
+			summary := fmt.Sprintf("team %q still has members and cannot be destroyed", teamKey)
+			detail := formatStillAssignedTeamMembersHint(members)
+			if configRemoved {
+				resp.Diagnostics.AddAttributeError(path.Root(KEY), summary, detail)
+			} else {
+				resp.Diagnostics.AddWarning(
+					summary,
+					detail+"\n\nAllowing destroy to continue because this resource is still configured; related member resources in the same apply may remove these assignments before team deletion.",
+				)
+			}
 		}
 		return
 	}
@@ -329,13 +343,92 @@ func (r *TeamResource) Delete(ctx context.Context, req resource.DeleteRequest, r
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	err := r.client.withConcurrency(r.client.ctx, func() error {
-		_, e := r.client.ld.TeamsApi.DeleteTeam(r.client.ctx, data.ID.ValueString()).Execute()
-		return e
-	})
-	if err != nil {
-		addLdapiError(&resp.Diagnostics, fmt.Sprintf("failed to delete team with key %q", data.ID.ValueString()), err)
+	teamKey := data.ID.ValueString()
+
+	deleteResp, err := r.deleteTeam(teamKey)
+	if err == nil {
+		return
 	}
+	if isStatusConflict(deleteResp) {
+		if fallbackErr := r.detachMembersAndRetryDelete(teamKey); fallbackErr == nil {
+			return
+		} else {
+			addLdapiError(&resp.Diagnostics, fmt.Sprintf("failed to delete team with key %q", teamKey), fallbackErr)
+			return
+		}
+	}
+	if err != nil {
+		addLdapiError(&resp.Diagnostics, fmt.Sprintf("failed to delete team with key %q", teamKey), err)
+	}
+}
+
+func (r *TeamResource) deleteTeam(teamKey string) (*http.Response, error) {
+	var deleteResp *http.Response
+	err := r.client.withConcurrency(r.client.ctx, func() error {
+		var deleteErr error
+		deleteResp, deleteErr = r.client.ld.TeamsApi.DeleteTeam(r.client.ctx, teamKey).Execute()
+		return deleteErr
+	})
+	return deleteResp, err
+}
+
+func (r *TeamResource) detachMembersAndRetryDelete(teamKey string) error {
+	members, err := getAllTeamMembers(r.client, teamKey)
+	if err != nil {
+		return fmt.Errorf("failed to list team members before delete retry for team %q: %w", teamKey, err)
+	}
+	maintainers, err := getAllTeamMaintainers(r.client, teamKey)
+	if err != nil {
+		return fmt.Errorf("failed to list team maintainers before delete retry for team %q: %w", teamKey, err)
+	}
+
+	instructions := make([]map[string]interface{}, 0, 2)
+	if len(members) > 0 {
+		memberIDs := make([]string, 0, len(members))
+		for _, member := range members {
+			memberIDs = append(memberIDs, member.Id)
+		}
+		instructions = append(instructions, map[string]interface{}{"kind": "removeMembers", "values": memberIDs})
+	}
+	if len(maintainers) > 0 {
+		maintainerIDs := make([]string, 0, len(maintainers))
+		for _, maintainer := range maintainers {
+			maintainerIDs = append(maintainerIDs, maintainer.Id)
+		}
+		instructions = append(instructions, map[string]interface{}{
+			"kind":      "removePermissionGrants",
+			"actionSet": "maintainTeam",
+			"memberIDs": maintainerIDs,
+		})
+	}
+
+	if len(instructions) > 0 {
+		patch := ldapi.TeamPatchInput{Instructions: instructions}
+		err = r.client.withConcurrency(r.client.ctx, func() error {
+			_, _, patchErr := r.client.ld.TeamsApi.PatchTeam(r.client.ctx, teamKey).TeamPatchInput(patch).Execute()
+			return patchErr
+		})
+		if err != nil {
+			return fmt.Errorf("failed to detach team members before delete retry for team %q: %w", teamKey, handleLdapiErr(err))
+		}
+	}
+
+	var lastErr error
+	for attempt := 0; attempt < 3; attempt++ {
+		if attempt > 0 {
+			time.Sleep(time.Duration(attempt) * 250 * time.Millisecond)
+		}
+		deleteResp, deleteErr := r.deleteTeam(teamKey)
+		if deleteErr == nil {
+			return nil
+		}
+		lastErr = deleteErr
+		if !isStatusConflict(deleteResp) {
+			return handleLdapiErr(deleteErr)
+		}
+	}
+
+	return fmt.Errorf("failed to delete team %q after detaching members: %w", teamKey, handleLdapiErr(lastErr))
 }
 
 func (r *TeamResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {

@@ -70,6 +70,13 @@ func isStatusNotFound(response *http.Response) bool {
 	return false
 }
 
+func isStatusConflict(response *http.Response) bool {
+	if response != nil && response.StatusCode == http.StatusConflict {
+		return true
+	}
+	return false
+}
+
 func interfaceSliceToStringSlice(input []interface{}) []string {
 	o := make([]string, 0, len(input))
 	for _, v := range input {
