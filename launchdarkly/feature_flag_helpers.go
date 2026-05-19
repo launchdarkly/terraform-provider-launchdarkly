@@ -192,29 +192,69 @@ func normalizeJSONString(input string) (string, error) {
 // "Flag is still in use as a prerequisite" 409 from DELETE surfaces at
 // plan time instead of apply time.
 //
-// The endpoint lives behind LD-API-Version: beta, so this uses a
-// dedicated beta client rather than the standard one (which pins the
-// version header to a stable date and is rejected with 403).
+// The endpoint requires LD-API-Version: beta.
 // Enterprise-only; non-Enterprise tokens get a 403 which the caller
 // should degrade to a warning so apply behaviour is unchanged.
 func getDependentFlags(ctx context.Context, client *Client, projectKey, flagKey string) (*ldapi.MultiEnvironmentDependentFlags, error) {
-	betaClient, err := newBetaClient(client.apiKey, client.apiHost, false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create beta client for dependent-flags lookup: %w", err)
+	deps, _, _, err := fetchDependentFlags(ctx, client, projectKey, flagKey)
+	return deps, err
+}
+
+// fetchDependentFlags issues the dependent-flags beta request via raw
+// HTTP so we can set LD-API-Version: beta explicitly even for generated
+// client methods that do not expose an LDAPIVersion(...) setter.
+// Returns parsed body on success, plus response status/body for richer
+// diagnostics in callers (especially acceptance tests).
+func fetchDependentFlags(ctx context.Context, client *Client, projectKey, flagKey string) (*ldapi.MultiEnvironmentDependentFlags, int, string, error) {
+	host := client.apiHost
+	if host == "" {
+		host = DEFAULT_LAUNCHDARKLY_HOST
 	}
-	var deps *ldapi.MultiEnvironmentDependentFlags
-	err = betaClient.withConcurrency(ctx, func() error {
-		got, _, e := betaClient.ld.FeatureFlagsBetaApi.GetDependentFlags(betaClient.ctx, projectKey, flagKey).Execute()
-		if e != nil {
-			return e
-		}
-		deps = got
-		return nil
+
+	escapedProjectKey := url.PathEscape(projectKey)
+	escapedFlagKey := url.PathEscape(flagKey)
+	var endpoint string
+	if u, err := url.Parse(host); err == nil && u.Scheme != "" {
+		u.Path = fmt.Sprintf("/api/v2/flags/%s/%s/dependent-flags", escapedProjectKey, escapedFlagKey)
+		endpoint = u.String()
+	} else {
+		endpoint = fmt.Sprintf("https://%s/api/v2/flags/%s/%s/dependent-flags", host, escapedProjectKey, escapedFlagKey)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
+	if err != nil {
+		return nil, 0, "", err
+	}
+	req.Header.Set("Authorization", client.apiKey)
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("LD-API-Version", "beta")
+	req.Header.Set("User-Agent", fmt.Sprintf("launchdarkly-terraform-provider/%s", version))
+
+	var resp *http.Response
+	err = client.withConcurrency(ctx, func() error {
+		var reqErr error
+		resp, reqErr = client.ld.GetConfig().HTTPClient.Do(req)
+		return reqErr
 	})
 	if err != nil {
-		return nil, handleLdapiErr(err)
+		return nil, 0, "", err
 	}
-	return deps, nil
+	defer resp.Body.Close()
+
+	respBody, readErr := io.ReadAll(resp.Body)
+	if readErr != nil {
+		return nil, resp.StatusCode, "", readErr
+	}
+	bodyStr := string(respBody)
+	if resp.StatusCode >= 400 {
+		return nil, resp.StatusCode, bodyStr, fmt.Errorf("%d %s: %s", resp.StatusCode, http.StatusText(resp.StatusCode), bodyStr)
+	}
+
+	var deps ldapi.MultiEnvironmentDependentFlags
+	if err := json.Unmarshal(respBody, &deps); err != nil {
+		return nil, resp.StatusCode, bodyStr, fmt.Errorf("failed to decode dependent flags response: %w", err)
+	}
+	return &deps, resp.StatusCode, bodyStr, nil
 }
 
 // formatDependentFlagsHint renders the diagnostic detail body for the
