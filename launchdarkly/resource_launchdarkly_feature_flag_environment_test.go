@@ -1072,6 +1072,13 @@ func TestAccFeatureFlagEnvironment_Prereq(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, OFF_VARIATION, "0"),
 				),
 			},
+			{
+				// Wait for dependent-flags index to observe prerequisite
+				// removal before framework auto-destroy runs.
+				PreConfig: waitForDependentFlagUnindexed(t, projectKey, "bool-flag"),
+				Config:    withRandomProject(projectKey, testAccFeatureFlagEnvironmentRemovePrereq),
+				PlanOnly:  true,
+			},
 		},
 	})
 }
