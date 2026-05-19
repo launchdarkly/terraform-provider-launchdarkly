@@ -54,7 +54,7 @@ func TestAccDataSourceTeamMember_noMatchReturnsError(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config:      testAccDataSourceTeamMemberConfig(email),
-				ExpectError: regexp.MustCompile(`failed to find team member`),
+				ExpectError: regexp.MustCompile(`(?i)failed to find team member`),
 			},
 		},
 	})

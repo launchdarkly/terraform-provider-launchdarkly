@@ -3,7 +3,7 @@ package launchdarkly
 import (
 	"fmt"
 	"net/http"
-	"net/url"
+	"strings"
 
 	ldapi "github.com/launchdarkly/api-client-go/v22"
 )
@@ -15,75 +15,63 @@ import (
 // data sources consume it after the data source was migrated to
 // terraform-plugin-framework in Phase 1.3.2.
 func getTeamMemberByEmail(client *Client, memberEmail string) (*ldapi.Member, error) {
-	teamMemberLimit := int64(1000)
-
-	var members *ldapi.Members
-	var err error
-	err = client.withConcurrency(client.ctx, func() error {
-		members, _, err = client.ld.AccountMembersApi.GetMembers(client.ctx).Filter(fmt.Sprintf("query:%s", url.QueryEscape(memberEmail))).Expand("roleAttributes").Execute()
-		return err
-	})
+	emailFilter := fmt.Sprintf("email:%s", memberEmail)
+	expand := "roleAttributes"
+	members, err := getMembersPaginated(client, &emailFilter, &expand, nil, 1, nil)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read team member with email: %s: %v", memberEmail, handleLdapiErr(err))
+		return nil, fmt.Errorf("Failed to get team member %q: %v", memberEmail, handleLdapiErr(err))
 	}
-
-	totalMemberCount := int(*members.TotalCount)
-	memberItems := members.Items
-	membersPulled := len(memberItems)
-	for membersPulled < totalMemberCount {
-		offset := int64(membersPulled)
-		var newMembers *ldapi.Members
-		err = client.withConcurrency(client.ctx, func() error {
-			newMembers, _, err = client.ld.AccountMembersApi.GetMembers(client.ctx).Limit(teamMemberLimit).Offset(offset).Filter(fmt.Sprintf("query:%s", url.QueryEscape(memberEmail))).Execute()
-			return err
-		})
-		if err != nil {
-			return nil, fmt.Errorf("failed to read team member with email: %s: %v", memberEmail, handleLdapiErr(err))
-		}
-		memberItems = append(memberItems, newMembers.Items...)
-		membersPulled = len(memberItems)
+	if len(members) < 1 {
+		return nil, fmt.Errorf("No member found with email %q", memberEmail)
 	}
-
-	for _, member := range memberItems {
-		if member.Email == memberEmail {
-			return &member, nil
-		}
-	}
-	return nil, fmt.Errorf("failed to find team member with email: %s", memberEmail)
+	return &members[0], nil
 }
 
-// getAllTeamMembers paginates GetMembers and returns every member in
-// the org. Used by data_source_team_members_framework.go for bulk
-// lookup against a supplied list of emails.
-func getAllTeamMembers(client *Client) ([]ldapi.Member, error) {
-	teamMemberLimit := int64(1000)
-
-	var members *ldapi.Members
-	var err error
-	err = client.withConcurrency(client.ctx, func() error {
-		members, _, err = client.ld.AccountMembersApi.GetMembers(client.ctx).Limit(teamMemberLimit).Execute()
-		return err
-	})
+func getTeamMembersByEmail(client *Client, memberEmails []string) ([]ldapi.Member, error) {
+	if len(memberEmails) == 0 {
+		return []ldapi.Member{}, nil
+	}
+	emailFilter := fmt.Sprintf("email:%s", strings.Join(memberEmails, "|"))
+	expand := "roleAttributes"
+	members, err := getMembersPaginated(client, &emailFilter, &expand, nil, teamMemberLimit, nil)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read team members: %v", handleLdapiErr(err))
+		return nil, fmt.Errorf("failed to get team members by emails: %v", handleLdapiErr(err))
+	}
+	return members, nil
+}
+
+func getMembersPaginated(client *Client, filter, expand, sort *string, limit int64, initialOffset *int64) ([]ldapi.Member, error) {
+	offset := int64(0)
+	if initialOffset != nil {
+		offset = *initialOffset
 	}
 
-	totalMemberCount := int(*members.TotalCount)
-	memberItems := members.Items
-	membersPulled := len(memberItems)
-	for membersPulled < totalMemberCount {
-		offset := int64(membersPulled)
-		var newMembers *ldapi.Members
+	memberItems, err := fetchAllOffsetPagesWithOptionalInt32Total[ldapi.Member](limit, offset, func(offset, limit int64) ([]ldapi.Member, *int32, error) {
+		var members *ldapi.Members
+		var err error
 		err = client.withConcurrency(client.ctx, func() error {
-			newMembers, _, err = client.ld.AccountMembersApi.GetMembers(client.ctx).Limit(teamMemberLimit).Offset(offset).Execute()
+			request := client.ld.AccountMembersApi.GetMembers(client.ctx).Offset(offset).Limit(limit)
+			if filter != nil {
+				request = request.Filter(*filter)
+			}
+			if expand != nil {
+				request = request.Expand(*expand)
+			}
+			if sort != nil {
+				request = request.Sort(*sort)
+			}
+			members, _, err = request.Execute()
 			return err
 		})
 		if err != nil {
-			return nil, fmt.Errorf("failed to read team members: %v", handleLdapiErr(err))
+			return nil, nil, fmt.Errorf("failed to get team members by emails: %v", handleLdapiErr(err))
 		}
-		memberItems = append(memberItems, newMembers.Items...)
-		membersPulled = len(memberItems)
+		return members.Items, members.TotalCount, nil
+	})
+	if err != nil {
+		return nil, err
 	}
+
 	return memberItems, nil
 }
 

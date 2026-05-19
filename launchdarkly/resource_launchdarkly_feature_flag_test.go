@@ -7,6 +7,7 @@ import (
 	"reflect"
 	"regexp"
 	"testing"
+	"time"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
@@ -1796,4 +1797,248 @@ resource "launchdarkly_feature_flag" "test" {
 			},
 		},
 	})
+}
+
+// TestAccFeatureFlag_DeletePrerequisitePlanError exercises the
+// destroy-plan dependent-flag validator in FeatureFlagResource.ModifyPlan
+// (issue #372).
+func TestAccFeatureFlag_DeletePrerequisitePlanError(t *testing.T) {
+	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+
+	configFull := withRandomProject(projectKey, `
+resource "launchdarkly_feature_flag" "prereq" {
+	project_key    = launchdarkly_project.test.key
+	key            = "prereq-flag"
+	name           = "prerequisite flag"
+	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
+}
+
+resource "launchdarkly_feature_flag" "dependent" {
+	project_key    = launchdarkly_project.test.key
+	key            = "dependent-flag"
+	name           = "dependent flag"
+	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
+}
+
+resource "launchdarkly_feature_flag_environment" "dependent_env" {
+	flag_id = launchdarkly_feature_flag.dependent.id
+	env_key = "test"
+	on      = false
+	prerequisites = [{
+		flag_key  = launchdarkly_feature_flag.prereq.key
+		variation = 0
+	}]
+	fallthrough = [{
+		variation = 0
+	}]
+	off_variation = 1
+}
+`)
+
+	// Same project + dependent flag + FFE-with-prereq, but the prereq
+	// flag resource is removed from config. HCL keeps the literal flag
+	// key string in the prerequisites block so the file still compiles;
+	// Terraform plans destruction of `launchdarkly_feature_flag.prereq`
+	// and ModifyPlan should fail at plan time with the prerequisite
+	// hint rather than waiting for the apply-time 409.
+	configMissingPrereq := withRandomProject(projectKey, `
+resource "launchdarkly_feature_flag" "dependent" {
+	project_key    = launchdarkly_project.test.key
+	key            = "dependent-flag"
+	name           = "dependent flag"
+	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
+}
+
+resource "launchdarkly_feature_flag_environment" "dependent_env" {
+	flag_id = launchdarkly_feature_flag.dependent.id
+	env_key = "test"
+	on      = false
+	prerequisites = [{
+		flag_key  = "prereq-flag"
+		variation = 0
+	}]
+	fallthrough = [{
+		variation = 0
+	}]
+	off_variation = 1
+}
+`)
+
+	// Cleanup config used after the PlanOnly assertion: retain both flags
+	// but remove the prerequisite link so post-test destroy can delete both
+	// flags without tripping the plan-time destroy guard.
+	configWithoutPrerequisiteLink := withRandomProject(projectKey, `
+resource "launchdarkly_feature_flag" "prereq" {
+	project_key    = launchdarkly_project.test.key
+	key            = "prereq-flag"
+	name           = "prerequisite flag"
+	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
+}
+
+resource "launchdarkly_feature_flag" "dependent" {
+	project_key    = launchdarkly_project.test.key
+	key            = "dependent-flag"
+	name           = "dependent flag"
+	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
+}
+
+resource "launchdarkly_feature_flag_environment" "dependent_env" {
+	flag_id = launchdarkly_feature_flag.dependent.id
+	env_key = "test"
+	on      = false
+	fallthrough = [{
+		variation = 0
+	}]
+	off_variation = 1
+}
+`)
+
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckProjectDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config: configFull,
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckFeatureFlagExists("launchdarkly_feature_flag.prereq"),
+					testAccCheckFeatureFlagExists("launchdarkly_feature_flag.dependent"),
+				),
+			},
+			{
+				// The dependent-flags beta endpoint is eventually
+				// consistent. Poll until the dependency is visible so
+				// the plan-time validator in Step 2 sees it; otherwise
+				// the destroy plan slips through with no error.
+				PreConfig:   waitForDependentFlagIndexed(t, projectKey, "prereq-flag"),
+				Config:      configMissingPrereq,
+				PlanOnly:    true,
+				ExpectError: regexp.MustCompile(`is a prerequisite for other flags and cannot be destroyed`),
+			},
+			{
+				Config: configWithoutPrerequisiteLink,
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckFeatureFlagExists("launchdarkly_feature_flag.prereq"),
+					testAccCheckFeatureFlagExists("launchdarkly_feature_flag.dependent"),
+				),
+			},
+			{
+				// Ensure dependent-flags index has observed prerequisite
+				// removal before framework auto-destroy starts.
+				PreConfig: waitForDependentFlagUnindexed(t, projectKey, "prereq-flag"),
+				Config:    configWithoutPrerequisiteLink,
+				PlanOnly:  true,
+			},
+		},
+	})
+}
+
+// waitForDependentFlagIndexed polls the beta dependent-flags endpoint
+// until at least one dependent is visible, or a timeout elapses. Used
+// before TestAccFeatureFlag_DeletePrerequisitePlanError's Step 2 plan
+// because the prerequisite written during Step 1's Apply may take time
+// to become visible server-side.
+func waitForDependentFlagIndexed(t *testing.T, projectKey, flagKey string) func() {
+	return func() {
+		host := os.Getenv(LAUNCHDARKLY_API_HOST)
+		if host == "" {
+			host = DEFAULT_LAUNCHDARKLY_HOST
+		}
+		token := os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN)
+		client, err := newClient(token, host, false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
+		if err != nil {
+			t.Fatalf("waitForDependentFlagIndexed: failed to construct client: %s", err)
+		}
+		deadline := time.Now().Add(90 * time.Second)
+		lastStatus := 0
+		lastBody := ""
+		lastErr := error(nil)
+		for {
+			deps, status, body, err := fetchDependentFlags(client.ctx, client, projectKey, flagKey)
+			if status >= 400 {
+				t.Fatalf("waitForDependentFlagIndexed: dependent-flags request failed for %s/%s with status=%d body=%q err=%v", projectKey, flagKey, status, truncateTestBody(body), err)
+			}
+			if err != nil {
+				t.Fatalf("waitForDependentFlagIndexed: dependent-flags request errored for %s/%s with status=%d body=%q err=%v", projectKey, flagKey, status, truncateTestBody(body), err)
+			}
+			if deps != nil && len(deps.Items) > 0 {
+				return
+			}
+			lastStatus = status
+			lastBody = body
+			lastErr = err
+			if time.Now().After(deadline) {
+				t.Fatalf("waitForDependentFlagIndexed: %s/%s never became indexed within 90s (last status=%d last body=%q last err=%v)", projectKey, flagKey, lastStatus, truncateTestBody(lastBody), lastErr)
+			}
+			time.Sleep(3 * time.Second)
+		}
+	}
+}
+
+// waitForDependentFlagUnindexed polls until no dependents are visible.
+// Used as a teardown guard after removing prerequisites to avoid races
+// where destroy planning still sees stale dependent-flag index state.
+func waitForDependentFlagUnindexed(t *testing.T, projectKey, flagKey string) func() {
+	return func() {
+		host := os.Getenv(LAUNCHDARKLY_API_HOST)
+		if host == "" {
+			host = DEFAULT_LAUNCHDARKLY_HOST
+		}
+		token := os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN)
+		client, err := newClient(token, host, false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
+		if err != nil {
+			t.Fatalf("waitForDependentFlagUnindexed: failed to construct client: %s", err)
+		}
+		deadline := time.Now().Add(90 * time.Second)
+		lastStatus := 0
+		lastBody := ""
+		lastErr := error(nil)
+		for {
+			deps, status, body, err := fetchDependentFlags(client.ctx, client, projectKey, flagKey)
+			if status >= 400 {
+				t.Fatalf("waitForDependentFlagUnindexed: dependent-flags request failed for %s/%s with status=%d body=%q err=%v", projectKey, flagKey, status, truncateTestBody(body), err)
+			}
+			if err != nil {
+				t.Fatalf("waitForDependentFlagUnindexed: dependent-flags request errored for %s/%s with status=%d body=%q err=%v", projectKey, flagKey, status, truncateTestBody(body), err)
+			}
+			if deps != nil && len(deps.Items) == 0 {
+				return
+			}
+			lastStatus = status
+			lastBody = body
+			lastErr = err
+			if time.Now().After(deadline) {
+				t.Fatalf("waitForDependentFlagUnindexed: %s/%s still indexed after 90s (last status=%d last body=%q last err=%v)", projectKey, flagKey, lastStatus, truncateTestBody(lastBody), lastErr)
+			}
+			time.Sleep(3 * time.Second)
+		}
+	}
+}
+
+func truncateTestBody(body string) string {
+	const max = 512
+	if len(body) <= max {
+		return body
+	}
+	return body[:max] + "...(truncated)"
 }

@@ -292,13 +292,48 @@ func (r *FeatureFlagResource) Configure(_ context.Context, req resource.Configur
 	r.client = configureResourceClient(req, resp)
 }
 
-// ModifyPlan ports customizeFeatureFlagDiff: create-time view_keys
-// validation when the project requires view association.
+// Check for various 400/409 issues at plan time
+// * Whether project requires view association on flag creation
+// * Whether flag has dependent flags on flag deletion
 func (r *FeatureFlagResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
-	if req.Plan.Raw.IsNull() {
+	if r.client == nil {
 		return
 	}
-	if r.client == nil {
+	// Destroy plan: plan is null, state is not. Pre-flight a dependent-flag
+	// check so users see the conflict at plan time instead of apply time
+	// (issue #372). The framework invokes ModifyPlan on destroy plans;
+	// SDKv2 did not, which is why this validator only exists post-Phase 5.
+	if req.Plan.Raw.IsNull() && !req.State.Raw.IsNull() {
+		var state FeatureFlagResourceModel
+		resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+		projectKey, flagKey := state.ProjectKey.ValueString(), state.Key.ValueString()
+		if projectKey == "" || flagKey == "" {
+			return
+		}
+		deps, err := getDependentFlags(ctx, r.client, projectKey, flagKey)
+		if err != nil {
+			// Non-Enterprise tokens 403 here. Degrade to a warning so the
+			// destroy still proceeds; the existing apply-time 409 path
+			// remains as defence-in-depth.
+			resp.Diagnostics.AddWarning(
+				fmt.Sprintf("could not check dependent flags for %q in project %q during plan", flagKey, projectKey),
+				err.Error()+"\n\nApply may still fail with a 409 conflict if this flag is referenced as a prerequisite by other flags.",
+			)
+			return
+		}
+		if deps != nil && len(deps.Items) > 0 {
+			resp.Diagnostics.AddAttributeError(
+				path.Root(KEY),
+				fmt.Sprintf("flag %q in project %q is a prerequisite for other flags and cannot be destroyed", flagKey, projectKey),
+				formatDependentFlagsHint(deps.Items),
+			)
+		}
+		return
+	}
+	if req.Plan.Raw.IsNull() {
 		return
 	}
 	if !req.State.Raw.IsNull() {

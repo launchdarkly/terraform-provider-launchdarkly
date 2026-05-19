@@ -109,7 +109,7 @@ func (d *TeamMembersDataSource) Read(ctx context.Context, req datasource.ReadReq
 	expectedCount := len(emails)
 
 	if expectedCount > 0 {
-		allMembers, err := getAllTeamMembers(d.client)
+		allMembers, err := getTeamMembersByEmail(d.client, emails)
 		if err != nil {
 			resp.Diagnostics.AddError("Failed to list team members", err.Error())
 			return

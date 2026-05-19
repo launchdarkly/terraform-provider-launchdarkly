@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strings"
+	"time"
 
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
@@ -92,6 +94,63 @@ This resource allows you to create and manage a team within your LaunchDarkly or
 
 func (r *TeamResource) Configure(_ context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
 	r.client = configureResourceClient(req, resp)
+}
+
+// Check for various 400/409 issues at plan time
+// * Whether team still has members at deletion time
+func (r *TeamResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
+	if r.client == nil {
+		return
+	}
+	// Destroy plan: plan is null, state is not.
+	// Pre-flight for team stil having members at deletion time
+	if req.Plan.Raw.IsNull() && !req.State.Raw.IsNull() {
+		var state TeamResourceModel
+		resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+		teamKey := state.Key.ValueString()
+		if teamKey == "" {
+			return
+		}
+		members, err := getAllTeamMembers(r.client, teamKey)
+		if err != nil {
+			// Non-Enterprise tokens 403 here. Degrade to a warning so the
+			// destroy still proceeds; the existing apply-time 409 path
+			// remains as defence-in-depth.
+			resp.Diagnostics.AddWarning(
+				fmt.Sprintf("could not check team members for %q during plan", teamKey),
+				err.Error()+"\n\nApply may still fail with a 409 conflict if this team still has members.",
+			)
+			return
+		}
+		if len(members) > 0 {
+			summary := fmt.Sprintf("team %q still has members and cannot be destroyed", teamKey)
+			detail := formatStillAssignedTeamMembersHint(members)
+			resp.Diagnostics.AddWarning(
+				summary,
+				detail+"\n\nDestroy will continue. On delete conflict, provider will attempt to detach remaining members/maintainers from the team and retry deletion.",
+			)
+		}
+		return
+	}
+	if req.Plan.Raw.IsNull() {
+		return
+	}
+	if !req.State.Raw.IsNull() {
+		return
+	}
+}
+
+func formatStillAssignedTeamMembersHint(items []ldapi.Member) string {
+	var b strings.Builder
+	b.WriteString("The following members are still assigned to the team:\n")
+	for _, item := range items {
+		fmt.Fprintf(&b, "  - member %q\n", item.Email)
+	}
+	b.WriteString("\nRemove the members from the team (edit its launchdarkly_team_member block) before destroying this team.")
+	return b.String()
 }
 
 func (r *TeamResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
@@ -272,13 +331,92 @@ func (r *TeamResource) Delete(ctx context.Context, req resource.DeleteRequest, r
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	err := r.client.withConcurrency(r.client.ctx, func() error {
-		_, e := r.client.ld.TeamsApi.DeleteTeam(r.client.ctx, data.ID.ValueString()).Execute()
-		return e
-	})
-	if err != nil {
-		addLdapiError(&resp.Diagnostics, fmt.Sprintf("failed to delete team with key %q", data.ID.ValueString()), err)
+	teamKey := data.ID.ValueString()
+
+	deleteResp, err := r.deleteTeam(teamKey)
+	if err == nil {
+		return
 	}
+	if isStatusConflict(deleteResp) {
+		if fallbackErr := r.detachMembersAndRetryDelete(teamKey); fallbackErr == nil {
+			return
+		} else {
+			addLdapiError(&resp.Diagnostics, fmt.Sprintf("failed to delete team with key %q", teamKey), fallbackErr)
+			return
+		}
+	}
+	if err != nil {
+		addLdapiError(&resp.Diagnostics, fmt.Sprintf("failed to delete team with key %q", teamKey), err)
+	}
+}
+
+func (r *TeamResource) deleteTeam(teamKey string) (*http.Response, error) {
+	var deleteResp *http.Response
+	err := r.client.withConcurrency(r.client.ctx, func() error {
+		var deleteErr error
+		deleteResp, deleteErr = r.client.ld.TeamsApi.DeleteTeam(r.client.ctx, teamKey).Execute()
+		return deleteErr
+	})
+	return deleteResp, err
+}
+
+func (r *TeamResource) detachMembersAndRetryDelete(teamKey string) error {
+	members, err := getAllTeamMembers(r.client, teamKey)
+	if err != nil {
+		return fmt.Errorf("failed to list team members before delete retry for team %q: %w", teamKey, err)
+	}
+	maintainers, err := getAllTeamMaintainers(r.client, teamKey)
+	if err != nil {
+		return fmt.Errorf("failed to list team maintainers before delete retry for team %q: %w", teamKey, err)
+	}
+
+	instructions := make([]map[string]interface{}, 0, 2)
+	if len(members) > 0 {
+		memberIDs := make([]string, 0, len(members))
+		for _, member := range members {
+			memberIDs = append(memberIDs, member.Id)
+		}
+		instructions = append(instructions, map[string]interface{}{"kind": "removeMembers", "values": memberIDs})
+	}
+	if len(maintainers) > 0 {
+		maintainerIDs := make([]string, 0, len(maintainers))
+		for _, maintainer := range maintainers {
+			maintainerIDs = append(maintainerIDs, maintainer.Id)
+		}
+		instructions = append(instructions, map[string]interface{}{
+			"kind":      "removePermissionGrants",
+			"actionSet": "maintainTeam",
+			"memberIDs": maintainerIDs,
+		})
+	}
+
+	if len(instructions) > 0 {
+		patch := ldapi.TeamPatchInput{Instructions: instructions}
+		err = r.client.withConcurrency(r.client.ctx, func() error {
+			_, _, patchErr := r.client.ld.TeamsApi.PatchTeam(r.client.ctx, teamKey).TeamPatchInput(patch).Execute()
+			return patchErr
+		})
+		if err != nil {
+			return fmt.Errorf("failed to detach team members before delete retry for team %q: %w", teamKey, handleLdapiErr(err))
+		}
+	}
+
+	var lastErr error
+	for attempt := 0; attempt < 3; attempt++ {
+		if attempt > 0 {
+			time.Sleep(time.Duration(attempt) * 250 * time.Millisecond)
+		}
+		deleteResp, deleteErr := r.deleteTeam(teamKey)
+		if deleteErr == nil {
+			return nil
+		}
+		lastErr = deleteErr
+		if !isStatusConflict(deleteResp) {
+			return handleLdapiErr(deleteErr)
+		}
+	}
+
+	return fmt.Errorf("failed to delete team %q after detaching members: %w", teamKey, handleLdapiErr(lastErr))
 }
 
 func (r *TeamResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
@@ -309,30 +447,10 @@ func (r *TeamResource) readIntoModel(
 	}
 
 	// Paginate team members.
-	members := make([]ldapi.Member, 0)
-	offset := int64(0)
-	empty := ""
-	next := &empty
-	filter := fmt.Sprintf("team:%s", teamKey)
-	for next != nil {
-		var memberResp *ldapi.Members
-		var memberRes *http.Response
-		var memberErr error
-		memberErr = r.client.withConcurrency(r.client.ctx, func() error {
-			memberResp, memberRes, memberErr = r.client.ld.AccountMembersApi.GetMembers(r.client.ctx).Limit(50).Offset(offset * 50).Filter(filter).Execute()
-			return memberErr
-		})
-		if memberErr != nil {
-			if isStatusNotFound(memberRes) {
-				data.ID = types.StringNull()
-				return
-			}
-			diags.AddError(fmt.Sprintf("failed to get members for team %q", teamKey), handleLdapiErr(memberErr).Error())
-			return
-		}
-		members = append(members, memberResp.Items...)
-		next = memberResp.Links["next"].Href
-		offset++
+	members, err := getAllTeamMembers(r.client, teamKey)
+	if err != nil {
+		diags.AddError(fmt.Sprintf("failed to get members for team %q", teamKey), err.Error())
+		return
 	}
 
 	customRoleKeys, err := getAllTeamCustomRoleKeys(r.client, teamKey)
