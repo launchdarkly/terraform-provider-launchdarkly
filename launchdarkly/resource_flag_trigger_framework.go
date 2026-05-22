@@ -180,8 +180,8 @@ func (r *FlagTriggerResource) Create(ctx context.Context, req resource.CreateReq
 	plan.ID = types.StringValue(*createdTrigger.Id)
 	plan.TriggerURL = stringValueFromPointer(createdTrigger.TriggerURL)
 
-	// SDKv2: if enabled=false at create, follow up with a PATCH because
-	// the create endpoint does not accept multiple instructions.
+	// If enabled=false at create, follow up with a PATCH because the
+	// create endpoint does not accept multiple instructions.
 	if !plan.Enabled.ValueBool() {
 		input := ldapi.FlagTriggerInput{
 			Instructions: []map[string]interface{}{{KIND: "disableTrigger"}},

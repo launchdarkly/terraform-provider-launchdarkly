@@ -203,8 +203,7 @@ func (d *SegmentDataSource) Read(ctx context.Context, req datasource.ReadRequest
 
 	data.Rules = segmentRulesToFrameworkList(ctx, segment.Rules)
 
-	// View association: best-effort. Failure logs in SDKv2; here we
-	// surface empty.
+	// View association: best-effort. Surface empty on failure.
 	viewKeys := []string{}
 	betaClient, bcErr := newBetaClient(d.client.apiKey, d.client.apiHost, false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
 	if bcErr == nil {

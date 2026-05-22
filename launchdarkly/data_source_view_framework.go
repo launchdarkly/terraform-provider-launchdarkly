@@ -140,9 +140,8 @@ func (d *ViewDataSource) Read(ctx context.Context, req datasource.ReadRequest, r
 	resp.Diagnostics.Append(diags...)
 	data.Tags = tagsSet
 
-	// linked_flags + linked_segments are best-effort (the SDKv2 version
-	// logs a WARN and continues on failure). Surface as empty rather
-	// than failing the read.
+	// linked_flags + linked_segments are best-effort. Surface as empty
+	// rather than failing the read.
 	flagKeys := []string{}
 	if linkedFlags, err := getLinkedResources(betaClient, projectKey, viewKey, FLAGS); err == nil {
 		flagKeys = make([]string, len(linkedFlags))

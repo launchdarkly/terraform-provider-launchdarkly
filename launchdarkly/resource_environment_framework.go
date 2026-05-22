@@ -307,8 +307,9 @@ func (r *EnvironmentResource) ImportState(ctx context.Context, req resource.Impo
 	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("id"), req.ID)...)
 }
 
-// applyApprovalPatch replays the SDKv2 approvalPatchFromSettings logic
-// against framework data. Returns nil on success.
+// applyApprovalPatch applies the diff between the planned and stored
+// approval_settings as a JSON-patch against the environment. Returns
+// nil on success.
 func (r *EnvironmentResource) applyApprovalPatch(ctx context.Context, projectKey, envKey string, planList, stateList types.List) error {
 	// Map plan -> ApprovalSettings via the deserialised model.
 	planEmpty := planList.IsNull() || planList.IsUnknown() || len(planList.Elements()) == 0
@@ -317,7 +318,7 @@ func (r *EnvironmentResource) applyApprovalPatch(ctx context.Context, projectKey
 		return nil
 	}
 	if planEmpty {
-		// Remove both possible nullable fields the SDKv2 patcher removes.
+		// Remove both possible nullable fields.
 		patch := []ldapi.PatchOperation{
 			patchRemove("/approvalSettings/required"),
 			patchRemove("/approvalSettings/requiredApprovalTags"),

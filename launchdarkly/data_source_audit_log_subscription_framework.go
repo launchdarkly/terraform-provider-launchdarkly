@@ -115,13 +115,9 @@ func (d *AuditLogSubscriptionDataSource) Read(ctx context.Context, req datasourc
 		data.On = types.BoolValue(false)
 	}
 
-	// Config: emit snake_case keys with string values, matching the
-	// SDKv2 representation in configToResourceData (which the
-	// underlying framework data source schema declares as Map<String>).
+	// Config: emit snake_case keys with string values (Map<String>).
 	// Secret-typed fields are suppressed because the API never returns
-	// the plaintext value; SDKv2 mirrors this by overwriting with the
-	// caller's original (empty) input. For a data source, that means
-	// dropping the key from state entirely.
+	// the plaintext value — drop the key from state entirely.
 	configFormat := getSubscriptionConfigurationMap()[integrationKey]
 	configMap := make(map[string]string, len(sub.Config))
 	for k, v := range sub.Config {

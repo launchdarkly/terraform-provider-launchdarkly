@@ -554,7 +554,7 @@ func (r *AIConfigVariationResource) readIntoModel(
 		data.Messages = list
 	}
 
-	// Tool keys: SDKv2 preserved prior value when API returned empty.
+	// Tool keys: preserve prior value when the API returns empty.
 	if len(variation.Tools) > 0 {
 		tks := make([]string, len(variation.Tools))
 		for i, t := range variation.Tools {

@@ -88,10 +88,7 @@ The resource must contain either a "role", "custom_role" or an "inline_roles" (p
 			},
 			SERVICE_TOKEN: schema.BoolAttribute{
 				Optional: true,
-				// framework requires Computed: true alongside Default; the
-				// SDKv2 schema was Optional+Default only (no Computed) but
-				// the user-visible behavior is identical — Default fills
-				// in unset values either way.
+				// framework requires Computed: true alongside Default.
 				Computed:    true,
 				Default:     booldefault.StaticBool(false),
 				Description: addForceNewDescription("Whether the token will be a [service token](https://docs.launchdarkly.com/home/account-security/api-access-tokens#service-tokens).", true),
@@ -213,7 +210,7 @@ func (r *AccessTokenResource) Create(ctx context.Context, req resource.CreateReq
 		body.DefaultApiVersion = &v
 	}
 
-	// SDKv2 precedence: policy_statements > inline_roles > custom_roles > role.
+	// Precedence: policy_statements > inline_roles > custom_roles > role.
 	inline, diags := frameworkPolicyStatementsFromList(ctx, plan.PolicyStatements)
 	resp.Diagnostics.Append(diags...)
 	if len(inline) == 0 {
@@ -445,8 +442,7 @@ func (r *AccessTokenResource) readIntoModel(
 	}
 }
 
-// apiVersionValidator mirrors validateAPIVersion from SDKv2.
-// Accepts 0 (unset), 20240415, 20191212, 20160426.
+// apiVersionValidator accepts 0 (unset), 20240415, 20191212, 20160426.
 type apiVersionValidator struct{}
 
 func (apiVersionValidator) Description(_ context.Context) string {
@@ -472,7 +468,7 @@ func (apiVersionValidator) ValidateInt64(_ context.Context, req validator.Int64R
 	}
 }
 
-// noZeroValuesInt64Validator mirrors validation.NoZeroValues for int64.
+// noZeroValuesInt64Validator rejects int64 values equal to zero.
 type noZeroValuesInt64Validator struct{}
 
 func (noZeroValuesInt64Validator) Description(_ context.Context) string {
@@ -495,9 +491,9 @@ func (noZeroValuesInt64Validator) ValidateInt64(_ context.Context, req validator
 	}
 }
 
-// resetAccessToken: ported from SDKv2 — the official Reset endpoint in
-// ldapi v22 still omits Content-Type, so we issue a raw HTTP POST via
-// fallbackClient.
+// resetAccessTokenFramework issues a raw HTTP POST to the token Reset
+// endpoint. The ldapi v22 client omits Content-Type, so we fall back
+// to fallbackClient.
 func resetAccessTokenFramework(client *Client, accessTokenID string, expiry int) (ldapi.Token, error) {
 	var token ldapi.Token
 	endpoint := fmt.Sprintf("%s/api/v2/tokens/%s/reset", client.apiHost, accessTokenID)

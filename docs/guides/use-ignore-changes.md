@@ -43,19 +43,21 @@ resource "launchdarkly_feature_flag" "example" {
   description = "This demonstrates using ignore_changes"
 
   variation_type = "boolean"
-  variations {
-    value = "true"
-    name  = "True"
-  }
-  variations {
-    value = "false"
-    name  = "False"
-  }
+  variations = [
+    {
+      value = "true"
+      name  = "True"
+    },
+    {
+      value = "false"
+      name  = "False"
+    },
+  ]
 
-  defaults {
+  defaults = [{
     on_variation  = 1
     off_variation = 0
-  }
+  }]
 
   lifecycle {
     ignore_changes = [all]

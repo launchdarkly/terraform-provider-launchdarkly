@@ -1,16 +1,9 @@
 package launchdarkly
 
 // data_source_model_config_framework.go is the terraform-plugin-framework
-// implementation of launchdarkly_model_config, replacing the SDKv2 wiring
-// in data_source_launchdarkly_model_config.go. Per the migration plan
-// (.claude/MIGRATION_PLAN_NON_BREAKING.md §Phase 1), data sources move
-// first because they have no .tfstate round-trip concerns — they read
-// fresh every plan.
-//
-// Schema mirrors the SDKv2 surface in model_config_helper.go::
-// baseModelConfigSchema, with isDataSource=true semantics (all attrs
-// Computed, no validators). Block-style nesting isn't applicable here
-// (model_config is all scalars + string-tag set), so the schema is flat.
+// implementation of launchdarkly_model_config. All attributes are
+// Computed (no validators) per data-source semantics. The schema is
+// flat — model_config is all scalars + a string-tag set.
 
 import (
 	"context"
@@ -28,8 +21,8 @@ type ModelConfigDataSource struct {
 	client *Client
 }
 
-// ModelConfigDataSourceModel mirrors the SDKv2 schema attribute names
-// 1:1 via tfsdk tags so existing HCL references continue to resolve.
+// ModelConfigDataSourceModel holds the framework-typed values for a
+// model_config data source read.
 type ModelConfigDataSourceModel struct {
 	ID                 types.String  `tfsdk:"id"`
 	ProjectKey         types.String  `tfsdk:"project_key"`

@@ -263,7 +263,7 @@ func ffeTargetsValue(ctx context.Context, targets []ldapi.Target, isContextTarge
 	}
 	elements := make([]attr.Value, 0, len(targets))
 	for _, t := range targets {
-		// SDKv2 filters out user-context "phantom" targets from context_targets.
+		// Filter out user-context "phantom" targets from context_targets.
 		if isContextTarget && t.ContextKind != nil && *t.ContextKind == "user" {
 			continue
 		}

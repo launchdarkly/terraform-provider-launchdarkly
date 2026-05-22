@@ -142,9 +142,7 @@ func frameworkApprovalSettingsValue(ctx context.Context, settings *ldapi.Approva
 // frameworkApprovalSettingsResourceAttribute returns the resource-side
 // ListNestedAttribute schema for approval_settings. Shared between
 // project's nested-environments attribute, segment, FFE, and the
-// standalone environment resource. Descriptions copied verbatim from
-// SDKv2 approvalSchema (approvals_helper.go) to keep `make generate`
-// zero-diff.
+// standalone environment resource.
 func frameworkApprovalSettingsResourceAttribute() schema.ListNestedAttribute {
 	return schema.ListNestedAttribute{
 		Optional: true,
@@ -214,10 +212,9 @@ type approvalSettingsModel struct {
 	AutoApplyApprovedChanges types.Bool   `tfsdk:"auto_apply_approved_changes"`
 }
 
-// approvalPatchesFromModels mirrors approvalPatchFromSettings in
-// approvals_helper.go but operates on framework List values directly.
-// Returns the patch operations needed to apply the difference between
-// the planned and prior state of an approval_settings block.
+// approvalPatchesFromModels returns the patch operations needed to apply
+// the difference between the planned and prior state of an
+// approval_settings block.
 func approvalPatchesFromModels(ctx context.Context, planList, stateList types.List) ([]ldapi.PatchOperation, diag.Diagnostics) {
 	var diags diag.Diagnostics
 	planEmpty := planList.IsNull() || planList.IsUnknown() || len(planList.Elements()) == 0

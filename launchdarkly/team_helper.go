@@ -21,7 +21,6 @@ const (
 )
 
 // makeAddAndRemoveArrays returns the set difference (old\new, new\old).
-// Used by SDKv2 resources that still reference team schema helpers.
 func makeAddAndRemoveArrays(old, updated []string) (remove, add []string) {
 	intersection := make(map[string]bool, len(old))
 	oldSet := make(map[string]bool, len(old))

@@ -185,7 +185,7 @@ func (r *FlagTemplatesResource) Update(ctx context.Context, req resource.UpdateR
 
 func (r *FlagTemplatesResource) Delete(_ context.Context, _ resource.DeleteRequest, _ *resource.DeleteResponse) {
 	// Flag templates always exist for a project; destroying just
-	// removes the entry from state. SDKv2 behaviour preserved.
+	// removes the entry from state.
 }
 
 func (r *FlagTemplatesResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {

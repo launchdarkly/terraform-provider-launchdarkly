@@ -9,11 +9,8 @@ import (
 )
 
 // getTeamMemberByEmail performs a paginated GetMembers search filtered
-// by email and returns the first exact match. Lives here (not in the
-// SDKv2 data_source_launchdarkly_team_member.go that owned it pre-
-// migration) because both the framework team_member + team_members
-// data sources consume it after the data source was migrated to
-// terraform-plugin-framework in Phase 1.3.2.
+// by email and returns the first exact match. Shared by the team_member
+// and team_members data sources.
 func getTeamMemberByEmail(client *Client, memberEmail string) (*ldapi.Member, error) {
 	emailFilter := fmt.Sprintf("email:%s", memberEmail)
 	expand := "roleAttributes"

@@ -582,10 +582,8 @@ func ffeResourceRulesValue(ctx context.Context, rules []ldapi.Rule, diags *diag.
 		if r.Variation != nil {
 			variation = types.Int64Value(int64(*r.Variation))
 		}
-		// SDKv2 stored the empty string for unset rule descriptions
-		// (TypeString zero value); framework defaults to null. The
-		// schema declares Optional+Computed+Default("") so the plan and
-		// the post-apply state stay aligned even when the user omits
+		// Schema declares Optional+Computed+Default("") so plan and
+		// post-apply state stay aligned even when the user omits
 		// description.
 		description := types.StringValue("")
 		if r.Description != nil {
@@ -610,11 +608,11 @@ func ffeResourceRulesValue(ctx context.Context, rules []ldapi.Rule, diags *diag.
 	return list
 }
 
-// ffeResourceFallthroughValue mirrors ffeFallthroughValue with the
-// SDKv2 default semantics: variation defaults to 0 and context_kind
+// ffeResourceFallthroughValue emits the resource-side fallthrough list
+// with defaults applied: variation defaults to 0 and context_kind
 // defaults to "user" so plan-vs-state stays consistent when the user
-// omits these attrs (framework Default+Computed schema flags fill
-// plan, Read must emit matching values).
+// omits these attrs (framework Default+Computed schema flags fill the
+// plan; Read must emit matching values).
 func ffeResourceFallthroughValue(ctx context.Context, fallthroughRep *ldapi.VariationOrRolloutRep, diags *diag.Diagnostics) types.List {
 	objectType := types.ObjectType{AttrTypes: ffeFallthroughAttrTypes}
 	if fallthroughRep == nil {

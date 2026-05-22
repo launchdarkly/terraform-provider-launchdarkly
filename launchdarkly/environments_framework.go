@@ -278,8 +278,8 @@ func environmentObjectFromAPI(ctx context.Context, e ldapi.Environment, prior *e
 	)
 	if prior == nil {
 		// No prior state for this env (Import context or new env added
-		// outside config): emit using SDKv2-style isZero detection so the
-		// shape matches what the user's last Apply produced.
+		// outside config): emit using isZero detection so the shape
+		// matches what the user's last Apply produced.
 		tagsSet, d := setFromStringSliceOrNull(ctx, e.Tags)
 		diags.Append(d...)
 		tags = tagsSet

@@ -2,9 +2,7 @@ package launchdarkly
 
 // data_source_relay_proxy_configuration_framework.go is the
 // terraform-plugin-framework implementation of
-// launchdarkly_relay_proxy_configuration. The SDKv2 file lives at
-// data_source_launchdarkly_relay_proxy_configuration.go (removed in
-// this commit).
+// launchdarkly_relay_proxy_configuration.
 
 import (
 	"context"

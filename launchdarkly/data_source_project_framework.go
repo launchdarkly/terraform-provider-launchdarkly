@@ -136,9 +136,8 @@ func (d *ProjectDataSource) Read(ctx context.Context, req datasource.ReadRequest
 
 	viewSettings, viewSettingsErr := getProjectViewSettings(ctx, d.client, projectKey)
 	if viewSettingsErr != nil {
-		// LD older accounts may not return view settings; surface as
-		// false rather than failing the data source. Match SDKv2 which
-		// logged a [WARN] in this branch.
+		// Older LD accounts may not return view settings; surface as
+		// false (with a warning) rather than failing the data source.
 		resp.Diagnostics.AddWarning(
 			"Failed to read project view settings",
 			fmt.Sprintf("Could not read view settings for project %q: %s. Defaulting require_view_association_for_new_* to false.", projectKey, viewSettingsErr.Error()),

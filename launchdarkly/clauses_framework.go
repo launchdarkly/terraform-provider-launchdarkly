@@ -102,8 +102,8 @@ func frameworkClausesResourceAttribute() schema.ListNestedAttribute {
 }
 
 // frameworkClausesFromList converts a framework ListValue of clauses
-// into []ldapi.Clause. Mirrors clauseFromResourceData. Values are
-// coerced to their typed forms based on value_type.
+// into []ldapi.Clause. Values are coerced to their typed forms based
+// on value_type.
 func frameworkClausesFromList(ctx context.Context, list types.List) ([]ldapi.Clause, diag.Diagnostics) {
 	var diags diag.Diagnostics
 	if list.IsNull() || list.IsUnknown() {
@@ -158,8 +158,8 @@ func frameworkClausesFromList(ctx context.Context, list types.List) ([]ldapi.Cla
 	return out, diags
 }
 
-// clauseValueFromString is the framework analogue of
-// clauseValueFromResourceData, decoupled from *schema.ResourceData.
+// clauseValueFromString coerces a string representation of a clause
+// value into the typed form expected by the LD API based on value_type.
 func clauseValueFromString(s, valueType string) (interface{}, error) {
 	switch valueType {
 	case STRING_CLAUSE_VALUE:

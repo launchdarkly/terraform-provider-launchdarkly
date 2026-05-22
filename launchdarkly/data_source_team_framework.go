@@ -132,8 +132,7 @@ func (d *TeamDataSource) Read(ctx context.Context, req datasource.ReadRequest, r
 	resp.Diagnostics.Append(diags...)
 	data.ProjectKeys = projectSet
 
-	// Paginated; the SDKv2 source uses getAllTeamCustomRoleKeys
-	// (defined in team_helper.go).
+	// Paginated; see getAllTeamCustomRoleKeys in team_helper.go.
 	customRoleKeys, err := getAllTeamCustomRoleKeys(d.client, teamKey)
 	if err != nil {
 		resp.Diagnostics.AddError("Failed to list team custom roles", err.Error())

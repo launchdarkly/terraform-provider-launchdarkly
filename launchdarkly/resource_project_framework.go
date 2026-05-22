@@ -399,8 +399,8 @@ func (r *ProjectResource) ImportState(ctx context.Context, req resource.ImportSt
 }
 
 // applyProjectUpdates issues all the patch + nested-environment +
-// view-association calls SDKv2 made after PostProject. Used by both
-// Create (state empty) and Update paths.
+// view-association calls that follow PostProject. Used by both Create
+// (state empty) and Update paths.
 func (r *ProjectResource) applyProjectUpdates(ctx context.Context, projectKey string, plan, state ProjectResourceModel, isCreate bool) diag.Diagnostics {
 	var diags diag.Diagnostics
 

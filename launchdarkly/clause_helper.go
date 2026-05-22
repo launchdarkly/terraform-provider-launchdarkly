@@ -1,9 +1,7 @@
 package launchdarkly
 
-// clause_helper.go retains the value-coercion + type-inference helpers
-// that the framework clauses code in clauses_framework.go uses. The
-// SDKv2 schema + ResourceData converters were deleted with the SDKv2
-// segment / feature_flag / feature_flag_environment resources.
+// clause_helper.go holds the value-coercion + type-inference helpers
+// used by clauses_framework.go.
 
 import (
 	"fmt"

@@ -1,10 +1,8 @@
 package launchdarkly
 
-// feature_flag_helpers.go holds the framework-compatible helpers that
-// survive after the SDKv2 feature_flag / feature_flag_environment
-// resources are deleted. The SDKv2 schema/CRUD wrappers and CustomizeDiff
-// ports are gone; their framework analogues live in
-// resource_feature_flag_framework.go and resource_feature_flag_environment_framework.go.
+// feature_flag_helpers.go holds shared helpers used by
+// resource_feature_flag_framework.go and
+// resource_feature_flag_environment_framework.go.
 
 import (
 	"bytes"
@@ -20,7 +18,7 @@ import (
 	ldapi "github.com/launchdarkly/api-client-go/v22"
 )
 
-// Variation type identifiers (preserved verbatim from the SDKv2 source).
+// Variation type identifiers.
 const (
 	BOOL_VARIATION   = "boolean"
 	STRING_VARIATION = "string"
@@ -146,8 +144,7 @@ func variationValueToString(value *interface{}, variationType string) (string, e
 }
 
 // variationsToVariationType infers the variation type from the first
-// element of a variations slice. Matches the SDKv2 helper of the same
-// name.
+// element of a variations slice.
 func variationsToVariationType(variations []ldapi.Variation) (string, error) {
 	if len(variations) == 0 {
 		return "", fmt.Errorf("variations slice is empty")
@@ -171,9 +168,7 @@ func variationsToVariationType(variations []ldapi.Variation) (string, error) {
 }
 
 // normalizeJSONString re-marshals a json string with key order
-// preserved by the encoder default. We previously used the SDKv2
-// `helper/structure.NormalizeJsonString` helper; replicated here so the
-// framework doesn't import the SDKv2 package surface unnecessarily.
+// preserved by the encoder default.
 func normalizeJSONString(input string) (string, error) {
 	var v interface{}
 	if err := json.Unmarshal([]byte(input), &v); err != nil {

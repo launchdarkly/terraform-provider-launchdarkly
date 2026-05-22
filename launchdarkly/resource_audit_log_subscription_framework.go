@@ -113,8 +113,8 @@ func (r *AuditLogSubscriptionResource) Create(ctx context.Context, req resource.
 
 	apiConfig, err := convertSubscriptionConfigToAPI(integrationKey, rawConfig)
 	if err != nil {
-		// One-line form matches SDKv2 diag.Errorf — ExpectError regex
-		// can't span the framework's summary→detail wrap.
+		// One-line form so ExpectError regex matches against summary
+		// only — the detail field is rendered separately by the CLI.
 		resp.Diagnostics.AddError(fmt.Sprintf("failed to create %s integration with name %s: %s", integrationKey, name, err.Error()), "")
 		return
 	}
@@ -304,11 +304,10 @@ func (r *AuditLogSubscriptionResource) readIntoModel(ctx context.Context, data *
 	data.Tags = tagsSet
 }
 
-// convertSubscriptionConfigToAPI mirrors configFromResourceData: input
-// keys are snake_case (the user-facing form); output keys follow each
-// integration's manifest casing (camelCase for most, kebab-case for the
-// integrations listed in KEBAB_CASE_INTEGRATIONS, with the datadog
-// hostUrl->hostURL override preserved).
+// convertSubscriptionConfigToAPI translates user-facing snake_case keys
+// into each integration's manifest casing (camelCase for most,
+// kebab-case for the integrations listed in KEBAB_CASE_INTEGRATIONS,
+// with the datadog hostUrl->hostURL override preserved).
 func convertSubscriptionConfigToAPI(integrationKey string, userConfig map[string]string) (map[string]interface{}, error) {
 	configMap := getSubscriptionConfigurationMap()
 	configFormat, ok := configMap[integrationKey]
@@ -357,11 +356,11 @@ func convertSubscriptionConfigToAPI(integrationKey string, userConfig map[string
 	return converted, nil
 }
 
-// convertSubscriptionConfigFromAPI mirrors configToResourceData. The
-// priorState argument carries the previously-set snake_case map; secret
-// fields are passed through unchanged because the API obfuscates them on
-// read, and absent (non-user-set) optional fields are dropped to avoid
-// surfacing API defaults as drift.
+// convertSubscriptionConfigFromAPI normalizes API output back into the
+// user-facing snake_case map. priorState carries the previously-set
+// values; secret fields are passed through unchanged because the API
+// obfuscates them on read, and absent (non-user-set) optional fields
+// are dropped to avoid surfacing API defaults as drift.
 func convertSubscriptionConfigFromAPI(integrationKey string, apiConfig map[string]interface{}, priorState map[string]string) (map[string]string, error) {
 	configMap := getSubscriptionConfigurationMap()
 	configFormat, ok := configMap[integrationKey]

@@ -217,10 +217,10 @@ func (r *MetricResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 	}
 }
 
-// ModifyPlan ports the SDKv2 customizeMetricDiff. Validates per-kind
-// required/forbidden fields, defaults success_criteria for custom
-// metrics, gates percentile_value on analysis_type=percentile, and
-// marks `version` as unknown when any other attribute changes.
+// ModifyPlan validates per-kind required/forbidden fields, defaults
+// success_criteria for custom metrics, gates percentile_value on
+// analysis_type=percentile, and marks `version` as unknown when any
+// other attribute changes.
 func (r *MetricResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
 	if req.Plan.Raw.IsNull() {
 		return
@@ -326,7 +326,7 @@ func (r *MetricResource) ModifyPlan(ctx context.Context, req resource.ModifyPlan
 	}
 
 	if !includeUnitsSet {
-		// Default: false for percentile, true otherwise (matches SDKv2).
+		// Default: false for percentile, true otherwise.
 		if analysisType == "percentile" {
 			plan.IncludeUnitsWithoutEvents = types.BoolValue(false)
 		} else {
@@ -334,8 +334,8 @@ func (r *MetricResource) ModifyPlan(ctx context.Context, req resource.ModifyPlan
 		}
 	}
 
-	// Mirror SDKv2's diff.SetNewComputed(VERSION) — only mark version
-	// Unknown when something *other than* version actually changed.
+	// Only mark version Unknown when something *other than* version
+	// actually changed.
 	if !req.State.Raw.IsNull() {
 		var state MetricResourceModel
 		resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
@@ -478,7 +478,7 @@ func (r *MetricResource) Create(ctx context.Context, req resource.CreateRequest,
 		return
 	}
 
-	// Maintainer can only be set after create (SDKv2 parity).
+	// Maintainer can only be set after create.
 	if !plan.MaintainerID.IsNull() && !plan.MaintainerID.IsUnknown() && plan.MaintainerID.ValueString() != "" {
 		if err := r.applyMetricUpdate(ctx, &plan, false); err != nil {
 			addLdapiError(&resp.Diagnostics, "Error setting maintainer on new metric", err)
@@ -561,7 +561,7 @@ func (r *MetricResource) ImportState(ctx context.Context, req resource.ImportSta
 	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("id"), req.ID)...)
 }
 
-// applyMetricUpdate issues the PATCH that the SDKv2 update did. Shared
+// applyMetricUpdate issues a PATCH against an existing metric. Shared
 // between Update and the post-create maintainer set.
 func (r *MetricResource) applyMetricUpdate(ctx context.Context, plan *MetricResourceModel, includeRandomizationUnits bool) error {
 	projectKey := plan.ProjectKey.ValueString()

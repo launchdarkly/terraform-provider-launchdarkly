@@ -1,12 +1,9 @@
 package launchdarkly
 
-// framework_validators.go ports the SDKv2 validators from
-// validation_helper.go to terraform-plugin-framework's validator.String
-// interface. Error messages match the SDKv2 wording verbatim so that test
-// assertions against validation failures don't need to be updated as
-// resources migrate. New validators added here should be exercised by
-// framework_validators_test.go with at least one positive and one negative
-// case.
+// framework_validators.go houses shared validator.String implementations
+// (key, id, tag, op, length). New validators added here should be
+// exercised by framework_validators_test.go with at least one positive
+// and one negative case.
 
 import (
 	"context"
@@ -16,8 +13,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 )
 
-// keyPattern is the canonical regex for LD resource keys. Matches the
-// SDKv2 validateKey() pattern character-for-character.
+// keyPattern is the canonical regex for LD resource keys.
 var keyPattern = regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9_.-]*$`)
 
 // idPattern matches a 24-character hex ID (LD's UUID-style identifier).
@@ -27,9 +23,7 @@ var idPattern = regexp.MustCompile(`^[a-fA-F0-9]{24}$`)
 // enforced separately in the validator body.
 var tagPattern = regexp.MustCompile(`^[a-zA-Z0-9_.-]*$`)
 
-// operators enumerates every clause operator LD accepts. Order does not
-// matter for validation but is preserved here for grep-ability against
-// the SDKv2 source.
+// operators enumerates every clause operator LD accepts.
 var operators = []string{
 	"in",
 	"endsWith",
@@ -48,7 +42,7 @@ var operators = []string{
 	"semVerGreaterThan",
 }
 
-// keyValidator returns a String validator matching SDKv2 validateKey().
+// keyValidator returns a String validator enforcing the LD key pattern.
 func keyValidator() validator.String {
 	return regexValidator{
 		pattern: keyPattern,
@@ -57,7 +51,6 @@ func keyValidator() validator.String {
 }
 
 // keyAndLengthValidator combines the key regex with a min/max length check.
-// Mirrors SDKv2 validateKeyAndLength.
 func keyAndLengthValidator(minLength, maxLength int) validator.String {
 	return compositeStringValidator{
 		validators: []validator.String{
@@ -67,7 +60,7 @@ func keyAndLengthValidator(minLength, maxLength int) validator.String {
 	}
 }
 
-// idValidator matches SDKv2 validateID() — 24 hex chars exactly.
+// idValidator enforces a 24-character hex LD ID.
 func idValidator() validator.String {
 	return regexValidator{
 		pattern: idPattern,
@@ -76,7 +69,7 @@ func idValidator() validator.String {
 }
 
 // tagValidator enforces tag-element rules: 1-64 chars, alphanumeric and
-// .-_ only. Mirrors SDKv2 validateTagsNoDiag (applied per element).
+// .-_ only. Applied per element.
 func tagValidator() validator.String {
 	return compositeStringValidator{
 		validators: []validator.String{
@@ -94,7 +87,7 @@ func opValidator() validator.String {
 	return oneOfValidator{allowed: operators}
 }
 
-// regexValidator is the framework analogue of validation.StringMatch.
+// regexValidator validates a string against a regex pattern.
 type regexValidator struct {
 	pattern *regexp.Regexp
 	desc    string
@@ -117,8 +110,7 @@ func (v regexValidator) ValidateString(_ context.Context, req validator.StringRe
 }
 
 // lengthValidator enforces a closed [minLength, maxLength] interval on
-// the number of bytes in a string. It matches the SDKv2 wording for
-// out-of-range diagnostics.
+// the number of bytes in a string.
 type lengthValidator struct {
 	minLength int
 	maxLength int
