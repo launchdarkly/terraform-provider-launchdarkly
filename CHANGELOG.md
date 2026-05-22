@@ -2,6 +2,21 @@
 
 All notable changes to the LaunchDarkly Terraform Provider will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org).
 
+## [3.0.0-beta.1](https://github.com/launchdarkly/terraform-provider-launchdarkly/compare/v3.0.0-beta.0...v3.0.0-beta.1) (2026-05-22)
+
+First preview release of the v3.0 line.
+
+### ⚠ BREAKING CHANGES
+
+* The provider has been fully migrated to the [Terraform Plugin Framework](https://developer.hashicorp.com/terraform/plugin/framework). All schema previously expressed as configuration blocks (`variations`, `rules`, `targets`, `context_targets`, `prerequisites`, `fallthrough`, `client_side_availability`, `custom_properties`, `defaults`, `environments`, `policy`, `policy_statements`, `inline_roles`, `statements`, `role_attributes`, `included_contexts`, `excluded_contexts`, `urls`, `instructions`, `boolean_defaults`, `messages`, `segments`, `linked_segments`, `approval_settings`) is now expressed as nested attributes. Existing HCL must be updated from block syntax to attribute syntax before upgrading.
+
+### Highlights
+
+* Full migration from the legacy Terraform SDKv2 to the Terraform Plugin Framework across all resources and data sources.
+* All block-based schema replaced with nested attribute syntax, enabling clearer plan output, stronger validation, and better editor support.
+* Plan-time validation for prerequisite flag destroy, surfacing invalid removals before apply rather than at the API.
+* A handful of long-standing issues addressed along the way.
+
 ## [2.29.0](https://github.com/launchdarkly/terraform-provider-launchdarkly/compare/v2.28.0...v2.29.0) (2026-05-08)
 
 
