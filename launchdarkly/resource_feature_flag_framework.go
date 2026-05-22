@@ -385,6 +385,29 @@ func (r *FeatureFlagResource) Create(ctx context.Context, req resource.CreateReq
 		return
 	}
 
+	// Pre-flight check: if a flag with this key already exists on the
+	// server in an archived state, refuse to create. This avoids a
+	// confusing 409 from POST /flags and gives the user an actionable
+	// next step. Typically happens when archive_flags_on_destroy=true
+	// archived the flag in a previous run.
+	var existing *ldapi.FeatureFlag
+	var existingRes *http.Response
+	if err := r.client.withConcurrency(ctx, func() error {
+		f, res, e := r.client.ld.FeatureFlagsApi.GetFeatureFlag(r.client.ctx, projectKey, key).Execute()
+		existing, existingRes = f, res
+		return e
+	}); err != nil && !isStatusNotFound(existingRes) {
+		resp.Diagnostics.AddError(fmt.Sprintf("failed to check for existing flag %q in project %q: %s", key, projectKey, handleLdapiErr(err).Error()), "")
+		return
+	}
+	if existing != nil && existing.Archived {
+		resp.Diagnostics.AddError(
+			fmt.Sprintf("flag %q already exists in project %q in an archived state", key, projectKey),
+			fmt.Sprintf("LaunchDarkly retains archived flags and their keys. To bring this flag back under Terraform management, import it first:\n\n  terraform import <resource_address> %s/%s\n\nThen unarchive it by setting `archived = false` (or remove the attribute) and re-apply. This typically happens when `archive_flags_on_destroy = true` archived the flag in a previous run.", projectKey, key),
+		)
+		return
+	}
+
 	desc := plan.Description.ValueString()
 	tags, d := stringSliceFromSet(ctx, plan.Tags)
 	resp.Diagnostics.Append(d...)
@@ -539,12 +562,27 @@ func (r *FeatureFlagResource) Delete(ctx context.Context, req resource.DeleteReq
 	if resp.Diagnostics.HasError() {
 		return
 	}
+	projectKey := data.ProjectKey.ValueString()
+	key := data.Key.ValueString()
+
+	if r.client.archiveFlagsOnDestroy {
+		patch := []ldapi.PatchOperation{patchReplace("/archived", true)}
+		err := r.client.withConcurrency(ctx, func() error {
+			_, _, e := r.client.ld.FeatureFlagsApi.PatchFeatureFlag(r.client.ctx, projectKey, key).PatchWithComment(ldapi.PatchWithComment{Patch: patch}).Execute()
+			return e
+		})
+		if err != nil {
+			resp.Diagnostics.AddError(fmt.Sprintf("failed to archive flag %q in project %q: %s", key, projectKey, handleLdapiErr(err).Error()), "")
+		}
+		return
+	}
+
 	err := r.client.withConcurrency(ctx, func() error {
-		_, e := r.client.ld.FeatureFlagsApi.DeleteFeatureFlag(r.client.ctx, data.ProjectKey.ValueString(), data.Key.ValueString()).Execute()
+		_, e := r.client.ld.FeatureFlagsApi.DeleteFeatureFlag(r.client.ctx, projectKey, key).Execute()
 		return e
 	})
 	if err != nil {
-		resp.Diagnostics.AddError(fmt.Sprintf("failed to delete flag %q from project %q: %s", data.Key.ValueString(), data.ProjectKey.ValueString(), handleLdapiErr(err).Error()), "")
+		resp.Diagnostics.AddError(fmt.Sprintf("failed to delete flag %q from project %q: %s", key, projectKey, handleLdapiErr(err).Error()), "")
 	}
 }
 

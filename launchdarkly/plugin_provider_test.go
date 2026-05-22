@@ -21,16 +21,18 @@ func TestPluginProviderParsesApiHostWithoutScheme(t *testing.T) {
 		Config: tfsdk.Config{
 			Raw: tftypes.NewValue(tftypes.Object{
 				AttributeTypes: map[string]tftypes.Type{
-					API_HOST:     tftypes.String,
-					ACCESS_TOKEN: tftypes.String,
-					OAUTH_TOKEN:  tftypes.String,
-					HTTP_TIMEOUT: tftypes.Number,
+					API_HOST:                 tftypes.String,
+					ACCESS_TOKEN:             tftypes.String,
+					OAUTH_TOKEN:              tftypes.String,
+					HTTP_TIMEOUT:             tftypes.Number,
+					ARCHIVE_FLAGS_ON_DESTROY: tftypes.Bool,
 				},
 			}, map[string]tftypes.Value{
-				API_HOST:     tftypes.NewValue(tftypes.String, "https://test.com"),
-				ACCESS_TOKEN: tftypes.NewValue(tftypes.String, "test-token"),
-				HTTP_TIMEOUT: tftypes.NewValue(tftypes.Number, 0),
-				OAUTH_TOKEN:  tftypes.NewValue(tftypes.String, ""),
+				API_HOST:                 tftypes.NewValue(tftypes.String, "https://test.com"),
+				ACCESS_TOKEN:             tftypes.NewValue(tftypes.String, "test-token"),
+				HTTP_TIMEOUT:             tftypes.NewValue(tftypes.Number, 0),
+				OAUTH_TOKEN:              tftypes.NewValue(tftypes.String, ""),
+				ARCHIVE_FLAGS_ON_DESTROY: tftypes.NewValue(tftypes.Bool, nil),
 			}),
 			Schema: schemaResponse.Schema,
 		},
