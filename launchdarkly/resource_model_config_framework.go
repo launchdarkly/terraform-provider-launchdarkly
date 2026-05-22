@@ -1,13 +1,9 @@
 package launchdarkly
 
 // resource_model_config_framework.go is the terraform-plugin-framework
-// implementation of launchdarkly_model_config. The SDKv2 file at
-// resource_launchdarkly_model_config.go is removed in the same commit.
-//
-// Schema mirrors the SDKv2 surface in model_config_helper.go::
-// baseModelConfigSchema(isDataSource=false). All attributes are flat
-// (no nested blocks). API has no update operation; every attribute is
-// ForceNew, surfaced here via stringplanmodifier.RequiresReplace().
+// implementation of launchdarkly_model_config. All attributes are flat
+// (no nested blocks). The API has no update operation; every attribute
+// is ForceNew, surfaced here via stringplanmodifier.RequiresReplace().
 
 import (
 	"context"

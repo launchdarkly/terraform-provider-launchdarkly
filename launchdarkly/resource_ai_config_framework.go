@@ -340,8 +340,8 @@ func (r *AIConfigResource) Update(ctx context.Context, req resource.UpdateReques
 }
 
 // Delete retries on a transient 400 "Could not delete AI config" — the
-// LD API needs all variations dereferenced before the config itself can
-// go. SDKv2 parity.
+// LD API needs all variations dereferenced before the config itself
+// can go.
 func (r *AIConfigResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
 	var data AIConfigResourceModel
 	resp.Diagnostics.Append(req.State.Get(ctx, &data)...)

@@ -301,8 +301,7 @@ func (r *FeatureFlagResource) ModifyPlan(ctx context.Context, req resource.Modif
 	}
 	// Destroy plan: plan is null, state is not. Pre-flight a dependent-flag
 	// check so users see the conflict at plan time instead of apply time
-	// (issue #372). The framework invokes ModifyPlan on destroy plans;
-	// SDKv2 did not, which is why this validator only exists post-Phase 5.
+	// (issue #372).
 	if req.Plan.Raw.IsNull() && !req.State.Raw.IsNull() {
 		var state FeatureFlagResourceModel
 		resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
@@ -383,6 +382,29 @@ func (r *FeatureFlagResource) Create(ctx context.Context, req resource.CreateReq
 			return
 		}
 		resp.Diagnostics.AddError(fmt.Sprintf("cannot find project with key %q", projectKey), "")
+		return
+	}
+
+	// Pre-flight check: if a flag with this key already exists on the
+	// server in an archived state, refuse to create. This avoids a
+	// confusing 409 from POST /flags and gives the user an actionable
+	// next step. Typically happens when archive_flags_on_destroy=true
+	// archived the flag in a previous run.
+	var existing *ldapi.FeatureFlag
+	var existingRes *http.Response
+	if err := r.client.withConcurrency(ctx, func() error {
+		f, res, e := r.client.ld.FeatureFlagsApi.GetFeatureFlag(r.client.ctx, projectKey, key).Execute()
+		existing, existingRes = f, res
+		return e
+	}); err != nil && !isStatusNotFound(existingRes) {
+		resp.Diagnostics.AddError(fmt.Sprintf("failed to check for existing flag %q in project %q: %s", key, projectKey, handleLdapiErr(err).Error()), "")
+		return
+	}
+	if existing != nil && existing.Archived {
+		resp.Diagnostics.AddError(
+			fmt.Sprintf("flag %q already exists in project %q in an archived state", key, projectKey),
+			fmt.Sprintf("LaunchDarkly retains archived flags and their keys. To bring this flag back under Terraform management, import it first:\n\n  terraform import <resource_address> %s/%s\n\nThen unarchive it by setting `archived = false` (or remove the attribute) and re-apply. This typically happens when `archive_flags_on_destroy = true` archived the flag in a previous run.", projectKey, key),
+		)
 		return
 	}
 
@@ -540,12 +562,27 @@ func (r *FeatureFlagResource) Delete(ctx context.Context, req resource.DeleteReq
 	if resp.Diagnostics.HasError() {
 		return
 	}
+	projectKey := data.ProjectKey.ValueString()
+	key := data.Key.ValueString()
+
+	if r.client.archiveFlagsOnDestroy {
+		patch := []ldapi.PatchOperation{patchReplace("/archived", true)}
+		err := r.client.withConcurrency(ctx, func() error {
+			_, _, e := r.client.ld.FeatureFlagsApi.PatchFeatureFlag(r.client.ctx, projectKey, key).PatchWithComment(ldapi.PatchWithComment{Patch: patch}).Execute()
+			return e
+		})
+		if err != nil {
+			resp.Diagnostics.AddError(fmt.Sprintf("failed to archive flag %q in project %q: %s", key, projectKey, handleLdapiErr(err).Error()), "")
+		}
+		return
+	}
+
 	err := r.client.withConcurrency(ctx, func() error {
-		_, e := r.client.ld.FeatureFlagsApi.DeleteFeatureFlag(r.client.ctx, data.ProjectKey.ValueString(), data.Key.ValueString()).Execute()
+		_, e := r.client.ld.FeatureFlagsApi.DeleteFeatureFlag(r.client.ctx, projectKey, key).Execute()
 		return e
 	})
 	if err != nil {
-		resp.Diagnostics.AddError(fmt.Sprintf("failed to delete flag %q from project %q: %s", data.Key.ValueString(), data.ProjectKey.ValueString(), handleLdapiErr(err).Error()), "")
+		resp.Diagnostics.AddError(fmt.Sprintf("failed to delete flag %q from project %q: %s", key, projectKey, handleLdapiErr(err).Error()), "")
 	}
 }
 
@@ -760,14 +797,12 @@ func (r *FeatureFlagResource) readIntoModel(ctx context.Context, data *FeatureFl
 	}
 	data.IncludeInSnippet = types.BoolValue(usingEnvID)
 
-	// Maintainer fields — Optional+Computed. SDKv2 only wrote these to
-	// state when the user declared either maintainer_id or
-	// maintainer_team_key (its readFlag helper gated both writes on
-	// GetOk of either). Mirror that: if either attribute is managed,
-	// emit both API values (using "" for nil pointers so
-	// TestCheckResourceAttr(..., "") asserts pass); if neither is
-	// managed, emit null on both so TestCheckNoResourceAttr asserts
-	// pass.
+	// Maintainer fields — Optional+Computed. Only write these to state
+	// when the user declares either maintainer_id or maintainer_team_key:
+	// if either attribute is managed, emit both API values (using "" for
+	// nil pointers so TestCheckResourceAttr(..., "") asserts pass); if
+	// neither is managed, emit null on both so TestCheckNoResourceAttr
+	// asserts pass.
 	maintainerManaged := priorMaintainerSet(data.MaintainerID) || priorMaintainerSet(data.MaintainerTeamKey)
 	if maintainerManaged {
 		data.MaintainerID = stringValueOrEmpty(flag.MaintainerId)
@@ -917,7 +952,8 @@ func variationFromTypedValue(name, description, value, variationType string) (ld
 	return v, nil
 }
 
-// variationPatchesFromLists mirrors variationPatchesFromResourceData.
+// variationPatchesFromLists computes patch operations for the diff
+// between two variations lists.
 func variationPatchesFromLists(ctx context.Context, oldList, newList types.List, variationType string) ([]ldapi.PatchOperation, diag.Diagnostics) {
 	var diags diag.Diagnostics
 	var patches []ldapi.PatchOperation
@@ -955,11 +991,10 @@ func variationPatchesFromLists(ctx context.Context, oldList, newList types.List,
 //
 // For JSON-typed variations, the LD API normalises the stored value
 // (e.g. collapses whitespace) which would otherwise diverge from the
-// HCL-supplied string. Mirror SDKv2's suppressEquivalentJsonDiffs:
-// when the prior value at the same index is semantically equal JSON,
-// re-emit the prior string so plan/state stay aligned. Variation
-// name/description fall back to "" (SDKv2 TypeString zero value) so
-// the schema-level Default+Computed semantics carry through Read.
+// HCL-supplied string. When the prior value at the same index is
+// semantically equal JSON, re-emit the prior string so plan/state stay
+// aligned. Variation name/description fall back to "" so the
+// schema-level Default+Computed semantics carry through Read.
 func variationsListFromAPI(ctx context.Context, variations []ldapi.Variation, variationType string, prior types.List) (types.List, diag.Diagnostics) {
 	objType := types.ObjectType{AttrTypes: featureFlagVariationAttrTypes}
 	var diags diag.Diagnostics
@@ -1045,7 +1080,7 @@ func jsonSemanticallyEqual(a, b string) bool {
 
 // customPropertiesFromSet converts the framework Set<custom_property>
 // into the API's map[string]ldapi.CustomProperty. Values are sorted
-// before sending to the API (mirroring customPropertyFromResourceData).
+// before sending to the API for stable diffs.
 func customPropertiesFromSet(ctx context.Context, set types.Set) (map[string]ldapi.CustomProperty, diag.Diagnostics) {
 	var diags diag.Diagnostics
 	out := map[string]ldapi.CustomProperty{}
@@ -1076,8 +1111,8 @@ func customPropertiesFromSet(ctx context.Context, set types.Set) (map[string]lda
 }
 
 // customPropertiesSetFromAPI converts the LD-API map[string]CustomProperty
-// into the framework Set<custom_property>, sorting the values per
-// custom_properties_helper parity.
+// into the framework Set<custom_property>, sorting values for stable
+// diffs.
 func customPropertiesSetFromAPI(ctx context.Context, props map[string]ldapi.CustomProperty) (types.Set, diag.Diagnostics) {
 	objType := types.ObjectType{AttrTypes: featureFlagCustomPropertyAttrTypes}
 	var diags diag.Diagnostics
@@ -1105,8 +1140,7 @@ func customPropertiesSetFromAPI(ctx context.Context, props map[string]ldapi.Cust
 }
 
 // defaultsFromList converts the framework List<defaults> into
-// *ldapi.Defaults. Returns nil when the list is null/empty, matching
-// SDKv2 defaultVariationsFromResourceData behaviour.
+// *ldapi.Defaults. Returns nil when the list is null/empty.
 func defaultsFromList(ctx context.Context, list types.List) (*ldapi.Defaults, diag.Diagnostics) {
 	var diags diag.Diagnostics
 	if list.IsNull() || list.IsUnknown() || len(list.Elements()) == 0 {
@@ -1163,14 +1197,13 @@ func defaultsListFromAPI(ctx context.Context, defaults *ldapi.Defaults, variatio
 // concrete value for a maintainer attribute (i.e. the user managed it).
 // Unknown / Null / empty string mean the user never declared it; we
 // suppress those from state so unmanaged maintainer_id / team_key stay
-// absent (SDKv2 parity — see readFlagPartsToResourceData on main).
+// absent.
 func priorMaintainerSet(v types.String) bool {
 	return !v.IsNull() && !v.IsUnknown() && v.ValueString() != ""
 }
 
 // stringValueOrEmpty returns the API value as types.String, emitting
-// "" rather than null for nil pointers. SDKv2's TypeString zero value
-// is "", so we mirror that here to satisfy
+// "" rather than null for nil pointers. This satisfies
 // TestCheckResourceAttr(..., "") in tests where the API returns nil
 // for an attribute the user is otherwise managing (e.g. maintainer_id
 // when only maintainer_team_key was set).

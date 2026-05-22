@@ -16,8 +16,9 @@ const (
 
 // Provider keys
 const (
-	ACCESS_TOKEN = "access_token"
-	OAUTH_TOKEN  = "oauth_token"
-	API_HOST     = "api_host"
-	HTTP_TIMEOUT = "http_timeout"
+	ACCESS_TOKEN             = "access_token"
+	OAUTH_TOKEN              = "oauth_token"
+	API_HOST                 = "api_host"
+	HTTP_TIMEOUT             = "http_timeout"
+	ARCHIVE_FLAGS_ON_DESTROY = "archive_flags_on_destroy"
 )

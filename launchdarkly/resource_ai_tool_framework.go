@@ -261,9 +261,8 @@ func (r *AIToolResource) Update(ctx context.Context, req resource.UpdateRequest,
 		}
 		patch.CustomParameters = m
 	}
-	// Use ValueString() so that removing a maintainer from config sends an
-	// empty string to the API, clearing it server-side — matching SDKv2 behaviour
-	// which uses d.Get() instead of d.GetOk().
+	// Use ValueString() so that removing a maintainer from config sends
+	// an empty string to the API, clearing it server-side.
 	if !plan.MaintainerID.Equal(state.MaintainerID) {
 		v := plan.MaintainerID.ValueString()
 		patch.MaintainerId = &v

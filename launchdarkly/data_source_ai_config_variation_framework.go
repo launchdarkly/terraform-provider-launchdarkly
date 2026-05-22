@@ -128,8 +128,8 @@ func (d *AIConfigVariationDataSource) Read(ctx context.Context, req datasource.R
 		return
 	}
 
-	// Pick the highest-version item — matches SDKv2 read semantics.
-	// AI Config variations are versioned (see memory/ai-config-variations.md).
+	// Pick the highest-version item. AI Config variations are versioned;
+	// see memory/ai-config-variations.md.
 	variation := variationsResp.Items[0]
 	for _, v := range variationsResp.Items[1:] {
 		if v.Version > variation.Version {

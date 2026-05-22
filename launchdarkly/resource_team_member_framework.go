@@ -232,8 +232,8 @@ func (r *TeamMemberResource) ConfigValidators(_ context.Context) []resource.Conf
 	return []resource.ConfigValidator{teamMemberRoleOrCustomRolesValidator{}}
 }
 
-// teamMemberRoleOrCustomRolesValidator enforces the SDKv2 AtLeastOneOf
-// constraint: either role or custom_roles must be set.
+// teamMemberRoleOrCustomRolesValidator requires at least one of role
+// or custom_roles to be set.
 type teamMemberRoleOrCustomRolesValidator struct{}
 
 func (teamMemberRoleOrCustomRolesValidator) Description(context.Context) string {

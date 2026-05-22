@@ -184,8 +184,7 @@ func (d *MetricDataSource) Read(ctx context.Context, req datasource.ReadRequest,
 		return err
 	})
 	if err != nil {
-		// SDKv2 metric data source surfaced the raw upstream error
-		// (no wrapper text), so the test ExpectError regex matches
+		// Surface the raw upstream error so ExpectError regex matches
 		// "Error: 404 Not Found:" directly against the summary.
 		resp.Diagnostics.AddError(handleLdapiErr(err).Error(), "")
 		return

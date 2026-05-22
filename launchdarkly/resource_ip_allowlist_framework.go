@@ -134,9 +134,9 @@ func (r *IPAllowlistConfigResource) Update(ctx context.Context, req resource.Upd
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 }
 
-// Delete resets both allowlist flags to false. The SDKv2 version did the
-// same — the resource is a singleton; destroying the TF resource reverts
-// the server-side config to defaults rather than deleting anything.
+// Delete resets both allowlist flags to false. The resource is a
+// singleton; destroying the TF resource reverts the server-side config
+// to defaults rather than deleting anything.
 func (r *IPAllowlistConfigResource) Delete(_ context.Context, _ resource.DeleteRequest, resp *resource.DeleteResponse) {
 	falseVal := false
 	if _, err := patchIpAllowlistConfig(r.client, &falseVal, &falseVal); err != nil {

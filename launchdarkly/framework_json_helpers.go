@@ -11,7 +11,7 @@ import (
 	"github.com/xeipuuv/gojsonschema"
 )
 
-// jsonStringValidator mirrors SDKv2 validateJsonStringDiagFunc().
+// jsonStringValidator rejects strings that are not valid JSON.
 type jsonStringValidator struct{}
 
 func (jsonStringValidator) Description(context.Context) string         { return "must be valid JSON" }
@@ -30,7 +30,7 @@ func (jsonStringValidator) ValidateString(_ context.Context, req validator.Strin
 	}
 }
 
-// jsonSchemaStringValidator mirrors SDKv2 validateJsonSchemaStringDiagFunc().
+// jsonSchemaStringValidator rejects strings that are not valid JSON Schema.
 type jsonSchemaStringValidator struct{}
 
 func (jsonSchemaStringValidator) Description(context.Context) string {
@@ -57,12 +57,12 @@ func (jsonSchemaStringValidator) ValidateString(ctx context.Context, req validat
 	}
 }
 
-// jsonNormalizePlanModifier mirrors SDKv2 suppressEquivalentJsonDiffs:
-// when the state already has a semantically-equal JSON value but a
-// different textual form, re-use the state value so terraform doesn't
-// show spurious diffs. terraform-core enforces plan-equals-config for
-// Required attributes, so we can only swap in the state value, not
-// rewrite the plan to a canonical form.
+// jsonNormalizePlanModifier suppresses diffs caused by semantically
+// equivalent JSON. When the state already has a semantically-equal
+// value but a different textual form, re-use the state value so
+// terraform doesn't show spurious diffs. terraform-core enforces
+// plan-equals-config for Required attributes, so we can only swap in
+// the state value, not rewrite the plan to a canonical form.
 type jsonNormalizePlanModifier struct{}
 
 func (jsonNormalizePlanModifier) Description(context.Context) string {

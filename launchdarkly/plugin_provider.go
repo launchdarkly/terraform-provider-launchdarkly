@@ -23,10 +23,11 @@ type launchdarklyProvider struct {
 }
 
 type launchdarklyProviderModel struct {
-	AccessToken types.String `tfsdk:"access_token"`
-	OAuthToken  types.String `tfsdk:"oauth_token"`
-	Host        types.String `tfsdk:"api_host"`
-	HttpTimeout types.Int64  `tfsdk:"http_timeout"`
+	AccessToken           types.String `tfsdk:"access_token"`
+	OAuthToken            types.String `tfsdk:"oauth_token"`
+	Host                  types.String `tfsdk:"api_host"`
+	HttpTimeout           types.Int64  `tfsdk:"http_timeout"`
+	ArchiveFlagsOnDestroy types.Bool   `tfsdk:"archive_flags_on_destroy"`
 }
 
 // Metadata returns the provider type name.
@@ -54,6 +55,10 @@ func (p *launchdarklyProvider) Schema(_ context.Context, _ provider.SchemaReques
 			HTTP_TIMEOUT: schema.Int64Attribute{
 				Optional:    true,
 				Description: "The HTTP timeout (in seconds) when making API calls to LaunchDarkly. Defaults to 20 seconds.",
+			},
+			ARCHIVE_FLAGS_ON_DESTROY: schema.BoolAttribute{
+				Optional:    true,
+				Description: "When `true`, removing a `launchdarkly_feature_flag` resource from your Terraform configuration archives the flag in LaunchDarkly instead of deleting it. The flag's key is retained on the server, so re-applying a configuration that recreates the same flag key will fail with an error directing you to `terraform import` the archived flag. Defaults to `false`, which preserves the existing destroy-deletes behavior. This setting only affects `launchdarkly_feature_flag`; other resources continue to be deleted on destroy.",
 			},
 		},
 	}
@@ -99,12 +104,15 @@ func (p *launchdarklyProvider) Configure(ctx context.Context, req provider.Confi
 		return
 	}
 
+	archiveOnDestroy := data.ArchiveFlagsOnDestroy.ValueBool()
+
 	if oauthToken != "" {
 		client, err := newClient(oauthToken, host, true, httpTimeoutSeconds, DEFAULT_MAX_CONCURRENCY)
 		if err != nil {
 			resp.Diagnostics.AddError("Unable to create LaunchDarkly client", err.Error())
 			return
 		}
+		client.archiveFlagsOnDestroy = archiveOnDestroy
 		resp.ResourceData = client
 		resp.DataSourceData = client
 		return
@@ -115,6 +123,7 @@ func (p *launchdarklyProvider) Configure(ctx context.Context, req provider.Confi
 		resp.Diagnostics.AddError("Unable to create LaunchDarkly client", err.Error())
 		return
 	}
+	client.archiveFlagsOnDestroy = archiveOnDestroy
 	resp.ResourceData = client
 	resp.DataSourceData = client
 }

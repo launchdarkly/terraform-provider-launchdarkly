@@ -54,9 +54,8 @@ func (r *TeamRoleMappingResource) Schema(ctx context.Context, req resource.Schem
 				Optional:    true,
 				Description: "Map of role-attribute keys to lists of resource keys. Applied to the team as a whole — every custom role granted to this team gets these scopes (see https://launchdarkly.com/docs/home/account/roles/role-scope). Conflicts with `role_attributes` on `launchdarkly_team`; if you manage the team via `launchdarkly_team`, set `role_attributes` there instead, or add `lifecycle { ignore_changes = [role_attributes] }` on the `launchdarkly_team` to avoid plan churn.",
 			},
-			// In SDKv2, resources and data sources automatically included an implicit, root level id attribute.
-			// In the framework, the id attribute is not implicitly added.
-			// Conventionally, id is a computed attribute that contains the identifier for the resource.
+			// Framework resources require an explicit id attribute; it
+			// is conventionally Computed and holds the resource identifier.
 			"id": schema.StringAttribute{
 				Computed:    true,
 				Description: "The ID for this resource.",

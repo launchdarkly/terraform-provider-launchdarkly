@@ -2042,3 +2042,84 @@ func truncateTestBody(body string) string {
 	}
 	return body[:max] + "...(truncated)"
 }
+
+// testAccCheckFeatureFlagArchived verifies via the LD API that the named
+// flag exists on the server and is in an archived state. Used by
+// TestAccFeatureFlag_ArchiveOnDestroy to assert that the destroy step
+// archived rather than deleted.
+func testAccCheckFeatureFlagArchived(projectKey, flagKey string) resource.TestCheckFunc {
+	return func(_ *terraform.State) error {
+		client := mustTestAccClient()
+		flag, _, err := client.ld.FeatureFlagsApi.GetFeatureFlag(client.ctx, projectKey, flagKey).Execute()
+		if err != nil {
+			return fmt.Errorf("expected archived flag %s/%s on server, got error: %s", projectKey, flagKey, err)
+		}
+		if !flag.Archived {
+			return fmt.Errorf("flag %s/%s exists but is not archived", projectKey, flagKey)
+		}
+		return nil
+	}
+}
+
+const testAccFeatureFlagArchiveOnDestroyProvider = `
+provider "launchdarkly" {
+	archive_flags_on_destroy = true
+}
+`
+
+func TestAccFeatureFlag_ArchiveOnDestroy(t *testing.T) {
+	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	flagKey := "basic-flag"
+	resourceName := "launchdarkly_feature_flag.basic"
+
+	withProvider := func(body string) string {
+		return testAccFeatureFlagArchiveOnDestroyProvider + withRandomProject(projectKey, body)
+	}
+	// Project-only config (flag removed) still needs the provider block so
+	// the destroy of the flag in the prior step's state is performed under
+	// archive_flags_on_destroy = true.
+	projectOnly := testAccFeatureFlagArchiveOnDestroyProvider + fmt.Sprintf(`
+	resource "launchdarkly_project" "test" {
+		lifecycle {
+			ignore_changes = [environments]
+		}
+		name = "testProject"
+		key = "%s"
+		environments = [{
+			name  = "testEnvironment"
+			key   = "test"
+			color = "000000"
+		}]
+	}
+	`, projectKey)
+
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				// Create the flag.
+				Config: withProvider(testAccFeatureFlagBasic),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckFeatureFlagExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, KEY, flagKey),
+					resource.TestCheckResourceAttr(resourceName, ARCHIVED, "false"),
+				),
+			},
+			{
+				// Drop the flag from config — the resource block is gone so
+				// terraform issues a Delete. With archive_flags_on_destroy
+				// = true the provider PATCHes archived=true instead.
+				Config: projectOnly,
+				Check:  testAccCheckFeatureFlagArchived(projectKey, flagKey),
+			},
+			{
+				// Re-add the same flag key to config. The pre-flight check
+				// in Create must surface the archived-state error with an
+				// import hint instead of bubbling up a 409.
+				Config:      withProvider(testAccFeatureFlagBasic),
+				ExpectError: regexp.MustCompile(`already exists in project .* in an archived state`),
+			},
+		},
+	})
+}

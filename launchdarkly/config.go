@@ -43,6 +43,11 @@ type Client struct {
 	fallbackClient *http.Client
 
 	semaphore *semaphore.Weighted
+
+	// archiveFlagsOnDestroy: when true, launchdarkly_feature_flag Delete
+	// archives the flag instead of deleting it. Configured at the provider
+	// level via the archive_flags_on_destroy attribute. Defaults to false.
+	archiveFlagsOnDestroy bool
 }
 
 func (c *Client) withConcurrency(ctx context.Context, fn func() error) error {

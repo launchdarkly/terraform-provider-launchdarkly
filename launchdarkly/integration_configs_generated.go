@@ -284,6 +284,14 @@ var SUBSCRIPTION_CONFIGURATION_FIELDS = map[string]IntegrationConfig{
 			Type:          "string",
 		},
 	},
+	"mattermost": {"url": {
+		AllowedValues: []string{},
+		DefaultValue:  nil,
+		Description:   "Enter your Mattermost [incoming webhook URL](https://docs.mattermost.com/developer/webhooks-incoming.html).",
+		IsOptional:    false,
+		IsSecret:      false,
+		Type:          "uri",
+	}},
 	"msteams": {"url": {
 		AllowedValues: []string{},
 		DefaultValue:  nil,

@@ -35,8 +35,7 @@ var frameworkPolicyStatementsObjectAttrTypes = map[string]attr.Type{
 
 // frameworkPolicyStatementsDataSourceAttribute returns a ListNestedAttribute
 // schema for use in datasource.Schema. All inner attrs are Computed
-// because data sources are read-only; the SDKv2 version distinguishes
-// computed-vs-optional via the options struct.
+// because data sources are read-only.
 func frameworkPolicyStatementsDataSourceAttribute(description string) dsschema.ListNestedAttribute {
 	return dsschema.ListNestedAttribute{
 		Computed:    true,
@@ -74,10 +73,8 @@ func frameworkPolicyStatementsDataSourceAttribute(description string) dsschema.L
 
 // frameworkPolicyStatementsResourceAttribute returns a ListNestedAttribute
 // for use in resource.Schema. The required flag controls whether the
-// attribute itself is required; inner attrs preserve the SDKv2 flag
-// matrix (Optional + MinItems=1 via list-size validator). Inner
-// descriptions and the effect enum validator mirror
-// policy_statements_helper.go.
+// attribute itself is required; inner attrs are Optional with a
+// list-size validator enforcing MinItems=1.
 func frameworkPolicyStatementsResourceAttribute(required bool, description string, deprecated string) rsschema.ListNestedAttribute {
 	attr := rsschema.ListNestedAttribute{
 		Description:        description,
@@ -127,9 +124,8 @@ func frameworkPolicyStatementsResourceAttribute(required bool, description strin
 		},
 	}
 	if required {
-		// SDKv2 emits MinItems=1 on the outer block when the schema is
-		// not Computed (see policyStatementsSchema). Mirror that for
-		// the resource variant via Required + list-size validator.
+		// Required attribute also enforces MinItems=1 via list-size
+		// validator on the outer list.
 		attr.Required = true
 		attr.Validators = []validator.List{listvalidator.SizeAtLeast(1)}
 	} else {
@@ -207,10 +203,9 @@ func (m frameworkPolicyStatementModel) toLDAPI() (ldapi.StatementPost, diag.Diag
 // frameworkPolicyStatementsValue converts an LD-API []Statement into a
 // framework types.List of objects matching
 // frameworkPolicyStatementsObjectAttrTypes. Empty inner slices project
-// to null lists (matching SDKv2 Optional-only semantics where absent
-// inner attrs are not present in state). When the API returns zero
-// statements, return null so plan-vs-apply consistency holds for
-// Optional-only callers (webhook, custom_role inline_roles, etc.).
+// to null lists; when the API returns zero statements, return null so
+// plan-vs-apply consistency holds for Optional-only callers (webhook,
+// custom_role inline_roles, etc.).
 func frameworkPolicyStatementsValue(ctx context.Context, statements []ldapi.Statement) (basetypes.ListValue, diag.Diagnostics) {
 	objectType := types.ObjectType{AttrTypes: frameworkPolicyStatementsObjectAttrTypes}
 	if len(statements) == 0 {

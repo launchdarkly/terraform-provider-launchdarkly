@@ -116,8 +116,7 @@ func (d *FlagTriggerDataSource) Read(ctx context.Context, req datasource.ReadReq
 
 	var trigger *ldapi.TriggerWorkflowRep
 	var err error
-	// integration_key is computed-only on the data source — start empty so the
-	// SDKv2-format message renders with the same double-space placeholder.
+	// integration_key is computed-only on the data source — start empty.
 	integrationKey := ""
 	err = d.client.withConcurrency(d.client.ctx, func() error {
 		trigger, _, err = d.client.ld.FlagTriggersApi.GetTriggerWorkflowById(d.client.ctx, projectKey, flagKey, envKey, triggerID).Execute()

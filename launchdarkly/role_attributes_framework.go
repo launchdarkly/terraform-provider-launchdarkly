@@ -22,7 +22,7 @@ var frameworkRoleAttributeAttrTypes = map[string]attr.Type{
 }
 
 // frameworkRoleAttributesDataSourceAttribute returns a SetNestedAttribute
-// schema mirroring the SDKv2 TypeSet of role_attribute objects.
+// schema for role_attribute objects.
 func frameworkRoleAttributesDataSourceAttribute() dsschema.SetNestedAttribute {
 	return dsschema.SetNestedAttribute{
 		Computed:    true,
@@ -91,8 +91,7 @@ func frameworkRoleAttributesFromSet(ctx context.Context, set types.Set) (*map[st
 }
 
 // frameworkRoleAttributePatches generates the patch operations to
-// replace /roleAttributes on the server. Matches getRoleAttributePatches
-// from role_attributes_helper.go.
+// replace /roleAttributes on the server.
 func frameworkRoleAttributePatches(ctx context.Context, planSet, stateSet types.Set) []ldapi.PatchOperation {
 	if planSet.Equal(stateSet) {
 		return nil

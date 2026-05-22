@@ -189,9 +189,9 @@ func (r *SegmentResource) ConfigValidators(_ context.Context) []resource.ConfigV
 	}
 }
 
-// segmentUnboundedConflictValidator mirrors the SDKv2 ConflictsWith on
-// UNBOUNDED_CONTEXT_KIND with INCLUDED / EXCLUDED / INCLUDED_CONTEXTS /
-// EXCLUDED_CONTEXTS / RULES.
+// segmentUnboundedConflictValidator rejects configs where
+// UNBOUNDED_CONTEXT_KIND is set alongside INCLUDED / EXCLUDED /
+// INCLUDED_CONTEXTS / EXCLUDED_CONTEXTS / RULES.
 type segmentUnboundedConflictValidator struct{}
 
 func (v segmentUnboundedConflictValidator) Description(_ context.Context) string {
@@ -643,7 +643,7 @@ func (r *SegmentResource) readIntoModel(ctx context.Context, data *SegmentResour
 // to satisfy terraform-core's plan-apply consistency check.
 // rollout_context_kind is Optional+Computed+Default("user") at the
 // schema level so plan and state both end up at "user" when the user
-// omits it (SDKv2 used a DiffSuppressFunc for the same effect).
+// omits it.
 func segmentResourceRulesValue(ctx context.Context, rules []ldapi.UserSegmentRule, diags *diag.Diagnostics) types.List {
 	objectType := types.ObjectType{AttrTypes: segmentRuleAttrTypes}
 	elements := make([]attr.Value, 0, len(rules))
@@ -676,7 +676,7 @@ func segmentResourceRulesValue(ctx context.Context, rules []ldapi.UserSegmentRul
 }
 
 // segmentRulesResourceAttribute declares the framework attribute schema
-// for segment rules. Matches segmentRulesSchema in segment_rule_helper.go.
+// for segment rules.
 func segmentRulesResourceAttribute() schema.ListNestedAttribute {
 	return schema.ListNestedAttribute{
 		Optional:    true,
@@ -734,7 +734,7 @@ func segmentTargetsFromList(ctx context.Context, list types.List) ([]ldapi.Segme
 }
 
 // segmentRulesFromList converts a framework ListValue of segment rules
-// into []ldapi.UserSegmentRule. Mirrors segmentRulesFromResourceData.
+// into []ldapi.UserSegmentRule.
 func segmentRulesFromList(ctx context.Context, list types.List) ([]ldapi.UserSegmentRule, diag.Diagnostics) {
 	var diags diag.Diagnostics
 	if list.IsNull() || list.IsUnknown() {

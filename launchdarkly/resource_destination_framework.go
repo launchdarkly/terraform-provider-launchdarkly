@@ -122,8 +122,7 @@ func (r *DestinationResource) Create(ctx context.Context, req resource.CreateReq
 	kind := plan.Kind.ValueString()
 	apiConfig, err := destinationConfigMapToAPI(kind, rawConfig)
 	if err != nil {
-		// One-line form matches SDKv2 diag.FromErr — ExpectError regex
-		// can't span the framework's summary→detail wrap.
+		// One-line form so ExpectError regex matches against summary only.
 		resp.Diagnostics.AddError(err.Error(), "")
 		return
 	}
@@ -301,10 +300,8 @@ func (r *DestinationResource) readIntoModel(ctx context.Context, data *Destinati
 	// the server also returns the legacy `user_identity` scalar. Drop
 	// it from state so it doesn't surface as drift; framework Map<String>
 	// can't keep API-only keys the user didn't set without tripping the
-	// plan-apply consistency check. Mirrors the SDKv2
-	// configDiffSuppressFunc on user_identity. We key off the API
-	// response (not prior state) so import + create produce the same
-	// shape; SDKv2 used user_identity on the user_identities-less path.
+	// plan-apply consistency check. Key off the API response (not prior
+	// state) so import + create produce the same shape.
 	if *dest.Kind == "mparticle" {
 		if _, fromAPI := preserved["user_identities"]; fromAPI {
 			delete(preserved, "user_identity")
@@ -326,18 +323,16 @@ func (r *DestinationResource) readIntoModel(ctx context.Context, data *Destinati
 	}
 	data.ID = types.StringValue(strings.Join([]string{projectKey, envKey, *dest.Id}, "/"))
 
-	// SDKv2 source never set TAGS on read; Destinations API doesn't expose
-	// tags on the response object in this client. Preserve incoming tags
-	// to keep state stable across plans.
+	// Destinations API doesn't expose tags on the response object in this
+	// client. Preserve incoming tags to keep state stable across plans.
 	if data.Tags.IsNull() || data.Tags.IsUnknown() {
 		empty, _ := setFromStringSlice(ctx, []string{})
 		data.Tags = empty
 	}
 }
 
-// destinationConfigMapToAPI is the framework analogue of
-// destinationConfigFromResourceData. Translates snake_case keys in the
-// user's terraform config into the camelCase keys the LD API expects,
+// destinationConfigMapToAPI translates snake_case keys in the user's
+// terraform config into the camelCase keys the LD API expects,
 // validating that every required field is present and that the
 // mparticle user_identities JSON parses into a well-formed slice.
 func destinationConfigMapToAPI(kind string, userConfig map[string]string) (map[string]interface{}, error) {
@@ -376,8 +371,8 @@ func destinationConfigMapToAPI(kind string, userConfig map[string]string) (map[s
 	return out, nil
 }
 
-// destinationConfigFromAPI mirrors destinationConfigToResourceData but
-// produces map[string]string (the framework Map<String> shape).
+// destinationConfigFromAPI converts the API config object into the
+// framework Map<String> shape (snake_case keys).
 func destinationConfigFromAPI(kind string, apiConfig interface{}) map[string]string {
 	coerced, ok := apiConfig.(map[string]interface{})
 	if !ok {
@@ -404,8 +399,7 @@ func destinationConfigFromAPI(kind string, apiConfig interface{}) map[string]str
 }
 
 // preserveObfuscatedDestinationAttributes keeps user-supplied secrets in
-// state when the API returns obfuscated stand-ins. Mirrors
-// preserveObfuscatedConfigAttributes from destination_helper.go.
+// state when the API returns obfuscated stand-ins.
 func preserveObfuscatedDestinationAttributes(priorState, apiCfg map[string]string) map[string]string {
 	obfuscated := []string{"api_key", "secret", "write_key", "policy_key"}
 	for _, k := range obfuscated {

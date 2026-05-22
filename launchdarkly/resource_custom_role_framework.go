@@ -392,8 +392,7 @@ func (r *CustomRoleResource) readIntoModel(
 	}
 	if policySet {
 		// Refresh deprecated policy block from API response.
-		// Sort Resources and Actions alphabetically to match policyHash parity
-		// (SDKv2 sorts in policiesFromResourceData/policyFromResourceData).
+		// Sort Resources and Actions alphabetically for stable hash output.
 		elems := make([]customRolePolicyModel, 0, len(customRole.Policy))
 		for _, stmt := range customRole.Policy {
 			resources := make([]string, len(stmt.Resources))
