@@ -18,8 +18,9 @@ import (
 )
 
 var (
-	_ resource.Resource                = &WebhookResource{}
-	_ resource.ResourceWithImportState = &WebhookResource{}
+	_ resource.Resource                 = &WebhookResource{}
+	_ resource.ResourceWithImportState  = &WebhookResource{}
+	_ resource.ResourceWithUpgradeState = &WebhookResource{}
 )
 
 type WebhookResource struct {
@@ -46,40 +47,64 @@ func (r *WebhookResource) Metadata(_ context.Context, req resource.MetadataReque
 
 func (r *WebhookResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
+		Version:     1,
 		Description: "Provides a LaunchDarkly webhook resource.\n\nThis resource allows you to create and manage webhooks within your LaunchDarkly organization.",
-		Attributes: map[string]schema.Attribute{
-			"id": schema.StringAttribute{
-				Computed:      true,
-				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+		Attributes:  webhookSchemaAttributes(),
+	}
+}
+
+func webhookSchemaAttributes() map[string]schema.Attribute {
+	return map[string]schema.Attribute{
+		"id": schema.StringAttribute{
+			Computed:      true,
+			PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+		},
+		URL: schema.StringAttribute{
+			Required:    true,
+			Description: "The URL of the remote webhook.",
+		},
+		SECRET: schema.StringAttribute{
+			Optional:    true,
+			Sensitive:   true,
+			Description: "The secret used to sign the webhook.",
+		},
+		ON: schema.BoolAttribute{
+			Optional:    true,
+			Computed:    true,
+			Default:     booldefault.StaticBool(false),
+			Description: "Specifies whether the webhook is enabled.",
+		},
+		NAME: schema.StringAttribute{
+			Optional:    true,
+			Description: "The webhook's human-readable name.",
+		},
+		TAGS: schema.SetAttribute{
+			Optional:    true,
+			ElementType: types.StringType,
+			Description: "Tags associated with your resource.",
+			Validators: []validator.Set{
+				setvalidator.ValueStringsAre(tagValidator()),
 			},
-			URL: schema.StringAttribute{
-				Required:    true,
-				Description: "The URL of the remote webhook.",
+		},
+		STATEMENTS: frameworkPolicyStatementsResourceAttribute(false, "List of policy statements used to filter webhook events. For more information on webhook policy filters read [Adding a policy filter](https://docs.launchdarkly.com/integrations/webhooks#adding-a-policy-filter).", ""),
+	}
+}
+
+func (r *WebhookResource) UpgradeState(_ context.Context) map[int64]resource.StateUpgrader {
+	priorSchema := schema.Schema{Attributes: webhookSchemaAttributes()}
+	return map[int64]resource.StateUpgrader{
+		0: {
+			PriorSchema: &priorSchema,
+			StateUpgrader: func(ctx context.Context, req resource.UpgradeStateRequest, resp *resource.UpgradeStateResponse) {
+				var data WebhookResourceModel
+				resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
+				if resp.Diagnostics.HasError() {
+					return
+				}
+				data.Secret = nullIfEmptyString(data.Secret)
+				data.Statements = nullIfEmptyList(ctx, data.Statements)
+				resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 			},
-			SECRET: schema.StringAttribute{
-				Optional:    true,
-				Sensitive:   true,
-				Description: "The secret used to sign the webhook.",
-			},
-			ON: schema.BoolAttribute{
-				Optional:    true,
-				Computed:    true,
-				Default:     booldefault.StaticBool(false),
-				Description: "Specifies whether the webhook is enabled.",
-			},
-			NAME: schema.StringAttribute{
-				Optional:    true,
-				Description: "The webhook's human-readable name.",
-			},
-			TAGS: schema.SetAttribute{
-				Optional:    true,
-				ElementType: types.StringType,
-				Description: "Tags associated with your resource.",
-				Validators: []validator.Set{
-					setvalidator.ValueStringsAre(tagValidator()),
-				},
-			},
-			STATEMENTS: frameworkPolicyStatementsResourceAttribute(false, "List of policy statements used to filter webhook events. For more information on webhook policy filters read [Adding a policy filter](https://docs.launchdarkly.com/integrations/webhooks#adding-a-policy-filter).", ""),
 		},
 	}
 }

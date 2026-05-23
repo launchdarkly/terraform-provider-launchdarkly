@@ -19,6 +19,7 @@ var (
 	_ resource.Resource                     = &TeamMemberResource{}
 	_ resource.ResourceWithImportState      = &TeamMemberResource{}
 	_ resource.ResourceWithConfigValidators = &TeamMemberResource{}
+	_ resource.ResourceWithUpgradeState     = &TeamMemberResource{}
 )
 
 type TeamMemberResource struct {
@@ -45,49 +46,73 @@ func (r *TeamMemberResource) Metadata(_ context.Context, req resource.MetadataRe
 
 func (r *TeamMemberResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
+		Version: 1,
 		Description: `Provides a LaunchDarkly team member resource.
 
 This resource allows you to create and manage team members within your LaunchDarkly organization.
 
 -> **Note:** You can only manage team members with "admin" level personal access tokens. To learn more, read [Managing Teams](https://docs.launchdarkly.com/home/teams/managing).`,
-		Attributes: map[string]schema.Attribute{
-			"id": schema.StringAttribute{
-				Computed:      true,
-				Description:   "The 24 character alphanumeric ID of the team member.",
-				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+		Attributes: teamMemberSchemaAttributes(),
+	}
+}
+
+func teamMemberSchemaAttributes() map[string]schema.Attribute {
+	return map[string]schema.Attribute{
+		"id": schema.StringAttribute{
+			Computed:      true,
+			Description:   "The 24 character alphanumeric ID of the team member.",
+			PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+		},
+		EMAIL: schema.StringAttribute{
+			Required:    true,
+			Description: addForceNewDescription("The unique email address associated with the team member.", true),
+			PlanModifiers: []planmodifier.String{
+				stringplanmodifier.RequiresReplace(),
 			},
-			EMAIL: schema.StringAttribute{
-				Required:    true,
-				Description: addForceNewDescription("The unique email address associated with the team member.", true),
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.RequiresReplace(),
-				},
+		},
+		FIRST_NAME: schema.StringAttribute{
+			Optional:    true,
+			Description: "The team member's given name. Once created, this cannot be updated except by the team member.",
+		},
+		LAST_NAME: schema.StringAttribute{
+			Optional:    true,
+			Description: "TThe team member's family name. Once created, this cannot be updated except by the team member.",
+		},
+		ROLE: schema.StringAttribute{
+			Optional:    true,
+			Computed:    true,
+			Description: "The role associated with team member. Supported roles are `reader`, `writer`, `no_access`, or `admin`. If you don't specify a role, `reader` is assigned by default.",
+			Validators: []validator.String{
+				oneOfValidator{allowed: []string{"reader", "writer", "admin", "no_access"}},
 			},
-			FIRST_NAME: schema.StringAttribute{
-				Optional:    true,
-				Description: "The team member's given name. Once created, this cannot be updated except by the team member.",
+			PlanModifiers: []planmodifier.String{
+				stringplanmodifier.UseStateForUnknown(),
 			},
-			LAST_NAME: schema.StringAttribute{
-				Optional:    true,
-				Description: "TThe team member's family name. Once created, this cannot be updated except by the team member.",
+		},
+		CUSTOM_ROLES: schema.SetAttribute{
+			Optional:    true,
+			ElementType: types.StringType,
+			Description: "The list of custom roles keys associated with the team member. Custom roles are only available to customers on an Enterprise plan. To learn more, [read about our pricing](https://launchdarkly.com/pricing/). To upgrade your plan, [contact LaunchDarkly Sales](https://launchdarkly.com/contact-sales/).\n\n-> **Note:** each `launchdarkly_team_member` must have either a `role` or `custom_roles` argument.",
+		},
+		ROLE_ATTRIBUTES: frameworkRoleAttributesResourceAttribute(),
+	}
+}
+
+func (r *TeamMemberResource) UpgradeState(_ context.Context) map[int64]resource.StateUpgrader {
+	priorSchema := schema.Schema{Attributes: teamMemberSchemaAttributes()}
+	return map[int64]resource.StateUpgrader{
+		0: {
+			PriorSchema: &priorSchema,
+			StateUpgrader: func(ctx context.Context, req resource.UpgradeStateRequest, resp *resource.UpgradeStateResponse) {
+				var data TeamMemberResourceModel
+				resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
+				if resp.Diagnostics.HasError() {
+					return
+				}
+				data.CustomRoles = nullIfEmptySet(ctx, data.CustomRoles)
+				data.RoleAttributes = nullIfEmptySet(ctx, data.RoleAttributes)
+				resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 			},
-			ROLE: schema.StringAttribute{
-				Optional:    true,
-				Computed:    true,
-				Description: "The role associated with team member. Supported roles are `reader`, `writer`, `no_access`, or `admin`. If you don't specify a role, `reader` is assigned by default.",
-				Validators: []validator.String{
-					oneOfValidator{allowed: []string{"reader", "writer", "admin", "no_access"}},
-				},
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.UseStateForUnknown(),
-				},
-			},
-			CUSTOM_ROLES: schema.SetAttribute{
-				Optional:    true,
-				ElementType: types.StringType,
-				Description: "The list of custom roles keys associated with the team member. Custom roles are only available to customers on an Enterprise plan. To learn more, [read about our pricing](https://launchdarkly.com/pricing/). To upgrade your plan, [contact LaunchDarkly Sales](https://launchdarkly.com/contact-sales/).\n\n-> **Note:** each `launchdarkly_team_member` must have either a `role` or `custom_roles` argument.",
-			},
-			ROLE_ATTRIBUTES: frameworkRoleAttributesResourceAttribute(),
 		},
 	}
 }

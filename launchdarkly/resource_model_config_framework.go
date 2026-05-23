@@ -25,8 +25,9 @@ import (
 )
 
 var (
-	_ resource.Resource                = &ModelConfigResource{}
-	_ resource.ResourceWithImportState = &ModelConfigResource{}
+	_ resource.Resource                 = &ModelConfigResource{}
+	_ resource.ResourceWithImportState  = &ModelConfigResource{}
+	_ resource.ResourceWithUpgradeState = &ModelConfigResource{}
 )
 
 type ModelConfigResource struct {
@@ -60,113 +61,137 @@ func (r *ModelConfigResource) Metadata(_ context.Context, req resource.MetadataR
 
 func (r *ModelConfigResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
+		Version:     1,
 		Description: "Provides a LaunchDarkly model config resource.\n\nThis resource allows you to create and manage AI model configurations within your LaunchDarkly project. Since the API does not support updates, any field change will force recreation of the resource.",
-		Attributes: map[string]schema.Attribute{
-			"id": schema.StringAttribute{
-				Computed:    true,
-				Description: "The ID in the format `project_key/key`.",
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.UseStateForUnknown(),
-				},
+		Attributes:  modelConfigSchemaAttributes(),
+	}
+}
+
+func modelConfigSchemaAttributes() map[string]schema.Attribute {
+	return map[string]schema.Attribute{
+		"id": schema.StringAttribute{
+			Computed:    true,
+			Description: "The ID in the format `project_key/key`.",
+			PlanModifiers: []planmodifier.String{
+				stringplanmodifier.UseStateForUnknown(),
 			},
-			PROJECT_KEY: schema.StringAttribute{
-				Required:    true,
-				Description: addForceNewDescription("The project key.", true),
-				Validators:  []validator.String{keyValidator()},
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.RequiresReplace(),
-				},
+		},
+		PROJECT_KEY: schema.StringAttribute{
+			Required:    true,
+			Description: addForceNewDescription("The project key.", true),
+			Validators:  []validator.String{keyValidator()},
+			PlanModifiers: []planmodifier.String{
+				stringplanmodifier.RequiresReplace(),
 			},
-			KEY: schema.StringAttribute{
-				Required:    true,
-				Description: addForceNewDescription("The model config's unique key.", true),
-				Validators:  []validator.String{keyValidator()},
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.RequiresReplace(),
-				},
+		},
+		KEY: schema.StringAttribute{
+			Required:    true,
+			Description: addForceNewDescription("The model config's unique key.", true),
+			Validators:  []validator.String{keyValidator()},
+			PlanModifiers: []planmodifier.String{
+				stringplanmodifier.RequiresReplace(),
 			},
-			NAME: schema.StringAttribute{
-				Required:    true,
-				Description: addForceNewDescription("The model config's human-readable name.", true),
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.RequiresReplace(),
-				},
+		},
+		NAME: schema.StringAttribute{
+			Required:    true,
+			Description: addForceNewDescription("The model config's human-readable name.", true),
+			PlanModifiers: []planmodifier.String{
+				stringplanmodifier.RequiresReplace(),
 			},
-			MODEL_ID: schema.StringAttribute{
-				Required:    true,
-				Description: addForceNewDescription("The model identifier (e.g. `gpt-4`, `claude-3`).", true),
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.RequiresReplace(),
-				},
+		},
+		MODEL_ID: schema.StringAttribute{
+			Required:    true,
+			Description: addForceNewDescription("The model identifier (e.g. `gpt-4`, `claude-3`).", true),
+			PlanModifiers: []planmodifier.String{
+				stringplanmodifier.RequiresReplace(),
 			},
-			ICON: schema.StringAttribute{
-				Optional:    true,
-				Computed:    true,
-				Description: addForceNewDescription("The icon for the model config.", true),
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.RequiresReplace(),
-					stringplanmodifier.UseStateForUnknown(),
-				},
+		},
+		ICON: schema.StringAttribute{
+			Optional:    true,
+			Computed:    true,
+			Description: addForceNewDescription("The icon for the model config.", true),
+			PlanModifiers: []planmodifier.String{
+				stringplanmodifier.RequiresReplace(),
+				stringplanmodifier.UseStateForUnknown(),
 			},
-			PROVIDER_NAME: schema.StringAttribute{
-				Optional:    true,
-				Computed:    true,
-				Description: addForceNewDescription("The provider name for the model config (e.g. `openai`, `anthropic`).", true),
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.RequiresReplace(),
-					stringplanmodifier.UseStateForUnknown(),
-				},
+		},
+		PROVIDER_NAME: schema.StringAttribute{
+			Optional:    true,
+			Computed:    true,
+			Description: addForceNewDescription("The provider name for the model config (e.g. `openai`, `anthropic`).", true),
+			PlanModifiers: []planmodifier.String{
+				stringplanmodifier.RequiresReplace(),
+				stringplanmodifier.UseStateForUnknown(),
 			},
-			GLOBAL: schema.BoolAttribute{
-				Computed:    true,
-				Description: "Whether the model config is available globally.",
+		},
+		GLOBAL: schema.BoolAttribute{
+			Computed:    true,
+			Description: "Whether the model config is available globally.",
+		},
+		PARAMS: schema.StringAttribute{
+			Optional:    true,
+			Computed:    true,
+			Description: addForceNewDescription("A JSON string representing the model parameters (e.g. `{\"temperature\": 0.7, \"maxTokens\": 4096}`).", true),
+			Validators:  []validator.String{jsonStringValidator{}},
+			PlanModifiers: []planmodifier.String{
+				jsonNormalizePlanModifier{},
+				stringplanmodifier.RequiresReplace(),
+				stringplanmodifier.UseStateForUnknown(),
 			},
-			PARAMS: schema.StringAttribute{
-				Optional:    true,
-				Computed:    true,
-				Description: addForceNewDescription("A JSON string representing the model parameters (e.g. `{\"temperature\": 0.7, \"maxTokens\": 4096}`).", true),
-				Validators:  []validator.String{jsonStringValidator{}},
-				PlanModifiers: []planmodifier.String{
-					jsonNormalizePlanModifier{},
-					stringplanmodifier.RequiresReplace(),
-					stringplanmodifier.UseStateForUnknown(),
-				},
+		},
+		CUSTOM_PARAMETERS: schema.StringAttribute{
+			Optional:    true,
+			Computed:    true,
+			Description: addForceNewDescription("A JSON string representing custom parameters for the model config.", true),
+			Validators:  []validator.String{jsonStringValidator{}},
+			PlanModifiers: []planmodifier.String{
+				jsonNormalizePlanModifier{},
+				stringplanmodifier.RequiresReplace(),
+				stringplanmodifier.UseStateForUnknown(),
 			},
-			CUSTOM_PARAMETERS: schema.StringAttribute{
-				Optional:    true,
-				Computed:    true,
-				Description: addForceNewDescription("A JSON string representing custom parameters for the model config.", true),
-				Validators:  []validator.String{jsonStringValidator{}},
-				PlanModifiers: []planmodifier.String{
-					jsonNormalizePlanModifier{},
-					stringplanmodifier.RequiresReplace(),
-					stringplanmodifier.UseStateForUnknown(),
-				},
+		},
+		TAGS: schema.SetAttribute{
+			Optional:    true,
+			Computed:    true,
+			ElementType: types.StringType,
+			Description: addForceNewDescription("Tags associated with your resource.", true),
+			Validators:  []validator.Set{setvalidator.ValueStringsAre(tagValidator())},
+			PlanModifiers: []planmodifier.Set{
+				setplanmodifier.RequiresReplace(),
+				setplanmodifier.UseStateForUnknown(),
 			},
-			TAGS: schema.SetAttribute{
-				Optional:    true,
-				Computed:    true,
-				ElementType: types.StringType,
-				Description: addForceNewDescription("Tags associated with your resource.", true),
-				Validators:  []validator.Set{setvalidator.ValueStringsAre(tagValidator())},
-				PlanModifiers: []planmodifier.Set{
-					setplanmodifier.RequiresReplace(),
-					setplanmodifier.UseStateForUnknown(),
-				},
-			},
-			VERSION: schema.Int64Attribute{
-				Computed:    true,
-				Description: "The version of the model config.",
-			},
-			COST_PER_INPUT_TOKEN: schema.Float64Attribute{
-				Optional:    true,
-				Computed:    true,
-				Description: addForceNewDescription("The cost per input token for the model.", true),
-			},
-			COST_PER_OUTPUT_TOKEN: schema.Float64Attribute{
-				Optional:    true,
-				Computed:    true,
-				Description: addForceNewDescription("The cost per output token for the model.", true),
+		},
+		VERSION: schema.Int64Attribute{
+			Computed:    true,
+			Description: "The version of the model config.",
+		},
+		COST_PER_INPUT_TOKEN: schema.Float64Attribute{
+			Optional:    true,
+			Computed:    true,
+			Description: addForceNewDescription("The cost per input token for the model.", true),
+		},
+		COST_PER_OUTPUT_TOKEN: schema.Float64Attribute{
+			Optional:    true,
+			Computed:    true,
+			Description: addForceNewDescription("The cost per output token for the model.", true),
+		},
+	}
+}
+
+func (r *ModelConfigResource) UpgradeState(_ context.Context) map[int64]resource.StateUpgrader {
+	priorSchema := schema.Schema{Attributes: modelConfigSchemaAttributes()}
+	return map[int64]resource.StateUpgrader{
+		0: {
+			PriorSchema: &priorSchema,
+			StateUpgrader: func(ctx context.Context, req resource.UpgradeStateRequest, resp *resource.UpgradeStateResponse) {
+				var data ModelConfigResourceModel
+				resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
+				if resp.Diagnostics.HasError() {
+					return
+				}
+				data.Icon = nullIfEmptyString(data.Icon)
+				data.CustomParameters = nullIfEmptyString(data.CustomParameters)
+				resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 			},
 		},
 	}

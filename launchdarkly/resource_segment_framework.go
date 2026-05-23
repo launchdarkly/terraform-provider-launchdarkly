@@ -30,6 +30,7 @@ var (
 	_ resource.ResourceWithImportState      = &SegmentResource{}
 	_ resource.ResourceWithModifyPlan       = &SegmentResource{}
 	_ resource.ResourceWithConfigValidators = &SegmentResource{}
+	_ resource.ResourceWithUpgradeState     = &SegmentResource{}
 )
 
 type SegmentResource struct {
@@ -65,120 +66,151 @@ func (r *SegmentResource) Metadata(_ context.Context, req resource.MetadataReque
 
 func (r *SegmentResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
+		Version: 1,
 		Description: `Provides a LaunchDarkly segment resource.
 
 This resource allows you to create and manage segments within your LaunchDarkly organization.`,
-		Attributes: map[string]schema.Attribute{
-			"id": schema.StringAttribute{
-				Computed:      true,
-				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+		Attributes: segmentSchemaAttributes(),
+	}
+}
+
+func segmentSchemaAttributes() map[string]schema.Attribute {
+	return map[string]schema.Attribute{
+		"id": schema.StringAttribute{
+			Computed:      true,
+			PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+		},
+		PROJECT_KEY: schema.StringAttribute{
+			Required:      true,
+			Description:   addForceNewDescription("The segment's project key.", true),
+			Validators:    []validator.String{keyValidator()},
+			PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
+		},
+		ENV_KEY: schema.StringAttribute{
+			Required:      true,
+			Description:   addForceNewDescription("The segment's environment key.", true),
+			Validators:    []validator.String{keyValidator()},
+			PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
+		},
+		KEY: schema.StringAttribute{
+			Required:      true,
+			Description:   addForceNewDescription("The unique key that references the segment.", true),
+			Validators:    []validator.String{keyValidator()},
+			PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
+		},
+		NAME: schema.StringAttribute{
+			Required:    true,
+			Description: "The human-friendly name for the segment.",
+		},
+		DESCRIPTION: schema.StringAttribute{
+			Optional:    true,
+			Description: "The description of the segment's purpose.",
+		},
+		TAGS: schema.SetAttribute{
+			Optional:    true,
+			ElementType: types.StringType,
+			Validators:  []validator.Set{setvalidator.ValueStringsAre(tagValidator())},
+			Description: "Tags associated with your resource.",
+		},
+		CREATION_DATE: schema.Int64Attribute{
+			Computed:      true,
+			Description:   "The segment's creation date represented as a UNIX epoch timestamp.",
+			PlanModifiers: []planmodifier.Int64{int64planmodifier.UseStateForUnknown()},
+		},
+		INCLUDED: schema.ListAttribute{
+			Optional:    true,
+			ElementType: types.StringType,
+			Description: "List of user keys included in the segment. To target on other context kinds, use the included_contexts block attribute. This attribute is not valid when `unbounded` is set to `true`.",
+		},
+		EXCLUDED: schema.ListAttribute{
+			Optional:    true,
+			ElementType: types.StringType,
+			Description: "List of user keys excluded from the segment. To target on other context kinds, use the excluded_contexts block attribute. This attribute is not valid when `unbounded` is set to `true`.",
+		},
+		UNBOUNDED: schema.BoolAttribute{
+			Optional:      true,
+			Computed:      true,
+			Default:       booldefault.StaticBool(false),
+			Description:   addForceNewDescription("Whether to create a standard segment (`false`) or a Big Segment (`true`). Standard segments include rule-based and smaller list-based segments. Big Segments include larger list-based segments and synced segments. Only use a Big Segment if you need to add more than 15,000 individual targets. It is not possible to manage the list of targeted contexts for Big Segments with Terraform.", true),
+			PlanModifiers: []planmodifier.Bool{boolplanmodifier.RequiresReplace()},
+		},
+		UNBOUNDED_CONTEXT_KIND: schema.StringAttribute{
+			Optional:    true,
+			Computed:    true,
+			Description: addForceNewDescription("For Big Segments, the targeted context kind. If this attribute is not specified it will default to `user`.", true),
+			PlanModifiers: []planmodifier.String{
+				stringplanmodifier.UseStateForUnknown(),
+				stringplanmodifier.RequiresReplace(),
 			},
-			PROJECT_KEY: schema.StringAttribute{
-				Required:      true,
-				Description:   addForceNewDescription("The segment's project key.", true),
-				Validators:    []validator.String{keyValidator()},
-				PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
-			},
-			ENV_KEY: schema.StringAttribute{
-				Required:      true,
-				Description:   addForceNewDescription("The segment's environment key.", true),
-				Validators:    []validator.String{keyValidator()},
-				PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
-			},
-			KEY: schema.StringAttribute{
-				Required:      true,
-				Description:   addForceNewDescription("The unique key that references the segment.", true),
-				Validators:    []validator.String{keyValidator()},
-				PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
-			},
-			NAME: schema.StringAttribute{
-				Required:    true,
-				Description: "The human-friendly name for the segment.",
-			},
-			DESCRIPTION: schema.StringAttribute{
-				Optional:    true,
-				Description: "The description of the segment's purpose.",
-			},
-			TAGS: schema.SetAttribute{
-				Optional:    true,
-				ElementType: types.StringType,
-				Validators:  []validator.Set{setvalidator.ValueStringsAre(tagValidator())},
-				Description: "Tags associated with your resource.",
-			},
-			CREATION_DATE: schema.Int64Attribute{
-				Computed:      true,
-				Description:   "The segment's creation date represented as a UNIX epoch timestamp.",
-				PlanModifiers: []planmodifier.Int64{int64planmodifier.UseStateForUnknown()},
-			},
-			INCLUDED: schema.ListAttribute{
-				Optional:    true,
-				ElementType: types.StringType,
-				Description: "List of user keys included in the segment. To target on other context kinds, use the included_contexts block attribute. This attribute is not valid when `unbounded` is set to `true`.",
-			},
-			EXCLUDED: schema.ListAttribute{
-				Optional:    true,
-				ElementType: types.StringType,
-				Description: "List of user keys excluded from the segment. To target on other context kinds, use the excluded_contexts block attribute. This attribute is not valid when `unbounded` is set to `true`.",
-			},
-			UNBOUNDED: schema.BoolAttribute{
-				Optional:      true,
-				Computed:      true,
-				Default:       booldefault.StaticBool(false),
-				Description:   addForceNewDescription("Whether to create a standard segment (`false`) or a Big Segment (`true`). Standard segments include rule-based and smaller list-based segments. Big Segments include larger list-based segments and synced segments. Only use a Big Segment if you need to add more than 15,000 individual targets. It is not possible to manage the list of targeted contexts for Big Segments with Terraform.", true),
-				PlanModifiers: []planmodifier.Bool{boolplanmodifier.RequiresReplace()},
-			},
-			UNBOUNDED_CONTEXT_KIND: schema.StringAttribute{
-				Optional:    true,
-				Computed:    true,
-				Description: addForceNewDescription("For Big Segments, the targeted context kind. If this attribute is not specified it will default to `user`.", true),
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.UseStateForUnknown(),
-					stringplanmodifier.RequiresReplace(),
-				},
-			},
-			VIEW_KEYS: schema.SetAttribute{
-				Optional:      true,
-				Computed:      true,
-				ElementType:   types.StringType,
-				Description:   "A set of view keys to link this segment to. This is an alternative to using the `launchdarkly_view_links` resource for managing view associations. When set, this segment will be linked to the specified views. The field is also computed, meaning Terraform will read back the current view associations from LaunchDarkly to detect drift. To explicitly remove all view associations, set `view_keys = []`. Simply removing the field from your configuration will leave existing associations unchanged. **Important**: Avoid using both `view_keys` and `launchdarkly_view_links` to manage the same segment. Mixed ownership can cause conflicts; when detected, Terraform logs a warning and reconciles to the configured `view_keys`. Choose one approach per resource.",
-				Validators:    []validator.Set{},
-				PlanModifiers: []planmodifier.Set{setplanmodifier.UseStateForUnknown()},
-			},
-			INCLUDED_CONTEXTS: schema.ListNestedAttribute{
-				Optional:    true,
-				Description: "List of non-user target objects included in the segment. This attribute is not valid when `unbounded` is set to `true`.",
-				NestedObject: schema.NestedAttributeObject{
-					Attributes: map[string]schema.Attribute{
-						VALUES: schema.ListAttribute{
-							Required:    true,
-							ElementType: types.StringType,
-							Description: "List of target object keys included in or excluded from the segment.",
-						},
-						CONTEXT_KIND: schema.StringAttribute{
-							Required:    true,
-							Description: "The context kind associated with this segment target. To target on user contexts, use the included and excluded attributes.",
-						},
+		},
+		VIEW_KEYS: schema.SetAttribute{
+			Optional:      true,
+			Computed:      true,
+			ElementType:   types.StringType,
+			Description:   "A set of view keys to link this segment to. This is an alternative to using the `launchdarkly_view_links` resource for managing view associations. When set, this segment will be linked to the specified views. The field is also computed, meaning Terraform will read back the current view associations from LaunchDarkly to detect drift. To explicitly remove all view associations, set `view_keys = []`. Simply removing the field from your configuration will leave existing associations unchanged. **Important**: Avoid using both `view_keys` and `launchdarkly_view_links` to manage the same segment. Mixed ownership can cause conflicts; when detected, Terraform logs a warning and reconciles to the configured `view_keys`. Choose one approach per resource.",
+			Validators:    []validator.Set{},
+			PlanModifiers: []planmodifier.Set{setplanmodifier.UseStateForUnknown()},
+		},
+		INCLUDED_CONTEXTS: schema.ListNestedAttribute{
+			Optional:    true,
+			Description: "List of non-user target objects included in the segment. This attribute is not valid when `unbounded` is set to `true`.",
+			NestedObject: schema.NestedAttributeObject{
+				Attributes: map[string]schema.Attribute{
+					VALUES: schema.ListAttribute{
+						Required:    true,
+						ElementType: types.StringType,
+						Description: "List of target object keys included in or excluded from the segment.",
+					},
+					CONTEXT_KIND: schema.StringAttribute{
+						Required:    true,
+						Description: "The context kind associated with this segment target. To target on user contexts, use the included and excluded attributes.",
 					},
 				},
 			},
-			EXCLUDED_CONTEXTS: schema.ListNestedAttribute{
-				Optional:    true,
-				Description: "List of non-user target objects excluded from the segment. This attribute is not valid when `unbounded` is set to `true`.",
-				NestedObject: schema.NestedAttributeObject{
-					Attributes: map[string]schema.Attribute{
-						VALUES: schema.ListAttribute{
-							Required:    true,
-							ElementType: types.StringType,
-							Description: "List of target object keys included in or excluded from the segment.",
-						},
-						CONTEXT_KIND: schema.StringAttribute{
-							Required:    true,
-							Description: "The context kind associated with this segment target. To target on user contexts, use the included and excluded attributes.",
-						},
+		},
+		EXCLUDED_CONTEXTS: schema.ListNestedAttribute{
+			Optional:    true,
+			Description: "List of non-user target objects excluded from the segment. This attribute is not valid when `unbounded` is set to `true`.",
+			NestedObject: schema.NestedAttributeObject{
+				Attributes: map[string]schema.Attribute{
+					VALUES: schema.ListAttribute{
+						Required:    true,
+						ElementType: types.StringType,
+						Description: "List of target object keys included in or excluded from the segment.",
+					},
+					CONTEXT_KIND: schema.StringAttribute{
+						Required:    true,
+						Description: "The context kind associated with this segment target. To target on user contexts, use the included and excluded attributes.",
 					},
 				},
 			},
-			RULES: segmentRulesResourceAttribute(),
+		},
+		RULES: segmentRulesResourceAttribute(),
+	}
+}
+
+func (r *SegmentResource) UpgradeState(_ context.Context) map[int64]resource.StateUpgrader {
+	priorSchema := schema.Schema{Attributes: segmentSchemaAttributes()}
+	return map[int64]resource.StateUpgrader{
+		0: {
+			PriorSchema: &priorSchema,
+			StateUpgrader: func(ctx context.Context, req resource.UpgradeStateRequest, resp *resource.UpgradeStateResponse) {
+				var data SegmentResourceModel
+				resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
+				if resp.Diagnostics.HasError() {
+					return
+				}
+				data.Description = nullIfEmptyString(data.Description)
+				data.UnboundedContextKind = nullIfEmptyString(data.UnboundedContextKind)
+				data.Included = nullIfEmptyList(ctx, data.Included)
+				data.Excluded = nullIfEmptyList(ctx, data.Excluded)
+				data.IncludedContexts = nullIfEmptyList(ctx, data.IncludedContexts)
+				data.ExcludedContexts = nullIfEmptyList(ctx, data.ExcludedContexts)
+				data.Rules = nullIfEmptyList(ctx, data.Rules)
+				data.Tags = nullIfEmptySet(ctx, data.Tags)
+				data.ViewKeys = nullIfEmptySet(ctx, data.ViewKeys)
+				resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+			},
 		},
 	}
 }

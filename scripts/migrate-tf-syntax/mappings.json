@@ -1,0 +1,64 @@
+{
+  "launchdarkly_access_token": [
+    {"name": "inline_roles"},
+    {"name": "policy_statements"}
+  ],
+  "launchdarkly_audit_log_subscription": [
+    {"name": "statements"}
+  ],
+  "launchdarkly_webhook": [
+    {"name": "statements"}
+  ],
+  "launchdarkly_custom_role": [
+    {"name": "policy"},
+    {"name": "policy_statements"}
+  ],
+  "launchdarkly_relay_proxy_configuration": [
+    {"name": "policy"}
+  ],
+  "launchdarkly_project": [
+    {"name": "default_client_side_availability"},
+    {"name": "environments", "nested": [{"name": "approval_settings"}]}
+  ],
+  "launchdarkly_environment": [
+    {"name": "approval_settings"}
+  ],
+  "launchdarkly_segment": [
+    {"name": "included_contexts"},
+    {"name": "excluded_contexts"},
+    {"name": "rules", "nested": [{"name": "clauses"}]}
+  ],
+  "launchdarkly_flag_trigger": [
+    {"name": "instructions"}
+  ],
+  "launchdarkly_view_links": [
+    {"name": "segments"}
+  ],
+  "launchdarkly_metric": [
+    {"name": "urls"}
+  ],
+  "launchdarkly_team": [
+    {"name": "role_attributes"}
+  ],
+  "launchdarkly_team_member": [
+    {"name": "role_attributes"}
+  ],
+  "launchdarkly_ai_config_variation": [
+    {"name": "messages"}
+  ],
+  "launchdarkly_flag_templates": [
+    {"name": "boolean_defaults"}
+  ],
+  "launchdarkly_feature_flag_environment": [
+    {"name": "prerequisites"},
+    {"name": "targets"},
+    {"name": "context_targets"},
+    {"name": "rules", "nested": [{"name": "clauses"}]},
+    {"name": "fallthrough"}
+  ],
+  "launchdarkly_feature_flag": [
+    {"name": "client_side_availability"},
+    {"name": "variations"},
+    {"name": "defaults"}
+  ]
+}

@@ -35,6 +35,7 @@ var (
 	_ resource.ResourceWithImportState      = &FeatureFlagResource{}
 	_ resource.ResourceWithModifyPlan       = &FeatureFlagResource{}
 	_ resource.ResourceWithConfigValidators = &FeatureFlagResource{}
+	_ resource.ResourceWithUpgradeState     = &FeatureFlagResource{}
 )
 
 type FeatureFlagResource struct {
@@ -79,197 +80,270 @@ func (r *FeatureFlagResource) Metadata(_ context.Context, req resource.MetadataR
 
 func (r *FeatureFlagResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
+		Version: 1,
 		Description: `Provides a LaunchDarkly feature flag resource.
 
 This resource allows you to create and manage feature flags within your LaunchDarkly organization.
 
 -> **Note:** This resource is for global-level feature flag configuration. Unexpected behavior may result if your environment-level configurations are not also managed from Terraform.`,
-		Attributes: map[string]schema.Attribute{
-			"id": schema.StringAttribute{
-				Computed:      true,
-				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+		Attributes: featureFlagSchemaAttributes(),
+	}
+}
+
+func featureFlagSchemaAttributes() map[string]schema.Attribute {
+	return map[string]schema.Attribute{
+		"id": schema.StringAttribute{
+			Computed:      true,
+			PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+		},
+		PROJECT_KEY: schema.StringAttribute{
+			Required:      true,
+			Description:   addForceNewDescription("The feature flag's project key.", true),
+			Validators:    []validator.String{keyValidator()},
+			PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
+		},
+		KEY: schema.StringAttribute{
+			Required:      true,
+			Description:   addForceNewDescription("The unique feature flag key that references the flag in your application code.", true),
+			Validators:    []validator.String{keyValidator()},
+			PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
+		},
+		NAME: schema.StringAttribute{
+			Required:    true,
+			Description: "The human-readable name of the feature flag.",
+		},
+		DESCRIPTION: schema.StringAttribute{
+			Optional:    true,
+			Description: "The feature flag's description.",
+		},
+		MAINTAINER_ID: schema.StringAttribute{
+			Optional:    true,
+			Computed:    true,
+			Description: "The feature flag maintainer's 24 character alphanumeric team member ID. `maintainer_team_key` cannot be set if `maintainer_id` is set. If neither is set, it will automatically be or stay set to the member ID associated with the API key used by your LaunchDarkly Terraform provider or the most recently-set maintainer.",
+			Validators:  []validator.String{idValidator()},
+			// Intentionally no UseStateForUnknown: maintainer_id and
+			// maintainer_team_key are mutually exclusive, so when the
+			// user switches from one to the other the unused field
+			// must transition to "" (LD's "no value" form) rather than
+			// retain the previous state value.
+		},
+		MAINTAINER_TEAM_KEY: schema.StringAttribute{
+			Optional:    true,
+			Computed:    true,
+			Description: "The key of the associated team that maintains this feature flag. `maintainer_id` cannot be set if `maintainer_team_key` is set",
+			Validators:  []validator.String{keyAndLengthValidator(1, 256)},
+			// See maintainer_id above — same mutual-exclusion reason.
+		},
+		VARIATION_TYPE: schema.StringAttribute{
+			Required:      true,
+			Description:   addForceNewDescription("The feature flag's variation type: `boolean`, `string`, `number` or `json`.", true),
+			PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
+			Validators: []validator.String{
+				oneOfValidator{allowed: []string{BOOL_VARIATION, STRING_VARIATION, NUMBER_VARIATION, JSON_VARIATION}},
 			},
-			PROJECT_KEY: schema.StringAttribute{
-				Required:      true,
-				Description:   addForceNewDescription("The feature flag's project key.", true),
-				Validators:    []validator.String{keyValidator()},
-				PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
-			},
-			KEY: schema.StringAttribute{
-				Required:      true,
-				Description:   addForceNewDescription("The unique feature flag key that references the flag in your application code.", true),
-				Validators:    []validator.String{keyValidator()},
-				PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
-			},
-			NAME: schema.StringAttribute{
-				Required:    true,
-				Description: "The human-readable name of the feature flag.",
-			},
-			DESCRIPTION: schema.StringAttribute{
-				Optional:    true,
-				Description: "The feature flag's description.",
-			},
-			MAINTAINER_ID: schema.StringAttribute{
-				Optional:    true,
-				Computed:    true,
-				Description: "The feature flag maintainer's 24 character alphanumeric team member ID. `maintainer_team_key` cannot be set if `maintainer_id` is set. If neither is set, it will automatically be or stay set to the member ID associated with the API key used by your LaunchDarkly Terraform provider or the most recently-set maintainer.",
-				Validators:  []validator.String{idValidator()},
-				// Intentionally no UseStateForUnknown: maintainer_id and
-				// maintainer_team_key are mutually exclusive, so when the
-				// user switches from one to the other the unused field
-				// must transition to "" (LD's "no value" form) rather than
-				// retain the previous state value.
-			},
-			MAINTAINER_TEAM_KEY: schema.StringAttribute{
-				Optional:    true,
-				Computed:    true,
-				Description: "The key of the associated team that maintains this feature flag. `maintainer_id` cannot be set if `maintainer_team_key` is set",
-				Validators:  []validator.String{keyAndLengthValidator(1, 256)},
-				// See maintainer_id above — same mutual-exclusion reason.
-			},
-			VARIATION_TYPE: schema.StringAttribute{
-				Required:      true,
-				Description:   addForceNewDescription("The feature flag's variation type: `boolean`, `string`, `number` or `json`.", true),
-				PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
-				Validators: []validator.String{
-					oneOfValidator{allowed: []string{BOOL_VARIATION, STRING_VARIATION, NUMBER_VARIATION, JSON_VARIATION}},
-				},
-			},
-			TEMPORARY: schema.BoolAttribute{
-				Optional:    true,
-				Computed:    true,
-				Default:     booldefault.StaticBool(false),
-				Description: "Specifies whether the flag is a temporary flag.",
-			},
-			INCLUDE_IN_SNIPPET: schema.BoolAttribute{
-				Optional:           true,
-				Computed:           true,
-				Description:        "Specifies whether this flag should be made available to the client-side JavaScript SDK using the client-side Id. This value gets its default from your project configuration if not set. `include_in_snippet` is now deprecated. Please migrate to `client_side_availability.using_environment_id` to maintain future compatibility.",
-				DeprecationMessage: "'include_in_snippet' is now deprecated. Please migrate to 'client_side_availability' to maintain future compatability.",
-				// Intentionally no UseStateForUnknown: include_in_snippet
-				// and client_side_availability are mutually exclusive
-				// (ConfigValidators.Conflicting). When the user switches
-				// between them, plan must recompute rather than preserve
-				// the previous state's value.
-			},
-			TAGS: schema.SetAttribute{
-				Optional:    true,
-				ElementType: types.StringType,
-				Validators:  []validator.Set{setvalidator.ValueStringsAre(tagValidator())},
-				Description: "Tags associated with your resource.",
-			},
-			ARCHIVED: schema.BoolAttribute{
-				Optional:    true,
-				Computed:    true,
-				Default:     booldefault.StaticBool(false),
-				Description: "Specifies whether the flag is archived or not. Note that you cannot create a new flag that is archived, but can update a flag to be archived.",
-			},
-			DEPRECATED: schema.BoolAttribute{
-				Optional:    true,
-				Computed:    true,
-				Default:     booldefault.StaticBool(false),
-				Description: "Specifies whether the flag is deprecated or not. Note that you cannot create a new flag that is deprecated, but can update a flag to be deprecated.",
-			},
-			VIEW_KEYS: schema.SetAttribute{
-				Optional:      true,
-				Computed:      true,
-				ElementType:   types.StringType,
-				Description:   "A set of view keys to link this flag to. This is an alternative to using the `launchdarkly_view_links` resource for managing view associations. When set, this flag will be linked to the specified views. The field is also computed, meaning Terraform will read back the current view associations from LaunchDarkly to detect drift. To explicitly remove all view associations, set `view_keys = []`. Simply removing the field from your configuration will leave existing associations unchanged. **Important**: Avoid using both `view_keys` and `launchdarkly_view_links` to manage the same flag. Mixed ownership can cause conflicts; when detected, Terraform logs a warning and reconciles to the configured `view_keys`. Choose one approach per resource.",
-				PlanModifiers: []planmodifier.Set{setplanmodifier.UseStateForUnknown()},
-			},
-			VARIATIONS: schema.ListNestedAttribute{
-				Required:    true,
-				Description: "An array of possible variations for the flag.",
-				Validators:  []validator.List{listvalidator.SizeAtLeast(1)},
-				NestedObject: schema.NestedAttributeObject{
-					Attributes: map[string]schema.Attribute{
-						NAME: schema.StringAttribute{
-							Optional:    true,
-							Computed:    true,
-							Default:     stringdefault.StaticString(""),
-							Description: "The name of the variation.",
+		},
+		TEMPORARY: schema.BoolAttribute{
+			Optional:    true,
+			Computed:    true,
+			Default:     booldefault.StaticBool(false),
+			Description: "Specifies whether the flag is a temporary flag.",
+		},
+		INCLUDE_IN_SNIPPET: schema.BoolAttribute{
+			Optional:           true,
+			Computed:           true,
+			Description:        "Specifies whether this flag should be made available to the client-side JavaScript SDK using the client-side Id. This value gets its default from your project configuration if not set. `include_in_snippet` is now deprecated. Please migrate to `client_side_availability.using_environment_id` to maintain future compatibility.",
+			DeprecationMessage: "'include_in_snippet' is now deprecated. Please migrate to 'client_side_availability' to maintain future compatability.",
+			// Intentionally no UseStateForUnknown: include_in_snippet
+			// and client_side_availability are mutually exclusive
+			// (ConfigValidators.Conflicting). When the user switches
+			// between them, plan must recompute rather than preserve
+			// the previous state's value.
+		},
+		TAGS: schema.SetAttribute{
+			Optional:    true,
+			ElementType: types.StringType,
+			Validators:  []validator.Set{setvalidator.ValueStringsAre(tagValidator())},
+			Description: "Tags associated with your resource.",
+		},
+		ARCHIVED: schema.BoolAttribute{
+			Optional:    true,
+			Computed:    true,
+			Default:     booldefault.StaticBool(false),
+			Description: "Specifies whether the flag is archived or not. Note that you cannot create a new flag that is archived, but can update a flag to be archived.",
+		},
+		DEPRECATED: schema.BoolAttribute{
+			Optional:    true,
+			Computed:    true,
+			Default:     booldefault.StaticBool(false),
+			Description: "Specifies whether the flag is deprecated or not. Note that you cannot create a new flag that is deprecated, but can update a flag to be deprecated.",
+		},
+		VIEW_KEYS: schema.SetAttribute{
+			Optional:      true,
+			Computed:      true,
+			ElementType:   types.StringType,
+			Description:   "A set of view keys to link this flag to. This is an alternative to using the `launchdarkly_view_links` resource for managing view associations. When set, this flag will be linked to the specified views. The field is also computed, meaning Terraform will read back the current view associations from LaunchDarkly to detect drift. To explicitly remove all view associations, set `view_keys = []`. Simply removing the field from your configuration will leave existing associations unchanged. **Important**: Avoid using both `view_keys` and `launchdarkly_view_links` to manage the same flag. Mixed ownership can cause conflicts; when detected, Terraform logs a warning and reconciles to the configured `view_keys`. Choose one approach per resource.",
+			PlanModifiers: []planmodifier.Set{setplanmodifier.UseStateForUnknown()},
+		},
+		VARIATIONS: schema.ListNestedAttribute{
+			Required:    true,
+			Description: "An array of possible variations for the flag.",
+			Validators:  []validator.List{listvalidator.SizeAtLeast(1)},
+			NestedObject: schema.NestedAttributeObject{
+				Attributes: map[string]schema.Attribute{
+					NAME: schema.StringAttribute{
+						Optional:    true,
+						Computed:    true,
+						Default:     stringdefault.StaticString(""),
+						Description: "The name of the variation.",
+					},
+					DESCRIPTION: schema.StringAttribute{
+						Optional:    true,
+						Computed:    true,
+						Default:     stringdefault.StaticString(""),
+						Description: "The variation's description.",
+					},
+					VALUE: schema.StringAttribute{
+						Required: true,
+						PlanModifiers: []planmodifier.String{
+							jsonNormalizePlanModifier{},
 						},
-						DESCRIPTION: schema.StringAttribute{
-							Optional:    true,
-							Computed:    true,
-							Default:     stringdefault.StaticString(""),
-							Description: "The variation's description.",
-						},
-						VALUE: schema.StringAttribute{
-							Required: true,
-							PlanModifiers: []planmodifier.String{
-								jsonNormalizePlanModifier{},
-							},
-							Description: fmt.Sprintf("The variation value. The value's type must correspond to the `variation_type` argument. For example: `variation_type = %q` accepts only `true` or `false`. The `number` variation type accepts both floats and ints, but please note that any trailing zeroes on floats will be trimmed (i.e. `1.1` and `1.100` will both be converted to `1.1`).\n\nIf you wish to define an empty string variation, you must still define the value field like so:\n\n```terraform\nvariations = [{\n  value = %q\n}]\n```\n\n-> **Note:** Terraform manages `variations` as an ordered array and identifies them by index. Changing the order of `variations` may destroy and recreate variations. Deleted variations that still have targets attached outside of Terraform may have their targets reassigned to a different variation.", "boolean", ""),
-						},
+						Description: fmt.Sprintf("The variation value. The value's type must correspond to the `variation_type` argument. For example: `variation_type = %q` accepts only `true` or `false`. The `number` variation type accepts both floats and ints, but please note that any trailing zeroes on floats will be trimmed (i.e. `1.1` and `1.100` will both be converted to `1.1`).\n\nIf you wish to define an empty string variation, you must still define the value field like so:\n\n```terraform\nvariations = [{\n  value = %q\n}]\n```\n\n-> **Note:** Terraform manages `variations` as an ordered array and identifies them by index. Changing the order of `variations` may destroy and recreate variations. Deleted variations that still have targets attached outside of Terraform may have their targets reassigned to a different variation.", "boolean", ""),
 					},
 				},
 			},
-			CLIENT_SIDE_AVAILABILITY: schema.ListNestedAttribute{
-				Optional:    true,
-				Description: "Whether this flag should be made available to the client-side JavaScript SDK using the client-side Id, mobile key, or both. This value gets its default from your project configuration if not set. Once set, if removed, it will retain its last set value.",
-				Validators:  []validator.List{listvalidator.SizeAtMost(1)},
-				NestedObject: schema.NestedAttributeObject{
-					Attributes: map[string]schema.Attribute{
-						USING_ENVIRONMENT_ID: schema.BoolAttribute{
-							Optional:    true,
-							Computed:    true,
-							Description: "Whether this flag is available to SDKs using the client-side ID.",
-						},
-						USING_MOBILE_KEY: schema.BoolAttribute{
-							Optional:    true,
-							Computed:    true,
-							Description: "Whether this flag is available to SDKs using a mobile key.",
-						},
+		},
+		CLIENT_SIDE_AVAILABILITY: schema.ListNestedAttribute{
+			Optional:    true,
+			Description: "Whether this flag should be made available to the client-side JavaScript SDK using the client-side Id, mobile key, or both. This value gets its default from your project configuration if not set. Once set, if removed, it will retain its last set value.",
+			Validators:  []validator.List{listvalidator.SizeAtMost(1)},
+			NestedObject: schema.NestedAttributeObject{
+				Attributes: map[string]schema.Attribute{
+					USING_ENVIRONMENT_ID: schema.BoolAttribute{
+						Optional:    true,
+						Computed:    true,
+						Description: "Whether this flag is available to SDKs using the client-side ID.",
+					},
+					USING_MOBILE_KEY: schema.BoolAttribute{
+						Optional:    true,
+						Computed:    true,
+						Description: "Whether this flag is available to SDKs using a mobile key.",
 					},
 				},
 			},
-			CUSTOM_PROPERTIES: schema.SetNestedAttribute{
-				Optional:    true,
-				Description: "The feature flag's [custom properties](https://docs.launchdarkly.com/home/connecting/custom-properties).",
-				Validators:  []validator.Set{setvalidator.SizeAtMost(CUSTOM_PROPERTY_ITEM_LIMIT)},
-				NestedObject: schema.NestedAttributeObject{
-					Attributes: map[string]schema.Attribute{
-						KEY: schema.StringAttribute{
-							Required:    true,
-							Description: "The unique custom property key.",
-							Validators:  []validator.String{stringLenBetween(1, CUSTOM_PROPERTY_CHAR_LIMIT)},
+		},
+		CUSTOM_PROPERTIES: schema.SetNestedAttribute{
+			Optional:    true,
+			Description: "The feature flag's [custom properties](https://docs.launchdarkly.com/home/connecting/custom-properties).",
+			Validators:  []validator.Set{setvalidator.SizeAtMost(CUSTOM_PROPERTY_ITEM_LIMIT)},
+			NestedObject: schema.NestedAttributeObject{
+				Attributes: map[string]schema.Attribute{
+					KEY: schema.StringAttribute{
+						Required:    true,
+						Description: "The unique custom property key.",
+						Validators:  []validator.String{stringLenBetween(1, CUSTOM_PROPERTY_CHAR_LIMIT)},
+					},
+					NAME: schema.StringAttribute{
+						Required:    true,
+						Description: "The name of the custom property.",
+						Validators:  []validator.String{stringLenBetween(1, CUSTOM_PROPERTY_CHAR_LIMIT)},
+					},
+					VALUE: schema.ListAttribute{
+						Required:    true,
+						ElementType: types.StringType,
+						Validators: []validator.List{
+							listvalidator.SizeAtMost(CUSTOM_PROPERTY_ITEM_LIMIT),
+							listvalidator.ValueStringsAre(stringLenBetween(1, CUSTOM_PROPERTY_CHAR_LIMIT)),
 						},
-						NAME: schema.StringAttribute{
-							Required:    true,
-							Description: "The name of the custom property.",
-							Validators:  []validator.String{stringLenBetween(1, CUSTOM_PROPERTY_CHAR_LIMIT)},
-						},
-						VALUE: schema.ListAttribute{
-							Required:    true,
-							ElementType: types.StringType,
-							Validators: []validator.List{
-								listvalidator.SizeAtMost(CUSTOM_PROPERTY_ITEM_LIMIT),
-								listvalidator.ValueStringsAre(stringLenBetween(1, CUSTOM_PROPERTY_CHAR_LIMIT)),
-							},
-							Description: "The list of custom property value strings.",
-						},
+						Description: "The list of custom property value strings.",
 					},
 				},
 			},
-			DEFAULTS: schema.ListNestedAttribute{
-				Optional:    true,
-				Description: "The indices of the variations to be used as the default on and off variations in all new environments. Flag configurations in existing environments will not be changed nor updated if removed.",
-				Validators:  []validator.List{listvalidator.SizeAtMost(1)},
-				NestedObject: schema.NestedAttributeObject{
-					Attributes: map[string]schema.Attribute{
-						ON_VARIATION: schema.Int64Attribute{
-							Required:    true,
-							Validators:  []validator.Int64{int64validator.AtLeast(0)},
-							Description: "The index of the variation the flag will default to in all new environments when on.",
-						},
-						OFF_VARIATION: schema.Int64Attribute{
-							Required:    true,
-							Validators:  []validator.Int64{int64validator.AtLeast(0)},
-							Description: "The index of the variation the flag will default to in all new environments when off.",
-						},
+		},
+		DEFAULTS: schema.ListNestedAttribute{
+			Optional:    true,
+			Description: "The indices of the variations to be used as the default on and off variations in all new environments. Flag configurations in existing environments will not be changed nor updated if removed.",
+			Validators:  []validator.List{listvalidator.SizeAtMost(1)},
+			NestedObject: schema.NestedAttributeObject{
+				Attributes: map[string]schema.Attribute{
+					ON_VARIATION: schema.Int64Attribute{
+						Required:    true,
+						Validators:  []validator.Int64{int64validator.AtLeast(0)},
+						Description: "The index of the variation the flag will default to in all new environments when on.",
+					},
+					OFF_VARIATION: schema.Int64Attribute{
+						Required:    true,
+						Validators:  []validator.Int64{int64validator.AtLeast(0)},
+						Description: "The index of the variation the flag will default to in all new environments when off.",
 					},
 				},
+			},
+		},
+	}
+}
+
+func featureFlagDefaultsMatchesAPIShape(ctx context.Context, defaults types.List, variations types.List) bool {
+	if defaults.IsNull() || defaults.IsUnknown() || len(defaults.Elements()) != 1 {
+		return false
+	}
+	if variations.IsNull() || variations.IsUnknown() {
+		return false
+	}
+	variationCount := len(variations.Elements())
+	if variationCount == 0 {
+		return false
+	}
+	type defaultsItem struct {
+		OnVariation  int64 `tfsdk:"on_variation"`
+		OffVariation int64 `tfsdk:"off_variation"`
+	}
+	var items []defaultsItem
+	d := defaults.ElementsAs(ctx, &items, false)
+	if d.HasError() || len(items) != 1 {
+		return false
+	}
+	return items[0].OnVariation == 0 && items[0].OffVariation == int64(variationCount-1)
+}
+
+func featureFlagCSAMatchesAPIShape(ctx context.Context, csa types.List) bool {
+	if csa.IsNull() || csa.IsUnknown() || len(csa.Elements()) != 1 {
+		return false
+	}
+	type csaItem struct {
+		UsingEnvironmentID types.Bool `tfsdk:"using_environment_id"`
+		UsingMobileKey     types.Bool `tfsdk:"using_mobile_key"`
+	}
+	var items []csaItem
+	d := csa.ElementsAs(ctx, &items, false)
+	if d.HasError() || len(items) != 1 {
+		return false
+	}
+	envOK := !items[0].UsingEnvironmentID.IsNull() && items[0].UsingEnvironmentID.ValueBool()
+	mobileOK := !items[0].UsingMobileKey.IsNull() && items[0].UsingMobileKey.ValueBool()
+	return envOK && mobileOK
+}
+
+func (r *FeatureFlagResource) UpgradeState(_ context.Context) map[int64]resource.StateUpgrader {
+	priorSchema := schema.Schema{Attributes: featureFlagSchemaAttributes()}
+	return map[int64]resource.StateUpgrader{
+		0: {
+			PriorSchema: &priorSchema,
+			StateUpgrader: func(ctx context.Context, req resource.UpgradeStateRequest, resp *resource.UpgradeStateResponse) {
+				var data FeatureFlagResourceModel
+				resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
+				if resp.Diagnostics.HasError() {
+					return
+				}
+				data.Tags = nullIfEmptySet(ctx, data.Tags)
+				data.CustomProperties = nullIfEmptySet(ctx, data.CustomProperties)
+				data.ViewKeys = nullIfEmptySet(ctx, data.ViewKeys)
+				data.Description = nullIfEmptyString(data.Description)
+				if featureFlagDefaultsMatchesAPIShape(ctx, data.Defaults, data.Variations) {
+					data.Defaults = types.ListNull(data.Defaults.ElementType(ctx))
+				}
+				if featureFlagCSAMatchesAPIShape(ctx, data.ClientSideAvailability) {
+					data.ClientSideAvailability = types.ListNull(data.ClientSideAvailability.ElementType(ctx))
+				}
+				resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 			},
 		},
 	}

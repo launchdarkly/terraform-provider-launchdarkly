@@ -29,6 +29,7 @@ var (
 	_ resource.ResourceWithImportState      = &AccessTokenResource{}
 	_ resource.ResourceWithConfigValidators = &AccessTokenResource{}
 	_ resource.ResourceWithModifyPlan       = &AccessTokenResource{}
+	_ resource.ResourceWithUpgradeState     = &AccessTokenResource{}
 )
 
 type AccessTokenResource struct {
@@ -58,6 +59,7 @@ func (r *AccessTokenResource) Metadata(_ context.Context, req resource.MetadataR
 
 func (r *AccessTokenResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
+		Version: 1,
 		Description: `Provides a LaunchDarkly access token resource.
 
 This resource allows you to create and manage access tokens within your LaunchDarkly organization.
@@ -65,79 +67,102 @@ This resource allows you to create and manage access tokens within your LaunchDa
 -> **Note:** This resource stores the full plaintext secret for your access token in Terraform state. Be sure your state is configured securely before using this resource. To learn more, read [Sensitive data in state](https://www.terraform.io/docs/state/sensitive-data.html).
 
 The resource must contain either a "role", "custom_role" or an "inline_roles" (previously "policy_statements") block. As of v1.7.0, "policy_statements" has been deprecated in favor of "inline_roles".`,
-		Attributes: map[string]schema.Attribute{
-			"id": schema.StringAttribute{
-				Computed:      true,
-				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+		Attributes: accessTokenSchemaAttributes(),
+	}
+}
+
+func accessTokenSchemaAttributes() map[string]schema.Attribute {
+	return map[string]schema.Attribute{
+		"id": schema.StringAttribute{
+			Computed:      true,
+			PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+		},
+		NAME: schema.StringAttribute{
+			Optional:    true,
+			Description: "A human-friendly name for the access token.",
+		},
+		ROLE: schema.StringAttribute{
+			Optional:    true,
+			Description: "A built-in LaunchDarkly role. Can be `reader`, `writer`, or `admin`",
+			Validators: []validator.String{
+				oneOfValidator{allowed: []string{"reader", "writer", "admin"}},
 			},
-			NAME: schema.StringAttribute{
-				Optional:    true,
-				Description: "A human-friendly name for the access token.",
+		},
+		CUSTOM_ROLES: schema.SetAttribute{
+			Optional:    true,
+			ElementType: types.StringType,
+			Description: "A list of custom role IDs to use as access limits for the access token.",
+		},
+		SERVICE_TOKEN: schema.BoolAttribute{
+			Optional: true,
+			// framework requires Computed: true alongside Default.
+			Computed:    true,
+			Default:     booldefault.StaticBool(false),
+			Description: addForceNewDescription("Whether the token will be a [service token](https://docs.launchdarkly.com/home/account-security/api-access-tokens#service-tokens).", true),
+			PlanModifiers: []planmodifier.Bool{
+				boolplanmodifier.RequiresReplace(),
 			},
-			ROLE: schema.StringAttribute{
-				Optional:    true,
-				Description: "A built-in LaunchDarkly role. Can be `reader`, `writer`, or `admin`",
-				Validators: []validator.String{
-					oneOfValidator{allowed: []string{"reader", "writer", "admin"}},
-				},
+		},
+		DEFAULT_API_VERSION: schema.Int64Attribute{
+			Optional:    true,
+			Computed:    true,
+			Description: addForceNewDescription("The default API version for this token. Defaults to the latest API version.", true),
+			PlanModifiers: []planmodifier.Int64{
+				// Per-attribute UseStateForUnknown here trips the
+				// .token inconsistent-sensitive-attr check on
+				// expire-triggered resets (TestAccAccessToken_Reset).
+				// Use resource-level ModifyPlan instead — it runs
+				// after per-attribute modifiers and doesn't disturb
+				// the framework's Computed-coupling that the token
+				// reset path relies on.
+				int64planmodifier.RequiresReplace(),
 			},
-			CUSTOM_ROLES: schema.SetAttribute{
-				Optional:    true,
-				ElementType: types.StringType,
-				Description: "A list of custom role IDs to use as access limits for the access token.",
+			Validators: []validator.Int64{
+				apiVersionValidator{},
 			},
-			SERVICE_TOKEN: schema.BoolAttribute{
-				Optional: true,
-				// framework requires Computed: true alongside Default.
-				Computed:    true,
-				Default:     booldefault.StaticBool(false),
-				Description: addForceNewDescription("Whether the token will be a [service token](https://docs.launchdarkly.com/home/account-security/api-access-tokens#service-tokens).", true),
-				PlanModifiers: []planmodifier.Bool{
-					boolplanmodifier.RequiresReplace(),
-				},
+		},
+		TOKEN: schema.StringAttribute{
+			Computed:      true,
+			Sensitive:     true,
+			Description:   "The access token used to authorize usage of the LaunchDarkly API.",
+			PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+		},
+		EXPIRE: schema.Int64Attribute{
+			Optional:           true,
+			Description:        "An expiration time for the current token secret, expressed as a Unix epoch time. Replace the computed token secret with a new value. The expired secret will no longer be able to authorize usage of the LaunchDarkly API. This field argument is **deprecated**. Please update your config to remove `expire` to maintain compatibility with future versions",
+			DeprecationMessage: "'expire' is deprecated and will be removed in the next major release of the LaunchDarkly provider",
+			Validators: []validator.Int64{
+				noZeroValuesInt64Validator{},
 			},
-			DEFAULT_API_VERSION: schema.Int64Attribute{
-				Optional:    true,
-				Computed:    true,
-				Description: addForceNewDescription("The default API version for this token. Defaults to the latest API version.", true),
-				PlanModifiers: []planmodifier.Int64{
-					// Per-attribute UseStateForUnknown here trips the
-					// .token inconsistent-sensitive-attr check on
-					// expire-triggered resets (TestAccAccessToken_Reset).
-					// Use resource-level ModifyPlan instead — it runs
-					// after per-attribute modifiers and doesn't disturb
-					// the framework's Computed-coupling that the token
-					// reset path relies on.
-					int64planmodifier.RequiresReplace(),
-				},
-				Validators: []validator.Int64{
-					apiVersionValidator{},
-				},
+		},
+		POLICY_STATEMENTS: frameworkPolicyStatementsResourceAttribute(
+			false,
+			"Define inline custom roles. An array of statements with three attributes: effect, resources, actions. May be used in place of a built-in or custom role. This field argument is **deprecated**. Update your config to use `inline_role` to maintain compatibility with future versions.",
+			"'policy_statements' is deprecated in favor of 'inline_roles'. This field will be removed in the next major release of the LaunchDarkly provider",
+		),
+		INLINE_ROLES: frameworkPolicyStatementsResourceAttribute(
+			false,
+			"Define inline custom roles. An array of statements with three attributes: effect, resources, actions. May be used in place of a built-in or custom role. [Using polices](https://docs.launchdarkly.com/home/members/role-policies).",
+			"",
+		),
+	}
+}
+
+func (r *AccessTokenResource) UpgradeState(_ context.Context) map[int64]resource.StateUpgrader {
+	priorSchema := schema.Schema{Attributes: accessTokenSchemaAttributes()}
+	return map[int64]resource.StateUpgrader{
+		0: {
+			PriorSchema: &priorSchema,
+			StateUpgrader: func(ctx context.Context, req resource.UpgradeStateRequest, resp *resource.UpgradeStateResponse) {
+				var data AccessTokenResourceModel
+				resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
+				if resp.Diagnostics.HasError() {
+					return
+				}
+				data.InlineRoles = nullIfEmptyList(ctx, data.InlineRoles)
+				data.PolicyStatements = nullIfEmptyList(ctx, data.PolicyStatements)
+				resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 			},
-			TOKEN: schema.StringAttribute{
-				Computed:      true,
-				Sensitive:     true,
-				Description:   "The access token used to authorize usage of the LaunchDarkly API.",
-				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
-			},
-			EXPIRE: schema.Int64Attribute{
-				Optional:           true,
-				Description:        "An expiration time for the current token secret, expressed as a Unix epoch time. Replace the computed token secret with a new value. The expired secret will no longer be able to authorize usage of the LaunchDarkly API. This field argument is **deprecated**. Please update your config to remove `expire` to maintain compatibility with future versions",
-				DeprecationMessage: "'expire' is deprecated and will be removed in the next major release of the LaunchDarkly provider",
-				Validators: []validator.Int64{
-					noZeroValuesInt64Validator{},
-				},
-			},
-			POLICY_STATEMENTS: frameworkPolicyStatementsResourceAttribute(
-				false,
-				"Define inline custom roles. An array of statements with three attributes: effect, resources, actions. May be used in place of a built-in or custom role. This field argument is **deprecated**. Update your config to use `inline_role` to maintain compatibility with future versions.",
-				"'policy_statements' is deprecated in favor of 'inline_roles'. This field will be removed in the next major release of the LaunchDarkly provider",
-			),
-			INLINE_ROLES: frameworkPolicyStatementsResourceAttribute(
-				false,
-				"Define inline custom roles. An array of statements with three attributes: effect, resources, actions. May be used in place of a built-in or custom role. [Using polices](https://docs.launchdarkly.com/home/members/role-policies).",
-				"",
-			),
 		},
 	}
 }

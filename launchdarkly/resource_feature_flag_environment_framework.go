@@ -25,8 +25,9 @@ import (
 )
 
 var (
-	_ resource.Resource                = &FeatureFlagEnvironmentResource{}
-	_ resource.ResourceWithImportState = &FeatureFlagEnvironmentResource{}
+	_ resource.Resource                 = &FeatureFlagEnvironmentResource{}
+	_ resource.ResourceWithImportState  = &FeatureFlagEnvironmentResource{}
+	_ resource.ResourceWithUpgradeState = &FeatureFlagEnvironmentResource{}
 )
 
 type FeatureFlagEnvironmentResource struct {
@@ -57,170 +58,196 @@ func (r *FeatureFlagEnvironmentResource) Metadata(_ context.Context, req resourc
 
 func (r *FeatureFlagEnvironmentResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
+		Version:     1,
 		Description: "Provides a LaunchDarkly environment-specific feature flag resource.\n\nThis resource allows you to create and manage environment-specific feature flags attributes within your LaunchDarkly organization.\n\n-> **Note:** If you intend to attach a feature flag to any experiments, we do _not_ recommend configuring environment-specific flag settings using Terraform. Subsequent applies may overwrite the changes made by experiments and break your experiment. An alternate workaround is to use the [lifecycle.ignore_changes](https://developer.hashicorp.com/terraform/language/meta-arguments/lifecycle#ignore_changes) Terraform meta-argument on the `fallthrough` field to prevent potential overwrites.",
-		Attributes: map[string]schema.Attribute{
-			"id": schema.StringAttribute{
-				Computed:      true,
-				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
-			},
-			FLAG_ID: schema.StringAttribute{
-				Required:      true,
-				Description:   addForceNewDescription("The feature flag's unique `id` in the format `project_key/flag_key`.", true),
-				Validators:    []validator.String{flagIDValidator()},
-				PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
-			},
-			ENV_KEY: schema.StringAttribute{
-				Required:      true,
-				Description:   addForceNewDescription("The environment key.", true),
-				Validators:    []validator.String{keyValidator()},
-				PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
-			},
-			ON: schema.BoolAttribute{
-				Optional:    true,
-				Computed:    true,
-				Default:     booldefault.StaticBool(false),
-				Description: "Whether targeting is enabled. Defaults to `false` if not set.",
-			},
-			TRACK_EVENTS: schema.BoolAttribute{
-				Optional:    true,
-				Computed:    true,
-				Default:     booldefault.StaticBool(false),
-				Description: "Whether to send event data back to LaunchDarkly. Defaults to `false` if not set.",
-			},
-			OFF_VARIATION: schema.Int64Attribute{
-				Required:    true,
-				Validators:  []validator.Int64{int64validator.AtLeast(0)},
-				Description: "The index of the variation to serve if targeting is disabled.",
-			},
-			TARGETS: schema.SetNestedAttribute{
-				Optional:    true,
-				Description: "Individual user targets for each variation.",
-				NestedObject: schema.NestedAttributeObject{
-					Attributes: map[string]schema.Attribute{
-						VALUES: schema.ListAttribute{
-							Required:    true,
-							ElementType: types.StringType,
-							Description: "List of `user` strings to target.",
-						},
-						VARIATION: schema.Int64Attribute{
-							Required:    true,
-							Validators:  []validator.Int64{int64validator.AtLeast(0)},
-							Description: "The index of the variation to serve if a user target value is matched.",
-						},
+		Attributes:  featureFlagEnvironmentSchemaAttributes(),
+	}
+}
+
+func featureFlagEnvironmentSchemaAttributes() map[string]schema.Attribute {
+	return map[string]schema.Attribute{
+		"id": schema.StringAttribute{
+			Computed:      true,
+			PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+		},
+		FLAG_ID: schema.StringAttribute{
+			Required:      true,
+			Description:   addForceNewDescription("The feature flag's unique `id` in the format `project_key/flag_key`.", true),
+			Validators:    []validator.String{flagIDValidator()},
+			PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
+		},
+		ENV_KEY: schema.StringAttribute{
+			Required:      true,
+			Description:   addForceNewDescription("The environment key.", true),
+			Validators:    []validator.String{keyValidator()},
+			PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
+		},
+		ON: schema.BoolAttribute{
+			Optional:    true,
+			Computed:    true,
+			Default:     booldefault.StaticBool(false),
+			Description: "Whether targeting is enabled. Defaults to `false` if not set.",
+		},
+		TRACK_EVENTS: schema.BoolAttribute{
+			Optional:    true,
+			Computed:    true,
+			Default:     booldefault.StaticBool(false),
+			Description: "Whether to send event data back to LaunchDarkly. Defaults to `false` if not set.",
+		},
+		OFF_VARIATION: schema.Int64Attribute{
+			Required:    true,
+			Validators:  []validator.Int64{int64validator.AtLeast(0)},
+			Description: "The index of the variation to serve if targeting is disabled.",
+		},
+		TARGETS: schema.SetNestedAttribute{
+			Optional:    true,
+			Description: "Individual user targets for each variation.",
+			NestedObject: schema.NestedAttributeObject{
+				Attributes: map[string]schema.Attribute{
+					VALUES: schema.ListAttribute{
+						Required:    true,
+						ElementType: types.StringType,
+						Description: "List of `user` strings to target.",
+					},
+					VARIATION: schema.Int64Attribute{
+						Required:    true,
+						Validators:  []validator.Int64{int64validator.AtLeast(0)},
+						Description: "The index of the variation to serve if a user target value is matched.",
 					},
 				},
 			},
-			CONTEXT_TARGETS: schema.SetNestedAttribute{
-				Optional:    true,
-				Description: "Individual targets for non-user context kinds for each variation.",
-				NestedObject: schema.NestedAttributeObject{
-					Attributes: map[string]schema.Attribute{
-						VALUES: schema.ListAttribute{
-							Required:    true,
-							ElementType: types.StringType,
-							Description: "List of `user` strings to target.",
-						},
-						VARIATION: schema.Int64Attribute{
-							Required:    true,
-							Validators:  []validator.Int64{int64validator.AtLeast(0)},
-							Description: "The index of the variation to serve if a user target value is matched.",
-						},
-						CONTEXT_KIND: schema.StringAttribute{
-							Required:    true,
-							Description: "The context kind on which the flag should target in this environment. User (`user`) targets should be specified as `targets`.",
-						},
+		},
+		CONTEXT_TARGETS: schema.SetNestedAttribute{
+			Optional:    true,
+			Description: "Individual targets for non-user context kinds for each variation.",
+			NestedObject: schema.NestedAttributeObject{
+				Attributes: map[string]schema.Attribute{
+					VALUES: schema.ListAttribute{
+						Required:    true,
+						ElementType: types.StringType,
+						Description: "List of `user` strings to target.",
+					},
+					VARIATION: schema.Int64Attribute{
+						Required:    true,
+						Validators:  []validator.Int64{int64validator.AtLeast(0)},
+						Description: "The index of the variation to serve if a user target value is matched.",
+					},
+					CONTEXT_KIND: schema.StringAttribute{
+						Required:    true,
+						Description: "The context kind on which the flag should target in this environment. User (`user`) targets should be specified as `targets`.",
 					},
 				},
 			},
-			PREREQUISITES: schema.ListNestedAttribute{
-				Optional:    true,
-				Description: "Prerequisite feature flag rules.",
-				NestedObject: schema.NestedAttributeObject{
-					Attributes: map[string]schema.Attribute{
-						FLAG_KEY: schema.StringAttribute{
-							Required:    true,
-							Description: "The prerequisite feature flag's `key`.",
-							Validators:  []validator.String{keyValidator()},
-						},
-						VARIATION: schema.Int64Attribute{
-							Required:    true,
-							Validators:  []validator.Int64{int64validator.AtLeast(0)},
-							Description: "The index of the prerequisite feature flag's variation to target.",
-						},
+		},
+		PREREQUISITES: schema.ListNestedAttribute{
+			Optional:    true,
+			Description: "Prerequisite feature flag rules.",
+			NestedObject: schema.NestedAttributeObject{
+				Attributes: map[string]schema.Attribute{
+					FLAG_KEY: schema.StringAttribute{
+						Required:    true,
+						Description: "The prerequisite feature flag's `key`.",
+						Validators:  []validator.String{keyValidator()},
+					},
+					VARIATION: schema.Int64Attribute{
+						Required:    true,
+						Validators:  []validator.Int64{int64validator.AtLeast(0)},
+						Description: "The index of the prerequisite feature flag's variation to target.",
 					},
 				},
 			},
-			RULES: schema.ListNestedAttribute{
-				Optional:    true,
-				Description: "List of logical targeting rules.",
-				NestedObject: schema.NestedAttributeObject{
-					Attributes: map[string]schema.Attribute{
-						DESCRIPTION: schema.StringAttribute{
-							Optional:    true,
-							Computed:    true,
-							Default:     stringdefault.StaticString(""),
-							Description: "A human-readable description of the targeting rule.",
+		},
+		RULES: schema.ListNestedAttribute{
+			Optional:    true,
+			Description: "List of logical targeting rules.",
+			NestedObject: schema.NestedAttributeObject{
+				Attributes: map[string]schema.Attribute{
+					DESCRIPTION: schema.StringAttribute{
+						Optional:    true,
+						Computed:    true,
+						Default:     stringdefault.StaticString(""),
+						Description: "A human-readable description of the targeting rule.",
+					},
+					VARIATION: schema.Int64Attribute{
+						Optional:    true,
+						Validators:  []validator.Int64{int64validator.AtLeast(0)},
+						Description: "The integer variation index to serve if the rule clauses evaluate to `true`. You must specify either `variation` or `rollout_weights`",
+					},
+					BUCKET_BY: schema.StringAttribute{
+						Optional:    true,
+						Description: "Group percentage rollout by a custom attribute. This argument is only valid if `rollout_weights` is also specified.",
+					},
+					CONTEXT_KIND: schema.StringAttribute{
+						Optional:    true,
+						Computed:    true,
+						Default:     stringdefault.StaticString("user"),
+						Description: "The context kind associated with the specified rollout. This argument is only valid if `rollout_weights` is also specified. Defaults to `user` if omitted.",
+					},
+					ROLLOUT_WEIGHTS: schema.ListAttribute{
+						Optional:    true,
+						ElementType: types.Int64Type,
+						Validators: []validator.List{
+							listvalidator.ValueInt64sAre(int64validator.Between(0, 100000)),
 						},
-						VARIATION: schema.Int64Attribute{
-							Optional:    true,
-							Validators:  []validator.Int64{int64validator.AtLeast(0)},
-							Description: "The integer variation index to serve if the rule clauses evaluate to `true`. You must specify either `variation` or `rollout_weights`",
+						Description: "List of integer percentage rollout weights (in thousandths of a percent) to apply to each variation if the rule clauses evaluates to `true`. The sum of the `rollout_weights` must equal 100000 and the number of rollout weights specified in the array must match the number of flag variations. You must specify either `variation` or `rollout_weights`.",
+					},
+					CLAUSES: frameworkClausesResourceAttribute(),
+				},
+			},
+		},
+		FALLTHROUGH: schema.ListNestedAttribute{
+			Required:    true,
+			Description: "The default variation to serve if no `prerequisites`, `target`, or `rules` apply.",
+			Validators:  []validator.List{listvalidator.SizeAtLeast(1), listvalidator.SizeAtMost(1)},
+			NestedObject: schema.NestedAttributeObject{
+				Attributes: map[string]schema.Attribute{
+					VARIATION: schema.Int64Attribute{
+						Optional:    true,
+						Computed:    true,
+						Default:     int64default.StaticInt64(0),
+						Validators:  []validator.Int64{int64validator.AtLeast(0)},
+						Description: "The default integer variation index to serve if no `prerequisites`, `target`, or `rules` apply. You must specify either `variation` or `rollout_weights`.",
+					},
+					BUCKET_BY: schema.StringAttribute{
+						Optional:    true,
+						Description: "Group percentage rollout by a custom attribute. This argument is only valid if rollout_weights is also specified.",
+					},
+					CONTEXT_KIND: schema.StringAttribute{
+						Optional:    true,
+						Computed:    true,
+						Default:     stringdefault.StaticString("user"),
+						Description: "The context kind associated with the specified rollout. This argument is only valid if rollout_weights is also specified. If omitted, defaults to `user`.",
+					},
+					ROLLOUT_WEIGHTS: schema.ListAttribute{
+						Optional:    true,
+						ElementType: types.Int64Type,
+						Validators: []validator.List{
+							listvalidator.ValueInt64sAre(int64validator.Between(0, 100000)),
 						},
-						BUCKET_BY: schema.StringAttribute{
-							Optional:    true,
-							Description: "Group percentage rollout by a custom attribute. This argument is only valid if `rollout_weights` is also specified.",
-						},
-						CONTEXT_KIND: schema.StringAttribute{
-							Optional:    true,
-							Computed:    true,
-							Default:     stringdefault.StaticString("user"),
-							Description: "The context kind associated with the specified rollout. This argument is only valid if `rollout_weights` is also specified. Defaults to `user` if omitted.",
-						},
-						ROLLOUT_WEIGHTS: schema.ListAttribute{
-							Optional:    true,
-							ElementType: types.Int64Type,
-							Validators: []validator.List{
-								listvalidator.ValueInt64sAre(int64validator.Between(0, 100000)),
-							},
-							Description: "List of integer percentage rollout weights (in thousandths of a percent) to apply to each variation if the rule clauses evaluates to `true`. The sum of the `rollout_weights` must equal 100000 and the number of rollout weights specified in the array must match the number of flag variations. You must specify either `variation` or `rollout_weights`.",
-						},
-						CLAUSES: frameworkClausesResourceAttribute(),
+						Description: "List of integer percentage rollout weights (in thousandths of a percent) to apply to each variation if the rule clauses evaluates to `true`. The sum of the `rollout_weights` must equal 100000 and the number of rollout weights specified in the array must match the number of flag variations. You must specify either `variation` or `rollout_weights`.",
 					},
 				},
 			},
-			FALLTHROUGH: schema.ListNestedAttribute{
-				Required:    true,
-				Description: "The default variation to serve if no `prerequisites`, `target`, or `rules` apply.",
-				Validators:  []validator.List{listvalidator.SizeAtLeast(1), listvalidator.SizeAtMost(1)},
-				NestedObject: schema.NestedAttributeObject{
-					Attributes: map[string]schema.Attribute{
-						VARIATION: schema.Int64Attribute{
-							Optional:    true,
-							Computed:    true,
-							Default:     int64default.StaticInt64(0),
-							Validators:  []validator.Int64{int64validator.AtLeast(0)},
-							Description: "The default integer variation index to serve if no `prerequisites`, `target`, or `rules` apply. You must specify either `variation` or `rollout_weights`.",
-						},
-						BUCKET_BY: schema.StringAttribute{
-							Optional:    true,
-							Description: "Group percentage rollout by a custom attribute. This argument is only valid if rollout_weights is also specified.",
-						},
-						CONTEXT_KIND: schema.StringAttribute{
-							Optional:    true,
-							Computed:    true,
-							Default:     stringdefault.StaticString("user"),
-							Description: "The context kind associated with the specified rollout. This argument is only valid if rollout_weights is also specified. If omitted, defaults to `user`.",
-						},
-						ROLLOUT_WEIGHTS: schema.ListAttribute{
-							Optional:    true,
-							ElementType: types.Int64Type,
-							Validators: []validator.List{
-								listvalidator.ValueInt64sAre(int64validator.Between(0, 100000)),
-							},
-							Description: "List of integer percentage rollout weights (in thousandths of a percent) to apply to each variation if the rule clauses evaluates to `true`. The sum of the `rollout_weights` must equal 100000 and the number of rollout weights specified in the array must match the number of flag variations. You must specify either `variation` or `rollout_weights`.",
-						},
-					},
-				},
+		},
+	}
+}
+
+func (r *FeatureFlagEnvironmentResource) UpgradeState(_ context.Context) map[int64]resource.StateUpgrader {
+	priorSchema := schema.Schema{Attributes: featureFlagEnvironmentSchemaAttributes()}
+	return map[int64]resource.StateUpgrader{
+		0: {
+			PriorSchema: &priorSchema,
+			StateUpgrader: func(ctx context.Context, req resource.UpgradeStateRequest, resp *resource.UpgradeStateResponse) {
+				var data FeatureFlagEnvironmentResourceModel
+				resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
+				if resp.Diagnostics.HasError() {
+					return
+				}
+				data.Targets = nullIfEmptySet(ctx, data.Targets)
+				data.ContextTargets = nullIfEmptySet(ctx, data.ContextTargets)
+				data.Rules = nullIfEmptyList(ctx, data.Rules)
+				data.Prerequisites = nullIfEmptyList(ctx, data.Prerequisites)
+				resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 			},
 		},
 	}

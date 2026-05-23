@@ -22,6 +22,7 @@ var (
 	_ resource.Resource                     = &ViewResource{}
 	_ resource.ResourceWithImportState      = &ViewResource{}
 	_ resource.ResourceWithConfigValidators = &ViewResource{}
+	_ resource.ResourceWithUpgradeState     = &ViewResource{}
 )
 
 type ViewResourceModel struct {
@@ -46,6 +47,7 @@ func (r *ViewResource) Metadata(_ context.Context, req resource.MetadataRequest,
 
 func (r *ViewResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
+		Version: 1,
 		Description: `Provides a LaunchDarkly view resource.
 
 -> **Note:** Views are available to customers on an Enterprise LaunchDarkly plan. To learn more, [read about our pricing](https://launchdarkly.com/pricing/). To upgrade your plan, [contact LaunchDarkly Sales](https://launchdarkly.com/contact-sales/).
@@ -53,52 +55,75 @@ func (r *ViewResource) Schema(_ context.Context, _ resource.SchemaRequest, resp 
 ~> **Beta:** This resource uses a beta API. Beta resources may change or be removed in future versions.
 
 This resource allows you to create and manage views within your LaunchDarkly project.`,
-		Attributes: map[string]schema.Attribute{
-			"id": schema.StringAttribute{
-				Computed:      true,
-				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+		Attributes: viewSchemaAttributes(),
+	}
+}
+
+func viewSchemaAttributes() map[string]schema.Attribute {
+	return map[string]schema.Attribute{
+		"id": schema.StringAttribute{
+			Computed:      true,
+			PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+		},
+		PROJECT_KEY: schema.StringAttribute{
+			Required:      true,
+			Description:   addForceNewDescription("The project key.", true),
+			Validators:    []validator.String{keyValidator()},
+			PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
+		},
+		KEY: schema.StringAttribute{
+			Required:      true,
+			Description:   addForceNewDescription("The view's unique key.", true),
+			Validators:    []validator.String{keyValidator()},
+			PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
+		},
+		NAME: schema.StringAttribute{
+			Required:    true,
+			Description: "The view's name.",
+		},
+		DESCRIPTION: schema.StringAttribute{
+			Optional:    true,
+			Description: "The view's description.",
+		},
+		MAINTAINER_ID: schema.StringAttribute{
+			Optional:    true,
+			Description: "The member ID of the maintainer for this view. Exactly one of `maintainer_id` and `maintainer_team_key` must be set.",
+		},
+		MAINTAINER_TEAM_KEY: schema.StringAttribute{
+			Optional:    true,
+			Description: "The team key of the maintainer team for this view. Exactly one of `maintainer_id` and `maintainer_team_key` must be set.",
+		},
+		TAGS: schema.SetAttribute{
+			Optional:    true,
+			ElementType: types.StringType,
+			Description: "Tags associated with your resource.",
+			Validators: []validator.Set{
+				setvalidator.ValueStringsAre(tagValidator()),
 			},
-			PROJECT_KEY: schema.StringAttribute{
-				Required:      true,
-				Description:   addForceNewDescription("The project key.", true),
-				Validators:    []validator.String{keyValidator()},
-				PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
-			},
-			KEY: schema.StringAttribute{
-				Required:      true,
-				Description:   addForceNewDescription("The view's unique key.", true),
-				Validators:    []validator.String{keyValidator()},
-				PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
-			},
-			NAME: schema.StringAttribute{
-				Required:    true,
-				Description: "The view's name.",
-			},
-			DESCRIPTION: schema.StringAttribute{
-				Optional:    true,
-				Description: "The view's description.",
-			},
-			MAINTAINER_ID: schema.StringAttribute{
-				Optional:    true,
-				Description: "The member ID of the maintainer for this view. Exactly one of `maintainer_id` and `maintainer_team_key` must be set.",
-			},
-			MAINTAINER_TEAM_KEY: schema.StringAttribute{
-				Optional:    true,
-				Description: "The team key of the maintainer team for this view. Exactly one of `maintainer_id` and `maintainer_team_key` must be set.",
-			},
-			TAGS: schema.SetAttribute{
-				Optional:    true,
-				ElementType: types.StringType,
-				Description: "Tags associated with your resource.",
-				Validators: []validator.Set{
-					setvalidator.ValueStringsAre(tagValidator()),
-				},
-			},
-			ARCHIVED: schema.BoolAttribute{
-				Optional:    true,
-				Computed:    true,
-				Default:     booldefault.StaticBool(false),
-				Description: "Whether the view is archived.",
+		},
+		ARCHIVED: schema.BoolAttribute{
+			Optional:    true,
+			Computed:    true,
+			Default:     booldefault.StaticBool(false),
+			Description: "Whether the view is archived.",
+		},
+	}
+}
+
+func (r *ViewResource) UpgradeState(_ context.Context) map[int64]resource.StateUpgrader {
+	priorSchema := schema.Schema{Attributes: viewSchemaAttributes()}
+	return map[int64]resource.StateUpgrader{
+		0: {
+			PriorSchema: &priorSchema,
+			StateUpgrader: func(ctx context.Context, req resource.UpgradeStateRequest, resp *resource.UpgradeStateResponse) {
+				var data ViewResourceModel
+				resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
+				if resp.Diagnostics.HasError() {
+					return
+				}
+				data.Description = nullIfEmptyString(data.Description)
+				data.MaintainerTeamKey = nullIfEmptyString(data.MaintainerTeamKey)
+				resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 			},
 		},
 	}

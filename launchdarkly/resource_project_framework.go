@@ -26,6 +26,7 @@ var (
 	_ resource.ResourceWithImportState      = &ProjectResource{}
 	_ resource.ResourceWithConfigValidators = &ProjectResource{}
 	_ resource.ResourceWithModifyPlan       = &ProjectResource{}
+	_ resource.ResourceWithUpgradeState     = &ProjectResource{}
 )
 
 type ProjectResource struct {
@@ -61,59 +62,157 @@ func (r *ProjectResource) Metadata(_ context.Context, req resource.MetadataReque
 
 func (r *ProjectResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
+		Version: 1,
 		Description: `Provides a LaunchDarkly project resource.
 
 This resource allows you to create and manage projects within your LaunchDarkly organization.`,
-		Attributes: map[string]schema.Attribute{
-			"id": schema.StringAttribute{
-				Computed:      true,
-				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
-			},
-			KEY: schema.StringAttribute{
-				Required:      true,
-				Description:   addForceNewDescription("The project's unique key.", true),
-				Validators:    []validator.String{keyAndLengthValidator(1, 100)},
-				PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
-			},
-			NAME: schema.StringAttribute{
-				Required:    true,
-				Description: "The project's name.",
-			},
-			INCLUDE_IN_SNIPPET: schema.BoolAttribute{
-				Optional:           true,
-				Computed:           true,
-				Description:        "Whether feature flags created under the project should be available to client-side SDKs by default. Please migrate to `default_client_side_availability` to maintain future compatibility.",
-				DeprecationMessage: "'include_in_snippet' is now deprecated. Please migrate to 'default_client_side_availability' to maintain future compatibility.",
-			},
-			TAGS: schema.SetAttribute{
-				Optional:    true,
-				ElementType: types.StringType,
-				Validators:  []validator.Set{setvalidator.ValueStringsAre(tagValidator())},
-				Description: "Tags associated with your resource.",
-			},
-			REQUIRE_VIEW_ASSOCIATION_FOR_NEW_FLAGS: schema.BoolAttribute{
-				Optional:    true,
-				Computed:    true,
-				Default:     booldefault.StaticBool(false),
-				Description: "Whether new flags created in this project must be associated with at least one view.",
-			},
-			REQUIRE_VIEW_ASSOCIATION_FOR_NEW_SEGMENTS: schema.BoolAttribute{
-				Optional:    true,
-				Computed:    true,
-				Default:     booldefault.StaticBool(false),
-				Description: "Whether new segments created in this project must be associated with at least one view.",
-			},
-			DEFAULT_CLIENT_SIDE_AVAILABILITY: schema.ListNestedAttribute{
-				Optional:    true,
-				Description: "Which client-side SDKs can use new flags by default.",
-				NestedObject: schema.NestedAttributeObject{
-					Attributes: map[string]schema.Attribute{
-						USING_ENVIRONMENT_ID: schema.BoolAttribute{Required: true},
-						USING_MOBILE_KEY:     schema.BoolAttribute{Required: true},
-					},
+		Attributes: projectSchemaAttributes(),
+	}
+}
+
+func projectSchemaAttributes() map[string]schema.Attribute {
+	return map[string]schema.Attribute{
+		"id": schema.StringAttribute{
+			Computed:      true,
+			PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+		},
+		KEY: schema.StringAttribute{
+			Required:      true,
+			Description:   addForceNewDescription("The project's unique key.", true),
+			Validators:    []validator.String{keyAndLengthValidator(1, 100)},
+			PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
+		},
+		NAME: schema.StringAttribute{
+			Required:    true,
+			Description: "The project's name.",
+		},
+		INCLUDE_IN_SNIPPET: schema.BoolAttribute{
+			Optional:           true,
+			Computed:           true,
+			Description:        "Whether feature flags created under the project should be available to client-side SDKs by default. Please migrate to `default_client_side_availability` to maintain future compatibility.",
+			DeprecationMessage: "'include_in_snippet' is now deprecated. Please migrate to 'default_client_side_availability' to maintain future compatibility.",
+		},
+		TAGS: schema.SetAttribute{
+			Optional:    true,
+			ElementType: types.StringType,
+			Validators:  []validator.Set{setvalidator.ValueStringsAre(tagValidator())},
+			Description: "Tags associated with your resource.",
+		},
+		REQUIRE_VIEW_ASSOCIATION_FOR_NEW_FLAGS: schema.BoolAttribute{
+			Optional:    true,
+			Computed:    true,
+			Default:     booldefault.StaticBool(false),
+			Description: "Whether new flags created in this project must be associated with at least one view.",
+		},
+		REQUIRE_VIEW_ASSOCIATION_FOR_NEW_SEGMENTS: schema.BoolAttribute{
+			Optional:    true,
+			Computed:    true,
+			Default:     booldefault.StaticBool(false),
+			Description: "Whether new segments created in this project must be associated with at least one view.",
+		},
+		DEFAULT_CLIENT_SIDE_AVAILABILITY: schema.ListNestedAttribute{
+			Optional:    true,
+			Description: "Which client-side SDKs can use new flags by default.",
+			NestedObject: schema.NestedAttributeObject{
+				Attributes: map[string]schema.Attribute{
+					USING_ENVIRONMENT_ID: schema.BoolAttribute{Required: true},
+					USING_MOBILE_KEY:     schema.BoolAttribute{Required: true},
 				},
 			},
-			ENVIRONMENTS: projectEnvironmentsAttribute(),
+		},
+		ENVIRONMENTS: projectEnvironmentsAttribute(),
+	}
+}
+
+// approvalSettingsMatchesAPIDefaults reports true if an
+// approval_settings item carries the field values the LD API auto-fills
+// for an environment whose approvals have never been configured. The
+// v2.29 SDKv2 provider persisted these defaults in state even when the
+// user never wrote them, so the upgrader uses this heuristic to drop
+// them in favour of null. Users who explicitly wrote the same defaults
+// will see a one-time plan churn.
+func approvalSettingsMatchesAPIDefaults(item approvalSettingsModel) bool {
+	if item.Required.IsNull() || item.Required.ValueBool() {
+		return false
+	}
+	if item.CanReviewOwnRequest.IsNull() || item.CanReviewOwnRequest.ValueBool() {
+		return false
+	}
+	if item.MinNumApprovals.IsNull() || item.MinNumApprovals.ValueInt64() != 1 {
+		return false
+	}
+	if item.CanApplyDeclinedChanges.IsNull() || !item.CanApplyDeclinedChanges.ValueBool() {
+		return false
+	}
+	if !item.RequiredApprovalTags.IsNull() && len(item.RequiredApprovalTags.Elements()) > 0 {
+		return false
+	}
+	if item.ServiceKind.IsNull() || item.ServiceKind.ValueString() != "launchdarkly" {
+		return false
+	}
+	if !item.ServiceConfig.IsNull() && len(item.ServiceConfig.Elements()) > 0 {
+		return false
+	}
+	if item.AutoApplyApprovedChanges.IsNull() || item.AutoApplyApprovedChanges.ValueBool() {
+		return false
+	}
+	return true
+}
+
+func (r *ProjectResource) UpgradeState(_ context.Context) map[int64]resource.StateUpgrader {
+	priorSchema := schema.Schema{Attributes: projectSchemaAttributes()}
+	return map[int64]resource.StateUpgrader{
+		0: {
+			PriorSchema: &priorSchema,
+			StateUpgrader: func(ctx context.Context, req resource.UpgradeStateRequest, resp *resource.UpgradeStateResponse) {
+				var data ProjectResourceModel
+				resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
+				if resp.Diagnostics.HasError() {
+					return
+				}
+				// Cat 3 #1: default_client_side_availability that matches
+				// LD account defaults → null. Reuse the feature_flag
+				// helper since the inner shape is identical.
+				if featureFlagCSAMatchesAPIShape(ctx, data.DefaultClientSideAvailability) {
+					data.DefaultClientSideAvailability = types.ListNull(data.DefaultClientSideAvailability.ElementType(ctx))
+				}
+				// Cat 3 #2: each environments[].approval_settings whose
+				// 1-element matches API defaults → null. Decode envs,
+				// modify each, re-encode.
+				if !data.Environments.IsNull() && !data.Environments.IsUnknown() && len(data.Environments.Elements()) > 0 {
+					var envs []environmentModel
+					resp.Diagnostics.Append(data.Environments.ElementsAs(ctx, &envs, false)...)
+					if resp.Diagnostics.HasError() {
+						return
+					}
+					approvalListType := types.ListType{ElemType: types.ObjectType{AttrTypes: frameworkApprovalSettingsObjectAttrTypes}}
+					mutated := false
+					for i := range envs {
+						as := envs[i].ApprovalSettings
+						if as.IsNull() || as.IsUnknown() || len(as.Elements()) != 1 {
+							continue
+						}
+						var items []approvalSettingsModel
+						d := as.ElementsAs(ctx, &items, false)
+						if d.HasError() || len(items) != 1 {
+							continue
+						}
+						if approvalSettingsMatchesAPIDefaults(items[0]) {
+							envs[i].ApprovalSettings = types.ListNull(approvalListType.ElemType)
+							mutated = true
+						}
+					}
+					if mutated {
+						envObjectType := types.ObjectType{AttrTypes: environmentAttrTypes}
+						newList, d := types.ListValueFrom(ctx, envObjectType, envs)
+						resp.Diagnostics.Append(d...)
+						if !resp.Diagnostics.HasError() {
+							data.Environments = newList
+						}
+					}
+				}
+				resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+			},
 		},
 	}
 }

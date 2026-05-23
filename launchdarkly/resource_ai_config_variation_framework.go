@@ -27,6 +27,7 @@ var (
 	_ resource.Resource                     = &AIConfigVariationResource{}
 	_ resource.ResourceWithImportState      = &AIConfigVariationResource{}
 	_ resource.ResourceWithConfigValidators = &AIConfigVariationResource{}
+	_ resource.ResourceWithUpgradeState     = &AIConfigVariationResource{}
 )
 
 type AIConfigVariationResource struct {
@@ -61,116 +62,145 @@ func (r *AIConfigVariationResource) Metadata(_ context.Context, req resource.Met
 
 func (r *AIConfigVariationResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
+		Version:     1,
 		Description: "Provides a LaunchDarkly AI Config variation resource.\n\nThis resource allows you to create and manage AI Config variations within your LaunchDarkly project.",
-		Attributes: map[string]schema.Attribute{
-			"id": schema.StringAttribute{
-				Computed:      true,
-				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+		Attributes:  aiConfigVariationSchemaAttributes(),
+	}
+}
+
+func aiConfigVariationSchemaAttributes() map[string]schema.Attribute {
+	return map[string]schema.Attribute{
+		"id": schema.StringAttribute{
+			Computed:      true,
+			PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+		},
+		PROJECT_KEY: schema.StringAttribute{
+			Required:      true,
+			Description:   "The project key. A change in this field will force the destruction of the existing resource and the creation of a new one.",
+			Validators:    []validator.String{keyValidator()},
+			PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
+		},
+		AI_CONFIG_KEY: schema.StringAttribute{
+			Required:      true,
+			Description:   "The AI Config key that this variation belongs to. A change in this field will force the destruction of the existing resource and the creation of a new one.",
+			Validators:    []validator.String{keyValidator()},
+			PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
+		},
+		KEY: schema.StringAttribute{
+			Required:      true,
+			Description:   "The variation's unique key. A change in this field will force the destruction of the existing resource and the creation of a new one.",
+			Validators:    []validator.String{keyValidator()},
+			PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
+		},
+		NAME: schema.StringAttribute{
+			Required:    true,
+			Description: "The variation's human-readable name.",
+		},
+		MODEL: schema.StringAttribute{
+			Optional:    true,
+			Computed:    true,
+			Description: "A JSON string representing the inline model configuration for the variation. Conflicts with `model_config_key`.",
+			Validators:  []validator.String{jsonStringValidator{}},
+			PlanModifiers: []planmodifier.String{
+				jsonNormalizePlanModifier{},
 			},
-			PROJECT_KEY: schema.StringAttribute{
-				Required:      true,
-				Description:   "The project key. A change in this field will force the destruction of the existing resource and the creation of a new one.",
-				Validators:    []validator.String{keyValidator()},
-				PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
+			// Intentionally no UseStateForUnknown: model and
+			// model_config_key are mutually exclusive; switching
+			// from inline model to model_config_key must let plan
+			// recompute.
+		},
+		MODEL_CONFIG_KEY: schema.StringAttribute{
+			Optional:    true,
+			Computed:    true,
+			Description: "The key of a model config resource to use for this variation. Conflicts with `model`.",
+			PlanModifiers: []planmodifier.String{
+				stringplanmodifier.UseStateForUnknown(),
 			},
-			AI_CONFIG_KEY: schema.StringAttribute{
-				Required:      true,
-				Description:   "The AI Config key that this variation belongs to. A change in this field will force the destruction of the existing resource and the creation of a new one.",
-				Validators:    []validator.String{keyValidator()},
-				PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
+		},
+		DESCRIPTION: schema.StringAttribute{
+			Optional:    true,
+			Description: "The variation's description (used in agent mode).",
+		},
+		INSTRUCTIONS: schema.StringAttribute{
+			Optional:    true,
+			Description: "The variation's instructions (used in agent mode).",
+		},
+		TOOL_KEYS: schema.SetAttribute{
+			Optional:    true,
+			Computed:    true,
+			ElementType: types.StringType,
+			Description: "A set of AI tool keys to associate with this variation. **Note:** The API does not currently return tool associations on read, so Terraform cannot detect drift for this field. Changes made outside of Terraform will not be reflected in state.",
+			PlanModifiers: []planmodifier.Set{
+				setplanmodifier.UseStateForUnknown(),
 			},
-			KEY: schema.StringAttribute{
-				Required:      true,
-				Description:   "The variation's unique key. A change in this field will force the destruction of the existing resource and the creation of a new one.",
-				Validators:    []validator.String{keyValidator()},
-				PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
+		},
+		STATE: schema.StringAttribute{
+			Optional:    true,
+			Computed:    true,
+			Description: "The state of the variation. Must be `archived` or `published`.",
+			Validators:  []validator.String{oneOfValidator{allowed: []string{"archived", "published"}}},
+			PlanModifiers: []planmodifier.String{
+				stringplanmodifier.UseStateForUnknown(),
 			},
-			NAME: schema.StringAttribute{
-				Required:    true,
-				Description: "The variation's human-readable name.",
-			},
-			MODEL: schema.StringAttribute{
-				Optional:    true,
-				Computed:    true,
-				Description: "A JSON string representing the inline model configuration for the variation. Conflicts with `model_config_key`.",
-				Validators:  []validator.String{jsonStringValidator{}},
-				PlanModifiers: []planmodifier.String{
-					jsonNormalizePlanModifier{},
-				},
-				// Intentionally no UseStateForUnknown: model and
-				// model_config_key are mutually exclusive; switching
-				// from inline model to model_config_key must let plan
-				// recompute.
-			},
-			MODEL_CONFIG_KEY: schema.StringAttribute{
-				Optional:    true,
-				Computed:    true,
-				Description: "The key of a model config resource to use for this variation. Conflicts with `model`.",
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.UseStateForUnknown(),
-				},
-			},
-			DESCRIPTION: schema.StringAttribute{
-				Optional:    true,
-				Description: "The variation's description (used in agent mode).",
-			},
-			INSTRUCTIONS: schema.StringAttribute{
-				Optional:    true,
-				Description: "The variation's instructions (used in agent mode).",
-			},
-			TOOL_KEYS: schema.SetAttribute{
-				Optional:    true,
-				Computed:    true,
-				ElementType: types.StringType,
-				Description: "A set of AI tool keys to associate with this variation. **Note:** The API does not currently return tool associations on read, so Terraform cannot detect drift for this field. Changes made outside of Terraform will not be reflected in state.",
-				PlanModifiers: []planmodifier.Set{
-					setplanmodifier.UseStateForUnknown(),
-				},
-			},
-			STATE: schema.StringAttribute{
-				Optional:    true,
-				Computed:    true,
-				Description: "The state of the variation. Must be `archived` or `published`.",
-				Validators:  []validator.String{oneOfValidator{allowed: []string{"archived", "published"}}},
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.UseStateForUnknown(),
-				},
-			},
-			VARIATION_ID: schema.StringAttribute{
-				Computed:    true,
-				Description: "The internal ID of the variation.",
-				// Intentionally no UseStateForUnknown: variation_id can
-				// change between PATCHes because the AI Config API
-				// versions variations as immutable entities — every
-				// update creates a new variation row with a new ID.
-			},
-			VERSION: schema.Int64Attribute{
-				Computed:    true,
-				Description: "The version number of the variation.",
-				// Increments on every PATCH; plan flap is the intended
-				// signal.
-			},
-			CREATION_DATE: schema.Int64Attribute{
-				Computed:    true,
-				Description: "The creation timestamp of the variation.",
-				// Refreshes on every PATCH (new version row).
-			},
-			MESSAGES: schema.ListNestedAttribute{
-				Optional:    true,
-				Description: "A list of messages for completion mode. Each message has a `role` and `content`.",
-				NestedObject: schema.NestedAttributeObject{
-					Attributes: map[string]schema.Attribute{
-						ROLE: schema.StringAttribute{
-							Required:    true,
-							Description: "The role of the message. Must be one of `system`, `user`, `assistant`, or `developer`.",
-							Validators:  []validator.String{oneOfValidator{allowed: []string{"system", "user", "assistant", "developer"}}},
-						},
-						CONTENT: schema.StringAttribute{
-							Required:    true,
-							Description: "The content of the message.",
-						},
+		},
+		VARIATION_ID: schema.StringAttribute{
+			Computed:    true,
+			Description: "The internal ID of the variation.",
+			// Intentionally no UseStateForUnknown: variation_id can
+			// change between PATCHes because the AI Config API
+			// versions variations as immutable entities — every
+			// update creates a new variation row with a new ID.
+		},
+		VERSION: schema.Int64Attribute{
+			Computed:    true,
+			Description: "The version number of the variation.",
+			// Increments on every PATCH; plan flap is the intended
+			// signal.
+		},
+		CREATION_DATE: schema.Int64Attribute{
+			Computed:    true,
+			Description: "The creation timestamp of the variation.",
+			// Refreshes on every PATCH (new version row).
+		},
+		MESSAGES: schema.ListNestedAttribute{
+			Optional:    true,
+			Description: "A list of messages for completion mode. Each message has a `role` and `content`.",
+			NestedObject: schema.NestedAttributeObject{
+				Attributes: map[string]schema.Attribute{
+					ROLE: schema.StringAttribute{
+						Required:    true,
+						Description: "The role of the message. Must be one of `system`, `user`, `assistant`, or `developer`.",
+						Validators:  []validator.String{oneOfValidator{allowed: []string{"system", "user", "assistant", "developer"}}},
+					},
+					CONTENT: schema.StringAttribute{
+						Required:    true,
+						Description: "The content of the message.",
 					},
 				},
+			},
+		},
+	}
+}
+
+func (r *AIConfigVariationResource) UpgradeState(_ context.Context) map[int64]resource.StateUpgrader {
+	priorSchema := schema.Schema{Attributes: aiConfigVariationSchemaAttributes()}
+	return map[int64]resource.StateUpgrader{
+		0: {
+			PriorSchema: &priorSchema,
+			StateUpgrader: func(ctx context.Context, req resource.UpgradeStateRequest, resp *resource.UpgradeStateResponse) {
+				var data AIConfigVariationResourceModel
+				resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
+				if resp.Diagnostics.HasError() {
+					return
+				}
+				data.Description = nullIfEmptyString(data.Description)
+				data.Instructions = nullIfEmptyString(data.Instructions)
+				data.Model = nullIfEmptyString(data.Model)
+				data.ModelConfigKey = nullIfEmptyString(data.ModelConfigKey)
+				data.State = nullIfEmptyString(data.State)
+				data.Messages = nullIfEmptyList(ctx, data.Messages)
+				data.ToolKeys = nullIfEmptySet(ctx, data.ToolKeys)
+				resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 			},
 		},
 	}

@@ -19,8 +19,9 @@ import (
 )
 
 var (
-	_ resource.Resource                = &CustomRoleResource{}
-	_ resource.ResourceWithImportState = &CustomRoleResource{}
+	_ resource.Resource                 = &CustomRoleResource{}
+	_ resource.ResourceWithImportState  = &CustomRoleResource{}
+	_ resource.ResourceWithUpgradeState = &CustomRoleResource{}
 )
 
 type CustomRoleResource struct {
@@ -48,64 +49,89 @@ func (r *CustomRoleResource) Metadata(_ context.Context, req resource.MetadataRe
 
 func (r *CustomRoleResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
+		Version:     1,
 		Description: "Provides a LaunchDarkly custom role resource.\n\n-> **Note:** Custom roles are available to customers on an Enterprise LaunchDarkly plan. To learn more, [read about our pricing](https://launchdarkly.com/pricing/). To upgrade your plan, [contact LaunchDarkly Sales](https://launchdarkly.com/contact-sales/).\n\nThis resource allows you to create and manage custom roles within your LaunchDarkly organization.",
-		Attributes: map[string]schema.Attribute{
-			"id": schema.StringAttribute{
-				Computed:      true,
-				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+		Attributes:  customRoleSchemaAttributes(),
+	}
+}
+
+func customRoleSchemaAttributes() map[string]schema.Attribute {
+	return map[string]schema.Attribute{
+		"id": schema.StringAttribute{
+			Computed:      true,
+			PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+		},
+		KEY: schema.StringAttribute{
+			Required:    true,
+			Description: addForceNewDescription("A unique key that will be used to reference the custom role in your code.", true),
+			Validators:  []validator.String{keyValidator()},
+			PlanModifiers: []planmodifier.String{
+				stringplanmodifier.RequiresReplace(),
 			},
-			KEY: schema.StringAttribute{
-				Required:    true,
-				Description: addForceNewDescription("A unique key that will be used to reference the custom role in your code.", true),
-				Validators:  []validator.String{keyValidator()},
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.RequiresReplace(),
-				},
+		},
+		NAME: schema.StringAttribute{
+			Required:    true,
+			Description: "A name for the custom role. This must be unique within your organization.",
+		},
+		DESCRIPTION: schema.StringAttribute{
+			Optional:    true,
+			Description: "Description of the custom role.",
+		},
+		BASE_PERMISSIONS: schema.StringAttribute{
+			Optional:    true,
+			Default:     stringdefault.StaticString("reader"),
+			Computed:    true,
+			Description: "The base permission level - either `reader` or `no_access`. While newer API versions default to `no_access`, this field defaults to `reader` in keeping with previous API versions.",
+			Validators: []validator.String{
+				oneOfValidator{allowed: []string{"reader", "no_access"}},
 			},
-			NAME: schema.StringAttribute{
-				Required:    true,
-				Description: "A name for the custom role. This must be unique within your organization.",
-			},
-			DESCRIPTION: schema.StringAttribute{
-				Optional:    true,
-				Description: "Description of the custom role.",
-			},
-			BASE_PERMISSIONS: schema.StringAttribute{
-				Optional:    true,
-				Default:     stringdefault.StaticString("reader"),
-				Computed:    true,
-				Description: "The base permission level - either `reader` or `no_access`. While newer API versions default to `no_access`, this field defaults to `reader` in keeping with previous API versions.",
-				Validators: []validator.String{
-					oneOfValidator{allowed: []string{"reader", "no_access"}},
-				},
-			},
-			POLICY: schema.SetNestedAttribute{
-				Optional:           true,
-				DeprecationMessage: "'policy' is now deprecated. Please migrate to 'policy_statements' to maintain future compatability.",
-				NestedObject: schema.NestedAttributeObject{
-					Attributes: map[string]schema.Attribute{
-						RESOURCES: schema.ListAttribute{
-							Required:    true,
-							ElementType: types.StringType,
-						},
-						ACTIONS: schema.ListAttribute{
-							Required:    true,
-							ElementType: types.StringType,
-						},
-						EFFECT: schema.StringAttribute{
-							Required: true,
-						},
+		},
+		POLICY: schema.SetNestedAttribute{
+			Optional:           true,
+			DeprecationMessage: "'policy' is now deprecated. Please migrate to 'policy_statements' to maintain future compatability.",
+			NestedObject: schema.NestedAttributeObject{
+				Attributes: map[string]schema.Attribute{
+					RESOURCES: schema.ListAttribute{
+						Required:    true,
+						ElementType: types.StringType,
+					},
+					ACTIONS: schema.ListAttribute{
+						Required:    true,
+						ElementType: types.StringType,
+					},
+					EFFECT: schema.StringAttribute{
+						Required: true,
 					},
 				},
 			},
-			POLICY_STATEMENTS: frameworkPolicyStatementsResourceAttribute(false, "An array of the policy statements that define the permissions for the custom role. This field accepts [role attributes](https://docs.launchdarkly.com/home/getting-started/vocabulary#role-attribute). To use role attributes, use the syntax `$${roleAttribute/<YOUR_ROLE_ATTRIBUTE>}` in lieu of your usual resource keys.", ""),
-			POLICY_STATEMENTS_JSON: schema.StringAttribute{
-				Optional:    true,
-				Description: "Policy statements expressed as a single JSON document — an array of statement objects with the same keys as the `policy_statements` attribute (`resources`, `not_resources`, `actions`, `not_actions`, `effect`). Mutually exclusive with `policy_statements` and `policy`. Use this form when reading the policy from a file or templating it dynamically (for example with `jsonencode(...)` or `file(\"policy.json\")`). To use [role attributes](https://docs.launchdarkly.com/home/getting-started/vocabulary#role-attribute), escape the `$` as `$${roleAttribute/<YOUR_ROLE_ATTRIBUTE>}` inside HCL strings.",
-				Validators:  []validator.String{jsonStringValidator{}},
-				PlanModifiers: []planmodifier.String{
-					jsonNormalizePlanModifier{},
-				},
+		},
+		POLICY_STATEMENTS: frameworkPolicyStatementsResourceAttribute(false, "An array of the policy statements that define the permissions for the custom role. This field accepts [role attributes](https://docs.launchdarkly.com/home/getting-started/vocabulary#role-attribute). To use role attributes, use the syntax `$${roleAttribute/<YOUR_ROLE_ATTRIBUTE>}` in lieu of your usual resource keys.", ""),
+		POLICY_STATEMENTS_JSON: schema.StringAttribute{
+			Optional:    true,
+			Description: "Policy statements expressed as a single JSON document — an array of statement objects with the same keys as the `policy_statements` attribute (`resources`, `not_resources`, `actions`, `not_actions`, `effect`). Mutually exclusive with `policy_statements` and `policy`. Use this form when reading the policy from a file or templating it dynamically (for example with `jsonencode(...)` or `file(\"policy.json\")`). To use [role attributes](https://docs.launchdarkly.com/home/getting-started/vocabulary#role-attribute), escape the `$` as `$${roleAttribute/<YOUR_ROLE_ATTRIBUTE>}` inside HCL strings.",
+			Validators:  []validator.String{jsonStringValidator{}},
+			PlanModifiers: []planmodifier.String{
+				jsonNormalizePlanModifier{},
+			},
+		},
+	}
+}
+
+func (r *CustomRoleResource) UpgradeState(_ context.Context) map[int64]resource.StateUpgrader {
+	priorSchema := schema.Schema{Attributes: customRoleSchemaAttributes()}
+	return map[int64]resource.StateUpgrader{
+		0: {
+			PriorSchema: &priorSchema,
+			StateUpgrader: func(ctx context.Context, req resource.UpgradeStateRequest, resp *resource.UpgradeStateResponse) {
+				var data CustomRoleResourceModel
+				resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
+				if resp.Diagnostics.HasError() {
+					return
+				}
+				data.Description = nullIfEmptyString(data.Description)
+				data.Policy = nullIfEmptySet(ctx, data.Policy)
+				data.PolicyStatements = nullIfEmptyList(ctx, data.PolicyStatements)
+				resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 			},
 		},
 	}

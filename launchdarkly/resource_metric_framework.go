@@ -24,9 +24,10 @@ import (
 const CUSTOM_METRIC_DEFAULT_SUCCESS_CRITERIA = "HigherThanBaseline"
 
 var (
-	_ resource.Resource                = &MetricResource{}
-	_ resource.ResourceWithImportState = &MetricResource{}
-	_ resource.ResourceWithModifyPlan  = &MetricResource{}
+	_ resource.Resource                 = &MetricResource{}
+	_ resource.ResourceWithImportState  = &MetricResource{}
+	_ resource.ResourceWithModifyPlan   = &MetricResource{}
+	_ resource.ResourceWithUpgradeState = &MetricResource{}
 )
 
 type MetricResource struct {
@@ -72,146 +73,174 @@ var metricUrlAttrTypes = map[string]attr.Type{
 
 func (r *MetricResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
+		Version:     1,
 		Description: "Provides a LaunchDarkly metric resource.\n\nThis resource allows you to create and manage metrics within your LaunchDarkly organization.\n\nTo learn more about metrics and experimentation, read [Experimentation Documentation](https://docs.launchdarkly.com/home/experimentation).",
-		Attributes: map[string]schema.Attribute{
-			"id": schema.StringAttribute{
-				Computed:      true,
-				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+		Attributes:  metricSchemaAttributes(),
+	}
+}
+
+func metricSchemaAttributes() map[string]schema.Attribute {
+	return map[string]schema.Attribute{
+		"id": schema.StringAttribute{
+			Computed:      true,
+			PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+		},
+		PROJECT_KEY: schema.StringAttribute{
+			Required:      true,
+			Description:   "The metrics's project key. A change in this field will force the destruction of the existing resource and the creation of a new one.",
+			Validators:    []validator.String{keyValidator()},
+			PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
+		},
+		KEY: schema.StringAttribute{
+			Required:      true,
+			Description:   "The unique key that references the metric. A change in this field will force the destruction of the existing resource and the creation of a new one.",
+			Validators:    []validator.String{keyValidator()},
+			PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
+		},
+		NAME: schema.StringAttribute{
+			Required:    true,
+			Description: "The human-friendly name for the metric.",
+		},
+		KIND: schema.StringAttribute{
+			Required:      true,
+			Description:   "The metric type. Available choices are `click`, `custom`, and `pageview`. A change in this field will force the destruction of the existing resource and the creation of a new one.",
+			Validators:    []validator.String{oneOfValidator{allowed: []string{"pageview", "click", "custom"}}},
+			PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
+		},
+		MAINTAINER_ID: schema.StringAttribute{
+			Optional:    true,
+			Computed:    true,
+			Description: "The LaunchDarkly member ID of the member who will maintain the metric. If not set, the API will automatically apply the member associated with your Terraform API key or the most recently-set maintainer",
+			Validators:  []validator.String{idValidator()},
+		},
+		DESCRIPTION: schema.StringAttribute{
+			Optional:    true,
+			Computed:    true,
+			Description: "The description of the metric's purpose.",
+		},
+		TAGS: schema.SetAttribute{
+			Optional:    true,
+			Computed:    true,
+			ElementType: types.StringType,
+			Description: "Tags associated with this resource.",
+		},
+		IS_ACTIVE: schema.BoolAttribute{
+			Optional:           true,
+			Computed:           true,
+			Description:        "Ignored. All metrics are considered active.",
+			DeprecationMessage: "No longer in use. This field will be removed in a future major release of the LaunchDarkly provider.",
+		},
+		IS_NUMERIC: schema.BoolAttribute{
+			Optional:    true,
+			Computed:    true,
+			Default:     booldefault.StaticBool(false),
+			Description: "Whether a `custom` metric is a numeric metric or not.",
+		},
+		UNIT: schema.StringAttribute{
+			Optional:    true,
+			Computed:    true,
+			Description: "(Required for kind `custom`) The unit for numeric `custom` metrics.",
+		},
+		SELECTOR: schema.StringAttribute{
+			Optional:    true,
+			Computed:    true,
+			Description: "The CSS selector for your metric (if click metric)",
+		},
+		EVENT_KEY: schema.StringAttribute{
+			Optional:    true,
+			Computed:    true,
+			Description: "The event key for your metric (if custom metric)",
+		},
+		SUCCESS_CRITERIA: schema.StringAttribute{
+			Optional:    true,
+			Computed:    true,
+			Description: "The success criteria for your metric (if numeric metric). Available choices are `HigherThanBaseline` and `LowerThanBaseline`.",
+			Validators:  []validator.String{oneOfValidator{allowed: []string{"HigherThanBaseline", "LowerThanBaseline"}}},
+		},
+		RANDOMIZATION_UNITS: schema.SetAttribute{
+			Optional:    true,
+			Computed:    true,
+			ElementType: types.StringType,
+			Description: "A set of one or more context kinds that this metric can measure events from. Metrics can only use context kinds marked as \"Available for experiments.\" For more information, read [Allocating experiment audiences](https://docs.launchdarkly.com/home/creating-experiments/allocation).",
+		},
+		INCLUDE_UNITS_WITHOUT_EVENTS: schema.BoolAttribute{
+			Optional:    true,
+			Computed:    true,
+			Description: "Include units that did not send any events and set their value to 0.",
+		},
+		UNIT_AGGREGATION_TYPE: schema.StringAttribute{
+			Optional:    true,
+			Computed:    true,
+			Default:     stringdefault.StaticString("average"),
+			Description: "The method by which multiple unit event values are aggregated. Available choices are `average` and `sum`.",
+			Validators:  []validator.String{oneOfValidator{allowed: []string{"average", "sum"}}},
+		},
+		ANALYSIS_TYPE: schema.StringAttribute{
+			Optional:    true,
+			Computed:    true,
+			Default:     stringdefault.StaticString("mean"),
+			Description: "The method for analyzing metric events. Available choices are `mean` and `percentile`.",
+			Validators:  []validator.String{oneOfValidator{allowed: []string{"mean", "percentile"}}},
+		},
+		PERCENTILE_VALUE: schema.Int64Attribute{
+			Optional:    true,
+			Computed:    true,
+			Default:     int64default.StaticInt64(0),
+			Description: "The percentile for the analysis method. An integer denoting the target percentile between 0 and 100. Required when analysis_type is percentile.",
+		},
+		VERSION: schema.Int64Attribute{
+			Computed:      true,
+			Description:   "Version of the metric",
+			PlanModifiers: []planmodifier.Int64{
+				// Recomputed on any change. ModifyPlan flips this to unknown.
 			},
-			PROJECT_KEY: schema.StringAttribute{
-				Required:      true,
-				Description:   "The metrics's project key. A change in this field will force the destruction of the existing resource and the creation of a new one.",
-				Validators:    []validator.String{keyValidator()},
-				PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
-			},
-			KEY: schema.StringAttribute{
-				Required:      true,
-				Description:   "The unique key that references the metric. A change in this field will force the destruction of the existing resource and the creation of a new one.",
-				Validators:    []validator.String{keyValidator()},
-				PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
-			},
-			NAME: schema.StringAttribute{
-				Required:    true,
-				Description: "The human-friendly name for the metric.",
-			},
-			KIND: schema.StringAttribute{
-				Required:      true,
-				Description:   "The metric type. Available choices are `click`, `custom`, and `pageview`. A change in this field will force the destruction of the existing resource and the creation of a new one.",
-				Validators:    []validator.String{oneOfValidator{allowed: []string{"pageview", "click", "custom"}}},
-				PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
-			},
-			MAINTAINER_ID: schema.StringAttribute{
-				Optional:    true,
-				Computed:    true,
-				Description: "The LaunchDarkly member ID of the member who will maintain the metric. If not set, the API will automatically apply the member associated with your Terraform API key or the most recently-set maintainer",
-				Validators:  []validator.String{idValidator()},
-			},
-			DESCRIPTION: schema.StringAttribute{
-				Optional:    true,
-				Computed:    true,
-				Description: "The description of the metric's purpose.",
-			},
-			TAGS: schema.SetAttribute{
-				Optional:    true,
-				Computed:    true,
-				ElementType: types.StringType,
-				Description: "Tags associated with this resource.",
-			},
-			IS_ACTIVE: schema.BoolAttribute{
-				Optional:           true,
-				Computed:           true,
-				Description:        "Ignored. All metrics are considered active.",
-				DeprecationMessage: "No longer in use. This field will be removed in a future major release of the LaunchDarkly provider.",
-			},
-			IS_NUMERIC: schema.BoolAttribute{
-				Optional:    true,
-				Computed:    true,
-				Default:     booldefault.StaticBool(false),
-				Description: "Whether a `custom` metric is a numeric metric or not.",
-			},
-			UNIT: schema.StringAttribute{
-				Optional:    true,
-				Computed:    true,
-				Description: "(Required for kind `custom`) The unit for numeric `custom` metrics.",
-			},
-			SELECTOR: schema.StringAttribute{
-				Optional:    true,
-				Computed:    true,
-				Description: "The CSS selector for your metric (if click metric)",
-			},
-			EVENT_KEY: schema.StringAttribute{
-				Optional:    true,
-				Computed:    true,
-				Description: "The event key for your metric (if custom metric)",
-			},
-			SUCCESS_CRITERIA: schema.StringAttribute{
-				Optional:    true,
-				Computed:    true,
-				Description: "The success criteria for your metric (if numeric metric). Available choices are `HigherThanBaseline` and `LowerThanBaseline`.",
-				Validators:  []validator.String{oneOfValidator{allowed: []string{"HigherThanBaseline", "LowerThanBaseline"}}},
-			},
-			RANDOMIZATION_UNITS: schema.SetAttribute{
-				Optional:    true,
-				Computed:    true,
-				ElementType: types.StringType,
-				Description: "A set of one or more context kinds that this metric can measure events from. Metrics can only use context kinds marked as \"Available for experiments.\" For more information, read [Allocating experiment audiences](https://docs.launchdarkly.com/home/creating-experiments/allocation).",
-			},
-			INCLUDE_UNITS_WITHOUT_EVENTS: schema.BoolAttribute{
-				Optional:    true,
-				Computed:    true,
-				Description: "Include units that did not send any events and set their value to 0.",
-			},
-			UNIT_AGGREGATION_TYPE: schema.StringAttribute{
-				Optional:    true,
-				Computed:    true,
-				Default:     stringdefault.StaticString("average"),
-				Description: "The method by which multiple unit event values are aggregated. Available choices are `average` and `sum`.",
-				Validators:  []validator.String{oneOfValidator{allowed: []string{"average", "sum"}}},
-			},
-			ANALYSIS_TYPE: schema.StringAttribute{
-				Optional:    true,
-				Computed:    true,
-				Default:     stringdefault.StaticString("mean"),
-				Description: "The method for analyzing metric events. Available choices are `mean` and `percentile`.",
-				Validators:  []validator.String{oneOfValidator{allowed: []string{"mean", "percentile"}}},
-			},
-			PERCENTILE_VALUE: schema.Int64Attribute{
-				Optional:    true,
-				Computed:    true,
-				Default:     int64default.StaticInt64(0),
-				Description: "The percentile for the analysis method. An integer denoting the target percentile between 0 and 100. Required when analysis_type is percentile.",
-			},
-			VERSION: schema.Int64Attribute{
-				Computed:      true,
-				Description:   "Version of the metric",
-				PlanModifiers: []planmodifier.Int64{
-					// Recomputed on any change. ModifyPlan flips this to unknown.
-				},
-			},
-			URLS: schema.ListNestedAttribute{
-				Optional:    true,
-				Description: "List of URLs that you want to associate with the metric.",
-				NestedObject: schema.NestedAttributeObject{
-					Attributes: map[string]schema.Attribute{
-						KIND: schema.StringAttribute{
-							Required:    true,
-							Description: "The URL type. Available choices are `exact`, `canonical`, `substring` and `regex`.",
-							Validators:  []validator.String{oneOfValidator{allowed: []string{"exact", "canonical", "substring", "regex"}}},
-						},
-						URL: schema.StringAttribute{
-							Optional:    true,
-							Description: "(Required for kind `exact` and `canonical`) The exact or canonical URL.",
-						},
-						SUBSTRING: schema.StringAttribute{
-							Optional:    true,
-							Description: "(Required for kind `substring`) The URL substring to match by.",
-						},
-						PATTERN: schema.StringAttribute{
-							Optional:    true,
-							Description: "(Required for kind `regex`) The regex pattern to match by.",
-						},
+		},
+		URLS: schema.ListNestedAttribute{
+			Optional:    true,
+			Description: "List of URLs that you want to associate with the metric.",
+			NestedObject: schema.NestedAttributeObject{
+				Attributes: map[string]schema.Attribute{
+					KIND: schema.StringAttribute{
+						Required:    true,
+						Description: "The URL type. Available choices are `exact`, `canonical`, `substring` and `regex`.",
+						Validators:  []validator.String{oneOfValidator{allowed: []string{"exact", "canonical", "substring", "regex"}}},
+					},
+					URL: schema.StringAttribute{
+						Optional:    true,
+						Description: "(Required for kind `exact` and `canonical`) The exact or canonical URL.",
+					},
+					SUBSTRING: schema.StringAttribute{
+						Optional:    true,
+						Description: "(Required for kind `substring`) The URL substring to match by.",
+					},
+					PATTERN: schema.StringAttribute{
+						Optional:    true,
+						Description: "(Required for kind `regex`) The regex pattern to match by.",
 					},
 				},
+			},
+		},
+	}
+}
+
+func (r *MetricResource) UpgradeState(_ context.Context) map[int64]resource.StateUpgrader {
+	priorSchema := schema.Schema{Attributes: metricSchemaAttributes()}
+	return map[int64]resource.StateUpgrader{
+		0: {
+			PriorSchema: &priorSchema,
+			StateUpgrader: func(ctx context.Context, req resource.UpgradeStateRequest, resp *resource.UpgradeStateResponse) {
+				var data MetricResourceModel
+				resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
+				if resp.Diagnostics.HasError() {
+					return
+				}
+				data.Description = nullIfEmptyString(data.Description)
+				data.EventKey = nullIfEmptyString(data.EventKey)
+				data.Selector = nullIfEmptyString(data.Selector)
+				data.SuccessCriteria = nullIfEmptyString(data.SuccessCriteria)
+				data.Unit = nullIfEmptyString(data.Unit)
+				data.URLs = nullIfEmptyList(ctx, data.URLs)
+				resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 			},
 		},
 	}

@@ -25,6 +25,7 @@ var (
 	_ resource.Resource                     = &AIConfigResource{}
 	_ resource.ResourceWithImportState      = &AIConfigResource{}
 	_ resource.ResourceWithConfigValidators = &AIConfigResource{}
+	_ resource.ResourceWithUpgradeState     = &AIConfigResource{}
 )
 
 type AIConfigResource struct {
@@ -58,83 +59,109 @@ func (r *AIConfigResource) Metadata(_ context.Context, req resource.MetadataRequ
 
 func (r *AIConfigResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
+		Version:     1,
 		Description: "Provides a LaunchDarkly AI Config resource.\n\nThis resource allows you to create and manage AI Configurations within your LaunchDarkly project.",
-		Attributes: map[string]schema.Attribute{
-			"id": schema.StringAttribute{
-				Computed:      true,
-				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+		Attributes:  aiConfigSchemaAttributes(),
+	}
+}
+
+func aiConfigSchemaAttributes() map[string]schema.Attribute {
+	return map[string]schema.Attribute{
+		"id": schema.StringAttribute{
+			Computed:      true,
+			PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+		},
+		PROJECT_KEY: schema.StringAttribute{
+			Required:      true,
+			Description:   "The project key. A change in this field will force the destruction of the existing resource and the creation of a new one.",
+			Validators:    []validator.String{keyValidator()},
+			PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
+		},
+		KEY: schema.StringAttribute{
+			Required:      true,
+			Description:   "The AI Config's unique key. A change in this field will force the destruction of the existing resource and the creation of a new one.",
+			Validators:    []validator.String{keyValidator()},
+			PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
+		},
+		NAME: schema.StringAttribute{
+			Required:    true,
+			Description: "The AI Config's human-readable name.",
+		},
+		DESCRIPTION: schema.StringAttribute{
+			Optional:    true,
+			Description: "The AI Config's description.",
+		},
+		MODE: schema.StringAttribute{
+			Optional:      true,
+			Computed:      true,
+			Default:       stringdefault.StaticString("completion"),
+			Description:   "The AI Config's mode. Must be `completion`, `agent`, or `judge`. Defaults to `completion`. A change in this field will force the destruction of the existing resource and the creation of a new one.",
+			Validators:    []validator.String{oneOfValidator{allowed: []string{"completion", "agent", "judge"}}},
+			PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
+		},
+		TAGS: schema.SetAttribute{
+			Optional:    true,
+			Computed:    true,
+			ElementType: types.StringType,
+			Description: "Tags associated with this AI Config.",
+		},
+		MAINTAINER_ID: schema.StringAttribute{
+			Optional:    true,
+			Computed:    true,
+			Description: "The member ID of the maintainer for this AI Config. Conflicts with `maintainer_team_key`.",
+			Validators:  []validator.String{idValidator()},
+			PlanModifiers: []planmodifier.String{
+				stringplanmodifier.UseStateForUnknown(),
 			},
-			PROJECT_KEY: schema.StringAttribute{
-				Required:      true,
-				Description:   "The project key. A change in this field will force the destruction of the existing resource and the creation of a new one.",
-				Validators:    []validator.String{keyValidator()},
-				PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
+		},
+		MAINTAINER_TEAM_KEY: schema.StringAttribute{
+			Optional:    true,
+			Computed:    true,
+			Description: "The team key of the maintainer team for this AI Config. Conflicts with `maintainer_id`.",
+			PlanModifiers: []planmodifier.String{
+				stringplanmodifier.UseStateForUnknown(),
 			},
-			KEY: schema.StringAttribute{
-				Required:      true,
-				Description:   "The AI Config's unique key. A change in this field will force the destruction of the existing resource and the creation of a new one.",
-				Validators:    []validator.String{keyValidator()},
-				PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
-			},
-			NAME: schema.StringAttribute{
-				Required:    true,
-				Description: "The AI Config's human-readable name.",
-			},
-			DESCRIPTION: schema.StringAttribute{
-				Optional:    true,
-				Description: "The AI Config's description.",
-			},
-			MODE: schema.StringAttribute{
-				Optional:      true,
-				Computed:      true,
-				Default:       stringdefault.StaticString("completion"),
-				Description:   "The AI Config's mode. Must be `completion`, `agent`, or `judge`. Defaults to `completion`. A change in this field will force the destruction of the existing resource and the creation of a new one.",
-				Validators:    []validator.String{oneOfValidator{allowed: []string{"completion", "agent", "judge"}}},
-				PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
-			},
-			TAGS: schema.SetAttribute{
-				Optional:    true,
-				Computed:    true,
-				ElementType: types.StringType,
-				Description: "Tags associated with this AI Config.",
-			},
-			MAINTAINER_ID: schema.StringAttribute{
-				Optional:    true,
-				Computed:    true,
-				Description: "The member ID of the maintainer for this AI Config. Conflicts with `maintainer_team_key`.",
-				Validators:  []validator.String{idValidator()},
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.UseStateForUnknown(),
-				},
-			},
-			MAINTAINER_TEAM_KEY: schema.StringAttribute{
-				Optional:    true,
-				Computed:    true,
-				Description: "The team key of the maintainer team for this AI Config. Conflicts with `maintainer_id`.",
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.UseStateForUnknown(),
-				},
-			},
-			EVALUATION_METRIC_KEY: schema.StringAttribute{
-				Optional:    true,
-				Description: "The key of the evaluation metric associated with this AI Config.",
-			},
-			IS_INVERTED: schema.BoolAttribute{
-				Optional:    true,
-				Description: "Whether the evaluation metric is inverted.",
-			},
-			VERSION: schema.Int64Attribute{
-				Computed:    true,
-				Description: "The version of the AI Config.",
-			},
-			CREATION_DATE: schema.Int64Attribute{
-				Computed:    true,
-				Description: "A timestamp of when the AI Config was created.",
-			},
-			VARIATIONS: schema.ListAttribute{
-				Computed:    true,
-				Description: "A list of variation summaries for this AI Config.",
-				ElementType: types.ObjectType{AttrTypes: aiConfigVariationSummaryAttrTypes},
+		},
+		EVALUATION_METRIC_KEY: schema.StringAttribute{
+			Optional:    true,
+			Description: "The key of the evaluation metric associated with this AI Config.",
+		},
+		IS_INVERTED: schema.BoolAttribute{
+			Optional:    true,
+			Description: "Whether the evaluation metric is inverted.",
+		},
+		VERSION: schema.Int64Attribute{
+			Computed:    true,
+			Description: "The version of the AI Config.",
+		},
+		CREATION_DATE: schema.Int64Attribute{
+			Computed:    true,
+			Description: "A timestamp of when the AI Config was created.",
+		},
+		VARIATIONS: schema.ListAttribute{
+			Computed:    true,
+			Description: "A list of variation summaries for this AI Config.",
+			ElementType: types.ObjectType{AttrTypes: aiConfigVariationSummaryAttrTypes},
+		},
+	}
+}
+
+func (r *AIConfigResource) UpgradeState(_ context.Context) map[int64]resource.StateUpgrader {
+	priorSchema := schema.Schema{Attributes: aiConfigSchemaAttributes()}
+	return map[int64]resource.StateUpgrader{
+		0: {
+			PriorSchema: &priorSchema,
+			StateUpgrader: func(ctx context.Context, req resource.UpgradeStateRequest, resp *resource.UpgradeStateResponse) {
+				var data AIConfigResourceModel
+				resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
+				if resp.Diagnostics.HasError() {
+					return
+				}
+				data.Description = nullIfEmptyString(data.Description)
+				data.MaintainerID = nullIfEmptyString(data.MaintainerID)
+				data.MaintainerTeamKey = nullIfEmptyString(data.MaintainerTeamKey)
+				data.EvaluationMetricKey = nullIfEmptyString(data.EvaluationMetricKey)
+				resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 			},
 		},
 	}
