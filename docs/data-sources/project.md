@@ -33,22 +33,12 @@ data "launchdarkly_project" "example" {
 
 ### Read-Only
 
-- `client_side_availability` (Attributes List, Deprecated) Deprecated. Use `default_client_side_availability`. (see [below for nested schema](#nestedatt--client_side_availability))
 - `default_client_side_availability` (Attributes List) Which client-side SDKs can use new flags by default. (see [below for nested schema](#nestedatt--default_client_side_availability))
 - `id` (String) The project's ID.
 - `name` (String) The project's name.
 - `require_view_association_for_new_flags` (Boolean) Whether new flags created in this project must be associated with at least one view.
 - `require_view_association_for_new_segments` (Boolean) Whether new segments created in this project must be associated with at least one view.
 - `tags` (Set of String) Tags.
-
-<a id="nestedatt--client_side_availability"></a>
-### Nested Schema for `client_side_availability`
-
-Read-Only:
-
-- `using_environment_id` (Boolean)
-- `using_mobile_key` (Boolean)
-
 
 <a id="nestedatt--default_client_side_availability"></a>
 ### Nested Schema for `default_client_side_availability`

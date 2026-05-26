@@ -24,6 +24,12 @@
     "blocks": [
       {"name": "default_client_side_availability"},
       {"name": "environments", "nested": [{"name": "approval_settings"}]}
+    ],
+    "deprecations": [
+      {"name": "include_in_snippet", "action": "iis_to_csa", "to": "default_client_side_availability", "using_mobile_key": "true"}
+    ],
+    "ds_attr_rewrites": [
+      {"from": "client_side_availability", "to": "default_client_side_availability"}
     ]
   },
   "launchdarkly_environment": {
@@ -75,6 +81,9 @@
     ],
     "deprecations": [
       {"name": "include_in_snippet", "action": "iis_to_csa", "to": "client_side_availability"}
+    ],
+    "ds_attr_rewrites": [
+      {"from": "include_in_snippet", "to_expr": "client_side_availability[0].using_environment_id"}
     ]
   }
 }
