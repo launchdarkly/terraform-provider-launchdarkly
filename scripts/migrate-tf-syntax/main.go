@@ -34,7 +34,22 @@ type AttrSpec struct {
 	Nested []*AttrSpec `json:"nested,omitempty"`
 }
 
-type Spec map[string][]*AttrSpec
+// DeprecationSpec describes an attribute that was removed from the provider schema between v2 and v3.
+// Supported actions:
+//   - "drop": remove the attribute from the resource body (no replacement).
+type DeprecationSpec struct {
+	Name   string `json:"name"`
+	Action string `json:"action"`
+	To     string `json:"to,omitempty"`
+}
+
+// ResourceSpec bundles all rewrite operations that apply to one resource type.
+type ResourceSpec struct {
+	Blocks       []*AttrSpec        `json:"blocks,omitempty"`
+	Deprecations []*DeprecationSpec `json:"deprecations,omitempty"`
+}
+
+type Spec map[string]*ResourceSpec
 
 func main() {
 	var (
@@ -100,15 +115,20 @@ func process(path, direction string, spec Spec, dryRun bool) error {
 		if len(labels) < 1 {
 			continue
 		}
-		specs, ok := spec[labels[0]]
-		if !ok {
+		rspec, ok := spec[labels[0]]
+		if !ok || rspec == nil {
 			continue
 		}
 		var did bool
 		if direction == "v2-to-v3" {
-			did = forward(blk.Body(), specs)
+			if forward(blk.Body(), rspec.Blocks) {
+				did = true
+			}
+			if applyDeprecations(blk.Body(), rspec.Deprecations) {
+				did = true
+			}
 		} else {
-			did = reverse(blk.Body(), specs)
+			did = reverse(blk.Body(), rspec.Blocks)
 		}
 		if did {
 			changed = true
@@ -203,6 +223,25 @@ func reverse(body *hclwrite.Body, specs []*AttrSpec) bool {
 				newBlock.Body().AppendUnstructuredTokens(elem)
 			}
 			changed = true
+		}
+	}
+	return changed
+}
+
+// applyDeprecations runs each deprecation rule against the resource body. Returns true if any
+// rewrite happened. v2-to-v3 only; reverse direction is unsupported (deprecation removals are
+// strictly one-way — the attribute no longer exists in the v3 schema).
+func applyDeprecations(body *hclwrite.Body, deps []*DeprecationSpec) bool {
+	changed := false
+	for _, d := range deps {
+		switch d.Action {
+		case "drop":
+			if body.GetAttribute(d.Name) != nil {
+				body.RemoveAttribute(d.Name)
+				changed = true
+			}
+		default:
+			fmt.Fprintf(os.Stderr, "warning: unknown deprecation action %q for attribute %q (skipping)\n", d.Action, d.Name)
 		}
 	}
 	return changed

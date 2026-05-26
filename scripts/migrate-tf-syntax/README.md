@@ -26,16 +26,28 @@ go build -o ../../bin/migrate-tf-syntax .
 
 ## Mapping file format
 
-`mappings.json` (embedded as default) maps resource type → list of attributes that switched from block to list-of-objects. Nested entries describe attributes inside an element that themselves migrated (e.g. `rules` contains `clauses`).
+`mappings.json` (embedded as default) maps resource type → object containing two optional sections:
+
+- `blocks` — attributes that switched from block to list-of-objects nested attribute. Nested entries describe attributes inside an element that themselves migrated (e.g. `rules` contains `clauses`).
+- `deprecations` — attributes removed from the v3 schema. Each entry has `name`, `action`, and (for some actions) `to`. Supported actions:
+  - `drop` — remove the attribute outright (no replacement).
 
 ```json
 {
-  "launchdarkly_segment": [
-    { "name": "included_contexts" },
-    { "name": "rules", "nested": [{ "name": "clauses" }] }
-  ]
+  "launchdarkly_segment": {
+    "blocks": [
+      { "name": "included_contexts" },
+      { "name": "rules", "nested": [{ "name": "clauses" }] }
+    ]
+  },
+  "launchdarkly_metric": {
+    "blocks": [{ "name": "urls" }],
+    "deprecations": [{ "name": "is_active", "action": "drop" }]
+  }
 }
 ```
+
+Deprecation operations are one-way (v2→v3 only). The reverse direction reinstates block syntax but cannot re-create attributes the v3 schema no longer accepts.
 
 The embedded default ships every attribute touched by LD provider v3.0.0. Pass `-mappings path.json` to override.
 

@@ -25,7 +25,6 @@ type MetricDataSourceModel struct {
 	MaintainerID              types.String `tfsdk:"maintainer_id"`
 	Description               types.String `tfsdk:"description"`
 	Tags                      types.Set    `tfsdk:"tags"`
-	IsActive                  types.Bool   `tfsdk:"is_active"`
 	IsNumeric                 types.Bool   `tfsdk:"is_numeric"`
 	Unit                      types.String `tfsdk:"unit"`
 	Selector                  types.String `tfsdk:"selector"`
@@ -91,12 +90,6 @@ func (d *MetricDataSource) Schema(_ context.Context, _ datasource.SchemaRequest,
 				Computed:    true,
 				ElementType: types.StringType,
 				Description: "Tags associated with the metric.",
-			},
-			IS_ACTIVE: schema.BoolAttribute{
-				Optional:           true,
-				Computed:           true,
-				Description:        "Ignored. All metrics are considered active.",
-				DeprecationMessage: "No longer in use. This field will be removed in a future major release of the LaunchDarkly provider.",
 			},
 			IS_NUMERIC: schema.BoolAttribute{
 				Computed:    true,
@@ -203,11 +196,6 @@ func (d *MetricDataSource) Read(ctx context.Context, req datasource.ReadRequest,
 		data.Description = types.StringValue(*metric.Description)
 	} else {
 		data.Description = types.StringValue("")
-	}
-	if metric.IsActive != nil {
-		data.IsActive = types.BoolValue(*metric.IsActive)
-	} else {
-		data.IsActive = types.BoolValue(true)
 	}
 	if metric.IsNumeric != nil {
 		data.IsNumeric = types.BoolValue(*metric.IsNumeric)

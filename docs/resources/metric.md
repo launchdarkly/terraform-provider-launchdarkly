@@ -49,7 +49,6 @@ resource "launchdarkly_metric" "example" {
 - `description` (String) The description of the metric's purpose.
 - `event_key` (String) The event key for your metric (if custom metric)
 - `include_units_without_events` (Boolean) Include units that did not send any events and set their value to 0.
-- `is_active` (Boolean, Deprecated) Ignored. All metrics are considered active.
 - `is_numeric` (Boolean) Whether a `custom` metric is a numeric metric or not.
 - `maintainer_id` (String) The LaunchDarkly member ID of the member who will maintain the metric. If not set, the API will automatically apply the member associated with your Terraform API key or the most recently-set maintainer
 - `percentile_value` (Number) The percentile for the analysis method. An integer denoting the target percentile between 0 and 100. Required when analysis_type is percentile.
