@@ -3,6 +3,10 @@
     "blocks": [
       {"name": "inline_roles"},
       {"name": "policy_statements"}
+    ],
+    "deprecations": [
+      {"name": "expire", "action": "drop"},
+      {"name": "policy_statements", "action": "rename", "to": "inline_roles"}
     ]
   },
   "launchdarkly_audit_log_subscription": {

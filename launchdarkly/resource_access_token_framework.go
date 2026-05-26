@@ -1,13 +1,9 @@
 package launchdarkly
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
-	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework-validators/resourcevalidator"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
@@ -41,12 +37,10 @@ type AccessTokenResourceModel struct {
 	Name              types.String `tfsdk:"name"`
 	Role              types.String `tfsdk:"role"`
 	CustomRoles       types.Set    `tfsdk:"custom_roles"`
-	PolicyStatements  types.List   `tfsdk:"policy_statements"`
 	InlineRoles       types.List   `tfsdk:"inline_roles"`
 	ServiceToken      types.Bool   `tfsdk:"service_token"`
 	DefaultAPIVersion types.Int64  `tfsdk:"default_api_version"`
 	Token             types.String `tfsdk:"token"`
-	Expire            types.Int64  `tfsdk:"expire"`
 }
 
 func NewAccessTokenResource() resource.Resource {
@@ -66,7 +60,7 @@ This resource allows you to create and manage access tokens within your LaunchDa
 
 -> **Note:** This resource stores the full plaintext secret for your access token in Terraform state. Be sure your state is configured securely before using this resource. To learn more, read [Sensitive data in state](https://www.terraform.io/docs/state/sensitive-data.html).
 
-The resource must contain either a "role", "custom_role" or an "inline_roles" (previously "policy_statements") block. As of v1.7.0, "policy_statements" has been deprecated in favor of "inline_roles".`,
+The resource must contain either a "role", "custom_role" or an "inline_roles" block.`,
 		Attributes: accessTokenSchemaAttributes(),
 	}
 }
@@ -127,19 +121,6 @@ func accessTokenSchemaAttributes() map[string]schema.Attribute {
 			Description:   "The access token used to authorize usage of the LaunchDarkly API.",
 			PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 		},
-		EXPIRE: schema.Int64Attribute{
-			Optional:           true,
-			Description:        "An expiration time for the current token secret, expressed as a Unix epoch time. Replace the computed token secret with a new value. The expired secret will no longer be able to authorize usage of the LaunchDarkly API. This field argument is **deprecated**. Please update your config to remove `expire` to maintain compatibility with future versions",
-			DeprecationMessage: "'expire' is deprecated and will be removed in the next major release of the LaunchDarkly provider",
-			Validators: []validator.Int64{
-				noZeroValuesInt64Validator{},
-			},
-		},
-		POLICY_STATEMENTS: frameworkPolicyStatementsResourceAttribute(
-			false,
-			"Define inline custom roles. An array of statements with three attributes: effect, resources, actions. May be used in place of a built-in or custom role. This field argument is **deprecated**. Update your config to use `inline_role` to maintain compatibility with future versions.",
-			"'policy_statements' is deprecated in favor of 'inline_roles'. This field will be removed in the next major release of the LaunchDarkly provider",
-		),
 		INLINE_ROLES: frameworkPolicyStatementsResourceAttribute(
 			false,
 			"Define inline custom roles. An array of statements with three attributes: effect, resources, actions. May be used in place of a built-in or custom role. [Using polices](https://docs.launchdarkly.com/home/members/role-policies).",
@@ -149,18 +130,43 @@ func accessTokenSchemaAttributes() map[string]schema.Attribute {
 }
 
 func (r *AccessTokenResource) UpgradeState(_ context.Context) map[int64]resource.StateUpgrader {
-	priorSchema := schema.Schema{Attributes: accessTokenSchemaAttributes()}
+	priorSchema := schema.Schema{Attributes: accessTokenSchemaAttributesV0()}
 	return map[int64]resource.StateUpgrader{
 		0: {
 			PriorSchema: &priorSchema,
 			StateUpgrader: func(ctx context.Context, req resource.UpgradeStateRequest, resp *resource.UpgradeStateResponse) {
-				var data AccessTokenResourceModel
-				resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
+				var prior AccessTokenResourceModelV0
+				resp.Diagnostics.Append(req.State.Get(ctx, &prior)...)
 				if resp.Diagnostics.HasError() {
 					return
 				}
-				data.InlineRoles = nullIfEmptyList(ctx, data.InlineRoles)
-				data.PolicyStatements = nullIfEmptyList(ctx, data.PolicyStatements)
+				priorPS := nullIfEmptyList(ctx, prior.PolicyStatements)
+				priorIR := nullIfEmptyList(ctx, prior.InlineRoles)
+				psSet := !priorPS.IsNull() && !priorPS.IsUnknown() && len(priorPS.Elements()) > 0
+				irSet := !priorIR.IsNull() && !priorIR.IsUnknown() && len(priorIR.Elements()) > 0
+				if psSet && irSet {
+					resp.Diagnostics.AddError(
+						"Cannot upgrade access_token state: both policy_statements and inline_roles set",
+						"v2 ConfigValidator should have prevented this. Resolve by manually editing state to drop one of the two attributes, then re-apply.",
+					)
+					return
+				}
+				data := AccessTokenResourceModel{
+					ID:                prior.ID,
+					Name:              prior.Name,
+					Role:              prior.Role,
+					CustomRoles:       prior.CustomRoles,
+					InlineRoles:       priorIR,
+					ServiceToken:      prior.ServiceToken,
+					DefaultAPIVersion: prior.DefaultAPIVersion,
+					Token:             prior.Token,
+				}
+				// policy_statements -> inline_roles: identical shape (both
+				// built from frameworkPolicyStatementsResourceAttribute), so
+				// just move the list onto inline_roles when only PS was set.
+				if psSet {
+					data.InlineRoles = priorPS
+				}
 				resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 			},
 		},
@@ -172,7 +178,6 @@ func (r *AccessTokenResource) ConfigValidators(_ context.Context) []resource.Con
 		resourcevalidator.Conflicting(
 			path.MatchRoot(ROLE),
 			path.MatchRoot(CUSTOM_ROLES),
-			path.MatchRoot(POLICY_STATEMENTS),
 			path.MatchRoot(INLINE_ROLES),
 		),
 	}
@@ -184,12 +189,11 @@ func (r *AccessTokenResource) Configure(_ context.Context, req resource.Configur
 
 // ModifyPlan preserves default_api_version across upgrades from v2.x
 // state where the attribute was implicit. Per-attribute
-// UseStateForUnknown on default_api_version trips the .token
-// inconsistent-sensitive-attr check in TestAccAccessToken_Reset, so
-// this resource-level plan modifier replicates UseStateForUnknown's
-// behaviour selectively — skipped when expire is changing (the path
-// that triggers a token reset and needs the framework's default
-// Computed-coupling intact).
+// UseStateForUnknown on default_api_version was historically avoided
+// to keep the framework's Computed-coupling intact for the
+// expire-driven reset path; expire has been removed in v3 but the
+// state-preservation logic is still useful when upgrading from
+// states where default_api_version was unset.
 func (r *AccessTokenResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
 	if req.Plan.Raw.IsNull() || req.State.Raw.IsNull() {
 		return
@@ -199,9 +203,6 @@ func (r *AccessTokenResource) ModifyPlan(ctx context.Context, req resource.Modif
 	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
 	if resp.Diagnostics.HasError() {
-		return
-	}
-	if !plan.Expire.Equal(state.Expire) {
 		return
 	}
 	if !config.DefaultAPIVersion.IsNull() {
@@ -235,13 +236,9 @@ func (r *AccessTokenResource) Create(ctx context.Context, req resource.CreateReq
 		body.DefaultApiVersion = &v
 	}
 
-	// Precedence: policy_statements > inline_roles > custom_roles > role.
-	inline, diags := frameworkPolicyStatementsFromList(ctx, plan.PolicyStatements)
+	// Precedence: inline_roles > custom_roles > role.
+	inline, diags := frameworkPolicyStatementsFromList(ctx, plan.InlineRoles)
 	resp.Diagnostics.Append(diags...)
-	if len(inline) == 0 {
-		inline, diags = frameworkPolicyStatementsFromList(ctx, plan.InlineRoles)
-		resp.Diagnostics.Append(diags...)
-	}
 	customRoles, diags := stringSliceFromSet(ctx, plan.CustomRoles)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
@@ -259,7 +256,7 @@ func (r *AccessTokenResource) Create(ctx context.Context, req resource.CreateReq
 	default:
 		resp.Diagnostics.AddError(
 			"Missing role configuration",
-			"access_token must contain either 'role', 'custom_roles', 'policy_statements', or 'inline_roles'.",
+			"access_token must contain either 'role', 'custom_roles', or 'inline_roles'.",
 		)
 		return
 	}
@@ -320,12 +317,8 @@ func (r *AccessTokenResource) Update(ctx context.Context, req resource.UpdateReq
 		return
 	}
 
-	inline, diags := frameworkPolicyStatementsFromList(ctx, plan.PolicyStatements)
+	inline, diags := frameworkPolicyStatementsFromList(ctx, plan.InlineRoles)
 	resp.Diagnostics.Append(diags...)
-	if len(inline) == 0 {
-		inline, diags = frameworkPolicyStatementsFromList(ctx, plan.InlineRoles)
-		resp.Diagnostics.Append(diags...)
-	}
 
 	patch := []ldapi.PatchOperation{patchReplace("/name", &name)}
 
@@ -350,10 +343,9 @@ func (r *AccessTokenResource) Update(ctx context.Context, req resource.UpdateReq
 	emptyList := func(l types.List) bool {
 		return l.IsNull() || l.IsUnknown() || len(l.Elements()) == 0
 	}
-	hadInline := !emptyList(state.PolicyStatements) || !emptyList(state.InlineRoles)
-	wantInline := !emptyList(plan.PolicyStatements) || !emptyList(plan.InlineRoles)
-	if hadInline != wantInline ||
-		(wantInline && (!plan.PolicyStatements.Equal(state.PolicyStatements) || !plan.InlineRoles.Equal(state.InlineRoles))) {
+	hadInline := !emptyList(state.InlineRoles)
+	wantInline := !emptyList(plan.InlineRoles)
+	if hadInline != wantInline || (wantInline && !plan.InlineRoles.Equal(state.InlineRoles)) {
 		if len(inline) == 0 {
 			if hadInline {
 				patch = append(patch, patchRemove("/inlineRole"))
@@ -376,21 +368,6 @@ func (r *AccessTokenResource) Update(ctx context.Context, req resource.UpdateReq
 	if resp.Diagnostics.HasError() {
 		return
 	}
-
-	// expire reset — must come AFTER readIntoModel so that plan.Token set
-	// here is not overwritten by the GET response (which omits the secret).
-	if !plan.Expire.Equal(state.Expire) {
-		newExpire := plan.Expire.ValueInt64()
-		if newExpire != 0 {
-			token, err := resetAccessTokenFramework(r.client, id, int(newExpire))
-			if err != nil {
-				addLdapiError(&resp.Diagnostics, "Failed to reset access token", err)
-				return
-			}
-			plan.Token = stringValueFromPointer(token.Token)
-		}
-	}
-
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 }
 
@@ -458,12 +435,7 @@ func (r *AccessTokenResource) readIntoModel(
 
 	if len(accessToken.InlineRole) > 0 {
 		stmts, _ := frameworkPolicyStatementsValue(ctx, accessToken.InlineRole)
-		// Preserve which of the two blocks was set in the existing state.
-		if !data.PolicyStatements.IsNull() && len(data.PolicyStatements.Elements()) > 0 {
-			data.PolicyStatements = stmts
-		} else {
-			data.InlineRoles = stmts
-		}
+		data.InlineRoles = stmts
 	}
 }
 
@@ -514,46 +486,4 @@ func (noZeroValuesInt64Validator) ValidateInt64(_ context.Context, req validator
 			fmt.Errorf("expected %q to not be an empty value, got %v", EXPIRE, v).Error(),
 		)
 	}
-}
-
-// resetAccessTokenFramework issues a raw HTTP POST to the token Reset
-// endpoint. The ldapi v22 client omits Content-Type, so we fall back
-// to fallbackClient.
-func resetAccessTokenFramework(client *Client, accessTokenID string, expiry int) (ldapi.Token, error) {
-	var token ldapi.Token
-	endpoint := fmt.Sprintf("%s/api/v2/tokens/%s/reset", client.apiHost, accessTokenID)
-	if !strings.HasPrefix(endpoint, "http") {
-		endpoint = "https://" + endpoint
-	}
-	var body io.Reader
-	if expiry > 0 {
-		raw, err := json.Marshal(map[string]int{"expiry": expiry})
-		if err != nil {
-			return token, err
-		}
-		body = bytes.NewBuffer(raw)
-	}
-	req, err := http.NewRequest("POST", endpoint, body)
-	if err != nil {
-		return token, err
-	}
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", client.apiKey)
-
-	var resp *http.Response
-	err = client.withConcurrency(client.ctx, func() error {
-		resp, err = client.fallbackClient.Do(req)
-		return err
-	})
-	if err != nil {
-		return token, err
-	}
-	rawBody, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return token, err
-	}
-	if err := json.Unmarshal(rawBody, &token); err != nil {
-		return token, err
-	}
-	return token, nil
 }
