@@ -3,6 +3,7 @@ package launchdarkly
 import (
 	"context"
 	"net/http"
+	"sort"
 	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
@@ -133,6 +134,29 @@ func (r *CustomRoleResource) UpgradeState(_ context.Context) map[int64]resource.
 					var items []v0PolicyItem
 					resp.Diagnostics.Append(prior.Policy.ElementsAs(ctx, &items, false)...)
 					if !resp.Diagnostics.HasError() {
+						// Sort each element's inner slices, then sort items
+						// deterministically. Set iteration order is
+						// non-deterministic so without sorting, two consecutive
+						// upgrades of the same state could produce different
+						// list orderings — and even within a single upgrade,
+						// the resulting list order doesn't necessarily match
+						// what the LD API returns on the next Read, producing
+						// a one-time plan-vs-state diff. Sorting here yields a
+						// stable canonical order and removes the diff.
+						for i := range items {
+							sort.Strings(items[i].Resources)
+							sort.Strings(items[i].Actions)
+						}
+						sort.Slice(items, func(i, j int) bool {
+							if items[i].Effect != items[j].Effect {
+								return items[i].Effect < items[j].Effect
+							}
+							if a, b := strings.Join(items[i].Resources, ","), strings.Join(items[j].Resources, ","); a != b {
+								return a < b
+							}
+							return strings.Join(items[i].Actions, ",") < strings.Join(items[j].Actions, ",")
+						})
+
 						objType := types.ObjectType{AttrTypes: frameworkPolicyStatementsObjectAttrTypes}
 						elements := make([]attr.Value, 0, len(items))
 						for _, p := range items {

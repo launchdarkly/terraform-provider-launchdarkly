@@ -12,32 +12,8 @@ import (
 )
 
 const (
-	testAccCustomRoleCreate = `
-	resource "launchdarkly_custom_role" "test" {
-		key = "%s"
-		name = "Custom role - %s"
-		description = "Deny all actions on production environments"
-		base_permissions = "no_access"
-		policy = [{
-			actions = ["*"]	
-			effect = "deny"
-			resources = ["proj/*:env/production"]
-		}]
-	}
-`
 	// IMPORTANT TO NOTE that the $ character must be escaped in terraform by using a double $$
 	// otherwas ${} will be interpreted as a terraform variable and throw an error
-	testAccCustomRoleUpdate = `
-resource "launchdarkly_custom_role" "test" {
-	key = "%s"
-	name = "Updated - %s"
-	policy = [{
-		actions = ["*"]	
-		effect = "allow"
-		resources = ["proj/*:env/$${roleAttribute/devEnvironments}"]
-	}]
-}
-`
 	testAccCustomRoleCreateWithStatements = `
 resource "launchdarkly_custom_role" "test" {
 	key = "%s"
@@ -139,58 +115,6 @@ resource "launchdarkly_custom_role" "test" {
 `
 )
 
-func TestAccCustomRole_CreateAndUpdate(t *testing.T) {
-	key := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
-	name := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
-	resourceName := "launchdarkly_custom_role.test"
-	resource.ParallelTest(t, resource.TestCase{
-		PreCheck: func() {
-			testAccPreCheck(t)
-		},
-		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
-		CheckDestroy:             testAccCheckCustomRoleDestroy,
-		Steps: []resource.TestStep{
-			{
-				Config: fmt.Sprintf(testAccCustomRoleCreate, key, name),
-				Check: resource.ComposeTestCheckFunc(
-					testAccCheckCustomRoleExists(resourceName),
-					resource.TestCheckResourceAttr(resourceName, KEY, key),
-					resource.TestCheckResourceAttr(resourceName, NAME, "Custom role - "+name),
-					resource.TestCheckResourceAttr(resourceName, DESCRIPTION, "Deny all actions on production environments"),
-					resource.TestCheckResourceAttr(resourceName, BASE_PERMISSIONS, "no_access"),
-					resource.TestCheckResourceAttr(resourceName, "policy.#", "1"),
-					resource.TestCheckResourceAttr(resourceName, "policy.0.actions.#", "1"),
-					resource.TestCheckResourceAttr(resourceName, "policy.0.actions.0", "*"),
-					resource.TestCheckResourceAttr(resourceName, "policy.0.resources.#", "1"),
-					resource.TestCheckResourceAttr(resourceName, "policy.0.resources.0", "proj/*:env/production"),
-					resource.TestCheckResourceAttr(resourceName, "policy.0.effect", "deny"),
-				),
-			},
-			{
-				Config: fmt.Sprintf(testAccCustomRoleUpdate, key, name),
-				Check: resource.ComposeTestCheckFunc(
-					testAccCheckCustomRoleExists(resourceName),
-					resource.TestCheckResourceAttr(resourceName, KEY, key),
-					resource.TestCheckResourceAttr(resourceName, NAME, "Updated - "+name),
-					// Removed from config; framework writes null (absent) on Read
-					// when the API returns empty description. SDKv2 used to write
-					// "" here, but null is the framework-correct state for an
-					// Optional-only attribute. See framework_helpers.go for
-					// stringValueOrNullFromPointer.
-					resource.TestCheckNoResourceAttr(resourceName, DESCRIPTION),
-					resource.TestCheckResourceAttr(resourceName, BASE_PERMISSIONS, "reader"),
-					resource.TestCheckResourceAttr(resourceName, "policy.#", "1"),
-					resource.TestCheckResourceAttr(resourceName, "policy.0.actions.#", "1"),
-					resource.TestCheckResourceAttr(resourceName, "policy.0.actions.0", "*"),
-					resource.TestCheckResourceAttr(resourceName, "policy.0.resources.#", "1"),
-					resource.TestCheckResourceAttr(resourceName, "policy.0.resources.0", "proj/*:env/${roleAttribute/devEnvironments}"),
-					resource.TestCheckResourceAttr(resourceName, "policy.0.effect", "allow"),
-				),
-			},
-		},
-	})
-}
-
 func TestAccCustomRole_CreateAndUpdateWithStatements(t *testing.T) {
 	key := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	name := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
@@ -209,7 +133,6 @@ func TestAccCustomRole_CreateAndUpdateWithStatements(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, KEY, key),
 					resource.TestCheckResourceAttr(resourceName, NAME, "Custom role - "+name),
 					resource.TestCheckResourceAttr(resourceName, DESCRIPTION, "Allow all actions on staging environments"),
-					resource.TestCheckResourceAttr(resourceName, "policy.#", "0"),
 					resource.TestCheckResourceAttr(resourceName, "policy_statements.#", "1"),
 					resource.TestCheckResourceAttr(resourceName, "policy_statements.0.actions.#", "1"),
 					resource.TestCheckResourceAttr(resourceName, "policy_statements.0.actions.0", "*"),
@@ -230,7 +153,6 @@ func TestAccCustomRole_CreateAndUpdateWithStatements(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, KEY, key),
 					resource.TestCheckResourceAttr(resourceName, NAME, "Updated role - "+name),
 					resource.TestCheckResourceAttr(resourceName, DESCRIPTION, "Deny all actions on production environments"),
-					resource.TestCheckResourceAttr(resourceName, "policy.#", "0"),
 					resource.TestCheckResourceAttr(resourceName, "policy_statements.#", "1"),
 					resource.TestCheckResourceAttr(resourceName, "policy_statements.0.actions.#", "1"),
 					resource.TestCheckResourceAttr(resourceName, "policy_statements.0.actions.0", "*"),
@@ -267,7 +189,6 @@ func TestAccCustomRole_CreateAndUpdateWithNotStatements(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, NAME, "Custom role - "+name),
 					resource.TestCheckResourceAttr(resourceName, DESCRIPTION, "Don't allow all actions on non-staging environments"),
 					resource.TestCheckResourceAttr(resourceName, BASE_PERMISSIONS, "reader"),
-					resource.TestCheckResourceAttr(resourceName, "policy.#", "0"),
 					resource.TestCheckResourceAttr(resourceName, "policy_statements.#", "1"),
 					resource.TestCheckResourceAttr(resourceName, "policy_statements.0.not_actions.#", "1"),
 					resource.TestCheckResourceAttr(resourceName, "policy_statements.0.not_actions.0", "*"),
@@ -288,7 +209,6 @@ func TestAccCustomRole_CreateAndUpdateWithNotStatements(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, KEY, key),
 					resource.TestCheckResourceAttr(resourceName, NAME, "Updated role - "+name),
 					resource.TestCheckResourceAttr(resourceName, DESCRIPTION, "Don't deny all actions on non production environments"),
-					resource.TestCheckResourceAttr(resourceName, "policy.#", "0"),
 					resource.TestCheckResourceAttr(resourceName, "policy_statements.#", "1"),
 					resource.TestCheckResourceAttr(resourceName, "policy_statements.0.not_actions.#", "1"),
 					resource.TestCheckResourceAttr(resourceName, "policy_statements.0.not_actions.0", "*"),
@@ -324,7 +244,6 @@ func TestAccCustomRole_JSONPolicy(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, KEY, key),
 					resource.TestCheckResourceAttr(resourceName, NAME, "JSON role - "+name),
 					resource.TestCheckResourceAttr(resourceName, DESCRIPTION, "Allow actions on staging via JSON policy"),
-					resource.TestCheckResourceAttr(resourceName, "policy.#", "0"),
 					resource.TestCheckResourceAttr(resourceName, "policy_statements.#", "0"),
 					resource.TestCheckResourceAttrSet(resourceName, POLICY_STATEMENTS_JSON),
 					testAccCheckCustomRolePolicyAPI(resourceName, []map[string]interface{}{
@@ -348,7 +267,6 @@ func TestAccCustomRole_JSONPolicy(t *testing.T) {
 					testAccCheckCustomRoleExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, NAME, "Updated JSON role - "+name),
 					resource.TestCheckResourceAttr(resourceName, DESCRIPTION, "Deny actions on production via JSON policy"),
-					resource.TestCheckResourceAttr(resourceName, "policy.#", "0"),
 					resource.TestCheckResourceAttr(resourceName, "policy_statements.#", "0"),
 					resource.TestCheckResourceAttrSet(resourceName, POLICY_STATEMENTS_JSON),
 					testAccCheckCustomRolePolicyAPI(resourceName, []map[string]interface{}{
