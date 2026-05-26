@@ -30,10 +30,6 @@ data "launchdarkly_metric" "example" {
 - `key` (String) The unique key that references the metric.
 - `project_key` (String) The metric's project key.
 
-### Optional
-
-- `is_active` (Boolean, Deprecated) Ignored. All metrics are considered active.
-
 ### Read-Only
 
 - `analysis_type` (String) The method for analyzing metric events.

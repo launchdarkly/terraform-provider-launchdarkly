@@ -53,14 +53,3 @@ func nullIfEmptySet(ctx context.Context, s types.Set) types.Set {
 	}
 	return s
 }
-
-// nullIfEmptyMap is nullIfEmptyList for types.Map.
-func nullIfEmptyMap(ctx context.Context, m types.Map) types.Map {
-	if m.IsNull() || m.IsUnknown() {
-		return m
-	}
-	if len(m.Elements()) == 0 {
-		return types.MapNull(m.ElementType(ctx))
-	}
-	return m
-}

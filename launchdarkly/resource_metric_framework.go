@@ -43,7 +43,6 @@ type MetricResourceModel struct {
 	MaintainerID              types.String `tfsdk:"maintainer_id"`
 	Description               types.String `tfsdk:"description"`
 	Tags                      types.Set    `tfsdk:"tags"`
-	IsActive                  types.Bool   `tfsdk:"is_active"`
 	IsNumeric                 types.Bool   `tfsdk:"is_numeric"`
 	Unit                      types.String `tfsdk:"unit"`
 	Selector                  types.String `tfsdk:"selector"`
@@ -123,12 +122,6 @@ func metricSchemaAttributes() map[string]schema.Attribute {
 			Computed:    true,
 			ElementType: types.StringType,
 			Description: "Tags associated with this resource.",
-		},
-		IS_ACTIVE: schema.BoolAttribute{
-			Optional:           true,
-			Computed:           true,
-			Description:        "Ignored. All metrics are considered active.",
-			DeprecationMessage: "No longer in use. This field will be removed in a future major release of the LaunchDarkly provider.",
 		},
 		IS_NUMERIC: schema.BoolAttribute{
 			Optional:    true,
@@ -224,22 +217,38 @@ func metricSchemaAttributes() map[string]schema.Attribute {
 }
 
 func (r *MetricResource) UpgradeState(_ context.Context) map[int64]resource.StateUpgrader {
-	priorSchema := schema.Schema{Attributes: metricSchemaAttributes()}
+	priorSchema := schema.Schema{Attributes: metricSchemaAttributesV0()}
 	return map[int64]resource.StateUpgrader{
 		0: {
 			PriorSchema: &priorSchema,
 			StateUpgrader: func(ctx context.Context, req resource.UpgradeStateRequest, resp *resource.UpgradeStateResponse) {
-				var data MetricResourceModel
-				resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
+				var prior MetricResourceModelV0
+				resp.Diagnostics.Append(req.State.Get(ctx, &prior)...)
 				if resp.Diagnostics.HasError() {
 					return
 				}
-				data.Description = nullIfEmptyString(data.Description)
-				data.EventKey = nullIfEmptyString(data.EventKey)
-				data.Selector = nullIfEmptyString(data.Selector)
-				data.SuccessCriteria = nullIfEmptyString(data.SuccessCriteria)
-				data.Unit = nullIfEmptyString(data.Unit)
-				data.URLs = nullIfEmptyList(ctx, data.URLs)
+				data := MetricResourceModel{
+					ID:                        prior.ID,
+					ProjectKey:                prior.ProjectKey,
+					Key:                       prior.Key,
+					Name:                      prior.Name,
+					Kind:                      prior.Kind,
+					MaintainerID:              prior.MaintainerID,
+					Description:               nullIfEmptyString(prior.Description),
+					Tags:                      prior.Tags,
+					IsNumeric:                 prior.IsNumeric,
+					Unit:                      nullIfEmptyString(prior.Unit),
+					Selector:                  nullIfEmptyString(prior.Selector),
+					EventKey:                  nullIfEmptyString(prior.EventKey),
+					SuccessCriteria:           nullIfEmptyString(prior.SuccessCriteria),
+					URLs:                      nullIfEmptyList(ctx, prior.URLs),
+					RandomizationUnits:        prior.RandomizationUnits,
+					IncludeUnitsWithoutEvents: prior.IncludeUnitsWithoutEvents,
+					UnitAggregationType:       prior.UnitAggregationType,
+					AnalysisType:              prior.AnalysisType,
+					PercentileValue:           prior.PercentileValue,
+					Version:                   prior.Version,
+				}
 				resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 			},
 		},
@@ -606,7 +615,6 @@ func (r *MetricResource) applyMetricUpdate(ctx context.Context, plan *MetricReso
 	name := plan.Name.ValueString()
 	description := plan.Description.ValueString()
 	kind := plan.Kind.ValueString()
-	isActive := plan.IsActive.ValueBool()
 	isNumeric := plan.IsNumeric.ValueBool()
 	unit := plan.Unit.ValueString()
 	selector := plan.Selector.ValueString()
@@ -620,7 +628,6 @@ func (r *MetricResource) applyMetricUpdate(ctx context.Context, plan *MetricReso
 		patchReplace("/description", description),
 		patchReplace("/tags", tags),
 		patchReplace("/kind", kind),
-		patchReplace("/isActive", isActive),
 		patchReplace("/isNumeric", isNumeric),
 		patchReplace("/urls", urlPosts),
 		patchReplace("/unit", unit),
@@ -688,11 +695,6 @@ func (r *MetricResource) readIntoModel(
 	data.Name = types.StringValue(metric.Name)
 	data.Description = stringValueFromPointer(metric.Description)
 	data.Kind = types.StringValue(metric.Kind)
-	if metric.IsActive != nil {
-		data.IsActive = types.BoolValue(*metric.IsActive)
-	} else {
-		data.IsActive = types.BoolValue(false)
-	}
 	if metric.IsNumeric != nil {
 		data.IsNumeric = types.BoolValue(*metric.IsNumeric)
 	} else {
