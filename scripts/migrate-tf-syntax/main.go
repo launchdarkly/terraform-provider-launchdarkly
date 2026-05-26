@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
@@ -37,16 +38,38 @@ type AttrSpec struct {
 // DeprecationSpec describes an attribute that was removed from the provider schema between v2 and v3.
 // Supported actions:
 //   - "drop": remove the attribute from the resource body (no replacement).
+//   - "iis_to_csa": rewrite include_in_snippet into a client_side_availability nested-attribute list.
+//     "to" names the replacement attribute (e.g. client_side_availability or
+//     default_client_side_availability). "using_mobile_key" overrides the synthesized mobile-key
+//     value (default false) — set to "true" for the project resource which historically wrote
+//     using_mobile_key=true when migrating include_in_snippet.
 type DeprecationSpec struct {
-	Name   string `json:"name"`
-	Action string `json:"action"`
-	To     string `json:"to,omitempty"`
+	Name           string `json:"name"`
+	Action         string `json:"action"`
+	To             string `json:"to,omitempty"`
+	UsingMobileKey string `json:"using_mobile_key,omitempty"`
 }
 
-// ResourceSpec bundles all rewrite operations that apply to one resource type.
+// DSAttrRewrite describes a data-source attribute that was removed/renamed in v3. The script does
+// a cross-file expression rewrite of every `data.<resource_label>.<name>.<from>` reference, where
+// <resource_label> is the spec key holding this entry.
+//
+//   - To set: rename the terminal attr (`data.X.Y.from` → `data.X.Y.to`). Anything after is
+//     preserved (e.g. `[0].using_environment_id`).
+//   - ToExpr set: replace the whole prefix (`data.X.Y.from` → `data.X.Y.<to-expr>`). Use when the
+//     v3 access path is structurally different.
+type DSAttrRewrite struct {
+	From   string `json:"from"`
+	To     string `json:"to,omitempty"`
+	ToExpr string `json:"to_expr,omitempty"`
+}
+
+// ResourceSpec bundles all rewrite operations that apply to one resource type. DSAttrRewrites apply
+// to the data source of the same name.
 type ResourceSpec struct {
-	Blocks       []*AttrSpec        `json:"blocks,omitempty"`
-	Deprecations []*DeprecationSpec `json:"deprecations,omitempty"`
+	Blocks         []*AttrSpec        `json:"blocks,omitempty"`
+	Deprecations   []*DeprecationSpec `json:"deprecations,omitempty"`
+	DSAttrRewrites []*DSAttrRewrite   `json:"ds_attr_rewrites,omitempty"`
 }
 
 type Spec map[string]*ResourceSpec
@@ -134,10 +157,18 @@ func process(path, direction string, spec Spec, dryRun bool) error {
 			changed = true
 		}
 	}
+	out := hclwrite.Format(f.Bytes())
+	// Cross-file DS-reader rewrites apply only in v2-to-v3.
+	if direction == "v2-to-v3" {
+		var rewritten bool
+		out, rewritten = applyDSAttrRewrites(out, spec)
+		if rewritten {
+			changed = true
+		}
+	}
 	if !changed {
 		return nil
 	}
-	out := hclwrite.Format(f.Bytes())
 	if dryRun {
 		fmt.Println("// ---", path, "---")
 		_, err := os.Stdout.Write(out)
@@ -145,6 +176,46 @@ func process(path, direction string, spec Spec, dryRun bool) error {
 	}
 	fmt.Fprintf(os.Stderr, "wrote %s\n", path)
 	return os.WriteFile(path, out, 0o644)
+}
+
+// applyDSAttrRewrites runs every ds_attr_rewrite entry across the file contents. Each rewrite
+// targets `data.<resource_label>.<name>.<from>` and either renames the terminal segment (`To`) or
+// replaces the entire prefix with a new expression rooted at the same name (`ToExpr`).
+//
+// Implementation: regex over the formatted file bytes. The pattern uses a word boundary on `<from>`
+// so it matches both the bare reference (`...client_side_availability`) and chained access
+// (`...client_side_availability[0]`, `...client_side_availability.foo`). False positives inside
+// HCL strings/comments are vanishingly unlikely for these very specific deprecated attr names.
+func applyDSAttrRewrites(src []byte, spec Spec) ([]byte, bool) {
+	out := src
+	changed := false
+	for label, rspec := range spec {
+		if rspec == nil {
+			continue
+		}
+		for _, rw := range rspec.DSAttrRewrites {
+			if rw.From == "" {
+				continue
+			}
+			re := regexp.MustCompile(`\bdata\.` + regexp.QuoteMeta(label) + `\.([A-Za-z_][A-Za-z0-9_]*)\.` + regexp.QuoteMeta(rw.From) + `\b`)
+			var repl string
+			switch {
+			case rw.ToExpr != "":
+				repl = "data." + label + ".${1}." + rw.ToExpr
+			case rw.To != "":
+				repl = "data." + label + ".${1}." + rw.To
+			default:
+				fmt.Fprintf(os.Stderr, "warning: ds_attr_rewrite on %q/%q missing \"to\" and \"to_expr\" (skipping)\n", label, rw.From)
+				continue
+			}
+			newOut := re.ReplaceAll(out, []byte(repl))
+			if !bytes.Equal(newOut, out) {
+				out = newOut
+				changed = true
+			}
+		}
+	}
+	return out, changed
 }
 
 // forward converts repeated `name { ... }` blocks into a single `name = [{...}, ...]` attribute.
@@ -241,7 +312,11 @@ func applyDeprecations(body *hclwrite.Body, deps []*DeprecationSpec) bool {
 				changed = true
 			}
 		case "iis_to_csa":
-			if dropOrConvertIISToCSA(body, d.Name, d.To) {
+			mobile := "false"
+			if d.UsingMobileKey != "" {
+				mobile = d.UsingMobileKey
+			}
+			if dropOrConvertIISToCSA(body, d.Name, d.To, mobile) {
 				changed = true
 			}
 		default:
@@ -259,7 +334,7 @@ func applyDeprecations(body *hclwrite.Body, deps []*DeprecationSpec) bool {
 // The IIS expression is preserved verbatim (true/false/var refs/etc.), so the result still type-
 // checks under the v3 schema. Comments attached to the IIS attribute are lost — emit a one-line note
 // on stderr so users notice.
-func dropOrConvertIISToCSA(body *hclwrite.Body, name, to string) bool {
+func dropOrConvertIISToCSA(body *hclwrite.Body, name, to, mobile string) bool {
 	if to == "" {
 		fmt.Fprintf(os.Stderr, "warning: iis_to_csa action on %q requires \"to\" target (skipping)\n", name)
 		return false
@@ -292,7 +367,7 @@ func dropOrConvertIISToCSA(body *hclwrite.Body, name, to string) bool {
 		&hclwrite.Token{Type: hclsyntax.TokenNewline, Bytes: []byte("\n")},
 		&hclwrite.Token{Type: hclsyntax.TokenIdent, Bytes: []byte("using_mobile_key")},
 		&hclwrite.Token{Type: hclsyntax.TokenEqual, Bytes: []byte(" = ")},
-		&hclwrite.Token{Type: hclsyntax.TokenIdent, Bytes: []byte("false")},
+		&hclwrite.Token{Type: hclsyntax.TokenIdent, Bytes: []byte(mobile)},
 		&hclwrite.Token{Type: hclsyntax.TokenNewline, Bytes: []byte("\n")},
 		&hclwrite.Token{Type: hclsyntax.TokenCBrace, Bytes: []byte("}")},
 		&hclwrite.Token{Type: hclsyntax.TokenCBrack, Bytes: []byte("]")},

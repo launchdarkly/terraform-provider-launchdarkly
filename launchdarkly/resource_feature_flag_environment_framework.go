@@ -165,7 +165,6 @@ func featureFlagEnvironmentSchemaAttributes() map[string]schema.Attribute {
 					DESCRIPTION: schema.StringAttribute{
 						Optional:    true,
 						Computed:    true,
-						Default:     stringdefault.StaticString(""),
 						Description: "A human-readable description of the targeting rule.",
 					},
 					VARIATION: schema.Int64Attribute{

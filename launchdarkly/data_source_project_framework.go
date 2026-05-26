@@ -20,7 +20,6 @@ type ProjectDataSourceModel struct {
 	ID                                   types.String `tfsdk:"id"`
 	Key                                  types.String `tfsdk:"key"`
 	Name                                 types.String `tfsdk:"name"`
-	ClientSideAvailability               types.List   `tfsdk:"client_side_availability"`
 	DefaultClientSideAvailability        types.List   `tfsdk:"default_client_side_availability"`
 	Tags                                 types.Set    `tfsdk:"tags"`
 	RequireViewAssociationForNewFlags    types.Bool   `tfsdk:"require_view_association_for_new_flags"`
@@ -50,17 +49,6 @@ func (d *ProjectDataSource) Schema(_ context.Context, _ datasource.SchemaRequest
 			TAGS:                                   schema.SetAttribute{Computed: true, ElementType: types.StringType, Description: "Tags."},
 			REQUIRE_VIEW_ASSOCIATION_FOR_NEW_FLAGS: schema.BoolAttribute{Computed: true, Description: "Whether new flags created in this project must be associated with at least one view."},
 			REQUIRE_VIEW_ASSOCIATION_FOR_NEW_SEGMENTS: schema.BoolAttribute{Computed: true, Description: "Whether new segments created in this project must be associated with at least one view."},
-			CLIENT_SIDE_AVAILABILITY: schema.ListNestedAttribute{
-				Computed:           true,
-				DeprecationMessage: "'client_side_availability' is now deprecated. Please migrate to 'default_client_side_availability' to maintain future compatibility.",
-				Description:        "Deprecated. Use `default_client_side_availability`.",
-				NestedObject: schema.NestedAttributeObject{
-					Attributes: map[string]schema.Attribute{
-						USING_ENVIRONMENT_ID: schema.BoolAttribute{Computed: true},
-						USING_MOBILE_KEY:     schema.BoolAttribute{Computed: true},
-					},
-				},
-			},
 			DEFAULT_CLIENT_SIDE_AVAILABILITY: schema.ListNestedAttribute{
 				Computed:    true,
 				Description: "Which client-side SDKs can use new flags by default.",
@@ -131,7 +119,6 @@ func (d *ProjectDataSource) Read(ctx context.Context, req datasource.ReadRequest
 		csaList, diags = types.ListValue(objectType, []attr.Value{})
 		resp.Diagnostics.Append(diags...)
 	}
-	data.ClientSideAvailability = csaList
 	data.DefaultClientSideAvailability = csaList
 
 	viewSettings, viewSettingsErr := getProjectViewSettings(ctx, d.client, projectKey)

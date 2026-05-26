@@ -23,7 +23,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/setplanmodifier"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -181,13 +180,11 @@ func featureFlagSchemaAttributes() map[string]schema.Attribute {
 					NAME: schema.StringAttribute{
 						Optional:    true,
 						Computed:    true,
-						Default:     stringdefault.StaticString(""),
 						Description: "The name of the variation.",
 					},
 					DESCRIPTION: schema.StringAttribute{
 						Optional:    true,
 						Computed:    true,
-						Default:     stringdefault.StaticString(""),
 						Description: "The variation's description.",
 					},
 					VALUE: schema.StringAttribute{

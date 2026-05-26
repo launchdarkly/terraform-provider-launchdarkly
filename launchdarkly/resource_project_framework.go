@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/hashicorp/terraform-plugin-framework-validators/resourcevalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/setvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
@@ -22,11 +21,10 @@ import (
 )
 
 var (
-	_ resource.Resource                     = &ProjectResource{}
-	_ resource.ResourceWithImportState      = &ProjectResource{}
-	_ resource.ResourceWithConfigValidators = &ProjectResource{}
-	_ resource.ResourceWithModifyPlan       = &ProjectResource{}
-	_ resource.ResourceWithUpgradeState     = &ProjectResource{}
+	_ resource.Resource                 = &ProjectResource{}
+	_ resource.ResourceWithImportState  = &ProjectResource{}
+	_ resource.ResourceWithModifyPlan   = &ProjectResource{}
+	_ resource.ResourceWithUpgradeState = &ProjectResource{}
 )
 
 type ProjectResource struct {
@@ -37,7 +35,6 @@ type ProjectResourceModel struct {
 	ID                                   types.String `tfsdk:"id"`
 	Key                                  types.String `tfsdk:"key"`
 	Name                                 types.String `tfsdk:"name"`
-	IncludeInSnippet                     types.Bool   `tfsdk:"include_in_snippet"`
 	DefaultClientSideAvailability        types.List   `tfsdk:"default_client_side_availability"`
 	Tags                                 types.Set    `tfsdk:"tags"`
 	Environments                         types.List   `tfsdk:"environments"`
@@ -85,12 +82,6 @@ func projectSchemaAttributes() map[string]schema.Attribute {
 		NAME: schema.StringAttribute{
 			Required:    true,
 			Description: "The project's name.",
-		},
-		INCLUDE_IN_SNIPPET: schema.BoolAttribute{
-			Optional:           true,
-			Computed:           true,
-			Description:        "Whether feature flags created under the project should be available to client-side SDKs by default. Please migrate to `default_client_side_availability` to maintain future compatibility.",
-			DeprecationMessage: "'include_in_snippet' is now deprecated. Please migrate to 'default_client_side_availability' to maintain future compatibility.",
 		},
 		TAGS: schema.SetAttribute{
 			Optional:    true,
@@ -160,25 +151,51 @@ func approvalSettingsMatchesAPIDefaults(item approvalSettingsModel) bool {
 }
 
 func (r *ProjectResource) UpgradeState(_ context.Context) map[int64]resource.StateUpgrader {
-	priorSchema := schema.Schema{Attributes: projectSchemaAttributes()}
+	priorSchema := schema.Schema{Attributes: projectSchemaAttributesV0()}
 	return map[int64]resource.StateUpgrader{
 		0: {
 			PriorSchema: &priorSchema,
 			StateUpgrader: func(ctx context.Context, req resource.UpgradeStateRequest, resp *resource.UpgradeStateResponse) {
-				var data ProjectResourceModel
-				resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
+				var prior ProjectResourceModelV0
+				resp.Diagnostics.Append(req.State.Get(ctx, &prior)...)
 				if resp.Diagnostics.HasError() {
 					return
 				}
-				// Cat 3 #1: default_client_side_availability that matches
-				// LD account defaults → null. Reuse the feature_flag
-				// helper since the inner shape is identical.
-				if featureFlagCSAMatchesAPIShape(ctx, data.DefaultClientSideAvailability) {
+				data := ProjectResourceModel{
+					ID:                                   prior.ID,
+					Key:                                  prior.Key,
+					Name:                                 prior.Name,
+					DefaultClientSideAvailability:        prior.DefaultClientSideAvailability,
+					Tags:                                 prior.Tags,
+					Environments:                         prior.Environments,
+					RequireViewAssociationForNewFlags:    prior.RequireViewAssociationForNewFlags,
+					RequireViewAssociationForNewSegments: prior.RequireViewAssociationForNewSegments,
+				}
+				// IIS->DCSA migration: when prior state set include_in_snippet
+				// and left default_client_side_availability empty, materialize
+				// DCSA so the resource still controls the project default.
+				// using_mobile_key was always implicitly true in v2 (see the
+				// pre-removal Update patch that hardcoded UsingMobileKey: true).
+				// When both were populated, drop IIS in favor of DCSA.
+				dcsaEmpty := data.DefaultClientSideAvailability.IsNull() || data.DefaultClientSideAvailability.IsUnknown() || len(data.DefaultClientSideAvailability.Elements()) == 0
+				iisSet := !prior.IncludeInSnippet.IsNull() && !prior.IncludeInSnippet.IsUnknown()
+				if dcsaEmpty && iisSet {
+					obj, d := types.ObjectValue(projectCSAAttrTypes, map[string]attr.Value{
+						USING_ENVIRONMENT_ID: types.BoolValue(prior.IncludeInSnippet.ValueBool()),
+						USING_MOBILE_KEY:     types.BoolValue(true),
+					})
+					resp.Diagnostics.Append(d...)
+					list, d := types.ListValue(types.ObjectType{AttrTypes: projectCSAAttrTypes}, []attr.Value{obj})
+					resp.Diagnostics.Append(d...)
+					data.DefaultClientSideAvailability = list
+				} else if featureFlagCSAMatchesAPIShape(ctx, data.DefaultClientSideAvailability) {
+					// default_client_side_availability that matches LD account
+					// defaults → null. Reuse the feature_flag helper since the
+					// inner shape is identical.
 					data.DefaultClientSideAvailability = types.ListNull(data.DefaultClientSideAvailability.ElementType(ctx))
 				}
-				// Cat 3 #2: each environments[].approval_settings whose
-				// 1-element matches API defaults → null. Decode envs,
-				// modify each, re-encode.
+				// each environments[].approval_settings whose 1-element matches
+				// API defaults → null. Decode envs, modify each, re-encode.
 				if !data.Environments.IsNull() && !data.Environments.IsUnknown() && len(data.Environments.Elements()) > 0 {
 					var envs []environmentModel
 					resp.Diagnostics.Append(data.Environments.ElementsAs(ctx, &envs, false)...)
@@ -217,35 +234,19 @@ func (r *ProjectResource) UpgradeState(_ context.Context) map[int64]resource.Sta
 	}
 }
 
-func (r *ProjectResource) ConfigValidators(_ context.Context) []resource.ConfigValidator {
-	return []resource.ConfigValidator{
-		resourcevalidator.Conflicting(
-			path.MatchRoot(INCLUDE_IN_SNIPPET),
-			path.MatchRoot(DEFAULT_CLIENT_SIDE_AVAILABILITY),
-		),
-	}
-}
-
 func (r *ProjectResource) Configure(_ context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
 	r.client = configureResourceClient(req, resp)
 }
 
-// ModifyPlan handles two plan-time concerns:
-//
-//  1. include_in_snippet default: when neither IIS nor CSA is declared
-//     in config, set include_in_snippet = false so terraform sees a
-//     stable Computed value matching LD's backend default. (Port of the
-//     IIS-side half of the legacy customizeProjectDiff.)
-//
-//  2. Environments-level sensitive Unknowns: nested-attribute schemas
-//     synthesize zero values for inner Computed fields once the user
-//     supplies the required ones (key/name/color). For api_key,
-//     mobile_key, client_side_id — secrets only LD can mint — this
-//     produces a "" plan value that Apply replaces with the real
-//     secret, tripping the framework's plan-vs-apply consistency
-//     check (see [[feedback-nested-attr-computed-sensitive]]). Mark
-//     these fields Unknown whenever there's no prior state entry for
-//     the same env key.
+// ModifyPlan addresses environments-level sensitive Unknowns: nested-
+// attribute schemas synthesize zero values for inner Computed fields
+// once the user supplies the required ones (key/name/color). For
+// api_key, mobile_key, client_side_id — secrets only LD can mint —
+// this produces a "" plan value that Apply replaces with the real
+// secret, tripping the framework's plan-vs-apply consistency check
+// (see [[feedback-nested-attr-computed-sensitive]]). Mark these
+// fields Unknown whenever there's no prior state entry for the same
+// env key.
 func (r *ProjectResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
 	if req.Plan.Raw.IsNull() {
 		return
@@ -253,23 +254,10 @@ func (r *ProjectResource) ModifyPlan(ctx context.Context, req resource.ModifyPla
 	if r.client == nil {
 		return
 	}
-	var config ProjectResourceModel
-	resp.Diagnostics.Append(req.Config.Get(ctx, &config)...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
 	var plan ProjectResourceModel
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
 	if resp.Diagnostics.HasError() {
 		return
-	}
-
-	iisNotSet := config.IncludeInSnippet.IsNull() || config.IncludeInSnippet.IsUnknown()
-	csaEmpty := config.DefaultClientSideAvailability.IsNull() ||
-		config.DefaultClientSideAvailability.IsUnknown() ||
-		len(config.DefaultClientSideAvailability.Elements()) == 0
-	if iisNotSet && csaEmpty {
-		plan.IncludeInSnippet = types.BoolValue(false)
 	}
 
 	var state ProjectResourceModel
@@ -516,21 +504,14 @@ func (r *ProjectResource) applyProjectUpdates(ctx context.Context, projectKey st
 
 	csaPlanned := !plan.DefaultClientSideAvailability.IsNull() && !plan.DefaultClientSideAvailability.IsUnknown() && len(plan.DefaultClientSideAvailability.Elements()) > 0
 	csaChanged := isCreate || !plan.DefaultClientSideAvailability.Equal(state.DefaultClientSideAvailability)
-	iisChanged := isCreate || !plan.IncludeInSnippet.Equal(state.IncludeInSnippet)
 
-	switch {
-	case csaPlanned && csaChanged:
+	if csaPlanned && csaChanged {
 		csa, d := csaPostFromList(ctx, plan.DefaultClientSideAvailability)
 		diags.Append(d...)
 		if diags.HasError() {
 			return diags
 		}
 		patches = append(patches, patchReplace("/defaultClientSideAvailability", csa))
-	case !plan.IncludeInSnippet.IsNull() && !plan.IncludeInSnippet.IsUnknown() && iisChanged:
-		patches = append(patches, patchReplace("/defaultClientSideAvailability", &ldapi.ClientSideAvailabilityPost{
-			UsingEnvironmentId: plan.IncludeInSnippet.ValueBool(),
-			UsingMobileKey:     true,
-		}))
 	}
 
 	err := r.client.withConcurrency(r.client.ctx, func() error {
@@ -652,10 +633,6 @@ func (r *ProjectResource) readIntoModel(ctx context.Context, projectKey string, 
 	csaList, d := projectCSAValueFromAPI(ctx, project.DefaultClientSideAvailability, data.DefaultClientSideAvailability)
 	diags.Append(d...)
 	data.DefaultClientSideAvailability = csaList
-
-	// include_in_snippet mirrors the deprecated API field; LD's
-	// IncludeInSnippetByDefault is the canonical source.
-	data.IncludeInSnippet = types.BoolValue(project.IncludeInSnippetByDefault)
 
 	// Environments — preserve config order, then append unmanaged ones.
 	envItems := []ldapi.Environment{}
