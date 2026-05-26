@@ -88,7 +88,6 @@ output "team_notifications" {
 - `deprecated` (Boolean) Whether the flag is deprecated.
 - `description` (String) Feature flag description.
 - `id` (String) Composite ID `project_key/key`.
-- `include_in_snippet` (Boolean, Deprecated) Deprecated: use client_side_availability.using_environment_id.
 - `name` (String) Human-readable name.
 - `tags` (Set of String) Tags.
 - `temporary` (Boolean) Whether the flag is temporary.
