@@ -16,7 +16,6 @@ const (
 resource "launchdarkly_project" "test" {
 	key = "%s"
 	name = "test project"
-	include_in_snippet = false
 	tags = [ "terraform", "test" ]
 	environments = [{
 	  name  = "Test Environment"
@@ -29,7 +28,6 @@ resource "launchdarkly_project" "test" {
 resource "launchdarkly_project" "test" {
 	key = "%s"
 	name = "awesome test project"
-	include_in_snippet = true
 	tags = [ "terraform" ]
 	environments = [{
 	  name  = "Test Environment 2.0"
@@ -271,7 +269,6 @@ func TestAccProject_Update(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, KEY, projectKey),
 					resource.TestCheckResourceAttr(resourceName, NAME, "test project"),
 					resource.TestCheckResourceAttr(resourceName, "tags.#", "2"),
-					resource.TestCheckResourceAttr(resourceName, INCLUDE_IN_SNIPPET, "false"),
 					resource.TestCheckResourceAttr(resourceName, "tags.0", "terraform"),
 					resource.TestCheckResourceAttr(resourceName, "tags.1", "test"),
 					resource.TestCheckResourceAttr(resourceName, "environments.#", "1"),
@@ -286,7 +283,6 @@ func TestAccProject_Update(t *testing.T) {
 					testAccCheckProjectExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, KEY, projectKey),
 					resource.TestCheckResourceAttr(resourceName, NAME, "awesome test project"),
-					resource.TestCheckResourceAttr(resourceName, INCLUDE_IN_SNIPPET, "true"),
 					resource.TestCheckResourceAttr(resourceName, "tags.#", "1"),
 					resource.TestCheckResourceAttr(resourceName, "tags.0", "terraform"),
 					resource.TestCheckResourceAttr(resourceName, "environments.#", "1"),
@@ -302,7 +298,6 @@ func TestAccProject_Update(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, KEY, projectKey),
 					resource.TestCheckResourceAttr(resourceName, NAME, "awesome test project"),
 					resource.TestCheckNoResourceAttr(resourceName, "tags.#"),
-					resource.TestCheckResourceAttr(resourceName, INCLUDE_IN_SNIPPET, "false"),
 				),
 			},
 			{
@@ -330,7 +325,6 @@ func TestAccProject_CSA_Update_And_Revert(t *testing.T) {
 					testAccCheckProjectExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, KEY, projectKey),
 					resource.TestCheckResourceAttr(resourceName, NAME, "test project"),
-					resource.TestCheckResourceAttr(resourceName, INCLUDE_IN_SNIPPET, "false"),
 					// default_client_side_availability is Optional-only; when
 					// the user omits it, state stays null and the LD-API
 					// defaults are not surfaced.
@@ -343,7 +337,6 @@ func TestAccProject_CSA_Update_And_Revert(t *testing.T) {
 					testAccCheckProjectExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, KEY, projectKey),
 					resource.TestCheckResourceAttr(resourceName, NAME, "test project"),
-					resource.TestCheckResourceAttr(resourceName, INCLUDE_IN_SNIPPET, "true"),
 					resource.TestCheckResourceAttr(resourceName, "default_client_side_availability.0.using_environment_id", "true"),
 					resource.TestCheckResourceAttr(resourceName, "default_client_side_availability.0.using_mobile_key", "true"),
 				),
@@ -354,7 +347,6 @@ func TestAccProject_CSA_Update_And_Revert(t *testing.T) {
 					testAccCheckProjectExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, KEY, projectKey),
 					resource.TestCheckResourceAttr(resourceName, NAME, "awesome test project"),
-					resource.TestCheckResourceAttr(resourceName, INCLUDE_IN_SNIPPET, "false"),
 					// Removing default_client_side_availability from config
 					// drops it from state.
 					resource.TestCheckNoResourceAttr(resourceName, "default_client_side_availability.#"),

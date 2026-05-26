@@ -589,25 +589,6 @@ func withRandomProjectAndEnv(randomProject, randomEnvironment, resource string) 
 	%s`, randomProject, randomEnvironment, resource)
 }
 
-func withRandomProjectIncludeInSnippetTrue(randomProject, resource string) string {
-	return fmt.Sprintf(`
-	resource "launchdarkly_project" "test" {
-		lifecycle {
-			ignore_changes = [environments]
-		}
-		include_in_snippet = true
-		name = "testProject"
-		key = "%s"
-		environments = [{
-			name  = "testEnvironment"
-			key   = "test"
-			color = "000000"
-		}]
-	}
-	
-	%s`, randomProject, resource)
-}
-
 func TestAccFeatureFlag_BasicCreateAndUpdate(t *testing.T) {
 	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	resourceName := "launchdarkly_feature_flag.basic"
