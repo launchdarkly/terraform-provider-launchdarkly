@@ -319,6 +319,10 @@ func applyDeprecations(body *hclwrite.Body, deps []*DeprecationSpec) bool {
 			if dropOrConvertIISToCSA(body, d.Name, d.To, mobile) {
 				changed = true
 			}
+		case "policy_to_policy_statements":
+			if convertPolicyToPolicyStatements(body, d.Name, d.To) {
+				changed = true
+			}
 		default:
 			fmt.Fprintf(os.Stderr, "warning: unknown deprecation action %q for attribute %q (skipping)\n", d.Action, d.Name)
 		}
@@ -372,6 +376,37 @@ func dropOrConvertIISToCSA(body *hclwrite.Body, name, to, mobile string) bool {
 		&hclwrite.Token{Type: hclsyntax.TokenCBrace, Bytes: []byte("}")},
 		&hclwrite.Token{Type: hclsyntax.TokenCBrack, Bytes: []byte("]")},
 	)
+	body.RemoveAttribute(name)
+	body.SetAttributeRaw(to, tokens)
+	return true
+}
+
+// convertPolicyToPolicyStatements implements the policy_to_policy_statements deprecation action.
+// The deprecated custom_role policy SetNestedAttribute carried elements with required resources,
+// actions, and effect. The replacement policy_statements ListNestedAttribute adds optional
+// not_resources and not_actions. We copy each policy element verbatim into policy_statements; the
+// inner attribute names are identical so the inner expression tokens transfer unchanged.
+//
+// If policy_statements is already declared, the existing list wins and the deprecated policy
+// attribute is dropped. By convention v3 users prefer the newer form when both are present.
+func convertPolicyToPolicyStatements(body *hclwrite.Body, name, to string) bool {
+	if to == "" {
+		fmt.Fprintf(os.Stderr, "warning: policy_to_policy_statements action on %q requires \"to\" target (skipping)\n", name)
+		return false
+	}
+	policyAttr := body.GetAttribute(name)
+	if policyAttr == nil {
+		return false
+	}
+	if body.GetAttribute(to) != nil {
+		body.RemoveAttribute(name)
+		return true
+	}
+	tokens := policyAttr.Expr().BuildTokens(nil)
+	// policy was a set-nested attribute under the framework, so on disk it serializes as
+	// `policy = [{ ... }, { ... }]` after the block conversion pass. The right-hand side is
+	// already a tuple of object literals — exactly what policy_statements expects (a list). Reuse
+	// the expression verbatim.
 	body.RemoveAttribute(name)
 	body.SetAttributeRaw(to, tokens)
 	return true

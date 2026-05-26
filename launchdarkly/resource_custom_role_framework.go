@@ -3,9 +3,9 @@ package launchdarkly
 import (
 	"context"
 	"net/http"
-	"sort"
 	"strings"
 
+	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -34,7 +34,6 @@ type CustomRoleResourceModel struct {
 	Name                 types.String `tfsdk:"name"`
 	Description          types.String `tfsdk:"description"`
 	BasePermissions      types.String `tfsdk:"base_permissions"`
-	Policy               types.Set    `tfsdk:"policy"`
 	PolicyStatements     types.List   `tfsdk:"policy_statements"`
 	PolicyStatementsJSON types.String `tfsdk:"policy_statements_json"`
 }
@@ -86,29 +85,10 @@ func customRoleSchemaAttributes() map[string]schema.Attribute {
 				oneOfValidator{allowed: []string{"reader", "no_access"}},
 			},
 		},
-		POLICY: schema.SetNestedAttribute{
-			Optional:           true,
-			DeprecationMessage: "'policy' is now deprecated. Please migrate to 'policy_statements' to maintain future compatability.",
-			NestedObject: schema.NestedAttributeObject{
-				Attributes: map[string]schema.Attribute{
-					RESOURCES: schema.ListAttribute{
-						Required:    true,
-						ElementType: types.StringType,
-					},
-					ACTIONS: schema.ListAttribute{
-						Required:    true,
-						ElementType: types.StringType,
-					},
-					EFFECT: schema.StringAttribute{
-						Required: true,
-					},
-				},
-			},
-		},
 		POLICY_STATEMENTS: frameworkPolicyStatementsResourceAttribute(false, "An array of the policy statements that define the permissions for the custom role. This field accepts [role attributes](https://docs.launchdarkly.com/home/getting-started/vocabulary#role-attribute). To use role attributes, use the syntax `$${roleAttribute/<YOUR_ROLE_ATTRIBUTE>}` in lieu of your usual resource keys.", ""),
 		POLICY_STATEMENTS_JSON: schema.StringAttribute{
 			Optional:    true,
-			Description: "Policy statements expressed as a single JSON document — an array of statement objects with the same keys as the `policy_statements` attribute (`resources`, `not_resources`, `actions`, `not_actions`, `effect`). Mutually exclusive with `policy_statements` and `policy`. Use this form when reading the policy from a file or templating it dynamically (for example with `jsonencode(...)` or `file(\"policy.json\")`). To use [role attributes](https://docs.launchdarkly.com/home/getting-started/vocabulary#role-attribute), escape the `$` as `$${roleAttribute/<YOUR_ROLE_ATTRIBUTE>}` inside HCL strings.",
+			Description: "Policy statements expressed as a single JSON document — an array of statement objects with the same keys as the `policy_statements` attribute (`resources`, `not_resources`, `actions`, `not_actions`, `effect`). Mutually exclusive with `policy_statements`. Use this form when reading the policy from a file or templating it dynamically (for example with `jsonencode(...)` or `file(\"policy.json\")`). To use [role attributes](https://docs.launchdarkly.com/home/getting-started/vocabulary#role-attribute), escape the `$` as `$${roleAttribute/<YOUR_ROLE_ATTRIBUTE>}` inside HCL strings.",
 			Validators:  []validator.String{jsonStringValidator{}},
 			PlanModifiers: []planmodifier.String{
 				jsonNormalizePlanModifier{},
@@ -118,19 +98,63 @@ func customRoleSchemaAttributes() map[string]schema.Attribute {
 }
 
 func (r *CustomRoleResource) UpgradeState(_ context.Context) map[int64]resource.StateUpgrader {
-	priorSchema := schema.Schema{Attributes: customRoleSchemaAttributes()}
+	priorSchema := schema.Schema{Attributes: customRoleSchemaAttributesV0()}
 	return map[int64]resource.StateUpgrader{
 		0: {
 			PriorSchema: &priorSchema,
 			StateUpgrader: func(ctx context.Context, req resource.UpgradeStateRequest, resp *resource.UpgradeStateResponse) {
-				var data CustomRoleResourceModel
-				resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
+				var prior CustomRoleResourceModelV0
+				resp.Diagnostics.Append(req.State.Get(ctx, &prior)...)
 				if resp.Diagnostics.HasError() {
 					return
 				}
-				data.Description = nullIfEmptyString(data.Description)
-				data.Policy = nullIfEmptySet(ctx, data.Policy)
-				data.PolicyStatements = nullIfEmptyList(ctx, data.PolicyStatements)
+				data := CustomRoleResourceModel{
+					ID:                   prior.ID,
+					Key:                  prior.Key,
+					Name:                 prior.Name,
+					Description:          nullIfEmptyString(prior.Description),
+					BasePermissions:      prior.BasePermissions,
+					PolicyStatements:     nullIfEmptyList(ctx, prior.PolicyStatements),
+					PolicyStatementsJSON: prior.PolicyStatementsJSON,
+				}
+				// policy -> policy_statements migration: when prior state had
+				// policy set and policy_statements empty, convert each policy
+				// element into a policy_statements element. policy carried
+				// resources/actions/effect; policy_statements adds optional
+				// not_resources/not_actions which we leave null.
+				priorPolicySet := !prior.Policy.IsNull() && !prior.Policy.IsUnknown() && len(prior.Policy.Elements()) > 0
+				psEmpty := data.PolicyStatements.IsNull() || data.PolicyStatements.IsUnknown() || len(data.PolicyStatements.Elements()) == 0
+				if priorPolicySet && psEmpty {
+					type v0PolicyItem struct {
+						Resources []string `tfsdk:"resources"`
+						Actions   []string `tfsdk:"actions"`
+						Effect    string   `tfsdk:"effect"`
+					}
+					var items []v0PolicyItem
+					resp.Diagnostics.Append(prior.Policy.ElementsAs(ctx, &items, false)...)
+					if !resp.Diagnostics.HasError() {
+						objType := types.ObjectType{AttrTypes: frameworkPolicyStatementsObjectAttrTypes}
+						elements := make([]attr.Value, 0, len(items))
+						for _, p := range items {
+							resources, d := listFromStringSlice(ctx, p.Resources)
+							resp.Diagnostics.Append(d...)
+							actions, d := listFromStringSlice(ctx, p.Actions)
+							resp.Diagnostics.Append(d...)
+							obj, d := types.ObjectValue(frameworkPolicyStatementsObjectAttrTypes, map[string]attr.Value{
+								RESOURCES:     resources,
+								NOT_RESOURCES: types.ListNull(types.StringType),
+								ACTIONS:       actions,
+								NOT_ACTIONS:   types.ListNull(types.StringType),
+								EFFECT:        types.StringValue(p.Effect),
+							})
+							resp.Diagnostics.Append(d...)
+							elements = append(elements, obj)
+						}
+						list, d := types.ListValue(objType, elements)
+						resp.Diagnostics.Append(d...)
+						data.PolicyStatements = list
+					}
+				}
 				resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 			},
 		},
@@ -144,7 +168,7 @@ func (r *CustomRoleResource) ConfigValidators(_ context.Context) []resource.Conf
 type customRolePolicyConflictValidator struct{}
 
 func (customRolePolicyConflictValidator) Description(context.Context) string {
-	return "policy, policy_statements, and policy_statements_json are mutually exclusive"
+	return "policy_statements and policy_statements_json are mutually exclusive"
 }
 func (customRolePolicyConflictValidator) MarkdownDescription(ctx context.Context) string {
 	return ""
@@ -155,28 +179,13 @@ func (customRolePolicyConflictValidator) ValidateResource(ctx context.Context, r
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	policySet := !data.Policy.IsNull() && !data.Policy.IsUnknown() && len(data.Policy.Elements()) > 0
 	stmtSet := !data.PolicyStatements.IsNull() && !data.PolicyStatements.IsUnknown() && len(data.PolicyStatements.Elements()) > 0
 	jsonSet := !data.PolicyStatementsJSON.IsNull() && !data.PolicyStatementsJSON.IsUnknown() && strings.TrimSpace(data.PolicyStatementsJSON.ValueString()) != ""
-	if policySet && stmtSet {
-		resp.Diagnostics.AddAttributeError(
-			path.Root(POLICY_STATEMENTS),
-			"Conflicting policy fields",
-			"policy (deprecated) and policy_statements cannot both be set.",
-		)
-	}
 	if jsonSet && stmtSet {
 		resp.Diagnostics.AddAttributeError(
 			path.Root(POLICY_STATEMENTS_JSON),
 			"Conflicting policy fields",
 			"policy_statements_json and policy_statements cannot both be set.",
-		)
-	}
-	if jsonSet && policySet {
-		resp.Diagnostics.AddAttributeError(
-			path.Root(POLICY_STATEMENTS_JSON),
-			"Conflicting policy fields",
-			"policy_statements_json and policy (deprecated) cannot both be set.",
 		)
 	}
 }
@@ -185,16 +194,9 @@ func (r *CustomRoleResource) Configure(_ context.Context, req resource.Configure
 	r.client = configureResourceClient(req, resp)
 }
 
-type customRolePolicyModel struct {
-	Resources []string `tfsdk:"resources"`
-	Actions   []string `tfsdk:"actions"`
-	Effect    string   `tfsdk:"effect"`
-}
-
 func (r *CustomRoleResource) policiesFromModel(ctx context.Context, data *CustomRoleResourceModel, diags *diag.Diagnostics) []ldapi.StatementPost {
-	// Prefer policy_statements_json when set, then policy_statements, then
-	// the deprecated policy block. ConfigValidators guarantees at most one
-	// is set at a time.
+	// Prefer policy_statements_json when set, otherwise policy_statements.
+	// ConfigValidators guarantees at most one is set at a time.
 	if !data.PolicyStatementsJSON.IsNull() && !data.PolicyStatementsJSON.IsUnknown() {
 		if raw := strings.TrimSpace(data.PolicyStatementsJSON.ValueString()); raw != "" {
 			out, err := policyStatementsFromJSON(raw)
@@ -209,27 +211,7 @@ func (r *CustomRoleResource) policiesFromModel(ctx context.Context, data *Custom
 		out, _ := frameworkPolicyStatementsFromList(ctx, data.PolicyStatements)
 		return out
 	}
-	if data.Policy.IsNull() || data.Policy.IsUnknown() {
-		return nil
-	}
-	var policies []customRolePolicyModel
-	data.Policy.ElementsAs(ctx, &policies, false)
-	out := make([]ldapi.StatementPost, 0, len(policies))
-	for _, p := range policies {
-		resources := make([]string, len(p.Resources))
-		copy(resources, p.Resources)
-		sort.Strings(resources)
-
-		actions := make([]string, len(p.Actions))
-		copy(actions, p.Actions)
-		sort.Strings(actions)
-
-		stmt := ldapi.StatementPost{Effect: p.Effect}
-		stmt.SetResources(resources)
-		stmt.SetActions(actions)
-		out = append(out, stmt)
-	}
-	return out
+	return nil
 }
 
 func (r *CustomRoleResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
@@ -394,10 +376,9 @@ func (r *CustomRoleResource) readIntoModel(
 		data.BasePermissions = types.StringValue("reader")
 	}
 
-	// Refresh whichever of {policy, policy_statements, policy_statements_json}
-	// was already set. If none was set, default to policy_statements (the
+	// Refresh whichever of {policy_statements, policy_statements_json} was
+	// already set. If neither was set, default to policy_statements (the
 	// modern path).
-	policySet := !data.Policy.IsNull() && len(data.Policy.Elements()) > 0
 	jsonSet := !data.PolicyStatementsJSON.IsNull() && !data.PolicyStatementsJSON.IsUnknown() && strings.TrimSpace(data.PolicyStatementsJSON.ValueString()) != ""
 	if jsonSet {
 		encoded, jerr := policyStatementsToJSON(customRole.Policy)
@@ -411,39 +392,11 @@ func (r *CustomRoleResource) readIntoModel(
 		if !jsonEqual(prior, encoded) {
 			data.PolicyStatementsJSON = types.StringValue(encoded)
 		}
-		// Clear the alternate forms so they don't show diffs.
+		// Clear the alternate form so it doesn't show a diff.
 		data.PolicyStatements = types.ListNull(types.ObjectType{AttrTypes: frameworkPolicyStatementsObjectAttrTypes})
-		data.Policy = types.SetNull(data.Policy.ElementType(ctx))
 		return
 	}
-	if policySet {
-		// Refresh deprecated policy block from API response.
-		// Sort Resources and Actions alphabetically for stable hash output.
-		elems := make([]customRolePolicyModel, 0, len(customRole.Policy))
-		for _, stmt := range customRole.Policy {
-			resources := make([]string, len(stmt.Resources))
-			copy(resources, stmt.Resources)
-			sort.Strings(resources)
-
-			actions := make([]string, len(stmt.Actions))
-			copy(actions, stmt.Actions)
-			sort.Strings(actions)
-
-			elems = append(elems, customRolePolicyModel{
-				Resources: resources,
-				Actions:   actions,
-				Effect:    stmt.Effect,
-			})
-		}
-		setVal, d := types.SetValueFrom(ctx, data.Policy.ElementType(ctx), elems)
-		diags.Append(d...)
-		if diags.HasError() {
-			return
-		}
-		data.Policy = setVal
-	} else {
-		stmts, d := frameworkPolicyStatementsValue(ctx, customRole.Policy)
-		diags.Append(d...)
-		data.PolicyStatements = stmts
-	}
+	stmts, d := frameworkPolicyStatementsValue(ctx, customRole.Policy)
+	diags.Append(d...)
+	data.PolicyStatements = stmts
 }

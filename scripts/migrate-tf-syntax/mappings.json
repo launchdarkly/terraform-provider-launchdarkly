@@ -15,6 +15,9 @@
     "blocks": [
       {"name": "policy"},
       {"name": "policy_statements"}
+    ],
+    "deprecations": [
+      {"name": "policy", "action": "policy_to_policy_statements", "to": "policy_statements"}
     ]
   },
   "launchdarkly_relay_proxy_configuration": {
