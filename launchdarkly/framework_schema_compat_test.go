@@ -8,7 +8,7 @@ import (
 )
 
 func TestIsOmittedFrameworkAttrDiag_PositiveMatch(t *testing.T) {
-	attrPath := path.Root("include_in_snippet")
+	attrPath := path.Root("deprecated_attr")
 	d := diag.NewAttributeErrorDiagnostic(
 		attrPath,
 		"State Write Error",
@@ -26,13 +26,13 @@ func TestIsOmittedFrameworkAttrDiag_WrongPath(t *testing.T) {
 		"State Write Error",
 		"An unexpected error was encountered trying to retrieve type information at a given path.",
 	)
-	if isOmittedFrameworkAttrDiag(d, path.Root("include_in_snippet")) {
+	if isOmittedFrameworkAttrDiag(d, path.Root("deprecated_attr")) {
 		t.Fatalf("matcher must scope on attribute path; mismatched path should not match")
 	}
 }
 
 func TestIsOmittedFrameworkAttrDiag_WrongSummary(t *testing.T) {
-	attrPath := path.Root("include_in_snippet")
+	attrPath := path.Root("deprecated_attr")
 	d := diag.NewAttributeErrorDiagnostic(
 		attrPath,
 		"Some Other Error",
@@ -44,7 +44,7 @@ func TestIsOmittedFrameworkAttrDiag_WrongSummary(t *testing.T) {
 }
 
 func TestIsOmittedFrameworkAttrDiag_WrongDetail(t *testing.T) {
-	attrPath := path.Root("include_in_snippet")
+	attrPath := path.Root("deprecated_attr")
 	d := diag.NewAttributeErrorDiagnostic(
 		attrPath,
 		"State Write Error",
@@ -56,7 +56,7 @@ func TestIsOmittedFrameworkAttrDiag_WrongDetail(t *testing.T) {
 }
 
 func TestFilterOmittedAttrDiags_PassThroughUnrelated(t *testing.T) {
-	attrPath := path.Root("include_in_snippet")
+	attrPath := path.Root("deprecated_attr")
 
 	matching := diag.NewAttributeErrorDiagnostic(
 		attrPath,
@@ -83,7 +83,7 @@ func TestIsOmittedFrameworkAttrDiag_NonAttributePathDoesNotMatch(t *testing.T) {
 		"State Write Error",
 		"An unexpected error was encountered trying to retrieve type information at a given path.",
 	)
-	if isOmittedFrameworkAttrDiag(d, path.Root("include_in_snippet")) {
+	if isOmittedFrameworkAttrDiag(d, path.Root("deprecated_attr")) {
 		t.Fatalf("plain error diagnostics must not match path-scoped matcher")
 	}
 }

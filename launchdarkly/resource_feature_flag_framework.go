@@ -533,7 +533,7 @@ func (r *FeatureFlagResource) Create(ctx context.Context, req resource.CreateReq
 		}
 		finalCSA = csa
 	} else {
-		defaultCSA, _, err := getProjectDefaultCSAandIncludeInSnippet(r.client, projectKey)
+		defaultCSA, err := getProjectDefaultCSA(r.client, projectKey)
 		if err != nil {
 			resp.Diagnostics.AddError(fmt.Sprintf("failed to get project level client side availability defaults. %s", err.Error()), "")
 			return

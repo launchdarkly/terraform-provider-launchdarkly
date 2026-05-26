@@ -100,7 +100,6 @@ resource "launchdarkly_feature_flag" "basic" {
 	]
 	description = "this is a boolean flag by default because the variations field is omitted"
 	tags = ["update", "terraform"]
-	include_in_snippet = true
 	temporary = true
 	defaults = [{
 		on_variation = 1
@@ -498,44 +497,6 @@ resource "launchdarkly_feature_flag" "empty_string_variation" {
 	}]
 }
 `
-	testAccFeatureFlagIncludeInSnippet = `
-resource "launchdarkly_feature_flag" "sdk_settings" {
-	project_key = launchdarkly_project.test.key
-	key = "basic-flag-sdk-settings"
-	name = "Basic feature flag"
-	variation_type = "boolean"
-	variations = [
-		{ value = "true" },
-		{ value = "false" },
-	]
-	include_in_snippet = true
-}
-`
-	testAccFeatureFlagIncludeInSnippetUpdate = `
-resource "launchdarkly_feature_flag" "sdk_settings" {
-	project_key = launchdarkly_project.test.key
-	key = "basic-flag-sdk-settings"
-	name = "Basic feature flag"
-	variation_type = "boolean"
-	variations = [
-		{ value = "true" },
-		{ value = "false" },
-	]
-	include_in_snippet = false
-}
-`
-	testAccFeatureFlagIncludeInSnippetEmpty = `
-resource "launchdarkly_feature_flag" "sdk_settings" {
-	project_key = launchdarkly_project.test.key
-	key = "basic-flag-sdk-settings"
-	name = "Basic feature flag"
-	variation_type = "boolean"
-	variations = [
-		{ value = "true" },
-		{ value = "false" },
-	]
-}
-`
 	testAccFeatureFlagClientSideAvailability = `
 resource "launchdarkly_feature_flag" "sdk_settings" {
 	project_key = launchdarkly_project.test.key
@@ -688,7 +649,6 @@ func TestAccFeatureFlag_BasicCreateAndUpdate(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "tags.#", "2"),
 					resource.TestCheckResourceAttr(resourceName, "tags.0", "terraform"),
 					resource.TestCheckResourceAttr(resourceName, "tags.1", "update"),
-					resource.TestCheckResourceAttr(resourceName, INCLUDE_IN_SNIPPET, "true"),
 					resource.TestCheckResourceAttr(resourceName, TEMPORARY, "true"),
 					resource.TestCheckResourceAttr(resourceName, "defaults.0.on_variation", "1"),
 					resource.TestCheckResourceAttr(resourceName, "defaults.0.off_variation", "1"),
@@ -1416,214 +1376,6 @@ func TestAccFeatureFlag_ClientSideAvailabilityUpdate(t *testing.T) {
 					resource.TestCheckNoResourceAttr(resourceName, MAINTAINER_ID),
 					resource.TestCheckResourceAttr(resourceName, "client_side_availability.0.using_environment_id", "false"),
 					resource.TestCheckResourceAttr(resourceName, "client_side_availability.0.using_mobile_key", "false"),
-				),
-			},
-			{
-				ResourceName:            resourceName,
-				ImportState:             true,
-				ImportStateVerify:       true,
-				ImportStateVerifyIgnore: importIgnoreOptionalComputedKeys,
-			},
-		},
-	})
-}
-
-func TestAccFeatureFlag_IncludeInSnippetToClientSide(t *testing.T) {
-	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
-	resourceName := "launchdarkly_feature_flag.sdk_settings"
-	resource.ParallelTest(t, resource.TestCase{
-		PreCheck: func() {
-			testAccPreCheck(t)
-		},
-		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
-		Steps: []resource.TestStep{
-			{
-				Config: withRandomProject(projectKey, testAccFeatureFlagIncludeInSnippet),
-				Check: resource.ComposeTestCheckFunc(
-					testAccCheckProjectExists("launchdarkly_project.test"),
-					testAccCheckFeatureFlagExists(resourceName),
-					resource.TestCheckResourceAttr(resourceName, NAME, "Basic feature flag"),
-					resource.TestCheckResourceAttr(resourceName, KEY, "basic-flag-sdk-settings"),
-					resource.TestCheckResourceAttr(resourceName, PROJECT_KEY, projectKey),
-					resource.TestCheckResourceAttr(resourceName, VARIATION_TYPE, "boolean"),
-					resource.TestCheckResourceAttr(resourceName, "variations.#", "2"),
-					resource.TestCheckNoResourceAttr(resourceName, "client_side_availability.#"),
-					resource.TestCheckNoResourceAttr(resourceName, MAINTAINER_ID),
-					resource.TestCheckResourceAttr(resourceName, INCLUDE_IN_SNIPPET, "true"),
-				),
-			},
-			{
-				ResourceName:            resourceName,
-				ImportState:             true,
-				ImportStateVerify:       true,
-				ImportStateVerifyIgnore: importIgnoreOptionalComputedKeys,
-			},
-			{
-				Config: withRandomProject(projectKey, testAccFeatureFlagClientSideAvailability),
-				Check: resource.ComposeTestCheckFunc(
-					testAccCheckProjectExists("launchdarkly_project.test"),
-					testAccCheckFeatureFlagExists(resourceName),
-					resource.TestCheckResourceAttr(resourceName, NAME, "Basic feature flag"),
-					resource.TestCheckResourceAttr(resourceName, KEY, "basic-flag-sdk-settings"),
-					resource.TestCheckResourceAttr(resourceName, PROJECT_KEY, projectKey),
-					resource.TestCheckResourceAttr(resourceName, VARIATION_TYPE, "boolean"),
-					resource.TestCheckResourceAttr(resourceName, "variations.#", "2"),
-					resource.TestCheckNoResourceAttr(resourceName, MAINTAINER_ID),
-					resource.TestCheckResourceAttr(resourceName, "client_side_availability.0.using_environment_id", "true"),
-					resource.TestCheckResourceAttr(resourceName, "client_side_availability.0.using_mobile_key", "true"),
-					resource.TestCheckResourceAttr(resourceName, INCLUDE_IN_SNIPPET, "true"),
-				),
-			},
-			{
-				ResourceName:            resourceName,
-				ImportState:             true,
-				ImportStateVerify:       true,
-				ImportStateVerifyIgnore: importIgnoreOptionalComputedKeys,
-			},
-			{
-				Config: withRandomProject(projectKey, testAccFeatureFlagClientSideAvailabilityUpdate),
-				Check: resource.ComposeTestCheckFunc(
-					testAccCheckProjectExists("launchdarkly_project.test"),
-					testAccCheckFeatureFlagExists(resourceName),
-					resource.TestCheckResourceAttr(resourceName, NAME, "Basic feature flag"),
-					resource.TestCheckResourceAttr(resourceName, KEY, "basic-flag-sdk-settings"),
-					resource.TestCheckResourceAttr(resourceName, PROJECT_KEY, projectKey),
-					resource.TestCheckResourceAttr(resourceName, VARIATION_TYPE, "boolean"),
-					resource.TestCheckResourceAttr(resourceName, "variations.#", "2"),
-					resource.TestCheckNoResourceAttr(resourceName, MAINTAINER_ID),
-					resource.TestCheckResourceAttr(resourceName, "client_side_availability.0.using_environment_id", "false"),
-					resource.TestCheckResourceAttr(resourceName, "client_side_availability.0.using_mobile_key", "false"),
-					resource.TestCheckResourceAttr(resourceName, INCLUDE_IN_SNIPPET, "false"),
-				),
-			},
-			{
-				ResourceName:            resourceName,
-				ImportState:             true,
-				ImportStateVerify:       true,
-				ImportStateVerifyIgnore: importIgnoreOptionalComputedKeys,
-			},
-		},
-	})
-}
-
-func TestAccFeatureFlag_ClientSideToIncludeInSnippet(t *testing.T) {
-	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
-	resourceName := "launchdarkly_feature_flag.sdk_settings"
-	resource.ParallelTest(t, resource.TestCase{
-		PreCheck: func() {
-			testAccPreCheck(t)
-		},
-		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
-		Steps: []resource.TestStep{
-			{
-				Config: withRandomProject(projectKey, testAccFeatureFlagClientSideAvailability),
-				Check: resource.ComposeTestCheckFunc(
-					testAccCheckProjectExists("launchdarkly_project.test"),
-					testAccCheckFeatureFlagExists(resourceName),
-					resource.TestCheckResourceAttr(resourceName, NAME, "Basic feature flag"),
-					resource.TestCheckResourceAttr(resourceName, KEY, "basic-flag-sdk-settings"),
-					resource.TestCheckResourceAttr(resourceName, PROJECT_KEY, projectKey),
-					resource.TestCheckResourceAttr(resourceName, VARIATION_TYPE, "boolean"),
-					resource.TestCheckResourceAttr(resourceName, "variations.#", "2"),
-					resource.TestCheckNoResourceAttr(resourceName, MAINTAINER_ID),
-					resource.TestCheckResourceAttr(resourceName, "client_side_availability.0.using_environment_id", "true"),
-					resource.TestCheckResourceAttr(resourceName, "client_side_availability.0.using_mobile_key", "true"),
-					resource.TestCheckResourceAttr(resourceName, INCLUDE_IN_SNIPPET, "true"),
-				),
-			},
-			{
-				ResourceName:            resourceName,
-				ImportState:             true,
-				ImportStateVerify:       true,
-				ImportStateVerifyIgnore: importIgnoreOptionalComputedKeys,
-			},
-			{
-				Config: withRandomProject(projectKey, testAccFeatureFlagIncludeInSnippetUpdate),
-				Check: resource.ComposeTestCheckFunc(
-					testAccCheckProjectExists("launchdarkly_project.test"),
-					testAccCheckFeatureFlagExists(resourceName),
-					resource.TestCheckResourceAttr(resourceName, NAME, "Basic feature flag"),
-					resource.TestCheckResourceAttr(resourceName, KEY, "basic-flag-sdk-settings"),
-					resource.TestCheckResourceAttr(resourceName, PROJECT_KEY, projectKey),
-					resource.TestCheckResourceAttr(resourceName, VARIATION_TYPE, "boolean"),
-					resource.TestCheckResourceAttr(resourceName, "variations.#", "2"),
-					resource.TestCheckNoResourceAttr(resourceName, MAINTAINER_ID),
-					// Removing client_side_availability drops it from state
-					// rather than retaining the previously-set values.
-					resource.TestCheckNoResourceAttr(resourceName, "client_side_availability.#"),
-					resource.TestCheckResourceAttr(resourceName, INCLUDE_IN_SNIPPET, "false"),
-				),
-			},
-			{
-				ResourceName:            resourceName,
-				ImportState:             true,
-				ImportStateVerify:       true,
-				ImportStateVerifyIgnore: importIgnoreOptionalComputedKeys,
-			},
-		},
-	})
-}
-
-func TestAccFeatureFlag_IncludeInSnippet(t *testing.T) {
-	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
-	resourceName := "launchdarkly_feature_flag.sdk_settings"
-	resource.ParallelTest(t, resource.TestCase{
-		PreCheck: func() {
-			testAccPreCheck(t)
-		},
-		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
-		Steps: []resource.TestStep{
-			// Create without value set and check for default value
-			{
-				Config: withRandomProjectIncludeInSnippetTrue(projectKey, testAccFeatureFlagIncludeInSnippetEmpty),
-				Check: resource.ComposeTestCheckFunc(
-					testAccCheckProjectExists("launchdarkly_project.test"),
-					testAccCheckFeatureFlagExists(resourceName),
-					resource.TestCheckResourceAttr(resourceName, NAME, "Basic feature flag"),
-					resource.TestCheckResourceAttr(resourceName, KEY, "basic-flag-sdk-settings"),
-					resource.TestCheckResourceAttr(resourceName, PROJECT_KEY, projectKey),
-					resource.TestCheckResourceAttr(resourceName, INCLUDE_IN_SNIPPET, "true"),
-					// Omitted client_side_availability stays null in state;
-					// project defaults are not inflated onto the flag.
-					resource.TestCheckNoResourceAttr(resourceName, "client_side_availability.#"),
-				),
-			},
-			{
-				ResourceName:            resourceName,
-				ImportState:             true,
-				ImportStateVerify:       true,
-				ImportStateVerifyIgnore: importIgnoreOptionalComputedKeys,
-			},
-			// Replace default value with specific value
-			{
-				Config: withRandomProjectIncludeInSnippetTrue(projectKey, testAccFeatureFlagIncludeInSnippetUpdate),
-				Check: resource.ComposeTestCheckFunc(
-					testAccCheckProjectExists("launchdarkly_project.test"),
-					testAccCheckFeatureFlagExists(resourceName),
-					resource.TestCheckResourceAttr(resourceName, NAME, "Basic feature flag"),
-					resource.TestCheckResourceAttr(resourceName, KEY, "basic-flag-sdk-settings"),
-					resource.TestCheckResourceAttr(resourceName, PROJECT_KEY, projectKey),
-					resource.TestCheckResourceAttr(resourceName, INCLUDE_IN_SNIPPET, "false"),
-					resource.TestCheckNoResourceAttr(resourceName, "client_side_availability.#"),
-				),
-			},
-			{
-				ResourceName:            resourceName,
-				ImportState:             true,
-				ImportStateVerify:       true,
-				ImportStateVerifyIgnore: importIgnoreOptionalComputedKeys,
-			},
-			// Clear specific value, should not revert to default
-			{
-				Config: withRandomProjectIncludeInSnippetTrue(projectKey, testAccFeatureFlagIncludeInSnippetEmpty),
-				Check: resource.ComposeTestCheckFunc(
-					testAccCheckProjectExists("launchdarkly_project.test"),
-					testAccCheckFeatureFlagExists(resourceName),
-					resource.TestCheckResourceAttr(resourceName, NAME, "Basic feature flag"),
-					resource.TestCheckResourceAttr(resourceName, KEY, "basic-flag-sdk-settings"),
-					resource.TestCheckResourceAttr(resourceName, PROJECT_KEY, projectKey),
-					resource.TestCheckResourceAttr(resourceName, INCLUDE_IN_SNIPPET, "false"),
-					resource.TestCheckNoResourceAttr(resourceName, "client_side_availability.#"),
 				),
 			},
 			{
