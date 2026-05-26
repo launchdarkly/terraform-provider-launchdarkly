@@ -2,11 +2,13 @@ package launchdarkly
 
 import (
 	"fmt"
+	"os"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
+	"github.com/stretchr/testify/require"
 )
 
 const (
@@ -26,6 +28,16 @@ resource "launchdarkly_team_member" "test" {
 	last_name = "last"
 	role = "no_access"
 	custom_roles = []
+}
+`
+	testAccTeamMemberAdoptExisting = `
+resource "launchdarkly_team_member" "test" {
+	email = "%s"
+	first_name = "Test"
+	last_name = "Account"
+	role = "no_access"
+	custom_roles = []
+	adopt_existing = true
 }
 `
 
@@ -194,6 +206,52 @@ func TestAccTeamMember_CreateAndUpdateGeneric(t *testing.T) {
 				ResourceName:      resourceName,
 				ImportState:       true,
 				ImportStateVerify: true,
+			},
+		},
+	})
+}
+
+func TestAccTeamMember_AdoptExisting(t *testing.T) {
+	if os.Getenv("TF_ACC") == "" {
+		t.SkipNow()
+	}
+
+	randomName := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	email := fmt.Sprintf("%s+wbteste2e@launchdarkly.com", randomName)
+	resourceName := "launchdarkly_team_member.test"
+
+	client, err := newClient(os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN), os.Getenv(LAUNCHDARKLY_API_HOST), false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
+	require.NoError(t, err)
+
+	member, err := testAccDataSourceTeamMemberCreate(client, email)
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		_ = testAccDataSourceTeamMemberDelete(client, member.Id)
+	})
+
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck: func() {
+			testAccPreCheck(t)
+		},
+		Providers:    testAccProviders,
+		CheckDestroy: testAccCheckTeamMemberDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config: fmt.Sprintf(testAccTeamMemberAdoptExisting, email),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckMemberExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, EMAIL, email),
+					resource.TestCheckResourceAttr(resourceName, FIRST_NAME, "Test"),
+					resource.TestCheckResourceAttr(resourceName, LAST_NAME, "Account"),
+					resource.TestCheckResourceAttr(resourceName, ROLE, "no_access"),
+					resource.TestCheckResourceAttr(resourceName, "custom_roles.#", "0"),
+				),
+			},
+			{
+				ResourceName:            resourceName,
+				ImportState:             true,
+				ImportStateVerify:       true,
+				ImportStateVerifyIgnore: []string{ADOPT_EXISTING},
 			},
 		},
 	})

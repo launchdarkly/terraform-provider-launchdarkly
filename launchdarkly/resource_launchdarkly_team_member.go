@@ -2,9 +2,11 @@ package launchdarkly
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
+	"strings"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -36,6 +38,11 @@ func resourceTeamMember() *schema.Resource {
 				Required:    true,
 				ForceNew:    true,
 				Description: addForceNewDescription("The unique email address associated with the team member.", true),
+			},
+			ADOPT_EXISTING: {
+				Type:        schema.TypeBool,
+				Optional:    true,
+				Description: "If true, the provider adopts an existing LaunchDarkly team member with the same email address when creation fails because the member already exists. The provider updates mutable fields after adoption, but first and last name cannot be updated except by the team member.",
 			},
 			FIRST_NAME: {
 				Type:        schema.TypeString,
@@ -105,6 +112,15 @@ func resourceTeamMemberCreate(ctx context.Context, d *schema.ResourceData, metaR
 		return err
 	})
 	if err != nil {
+		if d.Get(ADOPT_EXISTING).(bool) && isTeamMemberEmailAlreadyExistsError(err) {
+			member, err := getTeamMemberByEmail(client, memberEmail)
+			if err != nil {
+				return diag.Errorf("failed to adopt existing team member with email: %s: %v", memberEmail, err)
+			}
+
+			d.SetId(member.Id)
+			return resourceTeamMemberUpdate(ctx, d, metaRaw)
+		}
 		return diag.Errorf("failed to create team member with email: %s: %v", memberEmail, handleLdapiErr(err))
 	}
 
@@ -228,4 +244,23 @@ func teamMemberExists(memberID string, client *Client) (bool, error) {
 	}
 
 	return true, nil
+}
+
+const teamMemberEmailAlreadyExistsCode = "email_already_exists_in_account"
+
+func isTeamMemberEmailAlreadyExistsError(err error) bool {
+	if err == nil {
+		return false
+	}
+
+	if openAPIErr, ok := err.(*ldapi.GenericOpenAPIError); ok {
+		var apiErr struct {
+			Code string `json:"code"`
+		}
+		if json.Unmarshal(openAPIErr.Body(), &apiErr) == nil && apiErr.Code == teamMemberEmailAlreadyExistsCode {
+			return true
+		}
+	}
+
+	return strings.Contains(handleLdapiErr(err).Error(), teamMemberEmailAlreadyExistsCode)
 }
