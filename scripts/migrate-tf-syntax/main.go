@@ -240,11 +240,66 @@ func applyDeprecations(body *hclwrite.Body, deps []*DeprecationSpec) bool {
 				body.RemoveAttribute(d.Name)
 				changed = true
 			}
+		case "iis_to_csa":
+			if dropOrConvertIISToCSA(body, d.Name, d.To) {
+				changed = true
+			}
 		default:
 			fmt.Fprintf(os.Stderr, "warning: unknown deprecation action %q for attribute %q (skipping)\n", d.Action, d.Name)
 		}
 	}
 	return changed
+}
+
+// dropOrConvertIISToCSA implements the iis_to_csa deprecation action. If the body already declares
+// `to` (the replacement nested attribute, e.g. client_side_availability or
+// default_client_side_availability), it just removes `name` — config wins. Otherwise it materializes
+// `to = [{ using_environment_id = <iis-value>, using_mobile_key = false }]` and removes `name`.
+//
+// The IIS expression is preserved verbatim (true/false/var refs/etc.), so the result still type-
+// checks under the v3 schema. Comments attached to the IIS attribute are lost — emit a one-line note
+// on stderr so users notice.
+func dropOrConvertIISToCSA(body *hclwrite.Body, name, to string) bool {
+	if to == "" {
+		fmt.Fprintf(os.Stderr, "warning: iis_to_csa action on %q requires \"to\" target (skipping)\n", name)
+		return false
+	}
+	iisAttr := body.GetAttribute(name)
+	if iisAttr == nil {
+		return false
+	}
+	if body.GetAttribute(to) != nil {
+		// Replacement already declared — config wins. Drop the deprecated attr.
+		body.RemoveAttribute(name)
+		return true
+	}
+	// Read the IIS expression tokens (right-hand side only) and trim surrounding whitespace.
+	exprTokens := iisAttr.Expr().BuildTokens(nil)
+	exprTokens = trimLeadingNewlines(exprTokens)
+	// Build the replacement attribute tokens: to = [{
+	//   using_environment_id = <iis-expr>
+	//   using_mobile_key     = false
+	// }]
+	tokens := hclwrite.Tokens{
+		{Type: hclsyntax.TokenOBrack, Bytes: []byte("[")},
+		{Type: hclsyntax.TokenOBrace, Bytes: []byte("{")},
+		{Type: hclsyntax.TokenNewline, Bytes: []byte("\n")},
+		{Type: hclsyntax.TokenIdent, Bytes: []byte("using_environment_id")},
+		{Type: hclsyntax.TokenEqual, Bytes: []byte(" = ")},
+	}
+	tokens = append(tokens, exprTokens...)
+	tokens = append(tokens,
+		&hclwrite.Token{Type: hclsyntax.TokenNewline, Bytes: []byte("\n")},
+		&hclwrite.Token{Type: hclsyntax.TokenIdent, Bytes: []byte("using_mobile_key")},
+		&hclwrite.Token{Type: hclsyntax.TokenEqual, Bytes: []byte(" = ")},
+		&hclwrite.Token{Type: hclsyntax.TokenIdent, Bytes: []byte("false")},
+		&hclwrite.Token{Type: hclsyntax.TokenNewline, Bytes: []byte("\n")},
+		&hclwrite.Token{Type: hclsyntax.TokenCBrace, Bytes: []byte("}")},
+		&hclwrite.Token{Type: hclsyntax.TokenCBrack, Bytes: []byte("]")},
+	)
+	body.RemoveAttribute(name)
+	body.SetAttributeRaw(to, tokens)
+	return true
 }
 
 // extractTupleElements walks token stream `[ {...}, {...}, ... ]` and returns the inner body

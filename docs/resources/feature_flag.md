@@ -146,7 +146,6 @@ resource "launchdarkly_feature_flag" "mobile_app_feature" {
 - `defaults` (Attributes List) The indices of the variations to be used as the default on and off variations in all new environments. Flag configurations in existing environments will not be changed nor updated if removed. (see [below for nested schema](#nestedatt--defaults))
 - `deprecated` (Boolean) Specifies whether the flag is deprecated or not. Note that you cannot create a new flag that is deprecated, but can update a flag to be deprecated.
 - `description` (String) The feature flag's description.
-- `include_in_snippet` (Boolean, Deprecated) Specifies whether this flag should be made available to the client-side JavaScript SDK using the client-side Id. This value gets its default from your project configuration if not set. `include_in_snippet` is now deprecated. Please migrate to `client_side_availability.using_environment_id` to maintain future compatibility.
 - `maintainer_id` (String) The feature flag maintainer's 24 character alphanumeric team member ID. `maintainer_team_key` cannot be set if `maintainer_id` is set. If neither is set, it will automatically be or stay set to the member ID associated with the API key used by your LaunchDarkly Terraform provider or the most recently-set maintainer.
 - `maintainer_team_key` (String) The key of the associated team that maintains this feature flag. `maintainer_id` cannot be set if `maintainer_team_key` is set
 - `tags` (Set of String) Tags associated with your resource.

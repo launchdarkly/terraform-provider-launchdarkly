@@ -72,6 +72,9 @@
       {"name": "client_side_availability"},
       {"name": "variations"},
       {"name": "defaults"}
+    ],
+    "deprecations": [
+      {"name": "include_in_snippet", "action": "iis_to_csa", "to": "client_side_availability"}
     ]
   }
 }

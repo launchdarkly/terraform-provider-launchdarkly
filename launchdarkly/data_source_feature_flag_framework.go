@@ -30,7 +30,6 @@ type FeatureFlagDataSourceModel struct {
 	VariationType          types.String `tfsdk:"variation_type"`
 	Variations             types.List   `tfsdk:"variations"`
 	Temporary              types.Bool   `tfsdk:"temporary"`
-	IncludeInSnippet       types.Bool   `tfsdk:"include_in_snippet"`
 	ClientSideAvailability types.List   `tfsdk:"client_side_availability"`
 	CustomProperties       types.Set    `tfsdk:"custom_properties"`
 	Defaults               types.List   `tfsdk:"defaults"`
@@ -87,13 +86,8 @@ func (d *FeatureFlagDataSource) Schema(_ context.Context, _ datasource.SchemaReq
 			TAGS:           schema.SetAttribute{Computed: true, ElementType: types.StringType, Description: "Tags."},
 			VARIATION_TYPE: schema.StringAttribute{Computed: true, Description: fmt.Sprintf("Variation type: %q, %q, %q, or %q.", BOOL_VARIATION, STRING_VARIATION, NUMBER_VARIATION, JSON_VARIATION)},
 			TEMPORARY:      schema.BoolAttribute{Computed: true, Description: "Whether the flag is temporary."},
-			INCLUDE_IN_SNIPPET: schema.BoolAttribute{
-				Computed:           true,
-				Description:        "Deprecated: use client_side_availability.using_environment_id.",
-				DeprecationMessage: "'include_in_snippet' is now deprecated. Please migrate to 'client_side_availability' to maintain future compatability.",
-			},
-			ARCHIVED:   schema.BoolAttribute{Computed: true, Description: "Whether the flag is archived."},
-			DEPRECATED: schema.BoolAttribute{Computed: true, Description: "Whether the flag is deprecated."},
+			ARCHIVED:       schema.BoolAttribute{Computed: true, Description: "Whether the flag is archived."},
+			DEPRECATED:     schema.BoolAttribute{Computed: true, Description: "Whether the flag is deprecated."},
 			VIEW_KEYS: schema.SetAttribute{
 				Computed:    true,
 				ElementType: types.StringType,
@@ -211,7 +205,6 @@ func (d *FeatureFlagDataSource) Read(ctx context.Context, req datasource.ReadReq
 	resp.Diagnostics.Append(diags...)
 	data.Tags = tagsSet
 
-	// client_side_availability + include_in_snippet
 	csaType := types.ObjectType{AttrTypes: map[string]attr.Type{
 		USING_ENVIRONMENT_ID: types.BoolType,
 		USING_MOBILE_KEY:     types.BoolType,
@@ -238,7 +231,6 @@ func (d *FeatureFlagDataSource) Read(ctx context.Context, req datasource.ReadReq
 	csaList, diags := types.ListValue(csaType, []attr.Value{csaObj})
 	resp.Diagnostics.Append(diags...)
 	data.ClientSideAvailability = csaList
-	data.IncludeInSnippet = types.BoolValue(usingEnvID)
 
 	// variations
 	variationType, err := variationsToVariationType(flag.Variations)

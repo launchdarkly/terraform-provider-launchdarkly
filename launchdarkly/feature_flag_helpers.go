@@ -41,9 +41,9 @@ func flagIdToKeys(id string) (projectKey, flagKey string, err error) {
 	return parts[0], parts[1], nil
 }
 
-// getProjectDefaultCSAandIncludeInSnippet returns the project's default
-// CSA + IncludeInSnippet for use when a feature_flag config omits both.
-func getProjectDefaultCSAandIncludeInSnippet(client *Client, projectKey string) (ldapi.ClientSideAvailability, bool, error) {
+// getProjectDefaultCSA returns the project's default client-side
+// availability for use when a feature_flag config omits CSA.
+func getProjectDefaultCSA(client *Client, projectKey string) (ldapi.ClientSideAvailability, error) {
 	var project *ldapi.Project
 	var err error
 	err = client.withConcurrency(client.ctx, func() error {
@@ -51,9 +51,9 @@ func getProjectDefaultCSAandIncludeInSnippet(client *Client, projectKey string) 
 		return err
 	})
 	if err != nil {
-		return ldapi.ClientSideAvailability{}, false, err
+		return ldapi.ClientSideAvailability{}, err
 	}
-	return *project.DefaultClientSideAvailability, project.IncludeInSnippetByDefault, nil
+	return *project.DefaultClientSideAvailability, nil
 }
 
 // FeatureFlagBodyWithViewKeys represents the feature flag creation

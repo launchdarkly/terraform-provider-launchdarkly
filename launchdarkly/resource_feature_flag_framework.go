@@ -54,7 +54,6 @@ type FeatureFlagResourceModel struct {
 	VariationType          types.String `tfsdk:"variation_type"`
 	Variations             types.List   `tfsdk:"variations"`
 	Temporary              types.Bool   `tfsdk:"temporary"`
-	IncludeInSnippet       types.Bool   `tfsdk:"include_in_snippet"`
 	ClientSideAvailability types.List   `tfsdk:"client_side_availability"`
 	CustomProperties       types.Set    `tfsdk:"custom_properties"`
 	Defaults               types.List   `tfsdk:"defaults"`
@@ -147,17 +146,6 @@ func featureFlagSchemaAttributes() map[string]schema.Attribute {
 			Computed:    true,
 			Default:     booldefault.StaticBool(false),
 			Description: "Specifies whether the flag is a temporary flag.",
-		},
-		INCLUDE_IN_SNIPPET: schema.BoolAttribute{
-			Optional:           true,
-			Computed:           true,
-			Description:        "Specifies whether this flag should be made available to the client-side JavaScript SDK using the client-side Id. This value gets its default from your project configuration if not set. `include_in_snippet` is now deprecated. Please migrate to `client_side_availability.using_environment_id` to maintain future compatibility.",
-			DeprecationMessage: "'include_in_snippet' is now deprecated. Please migrate to 'client_side_availability' to maintain future compatability.",
-			// Intentionally no UseStateForUnknown: include_in_snippet
-			// and client_side_availability are mutually exclusive
-			// (ConfigValidators.Conflicting). When the user switches
-			// between them, plan must recompute rather than preserve
-			// the previous state's value.
 		},
 		TAGS: schema.SetAttribute{
 			Optional:    true,
@@ -323,24 +311,57 @@ func featureFlagCSAMatchesAPIShape(ctx context.Context, csa types.List) bool {
 }
 
 func (r *FeatureFlagResource) UpgradeState(_ context.Context) map[int64]resource.StateUpgrader {
-	priorSchema := schema.Schema{Attributes: featureFlagSchemaAttributes()}
+	priorSchema := schema.Schema{Attributes: featureFlagSchemaAttributesV0()}
 	return map[int64]resource.StateUpgrader{
 		0: {
 			PriorSchema: &priorSchema,
 			StateUpgrader: func(ctx context.Context, req resource.UpgradeStateRequest, resp *resource.UpgradeStateResponse) {
-				var data FeatureFlagResourceModel
-				resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
+				var prior FeatureFlagResourceModelV0
+				resp.Diagnostics.Append(req.State.Get(ctx, &prior)...)
 				if resp.Diagnostics.HasError() {
 					return
 				}
-				data.Tags = nullIfEmptySet(ctx, data.Tags)
-				data.CustomProperties = nullIfEmptySet(ctx, data.CustomProperties)
-				data.ViewKeys = nullIfEmptySet(ctx, data.ViewKeys)
-				data.Description = nullIfEmptyString(data.Description)
+				data := FeatureFlagResourceModel{
+					ID:                     prior.ID,
+					ProjectKey:             prior.ProjectKey,
+					Key:                    prior.Key,
+					Name:                   prior.Name,
+					Description:            nullIfEmptyString(prior.Description),
+					MaintainerID:           prior.MaintainerID,
+					MaintainerTeamKey:      prior.MaintainerTeamKey,
+					Tags:                   nullIfEmptySet(ctx, prior.Tags),
+					VariationType:          prior.VariationType,
+					Variations:             prior.Variations,
+					Temporary:              prior.Temporary,
+					ClientSideAvailability: prior.ClientSideAvailability,
+					CustomProperties:       nullIfEmptySet(ctx, prior.CustomProperties),
+					Defaults:               prior.Defaults,
+					Archived:               prior.Archived,
+					Deprecated:             prior.Deprecated,
+					ViewKeys:               nullIfEmptySet(ctx, prior.ViewKeys),
+				}
 				if featureFlagDefaultsMatchesAPIShape(ctx, data.Defaults, data.Variations) {
 					data.Defaults = types.ListNull(data.Defaults.ElementType(ctx))
 				}
-				if featureFlagCSAMatchesAPIShape(ctx, data.ClientSideAvailability) {
+				// IIS->CSA migration: when prior state set include_in_snippet
+				// and left client_side_availability empty, materialize the
+				// CSA list so the resource still controls SDK availability.
+				// using_mobile_key was never expressible via IIS — match the
+				// Create-path projection (false). When both were populated,
+				// the v2 Conflicting validator should have prevented it, so
+				// drop IIS and keep CSA.
+				csaEmpty := data.ClientSideAvailability.IsNull() || data.ClientSideAvailability.IsUnknown() || len(data.ClientSideAvailability.Elements()) == 0
+				iisSet := !prior.IncludeInSnippet.IsNull() && !prior.IncludeInSnippet.IsUnknown()
+				if csaEmpty && iisSet {
+					obj, d := types.ObjectValue(featureFlagCSAAttrTypes, map[string]attr.Value{
+						USING_ENVIRONMENT_ID: types.BoolValue(prior.IncludeInSnippet.ValueBool()),
+						USING_MOBILE_KEY:     types.BoolValue(false),
+					})
+					resp.Diagnostics.Append(d...)
+					list, d := types.ListValue(types.ObjectType{AttrTypes: featureFlagCSAAttrTypes}, []attr.Value{obj})
+					resp.Diagnostics.Append(d...)
+					data.ClientSideAvailability = list
+				} else if featureFlagCSAMatchesAPIShape(ctx, data.ClientSideAvailability) {
 					data.ClientSideAvailability = types.ListNull(data.ClientSideAvailability.ElementType(ctx))
 				}
 				resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
@@ -351,10 +372,6 @@ func (r *FeatureFlagResource) UpgradeState(_ context.Context) map[int64]resource
 
 func (r *FeatureFlagResource) ConfigValidators(_ context.Context) []resource.ConfigValidator {
 	return []resource.ConfigValidator{
-		resourcevalidator.Conflicting(
-			path.MatchRoot(INCLUDE_IN_SNIPPET),
-			path.MatchRoot(CLIENT_SIDE_AVAILABILITY),
-		),
 		resourcevalidator.Conflicting(
 			path.MatchRoot(MAINTAINER_ID),
 			path.MatchRoot(MAINTAINER_TEAM_KEY),
@@ -506,24 +523,17 @@ func (r *FeatureFlagResource) Create(ctx context.Context, req resource.CreateReq
 	}
 
 	csaPlanned := !plan.ClientSideAvailability.IsNull() && !plan.ClientSideAvailability.IsUnknown() && len(plan.ClientSideAvailability.Elements()) > 0
-	iisPlanned := !plan.IncludeInSnippet.IsNull() && !plan.IncludeInSnippet.IsUnknown()
 
 	var finalCSA *ldapi.ClientSideAvailabilityPost
-	switch {
-	case csaPlanned:
+	if csaPlanned {
 		csa, d := csaPostFromList(ctx, plan.ClientSideAvailability)
 		resp.Diagnostics.Append(d...)
 		if resp.Diagnostics.HasError() {
 			return
 		}
 		finalCSA = csa
-	case iisPlanned:
-		finalCSA = &ldapi.ClientSideAvailabilityPost{
-			UsingEnvironmentId: plan.IncludeInSnippet.ValueBool(),
-			UsingMobileKey:     false,
-		}
-	default:
-		defaultCSA, _, err := getProjectDefaultCSAandIncludeInSnippet(r.client, projectKey)
+	} else {
+		defaultCSA, err := getProjectDefaultCSA(r.client, projectKey)
 		if err != nil {
 			resp.Diagnostics.AddError(fmt.Sprintf("failed to get project level client side availability defaults. %s", err.Error()), "")
 			return
@@ -700,9 +710,7 @@ func (r *FeatureFlagResource) applyFlagUpdate(ctx context.Context, plan, state F
 	}
 
 	csaChanged := isCreate || !plan.ClientSideAvailability.Equal(state.ClientSideAvailability)
-	iisChanged := isCreate || !plan.IncludeInSnippet.Equal(state.IncludeInSnippet)
 	csaPlanned := !plan.ClientSideAvailability.IsNull() && !plan.ClientSideAvailability.IsUnknown() && len(plan.ClientSideAvailability.Elements()) > 0
-	iisPlanned := !plan.IncludeInSnippet.IsNull() && !plan.IncludeInSnippet.IsUnknown()
 
 	if csaPlanned && csaChanged && !isCreate {
 		csa, d := csaPostFromList(ctx, plan.ClientSideAvailability)
@@ -711,11 +719,6 @@ func (r *FeatureFlagResource) applyFlagUpdate(ctx context.Context, plan, state F
 			return diags
 		}
 		patch.Patch = append(patch.Patch, patchReplace("/clientSideAvailability", csa))
-	} else if iisPlanned && iisChanged && !isCreate {
-		patch.Patch = append(patch.Patch, patchReplace("/clientSideAvailability", &ldapi.ClientSideAvailabilityPost{
-			UsingEnvironmentId: plan.IncludeInSnippet.ValueBool(),
-			UsingMobileKey:     false,
-		}))
 	}
 
 	if !isCreate {
@@ -861,15 +864,9 @@ func (r *FeatureFlagResource) readIntoModel(ctx context.Context, data *FeatureFl
 	diags.Append(d...)
 	data.Tags = tagsSet
 
-	// CSA + IIS — emit both so plan/state remains stable.
 	csaList, d := featureFlagCSAListFromAPI(ctx, flag.ClientSideAvailability, data.ClientSideAvailability)
 	diags.Append(d...)
 	data.ClientSideAvailability = csaList
-	usingEnvID := false
-	if flag.ClientSideAvailability != nil && flag.ClientSideAvailability.UsingEnvironmentId != nil {
-		usingEnvID = *flag.ClientSideAvailability.UsingEnvironmentId
-	}
-	data.IncludeInSnippet = types.BoolValue(usingEnvID)
 
 	// Maintainer fields — Optional+Computed. Only write these to state
 	// when the user declares either maintainer_id or maintainer_team_key:
