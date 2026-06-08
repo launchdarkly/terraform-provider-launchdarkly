@@ -16,7 +16,7 @@ resource "launchdarkly_custom_role" "terraform_team_test" {
   key = "%s"
   name = "Teams test role %s"
   base_permissions = "no_access"
-  policy = [{
+  policy_statements = [{
     actions = ["*"]
     effect = "deny"
     resources = ["proj/*:env/$${roleAttribute/developer-envs}"]
@@ -58,7 +58,7 @@ resource "launchdarkly_custom_role" "terraform_team_test" {
   key = "%s"
   name = "Teams test role %s"
   base_permissions = "no_access"
-  policy = [{
+  policy_statements = [{
     actions = ["*"]
     effect = "deny"
     resources = ["proj/*:env/$${roleAttribute/developer-envs}"]
@@ -97,7 +97,7 @@ resource "launchdarkly_custom_role" "terraform_team_test" {
   key = "%s"
   name = "Teams test role %s"
   base_permissions = "no_access"
-  policy = [{
+  policy_statements = [{
     actions = ["*"]
     effect = "deny"
     resources = ["proj/*:env/production"]
@@ -108,7 +108,7 @@ resource "launchdarkly_custom_role" "other_team_test" {
   key = "%s"
   name = "Other test role %s"
   base_permissions = "no_access"
-  policy = [{
+  policy_statements = [{
     actions = ["*"]
     effect = "deny"
     resources = ["proj/*:env/production"]
@@ -140,7 +140,7 @@ resource "launchdarkly_custom_role" "other_team_test" {
   key = "%s"
   name = "Other test role %s"
   base_permissions = "no_access"
-  policy = [{
+  policy_statements = [{
     actions = ["*"]
     effect = "deny"
     resources = ["proj/*:env/production"]
