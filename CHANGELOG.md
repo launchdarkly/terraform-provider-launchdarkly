@@ -2,6 +2,26 @@
 
 All notable changes to the LaunchDarkly Terraform Provider will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org).
 
+## [3.0.0-beta.2](https://github.com/launchdarkly/terraform-provider-launchdarkly/compare/v3.0.0-beta.1...v3.0.0-beta.2) (2026-06-10)
+
+
+### ⚠ BREAKING CHANGES
+
+* **access_token:** remove deprecated expire and policy_statements ([#442](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/442))
+* **custom_role:** remove deprecated policy attribute ([#441](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/441))
+* **project:** remove deprecated include_in_snippet and DS client_side_availability ([#440](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/440))
+* **feature_flag:** remove deprecated include_in_snippet attribute ([#439](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/439))
+* **metric:** remove deprecated is_active attribute ([#438](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/438))
+
+### Features
+
+* **access_token:** remove deprecated expire and policy_statements ([#442](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/442)) ([68cb932](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/68cb932441186502dee8a2f467678642c3183155))
+* add state upgrade flow, add script to migrate between v2 and v3, add skill ([3694cee](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/3694cee50daaace3d4185faedf41b4001a5ce84e))
+* **custom_role:** remove deprecated policy attribute ([#441](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/441)) ([66327fe](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/66327feaf176fdb83fdc016c1b3fb0e58ab30341))
+* **feature_flag:** remove deprecated include_in_snippet attribute ([#439](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/439)) ([2c88ac3](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/2c88ac32d29599395c1b44178ce4e4fbbb3dc99f))
+* **metric:** remove deprecated is_active attribute ([#438](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/438)) ([5ef4be1](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/5ef4be1f9948c060fdf18dc44f5bd85ea5c82bff))
+* **project:** remove deprecated include_in_snippet and DS client_side_availability ([#440](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/440)) ([b188650](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/b1886503551820aace0e5cfb634658e2b82055d8))
+
 ## [3.0.0-beta.1](https://github.com/launchdarkly/terraform-provider-launchdarkly/compare/v3.0.0-beta.0...v3.0.0-beta.1) (2026-05-22)
 
 First preview release of the v3.0 line.
