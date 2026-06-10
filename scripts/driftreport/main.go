@@ -16,7 +16,16 @@ func main() {
 	mappingPath := flag.String("mapping", "scripts/driftreport/mapping.yaml", "path to the curated family mapping file")
 	outPath := flag.String("out", "-", "output path for the report ('-' for stdout)")
 	format := flag.String("format", "md", "report format: md or json")
+	family := flag.String("family", "", "instead of a drift report, emit a JSON endpoint slice for this family tag (scaffolding-agent context)")
 	flag.Parse()
+
+	if *family != "" {
+		if err := runFamilySlice(*specSource, *family, *outPath); err != nil {
+			fmt.Fprintf(os.Stderr, "driftreport: %v\n", err)
+			os.Exit(1)
+		}
+		return
+	}
 
 	if err := run(*specSource, *mappingPath, *outPath, *format); err != nil {
 		if err == errDrift {
@@ -28,6 +37,22 @@ func main() {
 }
 
 var errDrift = fmt.Errorf("drift detected")
+
+func runFamilySlice(specSource, family, outPath string) error {
+	rawSpec, err := fetchSpec(specSource)
+	if err != nil {
+		return err
+	}
+	slice, err := familySlice(rawSpec, family)
+	if err != nil {
+		return err
+	}
+	if outPath == "-" {
+		_, err = os.Stdout.Write(append(slice, '\n'))
+		return err
+	}
+	return os.WriteFile(outPath, append(slice, '\n'), 0o644)
+}
 
 func run(specSource, mappingPath, outPath, format string) error {
 	mapping, err := loadMapping(mappingPath)

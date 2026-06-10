@@ -142,6 +142,61 @@ func specFamilies(rawSpec []byte) (map[string][]string, error) {
 	return out, nil
 }
 
+// familySlice extracts a compact JSON description of one endpoint family —
+// paths, methods, operationIds, and summaries — for use as scaffolding-agent
+// context (stage 2 of the autogen pipeline). Schema details are deliberately
+// omitted; the agent reads the full spec for those.
+func familySlice(rawSpec []byte, tag string) ([]byte, error) {
+	var spec struct {
+		Paths map[string]map[string]json.RawMessage `json:"paths"`
+	}
+	if err := json.Unmarshal(rawSpec, &spec); err != nil {
+		return nil, fmt.Errorf("parsing OpenAPI spec: %w", err)
+	}
+
+	type operation struct {
+		Method      string `json:"method"`
+		OperationID string `json:"operationId,omitempty"`
+		Summary     string `json:"summary,omitempty"`
+	}
+	slice := struct {
+		Tag   string                 `json:"tag"`
+		Paths map[string][]operation `json:"paths"`
+	}{Tag: tag, Paths: map[string][]operation{}}
+
+	for path, ops := range spec.Paths {
+		for method, rawOp := range ops {
+			if !specMethods[strings.ToLower(method)] {
+				continue
+			}
+			var op struct {
+				Tags        []string `json:"tags"`
+				OperationID string   `json:"operationId"`
+				Summary     string   `json:"summary"`
+			}
+			if err := json.Unmarshal(rawOp, &op); err != nil {
+				return nil, fmt.Errorf("parsing operation %s %s: %w", method, path, err)
+			}
+			for _, t := range op.Tags {
+				if t == tag {
+					slice.Paths[path] = append(slice.Paths[path], operation{
+						Method:      strings.ToUpper(method),
+						OperationID: op.OperationID,
+						Summary:     op.Summary,
+					})
+				}
+			}
+		}
+	}
+	if len(slice.Paths) == 0 {
+		return nil, fmt.Errorf("no endpoints found for family %q", tag)
+	}
+	for _, ops := range slice.Paths {
+		sort.Slice(ops, func(i, j int) bool { return ops[i].Method < ops[j].Method })
+	}
+	return json.MarshalIndent(slice, "", "  ")
+}
+
 func fetchSpec(source string) ([]byte, error) {
 	if !strings.HasPrefix(source, "http://") && !strings.HasPrefix(source, "https://") {
 		return os.ReadFile(source)
