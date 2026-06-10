@@ -323,6 +323,10 @@ func applyDeprecations(body *hclwrite.Body, deps []*DeprecationSpec) bool {
 			if convertPolicyToPolicyStatements(body, d.Name, d.To) {
 				changed = true
 			}
+		case "rename":
+			if renameAttribute(body, d.Name, d.To) {
+				changed = true
+			}
 		default:
 			fmt.Fprintf(os.Stderr, "warning: unknown deprecation action %q for attribute %q (skipping)\n", d.Action, d.Name)
 		}
@@ -376,6 +380,28 @@ func dropOrConvertIISToCSA(body *hclwrite.Body, name, to, mobile string) bool {
 		&hclwrite.Token{Type: hclsyntax.TokenCBrace, Bytes: []byte("}")},
 		&hclwrite.Token{Type: hclsyntax.TokenCBrack, Bytes: []byte("]")},
 	)
+	body.RemoveAttribute(name)
+	body.SetAttributeRaw(to, tokens)
+	return true
+}
+
+// renameAttribute moves the value of `name` onto `to`, preserving the right-hand-side expression
+// tokens verbatim. If `to` already exists in the body, the original wins and `name` is dropped
+// silently — same convention as the other deprecation actions (config wins over deprecated alias).
+func renameAttribute(body *hclwrite.Body, name, to string) bool {
+	if to == "" {
+		fmt.Fprintf(os.Stderr, "warning: rename action on %q requires \"to\" target (skipping)\n", name)
+		return false
+	}
+	src := body.GetAttribute(name)
+	if src == nil {
+		return false
+	}
+	if body.GetAttribute(to) != nil {
+		body.RemoveAttribute(name)
+		return true
+	}
+	tokens := src.Expr().BuildTokens(nil)
 	body.RemoveAttribute(name)
 	body.SetAttributeRaw(to, tokens)
 	return true
