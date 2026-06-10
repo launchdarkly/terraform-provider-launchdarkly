@@ -4,6 +4,7 @@ page_title: "launchdarkly_flag_trigger Data Source - launchdarkly"
 subcategory: ""
 description: |-
   Provides a LaunchDarkly flag trigger data source.
+  ~> Deprecation notice: The flag triggers feature is approaching end of life in LaunchDarkly. This data source is deprecated and will be removed in a future major release of the provider.
   -> Note: Flag triggers are available to customers on an Enterprise LaunchDarkly plan. To learn more, read about our pricing https://launchdarkly.com/pricing/. To upgrade your plan, contact LaunchDarkly Sales https://launchdarkly.com/contact-sales/.
   This data source allows you to retrieve information about flag triggers from your LaunchDarkly organization.
 ---
@@ -11,6 +12,8 @@ description: |-
 # launchdarkly_flag_trigger (Data Source)
 
 Provides a LaunchDarkly flag trigger data source.
+
+~> **Deprecation notice:** The flag triggers feature is approaching end of life in LaunchDarkly. This data source is deprecated and will be removed in a future major release of the provider.
 
 -> **Note:** Flag triggers are available to customers on an Enterprise LaunchDarkly plan. To learn more, [read about our pricing](https://launchdarkly.com/pricing/). To upgrade your plan, [contact LaunchDarkly Sales](https://launchdarkly.com/contact-sales/).
 

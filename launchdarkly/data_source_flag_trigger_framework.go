@@ -43,7 +43,8 @@ func (d *FlagTriggerDataSource) Metadata(_ context.Context, req datasource.Metad
 
 func (d *FlagTriggerDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "Provides a LaunchDarkly flag trigger data source.\n\n-> **Note:** Flag triggers are available to customers on an Enterprise LaunchDarkly plan. To learn more, [read about our pricing](https://launchdarkly.com/pricing/). To upgrade your plan, [contact LaunchDarkly Sales](https://launchdarkly.com/contact-sales/).\n\nThis data source allows you to retrieve information about flag triggers from your LaunchDarkly organization.",
+		DeprecationMessage: "This data source is deprecated and will be removed in a future major release of the provider. The flag triggers feature is approaching end of life in LaunchDarkly.",
+		Description:        "Provides a LaunchDarkly flag trigger data source.\n\n~> **Deprecation notice:** The flag triggers feature is approaching end of life in LaunchDarkly. This data source is deprecated and will be removed in a future major release of the provider.\n\n-> **Note:** Flag triggers are available to customers on an Enterprise LaunchDarkly plan. To learn more, [read about our pricing](https://launchdarkly.com/pricing/). To upgrade your plan, [contact LaunchDarkly Sales](https://launchdarkly.com/contact-sales/).\n\nThis data source allows you to retrieve information about flag triggers from your LaunchDarkly organization.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				Required:    true,

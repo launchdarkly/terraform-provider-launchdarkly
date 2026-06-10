@@ -3,6 +3,7 @@ page_title: "launchdarkly_flag_trigger Resource - launchdarkly"
 subcategory: ""
 description: |-
   Provides a LaunchDarkly flag trigger resource.
+  ~> Deprecation notice: The flag triggers feature is approaching end of life in LaunchDarkly. This resource is deprecated and will be removed in a future major release of the provider.
   -> Note: Flag triggers are available to customers on an Enterprise LaunchDarkly plan. To learn more, read about our pricing https://launchdarkly.com/pricing/. To upgrade your plan, contact LaunchDarkly Sales https://launchdarkly.com/contact-sales/.
   This resource allows you to create and manage flag triggers within your LaunchDarkly organization.
   -> Note: This resource stores the sensitive unique trigger URL value in plaintext in your Terraform state. Be sure your state is configured securely before using this resource. To learn more, read Sensitive data in state https://www.terraform.io/docs/state/sensitive-data.html.
@@ -11,6 +12,8 @@ description: |-
 # launchdarkly_flag_trigger (Resource)
 
 Provides a LaunchDarkly flag trigger resource.
+
+~> **Deprecation notice:** The flag triggers feature is approaching end of life in LaunchDarkly. This resource is deprecated and will be removed in a future major release of the provider.
 
 -> **Note:** Flag triggers are available to customers on an Enterprise LaunchDarkly plan. To learn more, [read about our pricing](https://launchdarkly.com/pricing/). To upgrade your plan, [contact LaunchDarkly Sales](https://launchdarkly.com/contact-sales/).
 
