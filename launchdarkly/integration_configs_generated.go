@@ -378,6 +378,24 @@ var SUBSCRIPTION_CONFIGURATION_FIELDS = map[string]IntegrationConfig{
 			Type:          "string",
 		},
 	},
+	"vercel-native": {
+		"accessToken": {
+			AllowedValues: []string{},
+			DefaultValue:  nil,
+			Description:   "Enter the access token generated from Vercel.",
+			IsOptional:    false,
+			IsSecret:      true,
+			Type:          "string",
+		},
+		"installationId": {
+			AllowedValues: []string{},
+			DefaultValue:  nil,
+			Description:   "Enter the installation ID generated from Vercel.",
+			IsOptional:    false,
+			IsSecret:      false,
+			Type:          "string",
+		},
+	},
 }
 
 // VALID_TRIGGER_INTEGRATIONS is a list of valid trigger integrations. This list is generated from the LaunchDarkly integration manifest API.

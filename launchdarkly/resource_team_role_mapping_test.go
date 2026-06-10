@@ -15,7 +15,7 @@ func testAccTeamRoleMappingSetup(uniqueRole0, uniqueRole1, teamKey string) strin
 		key              = "%s"
 		name             = "Custom Role 1 %s"
 		base_permissions = "no_access"
-		policy = [{
+		policy_statements = [{
 			actions = ["*"]
 			effect = "deny"
 			resources = ["proj/*:env/production"]
@@ -26,7 +26,7 @@ func testAccTeamRoleMappingSetup(uniqueRole0, uniqueRole1, teamKey string) strin
 		key              = "%s"
 		name             = "Custom Role 2 %s"
 		base_permissions = "no_access"
-		policy = [{
+		policy_statements = [{
 			actions = ["*"]
 			effect = "deny"
 			resources = ["proj/*:env/test"]
