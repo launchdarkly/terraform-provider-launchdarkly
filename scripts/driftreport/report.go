@@ -208,6 +208,11 @@ func buildReport(families map[string][]string, mapping *Mapping, resources, data
 		SpecSource:    specSource,
 		StatusCounts:  map[string]int{},
 		TotalFamilies: len(families),
+		// Initialized so empty lists serialize as [] rather than null in JSON.
+		NewFamilies:       []FamilyDetail{},
+		StaleFamilies:     []string{},
+		UnmappedResources: []string{},
+		TriageFamilies:    []string{},
 	}
 
 	mapped := map[string]MappingFamily{}

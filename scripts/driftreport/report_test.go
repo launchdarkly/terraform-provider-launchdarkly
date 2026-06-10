@@ -2,6 +2,8 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
+	"fmt"
 	"strings"
 	"testing"
 )
@@ -109,6 +111,17 @@ func TestBuildReportClean(t *testing.T) {
 	renderMarkdown(&buf, report)
 	if !strings.Contains(buf.String(), "No drift detected") {
 		t.Error("markdown should state no drift")
+	}
+
+	// Empty drift lists must serialize as [] (not null) for jq consumers.
+	raw, err := json.Marshal(report)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, key := range []string{"new_families", "stale_families", "unmapped_resources"} {
+		if strings.Contains(string(raw), fmt.Sprintf("%q:null", key)) {
+			t.Errorf("%s serializes as null, want []", key)
+		}
 	}
 }
 
