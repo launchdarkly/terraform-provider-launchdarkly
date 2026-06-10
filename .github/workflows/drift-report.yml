@@ -1,0 +1,64 @@
+# API-coverage drift report (stage 1 of the autogen pipeline — see
+# .claude/plans/AUTOGEN_PIPELINE.md).
+#
+# Diffs the endpoint families of LaunchDarkly's public OpenAPI spec against the
+# resources registered in the provider, using the curated mapping at
+# scripts/driftreport/mapping.yaml. On drift, opens (or updates) a single
+# tracking issue labeled `api-drift`.
+name: API drift report
+
+on:
+  schedule:
+    - cron: "0 8 * * 1" # weekly, Monday 08:00 UTC (default branch only)
+  workflow_dispatch: # manual runs against any branch
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  drift-report:
+    name: Drift report
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-go@41dfa10bad2bb2ae585af6ee5bb4d7d973ad74ed # v5.1.0
+        with:
+          go-version-file: "go.mod"
+          cache: true
+      - run: go mod download
+      # Build first: `go run` collapses the tool's exit code (2 = drift) to 1.
+      - run: go build -o /tmp/driftreport ./scripts/driftreport
+      - name: Run drift report
+        id: drift
+        run: |
+          set +e
+          /tmp/driftreport -out drift-report.md
+          code=$?
+          set -e
+          if [ "$code" -ne 0 ] && [ "$code" -ne 2 ]; then
+            echo "driftreport failed with exit code $code" >&2
+            exit "$code"
+          fi
+          echo "drift=$([ "$code" -eq 2 ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+          cat drift-report.md >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
+        with:
+          name: drift-report
+          path: drift-report.md
+      - name: Open or update tracking issue
+        if: steps.drift.outputs.drift == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          gh label create api-drift --description "Provider lags behind the public API" --color D93F0B --force
+          existing=$(gh issue list --label api-drift --state open --json number --jq '.[0].number // empty')
+          title="API coverage drift detected ($(date -u +%Y-%m-%d))"
+          if [ -n "$existing" ]; then
+            gh issue comment "$existing" --body-file drift-report.md
+            echo "Updated existing issue #$existing"
+          else
+            gh issue create --title "$title" --label api-drift --body-file drift-report.md
+          fi
