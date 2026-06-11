@@ -23,10 +23,11 @@ type launchdarklyProvider struct {
 }
 
 type launchdarklyProviderModel struct {
-	AccessToken types.String `tfsdk:"access_token"`
-	OAuthToken  types.String `tfsdk:"oauth_token"`
-	Host        types.String `tfsdk:"api_host"`
-	HttpTimeout types.Int64  `tfsdk:"http_timeout"`
+	AccessToken    types.String `tfsdk:"access_token"`
+	OAuthToken     types.String `tfsdk:"oauth_token"`
+	Host           types.String `tfsdk:"api_host"`
+	HttpTimeout    types.Int64  `tfsdk:"http_timeout"`
+	MaxConcurrency types.Int64  `tfsdk:"max_concurrency"`
 }
 
 // Metadata returns the provider type name.
@@ -55,6 +56,10 @@ func (p *launchdarklyProvider) Schema(_ context.Context, _ provider.SchemaReques
 			HTTP_TIMEOUT: schema.Int64Attribute{
 				Optional:    true,
 				Description: sdkProviderSchema[HTTP_TIMEOUT].Description,
+			},
+			MAX_CONCURRENCY: schema.Int64Attribute{
+				Optional:    true,
+				Description: sdkProviderSchema[MAX_CONCURRENCY].Description,
 			},
 		},
 	}
@@ -95,13 +100,22 @@ func (p *launchdarklyProvider) Configure(ctx context.Context, req provider.Confi
 		httpTimeoutSeconds = DEFAULT_HTTP_TIMEOUT_S
 	}
 
+	maxConcurrency := int(data.MaxConcurrency.ValueInt64())
+	if maxConcurrency == 0 {
+		maxConcurrency = DEFAULT_MAX_CONCURRENCY
+	}
+	if maxConcurrency < 1 {
+		resp.Diagnostics.AddError("Invalid max_concurrency", fmt.Sprintf("%q must be at least 1, got: %d", MAX_CONCURRENCY, maxConcurrency))
+		return
+	}
+
 	if oauthToken == "" && accessToken == "" {
 		resp.Diagnostics.AddError("Missing authentication token", fmt.Sprintf("Either the %q or %q must be specified.", ACCESS_TOKEN, OAUTH_TOKEN))
 		return
 	}
 
 	if oauthToken != "" {
-		client, err := newClient(oauthToken, host, true, httpTimeoutSeconds, DEFAULT_MAX_CONCURRENCY)
+		client, err := newClient(oauthToken, host, true, httpTimeoutSeconds, maxConcurrency)
 		if err != nil {
 			resp.Diagnostics.AddError("Unable to create LaunchDarkly client", err.Error())
 			return
@@ -110,7 +124,7 @@ func (p *launchdarklyProvider) Configure(ctx context.Context, req provider.Confi
 		return
 	}
 
-	client, err := newClient(accessToken, host, false, httpTimeoutSeconds, DEFAULT_MAX_CONCURRENCY)
+	client, err := newClient(accessToken, host, false, httpTimeoutSeconds, maxConcurrency)
 	if err != nil {
 		resp.Diagnostics.AddError("Unable to create LaunchDarkly client", err.Error())
 		return

@@ -8,6 +8,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 )
 
 //go:generate codegen -o integration_configs_generated.go
@@ -26,10 +27,11 @@ const (
 
 // Provider keys
 const (
-	ACCESS_TOKEN = "access_token"
-	OAUTH_TOKEN  = "oauth_token"
-	API_HOST     = "api_host"
-	HTTP_TIMEOUT = "http_timeout"
+	ACCESS_TOKEN    = "access_token"
+	OAUTH_TOKEN     = "oauth_token"
+	API_HOST        = "api_host"
+	HTTP_TIMEOUT    = "http_timeout"
+	MAX_CONCURRENCY = "max_concurrency"
 )
 
 func providerSchema() map[string]*schema.Schema {
@@ -53,6 +55,12 @@ func providerSchema() map[string]*schema.Schema {
 			Type:        schema.TypeInt,
 			Optional:    true,
 			Description: "The HTTP timeout (in seconds) when making API calls to LaunchDarkly. Defaults to 20 seconds.",
+		},
+		MAX_CONCURRENCY: {
+			Type:             schema.TypeInt,
+			Optional:         true,
+			ValidateDiagFunc: validation.ToDiagFunc(validation.IntAtLeast(1)),
+			Description:      "The maximum number of concurrent API requests the provider makes to LaunchDarkly. Defaults to `1`. Increase this value to speed up plan and refresh operations on large configurations. Higher values make it more likely that requests exceed your account's API rate limit. If a request exceeds the rate limit, LaunchDarkly returns a `429` response and the provider retries the request automatically.",
 		},
 	}
 }
@@ -153,15 +161,23 @@ func providerConfigure(ctx context.Context, d *schema.ResourceData) (interface{}
 		httpTimeoutSeconds = DEFAULT_HTTP_TIMEOUT_S
 	}
 
+	maxConcurrency := optionalIntFromResourceData(d, MAX_CONCURRENCY, 0)
+	if maxConcurrency == 0 {
+		maxConcurrency = DEFAULT_MAX_CONCURRENCY
+	}
+	if maxConcurrency < 1 {
+		return nil, diag.Errorf("%q must be at least 1, got: %d", MAX_CONCURRENCY, maxConcurrency)
+	}
+
 	if oauthToken != "" {
-		client, err := newClient(oauthToken, host, true, httpTimeoutSeconds, DEFAULT_MAX_CONCURRENCY)
+		client, err := newClient(oauthToken, host, true, httpTimeoutSeconds, maxConcurrency)
 		if err != nil {
 			return client, diag.FromErr(err)
 		}
 		return client, diags
 	}
 
-	client, err := newClient(accessToken, host, false, httpTimeoutSeconds, DEFAULT_MAX_CONCURRENCY)
+	client, err := newClient(accessToken, host, false, httpTimeoutSeconds, maxConcurrency)
 	if err != nil {
 		return client, diag.FromErr(err)
 	}
