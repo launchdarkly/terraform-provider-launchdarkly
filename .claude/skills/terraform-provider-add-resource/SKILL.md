@@ -52,6 +52,9 @@ Before writing any code, determine:
 4. **CRUD vs singleton** — singletons always exist per-project; you PUT to update and treat Delete as state-only removal.
 5. **Inspect generated constructors** — `New<Type>()` constructors may set defaults for optional fields (e.g. `description = ""`) that the API rejects. After calling the constructor, nil out fields you don't intend to send. Check the constructor source if you get unexpected 400s on create.
 6. **Versioned entities** — some APIs create a new version on every update. For these: read the highest `version` from the response items (never assume `items[0]`), and use a version-advancement retry loop after writes (see patterns.md).
+7. **Audit the generated request models for required fields** — open the `New<Type>Post` constructor and the struct's `json:` tags in `api-client-go`. A field without `omitempty` is required by the wire format even when the spec prose suggests the server has a default; sending `""` gets a 400. If a required field has a sensible account-level default (e.g. a maintainer), resolve it in Create (e.g. `AccountMembersApi.GetMember(ctx, "me")` for the token's own member) instead of documenting a default the API won't apply. Pilot example: metric group `maintainerId` (2026-06-11).
+8. **Beta response shapes may predate the generated models** — for beta endpoints, the API's response JSON can be newer than the client's rep structs. If a typed nested field is unexpectedly nil at runtime, the data is likely under the model's `AdditionalProperties` map; read the typed field first and fall back to `AdditionalProperties` so a future client regen takes over transparently (see "Beta API model gaps" in patterns.md). You cannot verify this without live API access — flag it in the PR body as something the human reviewer must check with a real apply.
+9. **Mirror API-side constraints as plan-time validators** — minimum collection sizes, mutually exclusive fields, enum values. Anything the API rejects at request time should fail `terraform plan` instead (e.g. `listvalidator.SizeAtLeast(n)`). Every test fixture and example must satisfy these constraints too.
 
 ## Step 1: Add schema constants to `keys.go`
 
@@ -156,16 +159,18 @@ Concrete before/after:
 
 ## Step 8: Write acceptance tests
 
-- **Resource tests** use `resource.Test` (sequential, not `resource.ParallelTest`) with create, import, and update steps. Random project keys via `acctest.RandStringFromCharSet`. HCL configs include a `launchdarkly_project`. The CI matrix already parallelizes across resource types.
+- **All acceptance tests use `resource.Test`** — sequential, never `resource.ParallelTest`, for data source tests as much as resource tests. The CI matrix already parallelizes across resource types; in-package parallelism trips rate limits.
+- **Resource tests** include create, import, and update steps. Random project keys via `acctest.RandStringFromCharSet`. HCL configs include a `launchdarkly_project`.
 - **Data source tests** scaffold test data via the API directly (not Terraform), then read it back through the data source.
-- **`CheckDestroy`** — resource tests verify the remote object 404s after the test. Shared destroy checkers must skip state addresses starting with `data.`.
+- **Fixtures must satisfy API-side constraints** — if the schema (or the API) enforces a minimum count or a cross-field rule, every test step's config must already comply; a fixture that violates it fails at plan time before testing anything.
+- **`CheckDestroy`** — resource tests verify the remote object 404s after the test. Non-404 errors from the existence check must FAIL the check (return the error), not pass silently — swallowing them lets transient/auth failures leak resources while the test goes green. Shared destroy checkers must skip state addresses starting with `data.`.
 - **Account-singleton resources** (IP allowlist style): add a PreCheck hook that deletes the test's target identifiers first — LD reuses `409 optimistic_locking_error` for both races and duplicate rejection, so retries don't help.
 - **Never use `ExpectNonEmptyPlan` to mask convergence issues.** Non-convergence after apply is a bug — usually a null-vs-empty mismatch in the read (see the helper trio in Step 2), a missing plan modifier, or stale reads on versioned entities.
 - **Rate limiting in test HCL** — serialize creation of independent sibling resources with `depends_on`.
 
 ## Step 9: Add to CI test matrix
 
-In `.github/workflows/test.yml`, add `TestAcc<Name>` to the matrix.
+In `.github/workflows/test.yml`, add `TestAcc<Name>_` to the matrix. **This step is mandatory — without it CI never runs the new acceptance tests.** Matrix entries are `go test -run` regex prefixes, so check for overlap with existing entries: `TestAccMetric` also matches `TestAccMetricGroup*`. Use a trailing underscore (`TestAcc<Name>_`) and, if an existing entry is a prefix of the new name, narrow it the same way so two shards don't double-run the same tests.
 
 ## Step 10: Build, format, generate, verify
 
