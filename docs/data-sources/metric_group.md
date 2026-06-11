@@ -51,4 +51,3 @@ Read-Only:
 
 - `key` (String) The key of the metric.
 - `name_in_group` (String) The name of the metric when used within this metric group.
-```
