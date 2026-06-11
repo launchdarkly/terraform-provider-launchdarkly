@@ -46,6 +46,21 @@ func newMetricGroupBetaClient(c *Client) (*Client, error) {
 	return beta, nil
 }
 
+// metricGroupMaintainerID extracts the maintainer's member ID from the API
+// representation. The beta API returns maintainer as {key, kind, _member}, a
+// shape the v22 MaintainerRep model ({member, team}) predates — the member ID
+// arrives in AdditionalProperties["key"]. The typed read stays first so a
+// future client regen takes over transparently.
+func metricGroupMaintainerID(m ldapi.MaintainerRep) string {
+	if m.Member != nil && m.Member.GetId() != "" {
+		return m.Member.GetId()
+	}
+	if k, ok := m.AdditionalProperties["key"].(string); ok {
+		return k
+	}
+	return ""
+}
+
 // metricGroupIdToKeys splits a composite metric group ID into its project key
 // and metric group key. The expected format is `project_key/metric_group_key`.
 func metricGroupIdToKeys(id string) (projectKey string, metricGroupKey string, err error) {

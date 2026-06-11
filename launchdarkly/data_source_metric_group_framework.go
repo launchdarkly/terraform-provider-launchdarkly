@@ -143,11 +143,7 @@ func (d *MetricGroupDataSource) Read(ctx context.Context, req datasource.ReadReq
 		data.Description = types.StringValue("")
 	}
 	data.Version = types.Int64Value(int64(group.Version))
-	if group.Maintainer.Member != nil && group.Maintainer.Member.GetId() != "" {
-		data.MaintainerID = types.StringValue(group.Maintainer.Member.GetId())
-	} else {
-		data.MaintainerID = types.StringValue("")
-	}
+	data.MaintainerID = types.StringValue(metricGroupMaintainerID(group.Maintainer))
 
 	tagsSet, diags := setFromStringSlice(ctx, group.Tags)
 	resp.Diagnostics.Append(diags...)

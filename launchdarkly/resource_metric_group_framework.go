@@ -447,8 +447,8 @@ func (r *MetricGroupResource) readIntoModel(
 	data.Description = stringValueOrNullFromPointer(group.Description)
 	data.Version = types.Int64Value(int64(group.Version))
 
-	if group.Maintainer.Member != nil && group.Maintainer.Member.GetId() != "" {
-		data.MaintainerID = types.StringValue(group.Maintainer.Member.GetId())
+	if maintainerID := metricGroupMaintainerID(group.Maintainer); maintainerID != "" {
+		data.MaintainerID = types.StringValue(maintainerID)
 	} else if data.MaintainerID.IsNull() || data.MaintainerID.IsUnknown() {
 		data.MaintainerID = types.StringValue("")
 	}
