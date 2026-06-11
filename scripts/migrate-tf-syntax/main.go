@@ -16,9 +16,11 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"regexp"
+	"strings"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
@@ -76,10 +78,11 @@ type Spec map[string]*ResourceSpec
 
 func main() {
 	var (
-		dir         = flag.String("dir", ".", "directory containing .tf files (non-recursive)")
+		dir         = flag.String("dir", ".", "directory containing .tf files")
 		direction   = flag.String("direction", "v2-to-v3", "v2-to-v3 (blocks → nested attrs) or v3-to-v2 (nested attrs → blocks)")
 		mappingPath = flag.String("mappings", "", "path to mappings JSON (defaults to embedded LaunchDarkly v3 spec)")
 		dryRun      = flag.Bool("dry-run", false, "print converted output to stdout instead of writing files")
+		recursive   = flag.Bool("recursive", false, "descend into subdirectories (skips .terraform and .git); covers local modules")
 	)
 	flag.Parse()
 
@@ -100,7 +103,7 @@ func main() {
 		die(fmt.Sprintf("parse mappings: %v", err))
 	}
 
-	matches, err := filepath.Glob(filepath.Join(*dir, "*.tf"))
+	matches, err := collectTFFiles(*dir, *recursive)
 	if err != nil {
 		die(err.Error())
 	}
@@ -113,6 +116,44 @@ func main() {
 			os.Exit(1)
 		}
 	}
+	if warningCount > 0 {
+		fmt.Fprintf(os.Stderr, "%d warning(s) emitted: the flagged attributes need manual conversion\n", warningCount)
+	}
+}
+
+// collectTFFiles returns the .tf files under dir. Non-recursive mode matches the historical
+// single-directory glob. Recursive mode walks subdirectories so local modules are converted in the
+// same pass, skipping .terraform (provider/module cache — not user-owned code) and .git.
+func collectTFFiles(dir string, recursive bool) ([]string, error) {
+	if !recursive {
+		return filepath.Glob(filepath.Join(dir, "*.tf"))
+	}
+	var matches []string
+	err := filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if d.IsDir() {
+			switch d.Name() {
+			case ".terraform", ".git":
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		if filepath.Ext(path) == ".tf" {
+			matches = append(matches, path)
+		}
+		return nil
+	})
+	return matches, err
+}
+
+// warningCount tracks non-fatal conversion warnings (e.g. dynamic blocks) so main can summarize.
+var warningCount int
+
+func warnf(format string, args ...interface{}) {
+	warningCount++
+	fmt.Fprintf(os.Stderr, "warning: "+format+"\n", args...)
 }
 
 func die(msg string) {
@@ -142,9 +183,10 @@ func process(path, direction string, spec Spec, dryRun bool) error {
 		if !ok || rspec == nil {
 			continue
 		}
+		where := fmt.Sprintf("%s: resource %q", path, strings.Join(labels, "."))
 		var did bool
 		if direction == "v2-to-v3" {
-			if forward(blk.Body(), rspec.Blocks) {
+			if forward(blk.Body(), rspec.Blocks, where) {
 				did = true
 			}
 			if applyDeprecations(blk.Body(), rspec.Deprecations) {
@@ -221,21 +263,35 @@ func applyDSAttrRewrites(src []byte, spec Spec) ([]byte, bool) {
 // forward converts repeated `name { ... }` blocks into a single `name = [{...}, ...]` attribute.
 // Recurses into nested specs first so the inner conversion is reflected in the serialized tokens
 // of the outer element before we move them.
-func forward(body *hclwrite.Body, specs []*AttrSpec) bool {
+//
+// `dynamic "name" { ... }` generator blocks cannot be converted mechanically — they need a for
+// expression (`name = [for x in ... : { ... }]`) that only the author can write. When one is found
+// for a mapped name, the whole attribute is skipped (converting only the static siblings would
+// leave an attribute and a dynamic block for the same name, which v3 rejects) and a warning points
+// at the spot. `where` carries the file and resource address for that warning.
+func forward(body *hclwrite.Body, specs []*AttrSpec, where string) bool {
 	changed := false
 	for _, s := range specs {
 		var matched []*hclwrite.Block
+		dynamic := false
 		for _, b := range body.Blocks() {
 			if b.Type() == s.Name {
 				matched = append(matched, b)
 			}
+			if b.Type() == "dynamic" && len(b.Labels()) > 0 && b.Labels()[0] == s.Name {
+				dynamic = true
+			}
+		}
+		if dynamic {
+			warnf("%s: dynamic %q block cannot be converted automatically; rewrite it by hand as %s = [for ... : { ... }]", where, s.Name, s.Name)
+			continue
 		}
 		if len(matched) == 0 {
 			continue
 		}
 		if len(s.Nested) > 0 {
 			for _, b := range matched {
-				forward(b.Body(), s.Nested)
+				forward(b.Body(), s.Nested, where)
 			}
 		}
 		tokens := hclwrite.Tokens{

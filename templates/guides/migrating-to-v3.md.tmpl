@@ -34,7 +34,7 @@ resource "launchdarkly_feature_flag" "example" {
 
 ## Converting your configuration with migrate-tf-syntax
 
-The provider repository includes `migrate-tf-syntax`, a deterministic command-line tool that rewrites every affected attribute in a directory of `.tf` files. It also removes attributes that v3 no longer accepts, for example `policy` on `launchdarkly_custom_role`.
+The provider repository includes `migrate-tf-syntax`, a deterministic command-line tool that rewrites every affected attribute in a directory of `.tf` files. It also migrates attributes that v3 removed: it replaces them with their successors, for example `policy_statements` with `inline_roles` on `launchdarkly_access_token`, and updates references to renamed data source attributes such as `client_side_availability` on the `launchdarkly_project` data source.
 
 To convert a configuration directory:
 
@@ -46,17 +46,17 @@ To convert a configuration directory:
    ```
 
 2. Review the dry-run output. The tool prints each file it intends to change.
-3. Run the same command without `-dry-run` to write the changes.
+3. Run the same command without `-dry-run` to write the changes. Add `-recursive` to convert locally vendored modules in the same pass.
 4. Run `terraform fmt` to normalize whitespace.
 5. Upgrade the provider version constraint to `~> 3.0` and run `terraform plan`.
 
 ## What the tool does not do
 
-The tool converts syntax only. Complete these follow-ups by hand:
+Complete these follow-ups by hand:
 
 - Add attributes that v3 newly requires. For example, `launchdarkly_feature_flag` requires `variations` for every variation type, including boolean.
-- Review the [changelog](https://github.com/launchdarkly/terraform-provider-launchdarkly/blob/main/CHANGELOG.md) for removed attributes and replace them with their successors, for example `policy_statements` with `inline_roles` on `launchdarkly_access_token`.
-- Convert files inside modules. The tool operates on a single directory and does not recurse.
+- Rewrite `dynamic` blocks. A `dynamic "variations"` block needs a for expression, for example `variations = [for v in var.values : { value = v }]`. The tool warns with the file and resource address and leaves the attribute unchanged.
+- Upgrade modules sourced from a registry or a git URL. The tool rewrites only files it can reach on disk, so upgrade those modules at their source.
 
 ## Your first plan after upgrading
 
