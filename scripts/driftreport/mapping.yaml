@@ -1,0 +1,270 @@
+# Curated mapping of LaunchDarkly OpenAPI endpoint families (spec tags) to
+# provider coverage. Consumed by scripts/driftreport (see
+# .claude/plans/AUTOGEN_PIPELINE.md).
+#
+# Statuses:
+#   covered — family is modeled by the listed resources/data sources
+#   partial — some endpoints modeled; note says what's missing
+#   ignored — deliberately not an IaC surface; reason required
+#   triage  — acknowledged, coverage decision pending (listed in report, not drift)
+#
+# A spec tag missing from this file is reported as drift (new API family).
+version: 1
+families:
+  - tag: AI Configs
+    status: covered
+    resources:
+      - launchdarkly_ai_config
+      - launchdarkly_ai_config_variation
+      - launchdarkly_ai_tool
+      - launchdarkly_model_config
+
+  - tag: Access tokens
+    status: covered
+    resources:
+      - launchdarkly_access_token
+
+  - tag: Account members
+    status: covered
+    resources:
+      - launchdarkly_team_member
+      - launchdarkly_team_members
+
+  - tag: Account usage (beta)
+    status: ignored
+    reason: Read-only usage metering/analytics, not a declarative IaC surface.
+
+  - tag: AgentControl
+    status: triage
+    notes: Large new product area (26 paths). Prime candidate for the first stage-2 scaffolding pilot.
+
+  - tag: Announcements
+    status: triage
+    notes: In-app announcements; small declarative surface, plausible resource.
+
+  - tag: Applications (beta)
+    status: triage
+    notes: Application/version metadata for mobile targeting; mostly SDK-populated, declarative value unclear.
+
+  - tag: Approvals
+    status: ignored
+    reason: Imperative approval-request workflow operations; the declarative side (approval_settings) lives on environment/project resources.
+
+  - tag: Approvals (beta)
+    status: ignored
+    reason: Same as stable Approvals — runtime workflow, not declarative state.
+
+  - tag: Audit log
+    status: ignored
+    reason: Read-only audit query API. Subscriptions are covered under Integration audit log subscriptions.
+
+  - tag: Code references
+    status: ignored
+    reason: Populated by the ld-find-code-refs CLI, not Terraform-managed.
+
+  - tag: Context settings
+    status: ignored
+    reason: Per-context runtime settings, not declarative configuration.
+
+  - tag: Contexts
+    status: partial
+    resources:
+      - launchdarkly_context_kind
+    notes: context-kinds endpoints are covered; context instance/search endpoints are runtime data, intentionally unmodeled.
+
+  - tag: Custom roles
+    status: covered
+    resources:
+      - launchdarkly_custom_role
+
+  - tag: Data Export destinations
+    status: covered
+    resources:
+      - launchdarkly_destination
+
+  - tag: Environments
+    status: covered
+    resources:
+      - launchdarkly_environment
+
+  - tag: Experiments
+    status: triage
+    notes: Experimentation-as-code is a plausible future surface; needs product alignment.
+
+  - tag: Feature flags
+    status: covered
+    resources:
+      - launchdarkly_feature_flag
+      - launchdarkly_feature_flag_environment
+
+  - tag: Feature flags (beta)
+    status: triage
+    notes: Beta flag endpoints (e.g. migration safety); revisit when stable.
+
+  - tag: Flag import configurations (beta)
+    status: triage
+    notes: Vendor importer configs; could become a resource once the importer surface stabilizes.
+
+  - tag: Flag links (beta)
+    status: triage
+
+  - tag: Flag triggers
+    status: covered
+    resources:
+      - launchdarkly_flag_trigger
+
+  - tag: Follow flags
+    status: ignored
+    reason: Per-member notification preferences, not infrastructure.
+
+  - tag: Holdouts
+    status: triage
+    notes: Experimentation holdouts; pairs with the Experiments decision.
+
+  - tag: IP Allowlist (beta)
+    status: covered
+    resources:
+      - launchdarkly_ip_allowlist_config
+      - launchdarkly_ip_allowlist_entry
+
+  - tag: Insights charts (beta)
+    status: ignored
+    reason: Engineering-insights analytics, read-only.
+
+  - tag: Insights deployments (beta)
+    status: ignored
+    reason: Engineering-insights analytics, read-only.
+
+  - tag: Insights flag events (beta)
+    status: ignored
+    reason: Engineering-insights analytics, read-only.
+
+  - tag: Insights pull requests (beta)
+    status: ignored
+    reason: Engineering-insights analytics, read-only.
+
+  - tag: Insights repositories (beta)
+    status: ignored
+    reason: Engineering-insights analytics, read-only.
+
+  - tag: Insights scores (beta)
+    status: ignored
+    reason: Engineering-insights analytics, read-only.
+
+  - tag: Integration audit log subscriptions
+    status: covered
+    resources:
+      - launchdarkly_audit_log_subscription
+
+  - tag: Integration delivery configurations (beta)
+    status: triage
+
+  - tag: Integrations (beta)
+    status: triage
+
+  - tag: Layers
+    status: triage
+    notes: Experimentation layers; pairs with the Experiments decision.
+
+  - tag: Metrics
+    status: covered
+    resources:
+      - launchdarkly_metric
+
+  - tag: Metrics (beta)
+    status: triage
+    notes: Metric groups; plausible resource.
+
+  - tag: OAuth2 Clients
+    status: triage
+    notes: Account-level OAuth app registration; niche but declarative.
+
+  - tag: Other
+    status: ignored
+    reason: Miscellaneous root/meta endpoints (API root, versioning).
+
+  - tag: Persistent store integrations (beta)
+    status: triage
+    notes: Big-segment store integrations; plausible resource.
+
+  - tag: Projects
+    status: covered
+    resources:
+      - launchdarkly_project
+      - launchdarkly_flag_templates
+
+  - tag: Relay Proxy configurations
+    status: covered
+    resources:
+      - launchdarkly_relay_proxy_configuration
+
+  - tag: Release pipelines (beta)
+    status: triage
+    notes: Active product area; release-policies datasource work exists on branch RO-2042.
+
+  - tag: Release policies (beta)
+    status: triage
+    notes: See Release pipelines.
+
+  - tag: Releases (beta)
+    status: triage
+    notes: See Release pipelines.
+
+  - tag: SDK Keys (beta)
+    status: ignored
+    reason: Imperative key-rotation operations; keys surface through the environment resource.
+
+  - tag: Scheduled changes
+    status: triage
+    notes: Scheduled flag changes; declarative-adjacent but time-bound workflow.
+
+  - tag: Segments
+    status: covered
+    resources:
+      - launchdarkly_segment
+
+  - tag: Tags
+    status: ignored
+    reason: Read-only tag listing endpoint.
+
+  - tag: Teams
+    status: covered
+    resources:
+      - launchdarkly_team
+      - launchdarkly_team_role_mapping
+
+  - tag: Teams (beta)
+    status: triage
+    notes: Single beta endpoint; verify whether the stable team resource already covers it.
+
+  - tag: User settings
+    status: ignored
+    reason: Legacy users API (superseded by contexts); runtime data.
+
+  - tag: Users
+    status: ignored
+    reason: Legacy users API (superseded by contexts); runtime data.
+
+  - tag: Users (beta)
+    status: ignored
+    reason: Legacy users API (superseded by contexts); runtime data.
+
+  - tag: Views (beta)
+    status: covered
+    resources:
+      - launchdarkly_view
+      - launchdarkly_view_links
+      - launchdarkly_view_filter_links
+
+  - tag: Webhooks
+    status: covered
+    resources:
+      - launchdarkly_webhook
+
+  - tag: Workflow templates
+    status: triage
+    notes: Flag workflows as code; pairs with Workflows decision.
+
+  - tag: Workflows
+    status: triage
+    notes: Flag workflows as code; plausible future surface.
