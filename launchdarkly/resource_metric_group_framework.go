@@ -348,6 +348,10 @@ func (r *MetricGroupResource) Update(ctx context.Context, req resource.UpdateReq
 		}
 		patch = append(patch, patchReplace("/tags", tags))
 	}
+	// Ordered comparison is safe for both kinds: the API stores and echoes
+	// metrics in insertion order even for `standard` groups (verified against
+	// the live API 2026-06-11), so a config reorder converges in one apply
+	// rather than producing a perpetual diff.
 	if !plan.Metrics.Equal(state.Metrics) {
 		var metricsModels []metricGroupMetricModel
 		resp.Diagnostics.Append(plan.Metrics.ElementsAs(ctx, &metricsModels, false)...)

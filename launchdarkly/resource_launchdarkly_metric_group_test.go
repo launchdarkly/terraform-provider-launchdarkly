@@ -41,8 +41,11 @@ resource "launchdarkly_metric_group" "test" {
 	description   = "A standard metric group"
 	maintainer_id = "%s"
 
+	# The API requires at least two metrics per group (mirrored by the
+	# schema's SizeAtLeast(2) validator).
 	metrics = [
 		{ key = launchdarkly_metric.one.key },
+		{ key = launchdarkly_metric.two.key },
 	]
 
 	tags = ["test"]
@@ -147,8 +150,9 @@ func TestAccMetricGroup_Standard(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, KIND, "standard"),
 					resource.TestCheckResourceAttr(resourceName, PROJECT_KEY, projectKey),
 					resource.TestCheckResourceAttr(resourceName, MAINTAINER_ID, maintainerID),
-					resource.TestCheckResourceAttr(resourceName, "metrics.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "metrics.#", "2"),
 					resource.TestCheckResourceAttr(resourceName, "metrics.0.key", "mg-metric-one"),
+					resource.TestCheckResourceAttr(resourceName, "metrics.1.key", "mg-metric-two"),
 				),
 			},
 			{
@@ -245,9 +249,10 @@ func testAccCheckMetricGroupDestroy(s *terraform.State) error {
 		if isStatusNotFound(res) {
 			continue
 		}
-		if err == nil {
-			return fmt.Errorf("metric group %q still exists in project %q", key, projKey)
+		if err != nil {
+			return fmt.Errorf("unexpected error checking metric group %q destruction in project %q: %s", key, projKey, handleLdapiErr(err))
 		}
+		return fmt.Errorf("metric group %q still exists in project %q", key, projKey)
 	}
 	return nil
 }
