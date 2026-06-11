@@ -262,7 +262,26 @@ func buildReport(families map[string][]string, mapping *Mapping, resources, data
 	return report
 }
 
-func renderMarkdown(w io.Writer, r *Report) {
+// errWriter captures the first write error so renderMarkdown can stay
+// fmt.Fprintf-based without checking every call.
+type errWriter struct {
+	w   io.Writer
+	err error
+}
+
+func (ew *errWriter) Write(p []byte) (int, error) {
+	if ew.err != nil {
+		return 0, ew.err
+	}
+	n, err := ew.w.Write(p)
+	if err != nil {
+		ew.err = err
+	}
+	return n, err
+}
+
+func renderMarkdown(out io.Writer, r *Report) error {
+	w := &errWriter{w: out}
 	fmt.Fprintf(w, "# LaunchDarkly API coverage drift report\n\n")
 	fmt.Fprintf(w, "Generated %s from `%s`. %d endpoint families in spec.\n\n",
 		r.GeneratedAt.Format(time.RFC3339), r.SpecSource, r.TotalFamilies)
@@ -317,4 +336,5 @@ func renderMarkdown(w io.Writer, r *Report) {
 	for _, s := range statuses {
 		fmt.Fprintf(w, "- %s: %d\n", s, r.StatusCounts[s])
 	}
+	return w.err
 }

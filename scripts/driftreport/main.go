@@ -48,18 +48,20 @@ func run(specSource, mappingPath, outPath, format string) error {
 	report := buildReport(families, mapping, resources, dataSources, specSource)
 
 	var w io.Writer = os.Stdout
+	var f *os.File
 	if outPath != "-" {
-		f, err := os.Create(outPath)
+		f, err = os.Create(outPath)
 		if err != nil {
 			return fmt.Errorf("creating output file: %w", err)
 		}
-		defer f.Close()
 		w = f
 	}
 
 	switch format {
 	case "md":
-		renderMarkdown(w, report)
+		if err := renderMarkdown(w, report); err != nil {
+			return fmt.Errorf("writing report: %w", err)
+		}
 	case "json":
 		enc := json.NewEncoder(w)
 		enc.SetIndent("", "  ")
@@ -68,6 +70,12 @@ func run(specSource, mappingPath, outPath, format string) error {
 		}
 	default:
 		return fmt.Errorf("unknown format %q (want md or json)", format)
+	}
+
+	if f != nil {
+		if err := f.Close(); err != nil {
+			return fmt.Errorf("writing output file: %w", err)
+		}
 	}
 
 	if report.HasDrift() {

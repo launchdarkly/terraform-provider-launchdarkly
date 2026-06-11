@@ -108,7 +108,9 @@ func TestBuildReportClean(t *testing.T) {
 	}
 
 	var buf bytes.Buffer
-	renderMarkdown(&buf, report)
+	if err := renderMarkdown(&buf, report); err != nil {
+		t.Fatalf("renderMarkdown: %v", err)
+	}
 	if !strings.Contains(buf.String(), "No drift detected") {
 		t.Error("markdown should state no drift")
 	}
@@ -122,6 +124,19 @@ func TestBuildReportClean(t *testing.T) {
 		if strings.Contains(string(raw), fmt.Sprintf("%q:null", key)) {
 			t.Errorf("%s serializes as null, want []", key)
 		}
+	}
+}
+
+type failingWriter struct{}
+
+func (failingWriter) Write([]byte) (int, error) {
+	return 0, fmt.Errorf("disk full")
+}
+
+func TestRenderMarkdownSurfacesWriteErrors(t *testing.T) {
+	report := buildReport(nil, &Mapping{}, nil, nil, "fixture")
+	if err := renderMarkdown(failingWriter{}, report); err == nil {
+		t.Fatal("renderMarkdown should return the write error")
 	}
 }
 
