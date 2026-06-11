@@ -412,10 +412,16 @@ func (r *FeatureFlagResource) ModifyPlan(ctx context.Context, req resource.Modif
 			return
 		}
 		if deps != nil && len(deps.Items) > 0 {
-			resp.Diagnostics.AddAttributeError(
-				path.Root(KEY),
-				fmt.Sprintf("flag %q in project %q is a prerequisite for other flags and cannot be destroyed", flagKey, projectKey),
-				formatDependentFlagsHint(deps.Items),
+			// Advisory only. At plan time nothing has been destroyed yet, so
+			// a plan that removes both this flag AND the prerequisite links
+			// (e.g. a whole-stack destroy, or one that updates the dependent
+			// flags' launchdarkly_feature_flag_environment) is legitimate and
+			// will succeed. The authoritative gate is the apply-time DELETE,
+			// which returns a 409 if the references still exist. Warn so the
+			// user sees the dependency early without blocking valid destroys.
+			resp.Diagnostics.AddWarning(
+				fmt.Sprintf("flag %q in project %q is referenced as a prerequisite by other flags", flagKey, projectKey),
+				formatDependentFlagsHint(deps.Items)+"\n\nIf those references still exist when this destroy is applied, the apply will fail with a 409 conflict. If the same plan also removes them, the destroy will succeed.",
 			)
 		}
 		return

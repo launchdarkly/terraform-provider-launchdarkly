@@ -1532,10 +1532,13 @@ resource "launchdarkly_feature_flag" "test" {
 	})
 }
 
-// TestAccFeatureFlag_DeletePrerequisitePlanError exercises the
-// destroy-plan dependent-flag validator in FeatureFlagResource.ModifyPlan
-// (issue #372).
-func TestAccFeatureFlag_DeletePrerequisitePlanError(t *testing.T) {
+// TestAccFeatureFlag_DeletePrerequisiteApplyError exercises the
+// apply-time gate on destroying a flag that is still referenced as a
+// prerequisite. The plan-time dependent-flag check in
+// FeatureFlagResource.ModifyPlan is advisory only (emits a warning, not
+// an error) so whole-stack destroys are not blocked (issue #372); the
+// authoritative gate is the DELETE 409, asserted here.
+func TestAccFeatureFlag_DeletePrerequisiteApplyError(t *testing.T) {
 	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 
 	configFull := withRandomProject(projectKey, `
@@ -1580,8 +1583,8 @@ resource "launchdarkly_feature_flag_environment" "dependent_env" {
 	// flag resource is removed from config. HCL keeps the literal flag
 	// key string in the prerequisites block so the file still compiles;
 	// Terraform plans destruction of `launchdarkly_feature_flag.prereq`
-	// and ModifyPlan should fail at plan time with the prerequisite
-	// hint rather than waiting for the apply-time 409.
+	// while the FFE still references it, so the apply-time DELETE returns
+	// a 409 and the destroy fails (the plan-time check only warns).
 	configMissingPrereq := withRandomProject(projectKey, `
 resource "launchdarkly_feature_flag" "dependent" {
 	project_key    = launchdarkly_project.test.key
@@ -1660,13 +1663,14 @@ resource "launchdarkly_feature_flag_environment" "dependent_env" {
 			},
 			{
 				// The dependent-flags beta endpoint is eventually
-				// consistent. Poll until the dependency is visible so
-				// the plan-time validator in Step 2 sees it; otherwise
-				// the destroy plan slips through with no error.
+				// consistent. Poll until the dependency is indexed so the
+				// prerequisite link is fully established server-side, then
+				// apply: the destroy of prereq-flag must fail with the
+				// apply-time DELETE 409. The plan-time check only warns now,
+				// so this asserts the authoritative apply-time gate.
 				PreConfig:   waitForDependentFlagIndexed(t, projectKey, "prereq-flag"),
 				Config:      configMissingPrereq,
-				PlanOnly:    true,
-				ExpectError: regexp.MustCompile(`is a prerequisite for other flags and cannot be destroyed`),
+				ExpectError: regexp.MustCompile(`failed to delete flag "prereq-flag" from project`),
 			},
 			{
 				Config: configWithoutPrerequisiteLink,
@@ -1688,7 +1692,7 @@ resource "launchdarkly_feature_flag_environment" "dependent_env" {
 
 // waitForDependentFlagIndexed polls the beta dependent-flags endpoint
 // until at least one dependent is visible, or a timeout elapses. Used
-// before TestAccFeatureFlag_DeletePrerequisitePlanError's Step 2 plan
+// before TestAccFeatureFlag_DeletePrerequisiteApplyError's Step 2 apply
 // because the prerequisite written during Step 1's Apply may take time
 // to become visible server-side.
 func waitForDependentFlagIndexed(t *testing.T, projectKey, flagKey string) func() {
