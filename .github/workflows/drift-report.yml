@@ -41,27 +41,48 @@ jobs:
             echo "driftreport failed with exit code $code" >&2
             exit "$code"
           fi
-          echo "drift=$([ "$code" -eq 2 ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
-          cat drift-report.md >> "$GITHUB_STEP_SUMMARY"
-      - uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
-        with:
-          name: drift-report
-          path: drift-report.md
-      # Notify a private Slack channel on drift. The full report stays in the
-      # step summary + uploaded artifact (one click from run_url); the message
-      # carries only scalar fields so the JSON payload can't be broken by
-      # markdown in the report. The Slack Workflow Builder trigger behind
-      # SLACK_DRIFT_WEBHOOK_URL should map these variables: message, repo,
-      # run_url.
+          drift=$([ "$code" -eq 2 ] && echo true || echo false)
+          echo "drift=$drift" >> "$GITHUB_OUTPUT"
+          # PUBLIC-REPO SAFETY: this run's logs/summary are world-readable, so the
+          # report body must NOT land here. Summary states only whether drift was
+          # found; the detail goes to the private Slack channel. drift-report.md
+          # stays on the ephemeral runner (never uploaded as an artifact).
+          if [ "$drift" = "true" ]; then
+            echo "Drift detected — full report sent to the private Slack channel." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "No drift detected." >> "$GITHUB_STEP_SUMMARY"
+          fi
+      # Build the Slack payload with jq so the report markdown is correctly
+      # JSON-escaped (quotes/newlines/backticks can't break the payload).
+      # Truncated to stay under Slack's ~4000-char webhook-variable limit;
+      # full detail is one re-dispatch away.
+      - name: Build Slack payload
+        id: slack_payload
+        if: steps.drift.outputs.drift == 'true'
+        run: |
+          limit=3500
+          report="$(head -c "$limit" drift-report.md)"
+          if [ "$(wc -c < drift-report.md)" -gt "$limit" ]; then
+            report="${report}"$'\n\n…(truncated — re-dispatch the workflow for the full report)'
+          fi
+          payload="$(jq -nc \
+            --arg message "API coverage drift detected — the provider lags behind the public API. Review and decide whether to scaffold." \
+            --arg repo "$GITHUB_REPOSITORY" \
+            --arg run_url "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" \
+            --arg report "$report" \
+            '{message: $message, repo: $repo, run_url: $run_url, report: $report}')"
+          {
+            printf '%s\n' 'payload<<SLACK_PAYLOAD_EOF'
+            printf '%s\n' "$payload"
+            printf '%s\n' 'SLACK_PAYLOAD_EOF'
+          } >> "$GITHUB_OUTPUT"
+      # Notify a private Slack channel on drift. The Workflow Builder trigger
+      # behind SLACK_DRIFT_WEBHOOK_URL should declare these Text variables:
+      # message, repo, run_url, report.
       - name: Notify Slack on drift
         if: steps.drift.outputs.drift == 'true'
         uses: slackapi/slack-github-action@485a9d42d3a73031f12ec201c457e2162c45d02d # v2.0.0
         with:
           webhook: ${{ secrets.SLACK_DRIFT_WEBHOOK_URL }}
           webhook-type: webhook-trigger
-          payload: |
-            {
-              "message": "API coverage drift detected — the provider lags behind the public API. Review the report and decide whether to scaffold.",
-              "repo": "${{ github.repository }}",
-              "run_url": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-            }
+          payload: ${{ steps.slack_payload.outputs.payload }}
