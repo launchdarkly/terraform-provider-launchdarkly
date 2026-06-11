@@ -1,0 +1,98 @@
+# Stage 2 of the autogen pipeline (see .claude/plans/AUTOGEN_PIPELINE.md):
+# one-shot scaffolding of a new provider resource for an endpoint family
+# surfaced by the drift report (stage 1).
+#
+# Manually triggered only — never wired to the drift cron. The agent's output
+# is a DRAFT pull request; it never merges anything. Existing CI (build, lint,
+# generate-diff, acceptance shards) is the quality floor for the draft.
+#
+# Kill switch: the repository variable SCAFFOLD_AGENT_ENABLED must be "true".
+# TODO(stage 2b): replace the variable gate with a LaunchDarkly AI Config
+# ("tf-provider-scaffolder") for model/prompt/kill-switch control — reference
+# implementation in ld-docs-private ffeldberg/validate-ai-configs-sdk.
+name: Scaffold resource from API family
+
+on:
+  workflow_dispatch:
+    inputs:
+      family:
+        description: "Endpoint family tag from the drift report (e.g. AgentControl)"
+        required: true
+        type: string
+      notes:
+        description: "Optional extra instructions for the scaffolding agent"
+        required: false
+        type: string
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  scaffold:
+    name: Scaffold ${{ inputs.family }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Check kill switch
+        if: vars.SCAFFOLD_AGENT_ENABLED != 'true'
+        run: |
+          echo "::error::Scaffolding agent is disabled (repository variable SCAFFOLD_AGENT_ENABLED != 'true')."
+          exit 1
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: preview-v3 # scaffolds always target the v3 line
+          fetch-depth: 0
+      - uses: actions/setup-go@41dfa10bad2bb2ae585af6ee5bb4d7d973ad74ed # v5.1.0
+        with:
+          go-version-file: "go.mod"
+          cache: true
+      - name: Extract endpoint-family context
+        run: |
+          go build -o /tmp/driftreport ./scripts/driftreport
+          # Write the slice into the workspace so the agent's repo-scoped file
+          # tools can read it (an absolute /tmp path may be outside their scope).
+          /tmp/driftreport -family "${{ inputs.family }}" -out "$GITHUB_WORKSPACE/family-slice.json"
+          # Public repo: don't print the slice into world-readable logs (same
+          # discipline as the drift report). Log only a size/path-count summary.
+          echo "family-slice.json written ($(wc -c < "$GITHUB_WORKSPACE/family-slice.json") bytes, $(jq '.paths | length' "$GITHUB_WORKSPACE/family-slice.json") paths)"
+      - name: Run scaffolding agent
+        uses: anthropics/claude-code-action@0f97b95b6536c26e5f6bd90faec370d41695beca # v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          prompt: |
+            Scaffold a new resource for the LaunchDarkly Terraform provider covering
+            the "${{ inputs.family }}" API endpoint family.
+
+            Inputs:
+            - Endpoint summary for the family: ./family-slice.json (repo root).
+              This is input context only — read it, but do NOT commit it.
+            - Full OpenAPI spec (for schemas): https://app.launchdarkly.com/api/v2/openapi.json
+            - Read .claude/skills/terraform-provider-add-resource/SKILL.md and its
+              references/patterns.md (both vendored into this repo), and follow that
+              playbook's Steps 0-10 exactly. Also obey the conventions in CLAUDE.md:
+              keys.go constants, framework nested attributes (never blocks), helpers
+              from framework_helpers.go, patch helpers, handleLdapiErr wrapping,
+              acceptance-test CI matrix entry, docs templates.
+            - Use the generated API client (github.com/launchdarkly/api-client-go/v22)
+              for all API calls. If the client lacks this surface, stop and report that
+              instead of hand-rolling HTTP.
+
+            Additional notes from the operator: ${{ inputs.notes }}
+
+            Deliverable:
+            1. Create a branch named scaffold/${{ inputs.family }} (lowercased,
+               non-alphanumerics replaced with '-') off preview-v3.
+            2. Implement the resource (and data source if the family has GET-by-key),
+               unit-testable helpers, acceptance tests, docs templates, and provider
+               registration. Update scripts/driftreport/mapping.yaml to mark the family
+               covered.
+            3. Run go build ./... and make fmt; fix what they surface.
+            4. Commit, push the branch, and open a DRAFT pull request against
+               preview-v3 titled "feat: scaffold ${{ inputs.family }} resource
+               (autogen stage 2)". The PR body must state it is agent-scaffolded and
+               needs human review per stage 3 of the autogen pipeline.
+            Never push to preview-v3 directly and never merge anything.
+          claude_args: |
+            --allowedTools "Read,Edit,Write,Glob,Grep,Bash(go:*),Bash(make:*),Bash(git:*),Bash(gh pr create:*),Bash(gofmt:*),WebFetch(domain:app.launchdarkly.com)"
