@@ -20,5 +20,6 @@ const (
 	OAUTH_TOKEN              = "oauth_token"
 	API_HOST                 = "api_host"
 	HTTP_TIMEOUT             = "http_timeout"
+	MAX_CONCURRENCY          = "max_concurrency"
 	ARCHIVE_FLAGS_ON_DESTROY = "archive_flags_on_destroy"
 )

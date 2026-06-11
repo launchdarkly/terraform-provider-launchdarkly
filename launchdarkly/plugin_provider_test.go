@@ -11,13 +11,13 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestPluginProviderParsesApiHostWithoutScheme(t *testing.T) {
+func newPluginProviderConfigureRequest(t *testing.T, maxConcurrency int64) provider.ConfigureRequest {
+	t.Helper()
 	pluginProvider := NewPluginProvider("test")()
 	schemaResponse := provider.SchemaResponse{}
-	ctx := context.Background()
-	pluginProvider.Schema(ctx, provider.SchemaRequest{}, &schemaResponse)
+	pluginProvider.Schema(context.Background(), provider.SchemaRequest{}, &schemaResponse)
 
-	configureRequest := provider.ConfigureRequest{
+	return provider.ConfigureRequest{
 		Config: tfsdk.Config{
 			Raw: tftypes.NewValue(tftypes.Object{
 				AttributeTypes: map[string]tftypes.Type{
@@ -25,6 +25,7 @@ func TestPluginProviderParsesApiHostWithoutScheme(t *testing.T) {
 					ACCESS_TOKEN:             tftypes.String,
 					OAUTH_TOKEN:              tftypes.String,
 					HTTP_TIMEOUT:             tftypes.Number,
+					MAX_CONCURRENCY:          tftypes.Number,
 					ARCHIVE_FLAGS_ON_DESTROY: tftypes.Bool,
 				},
 			}, map[string]tftypes.Value{
@@ -32,15 +33,38 @@ func TestPluginProviderParsesApiHostWithoutScheme(t *testing.T) {
 				ACCESS_TOKEN:             tftypes.NewValue(tftypes.String, "test-token"),
 				HTTP_TIMEOUT:             tftypes.NewValue(tftypes.Number, 0),
 				OAUTH_TOKEN:              tftypes.NewValue(tftypes.String, ""),
+				MAX_CONCURRENCY:          tftypes.NewValue(tftypes.Number, maxConcurrency),
 				ARCHIVE_FLAGS_ON_DESTROY: tftypes.NewValue(tftypes.Bool, nil),
 			}),
 			Schema: schemaResponse.Schema,
 		},
 	}
+}
+
+func TestPluginProviderParsesApiHostWithoutScheme(t *testing.T) {
+	pluginProvider := NewPluginProvider("test")()
+	ctx := context.Background()
 
 	configureResp := provider.ConfigureResponse{}
-	pluginProvider.Configure(ctx, configureRequest, &configureResp)
+	pluginProvider.Configure(ctx, newPluginProviderConfigureRequest(t, 0), &configureResp)
 	require.Len(t, configureResp.Diagnostics, 0)
 
 	assert.Equal(t, configureResp.ResourceData.(*Client).apiHost, "test.com")
+}
+
+func TestPluginProviderMaxConcurrency(t *testing.T) {
+	t.Run("accepts a value greater than 1", func(t *testing.T) {
+		pluginProvider := NewPluginProvider("test")()
+		configureResp := provider.ConfigureResponse{}
+		pluginProvider.Configure(context.Background(), newPluginProviderConfigureRequest(t, 10), &configureResp)
+		require.Len(t, configureResp.Diagnostics, 0)
+		assert.NotNil(t, configureResp.ResourceData)
+	})
+
+	t.Run("rejects a negative value", func(t *testing.T) {
+		pluginProvider := NewPluginProvider("test")()
+		configureResp := provider.ConfigureResponse{}
+		pluginProvider.Configure(context.Background(), newPluginProviderConfigureRequest(t, -1), &configureResp)
+		require.True(t, configureResp.Diagnostics.HasError())
+	})
 }

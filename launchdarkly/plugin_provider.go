@@ -7,10 +7,12 @@ import (
 	"os"
 	"strings"
 
+	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/provider"
 	"github.com/hashicorp/terraform-plugin-framework/provider/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
@@ -27,6 +29,7 @@ type launchdarklyProviderModel struct {
 	OAuthToken            types.String `tfsdk:"oauth_token"`
 	Host                  types.String `tfsdk:"api_host"`
 	HttpTimeout           types.Int64  `tfsdk:"http_timeout"`
+	MaxConcurrency        types.Int64  `tfsdk:"max_concurrency"`
 	ArchiveFlagsOnDestroy types.Bool   `tfsdk:"archive_flags_on_destroy"`
 }
 
@@ -55,6 +58,13 @@ func (p *launchdarklyProvider) Schema(_ context.Context, _ provider.SchemaReques
 			HTTP_TIMEOUT: schema.Int64Attribute{
 				Optional:    true,
 				Description: "The HTTP timeout (in seconds) when making API calls to LaunchDarkly. Defaults to 20 seconds.",
+			},
+			MAX_CONCURRENCY: schema.Int64Attribute{
+				Optional:    true,
+				Description: "The maximum number of concurrent API requests the provider may make to LaunchDarkly. Defaults to `1`, which matches previous provider behavior and avoids hitting API rate limits. If your account has rate limit headroom, increasing this can significantly speed up plans and refreshes on large configurations. Requests that exceed your account's rate limit return `429` responses, which the provider retries automatically with backoff based on LaunchDarkly's rate limit headers.",
+				Validators: []validator.Int64{
+					int64validator.AtLeast(1),
+				},
 			},
 			ARCHIVE_FLAGS_ON_DESTROY: schema.BoolAttribute{
 				Optional:    true,
@@ -99,6 +109,15 @@ func (p *launchdarklyProvider) Configure(ctx context.Context, req provider.Confi
 		httpTimeoutSeconds = DEFAULT_HTTP_TIMEOUT_S
 	}
 
+	maxConcurrency := int(data.MaxConcurrency.ValueInt64())
+	if maxConcurrency == 0 {
+		maxConcurrency = DEFAULT_MAX_CONCURRENCY
+	}
+	if maxConcurrency < 1 {
+		resp.Diagnostics.AddError("Invalid max_concurrency", fmt.Sprintf("%q must be at least 1, got: %d", MAX_CONCURRENCY, maxConcurrency))
+		return
+	}
+
 	if oauthToken == "" && accessToken == "" {
 		resp.Diagnostics.AddError("Missing authentication token", fmt.Sprintf("Either the %q or %q must be specified.", ACCESS_TOKEN, OAUTH_TOKEN))
 		return
@@ -107,7 +126,7 @@ func (p *launchdarklyProvider) Configure(ctx context.Context, req provider.Confi
 	archiveOnDestroy := data.ArchiveFlagsOnDestroy.ValueBool()
 
 	if oauthToken != "" {
-		client, err := newClient(oauthToken, host, true, httpTimeoutSeconds, DEFAULT_MAX_CONCURRENCY)
+		client, err := newClient(oauthToken, host, true, httpTimeoutSeconds, maxConcurrency)
 		if err != nil {
 			resp.Diagnostics.AddError("Unable to create LaunchDarkly client", err.Error())
 			return
@@ -118,7 +137,7 @@ func (p *launchdarklyProvider) Configure(ctx context.Context, req provider.Confi
 		return
 	}
 
-	client, err := newClient(accessToken, host, false, httpTimeoutSeconds, DEFAULT_MAX_CONCURRENCY)
+	client, err := newClient(accessToken, host, false, httpTimeoutSeconds, maxConcurrency)
 	if err != nil {
 		resp.Diagnostics.AddError("Unable to create LaunchDarkly client", err.Error())
 		return
