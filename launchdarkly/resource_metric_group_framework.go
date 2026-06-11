@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"reflect"
 
+	"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/setvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
@@ -95,7 +96,7 @@ func metricGroupSchemaAttributes() map[string]schema.Attribute {
 		MAINTAINER_ID: schema.StringAttribute{
 			Optional:    true,
 			Computed:    true,
-			Description: "The LaunchDarkly member ID of the member who maintains the metric group. If not set when the metric group is created, the API assigns the member associated with the access token used by the provider.",
+			Description: "The LaunchDarkly member ID of the member who maintains the metric group. If not set when the metric group is created, the provider assigns the member associated with the access token. Service tokens have no associated member, so configurations using one must set this explicitly.",
 			Validators:  []validator.String{idValidator()},
 		},
 		TAGS: schema.SetAttribute{
@@ -113,7 +114,10 @@ func metricGroupSchemaAttributes() map[string]schema.Attribute {
 		},
 		METRICS: schema.ListNestedAttribute{
 			Required:    true,
-			Description: "An ordered list of the metrics in this metric group. For `funnel` metric groups the order is significant and each metric requires a `name_in_group`.",
+			Description: "An ordered list of the metrics in this metric group. Must contain at least two metrics. For `funnel` metric groups the order is significant and each metric requires a `name_in_group`.",
+			Validators: []validator.List{
+				listvalidator.SizeAtLeast(2),
+			},
 			NestedObject: schema.NestedAttributeObject{
 				Attributes: map[string]schema.Attribute{
 					KEY: schema.StringAttribute{
@@ -241,7 +245,27 @@ func (r *MetricGroupResource) Create(ctx context.Context, req resource.CreateReq
 	key := plan.Key.ValueString()
 	name := plan.Name.ValueString()
 	kind := plan.Kind.ValueString()
+	// The POST body requires maintainerId (the API rejects an empty value with
+	// 400 "maintainer ID is required"), so resolve the token's own member when
+	// the practitioner doesn't set one. Service tokens have no member — those
+	// must set maintainer_id explicitly.
 	maintainerID := plan.MaintainerID.ValueString()
+	if maintainerID == "" {
+		var me *ldapi.Member
+		err := r.client.withConcurrency(r.client.ctx, func() error {
+			var e error
+			me, _, e = r.client.ld.AccountMembersApi.GetMember(r.client.ctx, "me").Execute()
+			return e
+		})
+		if err != nil {
+			resp.Diagnostics.AddError(
+				"Unable to resolve a default maintainer for the metric group",
+				fmt.Sprintf("the metric group API requires a maintainer ID and the access token does not map to a member (service tokens have none) — set maintainer_id explicitly: %s", handleLdapiErr(err)),
+			)
+			return
+		}
+		maintainerID = me.Id
+	}
 
 	post := ldapi.MetricGroupPost{
 		Key:          &key,

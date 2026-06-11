@@ -85,7 +85,7 @@ func TestAccDataSourceMetricGroup_noMatchReturnsError(t *testing.T) {
 		require.NoError(t, testAccProjectScaffoldDelete(client, projectKey))
 	}()
 
-	resource.ParallelTest(t, resource.TestCase{
+	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
