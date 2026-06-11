@@ -172,8 +172,9 @@ families:
       - launchdarkly_metric
 
   - tag: Metrics (beta)
-    status: triage
-    notes: Metric groups; plausible resource.
+    status: covered
+    resources:
+      - launchdarkly_metric_group
 
   - tag: OAuth2 Clients
     status: triage
