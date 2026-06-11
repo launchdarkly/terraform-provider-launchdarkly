@@ -51,3 +51,5 @@ local-testing/
 
 .claude/*
 !.claude/skills/
+# Built tool binaries (use go run or go build into a separate output dir)
+scripts/migrate-tf-syntax/migrate-tf-syntax
