@@ -32,19 +32,22 @@ func testAccDataSourceMetricGroupScaffold(client *Client, beta *Client, projectK
 		return nil, err
 	}
 
-	metricName := "MG DS Metric"
-	metricKey := "mg-ds-metric"
-	eventKey := "mg-ds-event"
-	isNumeric := false
-	metricBody := ldapi.MetricPost{
-		Name:      &metricName,
-		Key:       metricKey,
-		Kind:      "custom",
-		EventKey:  &eventKey,
-		IsNumeric: &isNumeric,
-	}
-	if _, _, err := client.ld.MetricsApi.PostMetric(client.ctx, project.Key).MetricPost(metricBody).Execute(); err != nil {
-		return nil, err
+	// The API requires at least two metrics per group.
+	metricKeys := []string{"mg-ds-metric-one", "mg-ds-metric-two"}
+	for i, metricKey := range metricKeys {
+		metricName := fmt.Sprintf("MG DS Metric %d", i+1)
+		eventKey := fmt.Sprintf("mg-ds-event-%d", i+1)
+		isNumeric := false
+		metricBody := ldapi.MetricPost{
+			Name:      &metricName,
+			Key:       metricKey,
+			Kind:      "custom",
+			EventKey:  &eventKey,
+			IsNumeric: &isNumeric,
+		}
+		if _, _, err := client.ld.MetricsApi.PostMetric(client.ctx, project.Key).MetricPost(metricBody).Execute(); err != nil {
+			return nil, err
+		}
 	}
 
 	groupKey := "mg-ds-group"
@@ -55,7 +58,8 @@ func testAccDataSourceMetricGroupScaffold(client *Client, beta *Client, projectK
 		MaintainerId: maintainerID,
 		Tags:         []string{"test"},
 		Metrics: []ldapi.MetricInMetricGroupInput{
-			{Key: metricKey, NameInGroup: ""},
+			{Key: metricKeys[0], NameInGroup: ""},
+			{Key: metricKeys[1], NameInGroup: ""},
 		},
 		Description: ldapi.PtrString("a metric group to test the terraform data source"),
 	}
