@@ -67,11 +67,12 @@ jobs:
             - Endpoint summary for the family: ./family-slice.json (repo root).
               This is input context only — read it, but do NOT commit it.
             - Full OpenAPI spec (for schemas): https://app.launchdarkly.com/api/v2/openapi.json
-            - Follow the repository's terraform-provider-add-resource skill (Steps 0-10)
-              and the conventions in CLAUDE.md exactly: keys.go constants, framework
-              nested attributes (never blocks), helpers from framework_helpers.go,
-              patch helpers, handleLdapiErr wrapping, acceptance-test CI matrix entry,
-              docs templates.
+            - Read .claude/skills/terraform-provider-add-resource/SKILL.md and its
+              references/patterns.md (both vendored into this repo), and follow that
+              playbook's Steps 0-10 exactly. Also obey the conventions in CLAUDE.md:
+              keys.go constants, framework nested attributes (never blocks), helpers
+              from framework_helpers.go, patch helpers, handleLdapiErr wrapping,
+              acceptance-test CI matrix entry, docs templates.
             - Use the generated API client (github.com/launchdarkly/api-client-go/v22)
               for all API calls. If the client lacks this surface, stop and report that
               instead of hand-rolling HTTP.
