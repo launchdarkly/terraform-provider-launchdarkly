@@ -61,7 +61,7 @@ func (p *launchdarklyProvider) Schema(_ context.Context, _ provider.SchemaReques
 			},
 			MAX_CONCURRENCY: schema.Int64Attribute{
 				Optional:    true,
-				Description: "The maximum number of concurrent API requests the provider may make to LaunchDarkly. Defaults to `1`, which matches previous provider behavior and avoids hitting API rate limits. If your account has rate limit headroom, increasing this can significantly speed up plans and refreshes on large configurations. Requests that exceed your account's rate limit return `429` responses, which the provider retries automatically with backoff based on LaunchDarkly's rate limit headers.",
+				Description: "The maximum number of concurrent API requests the provider makes to LaunchDarkly. Defaults to `1`. Increase this value to speed up plan and refresh operations on large configurations. Higher values make it more likely that requests exceed your account's API rate limit. If a request exceeds the rate limit, LaunchDarkly returns a `429` response and the provider retries the request automatically.",
 				Validators: []validator.Int64{
 					int64validator.AtLeast(1),
 				},
