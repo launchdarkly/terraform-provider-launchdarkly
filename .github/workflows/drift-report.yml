@@ -3,18 +3,18 @@
 #
 # Diffs the endpoint families of LaunchDarkly's public OpenAPI spec against the
 # resources registered in the provider, using the curated mapping at
-# scripts/driftreport/mapping.yaml. On drift, opens (or updates) a single
-# tracking issue labeled `api-drift`.
+# scripts/driftreport/mapping.yaml. On drift, posts to a private Slack channel
+# via the SLACK_DRIFT_WEBHOOK_URL secret. This repo is PUBLIC, so internal
+# drift tracking must not use GitHub issues.
 name: API drift report
 
 on:
-  schedule:
-    - cron: "0 8 * * 1" # weekly, Monday 08:00 UTC (default branch only)
+  # No `schedule:` yet — GitHub fires cron only on the default branch, and this
+  # work lives on preview-v3. Add a weekly `schedule:` once v3 becomes `main`.
   workflow_dispatch: # manual runs against any branch
 
 permissions:
   contents: read
-  issues: write
 
 jobs:
   drift-report:
@@ -47,18 +47,21 @@ jobs:
         with:
           name: drift-report
           path: drift-report.md
-      - name: Open or update tracking issue
+      # Notify a private Slack channel on drift. The full report stays in the
+      # step summary + uploaded artifact (one click from run_url); the message
+      # carries only scalar fields so the JSON payload can't be broken by
+      # markdown in the report. The Slack Workflow Builder trigger behind
+      # SLACK_DRIFT_WEBHOOK_URL should map these variables: message, repo,
+      # run_url.
+      - name: Notify Slack on drift
         if: steps.drift.outputs.drift == 'true'
-        env:
-          GH_TOKEN: ${{ github.token }}
-          GH_REPO: ${{ github.repository }}
-        run: |
-          gh label create api-drift --description "Provider lags behind the public API" --color D93F0B --force
-          existing=$(gh issue list --label api-drift --state open --json number --jq '.[0].number // empty')
-          title="API coverage drift detected ($(date -u +%Y-%m-%d))"
-          if [ -n "$existing" ]; then
-            gh issue comment "$existing" --body-file drift-report.md
-            echo "Updated existing issue #$existing"
-          else
-            gh issue create --title "$title" --label api-drift --body-file drift-report.md
-          fi
+        uses: slackapi/slack-github-action@485a9d42d3a73031f12ec201c457e2162c45d02d # v2.0.0
+        with:
+          webhook: ${{ secrets.SLACK_DRIFT_WEBHOOK_URL }}
+          webhook-type: webhook-trigger
+          payload: |
+            {
+              "message": "API coverage drift detected — the provider lags behind the public API. Review the report and decide whether to scaffold.",
+              "repo": "${{ github.repository }}",
+              "run_url": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            }
