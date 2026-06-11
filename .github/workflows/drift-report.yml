@@ -1,0 +1,96 @@
+# API-coverage drift report (stage 1 of the autogen pipeline — see
+# .claude/plans/AUTOGEN_PIPELINE.md).
+#
+# Diffs the endpoint families of LaunchDarkly's public OpenAPI spec against the
+# resources registered in the provider, using the curated mapping at
+# scripts/driftreport/mapping.yaml. On drift, posts to a private Slack channel
+# via the SLACK_DRIFT_WEBHOOK_URL secret. This repo is PUBLIC, so internal
+# drift tracking must not use GitHub issues.
+name: API drift report
+
+on:
+  # This file lives on `main` only so GitHub registers the workflow_dispatch
+  # trigger (dispatch requires the workflow on the default branch). The tool
+  # itself always runs against the v3 line via the pinned checkout below.
+  # No `schedule:` yet — add a weekly cron once v3 becomes `main` and the
+  # checkout pin is dropped.
+  workflow_dispatch: # manual runs only
+
+permissions:
+  contents: read
+
+jobs:
+  drift-report:
+    name: Drift report
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          # All autogen work targets the v3 line. Without this pin a dispatch
+          # from main would enumerate the v2 (SDKv2) provider against the spec
+          # and report garbage drift. Drop the pin when v3 becomes `main`.
+          ref: preview-v3
+      - uses: actions/setup-go@41dfa10bad2bb2ae585af6ee5bb4d7d973ad74ed # v5.1.0
+        with:
+          go-version-file: "go.mod"
+          cache: true
+      - run: go mod download
+      # Build first: `go run` collapses the tool's exit code (2 = drift) to 1.
+      - run: go build -o /tmp/driftreport ./scripts/driftreport
+      - name: Run drift report
+        id: drift
+        run: |
+          set +e
+          /tmp/driftreport -out drift-report.md
+          code=$?
+          set -e
+          if [ "$code" -ne 0 ] && [ "$code" -ne 2 ]; then
+            echo "driftreport failed with exit code $code" >&2
+            exit "$code"
+          fi
+          drift=$([ "$code" -eq 2 ] && echo true || echo false)
+          echo "drift=$drift" >> "$GITHUB_OUTPUT"
+          # PUBLIC-REPO SAFETY: this run's logs/summary are world-readable, so the
+          # report body must NOT land here. Summary states only whether drift was
+          # found; the detail goes to the private Slack channel. drift-report.md
+          # stays on the ephemeral runner (never uploaded as an artifact).
+          if [ "$drift" = "true" ]; then
+            echo "Drift detected — full report sent to the private Slack channel." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "No drift detected." >> "$GITHUB_STEP_SUMMARY"
+          fi
+      # Build the Slack payload with jq so the report markdown is correctly
+      # JSON-escaped (quotes/newlines/backticks can't break the payload).
+      # Truncated to stay under Slack's ~4000-char webhook-variable limit;
+      # full detail is one re-dispatch away.
+      - name: Build Slack payload
+        id: slack_payload
+        if: steps.drift.outputs.drift == 'true'
+        run: |
+          limit=3500
+          report="$(head -c "$limit" drift-report.md)"
+          if [ "$(wc -c < drift-report.md)" -gt "$limit" ]; then
+            report="${report}"$'\n\n…(truncated — re-dispatch the workflow for the full report)'
+          fi
+          payload="$(jq -nc \
+            --arg message "API coverage drift detected — the provider lags behind the public API. Review and decide whether to scaffold." \
+            --arg repo "$GITHUB_REPOSITORY" \
+            --arg run_url "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" \
+            --arg report "$report" \
+            '{message: $message, repo: $repo, run_url: $run_url, report: $report}')"
+          {
+            printf '%s\n' 'payload<<SLACK_PAYLOAD_EOF'
+            printf '%s\n' "$payload"
+            printf '%s\n' 'SLACK_PAYLOAD_EOF'
+          } >> "$GITHUB_OUTPUT"
+      # Notify a private Slack channel on drift. The Workflow Builder trigger
+      # behind SLACK_DRIFT_WEBHOOK_URL should declare these Text variables:
+      # message, repo, run_url, report.
+      - name: Notify Slack on drift
+        if: steps.drift.outputs.drift == 'true'
+        uses: slackapi/slack-github-action@485a9d42d3a73031f12ec201c457e2162c45d02d # v2.0.0
+        with:
+          webhook: ${{ secrets.SLACK_DRIFT_WEBHOOK_URL }}
+          webhook-type: webhook-trigger
+          payload: ${{ steps.slack_payload.outputs.payload }}
