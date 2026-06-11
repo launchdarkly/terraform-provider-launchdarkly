@@ -53,7 +53,9 @@ jobs:
           # Write the slice into the workspace so the agent's repo-scoped file
           # tools can read it (an absolute /tmp path may be outside their scope).
           /tmp/driftreport -family "${{ inputs.family }}" -out "$GITHUB_WORKSPACE/family-slice.json"
-          cat "$GITHUB_WORKSPACE/family-slice.json"
+          # Public repo: don't print the slice into world-readable logs (same
+          # discipline as the drift report). Log only a size/path-count summary.
+          echo "family-slice.json written ($(wc -c < "$GITHUB_WORKSPACE/family-slice.json") bytes, $(jq '.paths | length' "$GITHUB_WORKSPACE/family-slice.json") paths)"
       - name: Run scaffolding agent
         uses: anthropics/claude-code-action@0f97b95b6536c26e5f6bd90faec370d41695beca # v1
         with:

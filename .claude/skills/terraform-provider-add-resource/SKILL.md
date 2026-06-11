@@ -1,30 +1,37 @@
 ---
 name: terraform-provider-add-resource
 description: Implement a new resource (and optionally data source) in the LaunchDarkly Terraform provider source code. Use when the user asks to implement a new Terraform resource, add Terraform support for a LaunchDarkly feature, scaffold a new resource, or extend the provider with new resource types. Also use when the user says "add resource", "new resource", "implement resource", or references the terraform-provider-launchdarkly repo in the context of building something new. Do NOT use when the user wants to use an existing resource in their Terraform config — this skill is for provider development only.
-compatibility: Must run from within the terraform-provider-launchdarkly repository. Requires Go (version per go.mod), make, and gofmts on PATH.
+compatibility: Must run from within the terraform-provider-launchdarkly repository on the v3 (plugin-framework) line. Requires Go (version per go.mod), make, and gofmts on PATH.
 metadata:
   author: launchdarkly
-  version: "1.1.0"
+  version: "2.0.0"
 ---
 
-# Add a New Terraform Provider Resource
+# Add a New Terraform Provider Resource (plugin framework / v3 line)
 
-Implement a new resource (and optional data source) in the LaunchDarkly Terraform provider. See [references/patterns.md](references/patterns.md) for full code templates.
+Implement a new resource (and optional data source) in the LaunchDarkly Terraform provider. **This provider uses terraform-plugin-framework** (protocol v6) — there is no SDKv2 code on this line. Do not use `*schema.Resource`, `schema.ResourceData`, `d.Get`/`d.Set`, `ResourcesMap`, `CustomizeDiff`, or `ValidateDiagFunc`; those are SDKv2 idioms and will not compile here.
+
+Instead of code templates, [references/patterns.md](references/patterns.md) points at **canonical in-repo exemplar files** — read those before writing code; they are guaranteed-compiling, current idiom.
 
 ## Repository layout
 
 ```
 terraform-provider-launchdarkly/
   launchdarkly/
-    provider.go                              # Resource & data source registration
-    keys.go                                  # Schema field name constants (//gofmts:sort)
-    config.go                                # Client config, newBetaClient()
-    helper.go                                # Shared utilities (handleLdapiErr, isStatusNotFound, splitID, etc.)
-    resource_launchdarkly_<name>.go          # Resource CRUD
-    data_source_launchdarkly_<name>.go       # Data source (read-only)
-    <name>_helper.go                         # API wrappers, shared read logic, custom structs
+    plugin_provider.go                       # Resource & data source registration (Resources()/DataSources() lists)
+    keys.go                                  # Schema attribute name constants (//gofmts:sort block)
+    config.go                                # Client config, newClient/newBetaClient, withConcurrency
+    helper.go                                # patchReplace/patchAdd/patchRemove, handleLdapiErr, isStatusNotFound
+    framework_helpers.go                     # client wiring + type conversion helpers (see Step 2)
+    framework_validators.go                  # keyValidator, idValidator, tagValidator, ...
+    framework_json_helpers.go                # jsonStringValidator, jsonNormalizePlanModifier
+    framework_schema_compat.go               # Upjet embedded-schema shim (deprecated attrs only)
+    resource_<name>_framework.go             # Resource implementation
+    data_source_<name>_framework.go          # Data source implementation
+    <name>_helper.go                         # Optional: shared API wrappers / conversion logic
     resource_launchdarkly_<name>_test.go     # Acceptance tests for resource
     data_source_launchdarkly_<name>_test.go  # Acceptance tests for data source
+    statecompat/                             # Wire-compat regression harness (don't break it)
   examples/resources/launchdarkly_<name>/
     resource.tf                              # HCL example
     import.sh                                # Import example
@@ -39,157 +46,122 @@ terraform-provider-launchdarkly/
 
 Before writing any code, determine:
 
-1. **Which API endpoints exist** — check the OpenAPI spec in `ld-openapi/` or `ld-docs-private/fern/openapi/`.
-2. **Whether a generated Go client exists** — check `api-client-go` for typed methods (e.g., `client.ld.ProjectsApi.GetProject()`). If the API is beta, use the generated beta methods (e.g., `client.ld.ViewsBetaApi` with `.LDAPIVersion("beta")`).
-3. **Public vs internal API** — the provider must only use public endpoints (`/api/v2/...`). Internal endpoints (`/internal/...`) are restricted to the LaunchDarkly UI.
-4. **CRUD vs singleton** — singletons (like flag templates) always exist per-project; you PUT to update and treat Delete as state-only removal.
-5. **Inspect generated constructors** — the Go client's `New<Type>()` constructors may set default values for optional fields (e.g. an empty string for `description`) that the API then rejects as invalid. After calling the constructor, nil out any fields you don't intend to send so they're omitted from the JSON request. Check the constructor source in `api-client-go` if you get unexpected 400 errors on create.
-   ```go
-   post := *ldapi.New<Resource>Post(name, key)
-   post.Description = nil // constructor sets "" — API rejects empty string
-   ```
-6. **Versioned entities** — some APIs create a new version on every update rather than modifying in place. For these: (a) the read function must select the highest `version` from the response items, not assume `items[0]` is latest; (b) GETs immediately after writes may briefly return a stale version due to eventual consistency. Use a **version-advancement retry loop** instead of a fixed sleep — store the previous version before the write, then poll the read until it advances. See the "Version-advancement retry" pattern in [references/patterns.md](references/patterns.md).
+1. **Which API endpoints exist** — check the public OpenAPI spec (`https://app.launchdarkly.com/api/v2/openapi.json`) or the endpoint-family slice you were given.
+2. **Whether a generated Go client exists** — check `github.com/launchdarkly/api-client-go/v22` for typed methods (e.g., `client.ld.ProjectsApi.GetProject()`). If the API is beta, use the generated beta methods with `.LDAPIVersion("beta")`. **If the v22 client lacks the surface, stop and report it — never hand-roll HTTP.**
+3. **Public vs internal API** — the provider must only use public endpoints (`/api/v2/...`).
+4. **CRUD vs singleton** — singletons always exist per-project; you PUT to update and treat Delete as state-only removal.
+5. **Inspect generated constructors** — `New<Type>()` constructors may set defaults for optional fields (e.g. `description = ""`) that the API rejects. After calling the constructor, nil out fields you don't intend to send. Check the constructor source if you get unexpected 400s on create.
+6. **Versioned entities** — some APIs create a new version on every update. For these: read the highest `version` from the response items (never assume `items[0]`), and use a version-advancement retry loop after writes (see patterns.md).
 
 ## Step 1: Add schema constants to `keys.go`
 
-Add new field name constants. The file uses `//gofmts:sort` — run `make fmt` after editing to re-sort. Constants match their snake_case HCL attribute names.
+Every attribute name is a `const` in the `//gofmts:sort` block — **never inline a string literal for a schema key**. Constant name equals its value (snake_case). Run `make fmt` after editing to re-sort. The `tfsdk:` struct tags hold the same wire identifier.
 
-## Step 2: Create the helper file (`<name>_helper.go`)
+## Step 2: Model, schema, and helpers
 
-Contains shared logic used by both the resource and data source. See [references/patterns.md](references/patterns.md) for full templates.
+Each resource lives in `resource_<name>_framework.go` and consists of:
 
-- **Shared schema function** — `base<Name>Schema(isDataSource bool)`. Use `Computed: isDataSource` for fields that are Required in the resource but read-only in the data source. Call `removeInvalidFieldsForDataSource(schemaMap)` inside the schema function when `isDataSource` is true, rather than in the data source file.
-- **Shared read logic** — `<name>Read(ctx, d, meta, isDataSource)`. Handle 404 by removing from state (resources) or erroring (data sources).
-- **API wrappers** — Always wrap calls in `client.withConcurrency()` for rate limiting. Two patterns: generated client (preferred) or beta API (add `.LDAPIVersion("beta")`).
-- **Payload builder** — For resources that PUT/POST structured bodies.
-- **Mutually exclusive fields** — When two Optional fields are mutually exclusive (e.g. an inline config vs. a reference key, or two alternative identifiers for the same logical owner), add `ConflictsWith` to both fields. This gives users a clear validation error at plan time instead of an opaque API error. **Always clear both sides in the read function before setting the one returned by the API**, otherwise switching from variant A to variant B leaves stale state on A and produces a perpetual diff. See the "Mutually exclusive fields (clear-both-then-set)" pattern in [references/patterns.md](references/patterns.md).
-- **Fields the API does not return** — If the API omits a field on GET (common for write-only association lists), do **not** call `d.Set(FIELD, ...)` for it on read. Skipping the set preserves the user's config value and prevents a perpetual diff every plan. Add a comment in the schema `Description` and in the read function explaining why, so future contributors don't "fix" it by adding the missing `d.Set`.
-- **Cross-field validation** — When a field is only meaningful in combination with another field, use `CustomizeDiff` on the resource definition. Prefer `CustomizeDiff` over `RequiredWith` when the dependency is one-directional (A requires B, but B doesn't require A).
-- **Prefer `ValidateDiagFunc` over `ValidateFunc`** — The older `ValidateFunc` is deprecated. Use `validation.ToDiagFunc()` to wrap legacy validators. This also ensures `removeInvalidFieldsForDataSource` correctly clears validators on Computed fields (it clears `ValidateDiagFunc` but not `ValidateFunc`).
-- **JSON-encoded fields** — For API fields that are `map[string]interface{}`, use `schema.TypeString` with the helpers in `json_helper.go`:
-  - `ValidateDiagFunc: validateJsonStringDiagFunc()` — validates input is valid JSON (use `validateJsonSchemaStringDiagFunc()` if it must also be valid JSON Schema, e.g. tool input schemas).
-  - `DiffSuppressFunc: suppressEquivalentJsonDiffs` — prevents false diffs from key ordering.
-  - `jsonStringToMap()` / `mapToJsonString()` for converting between HCL and the API payload.
-  - For data sources, wrap both with `emptyValueIfDataSource(fn, isDataSource)` so they're nilled on Computed fields and don't trip the SDK's "validators on computed fields" check.
-  - When the API returns synthetic defaults inside the JSON object (e.g. an "empty" object full of zero-value sub-fields), strip them before `d.Set` to avoid persistent diffs — see the "Empty-default stripper" pattern in [references/patterns.md](references/patterns.md).
+- A **resource struct** holding `client *Client`, with interface assertions:
+  ```go
+  var (
+      _ resource.Resource                = &<Name>Resource{}
+      _ resource.ResourceWithImportState = &<Name>Resource{}
+  )
+  ```
+- A **model struct** with `types.*` fields and `tfsdk:` tags (`types.String`, `types.Bool`, `types.Set`, `types.List`, `types.Object`).
+- `Metadata` (sets `req.ProviderTypeName + "_<name>"`), `Schema`, `Configure` (one-liner: `r.client = configureResourceClient(req, resp)`), CRUD methods, `ImportState`.
 
-## Step 3: Create the resource file (`resource_launchdarkly_<name>.go`)
+Schema rules:
 
-See [references/patterns.md](references/patterns.md) for the full skeleton.
+- **All nested structures are `*NestedAttribute`** (`ListNestedAttribute` / `SetNestedAttribute` / `SingleNestedAttribute`). The provider has **zero** `schema.Blocks` — do not add one. User HCL is `name = { ... }` / `name = [{ ... }]`.
+- **`Default` requires `Computed: true`** — the framework enforces it; any attribute with `Default:` must also be `Computed`.
+- Identity fields (`project_key`, `key`) get `PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()}` (framework's ForceNew) and a description noting the replacement behavior.
+- Computed `id` gets `stringplanmodifier.UseStateForUnknown()`.
+- Validators come from `framework_validators.go` (`keyValidator()`, `idValidator()`, `tagValidator()`, `stringLenBetween(...)`) and `terraform-plugin-framework-validators` (e.g. `setvalidator.ValueStringsAre(...)`, `stringvalidator.OneOf(...)`).
+- **JSON-encoded fields** (API `map[string]interface{}`): use `schema.StringAttribute` with `Validators: []validator.String{jsonStringValidator{}}` and `PlanModifiers: []planmodifier.String{jsonNormalizePlanModifier{}}` (suppresses key-ordering diffs). See `resource_ai_tool_framework.go`.
+- **Cross-field validation**: implement `resource.ResourceWithConfigValidators` or `ValidateConfig`; for plan-time dependencies use resource-level `ModifyPlan` (see `resource_access_token_framework.go`). Prefer warnings over hard errors when the check can false-positive on whole-stack destroys.
 
-Every resource needs: `resource<Name>()` returning `*schema.Resource`, plus CRUD + Exists + Import functions.
+Conversion helpers in `framework_helpers.go` — use these, don't reinvent:
 
-CRUD behavior:
-- **Create**: Call API, set `d.SetId(...)`, delegate to Read.
-- **Read**: Delegate to shared `<name>Read(ctx, d, meta, false)`.
-- **Update**: Build a patch from `d.HasChange(...)` checks, call API, delegate to Read.
-- **Delete**: Call API. For singletons, just `d.SetId("")` (state-only removal). Handle "still in use" and "cannot delete last" errors gracefully — see **Delete ordering** in Common gotchas.
-- **Exists**: Return `(false, nil)` on 404, `(true, nil)` on success.
-- **Import**: Parse composite ID with `splitID(id, n)`, populate key fields.
+- `stringSliceFromSet` / `setFromStringSlice` / `stringSliceFromList` / `listFromStringSlice`
+- **Null-vs-empty trio for Optional attrs** (critical for plan-apply consistency):
+  - `stringValueOrNullFromPointer(p)` — Optional-only string set from an API pointer.
+  - `setFromStringSliceOrNull(ctx, vals)` — Optional-only set where empty must read as null.
+  - `setFromStringSlicePreservingPlan(ctx, vals, existing)` / `listFromStringSlicePreservingPlan(...)` — Optional-only collections where an explicit `attr = []` in config must round-trip as empty, not null. Pick by attribute kind; choosing wrong trips "Provider produced inconsistent result after apply".
+- `stringPointerFromAttr`, `stringValueFromPointer`, `mapStringFromAttr`
+- `addLdapiError(&resp.Diagnostics, "Failed to ...", err)` — wraps `handleLdapiErr` so API response bodies surface in diagnostics. Use it for every API error.
 
-**`GetOk` zero-value trap**: `d.GetOk()` returns `ok=false` for Go zero-values (`false`, `""`, `0`). This means updates from `true→false` or `"something"→""` are silently dropped.
+A separate `<name>_helper.go` is only needed when the resource and data source share non-trivial conversion logic.
 
-In **Update**, use `d.HasChange()` + `d.Get()` instead of `d.GetOk()`:
-```go
-if d.HasChange(FIELD_NAME) {
-    val := d.Get(FIELD_NAME).(bool)
-    patch.FieldName = &val
-}
-```
+## Step 3: CRUD methods
 
-In **Create**, `d.HasChange()` is not available (no prior state). For Optional bool fields where an explicit `false` must be sent to the API (not just omitted), use `d.Get()` directly and send the value unconditionally when a related field is set, or scope it within a parent field's `GetOk` check:
-```go
-if v, ok := d.GetOk(PARENT_FIELD); ok {
-    parentVal := v.(string)
-    post.ParentField = &parentVal
-    // Always send the bool — d.Get returns false for unset, which is the correct default
-    boolVal := d.Get(BOOL_FIELD).(bool)
-    post.BoolField = &boolVal
-}
-```
+Read `resource_webhook_framework.go` first — it is the canonical compact example (300 lines, full lifecycle). For project-scoped resources read `resource_metric_framework.go`.
 
-**Eventual consistency for versioned entities**: If the API creates new versions on write (rather than updating in place), the GET may briefly return a stale version. Prefer a **version-advancement retry loop** over a fixed sleep — record the previous `version` before the write, then poll the read until the version advances (or a max-attempt cap fires). See the "Version-advancement retry" pattern in [references/patterns.md](references/patterns.md). Use a fixed `time.Sleep` only as a last-resort fallback when no version field is exposed.
+- **Create**: `req.Plan.Get(ctx, &plan)` → build the ldapi post struct from `plan.<Field>.ValueString()` etc. → call API inside `r.client.withConcurrency(r.client.ctx, func() error { ... })` → populate computed fields → re-read into the model → `resp.State.Set(ctx, &plan)`.
+- **Read**: `req.State.Get(ctx, &data)` → shared `readIntoModel(ctx, ..., &data, &resp.Diagnostics)` → on 404, set the ID null in the model and `resp.State.RemoveResource(ctx)`; never error a resource read on 404.
+- **Update**: get both `plan` and `state`; build `[]ldapi.PatchOperation` with `patchReplace` / `patchAdd` / `patchRemove` (from `helper.go`); compare `plan.X.Equal(state.X)` to decide whether to include a patch op; call API; re-read; set state. There is no `d.HasChange` — `types` values compare with `.Equal()`.
+- **Delete**: `req.State.Get` → call delete API → on 404 (`isStatusNotFound(res)`) return cleanly. For singletons, just return (state removal is implicit).
+- **ImportState**: `resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)` for single-key IDs; for composite IDs split on `/` and set each attribute via `resp.State.SetAttribute`.
 
-**Transient delete errors**: Some APIs return non-deterministic 4xx errors on delete that succeed on retry — typically when an underlying rate limit or async cleanup leaks through as a synchronous error. If you confirm the failure mode is transient and bounded (i.e. the body always contains a recognizable phrase), detect it by checking `res.StatusCode` plus a body substring via `handleLdapiErr`, and wrap the delete in `retry.RetryContext` with a tight overall timeout (~45s) so genuinely permanent errors still surface quickly. Keep the body-substring match narrow — a broad match will hide real validation errors. See the "Transient delete retry" pattern in [references/patterns.md](references/patterns.md). **Do not add this preemptively** — only when an actual transient failure mode is observed.
+Checking optionals: `plan.Field.IsNull()` / `.IsUnknown()` before `.ValueString()`. The SDKv2 `GetOk` zero-value trap does not exist here — null, unknown, and zero are distinct states; handle null/unknown explicitly.
 
-ID format — composite keys joined by `/`:
-- Singletons: `d.SetId(projectKey)`
-- Two keys: `d.SetId(fmt.Sprintf("%s/%s", projectKey, resourceKey))`
-- Three keys: `d.SetId(fmt.Sprintf("%s/%s/%s", projectKey, envKey, flagKey))`
+**Computed + Sensitive nested fields**: a `ListNestedAttribute` mixing user-required and Computed-only sensitive fields trips "inconsistent values for sensitive attribute" on first Apply. `UseStateForUnknown` does NOT fix it — you need resource-level `ModifyPlan` marking the computed field Unknown for new elements.
 
-Error messages — always include what was attempted and which identifiers are involved:
-```go
-return diag.Errorf("failed to create <name> with key %q in project %q: %s", key, projectKey, handleLdapiErr(err))
-```
+**Eventual consistency for versioned entities**: prefer a version-advancement retry loop over fixed sleeps (see patterns.md).
 
-## Step 4: Create the data source file (`data_source_launchdarkly_<name>.go`)
+ID format — composite keys joined by `/`: singletons `projectKey`; two keys `projectKey/resourceKey`; three keys `projectKey/envKey/flagKey`.
 
-Every resource should have a corresponding data source unless there's a specific reason not to. Data sources allow users to reference existing resources without managing them.
+Error messages — include what was attempted and which identifiers were involved; always route API errors through `addLdapiError` so the response body is visible.
 
-Thin wrapper around shared read logic. The schema function handles `removeInvalidFieldsForDataSource` internally when `isDataSource` is true. See [references/patterns.md](references/patterns.md).
+## Step 4: Create the data source file (`data_source_<name>_framework.go`)
 
-## Step 5: Register in `provider.go`
+Every resource should have a corresponding data source unless there's a specific reason not to. Data sources are separate types implementing `datasource.DataSource` with their own model and `datasource/schema` schema (attributes that are Required on the resource are typically Required lookup keys here; everything else is Computed). There is no schema-sharing shim like SDKv2's `removeInvalidFieldsForDataSource` — write the data source schema explicitly. `Configure` uses `configureDataSourceClient`. A data source `Read` **errors** on 404 (unlike resources). See `data_source_metric_framework.go`.
 
-Add to `ResourcesMap` and `DataSourcesMap`. Keep entries in both maps alphabetically sorted — this makes diffs cleaner and avoids merge conflicts.
+## Step 5: Register in `plugin_provider.go`
+
+Add `New<Name>Resource` to the `Resources()` list and `New<Name>DataSource` to `DataSources()`. Keep both lists alphabetically sorted.
 
 ## Step 6: Create example files
 
-Create `examples/resources/launchdarkly_<name>/resource.tf` and `import.sh` (and a parallel `examples/data-sources/launchdarkly_<name>/data-source.tf` for the data source). These files are copy-pasted by real users and re-rendered into the auto-generated docs on the Terraform Registry — they're load-bearing, not throwaway.
+Create `examples/resources/launchdarkly_<name>/resource.tf` and `import.sh` (and a parallel `examples/data-sources/launchdarkly_<name>/data-source.tf`). These are copy-pasted by real users and re-rendered into Registry docs — load-bearing, not throwaway.
 
-**HCL conventions** — apply `terraform fmt` ordering and the conventions in [terraform-skill](https://github.com/antonbabenko/terraform-skill) (Anton Babenko). The high-impact rules:
+**HCL conventions** — apply `terraform fmt` ordering and the conventions in [terraform-skill](https://github.com/antonbabenko/terraform-skill). High-impact rules:
 
-- **Resource block ordering**:
-  1. `count` / `for_each` first (blank line after).
-  2. Identity / required arguments (`project_key`, `key`, `name`).
-  3. Other configuration arguments.
-  4. Nested blocks (e.g. `messages { ... }`, `variations { ... }`).
-  5. `tags` as the last real argument.
-  6. `depends_on` after `tags` (only when needed).
-  7. `lifecycle` at the very end (only when needed).
-- **Resource names** — match the existing provider convention: descriptive snake_case names (`launchdarkly_feature_flag.building_materials`), not the generic `"main"` / `"example"`. For singletons-per-example you can use `"this"` (Anton's convention) but the LD provider's existing examples lean descriptive — match what's already in `examples/`.
-- **Cross-resource references** — reference attributes (`launchdarkly_project.example.key`), don't hardcode keys. This shows users how dependency ordering works for free.
-- **Realistic values** — pick names/keys that read like a real user's config (`customer-assistant`, `building-materials`), not `foo` / `bar`. Examples ship to the Registry.
-- **`for_each` vs `count`** — if an example needs multiple instances, prefer `for_each = toset(...)` for stable addressing. Reserve `count = condition ? 1 : 0` for boolean toggles.
-- **Anti-patterns** — no hardcoded secrets/tokens; no `count` over a dynamic list; no `tags` mid-block; no `provider = ...` blocks (the example assumes the user's provider config).
+- **Attribute ordering**: `count`/`for_each` first; identity/required arguments; other arguments; nested attribute values (`messages = [{ ... }]`); `tags` last; `depends_on` after tags; `lifecycle` at the end.
+- **Nested attribute syntax**: this is v3 — nested structures are attributes, so examples use `name = { ... }` / `name = [{ ... }, ...]`, never `name { ... }` block syntax.
+- **Resource names** — descriptive snake_case (`launchdarkly_feature_flag.building_materials`), not `"main"`/`"example"`.
+- **Cross-resource references** — reference attributes (`launchdarkly_project.example.key`), don't hardcode keys.
+- **Realistic values** — names/keys that read like a real config, not `foo`/`bar`.
+- **Anti-patterns** — no hardcoded secrets; no `count` over a dynamic list; no `provider = ...` blocks.
 
-**Coverage** — the example should exercise every required attribute, the most common optional attributes, and at least one nested block / `ConflictsWith` variant if the resource has them. Don't list every optional field — that's what the auto-generated schema docs are for.
+**Coverage** — exercise every required attribute, the most common optional attributes, and at least one nested-attribute variant if the resource has one.
 
-**`import.sh`** — show the exact composite-key format the importer expects (e.g. `terraform import launchdarkly_<name>.example project-key/resource-key`). Match the separator (`/`) and arity to the resource's import implementation.
+**`import.sh`** — show the exact composite-key format the importer expects; match separator (`/`) and arity to the import implementation.
 
 ## Step 7: Create doc template (optional)
 
-Usually not needed — `make generate` auto-generates docs from schema descriptions and examples. Only create `templates/resources/<name>.md.tmpl` if you need custom doc layout. See [references/patterns.md](references/patterns.md) for the template syntax.
+Usually not needed — `make generate` auto-generates docs from schema `Description` strings and examples. Only create `templates/resources/<name>.md.tmpl` for custom layout. Never edit `docs/*.md` by hand.
 
-**Important:** Schema `Description` strings feed directly into the auto-generated docs that customers see on the Terraform Registry. Follow the LaunchDarkly documentation style guide (internal reference: https://launchdarkly.atlassian.net/wiki/spaces/TEC/pages/2414909482/Style+guide+tech+writing+and+documentation). Key rules:
-- Use sentence case, not title case.
-- Write descriptions as sentence fragments — no leading "The", no trailing period for single-sentence descriptions.
-- Use backtick formatting for field names, values, and code references (e.g., `` `completion` ``, `` `project_key` ``).
-- Be precise about what the field does, not just what it is. State the default value for optional fields, and the conditions under which an optional field is meaningful.
-- Use "A change in this field will force the destruction of the existing resource and the creation of a new one." for ForceNew fields (via `addForceNewDescription()`).
-- Avoid jargon — write for Terraform users, not LaunchDarkly engineers.
+`Description` strings feed Registry docs. Style rules:
+- Sentence case, not title case.
+- Sentence fragments — no leading "The", no trailing period for single-sentence descriptions.
+- Backticks for field names, values, code references.
+- State defaults for optional fields and the conditions under which an optional field is meaningful.
+- For RequiresReplace fields: "A change in this field will force the destruction of the existing resource and the creation of a new one."
+- Write for Terraform users, not LaunchDarkly engineers.
 
 Concrete before/after:
 - ❌ `"The mode of the resource."`
 - ✅ ``"The resource's mode. Must be one of `<value-a>`, `<value-b>`, or `<value-c>`. Defaults to `<value-a>`."``
-- ❌ `"Whether the field is inverted."`
-- ✅ ``"Whether to invert the metric so lower is better. Only meaningful when `<related_field>` is set."``
 
 ## Step 8: Write acceptance tests
 
-See [references/patterns.md](references/patterns.md) for full test scaffolds.
-
-- **Resource tests** use `resource.Test` (sequential, not `resource.ParallelTest`) with create, import, and update steps. Generate random project keys with `acctest.RandStringFromCharSet`. HCL configs must include a `launchdarkly_project` resource. The CI matrix already parallelizes across resource types — parallelizing within a type can cause rate-limit-induced failures. When tests in a single domain trip rate limits that bypass the standard retry client (for example, when one API call internally fans out to a chattier endpoint with its own quota), add a small **cooldown helper** and call it at the top of every test in that domain. See the "Shared test helpers and cooldown" pattern in [references/patterns.md](references/patterns.md), and always document the rate-limit reason in the helper's comment so future readers don't strip it.
-- **Data source tests** scaffold test data via the API directly (not Terraform), then use the data source to read it back. Data sources do not manage the lifecycle of remote objects.
-- **`CheckDestroy`** — Resource tests must include a `CheckDestroy` function that verifies the underlying resource is cleaned up (returns 404) after the test completes. Data source-only tests generally do not need `CheckDestroy` since data sources don't create or own remote objects. If you share a destroy checker between resource and data source tests, ensure it skips Terraform state entries whose addresses start with `data.`.
-- **Shared test helpers** — When multiple resource/data source test files in the same domain need the same project scaffold, extract a shared helper into a `<domain>_test_helpers_test.go` file. This eliminates duplicated project blocks across test config constants. Similarly, shared cooldown or destroy-check functions should live in one place, and any shared destroy helper that iterates Terraform state must skip `data.` addresses.
-- **Never use `ExpectNonEmptyPlan` to mask convergence issues** — If a resource doesn't converge after apply, that's a bug. Investigate whether the read is returning stale data, the API returns unexpected defaults, or the schema doesn't match the API response. Fix the root cause (e.g., sleep-before-read for eventual consistency, `DiffSuppressFunc` for semantic equivalence).
-- **Rate limiting in test HCL** — When a test template creates multiple independent resources under the same project (i.e. resources that don't reference each other), Terraform creates them concurrently within a single step. Add `depends_on` to serialize creation and avoid rate limiting:
-  ```hcl
-  resource "launchdarkly_<sibling>" "test" {
-      ...
-      depends_on = [launchdarkly_<other>.test]
-  }
-  ```
+- **Resource tests** use `resource.Test` (sequential, not `resource.ParallelTest`) with create, import, and update steps. Random project keys via `acctest.RandStringFromCharSet`. HCL configs include a `launchdarkly_project`. The CI matrix already parallelizes across resource types.
+- **Data source tests** scaffold test data via the API directly (not Terraform), then read it back through the data source.
+- **`CheckDestroy`** — resource tests verify the remote object 404s after the test. Shared destroy checkers must skip state addresses starting with `data.`.
+- **Account-singleton resources** (IP allowlist style): add a PreCheck hook that deletes the test's target identifiers first — LD reuses `409 optimistic_locking_error` for both races and duplicate rejection, so retries don't help.
+- **Never use `ExpectNonEmptyPlan` to mask convergence issues.** Non-convergence after apply is a bug — usually a null-vs-empty mismatch in the read (see the helper trio in Step 2), a missing plan modifier, or stale reads on versioned entities.
+- **Rate limiting in test HCL** — serialize creation of independent sibling resources with `depends_on`.
 
 ## Step 9: Add to CI test matrix
 
@@ -198,77 +170,55 @@ In `.github/workflows/test.yml`, add `TestAcc<Name>` to the matrix.
 ## Step 10: Build, format, generate, verify
 
 ```bash
-make fmt       # Format (gofmts for sorted constants + gofmt)
-make build     # Build provider binary (runs fmtcheck, then go install)
-make generate  # Regenerate docs from schema + examples
+make fmt       # gofmts (sorted constants) + gofmt
+make build     # fmtcheck, then go install
+make generate  # Regenerate docs from schema + examples (needs LAUNCHDARKLY_ACCESS_TOKEN + terraform on PATH)
 TF_ACC=1 go test ./launchdarkly -v -run TestAcc<Name> -timeout 120m
 ```
 
-**Re-run `make generate` after every schema change**, not just at the end. The CI `generate` job diffs the output and fails if docs are stale. This includes changes to `Description` strings, new fields, validation changes, and mode/enum updates.
+**Re-run `make generate` after every schema change** — CI diffs the output and fails if docs are stale. This includes `Description` string changes.
 
-**Always run `terraform plan` locally before pushing** — use the **terraform-provider-local-testing** skill to verify the provider works end-to-end. This catches schema validation errors (`InternalValidate`), reserved field names, and API payload issues that compilation alone misses.
+**Always run `terraform plan` locally before pushing** — use the **terraform-provider-local-testing** skill to verify end-to-end. This catches schema validation errors and API payload issues compilation misses.
 
 ## Self-review
 
-After Step 10 passes, run two passes of self-review before opening the PR:
+After Step 10 passes, before opening the PR:
 
-1. **HCL example review** — Step 6 already bakes in the high-impact conventions (block ordering, descriptive naming, realistic values, anti-patterns). Use the [`terraform-skill`](https://github.com/antonbabenko/terraform-skill) (Anton Babenko's general Terraform/OpenTofu skill) as the deeper-dive reference for anything Step 6 doesn't cover — variable validation patterns, version-constraint syntax, idioms for advanced HCL features (`try()`, `optional()`, `dynamic` blocks).
-2. **End-to-end provider validation** — invoke the **terraform-provider-local-testing** skill to build the provider, run `terraform plan` against a config that exercises the new resource + data source + import, and confirm `InternalValidate` passes.
-
-Only open the PR once both pass.
+1. **HCL example review** — Step 6 conventions; deeper reference: [`terraform-skill`](https://github.com/antonbabenko/terraform-skill).
+2. **End-to-end provider validation** — **terraform-provider-local-testing** skill: build, `terraform plan`/`apply` exercising resource + data source + import.
 
 ## Common gotchas
 
 ### Naming: match customer-facing terminology
-Use the name customers see in the UI and docs, not internal API names. Example: the API uses "flag defaults" but the feature is called "flag templates" in customer-facing docs, so the Terraform resource is `launchdarkly_flag_templates`.
+Use the name customers see in the UI and docs, not internal API names. Example: the API says "flag defaults" but customers see "flag templates", so the resource is `launchdarkly_flag_templates`.
 
 ### Singleton resources
-Some resources always exist per-project and cannot be truly created or deleted. For these:
-- **Create** = PUT (upsert) the singleton with desired values.
-- **Delete** = remove from Terraform state only (`d.SetId("")`), do not call a delete API.
-- **ID** = the project key (since there's only one per project).
-- Document this behavior clearly: "Destroying this resource only removes it from Terraform state."
+- **Create** = PUT (upsert) with desired values.
+- **Delete** = no API call; state removal only. Document: "Destroying this resource only removes it from Terraform state."
+- **ID** = the project key.
 
 ### Preserving fields you don't own
-If an API endpoint requires fields managed by a different Terraform resource, read the current value from the API first and pass it through unchanged. Example: the flag templates PUT endpoint requires `defaultClientSideAvailability`, which is owned by `launchdarkly_project`.
+If an endpoint requires fields managed by a different resource, read the current value first and pass it through unchanged.
 
 ### Tags
-Use the existing `tagsSchema()` helper. When reading tags from the API, handle nil by defaulting to an empty slice.
+`schema.SetAttribute` with `ElementType: types.StringType` and `setvalidator.ValueStringsAre(tagValidator())`. On read, use `setFromStringSlicePreservingPlan` so `tags = []` and absent-tags round-trip correctly.
 
-### ForceNew fields
-Fields like `project_key` and `key` that form the resource identity should be `ForceNew: true`. Use `addForceNewDescription()` to append the force-new note to the description.
+### RequiresReplace fields
+Identity fields (`project_key`, `key`) get `stringplanmodifier.RequiresReplace()` and the force-new sentence in their description.
 
 ### No-update resources
-If the API has no PATCH/PUT endpoint, omit `UpdateContext` from the resource. Terraform then requires `ForceNew: true` on **every mutable field** — including fields from shared helpers like `tagsSchema()`. Override the helper to add `ForceNew`:
-```go
-TAGS: func() *schema.Schema {
-    s := tagsSchema(tagsSchemaOptions{isDataSource: isDataSource})
-    if !isDataSource { s.ForceNew = true }
-    return s
-}(),
-```
+If the API has no PATCH/PUT, every mutable attribute needs `RequiresReplace()` — including tags.
 
-### Reserved field names
-Terraform reserves certain attribute names: `provider`, `count`, `for_each`, `lifecycle`, `depends_on`, and `provisioner`. If the API uses one of these as a field name, choose an alternative (e.g., `model_provider` instead of `provider`). The `InternalValidate` check catches this, but it only runs at plan time — not during compilation.
+### Reserved attribute names
+Terraform reserves `provider`, `count`, `for_each`, `lifecycle`, `depends_on`, `provisioner`. If the API uses one, rename (e.g. `model_provider` instead of `provider` — see `PROVIDER_NAME` in keys.go).
+
+### Upjet / embedded-schema compat
+Only relevant for `Deprecated:` attributes that Crossplane's Upjet may strip: use the helpers in `framework_schema_compat.go` (`isOmittedFrameworkAttrDiag`). Don't broaden the matchers.
 
 ### Delete ordering
-APIs may reject deletes when resources are still referenced (e.g. "Cannot delete the last `<child>`", "`<resource>` is still in use"). Handle these in the delete function:
-- **Parent-child cascading deletes**: If deleting the parent cascades to children, log a warning and return `nil` on "cannot delete last child" errors — the parent delete will clean up. See the "Last-child cascade delete" pattern in [references/patterns.md](references/patterns.md).
-- **Reference constraints**: Return a helpful error telling users to use Terraform resource references (not literal strings) so the dependency graph orders destruction correctly.
-- **Already deleted (404)**: Always check `isStatusNotFound(res)` and return early — the resource may have been deleted by a parent's cascade.
+APIs may reject deletes while resources are referenced:
+- **Parent-child cascade**: on "cannot delete the last `<child>`" log a warning and return cleanly — the parent delete cascades.
+- **Reference constraints**: error telling users to use Terraform resource references so the graph orders destruction.
+- **Already deleted**: check `isStatusNotFound(res)` and return early.
 
-```go
-if isStatusNotFound(res) {
-    return diags
-}
-errMsg := handleLdapiErr(err).Error()
-if strings.Contains(errMsg, "Cannot delete the last <child>") {
-    log.Printf("[WARN] cannot delete last %s %q — will be removed when parent is deleted", resourceType, key)
-    return diags
-}
-if strings.Contains(errMsg, "still in use") {
-    return diag.Errorf("failed to delete %q: still in use. Use a Terraform resource reference so Terraform can order destruction correctly.", key)
-}
-```
-
-**Note**: `handleLdapiErr` (not `err.Error()`) is required to surface the response body — `GenericOpenAPIError.Error()` only returns the HTTP status line. Use it anywhere you need to inspect a body substring.
+Use `handleLdapiErr` (via `addLdapiError`) anywhere you need the response body — `GenericOpenAPIError.Error()` only carries the status line.
