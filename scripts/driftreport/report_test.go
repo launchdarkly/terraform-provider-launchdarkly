@@ -188,6 +188,20 @@ func TestFamilySlice(t *testing.T) {
 	if _, err := familySlice([]byte(fixtureSpec), "No such family"); err == nil {
 		t.Error("unknown family should error")
 	}
+
+	// The synthetic <untagged> family must resolve the same untagged paths
+	// specFamilies reports, not look for a literal tag named "<untagged>".
+	untagged, err := familySlice([]byte(fixtureSpec), untaggedFamily)
+	if err != nil {
+		t.Fatalf("familySlice(%q) = %v, want untagged paths", untaggedFamily, err)
+	}
+	if err := json.Unmarshal(untagged, &got); err != nil {
+		t.Fatal(err)
+	}
+	if got.Tag != untaggedFamily || len(got.Paths["/api/v2/untagged-thing"]) != 1 {
+		t.Errorf("untagged slice = tag %q with %d ops for untagged-thing, want %q with 1",
+			got.Tag, len(got.Paths["/api/v2/untagged-thing"]), untaggedFamily)
+	}
 }
 
 func TestRegisteredTypes(t *testing.T) {

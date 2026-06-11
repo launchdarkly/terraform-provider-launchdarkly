@@ -50,8 +50,10 @@ jobs:
       - name: Extract endpoint-family context
         run: |
           go build -o /tmp/driftreport ./scripts/driftreport
-          /tmp/driftreport -family "${{ inputs.family }}" -out /tmp/family-slice.json
-          cat /tmp/family-slice.json
+          # Write the slice into the workspace so the agent's repo-scoped file
+          # tools can read it (an absolute /tmp path may be outside their scope).
+          /tmp/driftreport -family "${{ inputs.family }}" -out "$GITHUB_WORKSPACE/family-slice.json"
+          cat "$GITHUB_WORKSPACE/family-slice.json"
       - name: Run scaffolding agent
         uses: anthropics/claude-code-action@0f97b95b6536c26e5f6bd90faec370d41695beca # v1
         with:
@@ -62,7 +64,8 @@ jobs:
             the "${{ inputs.family }}" API endpoint family.
 
             Inputs:
-            - Endpoint summary for the family: /tmp/family-slice.json
+            - Endpoint summary for the family: ./family-slice.json (repo root).
+              This is input context only — read it, but do NOT commit it.
             - Full OpenAPI spec (for schemas): https://app.launchdarkly.com/api/v2/openapi.json
             - Follow the repository's terraform-provider-add-resource skill (Steps 0-10)
               and the conventions in CLAUDE.md exactly: keys.go constants, framework

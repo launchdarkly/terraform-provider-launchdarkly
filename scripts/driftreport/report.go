@@ -26,6 +26,11 @@ import (
 
 const providerTypeName = "launchdarkly"
 
+// untaggedFamily is the synthetic family name for operations the spec leaves
+// untagged. specFamilies and familySlice must agree on this sentinel so that
+// `driftreport -family "<untagged>"` returns the same paths the report lists.
+const untaggedFamily = "<untagged>"
+
 var specMethods = map[string]bool{
 	"get": true, "post": true, "put": true, "patch": true, "delete": true,
 }
@@ -120,7 +125,7 @@ func specFamilies(rawSpec []byte) (map[string][]string, error) {
 			}
 			tags := op.Tags
 			if len(tags) == 0 {
-				tags = []string{"<untagged>"}
+				tags = []string{untaggedFamily}
 			}
 			for _, tag := range tags {
 				if families[tag] == nil {
@@ -177,7 +182,11 @@ func familySlice(rawSpec []byte, tag string) ([]byte, error) {
 			if err := json.Unmarshal(rawOp, &op); err != nil {
 				return nil, fmt.Errorf("parsing operation %s %s: %w", method, path, err)
 			}
-			for _, t := range op.Tags {
+			tags := op.Tags
+			if len(tags) == 0 {
+				tags = []string{untaggedFamily}
+			}
+			for _, t := range tags {
 				if t == tag {
 					slice.Paths[path] = append(slice.Paths[path], operation{
 						Method:      strings.ToUpper(method),
