@@ -83,6 +83,7 @@ Schema rules:
 - Validators come from `framework_validators.go` (`keyValidator()`, `idValidator()`, `tagValidator()`, `stringLenBetween(...)`) and `terraform-plugin-framework-validators` (e.g. `setvalidator.ValueStringsAre(...)`, `stringvalidator.OneOf(...)`).
 - **JSON-encoded fields** (API `map[string]interface{}`): use `schema.StringAttribute` with `Validators: []validator.String{jsonStringValidator{}}` and `PlanModifiers: []planmodifier.String{jsonNormalizePlanModifier{}}` (suppresses key-ordering diffs). See `resource_ai_tool_framework.go`.
 - **Cross-field validation**: implement `resource.ResourceWithConfigValidators` or `ValidateConfig`; for plan-time dependencies use resource-level `ModifyPlan` (see `resource_access_token_framework.go`). Prefer warnings over hard errors when the check can false-positive on whole-stack destroys.
+- **Don't reach for `Computed: true` on user-settable attributes** — mark an Optional attribute Computed only when the API genuinely fills in a value the user didn't write (e.g. a server-assigned maintainer). Computed-when-it-needn't-be hides null-vs-empty read bugs behind unknown-plan semantics AND makes the attribute impossible to unset (null config keeps the prior state forever). House pattern for collections like `tags`: Optional-only + `setFromStringSlicePreservingPlan` (see webhook).
 
 Conversion helpers in `framework_helpers.go` — use these, don't reinvent:
 
