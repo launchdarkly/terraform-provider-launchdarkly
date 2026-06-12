@@ -2,6 +2,19 @@
 
 All notable changes to the LaunchDarkly Terraform Provider will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org).
 
+## [2.30.0](https://github.com/launchdarkly/terraform-provider-launchdarkly/compare/v2.29.0...v2.30.0) (2026-06-11)
+
+
+### Features
+
+* expose max_concurrency as an optional provider attribute ([#449](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/449)) ([20fb75e](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/20fb75ee5217fd188c4b7647faddac72452a5641))
+
+
+### Bug Fixes
+
+* disable Go cache in fork PR workflow to prevent cache poisoning ([#420](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/420)) ([6d0a5cc](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/6d0a5cc6be17adc93ca2b93a0b34e1cf8a828d39))
+* fix ip allowlist behaviour/tests ([#421](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/421)) ([5ddbb56](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/5ddbb5648211110e311652282afe7b25f0a107e3))
+
 ## [2.29.0](https://github.com/launchdarkly/terraform-provider-launchdarkly/compare/v2.28.0...v2.29.0) (2026-05-08)
 
 
