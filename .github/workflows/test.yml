@@ -103,7 +103,8 @@ jobs:
           - TestAccFlagTrigger
           - TestAccIpAllowlistConfig
           - TestAccIpAllowlistEntry
-          - TestAccMetric
+          - TestAccMetricGroup_
+          - TestAccMetric_
           - TestAccModelConfig
           - TestAccProject
           - TestAccRelayProxy
