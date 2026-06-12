@@ -101,7 +101,6 @@ func metricGroupSchemaAttributes() map[string]schema.Attribute {
 		},
 		TAGS: schema.SetAttribute{
 			Optional:    true,
-			Computed:    true,
 			ElementType: types.StringType,
 			Description: "Tags associated with the metric group.",
 			Validators: []validator.Set{
@@ -457,7 +456,9 @@ func (r *MetricGroupResource) readIntoModel(
 		data.MaintainerID = types.StringValue("")
 	}
 
-	tagsSet, d := setFromStringSlice(ctx, group.Tags)
+	// Optional-only Set attr: preserve the config's null-vs-empty intent so
+	// an omitted `tags` reads back as null, not an empty set.
+	tagsSet, d := setFromStringSlicePreservingPlan(ctx, group.Tags, data.Tags)
 	diags.Append(d...)
 	data.Tags = tagsSet
 
