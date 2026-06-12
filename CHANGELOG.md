@@ -2,6 +2,22 @@
 
 All notable changes to the LaunchDarkly Terraform Provider will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org).
 
+## [3.0.0-beta.3](https://github.com/launchdarkly/terraform-provider-launchdarkly/compare/v3.0.0-beta.2...v3.0.0-beta.3) (2026-06-12)
+
+
+### Features
+
+* add API-coverage drift report (autogen pipeline stage 1) ([#445](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/445)) ([13c2b21](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/13c2b21ab49aa6a8b0a533b9767571ec6622f2bd))
+* add scaffold-resource workflow (autogen pipeline stage 2 v0) ([#446](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/446)) ([3025320](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/3025320681b776291cc48e0d04e83e9886043a79))
+* expose max_concurrency as an optional provider attribute (preview-v3) ([#450](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/450)) ([59ed7ad](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/59ed7ad45f9b5fbdefc766ee88531e0b05dcdc46))
+* scaffold Metrics (beta) resource (autogen stage 2) ([#453](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/453)) ([3972d91](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/3972d91dbd5f485bf40dde75e3724bb687b77ec7))
+* ship migrate-tf-syntax binaries and v3 migration guide ([#448](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/448)) ([644e5d8](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/644e5d8e43587d373015b33e3874c6d8e788c99f))
+
+
+### Bug Fixes
+
+* **feature_flag:** demote prereq destroy plan check to a warning ([#451](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/451)) ([ed6e6b0](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/ed6e6b0679d156ca2d78222bb3ccd5536e1e3573))
+
 ## [3.0.0-beta.2](https://github.com/launchdarkly/terraform-provider-launchdarkly/compare/v3.0.0-beta.1...v3.0.0-beta.2) (2026-06-10)
 
 
