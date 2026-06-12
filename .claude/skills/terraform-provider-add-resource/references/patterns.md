@@ -95,6 +95,44 @@ For **Optional** (non-Computed) attributes the read must distinguish "user omitt
 
 See the read functions in `resource_webhook_framework.go` for all three in use.
 
+## Beta API model gaps (AdditionalProperties fallback)
+
+Beta endpoints evolve faster than the generated client. When a response's typed nested field is unexpectedly nil (e.g. `MaintainerRep.Member` while the live API returns `maintainer: {key, kind, _member}`), the unmodeled keys land in the struct's `AdditionalProperties` map — every generated model captures unknown JSON keys there. Pattern: try the typed field first, fall back to `AdditionalProperties`, so a future client regen takes over without a code change:
+
+```go
+func <name>MaintainerID(m ldapi.MaintainerRep) string {
+    if m.Member != nil && m.Member.GetId() != "" {
+        return m.Member.GetId()
+    }
+    if k, ok := m.AdditionalProperties["key"].(string); ok {
+        return k
+    }
+    return ""
+}
+```
+
+Real instance: `metricGroupMaintainerID` in `launchdarkly/metric_group_helper.go`. Always note the shape mismatch in a comment with the date it was observed.
+
+## Required fields with account-level defaults
+
+When a POST model requires a field (`json:` tag without `omitempty`) whose natural default is "the caller", resolve it at Create time rather than sending `""` (400) or documenting a server default that doesn't exist:
+
+```go
+if maintainerID == "" {
+    var me *ldapi.Member
+    err := r.client.withConcurrency(r.client.ctx, func() error {
+        var e error
+        me, _, e = r.client.ld.AccountMembersApi.GetMember(r.client.ctx, "me").Execute()
+        return e
+    })
+    // service tokens have no member — error must tell the user to set the field explicitly
+    ...
+    maintainerID = me.Id
+}
+```
+
+Real instance: metric group Create in `launchdarkly/resource_metric_group_framework.go`.
+
 ## Version-advancement retry (versioned entities)
 
 For APIs that create a new version per update (e.g. AI Config variations): record the entity's `version` before the write, then poll the read until the version advances, with a max-attempt cap. Never trust `items[0]` to be latest — select the highest `Version` from `Items[]`. Use a fixed `time.Sleep` only when no version field exists. Find the existing loop with `grep -rn "version" launchdarkly/resource_ai_config_variation_framework.go`.
