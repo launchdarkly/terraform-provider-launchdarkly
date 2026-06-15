@@ -3,9 +3,21 @@
 #
 # Diffs the endpoint families of LaunchDarkly's public OpenAPI spec against the
 # resources registered in the provider, using the curated mapping at
-# scripts/driftreport/mapping.yaml. On drift, posts to a private Slack channel
+# scripts/driftreport/mapping.yaml. On drift, posts to a PRIVATE Slack channel
 # via the SLACK_DRIFT_WEBHOOK_URL secret. This repo is PUBLIC, so internal
-# drift tracking must not use GitHub issues.
+# drift tracking must not use GitHub issues, artifacts, or step-summary detail.
+#
+# NOTIFICATION MODEL (one Slack message becomes several):
+#   1. a summary message (drift counts per category), then
+#   2. one message per NEW endpoint family, each carrying the family's paths and
+#      a one-click link + CLI to dispatch the stage-2 scaffold workflow for it,
+#   3. one message per partial family with UNCLAIMED operations (informational —
+#      stage 2 only scaffolds NEW resources, so these need a manual PR).
+# Messages are POSTed individually to a SINGLE generic Slack Workflow Builder
+# webhook trigger. That trigger must declare exactly two Text variables —
+# `title` and `body` — and a "Send a message" step into the private channel.
+# (`body` is Slack mrkdwn: <url|label> links render.) The stage-3 verify
+# workflow reuses the same trigger for its "ready for review" message.
 name: API drift report
 
 on:
@@ -42,7 +54,10 @@ jobs:
         id: drift
         run: |
           set +e
-          /tmp/driftreport -out drift-report.md
+          # JSON (not md): the notify step builds Slack messages from the
+          # structured report. The file stays on the ephemeral runner and is
+          # never uploaded or printed — it carries the internal roadmap.
+          /tmp/driftreport -format json -out drift-report.json
           code=$?
           set -e
           if [ "$code" -ne 0 ] && [ "$code" -ne 2 ]; then
@@ -51,46 +66,82 @@ jobs:
           fi
           drift=$([ "$code" -eq 2 ] && echo true || echo false)
           echo "drift=$drift" >> "$GITHUB_OUTPUT"
-          # PUBLIC-REPO SAFETY: this run's logs/summary are world-readable, so the
-          # report body must NOT land here. Summary states only whether drift was
-          # found; the detail goes to the private Slack channel. drift-report.md
-          # stays on the ephemeral runner (never uploaded as an artifact).
+          # PUBLIC-REPO SAFETY: this run's logs/summary are world-readable, so
+          # only the yes/no fact lands here. Detail goes to the private channel.
           if [ "$drift" = "true" ]; then
-            echo "Drift detected — full report sent to the private Slack channel." >> "$GITHUB_STEP_SUMMARY"
+            echo "Drift detected — detail sent to the private Slack channel." >> "$GITHUB_STEP_SUMMARY"
           else
             echo "No drift detected." >> "$GITHUB_STEP_SUMMARY"
           fi
-      # Build the Slack payload with jq so the report markdown is correctly
-      # JSON-escaped (quotes/newlines/backticks can't break the payload).
-      # Truncated to stay under Slack's ~4000-char webhook-variable limit;
-      # full detail is one re-dispatch away.
-      - name: Build Slack payload
-        id: slack_payload
-        if: steps.drift.outputs.drift == 'true'
-        run: |
-          limit=3500
-          report="$(head -c "$limit" drift-report.md)"
-          if [ "$(wc -c < drift-report.md)" -gt "$limit" ]; then
-            report="${report}"$'\n\n…(truncated — re-dispatch the workflow for the full report)'
-          fi
-          payload="$(jq -nc \
-            --arg message "API coverage drift detected — the provider lags behind the public API. Review and decide whether to scaffold." \
-            --arg repo "$GITHUB_REPOSITORY" \
-            --arg run_url "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" \
-            --arg report "$report" \
-            '{message: $message, repo: $repo, run_url: $run_url, report: $report}')"
-          {
-            printf '%s\n' 'payload<<SLACK_PAYLOAD_EOF'
-            printf '%s\n' "$payload"
-            printf '%s\n' 'SLACK_PAYLOAD_EOF'
-          } >> "$GITHUB_OUTPUT"
-      # Notify a private Slack channel on drift. The Workflow Builder trigger
-      # behind SLACK_DRIFT_WEBHOOK_URL should declare these Text variables:
-      # message, repo, run_url, report.
+      # Post one summary + one-per-family message to the private Slack channel.
+      # Each POST carries {title, body}; the Workflow Builder trigger renders
+      # them. PUBLIC-REPO SAFETY: family names / paths / operationIds are the
+      # internal roadmap — they are passed only to curl, NEVER echoed to the log.
       - name: Notify Slack on drift
         if: steps.drift.outputs.drift == 'true'
-        uses: slackapi/slack-github-action@485a9d42d3a73031f12ec201c457e2162c45d02d # v2.0.0
-        with:
-          webhook: ${{ secrets.SLACK_DRIFT_WEBHOOK_URL }}
-          webhook-type: webhook-trigger
-          payload: ${{ steps.slack_payload.outputs.payload }}
+        shell: bash
+        env:
+          WEBHOOK: ${{ secrets.SLACK_DRIFT_WEBHOOK_URL }}
+          REPO: ${{ github.repository }}
+          SERVER: ${{ github.server_url }}
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          JSON=drift-report.json
+          RUN_URL="$SERVER/$REPO/actions/runs/$RUN_ID"
+          ACTIONS_URL="$SERVER/$REPO/actions/workflows/scaffold-resource.yml"
+          LIMIT=3500
+          sent=0
+
+          # post_slack <title> <body>: POST one message to the Workflow Builder
+          # trigger. Truncates body to Slack's webhook-variable limit. Never
+          # echoes title/body (roadmap) to the world-readable log.
+          post_slack() {
+            local title="$1" body="$2" payload
+            if [ "${#body}" -gt "$LIMIT" ]; then
+              body="${body:0:$LIMIT}"$'\n\n…(truncated — re-dispatch for full detail)'
+            fi
+            payload="$(jq -nc --arg title "$title" --arg body "$body" '{title: $title, body: $body}')"
+            curl -sS -f --retry 3 --retry-connrefused --retry-delay 2 \
+              -X POST -H 'Content-Type: application/json' -d "$payload" "$WEBHOOK" >/dev/null
+            sent=$((sent + 1))
+          }
+
+          # 1) Summary — one tally line (zero categories dropped) + scaffoldable
+          # families + run link. The title carries the headline, so the body
+          # doesn't restate it.
+          summary_body="$(jq -r --arg run "$RUN_URL" '
+            def lbl($n; $one; $many): if $n > 0 then "\($n) \(if $n == 1 then $one else $many end)" else empty end;
+            ([ lbl(.new_families | length;         "new family";     "new families"),
+               lbl(.unclaimed_operations | length; "unclaimed op";   "unclaimed ops"),
+               lbl(.stale_families | length;        "stale family";  "stale families"),
+               lbl(.stale_operations | length;      "stale op claim"; "stale op claims"),
+               lbl(.unmapped_resources | length;    "unmapped resource"; "unmapped resources")
+             ] | join(" · ")) +
+            (if (.new_families | length) > 0 then "\nScaffoldable: " + ([.new_families[].tag] | join(", ")) else "" end) +
+            "\n<\($run)|drift run>"
+          ' "$JSON")"
+          post_slack "🔎 API coverage drift" "$summary_body"
+
+          # 2) One message per NEW family — scaffoldable via stage 2. Paths inline,
+          # scaffold link + CLI on one line.
+          while IFS= read -r fam; do
+            [ -n "$fam" ] || continue
+            tag="$(printf '%s' "$fam" | jq -r '.tag')"
+            paths="$(printf '%s' "$fam" | jq -r '[.paths[] | "`" + . + "`"] | join(" · ")')"
+            # shellcheck disable=SC2016  # backticks are literal Slack mrkdwn, not command subst
+            body="$(printf 'No provider resource yet. Paths: %s\n<%s|▶ Scaffold it> · `gh workflow run scaffold-resource.yml -f family='"'"'%s'"'"'`' \
+              "$paths" "$ACTIONS_URL" "$tag")"
+            post_slack "🆕 New API family: $tag" "$body"
+          done < <(jq -c '.new_families[]' "$JSON")
+
+          # 3) One message per partial family with UNCLAIMED ops — informational
+          # (stage 2 only scaffolds NEW resources, so no dispatch link).
+          while IFS= read -r tag; do
+            [ -n "$tag" ] || continue
+            ops="$(jq -r --arg t "$tag" '.unclaimed_operations[] | select(.tag == $t) | "• `\(.method) \(.path)` (`\(.operation_id)`)"' "$JSON")"
+            # shellcheck disable=SC2016  # backticks are literal Slack mrkdwn, not command subst
+            body="$(printf 'Modeled, but lagging these ops — extend the existing resource via a manual PR:\n%s' "$ops")"
+            post_slack "⚠️ Coverage gap: $tag" "$body"
+          done < <(jq -r '[.unclaimed_operations[].tag] | unique | .[]' "$JSON")
+
+          echo "Posted $sent Slack message(s)."
