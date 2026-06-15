@@ -4,20 +4,22 @@
 #
 # Statuses:
 #   covered — family is modeled by the listed resources/data sources
-#   partial — some endpoints modeled; note says what's missing
+#   partial — some endpoints modeled; requires per-resource operationId lists,
+#             plus ignored_operations (id + reason) for deliberately unmodeled
+#             endpoints and/or triage_operations (bare opIds; acknowledged,
+#             decision pending — listed in report, not drift). Any other spec
+#             operation in the family is drift.
 #   ignored — deliberately not an IaC surface; reason required
 #   triage  — acknowledged, coverage decision pending (listed in report, not drift)
 #
+# Resource entries are either a bare string (tag-level claim, covered families)
+# or {name, operations: [opId, ...]} (operation-level claim, partial families).
 # A spec tag missing from this file is reported as drift (new API family).
 version: 1
 families:
   - tag: AI Configs
-    status: covered
-    resources:
-      - launchdarkly_ai_config
-      - launchdarkly_ai_config_variation
-      - launchdarkly_ai_tool
-      - launchdarkly_model_config
+    status: ignored
+    reason: Two stray read-only analytics endpoints (AI tool references, agent-optimization runs). The AI Config CRUD surface is tagged AgentControl — see that entry.
 
   - tag: Access tokens
     status: covered
@@ -35,8 +37,81 @@ families:
     reason: Read-only usage metering/analytics, not a declarative IaC surface.
 
   - tag: AgentControl
-    status: triage
-    notes: Large new product area (26 paths). Prime candidate for the first stage-2 scaffolding pilot.
+    status: partial
+    resources:
+      - name: launchdarkly_ai_config
+        operations:
+          - postAIConfig
+          - getAIConfig
+          - patchAIConfig
+          - deleteAIConfig
+      - name: launchdarkly_ai_config_variation
+        operations:
+          - postAIConfigVariation
+          - getAIConfigVariation
+          - patchAIConfigVariation
+          - deleteAIConfigVariation
+      - name: launchdarkly_ai_tool
+        operations:
+          - postAITool
+          - getAITool
+          - patchAITool
+          - deleteAITool
+      - name: launchdarkly_model_config
+        operations:
+          - postModelConfig
+          - getModelConfig
+          - deleteModelConfig
+    ignored_operations:
+      - id: getAIConfigs
+        reason: List/index endpoint; the singular get covers declarative reads.
+      - id: getAIConfigQuickStats
+        reason: Read-only analytics, not declarative configuration.
+      - id: getAIConfigMetrics
+        reason: Read-only analytics, not declarative configuration.
+      - id: getAIConfigMetricsByVariation
+        reason: Read-only analytics, not declarative configuration.
+      - id: listModelConfigs
+        reason: List/index endpoint; the singular get covers declarative reads.
+      - id: listAITools
+        reason: List/index endpoint; the singular get covers declarative reads.
+      - id: listAIToolVersions
+        reason: Read-only version history, not declarative configuration.
+    triage_operations:
+      # AI Config targeting — declarative-adjacent, pairs with a future
+      # ai_config_environment-style resource.
+      - getAIConfigTargeting
+      - patchAIConfigTargeting
+      # Agent graphs — new product surface, no resource yet.
+      - listAgentGraphs
+      - postAgentGraph
+      - getAgentGraph
+      - patchAgentGraph
+      - deleteAgentGraph
+      # Agent optimizations — new product surface, no resource yet.
+      - listAgentOptimizations
+      - postAgentOptimization
+      - getAgentOptimization
+      - patchAgentOptimization
+      - deleteAgentOptimization
+      - listAgentOptimizationResults
+      - listAllAgentOptimizationResults
+      - postAgentOptimizationResult
+      - patchAgentOptimizationResult
+      - deleteAgentOptimizationRun
+      - listAgentOptimizationResultsByRunId
+      # Prompt snippets — plausible resource once the surface stabilizes.
+      - listPromptSnippets
+      - postPromptSnippet
+      - getPromptSnippet
+      - patchPromptSnippet
+      - deletePromptSnippet
+      - listPromptSnippetReferences
+      - listPromptSnippetVersions
+      # Restricted models — account-level allow/deny, plausible resource.
+      - postRestrictedModels
+      - deleteRestrictedModels
+    notes: Despite the tag name, this family carries the AI Config CRUD surface — the spec's "AI Configs" tag holds only two stray analytics endpoints. The four AI resources cover 15 of 49 ops; agent graphs/optimizations, prompt snippets, targeting, and restricted models are pending triage.
 
   - tag: Announcements
     status: triage
@@ -69,7 +144,27 @@ families:
   - tag: Contexts
     status: partial
     resources:
-      - launchdarkly_context_kind
+      - name: launchdarkly_context_kind
+        operations:
+          - getContextKindsByProjectKey
+          - putContextKind
+    ignored_operations:
+      - id: getContextAttributeNames
+        reason: Runtime context-attribute analytics, not declarative configuration.
+      - id: getContextAttributeValues
+        reason: Runtime context-attribute analytics, not declarative configuration.
+      - id: searchContextInstances
+        reason: Runtime context-instance data, not declarative configuration.
+      - id: getContextInstances
+        reason: Runtime context-instance data, not declarative configuration.
+      - id: deleteContextInstances
+        reason: Runtime context-instance data, not declarative configuration.
+      - id: searchContexts
+        reason: Runtime context-instance data, not declarative configuration.
+      - id: getContexts
+        reason: Runtime context-instance data, not declarative configuration.
+      - id: evaluateContextInstance
+        reason: Imperative flag-evaluation debugging endpoint, not declarative configuration.
     notes: context-kinds endpoints are covered; context instance/search endpoints are runtime data, intentionally unmodeled.
 
   - tag: Custom roles
@@ -172,9 +267,18 @@ families:
       - launchdarkly_metric
 
   - tag: Metrics (beta)
-    status: covered
+    status: partial
     resources:
-      - launchdarkly_metric_group
+      - name: launchdarkly_metric_group
+        operations:
+          - createMetricGroup
+          - getMetricGroup
+          - patchMetricGroup
+          - deleteMetricGroup
+    ignored_operations:
+      - id: getMetricGroups
+        reason: List/index endpoint; the singular get covers declarative reads.
+    notes: Promoted to operation-level after the metric-group pilot (PR #453) merged — dogfood entry for drift tool v2.
 
   - tag: OAuth2 Clients
     status: triage
@@ -243,10 +347,6 @@ families:
     reason: Legacy users API (superseded by contexts); runtime data.
 
   - tag: Users
-    status: ignored
-    reason: Legacy users API (superseded by contexts); runtime data.
-
-  - tag: Users (beta)
     status: ignored
     reason: Legacy users API (superseded by contexts); runtime data.
 
