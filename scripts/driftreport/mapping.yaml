@@ -15,6 +15,31 @@
 # Resource entries are either a bare string (tag-level claim, covered families)
 # or {name, operations: [opId, ...]} (operation-level claim, partial families).
 # A spec tag missing from this file is reported as drift (new API family).
+#
+# ─────────────────────────────────────────────────────────────────────────────
+# BLIND SPOTS — product surfaces with NO openapi.json tag (2026-06-15 audit of
+# launchdarkly.com/docs vs the live spec). This tool only sees the spec, so
+# "no drift" does NOT mean "fully covered" for these. They will only ever
+# surface here if/when LD adds public REST tags for them:
+#   - SSO / SAML / SCIM / domain verification (Okta, Entra, OneLogin, etc.) —
+#     SCIM is a separate API; SSO config is account/UI-level, not in the REST
+#     spec. Not Terraform-able via the v2 API today.
+#   - Observability product config (dashboards, alerts, service map, session
+#     replay, traces/logs). Spec carries only read-only `Insights * (beta)`
+#     tags (all ignored). No config tags yet — a real IaC gap until LD ships them.
+#
+# PRODUCT-PILLAR → FAMILY MAP (context for future scaffolding agents). The docs
+# home presents three product brands; mapping them to spec tags:
+#   - CodeControl (feature management): Feature flags, Flag triggers, Segments,
+#     Contexts, Scheduled changes, Projects, Environments.
+#   - AgentControl (AI): the `AgentControl` tag IS the AI Config CRUD surface
+#     (configs/variations/tools/model-configs) — NOT the near-empty `AI Configs`
+#     tag, which holds 2 stray analytics ops. Agent graphs/optimizations,
+#     prompt snippets, restricted models, targeting are triage_operations there.
+#   - Release Management: Release pipelines/policies/releases, Workflows,
+#     Workflow templates, Layers — ALL currently `triage`; highest-value
+#     cluster to promote next (named GA pillar, not experimental).
+# ─────────────────────────────────────────────────────────────────────────────
 version: 1
 families:
   - tag: AI Configs
