@@ -64,7 +64,7 @@ func run(specSource, mappingPath, outPath, format string) error {
 	if err != nil {
 		return err
 	}
-	families, err := specFamilies(rawSpec)
+	families, err := specOperations(rawSpec)
 	if err != nil {
 		return err
 	}

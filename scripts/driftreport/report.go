@@ -27,7 +27,7 @@ import (
 const providerTypeName = "launchdarkly"
 
 // untaggedFamily is the synthetic family name for operations the spec leaves
-// untagged. specFamilies and familySlice must agree on this sentinel so that
+// untagged. specOperations and familySlice must agree on this sentinel so that
 // `driftreport -family "<untagged>"` returns the same paths the report lists.
 const untaggedFamily = "<untagged>"
 
@@ -53,11 +53,47 @@ type Mapping struct {
 }
 
 type MappingFamily struct {
-	Tag       string   `yaml:"tag"`
-	Status    string   `yaml:"status"`
-	Resources []string `yaml:"resources,omitempty"`
-	Reason    string   `yaml:"reason,omitempty"`
-	Notes     string   `yaml:"notes,omitempty"`
+	Tag               string             `yaml:"tag"`
+	Status            string             `yaml:"status"`
+	Resources         []ResourceEntry    `yaml:"resources,omitempty"`
+	IgnoredOperations []IgnoredOperation `yaml:"ignored_operations,omitempty"`
+	TriageOperations  []string           `yaml:"triage_operations,omitempty"`
+	Reason            string             `yaml:"reason,omitempty"`
+	Notes             string             `yaml:"notes,omitempty"`
+}
+
+// ResourceEntry is one resource claim under a family. A bare YAML string is a
+// tag-level claim; the object shape additionally claims the specific
+// operationIds the resource implements (required for partial families).
+type ResourceEntry struct {
+	Name       string   `yaml:"name"`
+	Operations []string `yaml:"operations,omitempty"`
+}
+
+func (r *ResourceEntry) UnmarshalYAML(value *yaml.Node) error {
+	if value.Kind == yaml.ScalarNode {
+		return value.Decode(&r.Name)
+	}
+	// Alias the type to avoid recursing into this method.
+	type plain ResourceEntry
+	var p plain
+	if err := value.Decode(&p); err != nil {
+		return err
+	}
+	*r = ResourceEntry(p)
+	return nil
+}
+
+// IgnoredOperation marks a spec operation in a partial family as deliberately
+// unmodeled (bulk/UI-only/runtime endpoints). Mirrors the family-level
+// ignored-needs-reason rule.
+//
+// triage_operations is the op-level analogue of a triage family: acknowledged,
+// coverage decision pending. Triage ops are listed in the report but don't
+// fail the run, and need no reason — the pending decision is the point.
+type IgnoredOperation struct {
+	ID     string `yaml:"id"`
+	Reason string `yaml:"reason"`
 }
 
 func (m *Mapping) validate() error {
@@ -79,6 +115,67 @@ func (m *Mapping) validate() error {
 		if (f.Status == statusCovered || f.Status == statusPartial) && len(f.Resources) == 0 {
 			return fmt.Errorf("tag %q: %s entries must list at least one resource", f.Tag, f.Status)
 		}
+		if err := f.validateOperations(); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// validateOperations enforces the v2 operation-level rules: partial families
+// require operation lists (that is what distinguishes them from covered);
+// non-partial families must not carry them (op lists on a covered family
+// would silently never be checked).
+func (f *MappingFamily) validateOperations() error {
+	if f.Status != statusPartial {
+		for _, r := range f.Resources {
+			if len(r.Operations) > 0 {
+				return fmt.Errorf("tag %q: resource %q lists operations but family status is %q (only partial families carry operation lists)", f.Tag, r.Name, f.Status)
+			}
+		}
+		if len(f.IgnoredOperations) > 0 {
+			return fmt.Errorf("tag %q: ignored_operations set but family status is %q (only partial families carry operation lists)", f.Tag, f.Status)
+		}
+		if len(f.TriageOperations) > 0 {
+			return fmt.Errorf("tag %q: triage_operations set but family status is %q (only partial families carry operation lists)", f.Tag, f.Status)
+		}
+		return nil
+	}
+	claimed := map[string]bool{}
+	for _, r := range f.Resources {
+		if r.Name == "" {
+			return fmt.Errorf("tag %q: resource entry with empty name", f.Tag)
+		}
+		if len(r.Operations) == 0 {
+			return fmt.Errorf("tag %q: partial families require an operations list on every resource (resource %q has none)", f.Tag, r.Name)
+		}
+		for _, op := range r.Operations {
+			if op == "" {
+				return fmt.Errorf("tag %q: resource %q lists an empty operationId", f.Tag, r.Name)
+			}
+			if claimed[op] {
+				return fmt.Errorf("tag %q: operation %q claimed more than once", f.Tag, op)
+			}
+			claimed[op] = true
+		}
+	}
+	for _, ig := range f.IgnoredOperations {
+		if ig.ID == "" || ig.Reason == "" {
+			return fmt.Errorf("tag %q: ignored_operations entries require both id and reason", f.Tag)
+		}
+		if claimed[ig.ID] {
+			return fmt.Errorf("tag %q: operation %q claimed more than once", f.Tag, ig.ID)
+		}
+		claimed[ig.ID] = true
+	}
+	for _, op := range f.TriageOperations {
+		if op == "" {
+			return fmt.Errorf("tag %q: triage_operations lists an empty operationId", f.Tag)
+		}
+		if claimed[op] {
+			return fmt.Errorf("tag %q: operation %q claimed more than once", f.Tag, op)
+		}
+		claimed[op] = true
 	}
 	return nil
 }
@@ -98,8 +195,27 @@ func loadMapping(path string) (*Mapping, error) {
 	return &m, nil
 }
 
-// specFamilies extracts tag -> sorted unique paths from raw OpenAPI JSON.
-func specFamilies(rawSpec []byte) (map[string][]string, error) {
+// SpecOperation is one operation (method + path) in the spec, keyed for
+// mapping claims by its operationId.
+type SpecOperation struct {
+	Path        string
+	Method      string
+	OperationID string
+}
+
+// key identifies the operation for mapping claims. The LD spec assigns an
+// operationId to every operation; "METHOD path" is a defensive fallback so a
+// spec hygiene slip surfaces as an unclaimed op instead of a silent skip.
+func (o SpecOperation) key() string {
+	if o.OperationID != "" {
+		return o.OperationID
+	}
+	return o.Method + " " + o.Path
+}
+
+// specOperations extracts tag -> operations from raw OpenAPI JSON, sorted by
+// path then method.
+func specOperations(rawSpec []byte) (map[string][]SpecOperation, error) {
 	// Path items mix operation objects with non-operation keys of other JSON
 	// types (e.g. "parameters" is an array), so decode in two stages.
 	var spec struct {
@@ -111,14 +227,15 @@ func specFamilies(rawSpec []byte) (map[string][]string, error) {
 	if len(spec.Paths) == 0 {
 		return nil, fmt.Errorf("OpenAPI spec contains no paths")
 	}
-	families := map[string]map[string]bool{}
+	families := map[string][]SpecOperation{}
 	for path, ops := range spec.Paths {
 		for method, rawOp := range ops {
 			if !specMethods[strings.ToLower(method)] {
 				continue
 			}
 			var op struct {
-				Tags []string `json:"tags"`
+				Tags        []string `json:"tags"`
+				OperationID string   `json:"operationId"`
 			}
 			if err := json.Unmarshal(rawOp, &op); err != nil {
 				return nil, fmt.Errorf("parsing operation %s %s: %w", method, path, err)
@@ -128,23 +245,37 @@ func specFamilies(rawSpec []byte) (map[string][]string, error) {
 				tags = []string{untaggedFamily}
 			}
 			for _, tag := range tags {
-				if families[tag] == nil {
-					families[tag] = map[string]bool{}
-				}
-				families[tag][path] = true
+				families[tag] = append(families[tag], SpecOperation{
+					Path:        path,
+					Method:      strings.ToUpper(method),
+					OperationID: op.OperationID,
+				})
 			}
 		}
 	}
-	out := make(map[string][]string, len(families))
-	for tag, paths := range families {
-		sorted := make([]string, 0, len(paths))
-		for p := range paths {
-			sorted = append(sorted, p)
-		}
-		sort.Strings(sorted)
-		out[tag] = sorted
+	for _, ops := range families {
+		sort.Slice(ops, func(i, j int) bool {
+			if ops[i].Path != ops[j].Path {
+				return ops[i].Path < ops[j].Path
+			}
+			return ops[i].Method < ops[j].Method
+		})
 	}
-	return out, nil
+	return families, nil
+}
+
+// uniquePaths flattens a family's operations to its sorted unique paths.
+func uniquePaths(ops []SpecOperation) []string {
+	seen := map[string]bool{}
+	var out []string
+	for _, op := range ops {
+		if !seen[op.Path] {
+			seen[op.Path] = true
+			out = append(out, op.Path)
+		}
+	}
+	sort.Strings(out)
+	return out
 }
 
 // familySlice extracts a compact JSON description of one endpoint family —
@@ -247,14 +378,17 @@ type Report struct {
 	SpecSource  string    `json:"spec_source"`
 
 	// Drift signals (any non-empty => exit code 2).
-	NewFamilies       []FamilyDetail `json:"new_families"`
-	StaleFamilies     []string       `json:"stale_families"`
-	UnmappedResources []string       `json:"unmapped_resources"`
+	NewFamilies         []FamilyDetail    `json:"new_families"`
+	StaleFamilies       []string          `json:"stale_families"`
+	UnmappedResources   []string          `json:"unmapped_resources"`
+	UnclaimedOperations []OperationDetail `json:"unclaimed_operations"`
+	StaleOperations     []OperationDetail `json:"stale_operations"`
 
 	// Informational.
-	TriageFamilies []string       `json:"triage_families"`
-	StatusCounts   map[string]int `json:"status_counts"`
-	TotalFamilies  int            `json:"total_families"`
+	TriageFamilies   []string          `json:"triage_families"`
+	TriageOperations []OperationDetail `json:"triage_operations"`
+	StatusCounts     map[string]int    `json:"status_counts"`
+	TotalFamilies    int               `json:"total_families"`
 }
 
 type FamilyDetail struct {
@@ -262,21 +396,35 @@ type FamilyDetail struct {
 	Paths []string `json:"paths"`
 }
 
-func (r *Report) HasDrift() bool {
-	return len(r.NewFamilies) > 0 || len(r.StaleFamilies) > 0 || len(r.UnmappedResources) > 0
+// OperationDetail is one operation-level drift item in a partial family.
+// Stale entries (operationId in the mapping but gone from the spec) carry
+// only Tag and OperationID.
+type OperationDetail struct {
+	Tag         string `json:"tag"`
+	OperationID string `json:"operation_id"`
+	Method      string `json:"method,omitempty"`
+	Path        string `json:"path,omitempty"`
 }
 
-func buildReport(families map[string][]string, mapping *Mapping, resources, dataSources []string, specSource string) *Report {
+func (r *Report) HasDrift() bool {
+	return len(r.NewFamilies) > 0 || len(r.StaleFamilies) > 0 || len(r.UnmappedResources) > 0 ||
+		len(r.UnclaimedOperations) > 0 || len(r.StaleOperations) > 0
+}
+
+func buildReport(families map[string][]SpecOperation, mapping *Mapping, resources, dataSources []string, specSource string) *Report {
 	report := &Report{
 		GeneratedAt:   time.Now().UTC(),
 		SpecSource:    specSource,
 		StatusCounts:  map[string]int{},
 		TotalFamilies: len(families),
 		// Initialized so empty lists serialize as [] rather than null in JSON.
-		NewFamilies:       []FamilyDetail{},
-		StaleFamilies:     []string{},
-		UnmappedResources: []string{},
-		TriageFamilies:    []string{},
+		NewFamilies:         []FamilyDetail{},
+		StaleFamilies:       []string{},
+		UnmappedResources:   []string{},
+		UnclaimedOperations: []OperationDetail{},
+		StaleOperations:     []OperationDetail{},
+		TriageFamilies:      []string{},
+		TriageOperations:    []OperationDetail{},
 	}
 
 	mapped := map[string]MappingFamily{}
@@ -285,9 +433,9 @@ func buildReport(families map[string][]string, mapping *Mapping, resources, data
 	}
 
 	// Spec tags absent from the mapping => new families.
-	for tag, paths := range families {
+	for tag, ops := range families {
 		if _, ok := mapped[tag]; !ok {
-			report.NewFamilies = append(report.NewFamilies, FamilyDetail{Tag: tag, Paths: paths})
+			report.NewFamilies = append(report.NewFamilies, FamilyDetail{Tag: tag, Paths: uniquePaths(ops)})
 		}
 	}
 	sort.Slice(report.NewFamilies, func(i, j int) bool {
@@ -307,11 +455,69 @@ func buildReport(families map[string][]string, mapping *Mapping, resources, data
 	sort.Strings(report.StaleFamilies)
 	sort.Strings(report.TriageFamilies)
 
+	// Operation-level diff for partial families: every spec operation must be
+	// claimed by a resource or deliberately ignored, and every claim must
+	// still exist in the spec. Skipped when the family tag itself is stale —
+	// the stale-family signal already covers it.
+	for _, f := range mapping.Families {
+		if f.Status != statusPartial {
+			continue
+		}
+		specOps, tagInSpec := families[f.Tag]
+		if !tagInSpec {
+			continue
+		}
+		claimed := map[string]bool{}
+		for _, r := range f.Resources {
+			for _, op := range r.Operations {
+				claimed[op] = true
+			}
+		}
+		for _, ig := range f.IgnoredOperations {
+			claimed[ig.ID] = true
+		}
+		triage := map[string]bool{}
+		for _, op := range f.TriageOperations {
+			claimed[op] = true
+			triage[op] = true
+		}
+		inSpec := map[string]bool{}
+		for _, op := range specOps {
+			inSpec[op.key()] = true
+			detail := OperationDetail{
+				Tag:         f.Tag,
+				OperationID: op.key(),
+				Method:      op.Method,
+				Path:        op.Path,
+			}
+			switch {
+			case triage[op.key()]:
+				report.TriageOperations = append(report.TriageOperations, detail)
+			case !claimed[op.key()]:
+				report.UnclaimedOperations = append(report.UnclaimedOperations, detail)
+			}
+		}
+		for op := range claimed {
+			if !inSpec[op] {
+				report.StaleOperations = append(report.StaleOperations, OperationDetail{Tag: f.Tag, OperationID: op})
+			}
+		}
+	}
+	sortOperationDetails(report.UnclaimedOperations)
+	sortOperationDetails(report.TriageOperations)
+	sort.Slice(report.StaleOperations, func(i, j int) bool {
+		a, b := report.StaleOperations[i], report.StaleOperations[j]
+		if a.Tag != b.Tag {
+			return a.Tag < b.Tag
+		}
+		return a.OperationID < b.OperationID
+	})
+
 	// Registered types never referenced by any family => mapping is incomplete.
 	referenced := map[string]bool{}
 	for _, f := range mapping.Families {
 		for _, r := range f.Resources {
-			referenced[r] = true
+			referenced[r.Name] = true
 		}
 	}
 	seen := map[string]bool{}
@@ -324,6 +530,19 @@ func buildReport(families map[string][]string, mapping *Mapping, resources, data
 	sort.Strings(report.UnmappedResources)
 
 	return report
+}
+
+func sortOperationDetails(ops []OperationDetail) {
+	sort.Slice(ops, func(i, j int) bool {
+		a, b := ops[i], ops[j]
+		if a.Tag != b.Tag {
+			return a.Tag < b.Tag
+		}
+		if a.Path != b.Path {
+			return a.Path < b.Path
+		}
+		return a.Method < b.Method
+	})
 }
 
 // errWriter captures the first write error so renderMarkdown can stay
@@ -383,10 +602,45 @@ func renderMarkdown(out io.Writer, r *Report) error {
 		fmt.Fprintf(w, "\n")
 	}
 
+	if len(r.UnclaimedOperations) > 0 {
+		fmt.Fprintf(w, "## Unclaimed operations in partial families\n\n")
+		fmt.Fprintf(w, "Claim each operation on a resource entry or add it to the family's `ignored_operations`.\n\n")
+		lastTag := ""
+		for _, op := range r.UnclaimedOperations {
+			if op.Tag != lastTag {
+				fmt.Fprintf(w, "### %s\n\n", op.Tag)
+				lastTag = op.Tag
+			}
+			fmt.Fprintf(w, "- `%s %s` (`%s`)\n", op.Method, op.Path, op.OperationID)
+		}
+		fmt.Fprintf(w, "\n")
+	}
+
+	if len(r.StaleOperations) > 0 {
+		fmt.Fprintf(w, "## Stale operation claims (operationId no longer in spec — renamed or removed)\n\n")
+		for _, op := range r.StaleOperations {
+			fmt.Fprintf(w, "- %s: `%s`\n", op.Tag, op.OperationID)
+		}
+		fmt.Fprintf(w, "\n")
+	}
+
 	if len(r.TriageFamilies) > 0 {
 		fmt.Fprintf(w, "## Families pending triage (acknowledged, decision pending)\n\n")
 		for _, t := range r.TriageFamilies {
 			fmt.Fprintf(w, "- %s\n", t)
+		}
+		fmt.Fprintf(w, "\n")
+	}
+
+	if len(r.TriageOperations) > 0 {
+		fmt.Fprintf(w, "## Operations pending triage in partial families (acknowledged, decision pending)\n\n")
+		lastTag := ""
+		for _, op := range r.TriageOperations {
+			if op.Tag != lastTag {
+				fmt.Fprintf(w, "### %s\n\n", op.Tag)
+				lastTag = op.Tag
+			}
+			fmt.Fprintf(w, "- `%s %s` (`%s`)\n", op.Method, op.Path, op.OperationID)
 		}
 		fmt.Fprintf(w, "\n")
 	}
