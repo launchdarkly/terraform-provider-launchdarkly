@@ -111,13 +111,16 @@ jobs:
           # doesn't restate it.
           summary_body="$(jq -r --arg run "$RUN_URL" '
             def lbl($n; $one; $many): if $n > 0 then "\($n) \(if $n == 1 then $one else $many end)" else empty end;
-            ([ lbl(.new_families | length;         "new family";     "new families"),
-               lbl(.unclaimed_operations | length; "unclaimed op";   "unclaimed ops"),
-               lbl(.stale_families | length;        "stale family";  "stale families"),
-               lbl(.stale_operations | length;      "stale op claim"; "stale op claims"),
-               lbl(.unmapped_resources | length;    "unmapped resource"; "unmapped resources")
+            ([ lbl(.new_families | length;          "new family";            "new families"),
+               lbl(.scaffoldable_resources | length; "scaffoldable resource"; "scaffoldable resources"),
+               lbl(.unclaimed_operations | length;  "unclaimed op";          "unclaimed ops"),
+               lbl(.stale_families | length;         "stale family";         "stale families"),
+               lbl(.stale_operations | length;       "stale op claim";       "stale op claims"),
+               lbl(.unmapped_resources | length;     "unmapped resource";    "unmapped resources"),
+               lbl(.registered_candidates | length;  "miscurated candidate"; "miscurated candidates")
              ] | join(" · ")) +
-            (if (.new_families | length) > 0 then "\nScaffoldable: " + ([.new_families[].tag] | join(", ")) else "" end) +
+            (([.new_families[].tag] + [.scaffoldable_resources[].name]) as $s
+             | if ($s | length) > 0 then "\nScaffoldable: " + ($s | join(", ")) else "" end) +
             "\n<\($run)|drift run>"
           ' "$JSON")"
           post_slack "🔎 API coverage drift" "$summary_body"
@@ -133,6 +136,21 @@ jobs:
               "$paths" "$ACTIONS_URL" "$tag")"
             post_slack "🆕 New API family: $tag" "$body"
           done < <(jq -c '.new_families[]' "$JSON")
+
+          # 2b) One message per curated NET-NEW resource inside a partial family —
+          # scaffoldable via stage 2, scoped to the resource name + its operations
+          # (the family's existing resources are untouched).
+          while IFS= read -r sr; do
+            [ -n "$sr" ] || continue
+            tag="$(printf '%s' "$sr" | jq -r '.tag')"
+            name="$(printf '%s' "$sr" | jq -r '.name')"
+            opids="$(printf '%s' "$sr" | jq -r '[.operations[].operation_id] | join(",")')"
+            oplist="$(printf '%s' "$sr" | jq -r '[.operations[] | "• `\(.method) \(.path)`"] | join("\n")')"
+            # shellcheck disable=SC2016  # backticks are literal Slack mrkdwn, not command subst
+            body="$(printf 'Net-new resource in the `%s` family (existing resources untouched):\n%s\n<%s|▶ Scaffold it> · `gh workflow run scaffold-resource.yml -f family='"'"'%s'"'"' -f resource_name='"'"'%s'"'"' -f operations='"'"'%s'"'"'`' \
+              "$tag" "$oplist" "$ACTIONS_URL" "$tag" "$name" "$opids")"
+            post_slack "🆕 New resource: $name" "$body"
+          done < <(jq -c '.scaffoldable_resources[]' "$JSON")
 
           # 3) One message per partial family with UNCLAIMED ops — informational
           # (stage 2 only scaffolds NEW resources, so no dispatch link).
