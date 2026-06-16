@@ -6,11 +6,14 @@
 # `terraform plan`/`apply`, fixing functionality/tests until apply is clean.
 #
 # The applied example resources are RETAINED (no `terraform destroy`) so a human
-# reviewer can inspect them in the LD account; they are namespaced by PR number
-# (project key `tf-verify-pr<N>`) and overwritten on each run, so at most one
-# set lingers per PR. Result posts back as a PR comment AND a private-Slack
-# "ready for review" message (same generic title/body webhook as the drift
-# report — SLACK_DRIFT_WEBHOOK_URL).
+# reviewer can inspect them in the LD account. PROJECT-scoped resources live in a
+# project keyed `tf-verify-pr<N>` that the pre-clean step deletes at the start of
+# each run, so at most one set lingers per PR. ACCOUNT-scoped resources have no
+# project to pre-clean, so the agent names them per-run (`tf-verify-pr<N>-run<R>`)
+# to avoid colliding with a retained resource from a previous run; those
+# accumulate and need manual cleanup. Result posts back as a PR comment AND a
+# private-Slack "ready for review" message (same generic title/body webhook as
+# the drift report — SLACK_DRIFT_WEBHOOK_URL).
 #
 # This file lives on `main` only so GitHub registers the workflow_dispatch
 # trigger. It checks out the PR's own branch (always a same-repo scaffold/*
@@ -216,8 +219,10 @@ jobs:
                `tf-verify-pr${{ inputs.pr_number }}` (use this key so the live resources are
                identifiable and the workflow can pre-clean it next run), and the new resource
                (plus its data source if one was scaffolded). If the new resource is
-               account-scoped rather than project-scoped, namespace its key/name with
-               `tf-verify-pr${{ inputs.pr_number }}` instead. Then:
+               account-scoped rather than project-scoped, there is no project for the
+               workflow to pre-clean, so name its key/name per-run as
+               `tf-verify-pr${{ inputs.pr_number }}-run${{ github.run_number }}` to avoid
+               colliding with a resource retained by a previous run. Then:
                  terraform -chdir="$RUNNER_TEMP/verify" plan  -input=false
                  terraform -chdir="$RUNNER_TEMP/verify" apply -input=false -auto-approve
                A second `plan` afterwards MUST be empty (no perpetual diff). Do NOT commit

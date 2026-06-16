@@ -51,6 +51,14 @@ jobs:
         run: |
           echo "::error::Scaffolding agent is disabled (repository variable SCAFFOLD_AGENT_ENABLED != 'true')."
           exit 1
+      - name: Validate scoped inputs
+        # Scoped mode (resource_name set) needs the operationId list — otherwise
+        # the agent enters SCOPED MODE with no operations and the whole family
+        # slice, an ambiguous instruction. Fail fast instead.
+        if: inputs.resource_name != '' && inputs.operations == ''
+        run: |
+          echo "::error::'operations' is required when 'resource_name' is set (scoped mode needs the comma-separated operationId list)."
+          exit 1
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           ref: preview-v3 # scaffolds always target the v3 line
