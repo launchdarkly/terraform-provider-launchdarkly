@@ -79,10 +79,14 @@ jobs:
           fi
           meta="$(gh pr view "$PR" --repo "$REPO" --json headRefName,isCrossRepository,baseRefName,title,url,state)"
           cross="$(printf '%s' "$meta" | jq -r '.isCrossRepository')"
-          head="$(printf '%s' "$meta" | jq -r '.headRefName')"
           state="$(printf '%s' "$meta" | jq -r '.state')"
-          url="$(printf '%s' "$meta" | jq -r '.url')"
-          title="$(printf '%s' "$meta" | jq -r '.title')"
+          # Strip CR/newlines: these become step outputs via `key=value` lines, and
+          # a newline in the free-text PR title (a JSON string can contain one) could
+          # otherwise inject a second head_branch=… line that wins the duplicate-key
+          # race and bypasses the scaffold/* guard below.
+          head="$(printf '%s' "$meta" | jq -r '.headRefName' | tr -d '\r\n')"
+          url="$(printf '%s' "$meta" | jq -r '.url' | tr -d '\r\n')"
+          title="$(printf '%s' "$meta" | jq -r '.title' | tr -d '\r\n')"
           if [ "$cross" = "true" ]; then
             echo "::error::PR #$PR is from a fork; verification runs real applies with our credentials and only supports same-repo PRs."
             exit 1
