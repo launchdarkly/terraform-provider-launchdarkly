@@ -53,13 +53,29 @@ type Mapping struct {
 }
 
 type MappingFamily struct {
-	Tag               string             `yaml:"tag"`
-	Status            string             `yaml:"status"`
-	Resources         []ResourceEntry    `yaml:"resources,omitempty"`
-	IgnoredOperations []IgnoredOperation `yaml:"ignored_operations,omitempty"`
-	TriageOperations  []string           `yaml:"triage_operations,omitempty"`
-	Reason            string             `yaml:"reason,omitempty"`
-	Notes             string             `yaml:"notes,omitempty"`
+	Tag                   string              `yaml:"tag"`
+	Status                string              `yaml:"status"`
+	Resources             []ResourceEntry     `yaml:"resources,omitempty"`
+	NewResourceCandidates []ResourceCandidate `yaml:"new_resource_candidates,omitempty"`
+	IgnoredOperations     []IgnoredOperation  `yaml:"ignored_operations,omitempty"`
+	TriageOperations      []string            `yaml:"triage_operations,omitempty"`
+	Reason                string              `yaml:"reason,omitempty"`
+	Notes                 string              `yaml:"notes,omitempty"`
+}
+
+// ResourceCandidate is a curated NET-NEW resource the provider does not yet
+// model but should, covering a cluster of a partial family's operations.
+// Unlike triage_operations (decision still pending), a candidate is decided:
+// it is ready for the stage-2 scaffolder to implement as a brand-new resource.
+// That is safe — scaffolding a new resource only ADDS a type and never touches
+// the family's existing resources, so there is no state-compatibility risk
+// (the same reason a wholly new family is scaffoldable). Candidate operations
+// count as claimed, so they do not surface as unclaimed drift; the report lists
+// them under scaffoldable_resources. Once implemented, move the operations to a
+// real resources entry and drop the candidate.
+type ResourceCandidate struct {
+	Name       string   `yaml:"name"`
+	Operations []string `yaml:"operations"`
 }
 
 // ResourceEntry is one resource claim under a family. A bare YAML string is a
@@ -139,6 +155,9 @@ func (f *MappingFamily) validateOperations() error {
 		if len(f.TriageOperations) > 0 {
 			return fmt.Errorf("tag %q: triage_operations set but family status is %q (only partial families carry operation lists)", f.Tag, f.Status)
 		}
+		if len(f.NewResourceCandidates) > 0 {
+			return fmt.Errorf("tag %q: new_resource_candidates set but family status is %q (only partial families carry operation lists)", f.Tag, f.Status)
+		}
 		return nil
 	}
 	claimed := map[string]bool{}
@@ -176,6 +195,30 @@ func (f *MappingFamily) validateOperations() error {
 			return fmt.Errorf("tag %q: operation %q claimed more than once", f.Tag, op)
 		}
 		claimed[op] = true
+	}
+	implemented := map[string]bool{}
+	for _, r := range f.Resources {
+		implemented[r.Name] = true
+	}
+	for _, c := range f.NewResourceCandidates {
+		if c.Name == "" {
+			return fmt.Errorf("tag %q: new_resource_candidates entry with empty name", f.Tag)
+		}
+		if implemented[c.Name] {
+			return fmt.Errorf("tag %q: new_resource_candidate %q is already an implemented resource (move its operations to that resource's entry instead)", f.Tag, c.Name)
+		}
+		if len(c.Operations) == 0 {
+			return fmt.Errorf("tag %q: new_resource_candidate %q must list at least one operation", f.Tag, c.Name)
+		}
+		for _, op := range c.Operations {
+			if op == "" {
+				return fmt.Errorf("tag %q: new_resource_candidate %q lists an empty operationId", f.Tag, c.Name)
+			}
+			if claimed[op] {
+				return fmt.Errorf("tag %q: operation %q claimed more than once", f.Tag, op)
+			}
+			claimed[op] = true
+		}
 	}
 	return nil
 }
@@ -385,10 +428,22 @@ type Report struct {
 	StaleOperations     []OperationDetail `json:"stale_operations"`
 
 	// Informational.
-	TriageFamilies   []string          `json:"triage_families"`
-	TriageOperations []OperationDetail `json:"triage_operations"`
-	StatusCounts     map[string]int    `json:"status_counts"`
-	TotalFamilies    int               `json:"total_families"`
+	TriageFamilies        []string               `json:"triage_families"`
+	TriageOperations      []OperationDetail      `json:"triage_operations"`
+	ScaffoldableResources []ScaffoldableResource `json:"scaffoldable_resources"`
+	StatusCounts          map[string]int         `json:"status_counts"`
+	TotalFamilies         int                    `json:"total_families"`
+}
+
+// ScaffoldableResource is a curated net-new resource (from a partial family's
+// new_resource_candidates) that is ready for the stage-2 scaffolder. It is
+// informational: it never fails the run — it is a backlog signal a human
+// dispatches. Operations carries only the spec operations that still exist;
+// any candidate operation missing from the spec surfaces under StaleOperations.
+type ScaffoldableResource struct {
+	Tag        string            `json:"tag"`
+	Name       string            `json:"name"`
+	Operations []OperationDetail `json:"operations"`
 }
 
 type FamilyDetail struct {
@@ -418,13 +473,14 @@ func buildReport(families map[string][]SpecOperation, mapping *Mapping, resource
 		StatusCounts:  map[string]int{},
 		TotalFamilies: len(families),
 		// Initialized so empty lists serialize as [] rather than null in JSON.
-		NewFamilies:         []FamilyDetail{},
-		StaleFamilies:       []string{},
-		UnmappedResources:   []string{},
-		UnclaimedOperations: []OperationDetail{},
-		StaleOperations:     []OperationDetail{},
-		TriageFamilies:      []string{},
-		TriageOperations:    []OperationDetail{},
+		NewFamilies:           []FamilyDetail{},
+		StaleFamilies:         []string{},
+		UnmappedResources:     []string{},
+		UnclaimedOperations:   []OperationDetail{},
+		StaleOperations:       []OperationDetail{},
+		TriageFamilies:        []string{},
+		TriageOperations:      []OperationDetail{},
+		ScaffoldableResources: []ScaffoldableResource{},
 	}
 
 	mapped := map[string]MappingFamily{}
@@ -481,8 +537,17 @@ func buildReport(families map[string][]SpecOperation, mapping *Mapping, resource
 			claimed[op] = true
 			triage[op] = true
 		}
+		// Curated net-new-resource operations count as claimed so they do not
+		// surface as unclaimed drift; they are emitted under scaffoldable_resources.
+		for _, c := range f.NewResourceCandidates {
+			for _, op := range c.Operations {
+				claimed[op] = true
+			}
+		}
+		specByKey := map[string]SpecOperation{}
 		inSpec := map[string]bool{}
 		for _, op := range specOps {
+			specByKey[op.key()] = op
 			inSpec[op.key()] = true
 			detail := OperationDetail{
 				Tag:         f.Tag,
@@ -496,6 +561,19 @@ func buildReport(families map[string][]SpecOperation, mapping *Mapping, resource
 			case !claimed[op.key()]:
 				report.UnclaimedOperations = append(report.UnclaimedOperations, detail)
 			}
+		}
+		// Emit curated net-new resources as scaffoldable. Only spec-present ops
+		// are listed; a candidate op missing from the spec is caught as a stale
+		// claim by the loop below (candidate ops are in `claimed`).
+		for _, c := range f.NewResourceCandidates {
+			sr := ScaffoldableResource{Tag: f.Tag, Name: c.Name, Operations: []OperationDetail{}}
+			for _, opID := range c.Operations {
+				if so, ok := specByKey[opID]; ok {
+					sr.Operations = append(sr.Operations, OperationDetail{Tag: f.Tag, OperationID: opID, Method: so.Method, Path: so.Path})
+				}
+			}
+			sortOperationDetails(sr.Operations)
+			report.ScaffoldableResources = append(report.ScaffoldableResources, sr)
 		}
 		for op := range claimed {
 			if !inSpec[op] {
@@ -511,6 +589,13 @@ func buildReport(families map[string][]SpecOperation, mapping *Mapping, resource
 			return a.Tag < b.Tag
 		}
 		return a.OperationID < b.OperationID
+	})
+	sort.Slice(report.ScaffoldableResources, func(i, j int) bool {
+		a, b := report.ScaffoldableResources[i], report.ScaffoldableResources[j]
+		if a.Tag != b.Tag {
+			return a.Tag < b.Tag
+		}
+		return a.Name < b.Name
 	})
 
 	// Registered types never referenced by any family => mapping is incomplete.
@@ -622,6 +707,18 @@ func renderMarkdown(out io.Writer, r *Report) error {
 			fmt.Fprintf(w, "- %s: `%s`\n", op.Tag, op.OperationID)
 		}
 		fmt.Fprintf(w, "\n")
+	}
+
+	if len(r.ScaffoldableResources) > 0 {
+		fmt.Fprintf(w, "## Scaffoldable new resources in partial families (curated — ready for stage 2)\n\n")
+		fmt.Fprintf(w, "Net-new resources within a partial family; the stage-2 scaffolder can implement each without touching the family's existing resources.\n\n")
+		for _, sr := range r.ScaffoldableResources {
+			fmt.Fprintf(w, "### %s → `%s`\n\n", sr.Tag, sr.Name)
+			for _, op := range sr.Operations {
+				fmt.Fprintf(w, "- `%s %s` (`%s`)\n", op.Method, op.Path, op.OperationID)
+			}
+			fmt.Fprintf(w, "\n")
+		}
 	}
 
 	if len(r.TriageFamilies) > 0 {
