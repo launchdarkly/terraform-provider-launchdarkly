@@ -87,6 +87,25 @@ families:
           - postModelConfig
           - getModelConfig
           - deleteModelConfig
+    new_resource_candidates:
+      # Agent graphs — clean CRUD on their own path; a net-new resource the
+      # stage-2 scaffolder can add without touching the AI Config resources.
+      - name: launchdarkly_ai_agent_graph
+        operations:
+          - listAgentGraphs
+          - postAgentGraph
+          - getAgentGraph
+          - patchAgentGraph
+          - deleteAgentGraph
+      # Prompt snippets — clean CRUD; the references/versions read endpoints
+      # stay in triage pending a data-source decision.
+      - name: launchdarkly_prompt_snippet
+        operations:
+          - listPromptSnippets
+          - postPromptSnippet
+          - getPromptSnippet
+          - patchPromptSnippet
+          - deletePromptSnippet
     ignored_operations:
       - id: getAIConfigs
         reason: List/index endpoint; the singular get covers declarative reads.
@@ -103,17 +122,13 @@ families:
       - id: listAIToolVersions
         reason: Read-only version history, not declarative configuration.
     triage_operations:
-      # AI Config targeting — declarative-adjacent, pairs with a future
-      # ai_config_environment-style resource.
+      # AI Config targeting — EXTENDS the existing ai_config resource (a future
+      # ai_config_environment-style attribute), not a net-new resource, so it is
+      # not a scaffold candidate.
       - getAIConfigTargeting
       - patchAIConfigTargeting
-      # Agent graphs — new product surface, no resource yet.
-      - listAgentGraphs
-      - postAgentGraph
-      - getAgentGraph
-      - patchAgentGraph
-      - deleteAgentGraph
-      # Agent optimizations — new product surface, no resource yet.
+      # Agent optimizations — resource boundary still unclear (optimizations +
+      # results + runs); promote to a candidate once the shape settles.
       - listAgentOptimizations
       - postAgentOptimization
       - getAgentOptimization
@@ -125,18 +140,14 @@ families:
       - patchAgentOptimizationResult
       - deleteAgentOptimizationRun
       - listAgentOptimizationResultsByRunId
-      # Prompt snippets — plausible resource once the surface stabilizes.
-      - listPromptSnippets
-      - postPromptSnippet
-      - getPromptSnippet
-      - patchPromptSnippet
-      - deletePromptSnippet
+      # Prompt snippet auxiliary reads — the candidate models the CRUD; these
+      # stay pending a data-source decision.
       - listPromptSnippetReferences
       - listPromptSnippetVersions
       # Restricted models — account-level allow/deny, plausible resource.
       - postRestrictedModels
       - deleteRestrictedModels
-    notes: Despite the tag name, this family carries the AI Config CRUD surface — the spec's "AI Configs" tag holds only two stray analytics endpoints. The four AI resources cover 15 of 49 ops; agent graphs/optimizations, prompt snippets, targeting, and restricted models are pending triage.
+    notes: Despite the tag name, this family carries the AI Config CRUD surface — the spec's "AI Configs" tag holds only two stray analytics endpoints. The four AI resources cover 15 of 49 ops; agent graphs and prompt snippets are curated as scaffoldable net-new resources, while agent optimizations, AI config targeting, prompt-snippet aux reads, and restricted models remain in triage.
 
   - tag: Announcements
     status: triage

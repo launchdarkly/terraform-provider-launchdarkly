@@ -142,7 +142,7 @@ func TestBuildReportClean(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, key := range []string{"new_families", "stale_families", "unmapped_resources", "unclaimed_operations", "stale_operations", "triage_operations"} {
+	for _, key := range []string{"new_families", "stale_families", "unmapped_resources", "unclaimed_operations", "stale_operations", "triage_operations", "scaffoldable_resources", "registered_candidates"} {
 		if strings.Contains(string(raw), fmt.Sprintf("%q:null", key)) {
 			t.Errorf("%s serializes as null, want []", key)
 		}
@@ -272,6 +272,119 @@ func TestBuildReportStaleOperations(t *testing.T) {
 	}
 }
 
+func TestBuildReportScaffoldableResources(t *testing.T) {
+	families := fixtureOperations(t)
+	widgets := partialWidgets([]string{"getWidgets", "postWidget"})
+	// deleteWidget is curated as a net-new resource rather than claimed on the
+	// existing widget resource or left unclaimed.
+	widgets.NewResourceCandidates = []ResourceCandidate{
+		{Name: "launchdarkly_widget_deletion", Operations: []string{"deleteWidget"}},
+	}
+	mapping := fixtureMapping(t,
+		MappingFamily{Tag: "Projects", Status: statusCovered, Resources: []ResourceEntry{{Name: "launchdarkly_project"}}},
+		MappingFamily{Tag: "Shiny new feature", Status: statusTriage},
+		MappingFamily{Tag: "<untagged>", Status: statusIgnored, Reason: "spec hygiene bucket"},
+		widgets,
+	)
+	report := buildReport(families, mapping, []string{"launchdarkly_project", "launchdarkly_widget"}, nil, "fixture")
+
+	// A curated net-new resource is informational: it must not drift, and its
+	// operations must not surface as unclaimed.
+	if report.HasDrift() {
+		t.Fatalf("scaffoldable candidate must not drift, got %+v", report)
+	}
+	if len(report.UnclaimedOperations) != 0 {
+		t.Errorf("UnclaimedOperations = %+v, want none (candidate op is claimed)", report.UnclaimedOperations)
+	}
+	if len(report.ScaffoldableResources) != 1 {
+		t.Fatalf("ScaffoldableResources = %+v, want exactly 1", report.ScaffoldableResources)
+	}
+	sr := report.ScaffoldableResources[0]
+	if sr.Tag != "Widgets" || sr.Name != "launchdarkly_widget_deletion" {
+		t.Errorf("ScaffoldableResources[0] = %+v, want Widgets/launchdarkly_widget_deletion", sr)
+	}
+	if len(sr.Operations) != 1 || sr.Operations[0].OperationID != "deleteWidget" ||
+		sr.Operations[0].Method != "DELETE" || sr.Operations[0].Path != "/api/v2/widgets/{key}" {
+		t.Errorf("candidate op = %+v, want deleteWidget DELETE /api/v2/widgets/{key}", sr.Operations)
+	}
+
+	var buf bytes.Buffer
+	if err := renderMarkdown(&buf, report); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(buf.String(), "Scaffoldable new resources in partial families") {
+		t.Error("markdown should include the scaffoldable-resources section")
+	}
+}
+
+func TestBuildReportRegisteredCandidateIsDrift(t *testing.T) {
+	families := fixtureOperations(t)
+	widgets := partialWidgets([]string{"getWidgets", "postWidget"})
+	// Curation mistake: the candidate names an already-registered provider type,
+	// so it is not net-new. (A same-family resource collision is caught by
+	// validation; this catches the cross-family / registered case validation
+	// cannot see.)
+	widgets.NewResourceCandidates = []ResourceCandidate{
+		{Name: "launchdarkly_project", Operations: []string{"deleteWidget"}},
+	}
+	mapping := fixtureMapping(t,
+		MappingFamily{Tag: "Projects", Status: statusCovered, Resources: []ResourceEntry{{Name: "launchdarkly_project"}}},
+		MappingFamily{Tag: "Shiny new feature", Status: statusTriage},
+		MappingFamily{Tag: "<untagged>", Status: statusIgnored, Reason: "spec hygiene bucket"},
+		widgets,
+	)
+	report := buildReport(families, mapping, []string{"launchdarkly_project", "launchdarkly_widget"}, nil, "fixture")
+
+	if !report.HasDrift() {
+		t.Fatal("a candidate naming a registered type must be drift")
+	}
+	if len(report.RegisteredCandidates) != 1 ||
+		report.RegisteredCandidates[0].Tag != "Widgets" ||
+		report.RegisteredCandidates[0].Name != "launchdarkly_project" {
+		t.Errorf("RegisteredCandidates = %+v, want [{Widgets launchdarkly_project}]", report.RegisteredCandidates)
+	}
+	// Must NOT be advertised as scaffoldable — that would re-scaffold an existing resource.
+	if len(report.ScaffoldableResources) != 0 {
+		t.Errorf("ScaffoldableResources = %+v, want none (candidate is already registered)", report.ScaffoldableResources)
+	}
+	// Its operation is still claimed, so it is not double-reported as unclaimed.
+	if len(report.UnclaimedOperations) != 0 {
+		t.Errorf("UnclaimedOperations = %+v, want none", report.UnclaimedOperations)
+	}
+
+	var buf bytes.Buffer
+	if err := renderMarkdown(&buf, report); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(buf.String(), "Candidates that already exist") {
+		t.Error("markdown should include the registered-candidate section")
+	}
+}
+
+func TestBuildReportStaleCandidateOperation(t *testing.T) {
+	families := fixtureOperations(t)
+	widgets := partialWidgets([]string{"getWidgets", "postWidget"})
+	widgets.NewResourceCandidates = []ResourceCandidate{
+		{Name: "launchdarkly_widget_deletion", Operations: []string{"deleteWidget", "ghostCandidateOp"}},
+	}
+	mapping := fixtureMapping(t,
+		MappingFamily{Tag: "Projects", Status: statusCovered, Resources: []ResourceEntry{{Name: "launchdarkly_project"}}},
+		MappingFamily{Tag: "Shiny new feature", Status: statusTriage},
+		MappingFamily{Tag: "<untagged>", Status: statusIgnored, Reason: "spec hygiene bucket"},
+		widgets,
+	)
+	report := buildReport(families, mapping, []string{"launchdarkly_project", "launchdarkly_widget"}, nil, "fixture")
+
+	// A candidate op missing from the spec is a stale claim (drift); the
+	// scaffoldable entry lists only the spec-present op.
+	if len(report.StaleOperations) != 1 || report.StaleOperations[0].OperationID != "ghostCandidateOp" {
+		t.Errorf("StaleOperations = %+v, want [ghostCandidateOp]", report.StaleOperations)
+	}
+	if len(report.ScaffoldableResources) != 1 || len(report.ScaffoldableResources[0].Operations) != 1 {
+		t.Errorf("ScaffoldableResources = %+v, want 1 entry with 1 spec-present op", report.ScaffoldableResources)
+	}
+}
+
 func TestBuildReportSkipsOperationChecksForStaleFamily(t *testing.T) {
 	families := fixtureOperations(t)
 	mapping := fixtureMapping(t,
@@ -341,6 +454,24 @@ func TestMappingValidation(t *testing.T) {
 		{"empty triage operationId", MappingFamily{Tag: "X", Status: statusPartial,
 			Resources:        []ResourceEntry{{Name: "launchdarkly_x", Operations: []string{"getX"}}},
 			TriageOperations: []string{""}}},
+		{"new_resource_candidates on covered family", MappingFamily{Tag: "X", Status: statusCovered,
+			Resources:             []ResourceEntry{{Name: "launchdarkly_x"}},
+			NewResourceCandidates: []ResourceCandidate{{Name: "launchdarkly_y", Operations: []string{"getX"}}}}},
+		{"candidate with empty name", MappingFamily{Tag: "X", Status: statusPartial,
+			Resources:             []ResourceEntry{{Name: "launchdarkly_x", Operations: []string{"getX"}}},
+			NewResourceCandidates: []ResourceCandidate{{Operations: []string{"putX"}}}}},
+		{"candidate without operations", MappingFamily{Tag: "X", Status: statusPartial,
+			Resources:             []ResourceEntry{{Name: "launchdarkly_x", Operations: []string{"getX"}}},
+			NewResourceCandidates: []ResourceCandidate{{Name: "launchdarkly_y"}}}},
+		{"candidate operation also claimed by a resource", MappingFamily{Tag: "X", Status: statusPartial,
+			Resources:             []ResourceEntry{{Name: "launchdarkly_x", Operations: []string{"getX"}}},
+			NewResourceCandidates: []ResourceCandidate{{Name: "launchdarkly_y", Operations: []string{"getX"}}}}},
+		{"candidate name equals an implemented resource", MappingFamily{Tag: "X", Status: statusPartial,
+			Resources:             []ResourceEntry{{Name: "launchdarkly_x", Operations: []string{"getX"}}},
+			NewResourceCandidates: []ResourceCandidate{{Name: "launchdarkly_x", Operations: []string{"putX"}}}}},
+		{"empty candidate operationId", MappingFamily{Tag: "X", Status: statusPartial,
+			Resources:             []ResourceEntry{{Name: "launchdarkly_x", Operations: []string{"getX"}}},
+			NewResourceCandidates: []ResourceCandidate{{Name: "launchdarkly_y", Operations: []string{""}}}}},
 	}
 	for _, tc := range cases {
 		m := &Mapping{Version: 1, Families: []MappingFamily{tc.fam}}
@@ -376,6 +507,11 @@ families:
         reason: runtime search, not declarative
     triage_operations:
       - postThingBulk
+    new_resource_candidates:
+      - name: launchdarkly_new_thing
+        operations:
+          - postNewThing
+          - getNewThing
 `
 	var m Mapping
 	if err := yaml.Unmarshal([]byte(doc), &m); err != nil {
@@ -383,6 +519,9 @@ families:
 	}
 	if err := m.validate(); err != nil {
 		t.Fatalf("validate: %v", err)
+	}
+	if cands := m.Families[1].NewResourceCandidates; len(cands) != 1 || cands[0].Name != "launchdarkly_new_thing" || len(cands[0].Operations) != 2 {
+		t.Errorf("new_resource_candidates = %+v, want 1 entry with name + 2 operations", m.Families[1].NewResourceCandidates)
 	}
 	plain := m.Families[0].Resources[0]
 	if plain.Name != "launchdarkly_plain" || len(plain.Operations) != 0 {

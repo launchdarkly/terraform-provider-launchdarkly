@@ -395,6 +395,14 @@ var SUBSCRIPTION_CONFIGURATION_FIELDS = map[string]IntegrationConfig{
 			IsSecret:      false,
 			Type:          "string",
 		},
+		"url": {
+			AllowedValues: []string{},
+			DefaultValue:  "",
+			Description:   "A link to the user's installation page on vercel.com",
+			IsOptional:    true,
+			IsSecret:      false,
+			Type:          "string",
+		},
 	},
 }
 
