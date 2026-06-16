@@ -142,7 +142,7 @@ func TestBuildReportClean(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, key := range []string{"new_families", "stale_families", "unmapped_resources", "unclaimed_operations", "stale_operations", "triage_operations", "scaffoldable_resources"} {
+	for _, key := range []string{"new_families", "stale_families", "unmapped_resources", "unclaimed_operations", "stale_operations", "triage_operations", "scaffoldable_resources", "registered_candidates"} {
 		if strings.Contains(string(raw), fmt.Sprintf("%q:null", key)) {
 			t.Errorf("%s serializes as null, want []", key)
 		}
@@ -314,6 +314,50 @@ func TestBuildReportScaffoldableResources(t *testing.T) {
 	}
 	if !strings.Contains(buf.String(), "Scaffoldable new resources in partial families") {
 		t.Error("markdown should include the scaffoldable-resources section")
+	}
+}
+
+func TestBuildReportRegisteredCandidateIsDrift(t *testing.T) {
+	families := fixtureOperations(t)
+	widgets := partialWidgets([]string{"getWidgets", "postWidget"})
+	// Curation mistake: the candidate names an already-registered provider type,
+	// so it is not net-new. (A same-family resource collision is caught by
+	// validation; this catches the cross-family / registered case validation
+	// cannot see.)
+	widgets.NewResourceCandidates = []ResourceCandidate{
+		{Name: "launchdarkly_project", Operations: []string{"deleteWidget"}},
+	}
+	mapping := fixtureMapping(t,
+		MappingFamily{Tag: "Projects", Status: statusCovered, Resources: []ResourceEntry{{Name: "launchdarkly_project"}}},
+		MappingFamily{Tag: "Shiny new feature", Status: statusTriage},
+		MappingFamily{Tag: "<untagged>", Status: statusIgnored, Reason: "spec hygiene bucket"},
+		widgets,
+	)
+	report := buildReport(families, mapping, []string{"launchdarkly_project", "launchdarkly_widget"}, nil, "fixture")
+
+	if !report.HasDrift() {
+		t.Fatal("a candidate naming a registered type must be drift")
+	}
+	if len(report.RegisteredCandidates) != 1 ||
+		report.RegisteredCandidates[0].Tag != "Widgets" ||
+		report.RegisteredCandidates[0].Name != "launchdarkly_project" {
+		t.Errorf("RegisteredCandidates = %+v, want [{Widgets launchdarkly_project}]", report.RegisteredCandidates)
+	}
+	// Must NOT be advertised as scaffoldable — that would re-scaffold an existing resource.
+	if len(report.ScaffoldableResources) != 0 {
+		t.Errorf("ScaffoldableResources = %+v, want none (candidate is already registered)", report.ScaffoldableResources)
+	}
+	// Its operation is still claimed, so it is not double-reported as unclaimed.
+	if len(report.UnclaimedOperations) != 0 {
+		t.Errorf("UnclaimedOperations = %+v, want none", report.UnclaimedOperations)
+	}
+
+	var buf bytes.Buffer
+	if err := renderMarkdown(&buf, report); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(buf.String(), "Candidates that already exist") {
+		t.Error("markdown should include the registered-candidate section")
 	}
 }
 

@@ -421,11 +421,12 @@ type Report struct {
 	SpecSource  string    `json:"spec_source"`
 
 	// Drift signals (any non-empty => exit code 2).
-	NewFamilies         []FamilyDetail    `json:"new_families"`
-	StaleFamilies       []string          `json:"stale_families"`
-	UnmappedResources   []string          `json:"unmapped_resources"`
-	UnclaimedOperations []OperationDetail `json:"unclaimed_operations"`
-	StaleOperations     []OperationDetail `json:"stale_operations"`
+	NewFamilies          []FamilyDetail      `json:"new_families"`
+	StaleFamilies        []string            `json:"stale_families"`
+	UnmappedResources    []string            `json:"unmapped_resources"`
+	UnclaimedOperations  []OperationDetail   `json:"unclaimed_operations"`
+	StaleOperations      []OperationDetail   `json:"stale_operations"`
+	RegisteredCandidates []CandidateConflict `json:"registered_candidates"`
 
 	// Informational.
 	TriageFamilies        []string               `json:"triage_families"`
@@ -433,6 +434,16 @@ type Report struct {
 	ScaffoldableResources []ScaffoldableResource `json:"scaffoldable_resources"`
 	StatusCounts          map[string]int         `json:"status_counts"`
 	TotalFamilies         int                    `json:"total_families"`
+}
+
+// CandidateConflict is a new_resource_candidate whose name is ALREADY a
+// registered provider type — a curation mistake (a candidate must be net-new).
+// It is drift: the operations belong on a real resources entry, not a candidate,
+// and it must never be emitted as scaffoldable (that would re-scaffold an
+// existing resource).
+type CandidateConflict struct {
+	Tag  string `json:"tag"`
+	Name string `json:"name"`
 }
 
 // ScaffoldableResource is a curated net-new resource (from a partial family's
@@ -463,7 +474,7 @@ type OperationDetail struct {
 
 func (r *Report) HasDrift() bool {
 	return len(r.NewFamilies) > 0 || len(r.StaleFamilies) > 0 || len(r.UnmappedResources) > 0 ||
-		len(r.UnclaimedOperations) > 0 || len(r.StaleOperations) > 0
+		len(r.UnclaimedOperations) > 0 || len(r.StaleOperations) > 0 || len(r.RegisteredCandidates) > 0
 }
 
 func buildReport(families map[string][]SpecOperation, mapping *Mapping, resources, dataSources []string, specSource string) *Report {
@@ -481,11 +492,20 @@ func buildReport(families map[string][]SpecOperation, mapping *Mapping, resource
 		TriageFamilies:        []string{},
 		TriageOperations:      []OperationDetail{},
 		ScaffoldableResources: []ScaffoldableResource{},
+		RegisteredCandidates:  []CandidateConflict{},
 	}
 
 	mapped := map[string]MappingFamily{}
 	for _, f := range mapping.Families {
 		mapped[f.Tag] = f
+	}
+
+	// Registered provider types — a new_resource_candidate naming one is a
+	// curation mistake (candidates must be net-new), so it is reported as drift
+	// rather than as scaffoldable.
+	registered := map[string]bool{}
+	for _, t := range append(append([]string{}, resources...), dataSources...) {
+		registered[t] = true
 	}
 
 	// Spec tags absent from the mapping => new families.
@@ -566,6 +586,13 @@ func buildReport(families map[string][]SpecOperation, mapping *Mapping, resource
 		// are listed; a candidate op missing from the spec is caught as a stale
 		// claim by the loop below (candidate ops are in `claimed`).
 		for _, c := range f.NewResourceCandidates {
+			// A candidate naming an already-registered type is a curation
+			// mistake: the resource exists, so it is not net-new and must not be
+			// advertised as scaffoldable. Surface it as drift instead.
+			if registered[c.Name] {
+				report.RegisteredCandidates = append(report.RegisteredCandidates, CandidateConflict{Tag: f.Tag, Name: c.Name})
+				continue
+			}
 			sr := ScaffoldableResource{Tag: f.Tag, Name: c.Name, Operations: []OperationDetail{}}
 			for _, opID := range c.Operations {
 				if so, ok := specByKey[opID]; ok {
@@ -592,6 +619,13 @@ func buildReport(families map[string][]SpecOperation, mapping *Mapping, resource
 	})
 	sort.Slice(report.ScaffoldableResources, func(i, j int) bool {
 		a, b := report.ScaffoldableResources[i], report.ScaffoldableResources[j]
+		if a.Tag != b.Tag {
+			return a.Tag < b.Tag
+		}
+		return a.Name < b.Name
+	})
+	sort.Slice(report.RegisteredCandidates, func(i, j int) bool {
+		a, b := report.RegisteredCandidates[i], report.RegisteredCandidates[j]
 		if a.Tag != b.Tag {
 			return a.Tag < b.Tag
 		}
@@ -683,6 +717,15 @@ func renderMarkdown(out io.Writer, r *Report) error {
 		fmt.Fprintf(w, "## Registered provider types not referenced by any family\n\n")
 		for _, t := range r.UnmappedResources {
 			fmt.Fprintf(w, "- `%s`\n", t)
+		}
+		fmt.Fprintf(w, "\n")
+	}
+
+	if len(r.RegisteredCandidates) > 0 {
+		fmt.Fprintf(w, "## Candidates that already exist (curation error)\n\n")
+		fmt.Fprintf(w, "These `new_resource_candidates` name an already-registered provider type, so they are not net-new. Move each one's operations to a `resources` entry instead of `new_resource_candidates`.\n\n")
+		for _, c := range r.RegisteredCandidates {
+			fmt.Fprintf(w, "- %s: `%s`\n", c.Tag, c.Name)
 		}
 		fmt.Fprintf(w, "\n")
 	}
