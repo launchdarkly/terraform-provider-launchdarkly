@@ -106,13 +106,13 @@ jobs:
               instead of hand-rolling HTTP.
             - If the resource is an account-scoped SINGLETON (the API allows only one
               per account — its create returns 409/optimistic_locking_error once one
-              exists), make the acceptance test safe to run repeatedly on a SHARED
-              account: (1) give fixtures a clearly test-owned identifier (a sentinel
-              value in a free-text field such as name/title); (2) add a PreCheck that
-              deletes any PRE-EXISTING instance matching that sentinel before create
-              (delete-existing-first), so a leftover from a prior aborted run can't 409
-              the test; (3) if a NON-test instance occupies the slot, t.Skip rather than
-              delete real data. Document the one-per-account limit in the schema Description.
+              exists), make the acceptance test self-cleaning. The acceptance token
+              targets a DEDICATED Terraform test account (not a customer/prod account),
+              so add a PreCheck that deletes ANY pre-existing instance before create
+              (delete-existing-first — a leftover from an aborted run or a retained
+              verification run would otherwise 409 the test). This is the repo's
+              account-singleton orphan-cleanup PreCheck pattern; see references/patterns.md.
+              Document the one-per-account limit in the schema Description.
 
             Additional notes from the operator: ${{ inputs.notes }}
 
