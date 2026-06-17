@@ -1,0 +1,386 @@
+version: 2
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 7
+  - package-ecosystem: "gomod"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 7
+  - package-ecosystem: "gomod"
+    directory: "/scripts/codegen"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 7
+  - package-ecosystem: "terraform"
+    directory: "/examples/data-sources/launchdarkly_ai_config"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 7
+  - package-ecosystem: "terraform"
+    directory: "/examples/data-sources/launchdarkly_ai_config_variation"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 7
+  - package-ecosystem: "terraform"
+    directory: "/examples/data-sources/launchdarkly_ai_tool"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 7
+  - package-ecosystem: "terraform"
+    directory: "/examples/data-sources/launchdarkly_audit_log_subscription"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 7
+  - package-ecosystem: "terraform"
+    directory: "/examples/data-sources/launchdarkly_environment"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 7
+  - package-ecosystem: "terraform"
+    directory: "/examples/data-sources/launchdarkly_feature_flag"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 7
+  - package-ecosystem: "terraform"
+    directory: "/examples/data-sources/launchdarkly_feature_flag_environment"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 7
+  - package-ecosystem: "terraform"
+    directory: "/examples/data-sources/launchdarkly_flag_trigger"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 7
+  - package-ecosystem: "terraform"
+    directory: "/examples/data-sources/launchdarkly_metric"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 7
+  - package-ecosystem: "terraform"
+    directory: "/examples/data-sources/launchdarkly_model_config"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 7
+  - package-ecosystem: "terraform"
+    directory: "/examples/data-sources/launchdarkly_project"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 7
+  - package-ecosystem: "terraform"
+    directory: "/examples/data-sources/launchdarkly_relay_proxy_configuration"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 7
+  - package-ecosystem: "terraform"
+    directory: "/examples/data-sources/launchdarkly_segment"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 7
+  - package-ecosystem: "terraform"
+    directory: "/examples/data-sources/launchdarkly_team"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 7
+  - package-ecosystem: "terraform"
+    directory: "/examples/data-sources/launchdarkly_team_member"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 7
+  - package-ecosystem: "terraform"
+    directory: "/examples/data-sources/launchdarkly_team_members"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 7
+  - package-ecosystem: "terraform"
+    directory: "/examples/data-sources/launchdarkly_view"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 7
+  - package-ecosystem: "terraform"
+    directory: "/examples/data-sources/launchdarkly_webhook"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 7
+  - package-ecosystem: "terraform"
+    directory: "/examples/guides/use-ignore-changes"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 7
+  - package-ecosystem: "terraform"
+    directory: "/examples/provider"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 7
+  - package-ecosystem: "terraform"
+    directory: "/examples/resources/launchdarkly_access_token"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 7
+  - package-ecosystem: "terraform"
+    directory: "/examples/resources/launchdarkly_ai_config"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 7
+  - package-ecosystem: "terraform"
+    directory: "/examples/resources/launchdarkly_ai_config_variation"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 7
+  - package-ecosystem: "terraform"
+    directory: "/examples/resources/launchdarkly_ai_tool"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 7
+  - package-ecosystem: "terraform"
+    directory: "/examples/resources/launchdarkly_audit_log_subscription"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 7
+  - package-ecosystem: "terraform"
+    directory: "/examples/resources/launchdarkly_custom_role"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 7
+  - package-ecosystem: "terraform"
+    directory: "/examples/resources/launchdarkly_destination"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 7
+  - package-ecosystem: "terraform"
+    directory: "/examples/resources/launchdarkly_environment"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 7
+  - package-ecosystem: "terraform"
+    directory: "/examples/resources/launchdarkly_feature_flag"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 7
+  - package-ecosystem: "terraform"
+    directory: "/examples/resources/launchdarkly_feature_flag_environment"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 7
+  - package-ecosystem: "terraform"
+    directory: "/examples/resources/launchdarkly_flag_templates"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 7
+  - package-ecosystem: "terraform"
+    directory: "/examples/resources/launchdarkly_flag_trigger"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 7
+  - package-ecosystem: "terraform"
+    directory: "/examples/resources/launchdarkly_metric"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 7
+  - package-ecosystem: "terraform"
+    directory: "/examples/resources/launchdarkly_model_config"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 7
+  - package-ecosystem: "terraform"
+    directory: "/examples/resources/launchdarkly_project"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 7
+  - package-ecosystem: "terraform"
+    directory: "/examples/resources/launchdarkly_relay_proxy_configuration"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 7
+  - package-ecosystem: "terraform"
+    directory: "/examples/resources/launchdarkly_segment"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 7
+  - package-ecosystem: "terraform"
+    directory: "/examples/resources/launchdarkly_team"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 7
+  - package-ecosystem: "terraform"
+    directory: "/examples/resources/launchdarkly_team_member"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 7
+  - package-ecosystem: "terraform"
+    directory: "/examples/resources/launchdarkly_view"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 7
+  - package-ecosystem: "terraform"
+    directory: "/examples/resources/launchdarkly_view_filter_links"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 7
+  - package-ecosystem: "terraform"
+    directory: "/examples/resources/launchdarkly_view_links"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 7
+  - package-ecosystem: "terraform"
+    directory: "/examples/resources/launchdarkly_webhook"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 7
+  - package-ecosystem: "terraform"
+    directory: "/usage-examples/access_token"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 7
+  - package-ecosystem: "terraform"
+    directory: "/usage-examples/custom_role"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 7
+  - package-ecosystem: "terraform"
+    directory: "/usage-examples/team_member"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 7
+  - package-ecosystem: "terraform"
+    directory: "/usage-examples/terraform_0.13"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 7
+  - package-ecosystem: "terraform"
+    directory: "/usage-examples/v1/feature_flags"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 7
+  - package-ecosystem: "terraform"
+    directory: "/usage-examples/v1/full_config"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 7
+  - package-ecosystem: "terraform"
+    directory: "/usage-examples/v1/multiple_projects"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 7
+  - package-ecosystem: "terraform"
+    directory: "/usage-examples/v2/audit_log_subscription"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 7
+  - package-ecosystem: "terraform"
+    directory: "/usage-examples/v2/data_source_destination"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 7
+  - package-ecosystem: "terraform"
+    directory: "/usage-examples/v2/data_source_webhook"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 7
+  - package-ecosystem: "terraform"
+    directory: "/usage-examples/v2/environment"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 7
+  - package-ecosystem: "terraform"
+    directory: "/usage-examples/v2/feature_flag"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 7
+  - package-ecosystem: "terraform"
+    directory: "/usage-examples/v2/flag_trigger"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 7
+  - package-ecosystem: "terraform"
+    directory: "/usage-examples/v2/full_config"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 7
+  - package-ecosystem: "terraform"
+    directory: "/usage-examples/v2/metric"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 7
+  - package-ecosystem: "terraform"
+    directory: "/usage-examples/v2/segment"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 7
+  - package-ecosystem: "terraform"
+    directory: "/usage-examples/v2/team"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 7
+  - package-ecosystem: "terraform"
+    directory: "/usage-examples/v2/webhook"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 7
