@@ -8,8 +8,10 @@
 # `needs: scaffold` job. Both entry points share one verify definition.
 #
 # This file lives on `main` only so GitHub registers the workflow_dispatch
-# trigger. Kill switch (VERIFY_AGENT_ENABLED) is enforced inside the reusable
-# workflow, so a disabled run fails fast there.
+# trigger. Kill switch: the tf-provider-verifier AI Config itself — the reusable
+# workflow aborts when that flag's production-served variation has
+# value._ldMeta.enabled=false (point its fallthrough at the 'disabled' variation
+# to stop the agent). No repo variable.
 name: Verify scaffolded resource against LaunchDarkly
 
 on:
