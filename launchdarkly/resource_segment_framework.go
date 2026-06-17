@@ -69,7 +69,9 @@ func (r *SegmentResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 		Version: 1,
 		Description: `Provides a LaunchDarkly segment resource.
 
-This resource allows you to create and manage segments within your LaunchDarkly organization.`,
+This resource allows you to create and manage segments within your LaunchDarkly organization.
+
+-> **Note:** When [segment approvals](https://docs.launchdarkly.com/home/releases/approvals) are enabled for an environment, segment **targeting** changes (` + "`included`" + `, ` + "`excluded`" + `, ` + "`rules`" + `, ` + "`included_contexts`" + `, ` + "`excluded_contexts`" + `) require approval and cannot be applied by Terraform: unlike feature flags, service tokens cannot bypass segment approvals (LaunchDarkly feature request FROPS-190). A segment with no targeting can still be created and managed. If targeting is configured, ` + "`terraform apply`" + ` fails with an "approval is required" error — manage targeting through the approval workflow (e.g. with ` + "`lifecycle { ignore_changes = [included, excluded, rules] }`" + `) or disable segment approvals for the environment.`,
 		Attributes: segmentSchemaAttributes(),
 	}
 }
@@ -483,33 +485,51 @@ func (r *SegmentResource) applySegmentUpdate(ctx context.Context, plan, state Se
 	}
 
 	comment := "Terraform"
-	patchOps := []ldapi.PatchOperation{
-		patchReplace("/name", plan.Name.ValueString()),
-		patchReplace("/description", desc),
-		patchReplace("/temporary", false),
-		patchReplace("/included", included),
-		patchReplace("/excluded", excluded),
-		patchReplace("/rules", rules),
-		patchReplace("/includedContexts", includedContexts),
-		patchReplace("/excludedContexts", excludedContexts),
-	}
-	tagsChanged := isCreate || !plan.Tags.Equal(state.Tags)
-	if tagsChanged && len(tags) == 0 {
-		patchOps = append(patchOps, patchRemove("/tags"))
+	var patchOps []ldapi.PatchOperation
+	if isCreate {
+		// The shell created by PostSegment / createSegmentWithViewKeys already
+		// carries name, description, tags and unbounded settings, so a create
+		// only needs to PATCH targeting. We deliberately omit the no-op
+		// targeting replaces (and the legacy "/temporary" op, which targets a
+		// field segments don't have): when segment approvals are enabled those
+		// ops are themselves gated, so sending them would make even a
+		// targeting-free segment fail to create (issue #370). A segment with no
+		// targeting therefore needs no PATCH at all and is created by the shell
+		// POST alone.
+		patchOps = appendSegmentTargetingOps(nil, included, excluded, rules, includedContexts, excludedContexts)
 	} else {
-		patchOps = append(patchOps, patchReplace("/tags", tags))
+		patchOps = []ldapi.PatchOperation{
+			patchReplace("/name", plan.Name.ValueString()),
+			patchReplace("/description", desc),
+			patchReplace("/included", included),
+			patchReplace("/excluded", excluded),
+			patchReplace("/rules", rules),
+			patchReplace("/includedContexts", includedContexts),
+			patchReplace("/excludedContexts", excludedContexts),
+		}
+		if !plan.Tags.Equal(state.Tags) && len(tags) == 0 {
+			patchOps = append(patchOps, patchRemove("/tags"))
+		} else {
+			patchOps = append(patchOps, patchReplace("/tags", tags))
+		}
 	}
 
-	err := r.client.withConcurrency(r.client.ctx, func() error {
-		_, _, e := r.client.ld.SegmentsApi.PatchSegment(r.client.ctx, projectKey, envKey, key).PatchWithComment(ldapi.PatchWithComment{
-			Comment: &comment,
-			Patch:   patchOps,
-		}).Execute()
-		return e
-	})
-	if err != nil {
-		diags.AddError(fmt.Sprintf("failed to update segment %q in project %q: %s", key, projectKey, handleLdapiErr(err).Error()), "")
-		return diags
+	if len(patchOps) > 0 {
+		err := r.client.withConcurrency(r.client.ctx, func() error {
+			_, _, e := r.client.ld.SegmentsApi.PatchSegment(r.client.ctx, projectKey, envKey, key).PatchWithComment(ldapi.PatchWithComment{
+				Comment: &comment,
+				Patch:   patchOps,
+			}).Execute()
+			return e
+		})
+		if err != nil {
+			if isApprovalRequiredErr(err) {
+				diags.Append(r.segmentApprovalRequiredDiag(isCreate, projectKey, envKey, key))
+				return diags
+			}
+			diags.AddError(fmt.Sprintf("failed to update segment %q in project %q: %s", key, projectKey, handleLdapiErr(err).Error()), "")
+			return diags
+		}
 	}
 
 	// View association reconciliation.
@@ -580,6 +600,62 @@ func (r *SegmentResource) applySegmentUpdate(ctx context.Context, plan, state Se
 		}
 	}
 	return diags
+}
+
+// appendSegmentTargetingOps appends a replace op for each segment targeting
+// collection that is non-empty. Empty collections are skipped because a
+// freshly created segment shell already has them empty, and replacing them
+// with an empty value is gated when segment approvals are enabled (issue
+// #370) — sending such no-op replaces would needlessly fail an otherwise
+// targeting-free create.
+func appendSegmentTargetingOps(ops []ldapi.PatchOperation, included, excluded []string, rules []ldapi.UserSegmentRule, includedContexts, excludedContexts []ldapi.SegmentTarget) []ldapi.PatchOperation {
+	if len(included) > 0 {
+		ops = append(ops, patchReplace("/included", included))
+	}
+	if len(excluded) > 0 {
+		ops = append(ops, patchReplace("/excluded", excluded))
+	}
+	if len(rules) > 0 {
+		ops = append(ops, patchReplace("/rules", rules))
+	}
+	if len(includedContexts) > 0 {
+		ops = append(ops, patchReplace("/includedContexts", includedContexts))
+	}
+	if len(excludedContexts) > 0 {
+		ops = append(ops, patchReplace("/excludedContexts", excludedContexts))
+	}
+	return ops
+}
+
+// segmentApprovalRequiredDiag builds the diagnostic returned when a segment
+// PATCH is rejected because segment approvals are enabled for the environment.
+// Segment targeting changes require approval and, unlike feature flags,
+// service tokens cannot bypass segment approvals yet (FROPS-190), so Terraform
+// — which applies changes non-interactively — cannot satisfy the inline
+// approval. On create the function also rolls back the shell that PostSegment
+// created (DELETE is not gated by approvals) so a retry does not collide with
+// an orphaned segment. See issue #370.
+func (r *SegmentResource) segmentApprovalRequiredDiag(isCreate bool, projectKey, envKey, key string) diag.Diagnostic {
+	verb := "updated"
+	remediation := "Remove the targeting attributes (included / excluded / rules / included_contexts / excluded_contexts) from this resource, or disable segment approvals for this environment."
+	rollback := ""
+	if isCreate {
+		verb = "created"
+		remediation = "Remove the targeting attributes (included / excluded / rules / included_contexts / excluded_contexts) so Terraform creates only the segment shell and you manage targeting through the approval workflow, or disable segment approvals for this environment."
+		delErr := r.client.withConcurrency(r.client.ctx, func() error {
+			_, e := r.client.ld.SegmentsApi.DeleteSegment(r.client.ctx, projectKey, envKey, key).Execute()
+			return e
+		})
+		if delErr == nil {
+			rollback = " The partially created segment was rolled back to keep Terraform state consistent."
+		} else {
+			rollback = fmt.Sprintf(" Note: the partially created segment %q could not be removed automatically (%s); delete it manually before retrying.", key, handleLdapiErr(delErr).Error())
+		}
+	}
+	return diag.NewErrorDiagnostic(
+		fmt.Sprintf("segment %q cannot be %s in project %q: segment approvals are enabled for environment %q", key, verb, projectKey, envKey),
+		fmt.Sprintf("LaunchDarkly rejected the segment targeting change with \"approval is required\" (HTTP 403). Segment approvals gate targeting changes in this environment, and unlike feature flags, service tokens cannot bypass segment approvals yet (LaunchDarkly feature request FROPS-190). Because Terraform applies changes non-interactively, it cannot satisfy an inline approval.%s\n\n%s", rollback, remediation),
+	)
 }
 
 func (r *SegmentResource) readIntoModel(ctx context.Context, data *SegmentResourceModel, diags *diag.Diagnostics) {
