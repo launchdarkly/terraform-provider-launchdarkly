@@ -4,6 +4,7 @@ package launchdarkly
 // The name of each constant is the same as its value.
 const (
 	//gofmts:sort
+	ACCOUNT_ID                                = "account_id"
 	ACTIONS                                   = "actions"
 	ACTION_SET                                = "action_set"
 	AI_CONFIG_KEY                             = "config_key"
@@ -19,6 +20,8 @@ const (
 	CAN_APPLY_DECLINED_CHANGES                = "can_apply_declined_changes"
 	CAN_REVIEW_OWN_REQUEST                    = "can_review_own_request"
 	CLAUSES                                   = "clauses"
+	CLIENT_ID                                 = "client_id"
+	CLIENT_SECRET                             = "client_secret"
 	CLIENT_SIDE_AVAILABILITY                  = "client_side_availability"
 	CLIENT_SIDE_ID                            = "client_side_id"
 	COLOR                                     = "color"
@@ -128,6 +131,7 @@ const (
 	PROVIDER_NAME                             = "model_provider"
 	RANDOMIZATION_UNITS                       = "randomization_units"
 	RECONCILE_ON_APPLY                        = "reconcile_on_apply"
+	REDIRECT_URI                              = "redirect_uri"
 	RELEASE_METHOD                            = "release_method"
 	RELEASE_POLICY_KEYS                       = "release_policy_keys"
 	REQUIRED                                  = "required"
