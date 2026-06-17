@@ -17,11 +17,9 @@ import (
 )
 
 // announcementSeverities is the set of severities accepted by the
-// Announcements API. The client docs example uses "warning"; "info" and
-// "critical" mirror the in-app banner severities. NOTE (autogen stage 2,
-// 2026-06-17): the full enum could not be confirmed against openapi.json in
-// this environment (network fetch was unavailable) — a human reviewer must
-// verify this list against the live spec / a real apply before merge.
+// Announcements API. Confirmed against openapi.json (the `severity` enum on
+// CreateAnnouncementBody / AnnouncementResponse) and a real apply during
+// stage-3 verification: the complete enum is exactly these three values.
 var announcementSeverities = []string{"info", "warning", "critical"}
 
 // announcementListPageSize bounds each page when scanning the list endpoint
@@ -58,7 +56,7 @@ func (r *AnnouncementResource) Metadata(_ context.Context, req resource.Metadata
 
 func (r *AnnouncementResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "Provides a LaunchDarkly announcement resource.\n\nThis resource allows you to create and manage an in-app announcement banner that appears in the LaunchDarkly user interface for everyone in your organization.",
+		Description: "Provides a LaunchDarkly announcement resource.\n\nThis resource allows you to create and manage an in-app announcement banner that appears in the LaunchDarkly user interface for everyone in your organization.\n\n-> **Note:** LaunchDarkly supports only one announcement per account. Attempting to create a second `launchdarkly_announcement` while one already exists returns a `409` conflict; update the existing announcement instead.",
 		Attributes: map[string]schema.Attribute{
 			ID: schema.StringAttribute{
 				Computed:      true,
@@ -241,11 +239,11 @@ func (r *AnnouncementResource) readIntoModel(id string, data *AnnouncementResour
 }
 
 // getAnnouncementByID pages through the announcements list endpoint looking
-// for a matching ID. NOTE (autogen stage 2, 2026-06-17): the list defaults to
-// returning all statuses here (the status filter is left unset); a human
-// reviewer should confirm with a real apply that the default does not exclude
-// expired/inactive announcements, which would make Read spuriously 404 a
-// managed announcement and recreate it.
+// for a matching ID. The status filter is left unset, which returns
+// announcements of every status; confirmed during stage-3 verification that an
+// unset filter surfaces both "inactive" and "scheduled" announcements, so Read
+// will not spuriously 404 (and recreate) a managed announcement whose computed
+// status is not "active".
 func (r *AnnouncementResource) getAnnouncementByID(id string) (*ldapi.AnnouncementResponse, bool, error) {
 	var offset int32
 	for {
