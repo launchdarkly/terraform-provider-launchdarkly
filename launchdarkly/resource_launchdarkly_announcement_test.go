@@ -3,7 +3,6 @@ package launchdarkly
 import (
 	"fmt"
 	"regexp"
-	"strings"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
@@ -12,10 +11,10 @@ import (
 
 const (
 	// An announcement is an account-scoped SINGLETON (the API allows only one per
-	// account). On the shared acceptance account a leftover from a prior aborted
-	// run would 409 this test's create, so testAccAnnouncementPreClean deletes
-	// any pre-existing announcement carrying this sentinel in its title — and ONLY
-	// those, so a real announcement is never touched. Both fixtures below embed it.
+	// account), so a leftover from a prior aborted run would 409 this test's create.
+	// testAccAnnouncementPreClean clears the slot first. The fixtures carry this
+	// marker only to label the artifacts as test-owned in the dedicated Terraform
+	// acceptance account; the pre-clean deletes any leftover regardless.
 	tfAccAnnouncementSentinel = "tf-acc-test announcement"
 
 	testAccAnnouncementTitle       = tfAccAnnouncementSentinel + " (safe to delete)"
@@ -199,17 +198,18 @@ func announcementExistsByID(id string) (bool, error) {
 	}
 }
 
-// testAccAnnouncementPreClean clears a test-owned announcement left over from a
-// prior aborted run so the one-per-account create below does not 409. Because an
-// announcement is an account singleton on a SHARED acceptance account, it deletes
-// ONLY announcements whose title carries tfAccAnnouncementSentinel — never a real
-// one. If a NON-test announcement already occupies the single slot, the test is
-// skipped rather than deleting data this test does not own.
+// testAccAnnouncementPreClean clears any pre-existing announcement so this test's
+// one-per-account create does not 409. LAUNCHDARKLY_ACCESS_TOKEN points at a
+// dedicated Terraform acceptance-testing account (not a customer/prod account), so
+// any leftover — e.g. from an aborted prior run or a retained verification run — is
+// a test artifact safe to delete. Mirrors the account-singleton orphan-cleanup
+// PreCheck pattern. IDs are collected before deleting so paging isn't disturbed
+// mid-iteration (in practice there is at most one, given the singleton limit).
 func testAccAnnouncementPreClean(t *testing.T) {
 	client := mustTestAccClient()
 	var (
-		offset        int32
-		blockedByReal bool
+		ids    []string
+		offset int32
 	)
 	for {
 		page, _, err := client.ld.AnnouncementsApi.GetAnnouncementsPublic(client.ctx).
@@ -220,21 +220,16 @@ func testAccAnnouncementPreClean(t *testing.T) {
 			t.Fatalf("announcement pre-clean: list failed: %s", handleLdapiErr(err))
 		}
 		for i := range page.Items {
-			a := page.Items[i]
-			if strings.Contains(a.Title, tfAccAnnouncementSentinel) {
-				if _, err := client.ld.AnnouncementsApi.DeleteAnnouncementPublic(client.ctx, a.Id).Execute(); err != nil {
-					t.Fatalf("announcement pre-clean: delete %q failed: %s", a.Id, handleLdapiErr(err))
-				}
-				continue
-			}
-			blockedByReal = true
+			ids = append(ids, page.Items[i].Id)
 		}
 		if len(page.Items) < announcementListPageSize {
 			break
 		}
 		offset += announcementListPageSize
 	}
-	if blockedByReal {
-		t.Skip("a non-test announcement occupies the account's single slot; skipping to avoid deleting data this test does not own")
+	for _, id := range ids {
+		if _, err := client.ld.AnnouncementsApi.DeleteAnnouncementPublic(client.ctx, id).Execute(); err != nil {
+			t.Fatalf("announcement pre-clean: delete %q failed: %s", id, handleLdapiErr(err))
+		}
 	}
 }
