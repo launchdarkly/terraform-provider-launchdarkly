@@ -63,6 +63,30 @@ func isTimeoutError(err error) bool {
 	return ok && e.Timeout()
 }
 
+// isApprovalRequiredErr reports whether err is a LaunchDarkly API rejection
+// caused by an approval requirement. When approvals are enabled for a
+// resource, the API rejects direct mutations with HTTP 403 and the body
+// {"code":"forbidden","message":"approval is required"}. Segment approvals
+// gate targeting changes (included / excluded / rules / *_contexts) and,
+// unlike flag approvals, cannot yet be bypassed by a service token
+// (FROPS-190) — so Terraform cannot apply gated segment changes. See issue
+// #370. Keyed on the message rather than the bare 403 so ordinary
+// permission-denied 403s are not misclassified.
+func isApprovalRequiredErr(err error) bool {
+	if err == nil {
+		return false
+	}
+	const marker = "approval is required"
+	// The API client returns the response payload via Body(); err.Error() only
+	// carries the HTTP status line, so check the body first.
+	if swaggerErr, ok := err.(*ldapi.GenericOpenAPIError); ok {
+		if strings.Contains(string(swaggerErr.Body()), marker) {
+			return true
+		}
+	}
+	return strings.Contains(err.Error(), marker)
+}
+
 func isStatusNotFound(response *http.Response) bool {
 	if response != nil && response.StatusCode == http.StatusNotFound {
 		return true

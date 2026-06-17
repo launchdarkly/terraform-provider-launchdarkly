@@ -2,9 +2,13 @@ package launchdarkly
 
 import (
 	"fmt"
+	"io"
+	"net/http"
 	"os"
 	"regexp"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
@@ -729,4 +733,115 @@ resource "launchdarkly_segment" "test" {
 			},
 		},
 	})
+}
+
+// TestAccSegment_ApprovalRequired covers issue #370: when segment approvals are
+// enabled for an environment, a segment with no targeting must still create
+// (the gated, no-op targeting PATCH is skipped), while a segment that does
+// configure targeting must fail with the actionable "approval is required"
+// error rather than the old opaque failure. Segment approvals are not exposed
+// through the provider schema, so they are toggled out-of-band via the beta
+// approval-settings API in a PreConfig step. Runs serially because it mutates
+// environment-scoped approval settings.
+func TestAccSegment_ApprovalRequired(t *testing.T) {
+	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	envKey := "test-env"
+	bareResourceName := "launchdarkly_segment.bare"
+
+	projectOnly := fmt.Sprintf(`
+resource "launchdarkly_project" "test" {
+	key  = "%s"
+	name = "Segment Approvals Test"
+	environments = [{
+		key   = "%s"
+		name  = "Test Environment"
+		color = "010101"
+	}]
+}
+`, projectKey, envKey)
+
+	bareSegment := projectOnly + `
+resource "launchdarkly_segment" "bare" {
+	project_key = launchdarkly_project.test.key
+	env_key     = "test-env"
+	key         = "approval-bare"
+	name        = "bare under approvals"
+	description = "no targeting; must create under approvals"
+}
+`
+
+	withRules := bareSegment + `
+resource "launchdarkly_segment" "rules" {
+	project_key = launchdarkly_project.test.key
+	env_key     = "test-env"
+	key         = "approval-rules"
+	name        = "rules under approvals"
+	rules = [{
+		clauses = [{
+			attribute    = "email"
+			op           = "in"
+			values       = ["a@b.com"]
+			context_kind = "user"
+		}]
+	}]
+}
+`
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckProjectDestroy,
+		Steps: []resource.TestStep{
+			// Step 1: create the project + environment (no segment yet).
+			{
+				Config: projectOnly,
+			},
+			// Step 2: enable segment approvals, then a targeting-free segment
+			// must still create successfully.
+			{
+				PreConfig: func() { enableSegmentApprovalsForTest(t, projectKey, envKey) },
+				Config:    bareSegment,
+				Check:     resource.ComposeTestCheckFunc(testAccCheckSegmentExists(bareResourceName)),
+			},
+			// Step 3: a segment that configures targeting must fail with the
+			// actionable approval error; the partial shell is rolled back.
+			{
+				// Terraform word-wraps diagnostics, so tolerate whitespace
+				// (including newlines) between words.
+				Config:      withRules,
+				ExpectError: regexp.MustCompile(`approval\s+is\s+required`),
+			},
+		},
+	})
+}
+
+// enableSegmentApprovalsForTest turns on segment approvals for the given
+// environment via the beta approval-settings API. Segment approvals are not
+// configurable through the provider schema, so the test toggles them directly.
+func enableSegmentApprovalsForTest(t *testing.T, projectKey, envKey string) {
+	t.Helper()
+	host := os.Getenv(LAUNCHDARKLY_API_HOST)
+	if host == "" {
+		host = DEFAULT_LAUNCHDARKLY_HOST
+	}
+	if !strings.HasPrefix(host, "http://") && !strings.HasPrefix(host, "https://") {
+		host = "https://" + host
+	}
+	body := fmt.Sprintf(`{"environmentKey":%q,"resourceKind":"segment","required":true,"serviceKind":"launchdarkly","minNumApprovals":1}`, envKey)
+	req, err := http.NewRequest(http.MethodPatch, host+"/api/v2/approval-requests/projects/"+projectKey+"/settings", strings.NewReader(body))
+	if err != nil {
+		t.Fatalf("build approval-settings request: %s", err)
+	}
+	req.Header.Set("Authorization", os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN))
+	req.Header.Set("LD-API-Version", "beta")
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := (&http.Client{Timeout: 30 * time.Second}).Do(req)
+	if err != nil {
+		t.Fatalf("enable segment approvals: %s", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		b, _ := io.ReadAll(resp.Body)
+		t.Fatalf("enable segment approvals for %s/%s returned %d: %s", projectKey, envKey, resp.StatusCode, string(b))
+	}
 }
