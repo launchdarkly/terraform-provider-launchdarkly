@@ -284,11 +284,13 @@ func (r *EnvironmentResource) Update(ctx context.Context, req resource.UpdateReq
 		}
 	}
 
-	if !plan.SegmentApprovalSettings.Equal(state.SegmentApprovalSettings) {
+	// Skip the segment patch if anything above already failed (e.g. the
+	// flag approval patch): the handler returns before persisting state on
+	// error, so committing a segment change we won't save would drift state
+	// from LaunchDarkly. Append diagnostics and fall through to the shared
+	// read/set tail rather than returning early here.
+	if !resp.Diagnostics.HasError() && !plan.SegmentApprovalSettings.Equal(state.SegmentApprovalSettings) {
 		resp.Diagnostics.Append(r.applySegmentApprovalSettings(ctx, projectKey, envKey, plan.SegmentApprovalSettings)...)
-		if resp.Diagnostics.HasError() {
-			return
-		}
 	}
 
 	r.readIntoModel(ctx, projectKey, envKey, &plan, &resp.Diagnostics)
@@ -473,6 +475,18 @@ func (r *EnvironmentResource) readSegmentApprovalSettings(ctx context.Context, p
 		return types.ListNull(objectType), diags
 	}
 	seg := segmentApprovalSettingFromGET(settings, envKey)
+	if seg == nil {
+		// prior is non-empty here (we return early above otherwise), so the
+		// user manages segment_approval_settings yet the beta API returned
+		// no segment setting for this environment. Surface it rather than
+		// letting frameworkApprovalSettingsValue silently null the list,
+		// which would read as a perpetual diff against the config block.
+		diags.AddError(
+			"Could not read segment_approval_settings",
+			fmt.Sprintf("the LaunchDarkly approvals API returned no segment approval settings for environment %q in project %q, but segment_approval_settings is managed in your configuration", envKey, projectKey),
+		)
+		return types.ListNull(objectType), diags
+	}
 	list, d := frameworkApprovalSettingsValue(ctx, approvalSettingsFromRequestSetting(seg), prior)
 	diags.Append(d...)
 	return list, diags
