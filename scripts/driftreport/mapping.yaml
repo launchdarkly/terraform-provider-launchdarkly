@@ -319,8 +319,10 @@ families:
     notes: Promoted to operation-level after the metric-group pilot (PR #453) merged — dogfood entry for drift tool v2.
 
   - tag: OAuth2 Clients
-    status: triage
-    notes: Account-level OAuth app registration; niche but declarative.
+    status: covered
+    resources:
+      - launchdarkly_oauth_client
+    notes: Account-level OAuth app registration. Scaffolded by the autogen pipeline (stage 2). The client secret is returned only on create, so it is modeled as a computed/sensitive attribute and is not reconciled on import.
 
   - tag: Other
     status: ignored
