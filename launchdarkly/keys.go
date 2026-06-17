@@ -155,6 +155,7 @@ const (
 	SECRET                                    = "secret"
 	SECURE_MODE                               = "secure_mode"
 	SEGMENTS                                  = "segments"
+	SEGMENT_APPROVAL_SETTINGS                 = "segment_approval_settings"
 	SEGMENT_ENVIRONMENT_ID                    = "environment_id"
 	SEGMENT_FILTER                            = "segment_filter"
 	SEGMENT_FILTER_ENVIRONMENT_ID             = "segment_filter_environment_id"

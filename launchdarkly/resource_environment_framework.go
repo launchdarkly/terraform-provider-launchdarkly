@@ -29,22 +29,23 @@ type EnvironmentResource struct {
 }
 
 type EnvironmentResourceModel struct {
-	ID                 types.String `tfsdk:"id"`
-	ProjectKey         types.String `tfsdk:"project_key"`
-	Key                types.String `tfsdk:"key"`
-	Name               types.String `tfsdk:"name"`
-	Color              types.String `tfsdk:"color"`
-	APIKey             types.String `tfsdk:"api_key"`
-	MobileKey          types.String `tfsdk:"mobile_key"`
-	ClientSideID       types.String `tfsdk:"client_side_id"`
-	DefaultTTL         types.Int64  `tfsdk:"default_ttl"`
-	SecureMode         types.Bool   `tfsdk:"secure_mode"`
-	DefaultTrackEvents types.Bool   `tfsdk:"default_track_events"`
-	RequireComments    types.Bool   `tfsdk:"require_comments"`
-	ConfirmChanges     types.Bool   `tfsdk:"confirm_changes"`
-	Critical           types.Bool   `tfsdk:"critical"`
-	Tags               types.Set    `tfsdk:"tags"`
-	ApprovalSettings   types.List   `tfsdk:"approval_settings"`
+	ID                      types.String `tfsdk:"id"`
+	ProjectKey              types.String `tfsdk:"project_key"`
+	Key                     types.String `tfsdk:"key"`
+	Name                    types.String `tfsdk:"name"`
+	Color                   types.String `tfsdk:"color"`
+	APIKey                  types.String `tfsdk:"api_key"`
+	MobileKey               types.String `tfsdk:"mobile_key"`
+	ClientSideID            types.String `tfsdk:"client_side_id"`
+	DefaultTTL              types.Int64  `tfsdk:"default_ttl"`
+	SecureMode              types.Bool   `tfsdk:"secure_mode"`
+	DefaultTrackEvents      types.Bool   `tfsdk:"default_track_events"`
+	RequireComments         types.Bool   `tfsdk:"require_comments"`
+	ConfirmChanges          types.Bool   `tfsdk:"confirm_changes"`
+	Critical                types.Bool   `tfsdk:"critical"`
+	Tags                    types.Set    `tfsdk:"tags"`
+	ApprovalSettings        types.List   `tfsdk:"approval_settings"`
+	SegmentApprovalSettings types.List   `tfsdk:"segment_approval_settings"`
 }
 
 func NewEnvironmentResource() resource.Resource {
@@ -115,7 +116,8 @@ func (r *EnvironmentResource) Schema(_ context.Context, _ resource.SchemaRequest
 				Optional:    true,
 				ElementType: types.StringType,
 			},
-			APPROVAL_SETTINGS: frameworkApprovalSettingsResourceAttribute(),
+			APPROVAL_SETTINGS:         frameworkApprovalSettingsResourceAttribute(),
+			SEGMENT_APPROVAL_SETTINGS: frameworkSegmentApprovalSettingsResourceAttribute(),
 		},
 	}
 }
@@ -203,6 +205,14 @@ func (r *EnvironmentResource) Create(ctx context.Context, req resource.CreateReq
 		}
 	}
 
+	// Segment approval settings, if any, applied via the beta approvals API.
+	if !plan.SegmentApprovalSettings.IsNull() && !plan.SegmentApprovalSettings.IsUnknown() && len(plan.SegmentApprovalSettings.Elements()) > 0 {
+		resp.Diagnostics.Append(r.applySegmentApprovalSettings(ctx, projectKey, key, plan.SegmentApprovalSettings)...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+	}
+
 	r.readIntoModel(ctx, projectKey, key, &plan, &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
 		return
@@ -272,6 +282,15 @@ func (r *EnvironmentResource) Update(ctx context.Context, req resource.UpdateReq
 		if d := r.applyApprovalPatch(ctx, projectKey, envKey, plan.ApprovalSettings, state.ApprovalSettings); d != nil {
 			resp.Diagnostics.AddError("Failed to update approval_settings", d.Error())
 		}
+	}
+
+	// Skip the segment patch if anything above already failed (e.g. the
+	// flag approval patch): the handler returns before persisting state on
+	// error, so committing a segment change we won't save would drift state
+	// from LaunchDarkly. Append diagnostics and fall through to the shared
+	// read/set tail rather than returning early here.
+	if !resp.Diagnostics.HasError() && !plan.SegmentApprovalSettings.Equal(state.SegmentApprovalSettings) {
+		resp.Diagnostics.Append(r.applySegmentApprovalSettings(ctx, projectKey, envKey, plan.SegmentApprovalSettings)...)
 	}
 
 	r.readIntoModel(ctx, projectKey, envKey, &plan, &resp.Diagnostics)
@@ -390,6 +409,89 @@ func (r *EnvironmentResource) applyApprovalPatch(ctx context.Context, projectKey
 	})
 }
 
+// applySegmentApprovalSettings PATCHes the environment's segment approval
+// settings via LaunchDarkly's beta approvals API. A null/empty planList
+// disables the segment approval gate (required=false). Unlike flag
+// approval_settings (an environment patch), segment approvals live on a
+// separate beta endpoint and are scoped by environmentKey + resourceKind.
+func (r *EnvironmentResource) applySegmentApprovalSettings(ctx context.Context, projectKey, envKey string, planList types.List) diag.Diagnostics {
+	body, diags := segmentApprovalSettingsPatch(ctx, planList, envKey)
+	if diags.HasError() {
+		return diags
+	}
+	beta, err := newBetaClient(r.client.apiKey, r.client.apiHost, false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
+	if err != nil {
+		diags.AddError("Failed to create beta client for segment_approval_settings", err.Error())
+		return diags
+	}
+	err = beta.withConcurrency(beta.ctx, func() error {
+		_, _, e := beta.ld.ApprovalsBetaApi.PatchApprovalRequestSettings(beta.ctx, projectKey).
+			LDAPIVersion("beta").
+			ApprovalRequestSettingsPatch(body).
+			Execute()
+		return e
+	})
+	if err != nil {
+		diags.AddError("Failed to apply segment_approval_settings", handleLdapiErr(err).Error())
+	}
+	return diags
+}
+
+// readSegmentApprovalSettings reads the environment's segment approval
+// settings via the beta approvals API and converts them to the framework
+// list value, mirroring `prior`'s attribute presence so an undeclared
+// attribute stays null.
+func (r *EnvironmentResource) readSegmentApprovalSettings(ctx context.Context, projectKey, envKey string, prior types.List) (types.List, diag.Diagnostics) {
+	var diags diag.Diagnostics
+	objectType := types.ObjectType{AttrTypes: frameworkApprovalSettingsObjectAttrTypes}
+
+	// Only the beta approvals API can answer this, and approvals are an
+	// Enterprise feature. When the user does not manage
+	// segment_approval_settings (prior is null/empty) the result would be
+	// null regardless, so skip the extra call entirely. This also avoids
+	// breaking environment reads on accounts where the beta endpoint is
+	// unavailable (403/404) for users who never opted in.
+	if prior.IsNull() || prior.IsUnknown() || len(prior.Elements()) == 0 {
+		return types.ListNull(objectType), diags
+	}
+
+	beta, err := newBetaClient(r.client.apiKey, r.client.apiHost, false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
+	if err != nil {
+		diags.AddError("Failed to create beta client for segment_approval_settings", err.Error())
+		return types.ListNull(objectType), diags
+	}
+	var settings *map[string]ldapi.ApprovalRequestSettingWithEnvs
+	err = beta.withConcurrency(beta.ctx, func() error {
+		var e error
+		settings, _, e = beta.ld.ApprovalsBetaApi.GetApprovalRequestSettings(beta.ctx, projectKey).
+			LDAPIVersion("beta").
+			EnvironmentKey(envKey).
+			ResourceKind(segmentResourceKind).
+			Execute()
+		return e
+	})
+	if err != nil {
+		diags.AddError("Failed to read segment_approval_settings", handleLdapiErr(err).Error())
+		return types.ListNull(objectType), diags
+	}
+	seg := segmentApprovalSettingFromGET(settings, envKey)
+	if seg == nil {
+		// prior is non-empty here (we return early above otherwise), so the
+		// user manages segment_approval_settings yet the beta API returned
+		// no segment setting for this environment. Surface it rather than
+		// letting frameworkApprovalSettingsValue silently null the list,
+		// which would read as a perpetual diff against the config block.
+		diags.AddError(
+			"Could not read segment_approval_settings",
+			fmt.Sprintf("the LaunchDarkly approvals API returned no segment approval settings for environment %q in project %q, but segment_approval_settings is managed in your configuration", envKey, projectKey),
+		)
+		return types.ListNull(objectType), diags
+	}
+	list, d := frameworkApprovalSettingsValue(ctx, approvalSettingsFromRequestSetting(seg), prior)
+	diags.Append(d...)
+	return list, diags
+}
+
 func (r *EnvironmentResource) readIntoModel(
 	ctx context.Context,
 	projectKey, envKey string,
@@ -435,4 +537,8 @@ func (r *EnvironmentResource) readIntoModel(
 	approvals, d := frameworkApprovalSettingsValue(ctx, env.ApprovalSettings, data.ApprovalSettings)
 	diags.Append(d...)
 	data.ApprovalSettings = approvals
+
+	segmentApprovals, d := r.readSegmentApprovalSettings(ctx, projectKey, envKey, data.SegmentApprovalSettings)
+	diags.Append(d...)
+	data.SegmentApprovalSettings = segmentApprovals
 }
