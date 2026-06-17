@@ -2,9 +2,19 @@
 # one-shot scaffolding of a new provider resource for an endpoint family
 # surfaced by the drift report (stage 1).
 #
-# Manually triggered only — never wired to the drift cron. The agent's output
-# is a DRAFT pull request; it never merges anything. Existing CI (build, lint,
-# generate-diff, acceptance shards) is the quality floor for the draft.
+# Triggered manually (workflow_dispatch), e.g. from the stage-1 drift Slack
+# message's "▶ Scaffold it" link / pre-filled `gh` command. Never wired to the
+# drift cron. The agent's output is a DRAFT pull request; it never merges
+# anything. Existing CI (build, lint, generate-diff, acceptance shards) is the
+# quality floor for the draft.
+#
+# AUTO-CHAIN to stage 3: when the scaffold job produces a PR, a downstream
+# `verify` job (needs: scaffold) calls the reusable verify workflow
+# (verify-reusable.yml) IN THE SAME RUN. Because that is an in-run reusable call
+# rather than a cross-workflow dispatch, it is NOT blocked by GitHub's
+# GITHUB_TOKEN anti-recursion — which is why scaffold + verify were merged
+# instead of chained via `gh workflow run`. The verify job is gated only by the
+# VERIFY_AGENT_ENABLED kill switch (no per-family safelist).
 #
 # This file lives on `main` only so GitHub registers the workflow_dispatch
 # trigger (dispatch requires the workflow on the default branch). The checkout
@@ -45,6 +55,10 @@ jobs:
     name: Scaffold ${{ inputs.resource_name || inputs.family }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
+    # Exposed to the downstream verify job so it knows which PR to verify.
+    # Empty when the agent created no PR (e.g. graceful abort) -> verify skipped.
+    outputs:
+      pr_number: ${{ steps.prnum.outputs.pr_number }}
     steps:
       - name: Check kill switch
         if: vars.SCAFFOLD_AGENT_ENABLED != 'true'
@@ -140,7 +154,69 @@ jobs:
             5. Commit, push the branch, and open a DRAFT pull request against
                preview-v3 titled "feat: scaffold ${{ inputs.resource_name || inputs.family }} resource
                (autogen stage 2)". The PR body must state it is agent-scaffolded and
-               needs human review per stage 3 of the autogen pipeline.
+               needs human review per stage 3 of the autogen pipeline, and note that
+               stage-3 verification runs automatically on this PR.
+            6. Write the PR number you just created to scaffold-result.json at the repo
+               root (do NOT commit it), exactly:
+                 {"pr_number": <N>, "branch": "<your branch name>"}
+               The pipeline reads this to auto-trigger stage-3 verification on YOUR PR;
+               if you omit it, verification falls back to a best-effort branch-name match
+               or must be dispatched by hand. Get <N> from the `gh pr create` output URL
+               (.../pull/<N>) or `gh pr view <branch> --json number`.
             Never push to preview-v3 directly and never merge anything.
           claude_args: |
-            --allowedTools "Read,Edit,Write,Glob,Grep,Bash(go:*),Bash(make:*),Bash(git:*),Bash(gh pr create:*),Bash(gofmt:*),Bash(terraform:*),WebFetch(domain:app.launchdarkly.com)"
+            --allowedTools "Read,Edit,Write,Glob,Grep,Bash(go:*),Bash(make:*),Bash(git:*),Bash(gh pr create:*),Bash(gh pr view:*),Bash(gofmt:*),Bash(terraform:*),WebFetch(domain:app.launchdarkly.com)"
+
+      # Resolve the PR number the agent just opened so the downstream verify job
+      # can pick it up. Primary: scaffold-result.json the agent writes (it knows
+      # the exact PR). Fallback: match an OPEN scaffold/* PR against preview-v3 by
+      # name, case-insensitively (the agent has historically not lowercased the
+      # branch as instructed). Empty output -> verify is skipped, not failed.
+      - name: Resolve scaffold PR number
+        id: prnum
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          NAME: ${{ inputs.resource_name || inputs.family }}
+        run: |
+          pr=""
+          f="$GITHUB_WORKSPACE/scaffold-result.json"
+          if [ -f "$f" ] && jq -e . "$f" >/dev/null 2>&1; then
+            cand="$(jq -r '.pr_number // empty' "$f")"
+            if printf '%s' "$cand" | grep -Eq '^[0-9]+$'; then
+              pr="$cand"
+            fi
+          fi
+          if [ -z "$pr" ]; then
+            slug="$(printf '%s' "$NAME" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/-/g')"
+            pr="$(gh pr list --repo "$REPO" --base preview-v3 --state open \
+                    --json number,headRefName \
+                    --jq "[.[] | select((.headRefName | ascii_downcase) == \"scaffold/$slug\")] | first | .number // empty")"
+          fi
+          if printf '%s' "$pr" | grep -Eq '^[0-9]+$'; then
+            echo "Resolved scaffold PR #$pr"
+            echo "pr_number=$pr" >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning::Could not resolve a scaffold PR number; auto-verify will be skipped. If a PR was created, dispatch verify-scaffold.yml manually."
+            echo "pr_number=" >> "$GITHUB_OUTPUT"
+          fi
+
+  # Stage 2 -> stage 3 auto-chain. Calls the reusable verify workflow IN THE SAME
+  # RUN (no cross-workflow dispatch -> no GITHUB_TOKEN anti-recursion). Runs only
+  # if the scaffold produced a PR AND the verify kill switch is on. The reusable
+  # workflow re-checks VERIFY_AGENT_ENABLED, so a manual dispatch path honors it too.
+  verify:
+    name: Auto-verify scaffold PR #${{ needs.scaffold.outputs.pr_number }}
+    needs: scaffold
+    if: needs.scaffold.outputs.pr_number != '' && vars.VERIFY_AGENT_ENABLED == 'true'
+    # A reusable workflow runs with the caller job's GITHUB_TOKEN permissions.
+    permissions:
+      contents: write
+      pull-requests: write
+      id-token: write
+    uses: ./.github/workflows/verify-reusable.yml
+    with:
+      pr_number: ${{ needs.scaffold.outputs.pr_number }}
+      notes: "Auto-triggered by the stage-2 scaffold (run ${{ github.run_id }}); no human dispatched this verify."
+    # ANTHROPIC_API_KEY + SLACK_DRIFT_WEBHOOK_URL (GITHUB_TOKEN is automatic).
+    secrets: inherit

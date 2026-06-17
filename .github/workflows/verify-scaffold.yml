@@ -1,27 +1,15 @@
 # Stage 3 of the autogen pipeline (see .claude/plans/AUTOGEN_PIPELINE.md):
-# verify a stage-2 scaffolded draft PR against a REAL LaunchDarkly account
-# before a human finishes it. Picks up the draft PR, builds the provider from
-# its branch, points terraform at the local build via a dev override, then runs
-# an agent that reviews the code and exercises the new resource with real
-# `terraform plan`/`apply`, fixing functionality/tests until apply is clean.
+# MANUAL re-verify entry point. A thin workflow_dispatch wrapper that calls the
+# reusable verify workflow (verify-reusable.yml, where all the logic lives). Use
+# this to re-verify an EXISTING scaffold/* draft PR without re-scaffolding it.
 #
-# PROJECT-scoped example resources are RETAINED (no `terraform destroy`) so a human
-# reviewer can inspect them: they live in a project keyed `tf-verify-pr<N>` that the
-# pre-clean step deletes at the start of each run, so at most one set lingers per PR.
-# ACCOUNT-scoped resources have no project to namespace/pre-clean into; account
-# SINGLETONS (one-per-account, second create 409s) are DESTROYED at the end instead,
-# because a retained singleton permanently holds the account's only slot and blocks
-# both the next verify run and the resource's acceptance test in shared CI. Result
-# posts back as a PR comment AND a private-Slack "ready for review" message (same
-# generic title/body webhook as the drift report — SLACK_DRIFT_WEBHOOK_URL).
+# The auto-chain path (a fresh scaffold auto-verifying in the same run) lives in
+# scaffold-resource.yml, which calls the same reusable workflow as a downstream
+# `needs: scaffold` job. Both entry points share one verify definition.
 #
 # This file lives on `main` only so GitHub registers the workflow_dispatch
-# trigger. It checks out the PR's own branch (always a same-repo scaffold/*
-# branch off the v3 line), so no ref pin is needed here.
-#
-# Credentials: the LD access token comes from the same AWS-OIDC -> SSM path the
-# acceptance matrix uses (a prod REST token); api_host is forced to prod.
-# Kill switch: repository variable VERIFY_AGENT_ENABLED must be "true".
+# trigger. Kill switch (VERIFY_AGENT_ENABLED) is enforced inside the reusable
+# workflow, so a disabled run fails fast there.
 name: Verify scaffolded resource against LaunchDarkly
 
 on:
@@ -36,6 +24,8 @@ on:
         required: false
         type: string
 
+# A reusable workflow runs with the CALLER's GITHUB_TOKEN permissions, so grant
+# here what verify-reusable.yml needs.
 permissions:
   contents: write # agent pushes fixes to the PR branch
   pull-requests: write # agent posts a review comment
@@ -43,279 +33,13 @@ permissions:
 
 jobs:
   verify:
-    name: Verify PR #${{ inputs.pr_number }}
-    runs-on: ubuntu-latest
-    timeout-minutes: 90
-    # Serialize runs per PR so two dispatches don't clobber each other's apply
-    # / branch push / the shared tf-verify-pr<N> project. Queue, don't cancel.
-    concurrency:
-      group: verify-scaffold-pr-${{ inputs.pr_number }}
-      cancel-in-progress: false
-    env:
-      # Pin the install dir so the workflow's `go install` and the agent's later
-      # rebuilds land in the SAME place the dev override points at — no GOPATH
-      # drift between subshells (cf. memory feedback_dev_override_gopath).
-      GOBIN: ${{ github.workspace }}/.gobin
-    steps:
-      - name: Check kill switch
-        if: vars.VERIFY_AGENT_ENABLED != 'true'
-        run: |
-          echo "::error::Verification agent is disabled (repository variable VERIFY_AGENT_ENABLED != 'true')."
-          exit 1
-
-      # Resolve the PR to its head branch and guard the inputs: same-repo only
-      # (fork branches must not run with our OIDC/secrets) and scaffold/* only
-      # (this workflow is for stage-2 output, not arbitrary PRs).
-      - name: Resolve PR
-        id: pr
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PR: ${{ inputs.pr_number }}
-          REPO: ${{ github.repository }}
-        run: |
-          if ! printf '%s' "$PR" | grep -Eq '^[0-9]+$'; then
-            echo "::error::pr_number must be a positive integer (got '$PR')."
-            exit 1
-          fi
-          meta="$(gh pr view "$PR" --repo "$REPO" --json headRefName,isCrossRepository,baseRefName,title,url,state)"
-          cross="$(printf '%s' "$meta" | jq -r '.isCrossRepository')"
-          state="$(printf '%s' "$meta" | jq -r '.state')"
-          # Strip CR/newlines: these become step outputs via `key=value` lines, and
-          # a newline in the free-text PR title (a JSON string can contain one) could
-          # otherwise inject a second head_branch=… line that wins the duplicate-key
-          # race and bypasses the scaffold/* guard below.
-          head="$(printf '%s' "$meta" | jq -r '.headRefName' | tr -d '\r\n')"
-          url="$(printf '%s' "$meta" | jq -r '.url' | tr -d '\r\n')"
-          title="$(printf '%s' "$meta" | jq -r '.title' | tr -d '\r\n')"
-          if [ "$cross" = "true" ]; then
-            echo "::error::PR #$PR is from a fork; verification runs real applies with our credentials and only supports same-repo PRs."
-            exit 1
-          fi
-          if [ "$state" != "OPEN" ]; then
-            echo "::error::PR #$PR is not open (state=$state)."
-            exit 1
-          fi
-          case "$head" in
-            scaffold/*) : ;;
-            *)
-              echo "::error::PR #$PR head branch '$head' is not a scaffold/* branch."
-              exit 1
-              ;;
-          esac
-          {
-            echo "head_branch=$head"
-            echo "pr_url=$url"
-            echo "pr_title=$title"
-          } >> "$GITHUB_OUTPUT"
-
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-        with:
-          ref: ${{ steps.pr.outputs.head_branch }}
-          fetch-depth: 0
-          # Keep credentials so the agent can push fixes back to the branch.
-          persist-credentials: true
-
-      - uses: aws-actions/configure-aws-credentials@f24d7193d98baebaeacc7e2227925dd47cc267f5 # v4.2.0
-        with:
-          audience: https://github.com/launchdarkly
-          aws-region: us-east-1
-          role-to-assume: arn:aws:iam::061661829416:role/github-actions-terraform-provider-launchdarkly
-          role-session-name: GitHubActionsVerify_run-${{ github.run_id }}
-      - id: get-launchdarkly-access-token
-        uses: dkershner6/aws-ssm-getparameters-action@4fcb4872421f387a6c43058473acc1b22443fe13 # v2.0.3
-        with:
-          parameterPairs: |
-            /global/services/github/terraform-provider/launchdarkly-access-token = LAUNCHDARKLY_ACCESS_TOKEN
-      - name: Mask the LD token
-        run: echo "::add-mask::$LAUNCHDARKLY_ACCESS_TOKEN"
-
-      # setup-go AFTER checkout so go-version-file reads the PR branch's go.mod
-      # (the v3 line pins a newer Go than main).
-      - uses: actions/setup-go@41dfa10bad2bb2ae585af6ee5bb4d7d973ad74ed # v5.1.0
-        with:
-          go-version-file: "go.mod"
-          cache: true
-      - run: go mod download
-      - uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3.1.2
-        with:
-          terraform_wrapper: false
-
-      # Build the provider from the PR branch and point terraform at it via a
-      # dev override, so `terraform plan`/`apply` exercise THIS code with no
-      # `terraform init` and no registry download.
-      - name: Build provider and configure dev override
-        run: |
-          # `go install` (not `make build`) so a cosmetic gofmt issue — caught
-          # separately by the PR's own CI — can't block verification. GOBIN (job
-          # env) fixes the install dir; the dev override points at the same dir.
-          mkdir -p "$GOBIN"
-          go install .
-          echo "Provider installed to $GOBIN"
-          cat > "$HOME/.terraformrc" <<EOF
-          provider_installation {
-            dev_overrides {
-              "launchdarkly/launchdarkly" = "$GOBIN"
-            }
-            direct {}
-          }
-          EOF
-
-      # Deterministic prereq cleanup (NOT delegated to the agent): delete any
-      # leftover project from a previous run of this PR so `apply` starts clean.
-      # Doing this here — not in the agent — means the agent does not need
-      # Bash(curl:*) with the live admin token (removes an exfiltration path).
-      - name: Pre-clean prior verification project
-        env:
-          LD_TOKEN: ${{ env.LAUNCHDARKLY_ACCESS_TOKEN }}
-          PR_NUMBER: ${{ inputs.pr_number }}
-        run: |
-          code="$(curl -sS -X DELETE \
-            -H "Authorization: $LD_TOKEN" \
-            "https://app.launchdarkly.com/api/v2/projects/tf-verify-pr$PR_NUMBER" \
-            -o /dev/null -w '%{http_code}' || true)"
-          # 200/204 = deleted, 404 = nothing to clean; anything else is non-fatal
-          # (the apply will surface a real problem). Don't print bodies.
-          echo "pre-clean DELETE tf-verify-pr$PR_NUMBER -> HTTP $code"
-
-      - name: Run verification agent
-        uses: anthropics/claude-code-action@0f97b95b6536c26e5f6bd90faec370d41695beca # v1
-        env:
-          # LAUNCHDARKLY_ACCESS_TOKEN is already in the job process env (the SSM
-          # action exported it via GITHUB_ENV, masked) and is inherited by the
-          # agent's shell — same pattern test.yml uses for `make testacc`. Force
-          # api_host to prod (the token is a prod REST token; the shell default
-          # may be staging). The provider treats access_token as sensitive.
-          LAUNCHDARKLY_API_HOST: https://app.launchdarkly.com
-          TF_IN_AUTOMATION: "1"
-          PR_NUMBER: ${{ inputs.pr_number }}
-          PR_URL: ${{ steps.pr.outputs.pr_url }}
-        with:
-          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          prompt: |
-            You are stage 3 (verification) of the LaunchDarkly Terraform provider
-            autogen pipeline. A stage-2 agent scaffolded a NEW resource on the
-            currently checked-out branch and opened draft PR #${{ inputs.pr_number }}
-            (${{ steps.pr.outputs.pr_title }}). Verify it against a REAL LaunchDarkly
-            account before a human finishes it.
-
-            Environment already prepared for you:
-            - The provider is built from this branch and installed to $GOBIN.
-            - ~/.terraformrc has a dev_override for "launchdarkly/launchdarkly" pointing
-              there, so `terraform plan`/`apply` run THIS build with NO `terraform init`.
-            - Real LD credentials are in the environment: LAUNCHDARKLY_ACCESS_TOKEN and
-              LAUNCHDARKLY_API_HOST=https://app.launchdarkly.com. NEVER print the token.
-            - `terraform` is on PATH.
-            - A previous `tf-verify-pr${{ inputs.pr_number }}` project (if any) was already
-              deleted by a workflow step, so the account is clean for a project-scoped apply.
-
-            Do this, in order:
-
-            1. REVIEW the scaffolded code on this branch. Run `git fetch origin preview-v3`
-               first, then `git diff origin/preview-v3...HEAD` to see only the scaffold,
-               for correctness against CLAUDE.md and the vendored playbook at
-               .claude/skills/terraform-provider-add-resource/ (SKILL.md + references/).
-               Note real defects (schema/CRUD/helper/test/docs issues), not style nits.
-
-            2. EXERCISE the resource. Write a minimal terraform config under a temp dir
-               (e.g. "$RUNNER_TEMP/verify") with a `provider "launchdarkly" {}` block
-               (it reads creds from the environment), a prerequisite project keyed
-               `tf-verify-pr${{ inputs.pr_number }}` (use this key so the live resources are
-               identifiable and the workflow can pre-clean it next run), and the new resource
-               (plus its data source if one was scaffolded). If the new resource is
-               account-scoped rather than project-scoped, there is no project for the
-               workflow to pre-clean, so name its key/name per-run as
-               `tf-verify-pr${{ inputs.pr_number }}-run${{ github.run_number }}` to avoid
-               colliding with a resource retained by a previous run. (If the resource is
-               an account SINGLETON, per-run naming cannot prevent a collision — only one
-               can exist account-wide — so you will be destroying it in step 4; if a
-               leftover from an earlier run still blocks `apply`/`create`, delete that one
-               first via a targeted `terraform import` + `destroy`, or report the blocker.)
-               Then:
-                 terraform -chdir="$RUNNER_TEMP/verify" plan  -input=false
-                 terraform -chdir="$RUNNER_TEMP/verify" apply -input=false -auto-approve
-               A second `plan` afterwards MUST be empty (no perpetual diff). Do NOT commit
-               the scratch config or any terraform.tfstate*.
-
-            3. FIX as needed. If plan/apply or the empty-diff check fails, fix the resource
-               implementation/tests/docs on the branch, re-run `go install .` (the dev
-               override auto-picks up the rebuilt binary), and retry. Where practical, also run the
-               resource's acceptance test:
-                 TF_ACC=1 TF_ACC_TERRAFORM_PATH="$(command -v terraform)" \
-                   go test -run <TestAccName> ./launchdarkly/... -v -timeout 30m
-               Run `make fmt` and `go build ./...` before committing.
-
-            4. RETAIN or DESTROY by scope:
-               - PROJECT-scoped resources: RETAIN them (no `terraform destroy`). They sit
-                 under the namespaced `tf-verify-pr${{ inputs.pr_number }}` project that the
-                 next run pre-cleans, so a human can inspect them.
-               - ACCOUNT-scoped resources — ESPECIALLY account SINGLETONS (the API allows
-                 only one per account; a second create 409s): run
-                 `terraform -chdir="$RUNNER_TEMP/verify" destroy -input=false -auto-approve`
-                 at the end. A retained singleton has no per-run namespace and permanently
-                 holds the account's only slot, which blocks BOTH the next verify run and the
-                 resource's own acceptance test in shared CI (both then 409). `destroy` only
-                 removes what THIS run created (terraform state) — it never touches unrelated
-                 account data. Say in the report which resources you retained vs destroyed.
-
-            5. COMMIT any fixes to this branch (clear conventional-commit message; touch only
-               files relevant to the fix — never the scratch config or state) and push.
-
-            6. REPORT. Post a PR comment on #${{ inputs.pr_number }}. This repo is PUBLIC, so
-               keep the comment to: the verification verdict (did plan/apply succeed? was the
-               re-plan clean? which tests ran?), any code fixes you made, and the retained
-               project key `tf-verify-pr${{ inputs.pr_number }}`. Do NOT restate API endpoint
-               paths / operationIds / roadmap detail beyond what the diff already shows, and
-               note the LD console link is in the private Slack thread. Use:
-                 gh pr comment ${{ inputs.pr_number }} --body-file <file>
-
-            7. Write a machine-readable result to `verify-result.json` at the repo root (do NOT
-               commit it) with exactly these fields:
-                 {"status":"pass"|"fail","project_key":"tf-verify-pr${{ inputs.pr_number }}",
-                  "ld_url":"https://app.launchdarkly.com/projects/tf-verify-pr${{ inputs.pr_number }}",
-                  "summary":"<one or two sentences: what you verified and any fixes>"}
-               status is "pass" only if apply succeeded AND the re-plan was clean.
-
-            Operator notes: ${{ inputs.notes }}
-          # No Bash(curl:*): prereq cleanup is a workflow step, so the agent never
-          # needs raw HTTP with the live admin token (closes an exfil path). git is
-          # scoped to the subcommands the flow needs (no `git config` token read).
-          claude_args: |
-            --allowedTools "Read,Edit,Write,Glob,Grep,Bash(go:*),Bash(make:*),Bash(git fetch:*),Bash(git diff:*),Bash(git log:*),Bash(git status:*),Bash(git add:*),Bash(git commit:*),Bash(git push:*),Bash(gh pr comment:*),Bash(gh pr view:*),Bash(gofmt:*),Bash(terraform:*),WebFetch(domain:app.launchdarkly.com)"
-
-      # Deterministic, log-safe Slack notification. Reads the agent's result file
-      # if present; otherwise reports the run errored (no internal detail leaks).
-      - name: Notify Slack
-        # Only notify once we got past the input guards (so a disabled kill
-        # switch or a rejected PR doesn't ping the channel). Runs whether the
-        # agent step passed or failed.
-        if: always() && steps.pr.outcome == 'success'
-        shell: bash
-        env:
-          WEBHOOK: ${{ secrets.SLACK_DRIFT_WEBHOOK_URL }}
-          PR_URL: ${{ steps.pr.outputs.pr_url }}
-          PR_NUMBER: ${{ inputs.pr_number }}
-          REPO: ${{ github.repository }}
-          SERVER: ${{ github.server_url }}
-          RUN_ID: ${{ github.run_id }}
-        run: |
-          RUN_URL="$SERVER/$REPO/actions/runs/$RUN_ID"
-          if [ -f verify-result.json ] && jq -e . verify-result.json >/dev/null 2>&1; then
-            status="$(jq -r '.status // "unknown"' verify-result.json)"
-            ld_url="$(jq -r '.ld_url // ""' verify-result.json)"
-            summary="$(jq -r '.summary // ""' verify-result.json)"
-            project="$(jq -r '.project_key // ""' verify-result.json)"
-            if [ "$status" = "pass" ]; then icon="✅"; else icon="⚠️"; fi
-            title="$icon Scaffold PR #$PR_NUMBER verified ($status)"
-            # shellcheck disable=SC2016  # backticks are literal Slack mrkdwn, not command subst
-            body="$(printf '%s\nRetained in `%s`: <%s|open in LaunchDarkly> · <%s|PR #%s>' \
-              "$summary" "$project" "$ld_url" "$PR_URL" "$PR_NUMBER")"
-          else
-            title="❌ Scaffold PR #$PR_NUMBER verification did not complete"
-            body="$(printf 'Stage-3 verification produced no result file — the run likely errored. See the <%s|workflow run> and <%s|PR #%s>.' \
-              "$RUN_URL" "$PR_URL" "$PR_NUMBER")"
-          fi
-          payload="$(jq -nc --arg title "$title" --arg body "$body" '{title: $title, body: $body}')"
-          curl -sS -f --retry 3 --retry-connrefused --retry-delay 2 \
-            -X POST -H 'Content-Type: application/json' -d "$payload" "$WEBHOOK" >/dev/null
-          echo "Posted verification result to Slack."
+    permissions:
+      contents: write
+      pull-requests: write
+      id-token: write
+    uses: ./.github/workflows/verify-reusable.yml
+    with:
+      pr_number: ${{ inputs.pr_number }}
+      notes: ${{ inputs.notes }}
+    # ANTHROPIC_API_KEY + SLACK_DRIFT_WEBHOOK_URL (GITHUB_TOKEN is automatic).
+    secrets: inherit
