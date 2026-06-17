@@ -13,17 +13,21 @@
 # (verify-reusable.yml) IN THE SAME RUN. Because that is an in-run reusable call
 # rather than a cross-workflow dispatch, it is NOT blocked by GitHub's
 # GITHUB_TOKEN anti-recursion — which is why scaffold + verify were merged
-# instead of chained via `gh workflow run`. The verify job is gated only by the
-# VERIFY_AGENT_ENABLED kill switch (no per-family safelist).
+# instead of chained via `gh workflow run`. The verify job's kill switch is the
+# tf-provider-verifier AI Config itself (enforced inside verify-reusable.yml),
+# independent of this scaffolder's — no per-family safelist.
 #
 # This file lives on `main` only so GitHub registers the workflow_dispatch
 # trigger (dispatch requires the workflow on the default branch). The checkout
 # below pins preview-v3 — all scaffolding targets the v3 line regardless.
 #
-# Kill switch: the repository variable SCAFFOLD_AGENT_ENABLED must be "true".
-# TODO(stage 2b): replace the variable gate with a LaunchDarkly AI Config
-# ("tf-provider-scaffolder") for model/prompt/kill-switch control — reference
-# implementation in ld-docs-private ffeldberg/validate-ai-configs-sdk.
+# Prompt, model AND kill switch all come from the LaunchDarkly AI Config
+# "tf-provider-scaffolder" (agent mode, catfood) — read from its backing flag's
+# PRODUCTION-served variation in the "Resolve scaffolding prompt" step. The kill
+# switch is the served variation's value._ldMeta.enabled (point the flag's
+# production fallthrough at the 'disabled' variation to stop the agent — no repo
+# variable). FAIL-CLOSED: if LD is unreachable the run aborts. In-repo fallback
+# prompt: .github/agent-prompts/scaffold-instructions.md.
 name: Scaffold resource from API family
 
 on:
@@ -60,11 +64,6 @@ jobs:
     outputs:
       pr_number: ${{ steps.prnum.outputs.pr_number }}
     steps:
-      - name: Check kill switch
-        if: vars.SCAFFOLD_AGENT_ENABLED != 'true'
-        run: |
-          echo "::error::Scaffolding agent is disabled (repository variable SCAFFOLD_AGENT_ENABLED != 'true')."
-          exit 1
       - name: Validate scoped inputs
         # Scoped mode (resource_name set) needs the operationId list — otherwise
         # the agent enters SCOPED MODE with no operations and the whole family
@@ -97,75 +96,88 @@ jobs:
           # Public repo: don't print the slice into world-readable logs (same
           # discipline as the drift report). Log only a size/path-count summary.
           echo "family-slice.json written ($(wc -c < "$GITHUB_WORKSPACE/family-slice.json") bytes, $(jq '.paths | length' "$GITHUB_WORKSPACE/family-slice.json") paths)"
+      # Resolve the scaffolding prompt + model AND enforce the kill switch — all from
+      # the LD AI Config "tf-provider-scaffolder" (catfood), which is backed by a
+      # feature flag. We read the PRODUCTION-served variation (fallthrough when
+      # targeting is on, else offVariation) of that flag and gate on its
+      # `value._ldMeta.enabled`: the kill switch is now "point the flag's production
+      # fallthrough at the 'disabled' variation" — NO repo variable. The served
+      # variation's `instructions` + `model.name` drive the agent. FAIL-CLOSED: if LD
+      # is unreachable we can't confirm enablement, so the run aborts. In-repo
+      # .github/agent-prompts/scaffold-instructions.md is the prompt fallback, used only
+      # when LD is reachable + enabled but the variation carries no instructions. The
+      # "## This run" header (per-run values) is composed HERE — LD instructions stay static.
+      - name: Resolve scaffolding prompt
+        id: prompt
+        env:
+          LD_TOKEN: ${{ secrets.LD_AICONFIG_READ_TOKEN }}
+          FAMILY: ${{ inputs.family }}
+          RESOURCE_NAME: ${{ inputs.resource_name }}
+          OPERATIONS: ${{ inputs.operations }}
+          NOTES: ${{ inputs.notes }}
+        run: |
+          set -euo pipefail
+          CONFIG_HOST="https://app.ld.catamorphic.com" # catfood (dogfood) — reachable from CI
+          PROJECT="default"; CONFIG_KEY="tf-provider-scaffolder"; ENVKEY="production"
+          if [ -z "${LD_TOKEN:-}" ]; then
+            echo "::error::LD_AICONFIG_READ_TOKEN is not set. The kill switch is LD-driven (fail-closed) — cannot run."
+            exit 1
+          fi
+          flag="$(curl -sS -m 20 -H "Authorization: $LD_TOKEN" \
+            "$CONFIG_HOST/api/v2/flags/$PROJECT/$CONFIG_KEY?env=$ENVKEY" 2>/dev/null || true)"
+          if ! printf '%s' "$flag" | jq -e --arg e "$ENVKEY" '.environments[$e]' >/dev/null 2>&1; then
+            echo "::error::Could not read AI Config flag '$CONFIG_KEY' ($ENVKEY) from LD; fail-closed, aborting."
+            exit 1
+          fi
+          # Served index: fallthrough when targeting is on, else offVariation. These flags
+          # carry no rules/targets (we ignore them) — single fallthrough/off variation only.
+          idx="$(printf '%s' "$flag" | jq -r --arg e "$ENVKEY" '.environments[$e] as $v | if $v.on then $v.fallthrough.variation else $v.offVariation end')"
+          if ! printf '%s' "$idx" | grep -Eq '^[0-9]+$'; then
+            echo "::error::Production serves no single variation (rollout fallthrough?). This gate supports a single fallthrough/off variation only."
+            exit 1
+          fi
+          served="$(printf '%s' "$flag" | jq -c --argjson i "$idx" '.variations[$i].value')"
+          if [ "$(printf '%s' "$served" | jq -r '._ldMeta.enabled // false')" != "true" ]; then
+            vname="$(printf '%s' "$flag" | jq -r --argjson i "$idx" '.variations[$i].name')"
+            echo "::error::Scaffolding agent is DISABLED via LD AI Config '$CONFIG_KEY' ($ENVKEY serves variation '$vname'). This is the kill switch."
+            exit 1
+          fi
+          instr="$(printf '%s' "$served" | jq -r '.instructions // ""')"
+          model="$(printf '%s' "$served" | jq -r '.model.name // ""')"
+          case "$model" in *.*) model="${model##*.}";; esac
+          if [ -z "$instr" ]; then
+            echo "::warning::LD config enabled but served variation carries no instructions; using in-repo fallback prompt."
+            instr="$(cat .github/agent-prompts/scaffold-instructions.md)"
+          fi
+          echo "Scaffolder enabled via LD (model='${model:-<default>}')."
+          # Compose the run header — the ONLY place per-run values live.
+          # shellcheck disable=SC2016  # backticks are literal Markdown in the prompt, not command subst
+          if [ -n "${RESOURCE_NAME:-}" ]; then
+            header="$(printf 'SCOPED MODE — implement exactly ONE net-new resource named `%s`, covering ONLY these operationIds: %s. It belongs to the partial "%s" API family; do NOT modify, regenerate, or touch the family'\''s EXISTING resources, and do not model operations outside that list.\n\nFamily: %s\nResource name: %s\nOperations: %s' \
+              "$RESOURCE_NAME" "$OPERATIONS" "$FAMILY" "$FAMILY" "$RESOURCE_NAME" "$OPERATIONS")"
+          else
+            header="$(printf 'WHOLE-FAMILY MODE — scaffold a new resource covering the "%s" API endpoint family.\n\nFamily: %s' "$FAMILY" "$FAMILY")"
+          fi
+          [ -n "${NOTES:-}" ] && header="$header$(printf '\n\nOperator notes: %s' "$NOTES")"
+          pf="$RUNNER_TEMP/scaffold-prompt.md"
+          { printf '## This run\n\n%s\n\n' "$header"; printf '%s\n' "$instr"; } > "$pf"
+          # Emit multiline prompt + a model arg. PUBLIC-REPO: never echo the composed
+          # prompt (carries family/ops) to the world-readable log — only a byte count.
+          {
+            echo "prompt<<__LDPROMPT__"
+            cat "$pf"
+            echo "__LDPROMPT__"
+            if [ -n "$model" ]; then echo "model_arg=--model $model"; else echo "model_arg="; fi
+          } >> "$GITHUB_OUTPUT"
+          echo "Composed scaffolding prompt ($(wc -c < "$pf") bytes)."
       - name: Run scaffolding agent
         uses: anthropics/claude-code-action@0f97b95b6536c26e5f6bd90faec370d41695beca # v1
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          prompt: |
-            ${{ inputs.resource_name && format('SCOPED MODE — implement exactly ONE net-new resource named `{0}` for the LaunchDarkly Terraform provider, covering ONLY these operationIds: {1}. It belongs to the partial "{2}" API family; do NOT modify, regenerate, or touch the family''s EXISTING resources, and do not model operations outside that list.', inputs.resource_name, inputs.operations, inputs.family) || format('Scaffold a new resource for the LaunchDarkly Terraform provider covering the "{0}" API endpoint family.', inputs.family) }}
-
-            Inputs:
-            - Endpoint summary for the family: ./family-slice.json (repo root). This
-              is the WHOLE family for context — read it, but do NOT commit it.${{ inputs.resource_name && format(' Model ONLY the operations listed above ({0}); ignore the rest of the family.', inputs.operations) || '' }}
-            - Full OpenAPI spec (for schemas): https://app.launchdarkly.com/api/v2/openapi.json
-            - Read .claude/skills/terraform-provider-add-resource/SKILL.md and its
-              references/patterns.md (both vendored into this repo), and follow that
-              playbook's Steps 0-10 exactly. Also obey the conventions in CLAUDE.md:
-              keys.go constants, framework nested attributes (never blocks), helpers
-              from framework_helpers.go, patch helpers, handleLdapiErr wrapping,
-              acceptance-test CI matrix entry, docs templates.
-            - Use the generated API client (github.com/launchdarkly/api-client-go/v22)
-              for all API calls. If the client lacks this surface, stop and report that
-              instead of hand-rolling HTTP.
-            - If the resource is an account-scoped SINGLETON (the API allows only one
-              per account — its create returns 409/optimistic_locking_error once one
-              exists), make the acceptance test self-cleaning. The acceptance token
-              targets a DEDICATED Terraform test account (not a customer/prod account),
-              so add a PreCheck that deletes ANY pre-existing instance before create
-              (delete-existing-first — a leftover from an aborted run or a retained
-              verification run would otherwise 409 the test). This is the repo's
-              account-singleton orphan-cleanup PreCheck pattern; see references/patterns.md.
-              Document the one-per-account limit in the schema Description.
-
-            Additional notes from the operator: ${{ inputs.notes }}
-
-            Deliverable:
-            1. Create a branch named scaffold/${{ inputs.resource_name || inputs.family }}
-               (lowercased, non-alphanumerics replaced with '-') off preview-v3.
-            2. Implement the resource (and data source if it has GET-by-key),
-               unit-testable helpers, acceptance tests, docs templates, and provider
-               registration. ${{ inputs.resource_name && format('In scripts/driftreport/mapping.yaml, move these operations out of the "{0}" family''s new_resource_candidates into a new entry under its resources (the family stays partial).', inputs.family) || 'Update scripts/driftreport/mapping.yaml to mark the family covered.' }}
-            3. Run go build ./... and make fmt; fix what they surface.
-            4. Wire the resource into CI and docs so the draft PR clears the same
-               quality gates a human PR must (stage-2 runs have historically skipped
-               BOTH of these — do not omit them):
-               - Acceptance matrix: add the resource's test prefix to the test_case
-                 matrix in .github/workflows/test.yml so its TestAcc* tests actually
-                 run in CI. Pick a `-run` prefix that does NOT overlap an existing
-                 entry; use a trailing-underscore prefix when a sibling resource
-                 shares a stem (e.g. TestAccMetric_ vs TestAccMetricGroup_).
-               - Docs: run `go generate .` (the repo-root directive runs tfplugindocs
-                 and `terraform fmt ./examples`; terraform is installed in this job).
-                 Do NOT run `make generate` or `go generate ./launchdarkly/...` — those
-                 also run the integration-configs codegen, which needs an API token
-                 this job intentionally lacks. Commit the generated docs/ (and any
-                 examples/ formatting) so CI's generate-diff check passes.
-            5. Commit, push the branch, and open a DRAFT pull request against
-               preview-v3 titled "feat: scaffold ${{ inputs.resource_name || inputs.family }} resource
-               (autogen stage 2)". The PR body must state it is agent-scaffolded and
-               needs human review per stage 3 of the autogen pipeline, and note that
-               stage-3 verification runs automatically on this PR.
-            6. Write the PR number you just created to scaffold-result.json at the repo
-               root (do NOT commit it), exactly:
-                 {"pr_number": <N>, "branch": "<your branch name>"}
-               The pipeline reads this to auto-trigger stage-3 verification on YOUR PR;
-               if you omit it, verification falls back to a best-effort branch-name match
-               or must be dispatched by hand. Get <N> from the `gh pr create` output URL
-               (.../pull/<N>) or `gh pr view <branch> --json number`.
-            Never push to preview-v3 directly and never merge anything.
+          prompt: ${{ steps.prompt.outputs.prompt }}
           claude_args: |
-            --allowedTools "Read,Edit,Write,Glob,Grep,Bash(go:*),Bash(make:*),Bash(git:*),Bash(gh pr create:*),Bash(gh pr view:*),Bash(gofmt:*),Bash(terraform:*),WebFetch(domain:app.launchdarkly.com)"
+            ${{ steps.prompt.outputs.model_arg }} --allowedTools "Read,Edit,Write,Glob,Grep,Bash(go:*),Bash(make:*),Bash(git:*),Bash(gh pr create:*),Bash(gh pr view:*),Bash(gofmt:*),Bash(terraform:*),WebFetch(domain:app.launchdarkly.com)"
 
       # Resolve the PR number the agent just opened so the downstream verify job
       # can pick it up. Primary: scaffold-result.json the agent writes (it knows
@@ -202,13 +214,14 @@ jobs:
           fi
 
   # Stage 2 -> stage 3 auto-chain. Calls the reusable verify workflow IN THE SAME
-  # RUN (no cross-workflow dispatch -> no GITHUB_TOKEN anti-recursion). Runs only
-  # if the scaffold produced a PR AND the verify kill switch is on. The reusable
-  # workflow re-checks VERIFY_AGENT_ENABLED, so a manual dispatch path honors it too.
+  # RUN (no cross-workflow dispatch -> no GITHUB_TOKEN anti-recursion). Runs whenever
+  # the scaffold produced a PR; the verify kill switch is enforced INSIDE the reusable
+  # workflow (the tf-provider-verifier AI Config's served-variation enabled flag), so
+  # a disabled verifier aborts there — same gate for this auto-chain and a manual dispatch.
   verify:
     name: Auto-verify scaffold PR #${{ needs.scaffold.outputs.pr_number }}
     needs: scaffold
-    if: needs.scaffold.outputs.pr_number != '' && vars.VERIFY_AGENT_ENABLED == 'true'
+    if: needs.scaffold.outputs.pr_number != ''
     # A reusable workflow runs with the caller job's GITHUB_TOKEN permissions.
     permissions:
       contents: write

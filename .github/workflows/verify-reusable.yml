@@ -30,11 +30,14 @@
 #
 # Credentials: the LD access token comes from the same AWS-OIDC -> SSM path the
 # acceptance matrix uses (a prod REST token); api_host is forced to prod.
-# Kill switch: repository variable VERIFY_AGENT_ENABLED must be "true" (enforced
-# inside this workflow so BOTH callers honor it; the auto-chain caller also gates
-# its `if:` on it so the job is skipped, not failed, when disabled).
+# Kill switch: the LD AI Config "tf-provider-verifier" itself — the "Resolve
+# verification prompt" step (which runs BEFORE AWS-OIDC / SSM / pre-clean) aborts
+# when the flag's production-served variation has value._ldMeta.enabled=false. Both
+# callers (manual dispatch + the scaffold auto-chain) hit that same gate; no repo
+# variable. FAIL-CLOSED: unreachable LD aborts the run.
 #
-# Callers MUST pass `secrets: inherit` (for ANTHROPIC_API_KEY + SLACK_DRIFT_WEBHOOK_URL)
+# Callers MUST pass `secrets: inherit` (for ANTHROPIC_API_KEY + SLACK_DRIFT_WEBHOOK_URL
+# + LD_AICONFIG_READ_TOKEN)
 # and grant `contents: write` + `pull-requests: write` + `id-token: write` on the
 # calling job — a reusable workflow runs with the caller's GITHUB_TOKEN permissions.
 name: Verify scaffolded resource (reusable)
@@ -73,12 +76,6 @@ jobs:
       # drift between subshells (cf. memory feedback_dev_override_gopath).
       GOBIN: ${{ github.workspace }}/.gobin
     steps:
-      - name: Check kill switch
-        if: vars.VERIFY_AGENT_ENABLED != 'true'
-        run: |
-          echo "::error::Verification agent is disabled (repository variable VERIFY_AGENT_ENABLED != 'true')."
-          exit 1
-
       # Resolve the PR to its head branch and guard the inputs: same-repo only
       # (fork branches must not run with our OIDC/secrets) and scaffold/* only
       # (this workflow is for stage-2 output, not arbitrary PRs).
@@ -130,6 +127,71 @@ jobs:
           fetch-depth: 0
           # Keep credentials so the agent can push fixes back to the branch.
           persist-credentials: true
+
+      # Resolve the verification prompt + model AND enforce the kill switch — all from
+      # the LD AI Config "tf-provider-verifier" (catfood), backed by a feature flag.
+      # Placed BEFORE AWS-OIDC / SSM / pre-clean so a DISABLED run never assumes the
+      # prod token or deletes the project. Reads the PRODUCTION-served variation
+      # (fallthrough when targeting is on, else offVariation) and gates on its
+      # value._ldMeta.enabled (the kill switch — point the flag's production fallthrough
+      # at the 'disabled' variation to stop the agent; no repo variable). FAIL-CLOSED:
+      # if LD is unreachable we can't confirm enablement, so the run aborts. In-repo
+      # .github/agent-prompts/verify-instructions.md is the prompt fallback (used only
+      # when LD is reachable + enabled but the variation carries no instructions).
+      - name: Resolve verification prompt
+        id: prompt
+        env:
+          LD_TOKEN: ${{ secrets.LD_AICONFIG_READ_TOKEN }}
+          PR_NUMBER: ${{ inputs.pr_number }}
+          PR_TITLE: ${{ steps.pr.outputs.pr_title }}
+          RUN_NUMBER: ${{ github.run_number }}
+          NOTES: ${{ inputs.notes }}
+        run: |
+          set -euo pipefail
+          CONFIG_HOST="https://app.ld.catamorphic.com" # catfood (dogfood) — reachable from CI
+          PROJECT="default"; CONFIG_KEY="tf-provider-verifier"; ENVKEY="production"
+          if [ -z "${LD_TOKEN:-}" ]; then
+            echo "::error::LD_AICONFIG_READ_TOKEN is not set. The kill switch is LD-driven (fail-closed) — cannot run."
+            exit 1
+          fi
+          flag="$(curl -sS -m 20 -H "Authorization: $LD_TOKEN" \
+            "$CONFIG_HOST/api/v2/flags/$PROJECT/$CONFIG_KEY?env=$ENVKEY" 2>/dev/null || true)"
+          if ! printf '%s' "$flag" | jq -e --arg e "$ENVKEY" '.environments[$e]' >/dev/null 2>&1; then
+            echo "::error::Could not read AI Config flag '$CONFIG_KEY' ($ENVKEY) from LD; fail-closed, aborting."
+            exit 1
+          fi
+          # Served index: fallthrough when targeting is on, else offVariation. These flags
+          # carry no rules/targets (we ignore them) — single fallthrough/off variation only.
+          idx="$(printf '%s' "$flag" | jq -r --arg e "$ENVKEY" '.environments[$e] as $v | if $v.on then $v.fallthrough.variation else $v.offVariation end')"
+          if ! printf '%s' "$idx" | grep -Eq '^[0-9]+$'; then
+            echo "::error::Production serves no single variation (rollout fallthrough?). This gate supports a single fallthrough/off variation only."
+            exit 1
+          fi
+          served="$(printf '%s' "$flag" | jq -c --argjson i "$idx" '.variations[$i].value')"
+          if [ "$(printf '%s' "$served" | jq -r '._ldMeta.enabled // false')" != "true" ]; then
+            vname="$(printf '%s' "$flag" | jq -r --argjson i "$idx" '.variations[$i].name')"
+            echo "::error::Verification agent is DISABLED via LD AI Config '$CONFIG_KEY' ($ENVKEY serves variation '$vname'). This is the kill switch."
+            exit 1
+          fi
+          instr="$(printf '%s' "$served" | jq -r '.instructions // ""')"
+          model="$(printf '%s' "$served" | jq -r '.model.name // ""')"
+          case "$model" in *.*) model="${model##*.}";; esac
+          if [ -z "$instr" ]; then
+            echo "::warning::LD config enabled but served variation carries no instructions; using in-repo fallback prompt."
+            instr="$(cat .github/agent-prompts/verify-instructions.md)"
+          fi
+          echo "Verifier enabled via LD (model='${model:-<default>}')."
+          header="$(printf 'PR #%s: %s\nPR number: %s\nRun number: %s' "$PR_NUMBER" "$PR_TITLE" "$PR_NUMBER" "$RUN_NUMBER")"
+          [ -n "${NOTES:-}" ] && header="$header$(printf '\nOperator notes: %s' "$NOTES")"
+          pf="$RUNNER_TEMP/verify-prompt.md"
+          { printf '## This run\n\n%s\n\n' "$header"; printf '%s\n' "$instr"; } > "$pf"
+          {
+            echo "prompt<<__LDPROMPT__"
+            cat "$pf"
+            echo "__LDPROMPT__"
+            if [ -n "$model" ]; then echo "model_arg=--model $model"; else echo "model_arg="; fi
+          } >> "$GITHUB_OUTPUT"
+          echo "Composed verification prompt ($(wc -c < "$pf") bytes)."
 
       - uses: aws-actions/configure-aws-credentials@f24d7193d98baebaeacc7e2227925dd47cc267f5 # v4.2.0
         with:
@@ -208,96 +270,12 @@ jobs:
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          prompt: |
-            You are stage 3 (verification) of the LaunchDarkly Terraform provider
-            autogen pipeline. A stage-2 agent scaffolded a NEW resource on the
-            currently checked-out branch and opened draft PR #${{ inputs.pr_number }}
-            (${{ steps.pr.outputs.pr_title }}). Verify it against a REAL LaunchDarkly
-            account before a human finishes it.
-
-            Environment already prepared for you:
-            - The provider is built from this branch and installed to $GOBIN.
-            - ~/.terraformrc has a dev_override for "launchdarkly/launchdarkly" pointing
-              there, so `terraform plan`/`apply` run THIS build with NO `terraform init`.
-            - Real LD credentials are in the environment: LAUNCHDARKLY_ACCESS_TOKEN and
-              LAUNCHDARKLY_API_HOST=https://app.launchdarkly.com. NEVER print the token.
-            - `terraform` is on PATH.
-            - A previous `tf-verify-pr${{ inputs.pr_number }}` project (if any) was already
-              deleted by a workflow step, so the account is clean for a project-scoped apply.
-
-            Do this, in order:
-
-            1. REVIEW the scaffolded code on this branch. Run `git fetch origin preview-v3`
-               first, then `git diff origin/preview-v3...HEAD` to see only the scaffold,
-               for correctness against CLAUDE.md and the vendored playbook at
-               .claude/skills/terraform-provider-add-resource/ (SKILL.md + references/).
-               Note real defects (schema/CRUD/helper/test/docs issues), not style nits.
-
-            2. EXERCISE the resource. Write a minimal terraform config under a temp dir
-               (e.g. "$RUNNER_TEMP/verify") with a `provider "launchdarkly" {}` block
-               (it reads creds from the environment), a prerequisite project keyed
-               `tf-verify-pr${{ inputs.pr_number }}` (use this key so the live resources are
-               identifiable and the workflow can pre-clean it next run), and the new resource
-               (plus its data source if one was scaffolded). If the new resource is
-               account-scoped rather than project-scoped, there is no project for the
-               workflow to pre-clean, so name its key/name per-run as
-               `tf-verify-pr${{ inputs.pr_number }}-run${{ github.run_number }}` to avoid
-               colliding with a resource retained by a previous run. (If the resource is
-               an account SINGLETON, per-run naming cannot prevent a collision — only one
-               can exist account-wide — so you will be destroying it in step 4; if a
-               leftover from an earlier run still blocks `apply`/`create`, delete that one
-               first via a targeted `terraform import` + `destroy`, or report the blocker.)
-               Then:
-                 terraform -chdir="$RUNNER_TEMP/verify" plan  -input=false
-                 terraform -chdir="$RUNNER_TEMP/verify" apply -input=false -auto-approve
-               A second `plan` afterwards MUST be empty (no perpetual diff). Do NOT commit
-               the scratch config or any terraform.tfstate*.
-
-            3. FIX as needed. If plan/apply or the empty-diff check fails, fix the resource
-               implementation/tests/docs on the branch, re-run `go install .` (the dev
-               override auto-picks up the rebuilt binary), and retry. Where practical, also run the
-               resource's acceptance test:
-                 TF_ACC=1 TF_ACC_TERRAFORM_PATH="$(command -v terraform)" \
-                   go test -run <TestAccName> ./launchdarkly/... -v -timeout 30m
-               Run `make fmt` and `go build ./...` before committing.
-
-            4. RETAIN or DESTROY by scope:
-               - PROJECT-scoped resources: RETAIN them (no `terraform destroy`). They sit
-                 under the namespaced `tf-verify-pr${{ inputs.pr_number }}` project that the
-                 next run pre-cleans, so a human can inspect them.
-               - ACCOUNT-scoped resources — ESPECIALLY account SINGLETONS (the API allows
-                 only one per account; a second create 409s): run
-                 `terraform -chdir="$RUNNER_TEMP/verify" destroy -input=false -auto-approve`
-                 at the end. A retained singleton has no per-run namespace and permanently
-                 holds the account's only slot, which blocks BOTH the next verify run and the
-                 resource's own acceptance test in shared CI (both then 409). `destroy` only
-                 removes what THIS run created (terraform state) — it never touches unrelated
-                 account data. Say in the report which resources you retained vs destroyed.
-
-            5. COMMIT any fixes to this branch (clear conventional-commit message; touch only
-               files relevant to the fix — never the scratch config or state) and push.
-
-            6. REPORT. Post a PR comment on #${{ inputs.pr_number }}. This repo is PUBLIC, so
-               keep the comment to: the verification verdict (did plan/apply succeed? was the
-               re-plan clean? which tests ran?), any code fixes you made, and the retained
-               project key `tf-verify-pr${{ inputs.pr_number }}`. Do NOT restate API endpoint
-               paths / operationIds / roadmap detail beyond what the diff already shows, and
-               note the LD console link is in the private Slack thread. Use:
-                 gh pr comment ${{ inputs.pr_number }} --body-file <file>
-
-            7. Write a machine-readable result to `verify-result.json` at the repo root (do NOT
-               commit it) with exactly these fields:
-                 {"status":"pass"|"fail","project_key":"tf-verify-pr${{ inputs.pr_number }}",
-                  "ld_url":"https://app.launchdarkly.com/projects/tf-verify-pr${{ inputs.pr_number }}",
-                  "summary":"<one or two sentences: what you verified and any fixes>"}
-               status is "pass" only if apply succeeded AND the re-plan was clean.
-
-            Operator notes: ${{ inputs.notes }}
+          prompt: ${{ steps.prompt.outputs.prompt }}
           # No Bash(curl:*): prereq cleanup is a workflow step, so the agent never
           # needs raw HTTP with the live admin token (closes an exfil path). git is
           # scoped to the subcommands the flow needs (no `git config` token read).
           claude_args: |
-            --allowedTools "Read,Edit,Write,Glob,Grep,Bash(go:*),Bash(make:*),Bash(git fetch:*),Bash(git diff:*),Bash(git log:*),Bash(git status:*),Bash(git add:*),Bash(git commit:*),Bash(git push:*),Bash(gh pr comment:*),Bash(gh pr view:*),Bash(gofmt:*),Bash(terraform:*),WebFetch(domain:app.launchdarkly.com)"
+            ${{ steps.prompt.outputs.model_arg }} --allowedTools "Read,Edit,Write,Glob,Grep,Bash(go:*),Bash(make:*),Bash(git fetch:*),Bash(git diff:*),Bash(git log:*),Bash(git status:*),Bash(git add:*),Bash(git commit:*),Bash(git push:*),Bash(gh pr comment:*),Bash(gh pr view:*),Bash(gofmt:*),Bash(terraform:*),WebFetch(domain:app.launchdarkly.com)"
 
       # Deterministic, log-safe Slack notification. Reads the agent's result file
       # if present; otherwise reports the run errored (no internal detail leaks).
