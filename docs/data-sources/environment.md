@@ -48,6 +48,7 @@ data "launchdarkly_environment" "example" {
 - `name` (String) The name of the environment.
 - `require_comments` (Boolean) Whether flag/segment changes require comments.
 - `secure_mode` (Boolean) Whether secure mode is enabled.
+- `segment_approval_settings` (Attributes List) Approval settings for segment changes in this environment. (see [below for nested schema](#nestedatt--segment_approval_settings))
 - `tags` (Set of String) Tags.
 
 <a id="nestedatt--approval_settings"></a>
@@ -61,5 +62,20 @@ Read-Only:
 - `min_num_approvals` (Number) Minimum approvers required (1-5).
 - `required` (Boolean) Whether changes require approval.
 - `required_approval_tags` (List of String) Flag tags requiring approval (only one of required / required_approval_tags is set).
+- `service_config` (Map of String) Service-specific approval config.
+- `service_kind` (String) Approval service (e.g. servicenow, launchdarkly).
+
+
+<a id="nestedatt--segment_approval_settings"></a>
+### Nested Schema for `segment_approval_settings`
+
+Read-Only:
+
+- `auto_apply_approved_changes` (Boolean) Whether to auto-apply changes once all approvers have approved.
+- `can_apply_declined_changes` (Boolean) Whether changes can be applied with the minimum number of approvals despite declines.
+- `can_review_own_request` (Boolean) Whether requesters can approve their own requests.
+- `min_num_approvals` (Number) Minimum approvers required (1-5).
+- `required` (Boolean) Whether segment changes require approval.
+- `required_approval_tags` (List of String) Segment tags requiring approval (only one of required / required_approval_tags is set).
 - `service_config` (Map of String) Service-specific approval config.
 - `service_kind` (String) Approval service (e.g. servicenow, launchdarkly).

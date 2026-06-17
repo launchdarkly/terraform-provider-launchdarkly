@@ -17,22 +17,23 @@ type EnvironmentDataSource struct {
 }
 
 type EnvironmentDataSourceModel struct {
-	ID                 types.String `tfsdk:"id"`
-	ProjectKey         types.String `tfsdk:"project_key"`
-	Key                types.String `tfsdk:"key"`
-	Name               types.String `tfsdk:"name"`
-	APIKey             types.String `tfsdk:"api_key"`
-	MobileKey          types.String `tfsdk:"mobile_key"`
-	ClientSideID       types.String `tfsdk:"client_side_id"`
-	Color              types.String `tfsdk:"color"`
-	DefaultTTL         types.Int64  `tfsdk:"default_ttl"`
-	SecureMode         types.Bool   `tfsdk:"secure_mode"`
-	DefaultTrackEvents types.Bool   `tfsdk:"default_track_events"`
-	RequireComments    types.Bool   `tfsdk:"require_comments"`
-	ConfirmChanges     types.Bool   `tfsdk:"confirm_changes"`
-	Critical           types.Bool   `tfsdk:"critical"`
-	Tags               types.Set    `tfsdk:"tags"`
-	ApprovalSettings   types.List   `tfsdk:"approval_settings"`
+	ID                      types.String `tfsdk:"id"`
+	ProjectKey              types.String `tfsdk:"project_key"`
+	Key                     types.String `tfsdk:"key"`
+	Name                    types.String `tfsdk:"name"`
+	APIKey                  types.String `tfsdk:"api_key"`
+	MobileKey               types.String `tfsdk:"mobile_key"`
+	ClientSideID            types.String `tfsdk:"client_side_id"`
+	Color                   types.String `tfsdk:"color"`
+	DefaultTTL              types.Int64  `tfsdk:"default_ttl"`
+	SecureMode              types.Bool   `tfsdk:"secure_mode"`
+	DefaultTrackEvents      types.Bool   `tfsdk:"default_track_events"`
+	RequireComments         types.Bool   `tfsdk:"require_comments"`
+	ConfirmChanges          types.Bool   `tfsdk:"confirm_changes"`
+	Critical                types.Bool   `tfsdk:"critical"`
+	Tags                    types.Set    `tfsdk:"tags"`
+	ApprovalSettings        types.List   `tfsdk:"approval_settings"`
+	SegmentApprovalSettings types.List   `tfsdk:"segment_approval_settings"`
 }
 
 func NewEnvironmentDataSource() datasource.DataSource {
@@ -70,7 +71,8 @@ func (d *EnvironmentDataSource) Schema(_ context.Context, _ datasource.SchemaReq
 				ElementType: types.StringType,
 				Description: "Tags.",
 			},
-			APPROVAL_SETTINGS: frameworkApprovalSettingsDataSourceAttribute(),
+			APPROVAL_SETTINGS:         frameworkApprovalSettingsDataSourceAttribute(),
+			SEGMENT_APPROVAL_SETTINGS: frameworkSegmentApprovalSettingsDataSourceAttribute(),
 		},
 	}
 }
@@ -128,6 +130,36 @@ func (d *EnvironmentDataSource) Read(ctx context.Context, req datasource.ReadReq
 	approvals, diags := frameworkApprovalSettingsDataSourceValue(ctx, env.ApprovalSettings)
 	resp.Diagnostics.Append(diags...)
 	data.ApprovalSettings = approvals
+
+	// Segment approval settings live on the beta approvals API, separate
+	// from the environment's flag approval_settings. Approvals are an
+	// Enterprise feature, so the beta endpoint may be unavailable
+	// (403/404) on some accounts. Degrade to a warning rather than
+	// failing the whole data-source read in that case.
+	segObjectType := types.ObjectType{AttrTypes: frameworkApprovalSettingsObjectAttrTypes}
+	data.SegmentApprovalSettings = types.ListNull(segObjectType)
+	if beta, betaErr := newBetaClient(d.client.apiKey, d.client.apiHost, false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY); betaErr != nil {
+		resp.Diagnostics.AddWarning("Could not read segment_approval_settings", betaErr.Error())
+	} else {
+		var segSettings *map[string]ldapi.ApprovalRequestSettingWithEnvs
+		segErr := beta.withConcurrency(beta.ctx, func() error {
+			var e error
+			segSettings, _, e = beta.ld.ApprovalsBetaApi.GetApprovalRequestSettings(beta.ctx, projectKey).
+				LDAPIVersion("beta").
+				EnvironmentKey(key).
+				ResourceKind(segmentResourceKind).
+				Execute()
+			return e
+		})
+		if segErr != nil {
+			resp.Diagnostics.AddWarning("Could not read segment_approval_settings", fmt.Sprintf("failed to read segment approval settings for environment %q in project %q: %s", key, projectKey, handleLdapiErr(segErr).Error()))
+		} else {
+			seg := segmentApprovalSettingFromGET(segSettings, key)
+			segmentApprovals, diags := frameworkApprovalSettingsDataSourceValue(ctx, approvalSettingsFromRequestSetting(seg))
+			resp.Diagnostics.Append(diags...)
+			data.SegmentApprovalSettings = segmentApprovals
+		}
+	}
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }

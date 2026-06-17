@@ -32,6 +32,24 @@ var importIgnoreApprovalSettingsKeys = []string{
 	"approval_settings.0.required_approval_tags.1",
 }
 
+// importIgnoreSegmentApprovalSettingsKeys is the segment_approval_settings
+// analogue of importIgnoreApprovalSettingsKeys: Import has no prior state,
+// so the beta-read can't tell "user omitted segment_approval_settings" from
+// "user supplied segment_approval_settings = [{...all defaults...}]".
+var importIgnoreSegmentApprovalSettingsKeys = []string{
+	"segment_approval_settings.#",
+	"segment_approval_settings.0.%",
+	"segment_approval_settings.0.required",
+	"segment_approval_settings.0.can_review_own_request",
+	"segment_approval_settings.0.can_apply_declined_changes",
+	"segment_approval_settings.0.min_num_approvals",
+	"segment_approval_settings.0.service_kind",
+	"segment_approval_settings.0.service_config.%",
+	"segment_approval_settings.0.auto_apply_approved_changes",
+	"segment_approval_settings.0.required_approval_tags.#",
+	"segment_approval_settings.0.required_approval_tags.0",
+}
+
 const (
 	testAccEnvironmentCreate = `
 resource "launchdarkly_environment" "staging" {
@@ -117,6 +135,43 @@ resource "launchdarkly_environment" "approvals_test" {
 resource "launchdarkly_environment" "approvals_test" {
 	name = "Approvals Test 2.1"
 	key = "approvals-test"
+	color = "bababa"
+	project_key = launchdarkly_project.test.key
+}
+`
+
+	testAccEnvironmentWithSegmentApprovals = `
+resource "launchdarkly_environment" "segment_approvals_test" {
+	name = "Segment Approvals Test"
+	key = "seg-approvals-test"
+	color = "ababab"
+	project_key = launchdarkly_project.test.key
+	segment_approval_settings = [{
+		can_review_own_request = false
+		min_num_approvals = 2
+		required_approval_tags = ["approvals_required"]
+	}]
+}
+`
+	testAccEnvironmentWithSegmentApprovalsUpdate = `
+resource "launchdarkly_environment" "segment_approvals_test" {
+	name = "Segment Approvals Test 2.0"
+	key = "seg-approvals-test"
+	color = "bababa"
+	project_key = launchdarkly_project.test.key
+	segment_approval_settings = [{
+		required = true
+		can_review_own_request = true
+		min_num_approvals = 1
+		can_apply_declined_changes = false
+	}]
+}
+`
+
+	testAccEnvironmentWithSegmentApprovalsRemoved = `
+resource "launchdarkly_environment" "segment_approvals_test" {
+	name = "Segment Approvals Test 2.1"
+	key = "seg-approvals-test"
 	color = "bababa"
 	project_key = launchdarkly_project.test.key
 }
@@ -444,6 +499,71 @@ func TestAccEnvironment_WithApprovals(t *testing.T) {
 				ImportState:             true,
 				ImportStateVerify:       true,
 				ImportStateVerifyIgnore: importIgnoreApprovalSettingsKeys,
+			},
+		},
+	})
+}
+
+// TestAccEnvironment_WithSegmentApprovals exercises the segment_approval_settings
+// attribute, which is configured against LaunchDarkly's beta approvals API
+// (GET/PATCH /api/v2/approval-requests/projects/{projectKey}/settings) rather
+// than the environment patch used by flag approval_settings.
+func TestAccEnvironment_WithSegmentApprovals(t *testing.T) {
+	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	resourceName := "launchdarkly_environment.segment_approvals_test"
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck: func() {
+			testAccPreCheck(t)
+		},
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: withRandomProject(projectKey, testAccEnvironmentWithSegmentApprovals),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckProjectExists("launchdarkly_project.test"),
+					testAccCheckEnvironmentExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, NAME, "Segment Approvals Test"),
+					resource.TestCheckResourceAttr(resourceName, KEY, "seg-approvals-test"),
+					resource.TestCheckResourceAttr(resourceName, PROJECT_KEY, projectKey),
+					resource.TestCheckResourceAttr(resourceName, "segment_approval_settings.0.can_review_own_request", "false"),
+					resource.TestCheckResourceAttr(resourceName, "segment_approval_settings.0.can_apply_declined_changes", "true"), // should default to true
+					resource.TestCheckResourceAttr(resourceName, "segment_approval_settings.0.min_num_approvals", "2"),
+					resource.TestCheckResourceAttr(resourceName, "segment_approval_settings.0.required_approval_tags.0", "approvals_required"),
+				),
+			},
+			{
+				ResourceName:            resourceName,
+				ImportState:             true,
+				ImportStateVerify:       true,
+				ImportStateVerifyIgnore: importIgnoreSegmentApprovalSettingsKeys,
+			},
+			{
+				Config: withRandomProject(projectKey, testAccEnvironmentWithSegmentApprovalsUpdate),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckProjectExists("launchdarkly_project.test"),
+					testAccCheckEnvironmentExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, NAME, "Segment Approvals Test 2.0"),
+					resource.TestCheckResourceAttr(resourceName, "segment_approval_settings.0.required", "true"),
+					resource.TestCheckResourceAttr(resourceName, "segment_approval_settings.0.can_review_own_request", "true"),
+					resource.TestCheckResourceAttr(resourceName, "segment_approval_settings.0.can_apply_declined_changes", "false"),
+					resource.TestCheckResourceAttr(resourceName, "segment_approval_settings.0.min_num_approvals", "1"),
+					resource.TestCheckNoResourceAttr(resourceName, "segment_approval_settings.0.required_approval_tags.#"),
+				),
+			},
+			{
+				Config: withRandomProject(projectKey, testAccEnvironmentWithSegmentApprovalsRemoved),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckProjectExists("launchdarkly_project.test"),
+					testAccCheckEnvironmentExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, NAME, "Segment Approvals Test 2.1"),
+					resource.TestCheckNoResourceAttr(resourceName, fmt.Sprintf("%s.%%", SEGMENT_APPROVAL_SETTINGS)),
+				),
+			},
+			{
+				ResourceName:            resourceName,
+				ImportState:             true,
+				ImportStateVerify:       true,
+				ImportStateVerifyIgnore: importIgnoreSegmentApprovalSettingsKeys,
 			},
 		},
 	})
