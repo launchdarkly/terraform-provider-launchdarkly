@@ -92,6 +92,7 @@ jobs:
           - TestAccAITool
           - TestAccDataSource
           - TestAccAccessToken
+          - TestAccAnnouncement_
           - TestAccAuditLogSubscription
           - TestAccContextKind
           - TestAccCustomRole
