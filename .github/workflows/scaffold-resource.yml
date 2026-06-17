@@ -67,6 +67,13 @@ jobs:
         with:
           go-version-file: "go.mod"
           cache: true
+      # tfplugindocs (run via `go generate .`) and `terraform fmt ./examples`
+      # both need a real terraform binary on PATH so the agent can regenerate
+      # docs/. No LD token here — doc generation introspects the provider schema
+      # offline; the token-needing integration-configs codegen is NOT run.
+      - uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3.1.2
+        with:
+          terraform_wrapper: false
       - name: Extract endpoint-family context
         run: |
           go build -o /tmp/driftreport ./scripts/driftreport
@@ -97,6 +104,15 @@ jobs:
             - Use the generated API client (github.com/launchdarkly/api-client-go/v22)
               for all API calls. If the client lacks this surface, stop and report that
               instead of hand-rolling HTTP.
+            - If the resource is an account-scoped SINGLETON (the API allows only one
+              per account — its create returns 409/optimistic_locking_error once one
+              exists), make the acceptance test self-cleaning. The acceptance token
+              targets a DEDICATED Terraform test account (not a customer/prod account),
+              so add a PreCheck that deletes ANY pre-existing instance before create
+              (delete-existing-first — a leftover from an aborted run or a retained
+              verification run would otherwise 409 the test). This is the repo's
+              account-singleton orphan-cleanup PreCheck pattern; see references/patterns.md.
+              Document the one-per-account limit in the schema Description.
 
             Additional notes from the operator: ${{ inputs.notes }}
 
@@ -107,10 +123,24 @@ jobs:
                unit-testable helpers, acceptance tests, docs templates, and provider
                registration. ${{ inputs.resource_name && format('In scripts/driftreport/mapping.yaml, move these operations out of the "{0}" family''s new_resource_candidates into a new entry under its resources (the family stays partial).', inputs.family) || 'Update scripts/driftreport/mapping.yaml to mark the family covered.' }}
             3. Run go build ./... and make fmt; fix what they surface.
-            4. Commit, push the branch, and open a DRAFT pull request against
+            4. Wire the resource into CI and docs so the draft PR clears the same
+               quality gates a human PR must (stage-2 runs have historically skipped
+               BOTH of these — do not omit them):
+               - Acceptance matrix: add the resource's test prefix to the test_case
+                 matrix in .github/workflows/test.yml so its TestAcc* tests actually
+                 run in CI. Pick a `-run` prefix that does NOT overlap an existing
+                 entry; use a trailing-underscore prefix when a sibling resource
+                 shares a stem (e.g. TestAccMetric_ vs TestAccMetricGroup_).
+               - Docs: run `go generate .` (the repo-root directive runs tfplugindocs
+                 and `terraform fmt ./examples`; terraform is installed in this job).
+                 Do NOT run `make generate` or `go generate ./launchdarkly/...` — those
+                 also run the integration-configs codegen, which needs an API token
+                 this job intentionally lacks. Commit the generated docs/ (and any
+                 examples/ formatting) so CI's generate-diff check passes.
+            5. Commit, push the branch, and open a DRAFT pull request against
                preview-v3 titled "feat: scaffold ${{ inputs.resource_name || inputs.family }} resource
                (autogen stage 2)". The PR body must state it is agent-scaffolded and
                needs human review per stage 3 of the autogen pipeline.
             Never push to preview-v3 directly and never merge anything.
           claude_args: |
-            --allowedTools "Read,Edit,Write,Glob,Grep,Bash(go:*),Bash(make:*),Bash(git:*),Bash(gh pr create:*),Bash(gofmt:*),WebFetch(domain:app.launchdarkly.com)"
+            --allowedTools "Read,Edit,Write,Glob,Grep,Bash(go:*),Bash(make:*),Bash(git:*),Bash(gh pr create:*),Bash(gofmt:*),Bash(terraform:*),WebFetch(domain:app.launchdarkly.com)"

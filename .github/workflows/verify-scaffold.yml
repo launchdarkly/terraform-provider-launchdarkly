@@ -5,15 +5,15 @@
 # an agent that reviews the code and exercises the new resource with real
 # `terraform plan`/`apply`, fixing functionality/tests until apply is clean.
 #
-# The applied example resources are RETAINED (no `terraform destroy`) so a human
-# reviewer can inspect them in the LD account. PROJECT-scoped resources live in a
-# project keyed `tf-verify-pr<N>` that the pre-clean step deletes at the start of
-# each run, so at most one set lingers per PR. ACCOUNT-scoped resources have no
-# project to pre-clean, so the agent names them per-run (`tf-verify-pr<N>-run<R>`)
-# to avoid colliding with a retained resource from a previous run; those
-# accumulate and need manual cleanup. Result posts back as a PR comment AND a
-# private-Slack "ready for review" message (same generic title/body webhook as
-# the drift report — SLACK_DRIFT_WEBHOOK_URL).
+# PROJECT-scoped example resources are RETAINED (no `terraform destroy`) so a human
+# reviewer can inspect them: they live in a project keyed `tf-verify-pr<N>` that the
+# pre-clean step deletes at the start of each run, so at most one set lingers per PR.
+# ACCOUNT-scoped resources have no project to namespace/pre-clean into; account
+# SINGLETONS (one-per-account, second create 409s) are DESTROYED at the end instead,
+# because a retained singleton permanently holds the account's only slot and blocks
+# both the next verify run and the resource's acceptance test in shared CI. Result
+# posts back as a PR comment AND a private-Slack "ready for review" message (same
+# generic title/body webhook as the drift report — SLACK_DRIFT_WEBHOOK_URL).
 #
 # This file lives on `main` only so GitHub registers the workflow_dispatch
 # trigger. It checks out the PR's own branch (always a same-repo scaffold/*
@@ -226,7 +226,12 @@ jobs:
                account-scoped rather than project-scoped, there is no project for the
                workflow to pre-clean, so name its key/name per-run as
                `tf-verify-pr${{ inputs.pr_number }}-run${{ github.run_number }}` to avoid
-               colliding with a resource retained by a previous run. Then:
+               colliding with a resource retained by a previous run. (If the resource is
+               an account SINGLETON, per-run naming cannot prevent a collision — only one
+               can exist account-wide — so you will be destroying it in step 4; if a
+               leftover from an earlier run still blocks `apply`/`create`, delete that one
+               first via a targeted `terraform import` + `destroy`, or report the blocker.)
+               Then:
                  terraform -chdir="$RUNNER_TEMP/verify" plan  -input=false
                  terraform -chdir="$RUNNER_TEMP/verify" apply -input=false -auto-approve
                A second `plan` afterwards MUST be empty (no perpetual diff). Do NOT commit
@@ -240,8 +245,18 @@ jobs:
                    go test -run <TestAccName> ./launchdarkly/... -v -timeout 30m
                Run `make fmt` and `go build ./...` before committing.
 
-            4. RETAIN the resources. Do NOT run `terraform destroy`. Leave the applied
-               example resources in the account for human review.
+            4. RETAIN or DESTROY by scope:
+               - PROJECT-scoped resources: RETAIN them (no `terraform destroy`). They sit
+                 under the namespaced `tf-verify-pr${{ inputs.pr_number }}` project that the
+                 next run pre-cleans, so a human can inspect them.
+               - ACCOUNT-scoped resources — ESPECIALLY account SINGLETONS (the API allows
+                 only one per account; a second create 409s): run
+                 `terraform -chdir="$RUNNER_TEMP/verify" destroy -input=false -auto-approve`
+                 at the end. A retained singleton has no per-run namespace and permanently
+                 holds the account's only slot, which blocks BOTH the next verify run and the
+                 resource's own acceptance test in shared CI (both then 409). `destroy` only
+                 removes what THIS run created (terraform state) — it never touches unrelated
+                 account data. Say in the report which resources you retained vs destroyed.
 
             5. COMMIT any fixes to this branch (clear conventional-commit message; touch only
                files relevant to the fix — never the scratch config or state) and push.
