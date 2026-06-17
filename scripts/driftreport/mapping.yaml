@@ -150,8 +150,10 @@ families:
     notes: Despite the tag name, this family carries the AI Config CRUD surface — the spec's "AI Configs" tag holds only two stray analytics endpoints. The four AI resources cover 15 of 49 ops; agent graphs and prompt snippets are curated as scaffoldable net-new resources, while agent optimizations, AI config targeting, prompt-snippet aux reads, and restricted models remain in triage.
 
   - tag: Announcements
-    status: triage
-    notes: In-app announcements; small declarative surface, plausible resource.
+    status: covered
+    resources:
+      - launchdarkly_announcement
+    notes: In-app announcement banners. The resource covers create/update/delete; reads resolve by ID through the list endpoint since the API exposes no GET-by-ID (hence no data source). Scaffolded by the autogen pipeline (stage 2).
 
   - tag: Applications (beta)
     status: triage

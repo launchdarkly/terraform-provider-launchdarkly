@@ -178,6 +178,7 @@ func (p *launchdarklyProvider) DataSources(_ context.Context) []func() datasourc
 func (p *launchdarklyProvider) Resources(_ context.Context) []func() resource.Resource {
 	return []func() resource.Resource{
 		NewAccessTokenResource,
+		NewAnnouncementResource,
 		NewAIConfigResource,
 		NewAIConfigVariationResource,
 		NewAIToolResource,
