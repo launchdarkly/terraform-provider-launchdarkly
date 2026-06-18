@@ -344,8 +344,20 @@ families:
       - launchdarkly_relay_proxy_configuration
 
   - tag: Release pipelines (beta)
-    status: triage
-    notes: Active product area; release-policies datasource work exists on branch RO-2042.
+    status: covered
+    resources:
+      - name: launchdarkly_release_pipeline
+        operations:
+          - postReleasePipeline
+          - getReleasePipelineByKey
+          - putReleasePipeline
+          - deleteReleasePipeline
+    ignored_operations:
+      - id: getAllReleasePipelines
+        reason: List/index endpoint; the singular get covers declarative reads.
+      - id: getAllReleaseProgressionsForReleasePipeline
+        reason: Read-only runtime progression data; not declarative configuration.
+    notes: Scaffolded by the autogen pipeline (stage 2). Wraps a beta API via a beta client sending the beta LD-API-Version header. Active product area; release-policies datasource work exists on branch RO-2042.
 
   - tag: Release policies (beta)
     status: triage
