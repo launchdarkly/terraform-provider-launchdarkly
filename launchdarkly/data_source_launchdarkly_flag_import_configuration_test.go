@@ -24,8 +24,9 @@ data "launchdarkly_flag_import_configuration" "testing" {
 // import configuration via the API (the endpoints are beta, so the
 // configuration is created with the beta client) so the data source can read it
 // back. NOTE FOR REVIEWERS: the `integration_key` and `config` keys must match
-// the chosen integration's manifest; `split` is used here as a placeholder and
-// may require a real admin token if the API validates credentials at create.
+// the chosen integration's manifest; `split` is used here with the keys that
+// integration requires. The flag-import API stores the config without
+// validating the credentials at create time, so placeholders are sufficient.
 func testAccDataSourceFlagImportConfigurationScaffold(client *Client, beta *Client, projectKey string) (*ldapi.FlagImportIntegration, error) {
 	projectBody := ldapi.ProjectPost{
 		Name: "Flag Import Config Test Project",
@@ -39,8 +40,10 @@ func testAccDataSourceFlagImportConfigurationScaffold(client *Client, beta *Clie
 	name := "flag import ds test"
 	post := ldapi.FlagImportConfigurationPost{
 		Config: map[string]interface{}{
-			"apiToken": "split-admin-token-placeholder",
-			"source":   "production",
+			"workspaceApiKey": "placeholder-admin-key",
+			"workspaceId":     "placeholder-workspace-id",
+			"environmentId":   "placeholder-environment-id",
+			"ldApiKey":        "placeholder-ld-api-key",
 		},
 		Tags: []string{"test"},
 		Name: &name,
@@ -76,7 +79,10 @@ func TestAccDataSourceFlagImportConfiguration_noMatchReturnsError(t *testing.T) 
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			{
-				Config:      fmt.Sprintf(testAccDataSourceFlagImportConfiguration, project.Key, "split", "nonexistent-id"),
+				// A well-formed but nonexistent integration id (UUID shape).
+				// A non-UUID value would instead return a 400 "malformed
+				// integration id" from the API before the not-found check.
+				Config:      fmt.Sprintf(testAccDataSourceFlagImportConfiguration, project.Key, "split", "00000000-0000-0000-0000-000000000000"),
 				ExpectError: regexp.MustCompile("Error: 404 Not Found"),
 			},
 		},

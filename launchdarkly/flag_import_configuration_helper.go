@@ -3,21 +3,53 @@ package launchdarkly
 import (
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"strings"
+
+	ldapi "github.com/launchdarkly/api-client-go/v22"
 )
 
+// betaVersionRoundTripper forces every request through it to carry exactly
+// `LD-API-Version: beta`. This is required because the generated client's
+// prepareRequest hardcodes `LD-API-Version: 20240415` when an operation does not
+// set the header itself, and then *appends* (http.Header.Add) any configured
+// default header rather than replacing it. The FlagImportConfigurationsBetaApi
+// request builders do not expose a per-request `.LDAPIVersion("beta")` setter,
+// so a plain `AddDefaultHeader("LD-API-Version", "beta")` would leave the
+// request carrying `["20240415", "beta"]` — and the server reads the first
+// value, `20240415`, rejecting the beta-only endpoint. Setting the header at the
+// transport layer (http.Header.Set) replaces both values with `beta`.
+type betaVersionRoundTripper struct {
+	inner http.RoundTripper
+}
+
+func (t betaVersionRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
+	req.Header.Set("LD-API-Version", "beta")
+	return t.inner.RoundTrip(req)
+}
+
+func forceBetaAPIVersion(client *ldapi.APIClient) {
+	hc := client.GetConfig().HTTPClient
+	inner := hc.Transport
+	if inner == nil {
+		inner = http.DefaultTransport
+	}
+	hc.Transport = betaVersionRoundTripper{inner: inner}
+}
+
 // newFlagImportConfigurationBetaClient returns a beta-configured client for the
-// flag-import endpoints. Like the metric-groups builder, the generated
-// FlagImportConfigurationsBetaApi request builders do not expose a per-request
-// .LDAPIVersion("beta") setter, so we set the LD-API-Version header as a client
-// default. Without the beta header these endpoints return 400/404.
+// flag-import endpoints. The generated FlagImportConfigurationsBetaApi request
+// builders do not expose a per-request `.LDAPIVersion("beta")` setter, so we
+// force the `LD-API-Version: beta` header at the transport layer (see
+// betaVersionRoundTripper for why a default header is insufficient). Without the
+// beta header these endpoints return 400/403/404.
 func newFlagImportConfigurationBetaClient(c *Client) (*Client, error) {
 	beta, err := newBetaClient(c.apiKey, c.apiHost, false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
 	if err != nil {
 		return nil, err
 	}
-	beta.ld.GetConfig().AddDefaultHeader("LD-API-Version", "beta")
-	beta.ld404Retry.GetConfig().AddDefaultHeader("LD-API-Version", "beta")
+	forceBetaAPIVersion(beta.ld)
+	forceBetaAPIVersion(beta.ld404Retry)
 	return beta, nil
 }
 

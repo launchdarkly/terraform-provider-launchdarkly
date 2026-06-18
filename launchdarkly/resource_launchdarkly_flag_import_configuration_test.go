@@ -11,11 +11,11 @@ import (
 
 // NOTE FOR REVIEWERS: these tests exercise a beta integration resource. The
 // `integration_key` and the keys inside `config` must match the chosen
-// integration's manifest `formVariables`. The values below target `split`; the
-// flag-import API may validate the supplied credentials against the external
-// system at create time, in which case these tests require a real Split admin
-// token (and the config keys may need adjusting). Verify against a live
-// integration before relying on CI for this resource.
+// integration's manifest `formVariables`. The values below target `split` and
+// use the keys the `split` integration requires (`workspaceApiKey`,
+// `workspaceId`, `environmentId`, `ldApiKey`). The flag-import API stores these
+// values without validating the supplied credentials against the external
+// system at create time, so placeholder values are sufficient for CI.
 const testAccFlagImportConfigurationCreate = `
 resource "launchdarkly_flag_import_configuration" "test" {
 	project_key     = launchdarkly_project.test.key
@@ -23,8 +23,10 @@ resource "launchdarkly_flag_import_configuration" "test" {
 	name            = "terraform flag import test"
 
 	config = jsonencode({
-		apiToken = "split-admin-token-placeholder"
-		source   = "production"
+		workspaceApiKey = "placeholder-admin-key"
+		workspaceId     = "placeholder-workspace-id"
+		environmentId   = "placeholder-environment-id"
+		ldApiKey        = "placeholder-ld-api-key"
 	})
 
 	tags = ["terraform", "import"]
@@ -38,8 +40,10 @@ resource "launchdarkly_flag_import_configuration" "test" {
 	name            = "terraform flag import test updated"
 
 	config = jsonencode({
-		apiToken = "split-admin-token-placeholder"
-		source   = "staging"
+		workspaceApiKey = "placeholder-admin-key"
+		workspaceId     = "placeholder-workspace-id"
+		environmentId   = "placeholder-environment-id-staging"
+		ldApiKey        = "placeholder-ld-api-key"
 	})
 
 	tags = ["terraform"]
@@ -72,8 +76,13 @@ func TestAccFlagImportConfiguration_CreateUpdate(t *testing.T) {
 				ImportState:       true,
 				ImportStateVerify: true,
 				// `config` holds a secret that the API masks on read, so the
-				// imported value will not match the configured value.
-				ImportStateVerifyIgnore: []string{CONFIG},
+				// imported value will not match the configured value. `version`
+				// is a server-managed counter that the backend increments
+				// asynchronously after create (the import config schedules
+				// background work), so the value read at import time can differ
+				// from the one captured at create time. It is computed-only, so
+				// this drift never surfaces as a plan diff.
+				ImportStateVerifyIgnore: []string{CONFIG, VERSION},
 			},
 			{
 				Config: withRandomProject(projectKey, testAccFlagImportConfigurationUpdate),
