@@ -3,6 +3,7 @@ package launchdarkly
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
@@ -12,18 +13,42 @@ import (
 	ldapi "github.com/launchdarkly/api-client-go/v22"
 )
 
+// forceBetaAPIVersionTransport rewrites the LD-API-Version header to exactly
+// "beta" on every outbound request.
+//
+// The generated ReleasePipelinesBetaApi request builders do not expose a
+// per-request .LDAPIVersion("beta") setter, so the only client-side hook is
+// the configuration's default header. That alone is insufficient: the
+// generated prepareRequest unconditionally *appends* "20240415" to
+// LD-API-Version when the operation did not set it, and then *appends* the
+// configured default — yielding a two-valued header ("20240415", "beta") whose
+// first value (the stable version) wins server-side and 404s the beta route.
+// Rewriting at the transport layer with Header.Set collapses it to a single
+// "beta" value. Forcing it here (rather than via AddDefaultHeader) is what
+// makes the beta endpoints resolve.
+type forceBetaAPIVersionTransport struct {
+	base http.RoundTripper
+}
+
+func (t *forceBetaAPIVersionTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	req.Header.Set("LD-API-Version", "beta")
+	return t.base.RoundTrip(req)
+}
+
 // newReleasePipelineBetaClient returns a beta-configured client for the
-// release-pipelines endpoints. Like the metric-groups beta client, the
-// generated ReleasePipelinesBetaApi request builders do not expose a
-// per-request .LDAPIVersion("beta") setter, so we set the LD-API-Version
-// header as a client default. Mirrors newMetricGroupBetaClient.
+// release-pipelines endpoints.
 func newReleasePipelineBetaClient(c *Client) (*Client, error) {
 	beta, err := newBetaClient(c.apiKey, c.apiHost, false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
 	if err != nil {
 		return nil, err
 	}
-	beta.ld.GetConfig().AddDefaultHeader("LD-API-Version", "beta")
-	beta.ld404Retry.GetConfig().AddDefaultHeader("LD-API-Version", "beta")
+	for _, cfg := range []*ldapi.Configuration{beta.ld.GetConfig(), beta.ld404Retry.GetConfig()} {
+		base := cfg.HTTPClient.Transport
+		if base == nil {
+			base = http.DefaultTransport
+		}
+		cfg.HTTPClient.Transport = &forceBetaAPIVersionTransport{base: base}
+	}
 	return beta, nil
 }
 
