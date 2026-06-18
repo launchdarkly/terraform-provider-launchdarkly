@@ -12,10 +12,10 @@ import (
 // The environment key "test" is created by withRandomProject. Persistent store
 // integrations are environment-scoped, so the resource references that env.
 //
-// NOTE for the reviewer: these fixtures use a Redis store with placeholder
-// connection values. If the beta API validates store connectivity at create
-// time (rather than lazily), the create will fail and the fixtures must point at
-// a reachable Redis instance. Confirm against a live environment.
+// These fixtures use a Redis store with placeholder connection values. Verified
+// against a live environment: the beta API validates the config shape (`port`
+// must be a string, connection TLS is keyed `tlsEnabled`) but does not test store
+// connectivity at create time, so unreachable placeholder values are accepted.
 const testAccBigSegmentStoreIntegrationRedis = `
 resource "launchdarkly_big_segment_store_integration" "test" {
 	project_key     = launchdarkly_project.test.key
@@ -25,9 +25,9 @@ resource "launchdarkly_big_segment_store_integration" "test" {
 	on              = false
 
 	config = jsonencode({
-		host = "redis.internal.example.com"
-		port = 6379
-		tls  = true
+		host       = "redis.internal.example.com"
+		port       = "6379"
+		tlsEnabled = true
 	})
 
 	tags = ["terraform-managed"]
@@ -43,9 +43,9 @@ resource "launchdarkly_big_segment_store_integration" "test" {
 	on              = true
 
 	config = jsonencode({
-		host = "redis.internal.example.com"
-		port = 6380
-		tls  = true
+		host       = "redis.internal.example.com"
+		port       = "6380"
+		tlsEnabled = true
 	})
 
 	tags = ["terraform-managed", "updated"]
@@ -78,9 +78,10 @@ func TestAccBigSegmentStoreIntegration_CreateUpdate(t *testing.T) {
 				ResourceName:      resourceName,
 				ImportState:       true,
 				ImportStateVerify: true,
-				// config carries credentials the API may redact on read; ignore
-				// it during import verification. Reviewer: drop this if the live
-				// API round-trips config faithfully.
+				// config is write-only: the API redacts secrets and normalizes
+				// keys/types on read, so it is not read back into state and
+				// cannot be recovered on import. Confirmed against a live
+				// environment; this ignore is required.
 				ImportStateVerifyIgnore: []string{CONFIG},
 			},
 			{

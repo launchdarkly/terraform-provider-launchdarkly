@@ -6,9 +6,11 @@ resource "launchdarkly_big_segment_store_integration" "redis_store" {
   on              = true
 
   config = jsonencode({
-    host = "redis.internal.example.com"
-    port = 6379
-    tls  = true
+    host       = "redis.internal.example.com"
+    port       = "6379"
+    tlsEnabled = true
+    username   = "default"
+    password   = "example-password"
   })
 
   tags = ["terraform-managed"]
@@ -23,9 +25,9 @@ resource "launchdarkly_big_segment_store_integration" "dynamodb_store" {
 
   config = jsonencode({
     tableName  = "launchdarkly-big-segments"
-    awsRegion  = "us-east-1"
+    region     = "us-east-1"
     roleArn    = "arn:aws:iam::123456789012:role/launchdarkly-big-segments"
-    externalId = "your-external-id"
+    externalId = "00000000-0000-0000-0000-000000000000"
   })
 
   tags = ["terraform-managed"]

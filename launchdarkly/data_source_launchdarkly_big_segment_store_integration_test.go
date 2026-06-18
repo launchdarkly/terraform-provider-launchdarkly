@@ -17,9 +17,9 @@ resource "launchdarkly_big_segment_store_integration" "test" {
 	name            = "Terraform Redis store"
 
 	config = jsonencode({
-		host = "redis.internal.example.com"
-		port = 6379
-		tls  = true
+		host       = "redis.internal.example.com"
+		port       = "6379"
+		tlsEnabled = true
 	})
 }
 
