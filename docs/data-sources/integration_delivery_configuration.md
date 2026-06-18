@@ -19,10 +19,10 @@ This data source allows you to retrieve an integration delivery configuration fr
 ## Example Usage
 
 ```terraform
-data "launchdarkly_integration_delivery_configuration" "redis_feature_store" {
+data "launchdarkly_integration_delivery_configuration" "fastly_feature_store" {
   project_key     = "example-project"
   env_key         = "production"
-  integration_key = "redis"
+  integration_key = "fastly"
   config_id       = "57c1e8b1b8e8c50c3f000001"
 }
 ```
@@ -34,7 +34,7 @@ data "launchdarkly_integration_delivery_configuration" "redis_feature_store" {
 
 - `config_id` (String) The unique server-assigned ID of the delivery configuration.
 - `env_key` (String) The environment key.
-- `integration_key` (String) The integration key identifying the persistent feature store integration.
+- `integration_key` (String) The integration key identifying the persistent feature store integration (for example `fastly`, `cloudflare`, or `vercel`).
 - `project_key` (String) The project key.
 
 ### Read-Only

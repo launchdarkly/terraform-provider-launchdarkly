@@ -9,26 +9,30 @@ import (
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 )
 
-// NOTE for reviewers (agent-scaffolded): integration delivery configurations are
-// scoped to a persistent feature store integration. The `integration_key` and
-// the shape of `config` are defined by the integration's manifest, and the
-// account running these acceptance tests must have the `redis` feature store
-// integration available. If the dedicated test account exposes a different
-// feature store integration, swap the integration key and config below to match
-// that integration's manifest form variables.
+// NOTE for reviewers (agent-scaffolded, verified against real LD): integration
+// delivery configurations are scoped to a persistent feature store integration.
+// The `integration_key` and the shape of `config` are defined by the
+// integration's manifest. The feature store integrations exposed on the LD
+// account are edge key-value providers (akamai-edgeworkers, cloudflare, convex,
+// fastly, vercel, vercel-native) -- there is no `redis`/`dynamodb` feature store
+// integration. We use `fastly` here because its manifest has no validation
+// request, so a configuration can be created with placeholder credentials while
+// `on = false` without LaunchDarkly attempting to reach the provider. Every
+// feature store manifest declares at least one secret field (here `apiToken`),
+// which the API returns obfuscated on read, so the secret-bearing `config`
+// attribute is excluded from ImportStateVerify below.
 const testAccIntegrationDeliveryConfigurationCreate = `
 resource "launchdarkly_integration_delivery_configuration" "test" {
 	project_key     = launchdarkly_project.test.key
 	env_key         = "test"
-	integration_key = "redis"
+	integration_key = "fastly"
 
-	name = "Test Redis feature store"
+	name = "Test Fastly feature store"
 	on   = false
 
 	config = jsonencode({
-		host   = "redis.example.com"
-		port   = 6379
-		prefix = "launchdarkly"
+		storeId  = "00000000-0000-0000-0000-000000000000"
+		apiToken = "dummy-token-for-acceptance-test"
 	})
 
 	tags = ["terraform-managed"]
@@ -39,15 +43,14 @@ const testAccIntegrationDeliveryConfigurationUpdate = `
 resource "launchdarkly_integration_delivery_configuration" "test" {
 	project_key     = launchdarkly_project.test.key
 	env_key         = "test"
-	integration_key = "redis"
+	integration_key = "fastly"
 
-	name = "Test Redis feature store updated"
-	on   = true
+	name = "Test Fastly feature store updated"
+	on   = false
 
 	config = jsonencode({
-		host   = "redis-updated.example.com"
-		port   = 6380
-		prefix = "launchdarkly-prod"
+		storeId  = "11111111-1111-1111-1111-111111111111"
+		apiToken = "dummy-token-for-acceptance-test"
 	})
 
 	tags = ["terraform-managed", "updated"]
@@ -69,8 +72,8 @@ func TestAccIntegrationDeliveryConfiguration_CreateUpdate(t *testing.T) {
 					testAccCheckIntegrationDeliveryConfigurationExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, PROJECT_KEY, projectKey),
 					resource.TestCheckResourceAttr(resourceName, ENV_KEY, "test"),
-					resource.TestCheckResourceAttr(resourceName, INTEGRATION_KEY, "redis"),
-					resource.TestCheckResourceAttr(resourceName, NAME, "Test Redis feature store"),
+					resource.TestCheckResourceAttr(resourceName, INTEGRATION_KEY, "fastly"),
+					resource.TestCheckResourceAttr(resourceName, NAME, "Test Fastly feature store"),
 					resource.TestCheckResourceAttr(resourceName, ON, "false"),
 					resource.TestCheckResourceAttr(resourceName, "tags.#", "1"),
 					resource.TestCheckResourceAttrSet(resourceName, CONFIG_ID),
@@ -81,20 +84,24 @@ func TestAccIntegrationDeliveryConfiguration_CreateUpdate(t *testing.T) {
 				ResourceName:      resourceName,
 				ImportState:       true,
 				ImportStateVerify: true,
+				// The API obfuscates secret config fields (e.g. apiToken) on read,
+				// so the imported `config` cannot round-trip to the original value.
+				ImportStateVerifyIgnore: []string{CONFIG},
 			},
 			{
 				Config: withRandomProject(projectKey, testAccIntegrationDeliveryConfigurationUpdate),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckIntegrationDeliveryConfigurationExists(resourceName),
-					resource.TestCheckResourceAttr(resourceName, NAME, "Test Redis feature store updated"),
-					resource.TestCheckResourceAttr(resourceName, ON, "true"),
+					resource.TestCheckResourceAttr(resourceName, NAME, "Test Fastly feature store updated"),
+					resource.TestCheckResourceAttr(resourceName, ON, "false"),
 					resource.TestCheckResourceAttr(resourceName, "tags.#", "2"),
 				),
 			},
 			{
-				ResourceName:      resourceName,
-				ImportState:       true,
-				ImportStateVerify: true,
+				ResourceName:            resourceName,
+				ImportState:             true,
+				ImportStateVerify:       true,
+				ImportStateVerifyIgnore: []string{CONFIG},
 			},
 		},
 	})

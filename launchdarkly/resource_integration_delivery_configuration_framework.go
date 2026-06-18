@@ -55,7 +55,9 @@ func (r *IntegrationDeliveryConfigurationResource) Schema(_ context.Context, _ r
 
 ~> **Beta:** This resource wraps a beta LaunchDarkly API. Beta resources may change or be removed in future versions, and the provider sends the ` + "`LD-API-Version: beta`" + ` header on every request to this endpoint.
 
-Integration delivery configurations connect a LaunchDarkly project environment to a persistent feature store integration (for example a Relay Proxy feature store such as ` + "`redis`" + ` or ` + "`dynamodb`" + `), so flag and segment data is delivered to that destination. A configuration is scoped to a single project environment and integration. To learn more, read [Persistent store integrations](https://docs.launchdarkly.com/home/relay-proxy/persistent-store-integrations).`,
+Integration delivery configurations connect a LaunchDarkly project environment to a persistent feature store integration (for example an edge key-value store such as ` + "`fastly`" + `, ` + "`cloudflare`" + `, or ` + "`vercel`" + `), so flag and segment data is delivered to that destination. A configuration is scoped to a single project environment and integration.
+
+The valid ` + "`integration_key`" + ` values and the accepted ` + "`config`" + ` fields are defined by each integration's manifest. Many ` + "`config`" + ` fields are secrets (for example API tokens); the API returns these obfuscated on read, so the provider treats the ` + "`config`" + ` you supply as the source of truth and does not overwrite it from the (obfuscated) server response. As a result, configurations imported via ` + "`terraform import`" + ` will show a diff on the secret fields until you re-apply with the real values.`,
 		Attributes: integrationDeliveryConfigurationSchemaAttributes(),
 	}
 }
@@ -81,7 +83,7 @@ func integrationDeliveryConfigurationSchemaAttributes() map[string]schema.Attrib
 		},
 		INTEGRATION_KEY: schema.StringAttribute{
 			Required:      true,
-			Description:   addForceNewDescription("The integration key identifying the persistent feature store integration this configuration delivers to (for example `redis` or `dynamodb`).", true),
+			Description:   addForceNewDescription("The integration key identifying the persistent feature store integration this configuration delivers to (for example `fastly`, `cloudflare`, or `vercel`).", true),
 			PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
 		},
 		CONFIG_ID: schema.StringAttribute{
@@ -396,12 +398,22 @@ func (r *IntegrationDeliveryConfigurationResource) readIntoModel(
 	data.On = types.BoolValue(cfg.GetOn())
 	data.Version = types.Int64Value(int64(cfg.GetVersion()))
 
-	configJSON, err := mapToJsonString(cfg.GetConfig())
-	if err != nil {
-		diags.AddError("Failed to serialise config", err.Error())
-		return
+	// Every feature store integration manifest declares at least one secret
+	// config field (for example an API token), and the API returns those fields
+	// obfuscated on read (e.g. "dum****ion"). Overwriting `config` with the
+	// obfuscated server response would produce an "inconsistent result after
+	// apply" on create and a perpetual diff on subsequent plans, so we treat the
+	// user-supplied config as the source of truth: preserve it whenever it is
+	// already known, and only populate from the (obfuscated) API response when we
+	// have no prior value, such as during import.
+	if data.Config.IsNull() || data.Config.IsUnknown() {
+		configJSON, err := mapToJsonString(cfg.GetConfig())
+		if err != nil {
+			diags.AddError("Failed to serialise config", err.Error())
+			return
+		}
+		data.Config = types.StringValue(configJSON)
 	}
-	data.Config = types.StringValue(configJSON)
 
 	// Optional-only Set attr: preserve the config's null-vs-empty intent so an
 	// omitted `tags` reads back as null, not an empty set.

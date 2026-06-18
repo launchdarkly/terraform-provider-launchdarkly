@@ -54,7 +54,7 @@ func (d *IntegrationDeliveryConfigurationDataSource) Schema(_ context.Context, _
 			},
 			INTEGRATION_KEY: schema.StringAttribute{
 				Required:    true,
-				Description: "The integration key identifying the persistent feature store integration.",
+				Description: "The integration key identifying the persistent feature store integration (for example `fastly`, `cloudflare`, or `vercel`).",
 			},
 			CONFIG_ID: schema.StringAttribute{
 				Required:    true,

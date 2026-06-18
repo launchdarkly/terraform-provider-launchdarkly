@@ -5,7 +5,8 @@ subcategory: ""
 description: |-
   Provides a LaunchDarkly integration delivery configuration resource.
   ~> Beta: This resource wraps a beta LaunchDarkly API. Beta resources may change or be removed in future versions, and the provider sends the LD-API-Version: beta header on every request to this endpoint.
-  Integration delivery configurations connect a LaunchDarkly project environment to a persistent feature store integration (for example a Relay Proxy feature store such as redis or dynamodb), so flag and segment data is delivered to that destination. A configuration is scoped to a single project environment and integration. To learn more, read Persistent store integrations https://docs.launchdarkly.com/home/relay-proxy/persistent-store-integrations.
+  Integration delivery configurations connect a LaunchDarkly project environment to a persistent feature store integration (for example an edge key-value store such as fastly, cloudflare, or vercel), so flag and segment data is delivered to that destination. A configuration is scoped to a single project environment and integration.
+  The valid integration_key values and the accepted config fields are defined by each integration's manifest. Many config fields are secrets (for example API tokens); the API returns these obfuscated on read, so the provider treats the config you supply as the source of truth and does not overwrite it from the (obfuscated) server response. As a result, configurations imported via terraform import will show a diff on the secret fields until you re-apply with the real values.
 ---
 
 # launchdarkly_integration_delivery_configuration (Resource)
@@ -14,23 +15,27 @@ Provides a LaunchDarkly integration delivery configuration resource.
 
 ~> **Beta:** This resource wraps a beta LaunchDarkly API. Beta resources may change or be removed in future versions, and the provider sends the `LD-API-Version: beta` header on every request to this endpoint.
 
-Integration delivery configurations connect a LaunchDarkly project environment to a persistent feature store integration (for example a Relay Proxy feature store such as `redis` or `dynamodb`), so flag and segment data is delivered to that destination. A configuration is scoped to a single project environment and integration. To learn more, read [Persistent store integrations](https://docs.launchdarkly.com/home/relay-proxy/persistent-store-integrations).
+Integration delivery configurations connect a LaunchDarkly project environment to a persistent feature store integration (for example an edge key-value store such as `fastly`, `cloudflare`, or `vercel`), so flag and segment data is delivered to that destination. A configuration is scoped to a single project environment and integration.
+
+The valid `integration_key` values and the accepted `config` fields are defined by each integration's manifest. Many `config` fields are secrets (for example API tokens); the API returns these obfuscated on read, so the provider treats the `config` you supply as the source of truth and does not overwrite it from the (obfuscated) server response. As a result, configurations imported via `terraform import` will show a diff on the secret fields until you re-apply with the real values.
 
 ## Example Usage
 
 ```terraform
-resource "launchdarkly_integration_delivery_configuration" "redis_feature_store" {
+resource "launchdarkly_integration_delivery_configuration" "fastly_feature_store" {
   project_key     = launchdarkly_project.example.key
   env_key         = "production"
-  integration_key = "redis"
+  integration_key = "fastly"
 
-  name = "Production Redis feature store"
+  name = "Production Fastly feature store"
   on   = true
 
+  # The accepted config fields are defined by the integration's manifest.
+  # Secret fields such as apiToken are returned obfuscated by the API, so the
+  # value you supply here is treated as the source of truth.
   config = jsonencode({
-    host   = "redis.internal.example.com"
-    port   = 6379
-    prefix = "launchdarkly"
+    storeId  = "e6379ca0-17c2-4f58-bb8d-06ea232b01b5"
+    apiToken = "my-fastly-api-token"
   })
 
   tags = ["terraform-managed"]
@@ -44,7 +49,7 @@ resource "launchdarkly_integration_delivery_configuration" "redis_feature_store"
 
 - `config` (String) A JSON string representing the integration-specific configuration. The accepted fields are defined by the integration's manifest (for example connection and authentication details). Secret fields may be returned obfuscated by the API.
 - `env_key` (String) The environment key. The integration delivery configuration is scoped to this environment. A change in this field will force the destruction of the existing resource and the creation of a new one.
-- `integration_key` (String) The integration key identifying the persistent feature store integration this configuration delivers to (for example `redis` or `dynamodb`). A change in this field will force the destruction of the existing resource and the creation of a new one.
+- `integration_key` (String) The integration key identifying the persistent feature store integration this configuration delivers to (for example `fastly`, `cloudflare`, or `vercel`). A change in this field will force the destruction of the existing resource and the creation of a new one.
 - `project_key` (String) The project key. The integration delivery configuration is scoped to this project. A change in this field will force the destruction of the existing resource and the creation of a new one.
 
 ### Optional
@@ -67,5 +72,5 @@ Import is supported using the following syntax:
 # Integration delivery configurations can be imported using the composite ID
 # in the format `project_key/env_key/integration_key/config_id`, e.g.
 
-terraform import launchdarkly_integration_delivery_configuration.redis_feature_store example-project/production/redis/57c1e8b1b8e8c50c3f000001
+terraform import launchdarkly_integration_delivery_configuration.fastly_feature_store example-project/production/fastly/57c1e8b1b8e8c50c3f000001
 ```

@@ -2,24 +2,54 @@ package launchdarkly
 
 import (
 	"fmt"
+	"net/http"
 	"strings"
 )
 
+// betaAPIVersionRoundTripper forces the LD-API-Version header to "beta" on every
+// outgoing request. It exists because the IntegrationDeliveryConfigurationsBetaApi
+// request builders do not expose a per-request .LDAPIVersion("beta") setter, and
+// the vendored client's prepareRequest unconditionally inserts the stable
+// LD-API-Version ("20240415") whenever the per-request header params omit it (see
+// the CUSTOM block in api-client-go/v22 client.go). A client default header set via
+// AddDefaultHeader is *appended* after that stable value (Header.Add, not Set), so
+// the request would carry LD-API-Version: ["20240415", "beta"] and the API reads
+// the first value, rejecting the call as non-beta. Setting the header here with
+// http.Header.Set collapses the pair down to the single "beta" value the endpoint
+// requires.
+type betaAPIVersionRoundTripper struct {
+	next http.RoundTripper
+}
+
+func (t betaAPIVersionRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
+	req.Header.Set("LD-API-Version", "beta")
+	return t.next.RoundTrip(req)
+}
+
 // newIntegrationDeliveryConfigurationBetaClient returns a beta-configured client
-// suitable for the integration delivery configuration endpoints. Like the
-// MetricsBetaApi builders, the IntegrationDeliveryConfigurationsBetaApi request
-// builders do not expose a per-request .LDAPIVersion("beta") setter, so we set
-// the LD-API-Version header as a client default instead. The header is read from
-// the configuration at request-build time, so mutating it here takes effect for
-// every call made through the returned client.
+// suitable for the integration delivery configuration endpoints, wrapping each
+// underlying HTTP client so that every request carries LD-API-Version: beta.
 func newIntegrationDeliveryConfigurationBetaClient(c *Client) (*Client, error) {
 	beta, err := newBetaClient(c.apiKey, c.apiHost, false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
 	if err != nil {
 		return nil, err
 	}
-	beta.ld.GetConfig().AddDefaultHeader("LD-API-Version", "beta")
-	beta.ld404Retry.GetConfig().AddDefaultHeader("LD-API-Version", "beta")
+	forceBetaAPIVersion(beta.ld.GetConfig().HTTPClient)
+	forceBetaAPIVersion(beta.ld404Retry.GetConfig().HTTPClient)
 	return beta, nil
+}
+
+// forceBetaAPIVersion wraps the transport of the given HTTP client so that it
+// always sends LD-API-Version: beta.
+func forceBetaAPIVersion(httpClient *http.Client) {
+	if httpClient == nil {
+		return
+	}
+	base := httpClient.Transport
+	if base == nil {
+		base = http.DefaultTransport
+	}
+	httpClient.Transport = betaAPIVersionRoundTripper{next: base}
 }
 
 // integrationDeliveryConfigurationID builds the composite Terraform ID for a
