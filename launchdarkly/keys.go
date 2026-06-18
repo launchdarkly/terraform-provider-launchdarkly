@@ -26,6 +26,7 @@ const (
 	CLIENT_SIDE_ID                            = "client_side_id"
 	COLOR                                     = "color"
 	CONFIG                                    = "config"
+	CONFIG_ID                                 = "config_id"
 	CONFIRM_CHANGES                           = "confirm_changes"
 	CONTENT                                   = "content"
 	CONTEXT_KIND                              = "context_kind"

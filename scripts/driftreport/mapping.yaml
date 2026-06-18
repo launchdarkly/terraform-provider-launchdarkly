@@ -290,7 +290,10 @@ families:
       - launchdarkly_audit_log_subscription
 
   - tag: Integration delivery configurations (beta)
-    status: triage
+    status: covered
+    resources:
+      - launchdarkly_integration_delivery_configuration
+    notes: Beta family scaffolded by the autogen pipeline (stage 2). Persistent feature store delivery configurations scoped per project/environment/integration; wraps the IntegrationDeliveryConfigurationsBetaApi via a beta client (LD-API-Version: beta). The validate endpoint is an imperative action, not modeled as a resource.
 
   - tag: Integrations (beta)
     status: triage
