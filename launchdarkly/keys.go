@@ -82,6 +82,7 @@ const (
 	INCLUDE_UNITS_WITHOUT_EVENTS              = "include_units_without_events"
 	INLINE_ROLES                              = "inline_roles"
 	INSTRUCTIONS                              = "instructions"
+	INTEGRATION_ID                            = "integration_id"
 	INTEGRATION_KEY                           = "integration_key"
 	IP_ADDRESS                                = "ip_address"
 	IS_ACTIVE                                 = "is_active"
