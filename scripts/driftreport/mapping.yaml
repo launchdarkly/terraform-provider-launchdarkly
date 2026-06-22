@@ -235,8 +235,14 @@ families:
     notes: Beta flag endpoints (e.g. migration safety); revisit when stable.
 
   - tag: Flag import configurations (beta)
-    status: triage
-    notes: Vendor importer configs; could become a resource once the importer surface stabilizes.
+    status: covered
+    resources:
+      - launchdarkly_flag_import_configuration
+    notes: |
+      Covered by launchdarkly_flag_import_configuration (resource + data source),
+      wrapping the beta FlagImportConfigurationsBetaApi. triggerFlagImportJob is an
+      imperative run-now action that does not map to declarative Terraform state and
+      is intentionally not modeled.
 
   - tag: Flag links (beta)
     status: triage
