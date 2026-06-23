@@ -110,6 +110,7 @@ jobs:
           - TestAccOAuthClient_
           - TestAccProject
           - TestAccRelayProxy
+          - TestAccReleasePolicy_
           - TestAccSegment
           - TestAccTeamMember_CreateGeneric
           - TestAccTeamMember_UpdateGeneric

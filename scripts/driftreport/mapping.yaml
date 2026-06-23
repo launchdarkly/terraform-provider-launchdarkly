@@ -359,8 +359,15 @@ families:
     notes: Active product area; release-policies datasource work exists on branch RO-2042.
 
   - tag: Release policies (beta)
-    status: triage
-    notes: See Release pipelines.
+    status: covered
+    notes: >-
+      launchdarkly_release_policy models per-policy CRUD (PostReleasePolicy,
+      GetReleasePolicy, PutReleasePolicy, DeleteReleasePolicy) and reads the
+      collection via GetReleasePolicies. PostReleasePoliciesOrder (rank
+      reordering) is not modeled as a separate surface; rank is exposed as a
+      computed attribute and ordered in the LaunchDarkly UI.
+    resources:
+      - launchdarkly_release_policy
 
   - tag: Releases (beta)
     status: triage
