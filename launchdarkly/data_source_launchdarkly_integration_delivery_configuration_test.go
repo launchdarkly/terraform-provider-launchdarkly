@@ -25,10 +25,11 @@ data "launchdarkly_integration_delivery_configuration" "testing" {
 // delivery configuration endpoints are beta, so the config is created with the
 // beta client.
 //
-// NOTE for reviewers (agent-scaffolded): this relies on the test account having
-// the `redis` feature store integration available, and on the config below
-// satisfying that integration's manifest. Adjust the integration key and config
-// if the dedicated test account exposes a different feature store integration.
+// NOTE for reviewers: uses `fastly` to match the resource acceptance test. The
+// dedicated LD account exposes edge key-value feature store integrations
+// (akamai-edgeworkers, cloudflare, convex, fastly, vercel, vercel-native) and
+// has no `redis` integration; `fastly` has no validation request so a config
+// can be created with placeholder credentials while `on = false`.
 func testAccDataSourceIntegrationDeliveryConfigurationScaffold(client *Client, beta *Client, projectKey, envKey, integrationKey string) (*ldapi.IntegrationDeliveryConfiguration, error) {
 	projectBody := ldapi.ProjectPost{
 		Name: "Integration Delivery Configuration Test Project",
@@ -39,11 +40,10 @@ func testAccDataSourceIntegrationDeliveryConfigurationScaffold(client *Client, b
 	}
 
 	post := ldapi.NewIntegrationDeliveryConfigurationPost(map[string]interface{}{
-		"host":   "redis.example.com",
-		"port":   float64(6379),
-		"prefix": "launchdarkly",
+		"storeId":  "00000000-0000-0000-0000-000000000000",
+		"apiToken": "dummy-token-for-acceptance-test",
 	})
-	post.Name = ldapi.PtrString("DS Test Redis feature store")
+	post.Name = ldapi.PtrString("DS Test Fastly feature store")
 	post.On = ldapi.PtrBool(false)
 	post.Tags = []string{"test"}
 
@@ -65,7 +65,7 @@ func TestAccDataSourceIntegrationDeliveryConfiguration_exists(t *testing.T) {
 
 	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	envKey := "test"
-	integrationKey := "redis"
+	integrationKey := "fastly"
 	client, err := newClient(os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN), os.Getenv(LAUNCHDARKLY_API_HOST), false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
 	require.NoError(t, err)
 	beta, err := newIntegrationDeliveryConfigurationBetaClient(client)

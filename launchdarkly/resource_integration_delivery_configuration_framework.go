@@ -55,9 +55,9 @@ func (r *IntegrationDeliveryConfigurationResource) Schema(_ context.Context, _ r
 
 ~> **Beta:** This resource wraps a beta LaunchDarkly API. Beta resources may change or be removed in future versions, and the provider sends the ` + "`LD-API-Version: beta`" + ` header on every request to this endpoint.
 
-Integration delivery configurations connect a LaunchDarkly project environment to a persistent feature store integration (for example an edge key-value store such as ` + "`fastly`" + `, ` + "`cloudflare`" + `, or ` + "`vercel`" + `), so flag and segment data is delivered to that destination. A configuration is scoped to a single project environment and integration.
+Integration delivery configurations connect a LaunchDarkly project environment to a persistent feature store integration (for example, an edge key-value store such as Fastly, Cloudflare, or Vercel), so flag and segment data is delivered to that destination. A configuration is scoped to a single project environment and integration.
 
-The valid ` + "`integration_key`" + ` values and the accepted ` + "`config`" + ` fields are defined by each integration's manifest. Many ` + "`config`" + ` fields are secrets (for example API tokens); the API returns these obfuscated on read, so the provider treats the ` + "`config`" + ` you supply as the source of truth and does not overwrite it from the (obfuscated) server response. As a result, configurations imported via ` + "`terraform import`" + ` will show a diff on the secret fields until you re-apply with the real values.`,
+The valid ` + "`integration_key`" + ` values and the accepted ` + "`config`" + ` fields are defined by each integration's manifest. Many ` + "`config`" + ` fields are secrets, for example, API tokens. The API returns these obfuscated on read, so the provider treats the ` + "`config`" + ` you supply as the source of truth and does not overwrite it from the (obfuscated) server response. As a result, configurations imported using ` + "`terraform import`" + ` will show a diff on the secret fields until you reapply with the real values.`,
 		Attributes: integrationDeliveryConfigurationSchemaAttributes(),
 	}
 }
