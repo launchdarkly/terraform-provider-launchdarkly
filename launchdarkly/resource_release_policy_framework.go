@@ -223,9 +223,13 @@ func (r *ReleasePolicyResource) ValidateConfig(ctx context.Context, req resource
 	if cfg.ReleaseMethod.IsNull() || cfg.ReleaseMethod.IsUnknown() {
 		return
 	}
+	// Unknown nested objects (e.g. fed from a module output or a count-gated
+	// config) are not null in the framework, so guard on both: only flag a
+	// genuinely-set opposite config, never one that is still unknown at plan
+	// time. The known value is re-validated on the subsequent apply.
 	switch cfg.ReleaseMethod.ValueString() {
 	case RELEASE_METHOD_GUARDED:
-		if !cfg.ProgressiveReleaseConfig.IsNull() {
+		if !cfg.ProgressiveReleaseConfig.IsNull() && !cfg.ProgressiveReleaseConfig.IsUnknown() {
 			resp.Diagnostics.AddAttributeError(
 				path.Root(PROGRESSIVE_RELEASE_CONFIG),
 				"Invalid release policy configuration",
@@ -233,7 +237,7 @@ func (r *ReleasePolicyResource) ValidateConfig(ctx context.Context, req resource
 			)
 		}
 	case RELEASE_METHOD_PROGRESSIVE:
-		if !cfg.GuardedReleaseConfig.IsNull() {
+		if !cfg.GuardedReleaseConfig.IsNull() && !cfg.GuardedReleaseConfig.IsUnknown() {
 			resp.Diagnostics.AddAttributeError(
 				path.Root(GUARDED_RELEASE_CONFIG),
 				"Invalid release policy configuration",
