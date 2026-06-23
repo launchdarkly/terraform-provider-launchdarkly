@@ -104,6 +104,7 @@ jobs:
           - TestAccFlagTrigger
           - TestAccIpAllowlistConfig
           - TestAccIpAllowlistEntry
+          - TestAccIntegrationDeliveryConfiguration_
           - TestAccMetricGroup_
           - TestAccMetric_
           - TestAccModelConfig
