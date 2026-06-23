@@ -55,7 +55,7 @@ func (r *BigSegmentStoreIntegrationResource) Schema(_ context.Context, _ resourc
 
 ~> **Beta:** This resource wraps a beta LaunchDarkly API. Beta resources may change or be removed in future provider versions.
 
-This resource lets you create and manage a persistent store integration for an environment. Server-side SDKs use a persistent store — backed by Redis or DynamoDB in your own infrastructure — to evaluate segments synced from external tools and larger list-based segments. To learn more, read [Segment configuration](https://launchdarkly.com/docs/home/flags/segment-config).`,
+This resource lets you create and manage a persistent store integration for an environment. Server-side SDKs use a persistent store, backed by Redis or DynamoDB in your own infrastructure, to evaluate segments synced from external tools and larger list-based segments. To learn more, read [Segment configuration](https://launchdarkly.com/docs/home/flags/segment-config).`,
 		Attributes: bigSegmentStoreIntegrationSchemaAttributes(),
 	}
 }
@@ -278,6 +278,10 @@ func (r *BigSegmentStoreIntegrationResource) Update(ctx context.Context, req res
 			tags = []string{}
 		}
 		patch = append(patch, patchReplace("/tags", tags))
+	}
+
+	if resp.Diagnostics.HasError() {
+		return
 	}
 
 	if len(patch) > 0 {

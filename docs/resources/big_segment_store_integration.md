@@ -5,7 +5,7 @@ subcategory: ""
 description: |-
   Provides a LaunchDarkly big segment store (persistent store) integration resource.
   ~> Beta: This resource wraps a beta LaunchDarkly API. Beta resources may change or be removed in future provider versions.
-  This resource lets you create and manage a persistent store integration for an environment. Server-side SDKs use a persistent store — backed by Redis or DynamoDB in your own infrastructure — to evaluate segments synced from external tools and larger list-based segments. To learn more, read Segment configuration https://launchdarkly.com/docs/home/flags/segment-config.
+  This resource lets you create and manage a persistent store integration for an environment. Server-side SDKs use a persistent store, backed by Redis or DynamoDB in your own infrastructure, to evaluate segments synced from external tools and larger list-based segments. To learn more, read Segment configuration https://launchdarkly.com/docs/home/flags/segment-config.
 ---
 
 # launchdarkly_big_segment_store_integration (Resource)
@@ -14,7 +14,7 @@ Provides a LaunchDarkly big segment store (persistent store) integration resourc
 
 ~> **Beta:** This resource wraps a beta LaunchDarkly API. Beta resources may change or be removed in future provider versions.
 
-This resource lets you create and manage a persistent store integration for an environment. Server-side SDKs use a persistent store — backed by Redis or DynamoDB in your own infrastructure — to evaluate segments synced from external tools and larger list-based segments. To learn more, read [Segment configuration](https://launchdarkly.com/docs/home/flags/segment-config).
+This resource lets you create and manage a persistent store integration for an environment. Server-side SDKs use a persistent store, backed by Redis or DynamoDB in your own infrastructure, to evaluate segments synced from external tools and larger list-based segments. To learn more, read [Segment configuration](https://launchdarkly.com/docs/home/flags/segment-config).
 
 ## Example Usage
 
