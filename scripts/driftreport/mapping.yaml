@@ -235,8 +235,14 @@ families:
     notes: Beta flag endpoints (e.g. migration safety); revisit when stable.
 
   - tag: Flag import configurations (beta)
-    status: triage
-    notes: Vendor importer configs; could become a resource once the importer surface stabilizes.
+    status: covered
+    resources:
+      - launchdarkly_flag_import_configuration
+    notes: |
+      Covered by launchdarkly_flag_import_configuration (resource + data source),
+      wrapping the beta FlagImportConfigurationsBetaApi. triggerFlagImportJob is an
+      imperative run-now action that does not map to declarative Terraform state and
+      is intentionally not modeled.
 
   - tag: Flag links (beta)
     status: triage
@@ -329,8 +335,13 @@ families:
     reason: Miscellaneous root/meta endpoints (API root, versioning).
 
   - tag: Persistent store integrations (beta)
-    status: triage
-    notes: Big-segment store integrations; plausible resource.
+    status: covered
+    resources:
+      - launchdarkly_big_segment_store_integration
+    ignored_operations:
+      - id: getBigSegmentStoreIntegrations
+        reason: Account-wide list/index endpoint; the singular get covers declarative reads.
+    notes: Environment-scoped big-segment (persistent) store integrations backed by Redis or DynamoDB. Scaffolded by the autogen pipeline (stage 2) against the PersistentStoreIntegrationsBetaApi (LD-API-Version beta). config carries credentials and is modeled as a sensitive JSON string.
 
   - tag: Projects
     status: covered
