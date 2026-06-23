@@ -55,6 +55,7 @@ const (
 	ENABLED                                   = "enabled"
 	END_TIME                                  = "end_time"
 	ENVIRONMENTS                              = "environments"
+	ENVIRONMENT_KEY                           = "environment_key"
 	ENV_KEY                                   = "env_key"
 	EVALUATION_METRIC_KEY                     = "evaluation_metric_key"
 	EVENT_KEY                                 = "event_key"
