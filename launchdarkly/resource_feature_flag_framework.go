@@ -1050,8 +1050,18 @@ func variationPatchesFromLists(ctx context.Context, oldList, newList types.List,
 	for idx, v := range newVariations {
 		if idx < len(oldVariations) {
 			patches = append(patches, patchReplace(fmt.Sprintf("/variations/%d/value", idx), v.Value))
-			patches = append(patches, patchReplace(fmt.Sprintf("/variations/%d/name", idx), v.Name))
-			patches = append(patches, patchReplace(fmt.Sprintf("/variations/%d/description", idx), v.Description))
+			// name and description are Optional+Computed. Only patch them when the config sets a value.
+			// Replacing with a nil value clears a name/description set outside Terraform — the LD API
+			// treats a null replace as a clear. Omitting the patch leaves the server value as-is, which
+			// is the expected "omit = preserve" behavior for a computed attribute and keeps the migration
+			// lossless for boolean flags whose variations were named in the UI. To clear a name, set it
+			// explicitly to "" is not supported (the provider treats "" as unset); clear it in the UI.
+			if v.Name != nil {
+				patches = append(patches, patchReplace(fmt.Sprintf("/variations/%d/name", idx), v.Name))
+			}
+			if v.Description != nil {
+				patches = append(patches, patchReplace(fmt.Sprintf("/variations/%d/description", idx), v.Description))
+			}
 		} else {
 			patches = append(patches, patchAdd(fmt.Sprintf("/variations/%d", idx), v))
 		}
