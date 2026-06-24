@@ -72,3 +72,12 @@ resource "launchdarkly_view" "team_maintained" {
 ### Read-Only
 
 - `id` (String) The ID of this resource.
+
+## Import
+
+Import is supported using the following syntax:
+
+```shell
+# LaunchDarkly views are imported using the resource's ID in the form `project_key/view_key`
+terraform import launchdarkly_view.example example-project/example-view-key
+```

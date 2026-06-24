@@ -69,3 +69,12 @@ resource "launchdarkly_view_filter_links" "beta_segments" {
 
 - `id` (String) The ID of this resource.
 - `resolved_at` (String) Timestamp of the last successful filter resolution. This value updates when the resource is created or updated, and on every apply when `reconcile_on_apply` is true.
+
+## Import
+
+Import is supported using the following syntax:
+
+```shell
+# LaunchDarkly view filter links are imported using the resource's ID in the form `project_key/view_key`
+terraform import launchdarkly_view_filter_links.example example-project/example-view-key
+```

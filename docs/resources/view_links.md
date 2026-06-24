@@ -164,3 +164,12 @@ Required:
 
 - `environment_id` (String) The environment ID of the segment.
 - `segment_key` (String) The key of the segment.
+
+## Import
+
+Import is supported using the following syntax:
+
+```shell
+# LaunchDarkly view links are imported using the resource's ID in the form `project_key/view_key`
+terraform import launchdarkly_view_links.example example-project/example-view-key
+```
