@@ -118,7 +118,7 @@ func TestApplyDeprecationsRename(t *testing.T) {
 }
 `
 	f, body := parseBody(t, src)
-	if !applyDeprecations(body, []*DeprecationSpec{{Name: "policy_statements", Action: "rename", To: "inline_roles"}}) {
+	if !applyDeprecations(body, []*DeprecationSpec{{Name: "policy_statements", Action: "rename", To: "inline_roles"}}, "test.tf") {
 		t.Fatal("expected rename")
 	}
 	out := string(hclwrite.Format(f.Bytes()))
@@ -133,7 +133,7 @@ func TestApplyDeprecationsIISToCSA(t *testing.T) {
 }
 `
 	f, body := parseBody(t, src)
-	if !applyDeprecations(body, []*DeprecationSpec{{Name: "include_in_snippet", Action: "iis_to_csa", To: "client_side_availability"}}) {
+	if !applyDeprecations(body, []*DeprecationSpec{{Name: "include_in_snippet", Action: "iis_to_csa", To: "client_side_availability"}}, "test.tf") {
 		t.Fatal("expected conversion")
 	}
 	out := string(hclwrite.Format(f.Bytes()))
@@ -146,6 +146,57 @@ func TestApplyDeprecationsIISToCSA(t *testing.T) {
 			t.Errorf("missing %v in:\n%s", want, out)
 		}
 	}
+}
+
+func TestEnsureBooleanVariations(t *testing.T) {
+	rule := []*DeprecationSpec{{Name: "variations", Action: "ensure_boolean_variations"}}
+
+	t.Run("synthesizes for literal boolean", func(t *testing.T) {
+		src := `resource "launchdarkly_feature_flag" "f" {
+  variation_type = "boolean"
+}
+`
+		f, body := parseBody(t, src)
+		if !applyDeprecations(body, rule, "test.tf") {
+			t.Fatal("expected synthesis")
+		}
+		out := string(hclwrite.Format(f.Bytes()))
+		for _, want := range []string{"variations = [", `value = "true"`, `value = "false"`} {
+			if !strings.Contains(out, want) {
+				t.Errorf("missing %q in:\n%s", want, out)
+			}
+		}
+		if _, diag := hclwrite.ParseConfig([]byte(out), "out.tf", hcl.Pos{Line: 1, Column: 1}); diag.HasErrors() {
+			t.Errorf("synthesized output does not parse: %s", diag)
+		}
+	})
+
+	t.Run("skips when variations already present", func(t *testing.T) {
+		src := `resource "launchdarkly_feature_flag" "f" {
+  variation_type = "boolean"
+  variations     = [{ value = "true" }, { value = "false" }]
+}
+`
+		_, body := parseBody(t, src)
+		if applyDeprecations(body, rule, "test.tf") {
+			t.Error("must not change a flag that already declares variations")
+		}
+	})
+
+	t.Run("warns and skips for non-literal variation_type", func(t *testing.T) {
+		src := `resource "launchdarkly_feature_flag" "f" {
+  variation_type = var.kind
+}
+`
+		_, body := parseBody(t, src)
+		before := warningCount
+		if applyDeprecations(body, rule, "test.tf") {
+			t.Error("must not synthesize when variation_type is not a literal boolean")
+		}
+		if warningCount != before+1 {
+			t.Errorf("warningCount delta = %d, want 1", warningCount-before)
+		}
+	})
 }
 
 func TestApplyDSAttrRewrites(t *testing.T) {

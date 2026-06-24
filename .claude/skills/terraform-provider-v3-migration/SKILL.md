@@ -91,7 +91,7 @@ This also covers upgrades from an **early v3 preview to a later v3 build** (for 
 
 Read the `terraform-provider-block-to-nested-attrs` skill for the full gotcha list. The tool leaves these for you:
 
-- **Newly required attributes.** `launchdarkly_feature_flag` requires `variations` for every variation type, including boolean. Add `variations = [{ value = "true" }, { value = "false" }]` where missing. The parse error is `Missing required argument`, not `Unsupported block type`.
+- **Newly required attributes.** `launchdarkly_feature_flag` requires `variations` for every variation type, including boolean. The tool now synthesizes these automatically for boolean flags whose `variation_type` is the literal `"boolean"`, so you usually do not add them. Two cases still need you: (a) `variation_type` is a non-literal expression — the tool warns and skips; and (b) a boolean flag has variation `name`/`description` set outside Terraform — the tool writes value-only variations and the first apply clears any name/description the config does not list, so add them by hand. For a multivariate flag missing variations the parse error is `Missing required argument`.
 - **`dynamic` blocks.** The tool warns and skips them. Rewrite each as a for expression, for example `variations = [for v in var.values : { value = v }]`.
 - **Remote modules.** Registry- or git-sourced modules are out of scope. Upgrade those at their source.
 

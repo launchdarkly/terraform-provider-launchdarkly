@@ -91,7 +91,7 @@ If an attribute on a `launchdarkly_*` resource is not listed here, it was either
      { value = "false" },
    ]
    ```
-   `value` is a string — `"true"` / `"false"`, not the bare bool. The provider parses it per `variation_type`.
+   `value` is a string — `"true"` / `"false"`, not the bare bool. The provider parses it per `variation_type`. The `migrate-tf-syntax` tool now synthesizes this automatically for flags whose `variation_type` is the literal `"boolean"` (value-only). Add variation `name`/`description` by hand only if they were set outside Terraform — the first apply rewrites them from config and clears any the config omits.
 
 2. **`policy` on `launchdarkly_custom_role` and `policy_statements` on `launchdarkly_access_token` are deprecated** but still parse. Plan emits `Attribute Deprecated` warnings. Migrating to the newer name (`policy_statements` / `inline_roles`) is recommended but not required for the v2→v3 cutover itself.
 
@@ -128,7 +128,7 @@ go -C scripts/migrate-tf-syntax run . -dir "$DIR" -direction v2-to-v3 -mappings 
 The default `mappings.json` ships embedded and mirrors the mapping table below. Update both the JSON and this table when a new release adds nested-attribute resources.
 
 Tool limits — must be patched manually after running:
-- Does not synthesize new required attributes (e.g. `variations` on boolean `launchdarkly_feature_flag` — see gotcha §1).
+- Synthesizes value-only `variations` for literal-`"boolean"` `launchdarkly_feature_flag`s (see gotcha §1), but not their `name`/`description`, and not for multivariate flags or non-literal `variation_type` — it warns on those.
 - `v3-to-v2` mode appends reversed blocks at the end of each resource body — attribute ordering shifts. `terraform fmt` will normalize whitespace but not order.
 
 After running the tool, run `terraform validate` to confirm parse-clean, then `terraform plan` for semantic regressions.

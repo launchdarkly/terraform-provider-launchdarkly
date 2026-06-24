@@ -45,6 +45,12 @@ type AttrSpec struct {
 //     default_client_side_availability). "using_mobile_key" overrides the synthesized mobile-key
 //     value (default false) — set to "true" for the project resource which historically wrote
 //     using_mobile_key=true when migrating include_in_snippet.
+//   - "rename": move the value of "name" onto "to" verbatim (e.g. policy_statements → inline_roles).
+//   - "policy_to_policy_statements": copy the custom_role policy list onto "to" (policy_statements).
+//   - "ensure_boolean_variations": synthesize the required variations attribute on a feature_flag whose
+//     variation_type is the literal "boolean" and that omitted variations (v2 allowed this, v3 does
+//     not). The value is the LaunchDarkly invariant [{ value = "true" }, { value = "false" }]. "name"
+//     and "to" are unused. Skips (and warns) when variation_type is a non-literal expression.
 type DeprecationSpec struct {
 	Name           string `json:"name"`
 	Action         string `json:"action"`
@@ -119,6 +125,12 @@ func main() {
 	if warningCount > 0 {
 		fmt.Fprintf(os.Stderr, "%d warning(s) emitted: the flagged attributes need manual conversion\n", warningCount)
 	}
+	if synthesizedBoolVars > 0 {
+		fmt.Fprintf(os.Stderr, "note: synthesized default true/false variations for %d boolean flag(s). "+
+			"If any of those flags has a variation name or description set outside Terraform, add it to the "+
+			"config before applying — the first apply rewrites variation name/description from config and "+
+			"clears any it does not list.\n", synthesizedBoolVars)
+	}
 }
 
 // collectTFFiles returns the .tf files under dir. Non-recursive mode matches the historical
@@ -150,6 +162,11 @@ func collectTFFiles(dir string, recursive bool) ([]string, error) {
 
 // warningCount tracks non-fatal conversion warnings (e.g. dynamic blocks) so main can summarize.
 var warningCount int
+
+// synthesizedBoolVars counts boolean feature flags where variations were auto-added, so main can print
+// a single caveat: the converter cannot see variation name/description set outside Terraform, and the
+// provider clears those on the first apply when the config does not list them.
+var synthesizedBoolVars int
 
 func warnf(format string, args ...interface{}) {
 	warningCount++
@@ -189,7 +206,7 @@ func process(path, direction string, spec Spec, dryRun bool) error {
 			if forward(blk.Body(), rspec.Blocks, where) {
 				did = true
 			}
-			if applyDeprecations(blk.Body(), rspec.Deprecations) {
+			if applyDeprecations(blk.Body(), rspec.Deprecations, where) {
 				did = true
 			}
 		} else {
@@ -358,7 +375,7 @@ func reverse(body *hclwrite.Body, specs []*AttrSpec) bool {
 // applyDeprecations runs each deprecation rule against the resource body. Returns true if any
 // rewrite happened. v2-to-v3 only; reverse direction is unsupported (deprecation removals are
 // strictly one-way — the attribute no longer exists in the v3 schema).
-func applyDeprecations(body *hclwrite.Body, deps []*DeprecationSpec) bool {
+func applyDeprecations(body *hclwrite.Body, deps []*DeprecationSpec, where string) bool {
 	changed := false
 	for _, d := range deps {
 		switch d.Action {
@@ -383,11 +400,81 @@ func applyDeprecations(body *hclwrite.Body, deps []*DeprecationSpec) bool {
 			if renameAttribute(body, d.Name, d.To) {
 				changed = true
 			}
+		case "ensure_boolean_variations":
+			if ensureBooleanVariations(body, where) {
+				changed = true
+			}
 		default:
 			fmt.Fprintf(os.Stderr, "warning: unknown deprecation action %q for attribute %q (skipping)\n", d.Action, d.Name)
 		}
 	}
 	return changed
+}
+
+// ensureBooleanVariations implements the ensure_boolean_variations action. v2 let a
+// launchdarkly_feature_flag with variation_type = "boolean" omit the variations block; v3 requires
+// variations for every flag. A LaunchDarkly boolean flag's variations are an invariant — exactly two,
+// [{ value = "true" }, { value = "false" }] in that order — so the synthesized value is deterministic
+// and reconstructs exactly what v2 created implicitly.
+//
+// It fires only when variations is absent AND variation_type is the literal string "boolean". If
+// variations is already present (a v2 config that named its boolean variations) it is left untouched.
+// If variation_type is a non-literal expression (a var/local) the value cannot be resolved statically,
+// so it warns and leaves the flag for the author — the same warn-when-in-doubt policy as dynamic blocks.
+func ensureBooleanVariations(body *hclwrite.Body, where string) bool {
+	if body.GetAttribute("variations") != nil {
+		return false
+	}
+	vt := body.GetAttribute("variation_type")
+	if vt == nil {
+		return false
+	}
+	if strings.TrimSpace(tokensString(vt.Expr().BuildTokens(nil))) != `"boolean"` {
+		warnf("%s: feature flag is missing the required \"variations\" attribute and variation_type is not a literal \"boolean\"; v3 requires variations for every flag — add them by hand", where)
+		return false
+	}
+	body.SetAttributeRaw("variations", booleanVariationTokens())
+	synthesizedBoolVars++
+	return true
+}
+
+// booleanVariationTokens builds the token stream for `[{ value = "true" }, { value = "false" }]`.
+// hclwrite.Format (run over the whole file in process) normalizes the indentation afterward.
+func booleanVariationTokens() hclwrite.Tokens {
+	str := func(s string) hclwrite.Tokens {
+		return hclwrite.Tokens{
+			{Type: hclsyntax.TokenOQuote, Bytes: []byte(`"`)},
+			{Type: hclsyntax.TokenQuotedLit, Bytes: []byte(s)},
+			{Type: hclsyntax.TokenCQuote, Bytes: []byte(`"`)},
+		}
+	}
+	elem := func(v string) hclwrite.Tokens {
+		t := hclwrite.Tokens{
+			{Type: hclsyntax.TokenOBrace, Bytes: []byte("{")},
+			{Type: hclsyntax.TokenNewline, Bytes: []byte("\n")},
+			{Type: hclsyntax.TokenIdent, Bytes: []byte("value")},
+			{Type: hclsyntax.TokenEqual, Bytes: []byte(" = ")},
+		}
+		t = append(t, str(v)...)
+		return append(t,
+			&hclwrite.Token{Type: hclsyntax.TokenNewline, Bytes: []byte("\n")},
+			&hclwrite.Token{Type: hclsyntax.TokenCBrace, Bytes: []byte("}")},
+		)
+	}
+	tokens := hclwrite.Tokens{
+		{Type: hclsyntax.TokenOBrack, Bytes: []byte("[")},
+		{Type: hclsyntax.TokenNewline, Bytes: []byte("\n")},
+	}
+	tokens = append(tokens, elem("true")...)
+	tokens = append(tokens,
+		&hclwrite.Token{Type: hclsyntax.TokenComma, Bytes: []byte(",")},
+		&hclwrite.Token{Type: hclsyntax.TokenNewline, Bytes: []byte("\n")},
+	)
+	tokens = append(tokens, elem("false")...)
+	return append(tokens,
+		&hclwrite.Token{Type: hclsyntax.TokenNewline, Bytes: []byte("\n")},
+		&hclwrite.Token{Type: hclsyntax.TokenCBrack, Bytes: []byte("]")},
+	)
 }
 
 // dropOrConvertIISToCSA implements the iis_to_csa deprecation action. If the body already declares

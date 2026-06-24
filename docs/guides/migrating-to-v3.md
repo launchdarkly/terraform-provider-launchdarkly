@@ -40,7 +40,7 @@ You need the following things to complete this migration:
 
 ## Convert your configuration with migrate-tf-syntax
 
-The provider ships `migrate-tf-syntax`, a deterministic command-line tool that rewrites every affected attribute across a directory of `.tf` files. It also updates the attributes that v3 removed. For example, it renames `policy_statements` to `inline_roles` on `launchdarkly_access_token`, and it updates references to renamed data source attributes such as `client_side_availability` on the `launchdarkly_project` data source.
+The provider ships `migrate-tf-syntax`, a deterministic command-line tool that rewrites every affected attribute across a directory of `.tf` files. It also updates the attributes that v3 removed. For example, it renames `policy_statements` to `inline_roles` on `launchdarkly_access_token`, and it updates references to renamed data source attributes such as `client_side_availability` on the `launchdarkly_project` data source. It adds the now-required `variations` to boolean flags that omitted them.
 
 To convert a configuration directory:
 
@@ -60,7 +60,7 @@ To convert a configuration directory:
 
 The tool converts syntax only. Complete these follow-ups yourself:
 
-- Add attributes that v3 newly requires. For example, `launchdarkly_feature_flag` requires `variations` for every variation type, including boolean.
+- Review variation `name` and `description` on boolean flags. The tool adds the now-required value-only `variations` to boolean flags automatically, but it cannot see a `name` or `description` set outside Terraform. The first apply rewrites variation name and description from your configuration, so add them to the config first if you use them. Multivariate flags keep their existing variations.
 - Rewrite `dynamic` blocks. A `dynamic "variations"` block needs a for expression, for example `variations = [for v in var.values : { value = v }]`. The tool warns with the file and resource address, and it leaves the attribute unchanged.
 - Upgrade modules sourced from a registry or a git URL. The tool rewrites only files it reaches on disk, so upgrade those modules at their source.
 
