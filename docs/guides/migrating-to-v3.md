@@ -60,7 +60,7 @@ To convert a configuration directory:
 
 The tool converts syntax only. Complete these follow-ups yourself:
 
-- Review variation `name` and `description` on boolean flags. The tool adds the now-required value-only `variations` to boolean flags automatically, but it cannot see a `name` or `description` set outside Terraform. The first apply rewrites variation name and description from your configuration, so add them to the config first if you use them. Multivariate flags keep their existing variations.
+- Add `variations` by hand only for a flag whose `variation_type` is a non-literal expression, such as a variable or local. The tool cannot resolve those statically, so it warns and skips them. Boolean flags with a literal `variation_type` are handled automatically, and the provider preserves any variation `name` or `description` set outside Terraform when your configuration omits them.
 - Rewrite `dynamic` blocks. A `dynamic "variations"` block needs a for expression, for example `variations = [for v in var.values : { value = v }]`. The tool warns with the file and resource address, and it leaves the attribute unchanged.
 - Upgrade modules sourced from a registry or a git URL. The tool rewrites only files it reaches on disk, so upgrade those modules at their source.
 

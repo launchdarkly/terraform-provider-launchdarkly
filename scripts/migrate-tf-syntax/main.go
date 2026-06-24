@@ -127,9 +127,7 @@ func main() {
 	}
 	if synthesizedBoolVars > 0 {
 		fmt.Fprintf(os.Stderr, "note: synthesized default true/false variations for %d boolean flag(s). "+
-			"If any of those flags has a variation name or description set outside Terraform, add it to the "+
-			"config before applying — the first apply rewrites variation name/description from config and "+
-			"clears any it does not list.\n", synthesizedBoolVars)
+			"Provider v3 preserves any variation name/description set outside Terraform.\n", synthesizedBoolVars)
 	}
 }
 
@@ -164,8 +162,8 @@ func collectTFFiles(dir string, recursive bool) ([]string, error) {
 var warningCount int
 
 // synthesizedBoolVars counts boolean feature flags where variations were auto-added, so main can print
-// a single caveat: the converter cannot see variation name/description set outside Terraform, and the
-// provider clears those on the first apply when the config does not list them.
+// a single transparency note. The converter writes value-only variations; provider v3 preserves any
+// variation name/description set outside Terraform when the config omits them, so no follow-up is needed.
 var synthesizedBoolVars int
 
 func warnf(format string, args ...interface{}) {
