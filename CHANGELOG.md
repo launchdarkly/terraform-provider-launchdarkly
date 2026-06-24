@@ -2,6 +2,34 @@
 
 All notable changes to the LaunchDarkly Terraform Provider will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org).
 
+## [3.0.0-beta.3](https://github.com/launchdarkly/terraform-provider-launchdarkly/compare/v3.0.0-beta.2...v3.0.0-beta.3) (2026-06-24)
+
+
+### Features
+
+* add API-coverage drift report (autogen pipeline stage 1) ([#445](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/445)) ([13c2b21](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/13c2b21ab49aa6a8b0a533b9767571ec6622f2bd))
+* add scaffold-resource workflow (autogen pipeline stage 2 v0) ([#446](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/446)) ([3025320](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/3025320681b776291cc48e0d04e83e9886043a79))
+* add segment_approval_settings to launchdarkly_environment ([#339](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/339)) ([#464](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/464)) ([b553252](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/b553252a406a9fe86a850e7526911b10be8e8862))
+* expose max_concurrency as an optional provider attribute (preview-v3) ([#450](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/450)) ([59ed7ad](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/59ed7ad45f9b5fbdefc766ee88531e0b05dcdc46))
+* **migrate-tf-syntax:** auto-synthesize required boolean variations ([866faaa](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/866faaadaaf5907243ed2e6069b9573742bbc587))
+* net-new resource candidates in partial families (drift report) ([#458](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/458)) ([1fdf445](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/1fdf4458280697923291515f7e2682d1562f4f76))
+* operation-level coverage in API drift report (autogen pipeline stage 1b) ([#456](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/456)) ([52f5ec2](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/52f5ec2bdf33d456ca9411959d2fc0b0893b89c5))
+* scaffold Announcements resource (autogen stage 2) ([#460](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/460)) ([6cd11bb](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/6cd11bbcf46a9a6376e225968e2993364add4a5e))
+* scaffold big segment store integration resource (autogen stage 2) ([#468](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/468)) ([a1b799e](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/a1b799ee0f1589a60987448c3bff560290410901))
+* scaffold Flag import configurations resource (autogen stage 2) ([#469](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/469)) ([2728f22](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/2728f2223e87d68f5bcd6af29a32e5acffd7a787))
+* scaffold integration delivery configurations (beta) resource (autogen stage 2) ([#467](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/467)) ([95cd2c0](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/95cd2c06616a827ca72f94f6666d6158a4fd2fcf))
+* scaffold Metrics (beta) resource (autogen stage 2) ([#453](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/453)) ([3972d91](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/3972d91dbd5f485bf40dde75e3724bb687b77ec7))
+* scaffold OAuth2 Clients resource (autogen stage 2) ([#466](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/466)) ([0cfb297](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/0cfb29706673b81953b8d429d923c2f3ac5a9e69))
+* scaffold release policies (beta) resource (autogen stage 2) ([#471](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/471)) ([e4cab28](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/e4cab28a645d482fde61a9a2ea220b6cac2774b3))
+* ship migrate-tf-syntax binaries and v3 migration guide ([#448](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/448)) ([644e5d8](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/644e5d8e43587d373015b33e3874c6d8e788c99f))
+
+
+### Bug Fixes
+
+* **feature_flag:** demote prereq destroy plan check to a warning ([#451](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/451)) ([ed6e6b0](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/ed6e6b0679d156ca2d78222bb3ccd5536e1e3573))
+* **feature_flag:** preserve variation name and description when omitted from config ([d99725b](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/d99725b18cca78b61d45b3a432a66e94ca937a65))
+* handle segment create under segment approvals ([#370](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/370)) ([#463](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/463)) ([80f478b](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/80f478b7051c49cc163d939eb375f0fe1e9f643c))
+
 ## [3.0.0-beta.2](https://github.com/launchdarkly/terraform-provider-launchdarkly/compare/v3.0.0-beta.1...v3.0.0-beta.2) (2026-06-10)
 
 
