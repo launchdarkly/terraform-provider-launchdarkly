@@ -45,8 +45,13 @@ The two workflows share a provider build and the same state-hygiene rules. Run t
 ## Prerequisites (shared)
 
 1. **Build the v3 provider and point Terraform at it.** Follow the `terraform-provider-local-testing` skill: `make build` installs into `$GOPATH/bin`, and a `~/.terraformrc` `dev_overrides` block points at that directory. `terraform init` is skipped under dev overrides, so rebuild with `make build` between provider changes.
-   - Sanity-check the override path against `go env GOPATH` for the Go version in `.go-version`. A stale override silently runs an old binary and masks regressions.
-2. **Authenticate.** Export `LAUNCHDARKLY_ACCESS_TOKEN`. Confirm `LAUNCHDARKLY_API_HOST` matches the account the token belongs to. A `401 "Invalid key"` usually means the host points at the wrong environment, not a bad token.
+   - **Pre-flight the override path every time.** A stale override silently runs an old binary and masks everything — this misconfiguration is common after a Go-version bump. Confirm the two paths match before building:
+     ```bash
+     grep launchdarkly ~/.terraformrc   # the dev_override target
+     echo "$(go env GOPATH)/bin"        # where `make build` installs — MUST match the line above
+     ```
+     If they differ, fix `~/.terraformrc` first, then `make build`.
+2. **Authenticate.** Export `LAUNCHDARKLY_ACCESS_TOKEN`. Confirm `LAUNCHDARKLY_API_HOST` matches the account the token belongs to. A `401 "Invalid key"` usually means the host points at the wrong environment, not a bad token. Note: an explicit `api_host` argument in the config's `provider "launchdarkly"` block overrides the `LAUNCHDARKLY_API_HOST` env var, so read `provider.tf` before assuming the env controls the host (for example, a blitz prod token needs `app.launchdarkly.com` even when the env points at staging).
 3. **Keep scratch state out of git.** Work inside `local-testing/`. Its `terraform.tfstate*` files are throwaway and must never be committed.
 
 ## Workflow A — Migrate a full v2.x setup to v3
@@ -56,25 +61,31 @@ The goal is a clean upgrade: the first v3 plan shows only cosmetic drift, the ap
 ### A1. Prepare the v2 configuration
 
 - For a customer setup, copy their `.tf` files into a scratch directory under `local-testing/`.
-- For an internal end-to-end test, use the in-repo fixtures: `local-testing/full-account-v2.29/` is the v2 block-syntax form, and `local-testing/full-account-v2.29.original/` is the converted v3 sibling. These exercise every migrated resource.
+- For an internal end-to-end test, the genuine v2.29 **block-syntax** setup is in the backup archive `local-testing/full-account-v2.29-backup-*.zip`. Extract it to a scratch dir and use that as the v2 source. The on-disk `local-testing/full-account-v2.29/` and `full-account-v2.29.original/` dirs are **both already v3 nested syntax** (last applied with provider 3.0.0-beta.1) — they are not v2-block sources. To regenerate a block-syntax config from a v3 one, run the tool with `-direction v3-to-v2` first.
 - Establish a clean baseline. Against the v2 provider, `terraform apply` until the plan is empty. The migration starts from a state with no pending changes.
 
 ### A2. Convert the syntax with migrate-tf-syntax
 
 Run the tool that ships in this repo. It is deterministic and rewrites every affected attribute, and it updates the removed attributes.
 
+`migrate-tf-syntax` is its **own Go module**, so run it with `go -C` (running `go run ./scripts/migrate-tf-syntax` from the repo root fails with `main module does not contain package`). Pass an **absolute** `-dir`.
+
 ```bash
+DIR="$PWD/local-testing/your-config"
+
 # Dry run first. The tool prints every file it intends to change.
-go run ./scripts/migrate-tf-syntax -dir ./local-testing/your-config -direction v2-to-v3 -dry-run
+go -C scripts/migrate-tf-syntax run . -dir "$DIR" -direction v2-to-v3 -dry-run
 
 # Apply the rewrite. Add -recursive to convert locally vendored modules in the same pass.
-go run ./scripts/migrate-tf-syntax -dir ./local-testing/your-config -direction v2-to-v3
+go -C scripts/migrate-tf-syntax run . -dir "$DIR" -direction v2-to-v3
 
 # Normalize whitespace.
-terraform -chdir=./local-testing/your-config fmt
+terraform -chdir="$DIR" fmt
 ```
 
 The tool converts block syntax to nested-attribute syntax, drops `expire` and `is_active`, renames `policy_statements` to `inline_roles`, converts `policy` to `policy_statements`, rewrites `include_in_snippet` into the matching client-side-availability attribute, and updates data-source references such as `client_side_availability` on the `launchdarkly_project` data source.
+
+This also covers upgrades from an **early v3 preview to a later v3 build** (for example 3.0.0-beta.1 to GA). A preview config has no block syntax to convert, but it may still set an attribute that a later v3 removed (for example `policy` on `launchdarkly_custom_role`), which fails `terraform plan` with `Unsupported argument`. The tool drops or renames those on already-nested input too, so run it for preview-to-GA upgrades as well.
 
 ### A3. Finish the follow-ups the tool cannot do
 
@@ -99,7 +110,7 @@ Run `terraform validate` as the inner loop until the configuration parses. It ch
 To confirm a safe downgrade path, run the inverse conversion and validate against the v2 provider:
 
 ```bash
-go run ./scripts/migrate-tf-syntax -dir ./local-testing/your-config -direction v3-to-v2
+go -C scripts/migrate-tf-syntax run . -dir "$PWD/local-testing/your-config" -direction v3-to-v2
 ```
 
 The inverse appends reversed blocks at the end of each body, so attribute order shifts. `terraform fmt` normalizes whitespace but not order.

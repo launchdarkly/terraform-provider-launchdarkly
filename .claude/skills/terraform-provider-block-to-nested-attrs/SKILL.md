@@ -108,17 +108,21 @@ If an attribute on a `launchdarkly_*` resource is not listed here, it was either
 A deterministic Go tool ships in this repo at `scripts/migrate-tf-syntax/`. **Use it first** — manual rewrites are only the fallback for edge cases the tool can't reach.
 
 ```bash
+# migrate-tf-syntax is its OWN Go module — run it with `go -C` and an ABSOLUTE -dir.
+# (`go run ./scripts/migrate-tf-syntax` from the repo root fails: "main module does not contain package".)
+DIR="$PWD/local-testing/your-config"
+
 # Forward (v2 → v3) on a directory of .tf files.
-go run ./scripts/migrate-tf-syntax -dir ./local-testing/your-config -direction v2-to-v3
+go -C scripts/migrate-tf-syntax run . -dir "$DIR" -direction v2-to-v3
 
 # Inverse (v3 → v2) for rollback.
-go run ./scripts/migrate-tf-syntax -dir ./local-testing/your-config -direction v3-to-v2
+go -C scripts/migrate-tf-syntax run . -dir "$DIR" -direction v3-to-v2
 
 # Dry-run to stdout.
-go run ./scripts/migrate-tf-syntax -dir ./local-testing/your-config -direction v2-to-v3 -dry-run
+go -C scripts/migrate-tf-syntax run . -dir "$DIR" -direction v2-to-v3 -dry-run
 
 # Custom mapping file (for non-LD providers or future LD releases).
-go run ./scripts/migrate-tf-syntax -dir ./configs -direction v2-to-v3 -mappings ./my-spec.json
+go -C scripts/migrate-tf-syntax run . -dir "$DIR" -direction v2-to-v3 -mappings "$PWD/my-spec.json"
 ```
 
 The default `mappings.json` ships embedded and mirrors the mapping table below. Update both the JSON and this table when a new release adds nested-attribute resources.
@@ -217,8 +221,8 @@ resource "launchdarkly_project" "main" {
 
 The repo holds a complete v2-shaped scratch config and a converted v3 sibling that exercise every resource in the mapping table:
 
-- `local-testing/full-account-v2.29.original/` — currently in v3 syntax (post-migration). Use as a canonical v3 example.
-- `local-testing/full-account-v2.29/` — v2-syntax sibling (block form), useful as the "before" reference.
+- `local-testing/full-account-v2.29.original/` and `local-testing/full-account-v2.29/` — both currently in v3 syntax (post-migration). Use either as a canonical v3 example.
+- `local-testing/full-account-v2.29-backup-*.zip` — the genuine v2.29 **block-syntax** snapshot (the real "before" reference). Extract it; the on-disk dirs above are no longer block syntax.
 
 When in doubt about a specific resource's exact attribute name or nesting, grep these directories first before reaching into the provider source.
 

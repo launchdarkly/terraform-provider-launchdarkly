@@ -17,6 +17,21 @@ Only `launchdarkly_context_kind` shipped in a tagged preview (`v3.0.0-beta.2`). 
 
 "Beta API" means the resource calls a LaunchDarkly beta endpoint through the provider's beta client. Those endpoints can change without notice and may require an account entitlement.
 
+## Verification status (last real-account run: 2026-06-24, blitz prod)
+
+| Resource | Result |
+|---|---|
+| `launchdarkly_context_kind` | PASS (create, idempotent read, destroy) |
+| `launchdarkly_metric_group` | PASS (full CRUD incl. update) |
+| `launchdarkly_oauth_client` | PASS (create, idempotent read, destroy) |
+| `launchdarkly_release_policy` | PASS (full CRUD; account had the entitlement) |
+| `launchdarkly_announcement` | BLOCKED — account singleton already occupied on the test account |
+| `launchdarkly_big_segment_store_integration` | DEFERRED — needs reachable store credentials |
+| `launchdarkly_flag_import_configuration` | DEFERRED — needs Split (vendor) credentials |
+| `launchdarkly_integration_delivery_configuration` | DEFERRED — needs Fastly (vendor) credentials |
+
+No read round-trip bugs or forced replacements on any verified resource. Re-run Workflow B for the deferred resources once their credentials are available.
+
 ## Per-resource notes
 
 ### launchdarkly_context_kind — Stable, project scoped
