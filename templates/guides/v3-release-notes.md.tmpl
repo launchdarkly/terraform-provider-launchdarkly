@@ -111,6 +111,7 @@ This table lists the new resources, their data sources, and their API stability:
 - The provider creates a segment correctly when the target environment requires approvals for segment changes. This resolves issue #370.
 - `launchdarkly_access_token` applies cleanly when you upgrade state for a token that set a role or custom roles without an inline policy. v2 stored an empty list where v3 stores null, and the update path now treats the two as equal.
 - `launchdarkly_ai_config_variation` preserves the configured `description` and `instructions`. The LaunchDarkly API does not return these write-only fields on a read, so the provider keeps your configured value instead of clearing it.
+- `launchdarkly_feature_flag` preserves variation `name` and `description` set outside Terraform. When your configuration omits them, the provider no longer clears them on apply.
 
 ## Upgrade tooling
 
