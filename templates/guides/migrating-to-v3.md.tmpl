@@ -1,25 +1,23 @@
 ---
 page_title: "Migrating your configuration to v3 of the LaunchDarkly provider"
 description: |-
-  This guide explains how to rewrite v2 block syntax to v3 nested attribute syntax, either with the migrate-tf-syntax tool or by hand.
+  This guide explains how to upgrade a v2.x configuration to v3 of the LaunchDarkly provider with the migrate-tf-syntax tool, and what to expect on your first plan.
 ---
 
 # Migrating your configuration to v3 of the LaunchDarkly provider
 
-Version 3 of the LaunchDarkly Terraform provider changes every nested block to a nested attribute. Configurations written for v2 no longer parse after you upgrade the provider, so you must rewrite them before your first `terraform plan` against v3.
+## Overview
 
-Here is an example of the same resource in both syntaxes:
+This topic explains how to upgrade your Terraform configuration from v2 to v3 of the LaunchDarkly provider. v3 changes every nested block to a nested attribute, so configurations written for v2 do not parse after you upgrade the provider. You must rewrite them before your first plan against v3. The provider ships the `migrate-tf-syntax` tool to automate most of the rewrite, and it upgrades your state automatically on first apply.
+
+Here is the same resource in both syntaxes:
 
 ```hcl
 # v2 block syntax
 resource "launchdarkly_feature_flag" "example" {
   variation_type = "boolean"
-  variations {
-    value = "true"
-  }
-  variations {
-    value = "false"
-  }
+  variations { value = "true" }
+  variations { value = "false" }
 }
 
 # v3 nested attribute syntax
@@ -32,32 +30,59 @@ resource "launchdarkly_feature_flag" "example" {
 }
 ```
 
-## Converting your configuration with migrate-tf-syntax
+## Prerequisites
 
-The provider repository includes `migrate-tf-syntax`, a deterministic command-line tool that rewrites every affected attribute in a directory of `.tf` files. It also migrates attributes that v3 removed: it replaces them with their successors, for example `policy_statements` with `inline_roles` on `launchdarkly_access_token`, and updates references to renamed data source attributes such as `client_side_availability` on the `launchdarkly_project` data source.
+You need the following things to complete this migration:
+
+- Terraform 1.0 or later
+- A v2 configuration that applies cleanly, with an empty plan before you start
+- A committed copy of your configuration and state, so you can review the upgrade as a diff
+
+## Convert your configuration with migrate-tf-syntax
+
+The provider ships `migrate-tf-syntax`, a deterministic command-line tool that rewrites every affected attribute across a directory of `.tf` files. It also updates the attributes that v3 removed. For example, it renames `policy_statements` to `inline_roles` on `launchdarkly_access_token`, and it updates references to renamed data source attributes such as `client_side_availability` on the `launchdarkly_project` data source.
 
 To convert a configuration directory:
 
-1. Download the `migrate-tf-syntax` archive for your platform from the [provider release assets](https://github.com/launchdarkly/terraform-provider-launchdarkly/releases), or run the tool directly with Go:
+1. Download the `migrate-tf-syntax` archive for your platform from the [provider release assets](https://github.com/launchdarkly/terraform-provider-launchdarkly/releases), or run the tool with Go. Replace `v3.0.0` with the version you are upgrading to:
 
    ```bash
-   go run github.com/launchdarkly/terraform-provider-launchdarkly/scripts/migrate-tf-syntax@preview-v3 \
+   go run github.com/launchdarkly/terraform-provider-launchdarkly/scripts/migrate-tf-syntax@v3.0.0 \
      -dir ./my-config -direction v2-to-v3 -dry-run
    ```
 
 2. Review the dry-run output. The tool prints each file it intends to change.
 3. Run the same command without `-dry-run` to write the changes. Add `-recursive` to convert locally vendored modules in the same pass.
 4. Run `terraform fmt` to normalize whitespace.
-5. Upgrade the provider version constraint to `~> 3.0` and run `terraform plan`.
+5. Update the provider version constraint to `~> 3.0` and run `terraform plan`.
 
-## What the tool does not do
+## Finish the migration by hand
 
-Complete these follow-ups by hand:
+The tool converts syntax only. Complete these follow-ups yourself:
 
 - Add attributes that v3 newly requires. For example, `launchdarkly_feature_flag` requires `variations` for every variation type, including boolean.
-- Rewrite `dynamic` blocks. A `dynamic "variations"` block needs a for expression, for example `variations = [for v in var.values : { value = v }]`. The tool warns with the file and resource address and leaves the attribute unchanged.
-- Upgrade modules sourced from a registry or a git URL. The tool rewrites only files it can reach on disk, so upgrade those modules at their source.
+- Rewrite `dynamic` blocks. A `dynamic "variations"` block needs a for expression, for example `variations = [for v in var.values : { value = v }]`. The tool warns with the file and resource address, and it leaves the attribute unchanged.
+- Upgrade modules sourced from a registry or a git URL. The tool rewrites only files it reaches on disk, so upgrade those modules at their source.
+
+## How v3 upgrades your state
+
+The provider includes a state upgrader for every resource that lost an attribute. On your first apply, the provider migrates your state automatically. You do not edit the state file by hand:
+
+- `launchdarkly_access_token`: moves `policy_statements` into `inline_roles`, and discards `expire`.
+- `launchdarkly_custom_role`: converts `policy` into `policy_statements`.
+- `launchdarkly_feature_flag`: converts `include_in_snippet` into `client_side_availability`.
+- `launchdarkly_project`: converts `include_in_snippet` into `default_client_side_availability`.
+- `launchdarkly_metric`: discards `is_active`.
 
 ## Your first plan after upgrading
 
-Expect a non-empty first plan after upgrading the provider binary. v2 stored empty lists where v3 stores null, so diffs such as `policy_statements = [] -> null` appear once and apply cleanly. No resource is destroyed or recreated. The follow-up plan is empty.
+Expect a non-empty first plan after you upgrade the provider binary. v2 stored empty lists where v3 stores null, so diffs such as `policy_statements = [] -> null` appear once and apply cleanly. A few computed attributes show as known after apply on the first plan, and they resolve on apply. No resource is destroyed or recreated. The follow-up plan is empty.
+
+## What does not change
+
+- v3 removes no resources and no data sources. Every v2 resource and data source remains available.
+- Authentication is unchanged. The `access_token`, `oauth_token`, `api_host`, `http_timeout`, and `max_concurrency` provider settings keep the same names and behavior.
+
+## If you consume the provider through Crossplane
+
+If you embed this provider through Crossplane's Upjet, the block-to-attribute change alters the generated custom resource definition (CRD) shape, even though the attribute names do not change. We recommend that you test CRD regeneration against v3 before you upgrade.
