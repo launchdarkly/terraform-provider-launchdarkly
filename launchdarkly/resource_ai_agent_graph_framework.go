@@ -24,6 +24,7 @@ var (
 
 type AIAgentGraphResource struct {
 	client *Client
+	beta   *Client
 }
 
 type AIAgentGraphResourceModel struct {
@@ -197,8 +198,15 @@ func (agentGraphRootEdgesValidator) ValidateResource(ctx context.Context, req re
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	rootSet := !data.RootConfigKey.IsNull() && !data.RootConfigKey.IsUnknown() && data.RootConfigKey.ValueString() != ""
-	edgesSet := !data.Edges.IsNull() && !data.Edges.IsUnknown() && len(data.Edges.Elements()) > 0
+	// During config validation, references to other resources/data/variables
+	// (e.g. root_config_key = launchdarkly_ai_config.root.key) are unknown.
+	// We can't reliably compare set-ness when either side is unknown, so skip
+	// the cross-field check and let the known-values plan / API enforce it.
+	if data.RootConfigKey.IsUnknown() || data.Edges.IsUnknown() {
+		return
+	}
+	rootSet := !data.RootConfigKey.IsNull() && data.RootConfigKey.ValueString() != ""
+	edgesSet := !data.Edges.IsNull() && len(data.Edges.Elements()) > 0
 	if rootSet != edgesSet {
 		resp.Diagnostics.AddError(
 			"Incomplete agent graph definition",
@@ -209,6 +217,22 @@ func (agentGraphRootEdgesValidator) ValidateResource(ctx context.Context, req re
 
 func (r *AIAgentGraphResource) Configure(_ context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
 	r.client = configureResourceClient(req, resp)
+	if r.client == nil {
+		return
+	}
+	beta, err := newAIAgentGraphBetaClient(r.client)
+	if err != nil {
+		resp.Diagnostics.AddError("Failed to build LaunchDarkly beta client", err.Error())
+		return
+	}
+	r.beta = beta
+}
+
+func (r *AIAgentGraphResource) betaClient() (*Client, error) {
+	if r.beta != nil {
+		return r.beta, nil
+	}
+	return newAIAgentGraphBetaClient(r.client)
 }
 
 func (r *AIAgentGraphResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
@@ -248,8 +272,13 @@ func (r *AIAgentGraphResource) Create(ctx context.Context, req resource.CreateRe
 		post.Edges = edges
 	}
 
-	err := r.client.withConcurrency(r.client.ctx, func() error {
-		_, _, err := r.client.ld.AIConfigsApi.PostAgentGraph(r.client.ctx, projectKey).AgentGraphPost(*post).Execute()
+	beta, err := r.betaClient()
+	if err != nil {
+		resp.Diagnostics.AddError("Failed to build LaunchDarkly beta client", err.Error())
+		return
+	}
+	err = beta.withConcurrency(beta.ctx, func() error {
+		_, _, err := beta.ld.AIConfigsApi.PostAgentGraph(beta.ctx, projectKey).LDAPIVersion(agentGraphBetaVersion).AgentGraphPost(*post).Execute()
 		return err
 	})
 	if err != nil {
@@ -334,8 +363,13 @@ func (r *AIAgentGraphResource) Update(ctx context.Context, req resource.UpdateRe
 		}
 	}
 
-	err := r.client.withConcurrency(r.client.ctx, func() error {
-		_, _, err := r.client.ld.AIConfigsApi.PatchAgentGraph(r.client.ctx, projectKey, graphKey).AgentGraphPatch(*patch).Execute()
+	beta, err := r.betaClient()
+	if err != nil {
+		resp.Diagnostics.AddError("Failed to build LaunchDarkly beta client", err.Error())
+		return
+	}
+	err = beta.withConcurrency(beta.ctx, func() error {
+		_, _, err := beta.ld.AIConfigsApi.PatchAgentGraph(beta.ctx, projectKey, graphKey).LDAPIVersion(agentGraphBetaVersion).AgentGraphPatch(*patch).Execute()
 		return err
 	})
 	if err != nil {
@@ -358,10 +392,15 @@ func (r *AIAgentGraphResource) Delete(ctx context.Context, req resource.DeleteRe
 	}
 	projectKey := data.ProjectKey.ValueString()
 	graphKey := data.Key.ValueString()
+	beta, err := r.betaClient()
+	if err != nil {
+		resp.Diagnostics.AddError("Failed to build LaunchDarkly beta client", err.Error())
+		return
+	}
 	var res *http.Response
-	err := r.client.withConcurrency(r.client.ctx, func() error {
+	err = beta.withConcurrency(beta.ctx, func() error {
 		var e error
-		res, e = r.client.ld.AIConfigsApi.DeleteAgentGraph(r.client.ctx, projectKey, graphKey).Execute()
+		res, e = beta.ld.AIConfigsApi.DeleteAgentGraph(beta.ctx, projectKey, graphKey).LDAPIVersion(agentGraphBetaVersion).Execute()
 		return e
 	})
 	if err != nil {
@@ -393,11 +432,15 @@ func (r *AIAgentGraphResource) readIntoModel(
 	data *AIAgentGraphResourceModel,
 	diags *diag.Diagnostics,
 ) {
+	beta, err := r.betaClient()
+	if err != nil {
+		diags.AddError("Failed to build LaunchDarkly beta client", err.Error())
+		return
+	}
 	var graph *ldapi.AgentGraph
 	var res *http.Response
-	var err error
-	err = r.client.withConcurrency(r.client.ctx, func() error {
-		graph, res, err = r.client.ld.AIConfigsApi.GetAgentGraph(r.client.ctx, projectKey, graphKey).Execute()
+	err = beta.withConcurrency(beta.ctx, func() error {
+		graph, res, err = beta.ld.AIConfigsApi.GetAgentGraph(beta.ctx, projectKey, graphKey).LDAPIVersion(agentGraphBetaVersion).Execute()
 		return err
 	})
 	if err != nil {

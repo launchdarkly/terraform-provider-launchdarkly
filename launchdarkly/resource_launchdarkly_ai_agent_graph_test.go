@@ -36,12 +36,14 @@ resource "launchdarkly_ai_config" "root" {
 	project_key = launchdarkly_project.test.key
 	key         = "%s"
 	name        = "Root agent config"
+	mode        = "agent"
 }
 
 resource "launchdarkly_ai_config" "child" {
 	project_key = launchdarkly_project.test.key
 	key         = "%s"
 	name        = "Child agent config"
+	mode        = "agent"
 	depends_on  = [launchdarkly_ai_config.root]
 }
 

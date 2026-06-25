@@ -8,6 +8,21 @@ import (
 	ldapi "github.com/launchdarkly/api-client-go/v22"
 )
 
+// agentGraphBetaVersion is the LD-API-Version the agent graph endpoints
+// require. The generated request builders expose a per-request
+// .LDAPIVersion(...) setter, and the server rejects the call with
+// "lDAPIVersion is required and must be specified" if it is omitted.
+const agentGraphBetaVersion = "beta"
+
+// newAIAgentGraphBetaClient returns a beta-configured client for the agent
+// graph endpoints. They live on the beta API surface, so we use a beta client
+// (which does not set a default LD-API-Version header) and pair it with the
+// per-request .LDAPIVersion("beta"); using the standard client would send the
+// header twice ("Too many values for parameter LD-API-Version").
+func newAIAgentGraphBetaClient(c *Client) (*Client, error) {
+	return newBetaClient(c.apiKey, c.apiHost, false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
+}
+
 // agentGraphEdgeModel is the Terraform representation of a single edge in an
 // agent graph. It is shared by the resource and data source.
 type agentGraphEdgeModel struct {

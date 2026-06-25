@@ -89,10 +89,14 @@ func (d *AIAgentGraphDataSource) Read(ctx context.Context, req datasource.ReadRe
 	projectKey := data.ProjectKey.ValueString()
 	graphKey := data.Key.ValueString()
 
+	beta, err := newAIAgentGraphBetaClient(d.client)
+	if err != nil {
+		resp.Diagnostics.AddError("Failed to build LaunchDarkly beta client", err.Error())
+		return
+	}
 	var graph *ldapi.AgentGraph
-	var err error
-	err = d.client.withConcurrency(d.client.ctx, func() error {
-		graph, _, err = d.client.ld.AIConfigsApi.GetAgentGraph(d.client.ctx, projectKey, graphKey).Execute()
+	err = beta.withConcurrency(beta.ctx, func() error {
+		graph, _, err = beta.ld.AIConfigsApi.GetAgentGraph(beta.ctx, projectKey, graphKey).LDAPIVersion(agentGraphBetaVersion).Execute()
 		return err
 	})
 	if err != nil {
