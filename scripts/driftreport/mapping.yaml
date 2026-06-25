@@ -299,7 +299,7 @@ families:
     status: covered
     resources:
       - launchdarkly_integration_delivery_configuration
-    notes: Beta family scaffolded by the autogen pipeline (stage 2). Persistent feature store delivery configurations scoped per project/environment/integration; wraps the IntegrationDeliveryConfigurationsBetaApi via a beta client (LD-API-Version: beta). The validate endpoint is an imperative action, not modeled as a resource.
+    notes: "Beta family scaffolded by the autogen pipeline (stage 2). Persistent feature store delivery configurations scoped per project/environment/integration; wraps the IntegrationDeliveryConfigurationsBetaApi via a beta client (LD-API-Version: beta). The validate endpoint is an imperative action, not modeled as a resource."
 
   - tag: Integrations (beta)
     status: triage
@@ -341,10 +341,7 @@ families:
     status: covered
     resources:
       - launchdarkly_big_segment_store_integration
-    ignored_operations:
-      - id: getBigSegmentStoreIntegrations
-        reason: Account-wide list/index endpoint; the singular get covers declarative reads.
-    notes: Environment-scoped big-segment (persistent) store integrations backed by Redis or DynamoDB. Scaffolded by the autogen pipeline (stage 2) against the PersistentStoreIntegrationsBetaApi (LD-API-Version beta). config carries credentials and is modeled as a sensitive JSON string.
+    notes: "Environment-scoped big-segment (persistent) store integrations backed by Redis or DynamoDB. Scaffolded by the autogen pipeline (stage 2) against the PersistentStoreIntegrationsBetaApi (LD-API-Version beta). config carries credentials and is modeled as a sensitive JSON string. The account-wide list endpoint getBigSegmentStoreIntegrations is not modeled (the singular get covers declarative reads)."
 
   - tag: Projects
     status: covered
