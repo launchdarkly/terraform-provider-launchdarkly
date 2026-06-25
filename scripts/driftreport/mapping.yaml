@@ -87,9 +87,9 @@ families:
           - postModelConfig
           - getModelConfig
           - deleteModelConfig
-    new_resource_candidates:
-      # Agent graphs — clean CRUD on their own path; a net-new resource the
-      # stage-2 scaffolder can add without touching the AI Config resources.
+      # Agent graphs — clean CRUD on their own path; scaffolded by the autogen
+      # pipeline (stage 2) without touching the AI Config resources.
+      # listAgentGraphs backs the resource read fallback / data source plumbing.
       - name: launchdarkly_ai_agent_graph
         operations:
           - listAgentGraphs
@@ -97,6 +97,7 @@ families:
           - getAgentGraph
           - patchAgentGraph
           - deleteAgentGraph
+    new_resource_candidates:
       # Prompt snippets — clean CRUD; the references/versions read endpoints
       # stay in triage pending a data-source decision.
       - name: launchdarkly_prompt_snippet
