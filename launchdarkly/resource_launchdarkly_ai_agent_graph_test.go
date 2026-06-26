@@ -151,8 +151,15 @@ func testAccCheckAIAgentGraphExists(resourceName string) resource.TestCheckFunc 
 		projectKey := rs.Primary.Attributes[PROJECT_KEY]
 		graphKey := rs.Primary.Attributes[KEY]
 
-		client := mustTestAccClient()
-		_, _, err := client.ld.AIConfigsApi.GetAgentGraph(client.ctx, projectKey, graphKey).Execute()
+		// Agent graph endpoints live on the beta API surface; use a beta client
+		// paired with the per-request LD-API-Version, matching the resource. The
+		// standard client already sends a default LD-API-Version, so reusing it
+		// here fails with "lDAPIVersion is required" (no header) or duplicates it.
+		beta, err := newAIAgentGraphBetaClient(mustTestAccClient())
+		if err != nil {
+			return fmt.Errorf("failed to build beta client: %s", err)
+		}
+		_, _, err = beta.ld.AIConfigsApi.GetAgentGraph(beta.ctx, projectKey, graphKey).LDAPIVersion(agentGraphBetaVersion).Execute()
 		if err != nil {
 			return fmt.Errorf("received an error getting agent graph: %s", err)
 		}
@@ -161,7 +168,10 @@ func testAccCheckAIAgentGraphExists(resourceName string) resource.TestCheckFunc 
 }
 
 var testAccCheckAIAgentGraphDestroy = func(s *terraform.State) error {
-	client := mustTestAccClient()
+	beta, err := newAIAgentGraphBetaClient(mustTestAccClient())
+	if err != nil {
+		return fmt.Errorf("failed to build beta client: %s", err)
+	}
 
 	for _, rs := range s.RootModule().Resources {
 		if rs.Type != "launchdarkly_ai_agent_graph" {
@@ -170,7 +180,7 @@ var testAccCheckAIAgentGraphDestroy = func(s *terraform.State) error {
 		projectKey := rs.Primary.Attributes[PROJECT_KEY]
 		graphKey := rs.Primary.Attributes[KEY]
 
-		_, res, err := client.ld.AIConfigsApi.GetAgentGraph(client.ctx, projectKey, graphKey).Execute()
+		_, res, err := beta.ld.AIConfigsApi.GetAgentGraph(beta.ctx, projectKey, graphKey).LDAPIVersion(agentGraphBetaVersion).Execute()
 		if isStatusNotFound(res) {
 			continue
 		}

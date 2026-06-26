@@ -130,12 +130,18 @@ func (d *AIAgentGraphDataSource) Read(ctx context.Context, req datasource.ReadRe
 		resp.Diagnostics.AddError("Failed to read agent graph edges", err.Error())
 		return
 	}
-	edgesList, diag := types.ListValueFrom(ctx, agentGraphEdgeObjectType(), edgeModels)
-	resp.Diagnostics.Append(diag...)
-	if resp.Diagnostics.HasError() {
-		return
+	if len(edgeModels) == 0 {
+		// Match the resource: a metadata-only graph reports edges as null, not an
+		// empty list, so resource and data source surface the same shape.
+		data.Edges = types.ListNull(agentGraphEdgeObjectType())
+	} else {
+		edgesList, diag := types.ListValueFrom(ctx, agentGraphEdgeObjectType(), edgeModels)
+		resp.Diagnostics.Append(diag...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+		data.Edges = edgesList
 	}
-	data.Edges = edgesList
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
