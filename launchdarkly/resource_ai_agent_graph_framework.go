@@ -9,6 +9,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
@@ -103,11 +104,25 @@ func (r *AIAgentGraphResource) Schema(_ context.Context, _ resource.SchemaReques
 			},
 			ROOT_CONFIG_KEY: schema.StringAttribute{
 				Optional:    true,
-				Description: "The AI Config key of the root node of the graph. If `root_config_key` or `edges` is set, both must be set. A graph with neither defined is a metadata-only graph.",
+				Description: "The AI Config key of the root node of the graph. If `root_config_key` or `edges` is set, both must be set. A graph with neither defined is a metadata-only graph. Clearing this (reverting to a metadata-only graph) forces the destruction and recreation of the resource.",
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.RequiresReplaceIf(
+						requiresReplaceOnClearString,
+						"Clearing root_config_key forces resource replacement.",
+						"Clearing `root_config_key` forces resource replacement.",
+					),
+				},
 			},
 			EDGES: schema.ListNestedAttribute{
 				Optional:    true,
-				Description: "The edges in the graph. Each edge connects a source AI Config to a target AI Config. If `edges` or `root_config_key` is set, both must be set.",
+				Description: "The edges in the graph. Each edge connects a source AI Config to a target AI Config. If `edges` or `root_config_key` is set, both must be set. Clearing this (reverting to a metadata-only graph) forces the destruction and recreation of the resource.",
+				PlanModifiers: []planmodifier.List{
+					listplanmodifier.RequiresReplaceIf(
+						requiresReplaceOnClearList,
+						"Clearing edges forces resource replacement.",
+						"Clearing `edges` forces resource replacement.",
+					),
+				},
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
 						KEY: schema.StringAttribute{
@@ -212,6 +227,26 @@ func (agentGraphRootEdgesValidator) ValidateResource(ctx context.Context, req re
 			"Incomplete agent graph definition",
 			"`root_config_key` and `edges` must both be set or both be unset. Set both to define a graph with nodes, or neither for a metadata-only graph.",
 		)
+	}
+}
+
+// requiresReplaceOnClearString / requiresReplaceOnClearList force a
+// destroy+recreate when root_config_key or edges is cleared (set -> null),
+// reverting a graph to metadata-only. The agent graph PATCH is a JSON merge
+// patch whose generated model cannot emit `null` and whose API requires
+// root_config_key and edges to be sent together, so an in-place update cannot
+// express clearing these fields. The framework only calls these when the value
+// changed and the resource is neither being created (state null) nor destroyed
+// (plan null), so a null plan value here is a genuine clear.
+func requiresReplaceOnClearString(_ context.Context, req planmodifier.StringRequest, resp *stringplanmodifier.RequiresReplaceIfFuncResponse) {
+	if req.PlanValue.IsNull() && !req.StateValue.IsNull() {
+		resp.RequiresReplace = true
+	}
+}
+
+func requiresReplaceOnClearList(_ context.Context, req planmodifier.ListRequest, resp *listplanmodifier.RequiresReplaceIfFuncResponse) {
+	if req.PlanValue.IsNull() && !req.StateValue.IsNull() {
+		resp.RequiresReplace = true
 	}
 }
 
@@ -345,7 +380,9 @@ func (r *AIAgentGraphResource) Update(ctx context.Context, req resource.UpdateRe
 	}
 	// root_config_key and edges must travel together; if either changed, send
 	// both at their planned values (the config validator guarantees they are
-	// both set or both unset).
+	// both set or both unset). Clearing them back to a metadata-only graph is
+	// handled by RequiresReplace (the merge patch cannot express it), so any
+	// update reaching here has both fields set.
 	if !plan.RootConfigKey.Equal(state.RootConfigKey) || !plan.Edges.Equal(state.Edges) {
 		patch.RootConfigKey = ldapi.PtrString(plan.RootConfigKey.ValueString())
 		if !plan.Edges.IsNull() && !plan.Edges.IsUnknown() {

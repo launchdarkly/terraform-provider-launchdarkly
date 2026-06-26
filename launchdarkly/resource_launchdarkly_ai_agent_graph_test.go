@@ -6,6 +6,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 )
 
@@ -134,6 +135,49 @@ func TestAccAIAgentGraph_WithEdges(t *testing.T) {
 				ResourceName:      resourceName,
 				ImportState:       true,
 				ImportStateVerify: true,
+			},
+		},
+	})
+}
+
+// TestAccAIAgentGraph_ClearForcesReplace verifies that reverting a graph with a
+// root config and edges back to a metadata-only graph forces a destroy+recreate.
+// The merge-patch update API cannot express clearing these fields, so the
+// resource uses RequiresReplace for that transition instead.
+func TestAccAIAgentGraph_ClearForcesReplace(t *testing.T) {
+	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	rootKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	childKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	graphKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	resourceName := "launchdarkly_ai_agent_graph.test"
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckAIAgentGraphDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config: withAITestProject(projectKey, fmt.Sprintf(testAccAIAgentGraphWithEdges, rootKey, childKey, graphKey)),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckAIAgentGraphExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, ROOT_CONFIG_KEY, rootKey),
+					resource.TestCheckResourceAttr(resourceName, "edges.#", "1"),
+				),
+			},
+			{
+				// Drop root_config_key + edges -> metadata-only graph at the same
+				// key. This must plan as a replacement, not an in-place update.
+				Config: withAITestProject(projectKey, fmt.Sprintf(testAccAIAgentGraphCreate, graphKey, "Now metadata only", "Reverted to metadata-only")),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{
+						plancheck.ExpectResourceAction(resourceName, plancheck.ResourceActionReplace),
+					},
+				},
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckAIAgentGraphExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, NAME, "Now metadata only"),
+					resource.TestCheckNoResourceAttr(resourceName, ROOT_CONFIG_KEY),
+				),
 			},
 		},
 	})
