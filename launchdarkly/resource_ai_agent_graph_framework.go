@@ -216,17 +216,33 @@ func (agentGraphRootEdgesValidator) ValidateResource(ctx context.Context, req re
 	// During config validation, references to other resources/data/variables
 	// (e.g. root_config_key = launchdarkly_ai_config.root.key) are unknown.
 	// We can't reliably compare set-ness when either side is unknown, so skip
-	// the cross-field check and let the known-values plan / API enforce it.
+	// the cross-field check here; Create/Update re-check on resolved values.
 	if data.RootConfigKey.IsUnknown() || data.Edges.IsUnknown() {
 		return
 	}
-	rootSet := !data.RootConfigKey.IsNull() && data.RootConfigKey.ValueString() != ""
-	edgesSet := !data.Edges.IsNull() && len(data.Edges.Elements()) > 0
+	checkAgentGraphRootEdgesPairing(data, &resp.Diagnostics)
+}
+
+const agentGraphRootEdgesPairingError = "`root_config_key` and `edges` must both be set or both be unset. Set both to define a graph with nodes, or neither for a metadata-only graph."
+
+// agentGraphRootEdgesSet reports whether root_config_key and edges are
+// effectively set on the model. An empty edges list (`edges = []`) and an empty
+// root string count as unset, so they pair with an omitted counterpart instead
+// of being sent to the API as a half-defined graph.
+func agentGraphRootEdgesSet(m AIAgentGraphResourceModel) (rootSet, edgesSet bool) {
+	rootSet = !m.RootConfigKey.IsNull() && !m.RootConfigKey.IsUnknown() && m.RootConfigKey.ValueString() != ""
+	edgesSet = !m.Edges.IsNull() && !m.Edges.IsUnknown() && len(m.Edges.Elements()) > 0
+	return
+}
+
+// checkAgentGraphRootEdgesPairing enforces the both-or-neither rule. The config
+// validator skips it when either side is unknown (cross-resource references),
+// so Create/Update call this on resolved values to stop a root-without-edges
+// (or edges-without-root) reaching the API.
+func checkAgentGraphRootEdgesPairing(m AIAgentGraphResourceModel, diags *diag.Diagnostics) {
+	rootSet, edgesSet := agentGraphRootEdgesSet(m)
 	if rootSet != edgesSet {
-		resp.Diagnostics.AddError(
-			"Incomplete agent graph definition",
-			"`root_config_key` and `edges` must both be set or both be unset. Set both to define a graph with nodes, or neither for a metadata-only graph.",
-		)
+		diags.AddError("Incomplete agent graph definition", agentGraphRootEdgesPairingError)
 	}
 }
 
@@ -290,10 +306,18 @@ func (r *AIAgentGraphResource) Create(ctx context.Context, req resource.CreateRe
 	if !plan.MaintainerTeamKey.IsNull() && !plan.MaintainerTeamKey.IsUnknown() && plan.MaintainerTeamKey.ValueString() != "" {
 		post.MaintainerTeamKey = ldapi.PtrString(plan.MaintainerTeamKey.ValueString())
 	}
-	if !plan.RootConfigKey.IsNull() && !plan.RootConfigKey.IsUnknown() && plan.RootConfigKey.ValueString() != "" {
+	// Re-check the both-or-neither rule on resolved values: the config validator
+	// skips it when root_config_key/edges reference unknown values, which are
+	// known by the time Create runs.
+	rootSet, edgesSet := agentGraphRootEdgesSet(plan)
+	if rootSet != edgesSet {
+		resp.Diagnostics.AddError("Incomplete agent graph definition", agentGraphRootEdgesPairingError)
+		return
+	}
+	if rootSet {
 		post.RootConfigKey = ldapi.PtrString(plan.RootConfigKey.ValueString())
 	}
-	if !plan.Edges.IsNull() && !plan.Edges.IsUnknown() {
+	if edgesSet {
 		var edgeModels []agentGraphEdgeModel
 		resp.Diagnostics.Append(plan.Edges.ElementsAs(ctx, &edgeModels, false)...)
 		if resp.Diagnostics.HasError() {
@@ -378,14 +402,22 @@ func (r *AIAgentGraphResource) Update(ctx context.Context, req resource.UpdateRe
 	if !plan.MaintainerTeamKey.Equal(state.MaintainerTeamKey) {
 		patch.MaintainerTeamKey = ldapi.PtrString(plan.MaintainerTeamKey.ValueString())
 	}
+	// Re-check the both-or-neither rule on resolved values (see Create). Clearing
+	// root_config_key/edges back to a metadata-only graph is handled by
+	// RequiresReplace (the merge patch cannot express it), so a genuine update
+	// reaching here has both fields set or both unset.
+	rootSet, edgesSet := agentGraphRootEdgesSet(plan)
+	if rootSet != edgesSet {
+		resp.Diagnostics.AddError("Incomplete agent graph definition", agentGraphRootEdgesPairingError)
+		return
+	}
 	// root_config_key and edges must travel together; if either changed, send
-	// both at their planned values (the config validator guarantees they are
-	// both set or both unset). Clearing them back to a metadata-only graph is
-	// handled by RequiresReplace (the merge patch cannot express it), so any
-	// update reaching here has both fields set.
+	// both at their planned values.
 	if !plan.RootConfigKey.Equal(state.RootConfigKey) || !plan.Edges.Equal(state.Edges) {
-		patch.RootConfigKey = ldapi.PtrString(plan.RootConfigKey.ValueString())
-		if !plan.Edges.IsNull() && !plan.Edges.IsUnknown() {
+		if rootSet {
+			patch.RootConfigKey = ldapi.PtrString(plan.RootConfigKey.ValueString())
+		}
+		if edgesSet {
 			var edgeModels []agentGraphEdgeModel
 			resp.Diagnostics.Append(plan.Edges.ElementsAs(ctx, &edgeModels, false)...)
 			if resp.Diagnostics.HasError() {
@@ -522,5 +554,8 @@ func (r *AIAgentGraphResource) readIntoModel(
 	}
 	edgesList, d := types.ListValueFrom(ctx, agentGraphEdgeObjectType(), edgeModels)
 	diags.Append(d...)
+	if diags.HasError() {
+		return
+	}
 	data.Edges = edgesList
 }

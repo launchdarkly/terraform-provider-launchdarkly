@@ -110,8 +110,10 @@ func (d *AIAgentGraphDataSource) Read(ctx context.Context, req datasource.ReadRe
 	data.ID = types.StringValue(fmt.Sprintf("%s/%s", projectKey, graph.GetKey()))
 	data.Key = types.StringValue(graph.GetKey())
 	data.Name = types.StringValue(graph.GetName())
-	data.Description = types.StringValue(graph.GetDescription())
-	data.RootConfigKey = types.StringValue(graph.GetRootConfigKey())
+	// Match the resource read path: null-when-empty so a metadata-only graph
+	// surfaces identically through the resource and the data source.
+	data.Description = stringValueOrNullFromPointer(graph.Description)
+	data.RootConfigKey = stringValueOrNullFromPointer(graph.RootConfigKey)
 	data.CreationDate = types.Int64Value(graph.GetCreatedAt())
 	data.LastModified = types.Int64Value(graph.GetUpdatedAt())
 
