@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -115,7 +116,14 @@ func (r *AIAgentGraphResource) Schema(_ context.Context, _ resource.SchemaReques
 			},
 			EDGES: schema.ListNestedAttribute{
 				Optional:    true,
-				Description: "The edges in the graph. Each edge connects a source AI Config to a target AI Config. If `edges` or `root_config_key` is set, both must be set. Clearing this (reverting to a metadata-only graph) forces the destruction and recreation of the resource.",
+				Description: "The edges in the graph. Each edge connects a source AI Config to a target AI Config. If `edges` or `root_config_key` is set, both must be set, and `edges` must contain at least one edge. Clearing this (reverting to a metadata-only graph) forces the destruction and recreation of the resource.",
+				Validators: []validator.List{
+					// edges only makes sense alongside a root (both-or-neither) and
+					// with at least one edge. Reject `edges = []`: the Read path
+					// reports a graph with no edges as null, so allowing an explicit
+					// empty list would cause a plan/apply inconsistency.
+					listvalidator.SizeAtLeast(1),
+				},
 				PlanModifiers: []planmodifier.List{
 					listplanmodifier.RequiresReplaceIf(
 						requiresReplaceOnClearList,

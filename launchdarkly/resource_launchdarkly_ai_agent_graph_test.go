@@ -2,6 +2,7 @@ package launchdarkly
 
 import (
 	"fmt"
+	"regexp"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
@@ -28,6 +29,18 @@ resource "launchdarkly_ai_agent_graph" "test" {
 	key         = "%s"
 	name        = "%s"
 	description = "%s"
+}
+`
+
+	// edges = [] (empty, non-null) with no root — must be rejected by the
+	// SizeAtLeast(1) validator rather than applied (the Read path reports no
+	// edges as null, so an explicit empty list would drift).
+	testAccAIAgentGraphEmptyEdges = `
+resource "launchdarkly_ai_agent_graph" "test" {
+	project_key = launchdarkly_project.test.key
+	key         = "%s"
+	name        = "Empty edges graph"
+	edges       = []
 }
 `
 
@@ -178,6 +191,26 @@ func TestAccAIAgentGraph_ClearForcesReplace(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, NAME, "Now metadata only"),
 					resource.TestCheckNoResourceAttr(resourceName, ROOT_CONFIG_KEY),
 				),
+			},
+		},
+	})
+}
+
+// TestAccAIAgentGraph_EmptyEdgesRejected verifies that `edges = []` is rejected
+// at config-validation time. The Read path reports a graph with no edges as
+// null, so allowing an explicit empty list would produce a plan/apply
+// inconsistency and a perpetual diff.
+func TestAccAIAgentGraph_EmptyEdgesRejected(t *testing.T) {
+	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	graphKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config:      withAITestProject(projectKey, fmt.Sprintf(testAccAIAgentGraphEmptyEdges, graphKey)),
+				ExpectError: regexp.MustCompile(`(?s)edges.*at least 1`),
 			},
 		},
 	})
