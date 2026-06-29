@@ -78,6 +78,9 @@
       {"name": "context_targets"},
       {"name": "rules", "nested": [{"name": "clauses"}]},
       {"name": "fallthrough", "object": true}
+    ],
+    "ds_attr_rewrites": [
+      {"from": "fallthrough", "to": "fallthrough", "strip_index": true}
     ]
   },
   "launchdarkly_feature_flag": {
@@ -91,7 +94,9 @@
       {"name": "variations", "action": "ensure_boolean_variations"}
     ],
     "ds_attr_rewrites": [
-      {"from": "include_in_snippet", "to_expr": "client_side_availability.using_environment_id"}
+      {"from": "include_in_snippet", "to_expr": "client_side_availability.using_environment_id"},
+      {"from": "client_side_availability", "to": "client_side_availability", "strip_index": true},
+      {"from": "defaults", "to": "defaults", "strip_index": true}
     ]
   }
 }

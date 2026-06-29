@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -268,6 +269,42 @@ func TestApplyDSAttrRewrites(t *testing.T) {
 	}
 	if strings.Contains(string(out), "default_client_side_availability[0]") {
 		t.Errorf("list index must be stripped for the single-object attribute:\n%s", out)
+	}
+}
+
+// TestEmbeddedMappingsStripDataSourceIndices guards the shipped mappings.json:
+// every v3 single-object data-source attribute must have a ds_attr_rewrite that
+// drops a v2 list index, so v2 readers like `data.X.Y.attr[0].field` migrate to
+// the v3 object access `data.X.Y.attr.field` (project additionally renames
+// client_side_availability -> default_client_side_availability).
+func TestEmbeddedMappingsStripDataSourceIndices(t *testing.T) {
+	var spec Spec
+	if err := json.Unmarshal(defaultMappings, &spec); err != nil {
+		t.Fatalf("parse embedded mappings: %v", err)
+	}
+	src := []byte(`
+output "a" { value = data.launchdarkly_feature_flag.f.client_side_availability[0].using_environment_id }
+output "b" { value = data.launchdarkly_feature_flag.f.defaults[0].on_variation }
+output "c" { value = data.launchdarkly_project.p.client_side_availability[0].using_mobile_key }
+output "d" { value = data.launchdarkly_feature_flag_environment.e.fallthrough[0].variation }
+`)
+	out, changed := applyDSAttrRewrites(src, spec)
+	if !changed {
+		t.Fatal("expected rewrites")
+	}
+	s := string(out)
+	for _, want := range []string{
+		"data.launchdarkly_feature_flag.f.client_side_availability.using_environment_id",
+		"data.launchdarkly_feature_flag.f.defaults.on_variation",
+		"data.launchdarkly_project.p.default_client_side_availability.using_mobile_key",
+		"data.launchdarkly_feature_flag_environment.e.fallthrough.variation",
+	} {
+		if !strings.Contains(s, want) {
+			t.Errorf("missing %q in:\n%s", want, s)
+		}
+	}
+	if strings.Contains(s, "[0]") {
+		t.Errorf("residual v2 list index left in data-source reference:\n%s", s)
 	}
 }
 
