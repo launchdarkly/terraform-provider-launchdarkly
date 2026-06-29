@@ -150,6 +150,7 @@ func (p *launchdarklyProvider) Configure(ctx context.Context, req provider.Confi
 // DataSources defines the data sources implemented in the provider.
 func (p *launchdarklyProvider) DataSources(_ context.Context) []func() datasource.DataSource {
 	return []func() datasource.DataSource{
+		NewAIAgentGraphDataSource,
 		NewAIConfigDataSource,
 		NewAIConfigVariationDataSource,
 		NewAIToolDataSource,
@@ -184,6 +185,7 @@ func (p *launchdarklyProvider) Resources(_ context.Context) []func() resource.Re
 	return []func() resource.Resource{
 		NewAccessTokenResource,
 		NewAnnouncementResource,
+		NewAIAgentGraphResource,
 		NewAIConfigResource,
 		NewAIConfigVariationResource,
 		NewAIToolResource,

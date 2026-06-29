@@ -87,6 +87,7 @@ jobs:
     strategy:
       matrix:
         test_case:
+          - TestAccAIAgentGraph_
           - TestAccAIConfig_
           - TestAccAIConfigVariation
           - TestAccAITool
