@@ -121,6 +121,18 @@ jobs:
             sent=$((sent + 1))
           }
 
+          # scaffold_cmd <family> [resource_name] [operations]: prints the ready-to-run
+          # gh dispatch command (multi-line). Workflow Builder renders NO code blocks, so
+          # this goes out as plain text — verified paste-and-run. No backticks (WB would
+          # show them literally). Quotes survive WB un-mangled (verified).
+          scaffold_cmd() {
+            local fam="$1" name="${2:-}" ops="${3:-}"
+            printf 'gh workflow run scaffold-resource.yml \\\n  --repo %s --ref main \\\n  -f family="%s"' "$REPO" "$fam"
+            if [ -n "$name" ]; then
+              printf ' \\\n  -f resource_name="%s" \\\n  -f operations="%s"' "$name" "$ops"
+            fi
+          }
+
           # 1) Summary — one tally line (zero categories dropped) + scaffoldable
           # families + run link. The title carries the headline, so the body
           # doesn't restate it.
@@ -139,7 +151,7 @@ jobs:
              | if ($s | length) > 0 then "\nScaffoldable: " + ($s | join(", ")) else "" end) +
             (.triage_families as $t
              | if ($t | length) > 0 then "\nTriage backlog (decide scope, then dispatch): " + ($t | join(", ")) else "" end) +
-            "\n<\($run)|drift run>"
+            "\nDrift run: \($run)"
           ' "$JSON")"
           post_slack "🔎 API coverage report" "$summary_body"
 
@@ -148,10 +160,9 @@ jobs:
           while IFS= read -r fam; do
             [ -n "$fam" ] || continue
             tag="$(printf '%s' "$fam" | jq -r '.tag')"
-            paths="$(printf '%s' "$fam" | jq -r '[.paths[] | "`" + . + "`"] | join(" · ")')"
-            # shellcheck disable=SC2016  # backticks are literal Slack mrkdwn, not command subst
-            body="$(printf 'No provider resource yet. Paths: %s\n<%s|▶ Scaffold it> · `gh workflow run scaffold-resource.yml -f family='"'"'%s'"'"'`' \
-              "$paths" "$ACTIONS_URL" "$tag")"
+            paths="$(printf '%s' "$fam" | jq -r '[.paths[]] | join(" · ")')"
+            body="$(printf 'No provider resource yet.\nPaths: %s\n\nRun:\n%s\n\nActions page: %s' \
+              "$paths" "$(scaffold_cmd "$tag")" "$ACTIONS_URL")"
             post_slack "🆕 New API family: $tag" "$body"
           done < <(jq -c '.new_families[]' "$JSON")
 
@@ -163,10 +174,9 @@ jobs:
             tag="$(printf '%s' "$sr" | jq -r '.tag')"
             name="$(printf '%s' "$sr" | jq -r '.name')"
             opids="$(printf '%s' "$sr" | jq -r '[.operations[].operation_id] | join(",")')"
-            oplist="$(printf '%s' "$sr" | jq -r '[.operations[] | "• `\(.method) \(.path)`"] | join("\n")')"
-            # shellcheck disable=SC2016  # backticks are literal Slack mrkdwn, not command subst
-            body="$(printf 'Net-new resource in the `%s` family (existing resources untouched):\n%s\n<%s|▶ Scaffold it> · `gh workflow run scaffold-resource.yml -f family='"'"'%s'"'"' -f resource_name='"'"'%s'"'"' -f operations='"'"'%s'"'"'`' \
-              "$tag" "$oplist" "$ACTIONS_URL" "$tag" "$name" "$opids")"
+            oplist="$(printf '%s' "$sr" | jq -r '[.operations[] | "• \(.method) \(.path)"] | join("\n")')"
+            body="$(printf 'Net-new resource in the %s family (existing resources untouched).\nOperations:\n%s\n\nRun:\n%s\n\nActions page: %s' \
+              "$tag" "$oplist" "$(scaffold_cmd "$tag" "$name" "$opids")" "$ACTIONS_URL")"
             post_slack "🆕 New resource: $name" "$body"
           done < <(jq -c '.scaffoldable_resources[]' "$JSON")
 
@@ -174,8 +184,7 @@ jobs:
           # (stage 2 only scaffolds NEW resources, so no dispatch link).
           while IFS= read -r tag; do
             [ -n "$tag" ] || continue
-            ops="$(jq -r --arg t "$tag" '.unclaimed_operations[] | select(.tag == $t) | "• `\(.method) \(.path)` (`\(.operation_id)`)"' "$JSON")"
-            # shellcheck disable=SC2016  # backticks are literal Slack mrkdwn, not command subst
+            ops="$(jq -r --arg t "$tag" '.unclaimed_operations[] | select(.tag == $t) | "• \(.method) \(.path) (\(.operation_id))"' "$JSON")"
             body="$(printf 'Modeled, but lagging these ops — extend the existing resource via a manual PR:\n%s' "$ops")"
             post_slack "⚠️ Coverage gap: $tag" "$body"
           done < <(jq -r '[.unclaimed_operations[].tag] | unique | .[]' "$JSON")
@@ -194,9 +203,8 @@ jobs:
           # on a cron. (Harmless today: workflow_dispatch is the only trigger.)
           while IFS= read -r tag; do
             [ -n "$tag" ] || continue
-            # shellcheck disable=SC2016  # backticks are literal Slack mrkdwn, not command subst
-            body="$(printf 'Acknowledged but undecided — decide whether it belongs in Terraform BEFORE dispatching. If yes:\n<%s|▶ Scaffold it> · `gh workflow run scaffold-resource.yml -f family='"'"'%s'"'"'`' \
-              "$ACTIONS_URL" "$tag")"
+            body="$(printf 'Acknowledged but undecided — decide whether it belongs in Terraform before dispatching.\n\nRun:\n%s\n\nActions page: %s' \
+              "$(scaffold_cmd "$tag")" "$ACTIONS_URL")"
             post_slack "⚠️ Triage family: $tag" "$body"
           done < <(jq -r '.triage_families[]' "$JSON")
 
