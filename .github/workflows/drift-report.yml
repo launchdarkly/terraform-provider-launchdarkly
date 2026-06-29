@@ -75,10 +75,16 @@ jobs:
           # the notify step also fires when any exist. Count only — names are roadmap.
           triage="$(jq '.triage_families | length' drift-report.json 2>/dev/null || echo 0)"
           echo "triage=$triage" >> "$GITHUB_OUTPUT"
-          # PUBLIC-REPO SAFETY: this run's logs/summary are world-readable, so
-          # only the yes/no fact lands here. Detail goes to the private channel.
+          # PUBLIC-REPO SAFETY: this run's logs/summary are world-readable, so only
+          # the yes/no drift fact + the triage-family COUNT land here (the count is
+          # already derivable from the public mapping.yaml). The roadmap — family
+          # names/paths/operationIds — goes only to the private Slack channel. The
+          # triage branch mirrors the drift branch's "detail sent to Slack" note so a
+          # green "no drift" run that still posted (triage families) isn't a surprise.
           if [ "$drift" = "true" ]; then
             echo "Drift detected — detail sent to the private Slack channel." >> "$GITHUB_STEP_SUMMARY"
+          elif [ "$triage" != "0" ]; then
+            echo "No drift detected. $triage family(ies) pending triage — detail sent to the private Slack channel." >> "$GITHUB_STEP_SUMMARY"
           else
             echo "No drift detected." >> "$GITHUB_STEP_SUMMARY"
           fi
