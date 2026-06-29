@@ -12,7 +12,12 @@
 #   2. one message per NEW endpoint family, each carrying the family's paths and
 #      a one-click link + CLI to dispatch the stage-2 scaffold workflow for it,
 #   3. one message per partial family with UNCLAIMED operations (informational —
-#      stage 2 only scaffolds NEW resources, so these need a manual PR).
+#      stage 2 only scaffolds NEW resources, so these need a manual PR),
+#   4. one message per TRIAGE family (status: triage — acknowledged but the
+#      coverage decision is still pending). NOT drift; these carry a scaffold
+#      link too (whole-family mode accepts any spec tag) but the wording keeps
+#      the "decide scope FIRST" human gate explicit. The notify step therefore
+#      runs when there is drift OR any triage family — not on drift alone.
 # Messages are POSTed individually to a SINGLE generic Slack Workflow Builder
 # webhook trigger. That trigger must declare exactly two Text variables —
 # `title` and `body` — and a "Send a message" step into the private channel.
@@ -66,10 +71,20 @@ jobs:
           fi
           drift=$([ "$code" -eq 2 ] && echo true || echo false)
           echo "drift=$drift" >> "$GITHUB_OUTPUT"
-          # PUBLIC-REPO SAFETY: this run's logs/summary are world-readable, so
-          # only the yes/no fact lands here. Detail goes to the private channel.
+          # Triage families (status: triage) are NOT drift but ARE dispatchable, so
+          # the notify step also fires when any exist. Count only — names are roadmap.
+          triage="$(jq '.triage_families | length' drift-report.json 2>/dev/null || echo 0)"
+          echo "triage=$triage" >> "$GITHUB_OUTPUT"
+          # PUBLIC-REPO SAFETY: this run's logs/summary are world-readable, so only
+          # the yes/no drift fact + the triage-family COUNT land here (the count is
+          # already derivable from the public mapping.yaml). The roadmap — family
+          # names/paths/operationIds — goes only to the private Slack channel. The
+          # triage branch mirrors the drift branch's "detail sent to Slack" note so a
+          # green "no drift" run that still posted (triage families) isn't a surprise.
           if [ "$drift" = "true" ]; then
             echo "Drift detected — detail sent to the private Slack channel." >> "$GITHUB_STEP_SUMMARY"
+          elif [ "$triage" != "0" ]; then
+            echo "No drift detected. $triage family(ies) pending triage — detail sent to the private Slack channel." >> "$GITHUB_STEP_SUMMARY"
           else
             echo "No drift detected." >> "$GITHUB_STEP_SUMMARY"
           fi
@@ -77,8 +92,8 @@ jobs:
       # Each POST carries {title, body}; the Workflow Builder trigger renders
       # them. PUBLIC-REPO SAFETY: family names / paths / operationIds are the
       # internal roadmap — they are passed only to curl, NEVER echoed to the log.
-      - name: Notify Slack on drift
-        if: steps.drift.outputs.drift == 'true'
+      - name: Notify Slack (drift + triage backlog)
+        if: steps.drift.outputs.drift == 'true' || steps.drift.outputs.triage != '0'
         shell: bash
         env:
           WEBHOOK: ${{ secrets.SLACK_DRIFT_WEBHOOK_URL }}
@@ -117,13 +132,16 @@ jobs:
                lbl(.stale_families | length;         "stale family";         "stale families"),
                lbl(.stale_operations | length;       "stale op claim";       "stale op claims"),
                lbl(.unmapped_resources | length;     "unmapped resource";    "unmapped resources"),
-               lbl(.registered_candidates | length;  "miscurated candidate"; "miscurated candidates")
+               lbl(.registered_candidates | length;  "miscurated candidate"; "miscurated candidates"),
+               lbl(.triage_families | length;        "triage family";        "triage families")
              ] | join(" · ")) +
             (([.new_families[].tag] + [.scaffoldable_resources[].name]) as $s
              | if ($s | length) > 0 then "\nScaffoldable: " + ($s | join(", ")) else "" end) +
+            (.triage_families as $t
+             | if ($t | length) > 0 then "\nTriage backlog (decide scope, then dispatch): " + ($t | join(", ")) else "" end) +
             "\n<\($run)|drift run>"
           ' "$JSON")"
-          post_slack "🔎 API coverage drift" "$summary_body"
+          post_slack "🔎 API coverage report" "$summary_body"
 
           # 2) One message per NEW family — scaffoldable via stage 2. Paths inline,
           # scaffold link + CLI on one line.
@@ -161,5 +179,25 @@ jobs:
             body="$(printf 'Modeled, but lagging these ops — extend the existing resource via a manual PR:\n%s' "$ops")"
             post_slack "⚠️ Coverage gap: $tag" "$body"
           done < <(jq -r '[.unclaimed_operations[].tag] | unique | .[]' "$JSON")
+
+          # 4) One message per TRIAGE family (status: triage) — acknowledged but the
+          # coverage decision is still pending, so NOT drift. These never surfaced here
+          # before (the notify step used to gate on drift alone). They ARE dispatchable:
+          # scaffold-resource.yml whole-family mode accepts any spec tag and pulls the
+          # slice itself. The wording keeps the "decide scope FIRST" human gate explicit
+          # so a parked family isn't mistaken for a decided/ready one. The report carries
+          # no paths for triage families (they have no resources/operations block), so
+          # the body links to the family's spec endpoints via the dispatch, not inline.
+          # FUTURE CRON: when a weekly schedule lands (see the `on:` block), gate THIS
+          # loop behind `[ "$GITHUB_EVENT_NAME" = workflow_dispatch ]` so the static
+          # triage backlog isn't re-posted every week — only genuine drift should alert
+          # on a cron. (Harmless today: workflow_dispatch is the only trigger.)
+          while IFS= read -r tag; do
+            [ -n "$tag" ] || continue
+            # shellcheck disable=SC2016  # backticks are literal Slack mrkdwn, not command subst
+            body="$(printf 'Acknowledged but undecided — decide whether it belongs in Terraform BEFORE dispatching. If yes:\n<%s|▶ Scaffold it> · `gh workflow run scaffold-resource.yml -f family='"'"'%s'"'"'`' \
+              "$ACTIONS_URL" "$tag")"
+            post_slack "⚠️ Triage family: $tag" "$body"
+          done < <(jq -r '.triage_families[]' "$JSON")
 
           echo "Posted $sent Slack message(s)."
