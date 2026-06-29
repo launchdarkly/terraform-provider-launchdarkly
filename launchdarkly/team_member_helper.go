@@ -16,10 +16,10 @@ func getTeamMemberByEmail(client *Client, memberEmail string) (*ldapi.Member, er
 	expand := "roleAttributes"
 	members, err := getMembersPaginated(client, &emailFilter, &expand, nil, 1, nil)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to get team member %q: %v", memberEmail, handleLdapiErr(err))
+		return nil, fmt.Errorf("failed to get team member %q: %v", memberEmail, handleLdapiErr(err))
 	}
 	if len(members) < 1 {
-		return nil, fmt.Errorf("No member found with email %q", memberEmail)
+		return nil, fmt.Errorf("no member found with email %q", memberEmail)
 	}
 	return &members[0], nil
 }
