@@ -732,7 +732,7 @@ func TestAccFeatureFlagEnvironment_Update(t *testing.T) {
 					testAccCheckFeatureFlagEnvironmentExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, ON, "false"),
 					resource.TestCheckResourceAttr(resourceName, "fallthrough.variation", "1"),
-					resource.TestCheckResourceAttr(resourceName, "fallthrough.rollout.#", "0"),
+					resource.TestCheckResourceAttr(resourceName, "fallthrough.rollout_weights.#", "0"),
 					resource.TestCheckResourceAttr(resourceName, "targets.#", "1"),
 					resource.TestCheckResourceAttr(resourceName, "targets.0.values.0", "user1"),
 					resource.TestCheckResourceAttr(resourceName, "targets.0.variation", "0"),
