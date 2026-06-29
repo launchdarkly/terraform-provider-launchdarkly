@@ -30,9 +30,9 @@ type FeatureFlagDataSourceModel struct {
 	VariationType          types.String `tfsdk:"variation_type"`
 	Variations             types.List   `tfsdk:"variations"`
 	Temporary              types.Bool   `tfsdk:"temporary"`
-	ClientSideAvailability types.List   `tfsdk:"client_side_availability"`
+	ClientSideAvailability types.Object `tfsdk:"client_side_availability"`
 	CustomProperties       types.Set    `tfsdk:"custom_properties"`
-	Defaults               types.List   `tfsdk:"defaults"`
+	Defaults               types.Object `tfsdk:"defaults"`
 	Archived               types.Bool   `tfsdk:"archived"`
 	Deprecated             types.Bool   `tfsdk:"deprecated"`
 	ViewKeys               types.Set    `tfsdk:"view_keys"`
@@ -109,14 +109,12 @@ func (d *FeatureFlagDataSource) Schema(_ context.Context, _ datasource.SchemaReq
 					},
 				},
 			},
-			CLIENT_SIDE_AVAILABILITY: schema.ListNestedAttribute{
+			CLIENT_SIDE_AVAILABILITY: schema.SingleNestedAttribute{
 				Computed:    true,
 				Description: "Client-side availability settings.",
-				NestedObject: schema.NestedAttributeObject{
-					Attributes: map[string]schema.Attribute{
-						USING_ENVIRONMENT_ID: schema.BoolAttribute{Computed: true},
-						USING_MOBILE_KEY:     schema.BoolAttribute{Computed: true},
-					},
+				Attributes: map[string]schema.Attribute{
+					USING_ENVIRONMENT_ID: schema.BoolAttribute{Computed: true},
+					USING_MOBILE_KEY:     schema.BoolAttribute{Computed: true},
 				},
 			},
 			CUSTOM_PROPERTIES: schema.SetNestedAttribute{
@@ -133,14 +131,12 @@ func (d *FeatureFlagDataSource) Schema(_ context.Context, _ datasource.SchemaReq
 					},
 				},
 			},
-			DEFAULTS: schema.ListNestedAttribute{
+			DEFAULTS: schema.SingleNestedAttribute{
 				Computed:    true,
 				Description: "Default variation indices for new environments.",
-				NestedObject: schema.NestedAttributeObject{
-					Attributes: map[string]schema.Attribute{
-						ON_VARIATION:  schema.Int64Attribute{Computed: true},
-						OFF_VARIATION: schema.Int64Attribute{Computed: true},
-					},
+				Attributes: map[string]schema.Attribute{
+					ON_VARIATION:  schema.Int64Attribute{Computed: true},
+					OFF_VARIATION: schema.Int64Attribute{Computed: true},
 				},
 			},
 		},
@@ -205,10 +201,6 @@ func (d *FeatureFlagDataSource) Read(ctx context.Context, req datasource.ReadReq
 	resp.Diagnostics.Append(diags...)
 	data.Tags = tagsSet
 
-	csaType := types.ObjectType{AttrTypes: map[string]attr.Type{
-		USING_ENVIRONMENT_ID: types.BoolType,
-		USING_MOBILE_KEY:     types.BoolType,
-	}}
 	usingEnvID := false
 	usingMobile := false
 	if flag.ClientSideAvailability != nil {
@@ -228,9 +220,7 @@ func (d *FeatureFlagDataSource) Read(ctx context.Context, req datasource.ReadReq
 		USING_MOBILE_KEY:     types.BoolValue(usingMobile),
 	})
 	resp.Diagnostics.Append(diags...)
-	csaList, diags := types.ListValue(csaType, []attr.Value{csaObj})
-	resp.Diagnostics.Append(diags...)
-	data.ClientSideAvailability = csaList
+	data.ClientSideAvailability = csaObj
 
 	// variations
 	variationType, err := variationsToVariationType(flag.Variations)
@@ -290,7 +280,6 @@ func (d *FeatureFlagDataSource) Read(ctx context.Context, req datasource.ReadReq
 	data.CustomProperties = cpSet
 
 	// defaults
-	defaultsObjectType := types.ObjectType{AttrTypes: featureFlagDefaultsAttrTypes}
 	var on, off int64
 	if flag.Defaults != nil {
 		on = int64(flag.Defaults.OnVariation)
@@ -304,9 +293,7 @@ func (d *FeatureFlagDataSource) Read(ctx context.Context, req datasource.ReadReq
 		OFF_VARIATION: types.Int64Value(off),
 	})
 	resp.Diagnostics.Append(diags...)
-	defaultsList, diags := types.ListValue(defaultsObjectType, []attr.Value{defaultsObj})
-	resp.Diagnostics.Append(diags...)
-	data.Defaults = defaultsList
+	data.Defaults = defaultsObj
 
 	// view associations (best-effort)
 	viewKeys := []string{}

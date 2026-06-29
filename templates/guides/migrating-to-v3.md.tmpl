@@ -30,6 +30,17 @@ resource "launchdarkly_feature_flag" "example" {
 }
 ```
 
+Four attributes hold exactly one object rather than a list, so they use object syntax — a bare `{ ... }` with no brackets: `client_side_availability` and `defaults` on `launchdarkly_feature_flag`, `default_client_side_availability` on `launchdarkly_project`, and `fallthrough` on `launchdarkly_feature_flag_environment`. The `migrate-tf-syntax` tool emits this form for you:
+
+```hcl
+# v2 block syntax            # v3 object syntax (no brackets)
+client_side_availability {   client_side_availability = {
+  using_environment_id = true  using_environment_id = true
+}                            }
+```
+
+When you read one of these from a data source, use object access without a list index: `data.launchdarkly_feature_flag.x.client_side_availability.using_environment_id`.
+
 ## Prerequisites
 
 You need the following things to complete this migration:

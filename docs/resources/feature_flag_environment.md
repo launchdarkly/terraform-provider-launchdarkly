@@ -67,11 +67,11 @@ resource "launchdarkly_feature_flag_environment" "number_ff_env" {
     variation = 0
   }]
 
-  fallthrough = [{
+  fallthrough = {
     rollout_weights = [60000, 40000, 0]
     context_kind    = "account"
     bucket_by       = "accountId"
-  }]
+  }
   off_variation = 2
 }
 
@@ -82,9 +82,9 @@ resource "launchdarkly_feature_flag_environment" "basic_flag_environment" {
 
   on = true
 
-  fallthrough = [{
+  fallthrough = {
     variation = 1
-  }]
+  }
   off_variation = 0
 }
 
@@ -182,9 +182,9 @@ resource "launchdarkly_feature_flag_environment" "big_flag_environment" {
     context_kind    = "account"
   }]
 
-  fallthrough = [{
+  fallthrough = {
     variation = 1
-  }]
+  }
   off_variation = 0
 }
 ```
@@ -195,7 +195,7 @@ resource "launchdarkly_feature_flag_environment" "big_flag_environment" {
 ### Required
 
 - `env_key` (String) The environment key. A change in this field will force the destruction of the existing resource and the creation of a new one.
-- `fallthrough` (Attributes List) The default variation to serve if no `prerequisites`, `target`, or `rules` apply. (see [below for nested schema](#nestedatt--fallthrough))
+- `fallthrough` (Attributes) The default variation to serve if no `prerequisites`, `target`, or `rules` apply. (see [below for nested schema](#nestedatt--fallthrough))
 - `flag_id` (String) The feature flag's unique `id` in the format `project_key/flag_key`. A change in this field will force the destruction of the existing resource and the creation of a new one.
 - `off_variation` (Number) The index of the variation to serve if targeting is disabled.
 

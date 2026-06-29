@@ -30,11 +30,15 @@ import (
 //go:embed mappings.json
 var defaultMappings []byte
 
-// AttrSpec describes one attribute that switched from a block to a list-of-objects nested attribute.
+// AttrSpec describes one attribute that switched from a block to a nested attribute.
 // Nested holds child specs for attributes that themselves contain converted blocks (e.g. rules ⊃ clauses).
+// Object marks a genuine single-object attribute (provider v3.x SingleNestedAttribute): forward emits
+// `name = { ... }` and reverse parses that object back to a block, instead of the list-of-objects
+// `name = [{ ... }]` shape used by List/SetNestedAttribute. See REL-14237.
 type AttrSpec struct {
 	Name   string      `json:"name"`
 	Nested []*AttrSpec `json:"nested,omitempty"`
+	Object bool        `json:"object,omitempty"`
 }
 
 // DeprecationSpec describes an attribute that was removed from the provider schema between v2 and v3.
@@ -66,10 +70,14 @@ type DeprecationSpec struct {
 //     preserved (e.g. `[0].using_environment_id`).
 //   - ToExpr set: replace the whole prefix (`data.X.Y.from` → `data.X.Y.<to-expr>`). Use when the
 //     v3 access path is structurally different.
+//   - StripIndex: when the v3 target is a single object (not a list), drop a single trailing list
+//     index (`[0]` or `.0`) that immediately follows the matched attribute, so a v2 list access like
+//     `data.X.Y.from[0].z` becomes `data.X.Y.to.z`. Applies to To and ToExpr rewrites alike.
 type DSAttrRewrite struct {
-	From   string `json:"from"`
-	To     string `json:"to,omitempty"`
-	ToExpr string `json:"to_expr,omitempty"`
+	From       string `json:"from"`
+	To         string `json:"to,omitempty"`
+	ToExpr     string `json:"to_expr,omitempty"`
+	StripIndex bool   `json:"strip_index,omitempty"`
 }
 
 // ResourceSpec bundles all rewrite operations that apply to one resource type. DSAttrRewrites apply
@@ -254,7 +262,15 @@ func applyDSAttrRewrites(src []byte, spec Spec) ([]byte, bool) {
 			if rw.From == "" {
 				continue
 			}
-			re := regexp.MustCompile(`\bdata\.` + regexp.QuoteMeta(label) + `\.([A-Za-z_][A-Za-z0-9_]*)\.` + regexp.QuoteMeta(rw.From) + `\b`)
+			idxSuffix := ""
+			if rw.StripIndex {
+				// Also consume a single trailing list index so a v2 list access
+				// (`...from[0].z` / `...from.0.z`) collapses to the v3 object
+				// access (`...to.z`). The index is outside any capture group and
+				// absent from the replacement, so it is dropped.
+				idxSuffix = `(?:\[0\]|\.0)?`
+			}
+			re := regexp.MustCompile(`\bdata\.` + regexp.QuoteMeta(label) + `\.([A-Za-z_][A-Za-z0-9_]*)\.` + regexp.QuoteMeta(rw.From) + `\b` + idxSuffix)
 			var repl string
 			switch {
 			case rw.ToExpr != "":
@@ -309,20 +325,36 @@ func forward(body *hclwrite.Body, specs []*AttrSpec, where string) bool {
 				forward(b.Body(), s.Nested, where)
 			}
 		}
-		tokens := hclwrite.Tokens{
-			{Type: hclsyntax.TokenOBrack, Bytes: []byte("[")},
-		}
-		for i, b := range matched {
-			tokens = append(tokens, &hclwrite.Token{Type: hclsyntax.TokenOBrace, Bytes: []byte("{")})
-			tokens = append(tokens, &hclwrite.Token{Type: hclsyntax.TokenNewline, Bytes: []byte("\n")})
-			tokens = append(tokens, trimLeadingNewlines(b.Body().BuildTokens(nil))...)
-			tokens = append(tokens, &hclwrite.Token{Type: hclsyntax.TokenCBrace, Bytes: []byte("}")})
-			if i < len(matched)-1 {
-				tokens = append(tokens, &hclwrite.Token{Type: hclsyntax.TokenComma, Bytes: []byte(",")})
-				tokens = append(tokens, &hclwrite.Token{Type: hclsyntax.TokenNewline, Bytes: []byte("\n")})
+		var tokens hclwrite.Tokens
+		if s.Object {
+			// Single-object attribute (v3 SingleNestedAttribute): emit `name = { ... }`.
+			// A valid v2 config has exactly one block (the SDKv2 schema was MaxItems:1);
+			// if more are present we take the first and warn rather than emit invalid HCL.
+			if len(matched) > 1 {
+				warnf("%s: %q is a single-object attribute but %d blocks were found; using the first", where, s.Name, len(matched))
 			}
+			tokens = hclwrite.Tokens{
+				{Type: hclsyntax.TokenOBrace, Bytes: []byte("{")},
+				{Type: hclsyntax.TokenNewline, Bytes: []byte("\n")},
+			}
+			tokens = append(tokens, trimLeadingNewlines(matched[0].Body().BuildTokens(nil))...)
+			tokens = append(tokens, &hclwrite.Token{Type: hclsyntax.TokenCBrace, Bytes: []byte("}")})
+		} else {
+			tokens = hclwrite.Tokens{
+				{Type: hclsyntax.TokenOBrack, Bytes: []byte("[")},
+			}
+			for i, b := range matched {
+				tokens = append(tokens, &hclwrite.Token{Type: hclsyntax.TokenOBrace, Bytes: []byte("{")})
+				tokens = append(tokens, &hclwrite.Token{Type: hclsyntax.TokenNewline, Bytes: []byte("\n")})
+				tokens = append(tokens, trimLeadingNewlines(b.Body().BuildTokens(nil))...)
+				tokens = append(tokens, &hclwrite.Token{Type: hclsyntax.TokenCBrace, Bytes: []byte("}")})
+				if i < len(matched)-1 {
+					tokens = append(tokens, &hclwrite.Token{Type: hclsyntax.TokenComma, Bytes: []byte(",")})
+					tokens = append(tokens, &hclwrite.Token{Type: hclsyntax.TokenNewline, Bytes: []byte("\n")})
+				}
+			}
+			tokens = append(tokens, &hclwrite.Token{Type: hclsyntax.TokenCBrack, Bytes: []byte("]")})
 		}
-		tokens = append(tokens, &hclwrite.Token{Type: hclsyntax.TokenCBrack, Bytes: []byte("]")})
 		for _, b := range matched {
 			body.RemoveBlock(b)
 		}
@@ -340,6 +372,18 @@ func reverse(body *hclwrite.Body, specs []*AttrSpec) bool {
 	for _, s := range specs {
 		attr := body.GetAttribute(s.Name)
 		if attr == nil {
+			continue
+		}
+		if s.Object {
+			// v3 single object `name = { ... }` → v2 block `name { ... }`.
+			elem := extractObjectBody(attr.Expr().BuildTokens(nil))
+			if len(elem) == 0 {
+				continue
+			}
+			body.RemoveAttribute(s.Name)
+			newBlock := body.AppendNewBlock(s.Name, nil)
+			newBlock.Body().AppendUnstructuredTokens(ensureTrailingNewline(trimLeadingNewlines(elem)))
+			changed = true
 			continue
 		}
 		elems := extractTupleElements(attr.Expr().BuildTokens(nil))
@@ -500,12 +544,13 @@ func dropOrConvertIISToCSA(body *hclwrite.Body, name, to, mobile string) bool {
 	// Read the IIS expression tokens (right-hand side only) and trim surrounding whitespace.
 	exprTokens := iisAttr.Expr().BuildTokens(nil)
 	exprTokens = trimLeadingNewlines(exprTokens)
-	// Build the replacement attribute tokens: to = [{
+	// Build the replacement single-object attribute tokens (v3 models
+	// client_side_availability / default_client_side_availability as
+	// SingleNestedAttribute — see REL-14237): to = {
 	//   using_environment_id = <iis-expr>
 	//   using_mobile_key     = false
-	// }]
+	// }
 	tokens := hclwrite.Tokens{
-		{Type: hclsyntax.TokenOBrack, Bytes: []byte("[")},
 		{Type: hclsyntax.TokenOBrace, Bytes: []byte("{")},
 		{Type: hclsyntax.TokenNewline, Bytes: []byte("\n")},
 		{Type: hclsyntax.TokenIdent, Bytes: []byte("using_environment_id")},
@@ -519,7 +564,6 @@ func dropOrConvertIISToCSA(body *hclwrite.Body, name, to, mobile string) bool {
 		&hclwrite.Token{Type: hclsyntax.TokenIdent, Bytes: []byte(mobile)},
 		&hclwrite.Token{Type: hclsyntax.TokenNewline, Bytes: []byte("\n")},
 		&hclwrite.Token{Type: hclsyntax.TokenCBrace, Bytes: []byte("}")},
-		&hclwrite.Token{Type: hclsyntax.TokenCBrack, Bytes: []byte("]")},
 	)
 	body.RemoveAttribute(name)
 	body.SetAttributeRaw(to, tokens)
@@ -631,6 +675,35 @@ func extractTupleElements(tokens hclwrite.Tokens) []hclwrite.Tokens {
 		}
 	}
 	return elems
+}
+
+// extractObjectBody returns the inner tokens of a single object expression `{ ... }` (excluding the
+// outer braces). Used by the reverse direction for single-object (SingleNestedAttribute) attributes,
+// which serialize as `name = { ... }` rather than the `name = [{ ... }]` tuple shape.
+func extractObjectBody(tokens hclwrite.Tokens) hclwrite.Tokens {
+	i := 0
+	for ; i < len(tokens); i++ {
+		if tokens[i].Type == hclsyntax.TokenOBrace {
+			i++
+			break
+		}
+	}
+	brace := 1
+	var elem hclwrite.Tokens
+	for i < len(tokens) && brace > 0 {
+		switch tokens[i].Type {
+		case hclsyntax.TokenOBrace:
+			brace++
+		case hclsyntax.TokenCBrace:
+			brace--
+			if brace == 0 {
+				return elem
+			}
+		}
+		elem = append(elem, tokens[i])
+		i++
+	}
+	return elem
 }
 
 // tokensString renders tokens to their textual form preserving leading spaces (used when we need to

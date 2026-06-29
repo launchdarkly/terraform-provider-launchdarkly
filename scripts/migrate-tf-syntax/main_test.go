@@ -138,13 +138,65 @@ func TestApplyDeprecationsIISToCSA(t *testing.T) {
 	}
 	out := string(hclwrite.Format(f.Bytes()))
 	for _, want := range []*regexp.Regexp{
-		regexp.MustCompile(`client_side_availability = \[\{`),
+		// client_side_availability is a single object (SingleNestedAttribute) in v3.
+		regexp.MustCompile(`client_side_availability = \{`),
 		regexp.MustCompile(`using_environment_id\s+= var\.snippet`),
 		regexp.MustCompile(`using_mobile_key\s+= false`),
 	} {
 		if !want.MatchString(out) {
 			t.Errorf("missing %v in:\n%s", want, out)
 		}
+	}
+	if strings.Contains(out, "client_side_availability = [{") {
+		t.Errorf("must not emit list syntax for the single-object client_side_availability:\n%s", out)
+	}
+}
+
+func TestForwardConvertsObjectBlock(t *testing.T) {
+	src := `resource "launchdarkly_feature_flag" "f" {
+  client_side_availability {
+    using_environment_id = true
+    using_mobile_key     = false
+  }
+}
+`
+	f, body := parseBody(t, src)
+	if !forward(body, []*AttrSpec{{Name: "client_side_availability", Object: true}}, "test.tf") {
+		t.Fatal("expected conversion")
+	}
+	out := string(hclwrite.Format(f.Bytes()))
+	if !strings.Contains(out, "client_side_availability = {") {
+		t.Errorf("expected single-object syntax, got:\n%s", out)
+	}
+	if strings.Contains(out, "client_side_availability = [{") {
+		t.Errorf("object attribute must not be wrapped in a list:\n%s", out)
+	}
+	if _, diag := hclwrite.ParseConfig([]byte(out), "out.tf", hcl.Pos{Line: 1, Column: 1}); diag.HasErrors() {
+		t.Errorf("converted output does not parse: %s", diag)
+	}
+}
+
+func TestReverseObjectBlock(t *testing.T) {
+	src := `resource "launchdarkly_feature_flag" "f" {
+  client_side_availability = {
+    using_environment_id = true
+    using_mobile_key     = false
+  }
+}
+`
+	f, body := parseBody(t, src)
+	if !reverse(body, []*AttrSpec{{Name: "client_side_availability", Object: true}}) {
+		t.Fatal("expected reverse conversion")
+	}
+	out := string(hclwrite.Format(f.Bytes()))
+	if !regexp.MustCompile(`client_side_availability\s*\{`).MatchString(out) {
+		t.Errorf("expected block syntax, got:\n%s", out)
+	}
+	if strings.Contains(out, "client_side_availability = {") || strings.Contains(out, "client_side_availability = [") {
+		t.Errorf("reverse must drop the attribute-assignment form:\n%s", out)
+	}
+	if _, diag := hclwrite.ParseConfig([]byte(out), "out.tf", hcl.Pos{Line: 1, Column: 1}); diag.HasErrors() {
+		t.Errorf("reversed output does not parse: %s", diag)
 	}
 }
 
@@ -200,16 +252,48 @@ func TestEnsureBooleanVariations(t *testing.T) {
 }
 
 func TestApplyDSAttrRewrites(t *testing.T) {
+	// default_client_side_availability is a single object in v3, so the rename also
+	// strips the v2 list index ([0]) that followed the old list-shaped attribute.
 	src := []byte(`output "csa" {
   value = data.launchdarkly_project.p.client_side_availability[0].using_environment_id
 }
 `)
-	spec := Spec{"launchdarkly_project": {DSAttrRewrites: []*DSAttrRewrite{{From: "client_side_availability", To: "default_client_side_availability"}}}}
+	spec := Spec{"launchdarkly_project": {DSAttrRewrites: []*DSAttrRewrite{{From: "client_side_availability", To: "default_client_side_availability", StripIndex: true}}}}
 	out, changed := applyDSAttrRewrites(src, spec)
 	if !changed {
 		t.Fatal("expected rewrite")
 	}
-	if !strings.Contains(string(out), "data.launchdarkly_project.p.default_client_side_availability[0].using_environment_id") {
-		t.Errorf("reference not renamed:\n%s", out)
+	if !strings.Contains(string(out), "data.launchdarkly_project.p.default_client_side_availability.using_environment_id") {
+		t.Errorf("reference not renamed / index not stripped:\n%s", out)
+	}
+	if strings.Contains(string(out), "default_client_side_availability[0]") {
+		t.Errorf("list index must be stripped for the single-object attribute:\n%s", out)
+	}
+}
+
+func TestApplyDSAttrRewritesStripIndexToExpr(t *testing.T) {
+	// feature_flag include_in_snippet → client_side_availability.using_environment_id.
+	// A v2 reader that indexed the list ([0]) must collapse to the v3 object access.
+	src := []byte(`output "iis" {
+  value = data.launchdarkly_feature_flag.f.include_in_snippet
+}
+output "iis_indexed" {
+  value = data.launchdarkly_feature_flag.f.client_side_availability[0].using_mobile_key
+}
+`)
+	spec := Spec{"launchdarkly_feature_flag": {DSAttrRewrites: []*DSAttrRewrite{
+		{From: "include_in_snippet", ToExpr: "client_side_availability.using_environment_id"},
+		{From: "client_side_availability", ToExpr: "client_side_availability", StripIndex: true},
+	}}}
+	out, changed := applyDSAttrRewrites(src, spec)
+	if !changed {
+		t.Fatal("expected rewrite")
+	}
+	s := string(out)
+	if !strings.Contains(s, "data.launchdarkly_feature_flag.f.client_side_availability.using_environment_id") {
+		t.Errorf("include_in_snippet not rewritten to object access:\n%s", s)
+	}
+	if !strings.Contains(s, "data.launchdarkly_feature_flag.f.client_side_availability.using_mobile_key") {
+		t.Errorf("list index not stripped:\n%s", s)
 	}
 }

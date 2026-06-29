@@ -23,15 +23,15 @@ resource "launchdarkly_feature_flag" "building_materials" {
     },
   ]
 
-  client_side_availability = [{
+  client_side_availability = {
     using_environment_id = false
     using_mobile_key     = true
-  }]
+  }
 
-  defaults = [{
+  defaults = {
     on_variation  = 2
     off_variation = 0
-  }]
+  }
 
   tags = [
     "example",
@@ -58,10 +58,10 @@ resource "launchdarkly_feature_flag" "json_example" {
     },
   ]
 
-  defaults = [{
+  defaults = {
     on_variation  = 1
     off_variation = 0
-  }]
+  }
 }
 
 # Example: Feature flag with view associations

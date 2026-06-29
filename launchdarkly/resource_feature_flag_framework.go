@@ -26,6 +26,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	ldapi "github.com/launchdarkly/api-client-go/v22"
 )
 
@@ -53,9 +54,9 @@ type FeatureFlagResourceModel struct {
 	VariationType          types.String `tfsdk:"variation_type"`
 	Variations             types.List   `tfsdk:"variations"`
 	Temporary              types.Bool   `tfsdk:"temporary"`
-	ClientSideAvailability types.List   `tfsdk:"client_side_availability"`
+	ClientSideAvailability types.Object `tfsdk:"client_side_availability"`
 	CustomProperties       types.Set    `tfsdk:"custom_properties"`
-	Defaults               types.List   `tfsdk:"defaults"`
+	Defaults               types.Object `tfsdk:"defaults"`
 	Archived               types.Bool   `tfsdk:"archived"`
 	Deprecated             types.Bool   `tfsdk:"deprecated"`
 	ViewKeys               types.Set    `tfsdk:"view_keys"`
@@ -197,22 +198,19 @@ func featureFlagSchemaAttributes() map[string]schema.Attribute {
 				},
 			},
 		},
-		CLIENT_SIDE_AVAILABILITY: schema.ListNestedAttribute{
+		CLIENT_SIDE_AVAILABILITY: schema.SingleNestedAttribute{
 			Optional:    true,
 			Description: "Whether this flag should be made available to the client-side JavaScript SDK using the client-side Id, mobile key, or both. This value gets its default from your project configuration if not set. Once set, if removed, it will retain its last set value.",
-			Validators:  []validator.List{listvalidator.SizeAtMost(1)},
-			NestedObject: schema.NestedAttributeObject{
-				Attributes: map[string]schema.Attribute{
-					USING_ENVIRONMENT_ID: schema.BoolAttribute{
-						Optional:    true,
-						Computed:    true,
-						Description: "Whether this flag is available to SDKs using the client-side ID.",
-					},
-					USING_MOBILE_KEY: schema.BoolAttribute{
-						Optional:    true,
-						Computed:    true,
-						Description: "Whether this flag is available to SDKs using a mobile key.",
-					},
+			Attributes: map[string]schema.Attribute{
+				USING_ENVIRONMENT_ID: schema.BoolAttribute{
+					Optional:    true,
+					Computed:    true,
+					Description: "Whether this flag is available to SDKs using the client-side ID.",
+				},
+				USING_MOBILE_KEY: schema.BoolAttribute{
+					Optional:    true,
+					Computed:    true,
+					Description: "Whether this flag is available to SDKs using a mobile key.",
 				},
 			},
 		},
@@ -244,30 +242,27 @@ func featureFlagSchemaAttributes() map[string]schema.Attribute {
 				},
 			},
 		},
-		DEFAULTS: schema.ListNestedAttribute{
+		DEFAULTS: schema.SingleNestedAttribute{
 			Optional:    true,
 			Description: "The indices of the variations to be used as the default on and off variations in all new environments. Flag configurations in existing environments will not be changed nor updated if removed.",
-			Validators:  []validator.List{listvalidator.SizeAtMost(1)},
-			NestedObject: schema.NestedAttributeObject{
-				Attributes: map[string]schema.Attribute{
-					ON_VARIATION: schema.Int64Attribute{
-						Required:    true,
-						Validators:  []validator.Int64{int64validator.AtLeast(0)},
-						Description: "The index of the variation the flag will default to in all new environments when on.",
-					},
-					OFF_VARIATION: schema.Int64Attribute{
-						Required:    true,
-						Validators:  []validator.Int64{int64validator.AtLeast(0)},
-						Description: "The index of the variation the flag will default to in all new environments when off.",
-					},
+			Attributes: map[string]schema.Attribute{
+				ON_VARIATION: schema.Int64Attribute{
+					Required:    true,
+					Validators:  []validator.Int64{int64validator.AtLeast(0)},
+					Description: "The index of the variation the flag will default to in all new environments when on.",
+				},
+				OFF_VARIATION: schema.Int64Attribute{
+					Required:    true,
+					Validators:  []validator.Int64{int64validator.AtLeast(0)},
+					Description: "The index of the variation the flag will default to in all new environments when off.",
 				},
 			},
 		},
 	}
 }
 
-func featureFlagDefaultsMatchesAPIShape(ctx context.Context, defaults types.List, variations types.List) bool {
-	if defaults.IsNull() || defaults.IsUnknown() || len(defaults.Elements()) != 1 {
+func featureFlagDefaultsMatchesAPIShape(ctx context.Context, defaults types.Object, variations types.List) bool {
+	if defaults.IsNull() || defaults.IsUnknown() {
 		return false
 	}
 	if variations.IsNull() || variations.IsUnknown() {
@@ -281,29 +276,29 @@ func featureFlagDefaultsMatchesAPIShape(ctx context.Context, defaults types.List
 		OnVariation  int64 `tfsdk:"on_variation"`
 		OffVariation int64 `tfsdk:"off_variation"`
 	}
-	var items []defaultsItem
-	d := defaults.ElementsAs(ctx, &items, false)
-	if d.HasError() || len(items) != 1 {
+	var item defaultsItem
+	d := defaults.As(ctx, &item, basetypes.ObjectAsOptions{})
+	if d.HasError() {
 		return false
 	}
-	return items[0].OnVariation == 0 && items[0].OffVariation == int64(variationCount-1)
+	return item.OnVariation == 0 && item.OffVariation == int64(variationCount-1)
 }
 
-func featureFlagCSAMatchesAPIShape(ctx context.Context, csa types.List) bool {
-	if csa.IsNull() || csa.IsUnknown() || len(csa.Elements()) != 1 {
+func featureFlagCSAMatchesAPIShape(ctx context.Context, csa types.Object) bool {
+	if csa.IsNull() || csa.IsUnknown() {
 		return false
 	}
 	type csaItem struct {
 		UsingEnvironmentID types.Bool `tfsdk:"using_environment_id"`
 		UsingMobileKey     types.Bool `tfsdk:"using_mobile_key"`
 	}
-	var items []csaItem
-	d := csa.ElementsAs(ctx, &items, false)
-	if d.HasError() || len(items) != 1 {
+	var item csaItem
+	d := csa.As(ctx, &item, basetypes.ObjectAsOptions{})
+	if d.HasError() {
 		return false
 	}
-	envOK := !items[0].UsingEnvironmentID.IsNull() && items[0].UsingEnvironmentID.ValueBool()
-	mobileOK := !items[0].UsingMobileKey.IsNull() && items[0].UsingMobileKey.ValueBool()
+	envOK := !item.UsingEnvironmentID.IsNull() && item.UsingEnvironmentID.ValueBool()
+	mobileOK := !item.UsingMobileKey.IsNull() && item.UsingMobileKey.ValueBool()
 	return envOK && mobileOK
 }
 
@@ -315,6 +310,16 @@ func (r *FeatureFlagResource) UpgradeState(_ context.Context) map[int64]resource
 			StateUpgrader: func(ctx context.Context, req resource.UpgradeStateRequest, resp *resource.UpgradeStateResponse) {
 				var prior FeatureFlagResourceModelV0
 				resp.Diagnostics.Append(req.State.Get(ctx, &prior)...)
+				if resp.Diagnostics.HasError() {
+					return
+				}
+				// v0 (SDKv2) stored client_side_availability and defaults
+				// as single-element lists (blocks). v3 models them as
+				// single objects — project the prior lists accordingly.
+				priorCSA, d := csaObjectFromV0List(ctx, prior.ClientSideAvailability, featureFlagCSAAttrTypes)
+				resp.Diagnostics.Append(d...)
+				priorDefaults, d := defaultsObjectFromV0List(ctx, prior.Defaults)
+				resp.Diagnostics.Append(d...)
 				if resp.Diagnostics.HasError() {
 					return
 				}
@@ -330,24 +335,24 @@ func (r *FeatureFlagResource) UpgradeState(_ context.Context) map[int64]resource
 					VariationType:          prior.VariationType,
 					Variations:             prior.Variations,
 					Temporary:              prior.Temporary,
-					ClientSideAvailability: prior.ClientSideAvailability,
+					ClientSideAvailability: priorCSA,
 					CustomProperties:       nullIfEmptySet(ctx, prior.CustomProperties),
-					Defaults:               prior.Defaults,
+					Defaults:               priorDefaults,
 					Archived:               prior.Archived,
 					Deprecated:             prior.Deprecated,
 					ViewKeys:               nullIfEmptySet(ctx, prior.ViewKeys),
 				}
 				if featureFlagDefaultsMatchesAPIShape(ctx, data.Defaults, data.Variations) {
-					data.Defaults = types.ListNull(data.Defaults.ElementType(ctx))
+					data.Defaults = types.ObjectNull(featureFlagDefaultsAttrTypes)
 				}
 				// IIS->CSA migration: when prior state set include_in_snippet
 				// and left client_side_availability empty, materialize the
-				// CSA list so the resource still controls SDK availability.
+				// CSA object so the resource still controls SDK availability.
 				// using_mobile_key was never expressible via IIS — match the
 				// Create-path projection (false). When both were populated,
 				// the v2 Conflicting validator should have prevented it, so
 				// drop IIS and keep CSA.
-				csaEmpty := data.ClientSideAvailability.IsNull() || data.ClientSideAvailability.IsUnknown() || len(data.ClientSideAvailability.Elements()) == 0
+				csaEmpty := data.ClientSideAvailability.IsNull() || data.ClientSideAvailability.IsUnknown()
 				iisSet := !prior.IncludeInSnippet.IsNull() && !prior.IncludeInSnippet.IsUnknown()
 				if csaEmpty && iisSet {
 					obj, d := types.ObjectValue(featureFlagCSAAttrTypes, map[string]attr.Value{
@@ -355,11 +360,9 @@ func (r *FeatureFlagResource) UpgradeState(_ context.Context) map[int64]resource
 						USING_MOBILE_KEY:     types.BoolValue(false),
 					})
 					resp.Diagnostics.Append(d...)
-					list, d := types.ListValue(types.ObjectType{AttrTypes: featureFlagCSAAttrTypes}, []attr.Value{obj})
-					resp.Diagnostics.Append(d...)
-					data.ClientSideAvailability = list
+					data.ClientSideAvailability = obj
 				} else if featureFlagCSAMatchesAPIShape(ctx, data.ClientSideAvailability) {
-					data.ClientSideAvailability = types.ListNull(data.ClientSideAvailability.ElementType(ctx))
+					data.ClientSideAvailability = types.ObjectNull(featureFlagCSAAttrTypes)
 				}
 				resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 			},
@@ -519,17 +522,17 @@ func (r *FeatureFlagResource) Create(ctx context.Context, req resource.CreateReq
 		t, f := true, false
 		variations = []ldapi.Variation{{Value: &t}, {Value: &f}}
 	}
-	defaults, d := defaultsFromList(ctx, plan.Defaults)
+	defaults, d := defaultsFromObject(ctx, plan.Defaults)
 	resp.Diagnostics.Append(d...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	csaPlanned := !plan.ClientSideAvailability.IsNull() && !plan.ClientSideAvailability.IsUnknown() && len(plan.ClientSideAvailability.Elements()) > 0
+	csaPlanned := !plan.ClientSideAvailability.IsNull() && !plan.ClientSideAvailability.IsUnknown()
 
 	var finalCSA *ldapi.ClientSideAvailabilityPost
 	if csaPlanned {
-		csa, d := csaPostFromList(ctx, plan.ClientSideAvailability)
+		csa, d := csaPostFromObject(ctx, plan.ClientSideAvailability)
 		resp.Diagnostics.Append(d...)
 		if resp.Diagnostics.HasError() {
 			return
@@ -713,10 +716,10 @@ func (r *FeatureFlagResource) applyFlagUpdate(ctx context.Context, plan, state F
 	}
 
 	csaChanged := isCreate || !plan.ClientSideAvailability.Equal(state.ClientSideAvailability)
-	csaPlanned := !plan.ClientSideAvailability.IsNull() && !plan.ClientSideAvailability.IsUnknown() && len(plan.ClientSideAvailability.Elements()) > 0
+	csaPlanned := !plan.ClientSideAvailability.IsNull() && !plan.ClientSideAvailability.IsUnknown()
 
 	if csaPlanned && csaChanged && !isCreate {
-		csa, d := csaPostFromList(ctx, plan.ClientSideAvailability)
+		csa, d := csaPostFromObject(ctx, plan.ClientSideAvailability)
 		diags.Append(d...)
 		if diags.HasError() {
 			return diags
@@ -734,7 +737,7 @@ func (r *FeatureFlagResource) applyFlagUpdate(ctx context.Context, plan, state F
 		patch.Patch = append(patch.Patch, variationPatches...)
 	}
 
-	defaults, d := defaultsFromList(ctx, plan.Defaults)
+	defaults, d := defaultsFromObject(ctx, plan.Defaults)
 	diags.Append(d...)
 	if defaults != nil {
 		patch.Patch = append(patch.Patch, patchReplace("/defaults", defaults))
@@ -867,9 +870,9 @@ func (r *FeatureFlagResource) readIntoModel(ctx context.Context, data *FeatureFl
 	diags.Append(d...)
 	data.Tags = tagsSet
 
-	csaList, d := featureFlagCSAListFromAPI(ctx, flag.ClientSideAvailability, data.ClientSideAvailability)
+	csaObj, d := featureFlagCSAObjectFromAPI(ctx, flag.ClientSideAvailability, data.ClientSideAvailability)
 	diags.Append(d...)
-	data.ClientSideAvailability = csaList
+	data.ClientSideAvailability = csaObj
 
 	// Maintainer fields — Optional+Computed. Only write these to state
 	// when the user declares either maintainer_id or maintainer_team_key:
@@ -903,9 +906,9 @@ func (r *FeatureFlagResource) readIntoModel(ctx context.Context, data *FeatureFl
 	data.CustomProperties = cpSet
 
 	// Defaults
-	defaultsList, d := defaultsListFromAPI(ctx, flag.Defaults, len(flag.Variations), data.Defaults)
+	defaultsObj, d := defaultsObjectFromAPI(ctx, flag.Defaults, len(flag.Variations), data.Defaults)
 	diags.Append(d...)
-	data.Defaults = defaultsList
+	data.Defaults = defaultsObj
 
 	// View associations — best-effort.
 	betaClient, bcErr := newBetaClient(r.client.apiKey, r.client.apiHost, false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
@@ -924,21 +927,15 @@ func (r *FeatureFlagResource) readIntoModel(ctx context.Context, data *FeatureFl
 	data.ViewKeys = viewKeysSet
 }
 
-// featureFlagCSAListFromAPI flattens LD's ClientSideAvailability into
-// the single-element list shape used by the framework schema. Mirrors
-// the prior state's attribute presence: emit null when the user did
-// not declare the attribute, populated when they did. For nested
-// attributes containing no sensitive fields the null-vs-empty
-// distinction is cosmetic; for objects containing Sensitive: true
-// inner fields, terraform-core treats null != [] as a sensitive-
-// attribute mismatch at the parent level
-// (see [[feedback-nested-attr-computed-sensitive]]).
-func featureFlagCSAListFromAPI(ctx context.Context, csa *ldapi.ClientSideAvailability, prior types.List) (types.List, diag.Diagnostics) {
-	objType := types.ObjectType{AttrTypes: featureFlagCSAAttrTypes}
+// featureFlagCSAObjectFromAPI flattens LD's ClientSideAvailability into
+// the single-object shape used by the framework schema. Mirrors the
+// prior state's attribute presence: emit null when the user did not
+// declare the attribute, populated when they did.
+func featureFlagCSAObjectFromAPI(_ context.Context, csa *ldapi.ClientSideAvailability, prior types.Object) (types.Object, diag.Diagnostics) {
 	var diags diag.Diagnostics
-	priorEmpty := prior.IsNull() || prior.IsUnknown() || len(prior.Elements()) == 0
+	priorEmpty := prior.IsNull() || prior.IsUnknown()
 	if priorEmpty || csa == nil {
-		return types.ListNull(objType), diags
+		return types.ObjectNull(featureFlagCSAAttrTypes), diags
 	}
 	usingEnv := false
 	if csa.UsingEnvironmentId != nil {
@@ -953,9 +950,7 @@ func featureFlagCSAListFromAPI(ctx context.Context, csa *ldapi.ClientSideAvailab
 		USING_MOBILE_KEY:     types.BoolValue(usingMobile),
 	})
 	diags.Append(d...)
-	list, d := types.ListValue(objType, []attr.Value{obj})
-	diags.Append(d...)
-	return list, diags
+	return obj, diags
 }
 
 // variationsFromList converts a framework List<variation> into
@@ -1223,38 +1218,37 @@ func customPropertiesSetFromAPI(ctx context.Context, props map[string]ldapi.Cust
 	return set, diags
 }
 
-// defaultsFromList converts the framework List<defaults> into
-// *ldapi.Defaults. Returns nil when the list is null/empty.
-func defaultsFromList(ctx context.Context, list types.List) (*ldapi.Defaults, diag.Diagnostics) {
+// defaultsFromObject converts the framework defaults object into
+// *ldapi.Defaults. Returns nil when the object is null/unknown.
+func defaultsFromObject(ctx context.Context, obj types.Object) (*ldapi.Defaults, diag.Diagnostics) {
 	var diags diag.Diagnostics
-	if list.IsNull() || list.IsUnknown() || len(list.Elements()) == 0 {
+	if obj.IsNull() || obj.IsUnknown() {
 		return nil, diags
 	}
 	type defaultsModel struct {
 		OnVariation  types.Int64 `tfsdk:"on_variation"`
 		OffVariation types.Int64 `tfsdk:"off_variation"`
 	}
-	var models []defaultsModel
-	d := list.ElementsAs(ctx, &models, false)
+	var m defaultsModel
+	d := obj.As(ctx, &m, basetypes.ObjectAsOptions{})
 	diags.Append(d...)
-	if diags.HasError() || len(models) == 0 {
+	if diags.HasError() {
 		return nil, diags
 	}
 	return &ldapi.Defaults{
-		OnVariation:  int32(models[0].OnVariation.ValueInt64()),
-		OffVariation: int32(models[0].OffVariation.ValueInt64()),
+		OnVariation:  int32(m.OnVariation.ValueInt64()),
+		OffVariation: int32(m.OffVariation.ValueInt64()),
 	}, diags
 }
 
-// defaultsListFromAPI flattens LD-API Defaults into the single-element
-// list shape. Mirrors prior-state attribute presence: emit null when
-// the user did not declare `defaults`, populated when they did.
-func defaultsListFromAPI(ctx context.Context, defaults *ldapi.Defaults, variationCount int, prior types.List) (types.List, diag.Diagnostics) {
-	objType := types.ObjectType{AttrTypes: featureFlagDefaultsAttrTypes}
+// defaultsObjectFromAPI flattens LD-API Defaults into the single-object
+// shape. Mirrors prior-state attribute presence: emit null when the
+// user did not declare `defaults`, populated when they did.
+func defaultsObjectFromAPI(_ context.Context, defaults *ldapi.Defaults, variationCount int, prior types.Object) (types.Object, diag.Diagnostics) {
 	var diags diag.Diagnostics
-	priorEmpty := prior.IsNull() || prior.IsUnknown() || len(prior.Elements()) == 0
+	priorEmpty := prior.IsNull() || prior.IsUnknown()
 	if priorEmpty {
-		return types.ListNull(objType), diags
+		return types.ObjectNull(featureFlagDefaultsAttrTypes), diags
 	}
 	var on, off int64
 	if defaults != nil {
@@ -1272,9 +1266,7 @@ func defaultsListFromAPI(ctx context.Context, defaults *ldapi.Defaults, variatio
 		OFF_VARIATION: types.Int64Value(off),
 	})
 	diags.Append(d...)
-	list, d := types.ListValue(objType, []attr.Value{obj})
-	diags.Append(d...)
-	return list, diags
+	return obj, diags
 }
 
 // priorMaintainerSet returns true when the prior plan/state had a

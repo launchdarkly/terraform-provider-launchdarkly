@@ -63,7 +63,7 @@ resource "launchdarkly_project" "example" {
 
 ### Optional
 
-- `default_client_side_availability` (Attributes List) Which client-side SDKs can use new flags by default. (see [below for nested schema](#nestedatt--default_client_side_availability))
+- `default_client_side_availability` (Attributes) Which client-side SDKs can use new flags by default. (see [below for nested schema](#nestedatt--default_client_side_availability))
 - `require_view_association_for_new_flags` (Boolean) Whether new flags created in this project must be associated with at least one view.
 - `require_view_association_for_new_segments` (Boolean) Whether new segments created in this project must be associated with at least one view.
 - `tags` (Set of String) Tags associated with your resource.

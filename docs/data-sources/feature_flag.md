@@ -47,9 +47,9 @@ resource "launchdarkly_feature_flag_environment" "prod_config" {
   flag_id = data.launchdarkly_feature_flag.example.id
   env_key = "production"
   on      = true
-  fallthrough = [{
+  fallthrough = {
     variation = 0
-  }]
+  }
   off_variation = 1
 }
 
@@ -82,9 +82,9 @@ output "team_notifications" {
 ### Read-Only
 
 - `archived` (Boolean) Whether the flag is archived.
-- `client_side_availability` (Attributes List) Client-side availability settings. (see [below for nested schema](#nestedatt--client_side_availability))
+- `client_side_availability` (Attributes) Client-side availability settings. (see [below for nested schema](#nestedatt--client_side_availability))
 - `custom_properties` (Attributes Set) Custom properties. (see [below for nested schema](#nestedatt--custom_properties))
-- `defaults` (Attributes List) Default variation indices for new environments. (see [below for nested schema](#nestedatt--defaults))
+- `defaults` (Attributes) Default variation indices for new environments. (see [below for nested schema](#nestedatt--defaults))
 - `deprecated` (Boolean) Whether the flag is deprecated.
 - `description` (String) Feature flag description.
 - `id` (String) Composite ID `project_key/key`.

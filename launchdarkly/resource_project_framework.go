@@ -35,7 +35,7 @@ type ProjectResourceModel struct {
 	ID                                   types.String `tfsdk:"id"`
 	Key                                  types.String `tfsdk:"key"`
 	Name                                 types.String `tfsdk:"name"`
-	DefaultClientSideAvailability        types.List   `tfsdk:"default_client_side_availability"`
+	DefaultClientSideAvailability        types.Object `tfsdk:"default_client_side_availability"`
 	Tags                                 types.Set    `tfsdk:"tags"`
 	Environments                         types.List   `tfsdk:"environments"`
 	RequireViewAssociationForNewFlags    types.Bool   `tfsdk:"require_view_association_for_new_flags"`
@@ -101,14 +101,12 @@ func projectSchemaAttributes() map[string]schema.Attribute {
 			Default:     booldefault.StaticBool(false),
 			Description: "Whether new segments created in this project must be associated with at least one view.",
 		},
-		DEFAULT_CLIENT_SIDE_AVAILABILITY: schema.ListNestedAttribute{
+		DEFAULT_CLIENT_SIDE_AVAILABILITY: schema.SingleNestedAttribute{
 			Optional:    true,
 			Description: "Which client-side SDKs can use new flags by default.",
-			NestedObject: schema.NestedAttributeObject{
-				Attributes: map[string]schema.Attribute{
-					USING_ENVIRONMENT_ID: schema.BoolAttribute{Required: true},
-					USING_MOBILE_KEY:     schema.BoolAttribute{Required: true},
-				},
+			Attributes: map[string]schema.Attribute{
+				USING_ENVIRONMENT_ID: schema.BoolAttribute{Required: true},
+				USING_MOBILE_KEY:     schema.BoolAttribute{Required: true},
 			},
 		},
 		ENVIRONMENTS: projectEnvironmentsAttribute(),
@@ -161,11 +159,19 @@ func (r *ProjectResource) UpgradeState(_ context.Context) map[int64]resource.Sta
 				if resp.Diagnostics.HasError() {
 					return
 				}
+				// v0 (SDKv2) stored default_client_side_availability as a
+				// block (single-element list). v3 models it as a single
+				// object — project the prior list accordingly.
+				priorDCSA, d := csaObjectFromV0List(ctx, prior.DefaultClientSideAvailability, projectCSAAttrTypes)
+				resp.Diagnostics.Append(d...)
+				if resp.Diagnostics.HasError() {
+					return
+				}
 				data := ProjectResourceModel{
 					ID:                                   prior.ID,
 					Key:                                  prior.Key,
 					Name:                                 prior.Name,
-					DefaultClientSideAvailability:        prior.DefaultClientSideAvailability,
+					DefaultClientSideAvailability:        priorDCSA,
 					Tags:                                 prior.Tags,
 					Environments:                         prior.Environments,
 					RequireViewAssociationForNewFlags:    prior.RequireViewAssociationForNewFlags,
@@ -177,7 +183,7 @@ func (r *ProjectResource) UpgradeState(_ context.Context) map[int64]resource.Sta
 				// using_mobile_key was always implicitly true in v2 (see the
 				// pre-removal Update patch that hardcoded UsingMobileKey: true).
 				// When both were populated, drop IIS in favor of DCSA.
-				dcsaEmpty := data.DefaultClientSideAvailability.IsNull() || data.DefaultClientSideAvailability.IsUnknown() || len(data.DefaultClientSideAvailability.Elements()) == 0
+				dcsaEmpty := data.DefaultClientSideAvailability.IsNull() || data.DefaultClientSideAvailability.IsUnknown()
 				iisSet := !prior.IncludeInSnippet.IsNull() && !prior.IncludeInSnippet.IsUnknown()
 				if dcsaEmpty && iisSet {
 					obj, d := types.ObjectValue(projectCSAAttrTypes, map[string]attr.Value{
@@ -185,14 +191,12 @@ func (r *ProjectResource) UpgradeState(_ context.Context) map[int64]resource.Sta
 						USING_MOBILE_KEY:     types.BoolValue(true),
 					})
 					resp.Diagnostics.Append(d...)
-					list, d := types.ListValue(types.ObjectType{AttrTypes: projectCSAAttrTypes}, []attr.Value{obj})
-					resp.Diagnostics.Append(d...)
-					data.DefaultClientSideAvailability = list
+					data.DefaultClientSideAvailability = obj
 				} else if featureFlagCSAMatchesAPIShape(ctx, data.DefaultClientSideAvailability) {
 					// default_client_side_availability that matches LD account
 					// defaults → null. Reuse the feature_flag helper since the
 					// inner shape is identical.
-					data.DefaultClientSideAvailability = types.ListNull(data.DefaultClientSideAvailability.ElementType(ctx))
+					data.DefaultClientSideAvailability = types.ObjectNull(projectCSAAttrTypes)
 				}
 				// each environments[].approval_settings whose 1-element matches
 				// API defaults → null. Decode envs, modify each, re-encode.
@@ -355,14 +359,13 @@ func markEnvSecretsUnknown(ctx context.Context, planList, stateList types.List) 
 }
 
 // projectCSAValueFromAPI emits the CSA attribute matching the prior
-// state shape: if prior was empty (or null), keep null so terraform
-// doesn't see a populated state for a null plan; if prior was
-// populated, emit the API's current values.
-func projectCSAValueFromAPI(ctx context.Context, csa *ldapi.ClientSideAvailability, prior basetypes.ListValue) (basetypes.ListValue, diag.Diagnostics) {
-	objectType := types.ObjectType{AttrTypes: projectCSAAttrTypes}
-	priorEmpty := prior.IsNull() || prior.IsUnknown() || len(prior.Elements()) == 0
+// state shape: if prior was null, keep null so terraform doesn't see a
+// populated state for a null plan; if prior was populated, emit the
+// API's current values.
+func projectCSAValueFromAPI(_ context.Context, csa *ldapi.ClientSideAvailability, prior basetypes.ObjectValue) (basetypes.ObjectValue, diag.Diagnostics) {
+	priorEmpty := prior.IsNull() || prior.IsUnknown()
 	if priorEmpty || csa == nil {
-		return types.ListNull(objectType), nil
+		return types.ObjectNull(projectCSAAttrTypes), nil
 	}
 	usingEnv := false
 	if csa.UsingEnvironmentId != nil {
@@ -376,9 +379,7 @@ func projectCSAValueFromAPI(ctx context.Context, csa *ldapi.ClientSideAvailabili
 		USING_ENVIRONMENT_ID: types.BoolValue(usingEnv),
 		USING_MOBILE_KEY:     types.BoolValue(usingMobile),
 	})
-	list, d := types.ListValue(objectType, []attr.Value{obj})
-	diags.Append(d...)
-	return list, diags
+	return obj, diags
 }
 
 func (r *ProjectResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
@@ -502,11 +503,11 @@ func (r *ProjectResource) applyProjectUpdates(ctx context.Context, projectKey st
 		patchReplace("/tags", &tags),
 	}
 
-	csaPlanned := !plan.DefaultClientSideAvailability.IsNull() && !plan.DefaultClientSideAvailability.IsUnknown() && len(plan.DefaultClientSideAvailability.Elements()) > 0
+	csaPlanned := !plan.DefaultClientSideAvailability.IsNull() && !plan.DefaultClientSideAvailability.IsUnknown()
 	csaChanged := isCreate || !plan.DefaultClientSideAvailability.Equal(state.DefaultClientSideAvailability)
 
 	if csaPlanned && csaChanged {
-		csa, d := csaPostFromList(ctx, plan.DefaultClientSideAvailability)
+		csa, d := csaPostFromObject(ctx, plan.DefaultClientSideAvailability)
 		diags.Append(d...)
 		if diags.HasError() {
 			return diags
@@ -630,9 +631,9 @@ func (r *ProjectResource) readIntoModel(ctx context.Context, projectKey string, 
 	diags.Append(d...)
 	data.Tags = tagsSet
 
-	csaList, d := projectCSAValueFromAPI(ctx, project.DefaultClientSideAvailability, data.DefaultClientSideAvailability)
+	csaObj, d := projectCSAValueFromAPI(ctx, project.DefaultClientSideAvailability, data.DefaultClientSideAvailability)
 	diags.Append(d...)
-	data.DefaultClientSideAvailability = csaList
+	data.DefaultClientSideAvailability = csaObj
 
 	// Environments — preserve config order, then append unmanaged ones.
 	envItems := []ldapi.Environment{}
@@ -660,26 +661,24 @@ func (r *ProjectResource) readIntoModel(ctx context.Context, projectKey string, 
 	data.RequireViewAssociationForNewSegments = types.BoolValue(settings.RequireViewAssociationForNewSegments)
 }
 
-// csaPostFromList extracts UsingEnvironmentId / UsingMobileKey from a
-// framework single-element ListValue.
-func csaPostFromList(ctx context.Context, l types.List) (*ldapi.ClientSideAvailabilityPost, diag.Diagnostics) {
-	if l.IsNull() || l.IsUnknown() || len(l.Elements()) == 0 {
+// csaPostFromObject extracts UsingEnvironmentId / UsingMobileKey from a
+// framework client-side-availability object (shared by feature_flag's
+// client_side_availability and project's default_client_side_availability).
+func csaPostFromObject(ctx context.Context, o types.Object) (*ldapi.ClientSideAvailabilityPost, diag.Diagnostics) {
+	if o.IsNull() || o.IsUnknown() {
 		return nil, nil
 	}
 	type csaModel struct {
 		UsingEnvironmentId types.Bool `tfsdk:"using_environment_id"`
 		UsingMobileKey     types.Bool `tfsdk:"using_mobile_key"`
 	}
-	var models []csaModel
-	diags := l.ElementsAs(ctx, &models, false)
+	var m csaModel
+	diags := o.As(ctx, &m, basetypes.ObjectAsOptions{})
 	if diags.HasError() {
 		return nil, diags
 	}
-	if len(models) == 0 {
-		return nil, diags
-	}
 	return &ldapi.ClientSideAvailabilityPost{
-		UsingEnvironmentId: models[0].UsingEnvironmentId.ValueBool(),
-		UsingMobileKey:     models[0].UsingMobileKey.ValueBool(),
+		UsingEnvironmentId: m.UsingEnvironmentId.ValueBool(),
+		UsingMobileKey:     m.UsingMobileKey.ValueBool(),
 	}, diags
 }

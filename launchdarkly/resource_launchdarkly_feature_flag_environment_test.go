@@ -33,9 +33,9 @@ resource "launchdarkly_feature_flag_environment" "basic" {
 	flag_id 		  = launchdarkly_feature_flag.basic.id
 	env_key 		  = "test"
 	on = false
-  	fallthrough = [{
+  	fallthrough = {
     	variation = 1
-  	}]
+  	}
 	off_variation = 2
 	targets = [{
 		values    = ["user1"]
@@ -62,9 +62,9 @@ resource "launchdarkly_feature_flag" "basic" {
 resource "launchdarkly_feature_flag_environment" "basic" {
 	flag_id 		  = launchdarkly_feature_flag.basic.id
 	env_key 		  = "test"
-	fallthrough = [{
+	fallthrough = {
 		variation = 0
-	}]
+	}
 	off_variation = 2
 }
 `
@@ -114,11 +114,11 @@ resource "launchdarkly_feature_flag_environment" "basic" {
 		context_kind = "account"
 	}]
 
-	fallthrough = [{
+	fallthrough = {
 		rollout_weights = [60000, 40000, 0]
 		bucket_by = "email"
 		context_kind = "user"
-	}]
+	}
 	off_variation = 1
 }
 `
@@ -140,9 +140,9 @@ resource "launchdarkly_feature_flag_environment" "json_variations" {
 	flag_id = launchdarkly_feature_flag.json.id
 	env_key = "test"
 
-	fallthrough = [{
+	fallthrough = {
 		variation = 1
-	}]
+	}
 	
 	off_variation = 0
 }
@@ -182,9 +182,9 @@ resource "launchdarkly_feature_flag_environment" "prereq" {
 		flag_key = launchdarkly_feature_flag.bool.key
 		variation = 0
 	}]
-	fallthrough = [{
+	fallthrough = {
 		variation = 1
-	}]
+	}
 	off_variation = 0
 }
 `
@@ -218,9 +218,9 @@ resource "launchdarkly_feature_flag" "basic" {
 resource "launchdarkly_feature_flag_environment" "prereq" {
 	flag_id 		  = launchdarkly_feature_flag.basic.id
 	env_key 		  = "test"
-	fallthrough = [{
+	fallthrough = {
 		variation = 1
-	}]
+	}
 	off_variation = 0
 }
 `
@@ -251,9 +251,9 @@ resource "launchdarkly_feature_flag_environment" "bool_clause" {
 		}]
 		variation = 0
 	}]
-	fallthrough = [{
+	fallthrough = {
 		variation = 0
-	}]
+	}
 	off_variation = 1
 }
 `
@@ -285,9 +285,9 @@ resource "launchdarkly_feature_flag_environment" "bool_clause" {
 		rollout_weights = [60000, 40000]
 		bucket_by = "email"
 	}]
-	fallthrough = [{
+	fallthrough = {
 		variation = 0
-	}]
+	}
 	off_variation = 1
 }
 `
@@ -318,9 +318,9 @@ resource "launchdarkly_feature_flag_environment" "number_clause" {
 		}]
 		variation = 0
 	}]
-	fallthrough = [{
+	fallthrough = {
 		variation = 0
-	}]
+	}
 	off_variation = 1
 }
 `
@@ -345,9 +345,9 @@ resource "launchdarkly_feature_flag_environment" "invalid_bucket_by" {
 	env_key 		  = "test"
 	on = true
 	  
-	fallthrough = [{
+	fallthrough = {
 		bucket_by = "email"
-	}]
+	}
 	off_variation = 0
 }
 `
@@ -364,10 +364,10 @@ resource "launchdarkly_feature_flag" "rollout" {
     value = false
   }]
 
-  defaults = [{
+  defaults = {
     on_variation  = 1
     off_variation = 0
-  }]
+  }
 }	
 
 resource "launchdarkly_feature_flag_environment" "rollout" {
@@ -383,12 +383,12 @@ resource "launchdarkly_feature_flag_environment" "rollout" {
 		}]
 		variation = 0
 	}]
-	fallthrough = [{
+	fallthrough = {
 		variation       = 0
 		rollout_weights = [60000, 40000]
 		bucket_by       = "country"
 		context_kind = "other"
-	}]
+	}
   off_variation = 1
 }
 `
@@ -405,10 +405,10 @@ resource "launchdarkly_feature_flag" "rollout" {
     value = false
   }]
 
-  defaults = [{
+  defaults = {
     on_variation  = 1
     off_variation = 0
-  }]
+  }
 }	
 
 resource "launchdarkly_feature_flag_environment" "rollout" {
@@ -424,12 +424,12 @@ resource "launchdarkly_feature_flag_environment" "rollout" {
 		}]
 		variation = 0
 	}]
-	fallthrough = [{
+	fallthrough = {
 		variation       = 0
 		rollout_weights = [60000, 40000]
 		bucket_by       = "country"
 		context_kind = "other"
-	}]
+	}
   off_variation = 1
 }
 `
@@ -463,9 +463,9 @@ resource "launchdarkly_feature_flag_environment" "invalid_bucket_by" {
 		variation = 0
 		bucket_by = "name"
 	}]
-	fallthrough = [{
+	fallthrough = {
 		variation = 0
-	}]
+	}
 	off_variation = 1
 }
 `
@@ -500,9 +500,9 @@ resource "launchdarkly_feature_flag_environment" "custom_context" {
 		variation = 1
 		context_kind = "%s"
 	}]
-	fallthrough = [{
+	fallthrough = {
 		variation = 0
-	}]
+	}
 }
 `
 
@@ -535,9 +535,9 @@ resource "launchdarkly_feature_flag_environment" "custom_context" {
 		variation = 1
 		context_kind = "%s"
 	}]
-	fallthrough = [{
+	fallthrough = {
 		variation = 0
-	}]
+	}
 }
 `
 
@@ -573,9 +573,9 @@ resource "launchdarkly_feature_flag_environment" "custom_context" {
 		variation = 1
 		context_kind = "%s"
 	}]
-	fallthrough = [{
+	fallthrough = {
 		variation = 0
-	}]
+	}
 }
 `
 
@@ -611,10 +611,10 @@ resource "launchdarkly_feature_flag_environment" "rules_custom_context" {
 		}]
 		variation = 0
 	}]
-	fallthrough = [{
+	fallthrough = {
 		rollout_weights = [30000, 70000]
 		bucket_by = "account_id"
-	}]
+	}
 }
 `
 
@@ -631,14 +631,14 @@ resource "launchdarkly_feature_flag_environment" "rules_custom_context" {
 			value = true
 		}]
 	
-		defaults = [{
+		defaults = {
 			off_variation = 0
 			on_variation  = 1
-		}]
+		}
 	
-		client_side_availability = [{
+		client_side_availability = {
 			using_environment_id = true
-		}]
+		}
 	}
 `
 
@@ -655,14 +655,14 @@ resource "launchdarkly_feature_flag" "off_variation_test" {
 		value = true
 	}]
 
-	defaults = [{
+	defaults = {
 		off_variation = 0
 		on_variation  = 1
-	}]
+	}
 
-	client_side_availability = [{
+	client_side_availability = {
 		using_environment_id = true
-	}]
+	}
 }
 
 resource "launchdarkly_feature_flag_environment" "off_variation_test_configuration" {
@@ -676,9 +676,9 @@ resource "launchdarkly_feature_flag_environment" "off_variation_test_configurati
 		variation = 1
 	}]
 
-	fallthrough = [{
+	fallthrough = {
 		variation = 0
-	}]
+	}
 }
 `
 )
@@ -698,7 +698,7 @@ func TestAccFeatureFlagEnvironment_Empty(t *testing.T) {
 					testAccCheckFeatureFlagEnvironmentExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, ON, "false"),
 					resource.TestCheckResourceAttr(resourceName, OFF_VARIATION, "2"),
-					resource.TestCheckResourceAttr(resourceName, "fallthrough.0.variation", "0"),
+					resource.TestCheckResourceAttr(resourceName, "fallthrough.variation", "0"),
 					resource.TestCheckResourceAttr(resourceName, TRACK_EVENTS, "false"),
 					resource.TestCheckNoResourceAttr(resourceName, fmt.Sprintf("%s.0", RULES)),
 					resource.TestCheckNoResourceAttr(resourceName, "rules.#"),
@@ -731,9 +731,8 @@ func TestAccFeatureFlagEnvironment_Update(t *testing.T) {
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckFeatureFlagEnvironmentExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, ON, "false"),
-					resource.TestCheckResourceAttr(resourceName, "fallthrough.#", "1"),
-					resource.TestCheckResourceAttr(resourceName, "fallthrough.0.variation", "1"),
-					resource.TestCheckResourceAttr(resourceName, "fallthrough.0.rollout.#", "0"),
+					resource.TestCheckResourceAttr(resourceName, "fallthrough.variation", "1"),
+					resource.TestCheckResourceAttr(resourceName, "fallthrough.rollout.#", "0"),
 					resource.TestCheckResourceAttr(resourceName, "targets.#", "1"),
 					resource.TestCheckResourceAttr(resourceName, "targets.0.values.0", "user1"),
 					resource.TestCheckResourceAttr(resourceName, "targets.0.variation", "0"),
@@ -752,14 +751,13 @@ func TestAccFeatureFlagEnvironment_Update(t *testing.T) {
 					testAccCheckFeatureFlagEnvironmentExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, ON, "true"),
 					resource.TestCheckResourceAttr(resourceName, TRACK_EVENTS, "true"),
-					resource.TestCheckResourceAttr(resourceName, "fallthrough.#", "1"),
-					resource.TestCheckResourceAttr(resourceName, "fallthrough.0.variation", "0"),
-					resource.TestCheckResourceAttr(resourceName, "fallthrough.0.rollout_weights.#", "3"),
-					resource.TestCheckResourceAttr(resourceName, "fallthrough.0.rollout_weights.0", "60000"),
-					resource.TestCheckResourceAttr(resourceName, "fallthrough.0.rollout_weights.1", "40000"),
-					resource.TestCheckResourceAttr(resourceName, "fallthrough.0.rollout_weights.2", "0"),
-					resource.TestCheckResourceAttr(resourceName, "fallthrough.0.bucket_by", "email"),
-					resource.TestCheckResourceAttr(resourceName, "fallthrough.0.context_kind", "user"),
+					resource.TestCheckResourceAttr(resourceName, "fallthrough.variation", "0"),
+					resource.TestCheckResourceAttr(resourceName, "fallthrough.rollout_weights.#", "3"),
+					resource.TestCheckResourceAttr(resourceName, "fallthrough.rollout_weights.0", "60000"),
+					resource.TestCheckResourceAttr(resourceName, "fallthrough.rollout_weights.1", "40000"),
+					resource.TestCheckResourceAttr(resourceName, "fallthrough.rollout_weights.2", "0"),
+					resource.TestCheckResourceAttr(resourceName, "fallthrough.bucket_by", "email"),
+					resource.TestCheckResourceAttr(resourceName, "fallthrough.context_kind", "user"),
 					resource.TestCheckResourceAttr(resourceName, "targets.#", "1"),
 					resource.TestCheckResourceAttr(resourceName, "targets.0.values.#", "2"),
 					resource.TestCheckResourceAttr(resourceName, "targets.0.values.0", "user1"),
@@ -802,7 +800,7 @@ func TestAccFeatureFlagEnvironment_Update(t *testing.T) {
 					testAccCheckFeatureFlagEnvironmentExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, ON, "false"),
 					resource.TestCheckResourceAttr(resourceName, TRACK_EVENTS, "false"),
-					resource.TestCheckResourceAttr(resourceName, "fallthrough.0.variation", "0"),
+					resource.TestCheckResourceAttr(resourceName, "fallthrough.variation", "0"),
 					resource.TestCheckResourceAttr(resourceName, OFF_VARIATION, "2"),
 					resource.TestCheckNoResourceAttr(resourceName, "targets.#"),
 					resource.TestCheckNoResourceAttr(resourceName, "rules.#"),
@@ -831,8 +829,7 @@ func TestAccFeatureFlagEnvironment_JSON_variations(t *testing.T) {
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckFeatureFlagEnvironmentExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, ON, "false"),
-					resource.TestCheckResourceAttr(resourceName, "fallthrough.#", "1"),
-					resource.TestCheckResourceAttr(resourceName, "fallthrough.0.variation", "1"),
+					resource.TestCheckResourceAttr(resourceName, "fallthrough.variation", "1"),
 					resource.TestCheckResourceAttr(resourceName, OFF_VARIATION, "0"),
 				),
 			},
@@ -866,7 +863,7 @@ func TestAccFeatureFlagEnvironment_BoolClauseValue(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "rules.0.clauses.0.values.#", "1"),
 					resource.TestCheckResourceAttr(resourceName, "rules.0.clauses.0.values.0", "true"),
 					resource.TestCheckResourceAttr(resourceName, "rules.0.variation", "0"),
-					resource.TestCheckResourceAttr(resourceName, "fallthrough.0.variation", "0"),
+					resource.TestCheckResourceAttr(resourceName, "fallthrough.variation", "0"),
 					resource.TestCheckResourceAttr(resourceName, OFF_VARIATION, "1"),
 				),
 			},
@@ -890,7 +887,7 @@ func TestAccFeatureFlagEnvironment_BoolClauseValue(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "rules.0.rollout_weights.1", "40000"),
 					resource.TestCheckResourceAttr(resourceName, "rules.0.bucket_by", "email"),
 					resource.TestCheckResourceAttr(resourceName, "rules.0.context_kind", "user"),
-					resource.TestCheckResourceAttr(resourceName, "fallthrough.0.variation", "0"),
+					resource.TestCheckResourceAttr(resourceName, "fallthrough.variation", "0"),
 					resource.TestCheckResourceAttr(resourceName, OFF_VARIATION, "1"),
 				),
 			},
@@ -910,7 +907,7 @@ func TestAccFeatureFlagEnvironment_BoolClauseValue(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "rules.0.clauses.0.values.#", "1"),
 					resource.TestCheckResourceAttr(resourceName, "rules.0.clauses.0.values.0", "true"),
 					resource.TestCheckResourceAttr(resourceName, "rules.0.variation", "0"),
-					resource.TestCheckResourceAttr(resourceName, "fallthrough.0.variation", "0"),
+					resource.TestCheckResourceAttr(resourceName, "fallthrough.variation", "0"),
 					resource.TestCheckResourceAttr(resourceName, OFF_VARIATION, "1"),
 				),
 			},
@@ -943,7 +940,7 @@ func TestAccFeatureFlagEnvironment_NumberClauseValue(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "rules.0.clauses.0.values.#", "2"),
 					resource.TestCheckResourceAttr(resourceName, "rules.0.clauses.0.values.0", "42"),
 					resource.TestCheckResourceAttr(resourceName, "rules.0.clauses.0.values.1", "84"),
-					resource.TestCheckResourceAttr(resourceName, "fallthrough.0.variation", "0"),
+					resource.TestCheckResourceAttr(resourceName, "fallthrough.variation", "0"),
 					resource.TestCheckResourceAttr(resourceName, OFF_VARIATION, "1"),
 				),
 			},
@@ -977,12 +974,12 @@ func TestAccFeatureFlagEnvironment_UpdateClauseWithRollout(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "rules.0.clauses.0.values.0", "aus"),
 					resource.TestCheckResourceAttr(resourceName, "rules.0.clauses.0.values.1", "nz"),
 					resource.TestCheckResourceAttr(resourceName, "rules.0.clauses.0.values.2", "united"),
-					resource.TestCheckResourceAttr(resourceName, "fallthrough.0.variation", "0"),
-					resource.TestCheckResourceAttr(resourceName, "fallthrough.0.rollout_weights.#", "2"),
-					resource.TestCheckResourceAttr(resourceName, "fallthrough.0.rollout_weights.0", "60000"),
-					resource.TestCheckResourceAttr(resourceName, "fallthrough.0.rollout_weights.1", "40000"),
-					resource.TestCheckResourceAttr(resourceName, "fallthrough.0.bucket_by", "country"),
-					resource.TestCheckResourceAttr(resourceName, "fallthrough.0.context_kind", "other"),
+					resource.TestCheckResourceAttr(resourceName, "fallthrough.variation", "0"),
+					resource.TestCheckResourceAttr(resourceName, "fallthrough.rollout_weights.#", "2"),
+					resource.TestCheckResourceAttr(resourceName, "fallthrough.rollout_weights.0", "60000"),
+					resource.TestCheckResourceAttr(resourceName, "fallthrough.rollout_weights.1", "40000"),
+					resource.TestCheckResourceAttr(resourceName, "fallthrough.bucket_by", "country"),
+					resource.TestCheckResourceAttr(resourceName, "fallthrough.context_kind", "other"),
 					resource.TestCheckResourceAttr(resourceName, OFF_VARIATION, "1"),
 				),
 			},
@@ -1003,12 +1000,12 @@ func TestAccFeatureFlagEnvironment_UpdateClauseWithRollout(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "rules.0.clauses.0.values.0", "aus"),
 					resource.TestCheckResourceAttr(resourceName, "rules.0.clauses.0.values.1", "us"),
 					resource.TestCheckResourceAttr(resourceName, "rules.0.clauses.0.values.2", "united"),
-					resource.TestCheckResourceAttr(resourceName, "fallthrough.0.variation", "0"),
-					resource.TestCheckResourceAttr(resourceName, "fallthrough.0.rollout_weights.#", "2"),
-					resource.TestCheckResourceAttr(resourceName, "fallthrough.0.rollout_weights.0", "60000"),
-					resource.TestCheckResourceAttr(resourceName, "fallthrough.0.rollout_weights.1", "40000"),
-					resource.TestCheckResourceAttr(resourceName, "fallthrough.0.bucket_by", "country"),
-					resource.TestCheckResourceAttr(resourceName, "fallthrough.0.context_kind", "other"),
+					resource.TestCheckResourceAttr(resourceName, "fallthrough.variation", "0"),
+					resource.TestCheckResourceAttr(resourceName, "fallthrough.rollout_weights.#", "2"),
+					resource.TestCheckResourceAttr(resourceName, "fallthrough.rollout_weights.0", "60000"),
+					resource.TestCheckResourceAttr(resourceName, "fallthrough.rollout_weights.1", "40000"),
+					resource.TestCheckResourceAttr(resourceName, "fallthrough.bucket_by", "country"),
+					resource.TestCheckResourceAttr(resourceName, "fallthrough.context_kind", "other"),
 					resource.TestCheckResourceAttr(resourceName, OFF_VARIATION, "1"),
 				),
 			},
@@ -1058,7 +1055,7 @@ func TestAccFeatureFlagEnvironment_Prereq(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, ON, "true"),
 					resource.TestCheckResourceAttr(resourceName, "prerequisites.#", "1"),
 					resource.TestCheckResourceAttr(resourceName, "prerequisites.0.flag_key", "bool-flag"),
-					resource.TestCheckResourceAttr(resourceName, "fallthrough.0.variation", "1"),
+					resource.TestCheckResourceAttr(resourceName, "fallthrough.variation", "1"),
 					resource.TestCheckResourceAttr(resourceName, OFF_VARIATION, "0"),
 				),
 			},
@@ -1068,7 +1065,7 @@ func TestAccFeatureFlagEnvironment_Prereq(t *testing.T) {
 					testAccCheckFeatureFlagEnvironmentExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, ON, "false"),
 					resource.TestCheckNoResourceAttr(resourceName, "prerequisites.#"),
-					resource.TestCheckResourceAttr(resourceName, "fallthrough.0.variation", "1"),
+					resource.TestCheckResourceAttr(resourceName, "fallthrough.variation", "1"),
 					resource.TestCheckResourceAttr(resourceName, OFF_VARIATION, "0"),
 				),
 			},
@@ -1131,7 +1128,7 @@ func TestAccFeatureFlagEnvironment_ContextTargets(t *testing.T) {
 					// have confirmed via UI this is happening
 					resource.TestCheckResourceAttr(resourceName, "context_targets.1.context_kind", otherContextKind),
 					resource.TestCheckResourceAttr(resourceName, OFF_VARIATION, "0"),
-					resource.TestCheckResourceAttr(resourceName, "fallthrough.0.variation", "0"),
+					resource.TestCheckResourceAttr(resourceName, "fallthrough.variation", "0"),
 				),
 			},
 			{
@@ -1157,7 +1154,7 @@ func TestAccFeatureFlagEnvironment_ContextTargets(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "context_targets.0.context_kind", accountContextKind),
 					resource.TestCheckNoResourceAttr(resourceName, "context_targets.1"),
 					resource.TestCheckResourceAttr(resourceName, OFF_VARIATION, "0"),
-					resource.TestCheckResourceAttr(resourceName, "fallthrough.0.variation", "0"),
+					resource.TestCheckResourceAttr(resourceName, "fallthrough.variation", "0"),
 				),
 			},
 			{
@@ -1185,7 +1182,7 @@ func TestAccFeatureFlagEnvironment_ContextTargets(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "context_targets.0.context_kind", accountContextKind),
 					resource.TestCheckNoResourceAttr(resourceName, "context_targets.1"),
 					resource.TestCheckResourceAttr(resourceName, OFF_VARIATION, "0"),
-					resource.TestCheckResourceAttr(resourceName, "fallthrough.0.variation", "0"),
+					resource.TestCheckResourceAttr(resourceName, "fallthrough.variation", "0"),
 				),
 			},
 			{
@@ -1219,10 +1216,10 @@ func TestAccFeatureFlagEnvironment_ContextTargets(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName2, "rules.0.clauses.1.negate", "false"),
 					resource.TestCheckResourceAttr(resourceName2, "rules.0.clauses.1.context_kind", accountContextKind),
 					resource.TestCheckResourceAttr(resourceName2, "rules.0.variation", "0"),
-					resource.TestCheckResourceAttr(resourceName2, "fallthrough.0.rollout_weights.0", "30000"),
-					resource.TestCheckResourceAttr(resourceName2, "fallthrough.0.rollout_weights.1", "70000"),
-					resource.TestCheckResourceAttr(resourceName2, "fallthrough.0.context_kind", "user"), // this should be automatically set by the API
-					resource.TestCheckResourceAttr(resourceName2, "fallthrough.0.bucket_by", "account_id"),
+					resource.TestCheckResourceAttr(resourceName2, "fallthrough.rollout_weights.0", "30000"),
+					resource.TestCheckResourceAttr(resourceName2, "fallthrough.rollout_weights.1", "70000"),
+					resource.TestCheckResourceAttr(resourceName2, "fallthrough.context_kind", "user"), // this should be automatically set by the API
+					resource.TestCheckResourceAttr(resourceName2, "fallthrough.bucket_by", "account_id"),
 				),
 			},
 			{
@@ -1252,10 +1249,10 @@ func TestAccFeatureFlagEnvironment_OffVariationResetsToCorrectDefaultOnDelete(t 
 					testAccCheckFeatureFlagEnvironmentExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, ON, "true"),
 					resource.TestCheckResourceAttr(resourceName, OFF_VARIATION, "0"),
-					resource.TestCheckResourceAttr(resourceName, "fallthrough.0.variation", "0"),
+					resource.TestCheckResourceAttr(resourceName, "fallthrough.variation", "0"),
 					resource.TestCheckResourceAttr(resourceName, TRACK_EVENTS, "false"),
-					resource.TestCheckResourceAttr(globalFlagResourceName, "defaults.0.off_variation", "0"),
-					resource.TestCheckResourceAttr(globalFlagResourceName, "defaults.0.on_variation", "1"),
+					resource.TestCheckResourceAttr(globalFlagResourceName, "defaults.off_variation", "0"),
+					resource.TestCheckResourceAttr(globalFlagResourceName, "defaults.on_variation", "1"),
 				),
 			},
 			{
@@ -1266,8 +1263,8 @@ func TestAccFeatureFlagEnvironment_OffVariationResetsToCorrectDefaultOnDelete(t 
 			{
 				Config: withRandomProject(projectKey, testAccDefaultOffVariation),
 				Check: resource.ComposeTestCheckFunc(
-					resource.TestCheckResourceAttr(globalFlagResourceName, "defaults.0.off_variation", "0"),
-					resource.TestCheckResourceAttr(globalFlagResourceName, "defaults.0.on_variation", "1"),
+					resource.TestCheckResourceAttr(globalFlagResourceName, "defaults.off_variation", "0"),
+					resource.TestCheckResourceAttr(globalFlagResourceName, "defaults.on_variation", "1"),
 					testAccCheckFeatureFlagEnvironmentDefaults(t, projectKey, flagKey),
 				),
 			},

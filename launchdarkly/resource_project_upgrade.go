@@ -33,5 +33,19 @@ func projectSchemaAttributesV0() map[string]schema.Attribute {
 		Description:        "Whether feature flags created under the project should be available to client-side SDKs by default. Please migrate to `default_client_side_availability` to maintain future compatibility.",
 		DeprecationMessage: "'include_in_snippet' is now deprecated. Please migrate to 'default_client_side_availability' to maintain future compatibility.",
 	}
+	// v0 (SDKv2) stored default_client_side_availability as a block, i.e.
+	// a single-element list in state. The current (v3) schema models it
+	// as a single object. Pin the prior schema to the original list shape
+	// so genuine v2.x state still decodes; the upgrader body projects the
+	// list to an object via csaObjectFromV0List.
+	attrs[DEFAULT_CLIENT_SIDE_AVAILABILITY] = schema.ListNestedAttribute{
+		Optional: true,
+		NestedObject: schema.NestedAttributeObject{
+			Attributes: map[string]schema.Attribute{
+				USING_ENVIRONMENT_ID: schema.BoolAttribute{Required: true},
+				USING_MOBILE_KEY:     schema.BoolAttribute{Required: true},
+			},
+		},
+	}
 	return attrs
 }

@@ -20,7 +20,7 @@ type ProjectDataSourceModel struct {
 	ID                                   types.String `tfsdk:"id"`
 	Key                                  types.String `tfsdk:"key"`
 	Name                                 types.String `tfsdk:"name"`
-	DefaultClientSideAvailability        types.List   `tfsdk:"default_client_side_availability"`
+	DefaultClientSideAvailability        types.Object `tfsdk:"default_client_side_availability"`
 	Tags                                 types.Set    `tfsdk:"tags"`
 	RequireViewAssociationForNewFlags    types.Bool   `tfsdk:"require_view_association_for_new_flags"`
 	RequireViewAssociationForNewSegments types.Bool   `tfsdk:"require_view_association_for_new_segments"`
@@ -49,14 +49,12 @@ func (d *ProjectDataSource) Schema(_ context.Context, _ datasource.SchemaRequest
 			TAGS:                                   schema.SetAttribute{Computed: true, ElementType: types.StringType, Description: "Tags."},
 			REQUIRE_VIEW_ASSOCIATION_FOR_NEW_FLAGS: schema.BoolAttribute{Computed: true, Description: "Whether new flags created in this project must be associated with at least one view."},
 			REQUIRE_VIEW_ASSOCIATION_FOR_NEW_SEGMENTS: schema.BoolAttribute{Computed: true, Description: "Whether new segments created in this project must be associated with at least one view."},
-			DEFAULT_CLIENT_SIDE_AVAILABILITY: schema.ListNestedAttribute{
+			DEFAULT_CLIENT_SIDE_AVAILABILITY: schema.SingleNestedAttribute{
 				Computed:    true,
 				Description: "Which client-side SDKs can use new flags by default.",
-				NestedObject: schema.NestedAttributeObject{
-					Attributes: map[string]schema.Attribute{
-						USING_ENVIRONMENT_ID: schema.BoolAttribute{Computed: true},
-						USING_MOBILE_KEY:     schema.BoolAttribute{Computed: true},
-					},
+				Attributes: map[string]schema.Attribute{
+					USING_ENVIRONMENT_ID: schema.BoolAttribute{Computed: true},
+					USING_MOBILE_KEY:     schema.BoolAttribute{Computed: true},
 				},
 			},
 		},
@@ -96,8 +94,7 @@ func (d *ProjectDataSource) Read(ctx context.Context, req datasource.ReadRequest
 	resp.Diagnostics.Append(diags...)
 	data.Tags = tagsSet
 
-	objectType := types.ObjectType{AttrTypes: projectClientSideAvailabilityAttrTypes}
-	var csaList types.List
+	var csaObj types.Object
 	if project.DefaultClientSideAvailability != nil {
 		defaultCSA := *project.DefaultClientSideAvailability
 		usingEnvID := false
@@ -113,13 +110,11 @@ func (d *ProjectDataSource) Read(ctx context.Context, req datasource.ReadRequest
 			USING_MOBILE_KEY:     types.BoolValue(usingMobile),
 		})
 		resp.Diagnostics.Append(d...)
-		csaList, diags = types.ListValue(objectType, []attr.Value{obj})
-		resp.Diagnostics.Append(diags...)
+		csaObj = obj
 	} else {
-		csaList, diags = types.ListValue(objectType, []attr.Value{})
-		resp.Diagnostics.Append(diags...)
+		csaObj = types.ObjectNull(projectClientSideAvailabilityAttrTypes)
 	}
-	data.DefaultClientSideAvailability = csaList
+	data.DefaultClientSideAvailability = csaObj
 
 	viewSettings, viewSettingsErr := getProjectViewSettings(ctx, d.client, projectKey)
 	if viewSettingsErr != nil {

@@ -81,10 +81,10 @@ resource "launchdarkly_feature_flag" "basic" {
 	]
 	tags = ["test"]
 
-	client_side_availability = [{
+	client_side_availability = {
 		using_environment_id = true
 		using_mobile_key = true
-	}]
+	}
 }
 `
 
@@ -101,10 +101,10 @@ resource "launchdarkly_feature_flag" "basic" {
 	description = "this is a boolean flag by default because the variations field is omitted"
 	tags = ["update", "terraform"]
 	temporary = true
-	defaults = [{
+	defaults = {
 		on_variation = 1
 		off_variation = 1
-	}]
+	}
 }
 `
 
@@ -384,10 +384,10 @@ resource "launchdarkly_feature_flag" "multivariate" {
 			"value3"
 		]
 	}]
-	defaults = [{
+	defaults = {
 		on_variation = 2
 		off_variation = 1
-	}]
+	}
 }
 `
 
@@ -401,10 +401,10 @@ resource "launchdarkly_feature_flag" "defaults" {
 		{ value = "true" },
 		{ value = "false" },
 	]
-	defaults = [{
+	defaults = {
 		on_variation = 1
 		off_variation = 1
-	}]
+	}
 }
 `
 	testAccFeatureFlagDefaultsUpdate = `
@@ -417,10 +417,10 @@ resource "launchdarkly_feature_flag" "defaults" {
 		{ value = "true" },
 		{ value = "false" },
 	]
-	defaults = [{
+	defaults = {
 		on_variation = 0
 		off_variation = 0
-	}]
+	}
 }
 `
 	testAccFeatureFlagDefaultsMultivariate = `
@@ -429,10 +429,10 @@ resource "launchdarkly_feature_flag" "defaults-multivariate" {
 	key = "defaults-multivariate-flag"
 	name = "Multivariate feature flag with defaults"
 	variation_type = "string"
-	defaults = [{
+	defaults = {
 		on_variation = 1
 		off_variation = 1
-	}]
+	}
 	variations = [{
 		value = "a"
 	}, {
@@ -450,10 +450,10 @@ resource "launchdarkly_feature_flag" "defaults-multivariate" {
 	key = "defaults-multivariate-flag"
 	name = "Multivariate feature flag with defaults"
 	variation_type = "string"
-	defaults = [{
+	defaults = {
 		on_variation = 2
 		off_variation = 2
-	}]
+	}
 	variations = [{
 		value = "a"
 	}, {
@@ -471,10 +471,10 @@ resource "launchdarkly_feature_flag" "defaults-multivariate" {
 	key = "defaults-multivariate-flag"
 	name = "Multivariate fature flag with defaults"
 	variation_type = "string"
-	defaults = [{
+	defaults = {
 		on_variation = 2
 		off_variation = 2
-	}]
+	}
 	variations = [{
 		value = "b"
 	}, {
@@ -507,10 +507,10 @@ resource "launchdarkly_feature_flag" "sdk_settings" {
 		{ value = "true" },
 		{ value = "false" },
 	]
-	client_side_availability = [{
+	client_side_availability = {
 		using_environment_id = true
 		using_mobile_key = true
-	}]
+	}
 }
 `
 	testAccFeatureFlagClientSideAvailabilityUpdate = `
@@ -523,10 +523,10 @@ resource "launchdarkly_feature_flag" "sdk_settings" {
 		{ value = "true" },
 		{ value = "false" },
 	]
-	client_side_availability = [{
+	client_side_availability = {
 		using_environment_id = false
 		using_mobile_key = false
-	}]
+	}
 }
 `
 )
@@ -557,10 +557,10 @@ func withProjectWithSpecifiedCSADefaults(randomProject string, resource string, 
 		}
 		name = "testProject"
 		key = "%s"
-		default_client_side_availability = [{
+		default_client_side_availability = {
 			using_environment_id = %v
 			using_mobile_key = %v
-		}]
+		}
 		environments = [{
 			name  = "testEnvironment"
 			key   = "test"
@@ -608,7 +608,9 @@ func TestAccFeatureFlag_BasicCreateAndUpdate(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, PROJECT_KEY, projectKey),
 					resource.TestCheckResourceAttr(resourceName, VARIATION_TYPE, "boolean"),
 					resource.TestCheckResourceAttr(resourceName, "variations.#", "2"),
-					resource.TestCheckNoResourceAttr(resourceName, "defaults.#"),
+					// Neither defaults nor client_side_availability set → both null.
+					resource.TestCheckNoResourceAttr(resourceName, "defaults.%"),
+					resource.TestCheckNoResourceAttr(resourceName, "client_side_availability.%"),
 					resource.TestCheckNoResourceAttr(resourceName, MAINTAINER_ID),
 				),
 			},
@@ -631,8 +633,8 @@ func TestAccFeatureFlag_BasicCreateAndUpdate(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "tags.0", "terraform"),
 					resource.TestCheckResourceAttr(resourceName, "tags.1", "update"),
 					resource.TestCheckResourceAttr(resourceName, TEMPORARY, "true"),
-					resource.TestCheckResourceAttr(resourceName, "defaults.0.on_variation", "1"),
-					resource.TestCheckResourceAttr(resourceName, "defaults.0.off_variation", "1"),
+					resource.TestCheckResourceAttr(resourceName, "defaults.on_variation", "1"),
+					resource.TestCheckResourceAttr(resourceName, "defaults.off_variation", "1"),
 				),
 			},
 			{
@@ -664,8 +666,9 @@ func TestAccFeatureFlag_CSAInteractionWithProjectDefaults(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, PROJECT_KEY, projectKey),
 					resource.TestCheckResourceAttr(resourceName, VARIATION_TYPE, "boolean"),
 					resource.TestCheckResourceAttr(resourceName, "variations.#", "2"),
-					resource.TestCheckNoResourceAttr(resourceName, "defaults.#"),
-					resource.TestCheckNoResourceAttr(resourceName, "client_side_availability.#"),
+					// Neither defaults nor client_side_availability set → both null.
+					resource.TestCheckNoResourceAttr(resourceName, "defaults.%"),
+					resource.TestCheckNoResourceAttr(resourceName, "client_side_availability.%"),
 					resource.TestCheckNoResourceAttr(resourceName, MAINTAINER_ID),
 				),
 			},
@@ -685,8 +688,9 @@ func TestAccFeatureFlag_CSAInteractionWithProjectDefaults(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, PROJECT_KEY, projectKey),
 					resource.TestCheckResourceAttr(resourceName, VARIATION_TYPE, "boolean"),
 					resource.TestCheckResourceAttr(resourceName, "variations.#", "2"),
-					resource.TestCheckNoResourceAttr(resourceName, "defaults.#"),
-					resource.TestCheckNoResourceAttr(resourceName, "client_side_availability.#"),
+					// defaults and client_side_availability omitted → both null.
+					resource.TestCheckNoResourceAttr(resourceName, "defaults.%"),
+					resource.TestCheckNoResourceAttr(resourceName, "client_side_availability.%"),
 					resource.TestCheckNoResourceAttr(resourceName, MAINTAINER_ID),
 				),
 			},
@@ -706,9 +710,10 @@ func TestAccFeatureFlag_CSAInteractionWithProjectDefaults(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, PROJECT_KEY, projectKey),
 					resource.TestCheckResourceAttr(resourceName, VARIATION_TYPE, "boolean"),
 					resource.TestCheckResourceAttr(resourceName, "variations.#", "2"),
-					resource.TestCheckNoResourceAttr(resourceName, "defaults.#"),
-					resource.TestCheckResourceAttr(resourceName, "client_side_availability.0.using_environment_id", "true"),
-					resource.TestCheckResourceAttr(resourceName, "client_side_availability.0.using_mobile_key", "true"),
+					// client_side_availability is set here; defaults is still omitted → null.
+					resource.TestCheckNoResourceAttr(resourceName, "defaults.%"),
+					resource.TestCheckResourceAttr(resourceName, "client_side_availability.using_environment_id", "true"),
+					resource.TestCheckResourceAttr(resourceName, "client_side_availability.using_mobile_key", "true"),
 					resource.TestCheckNoResourceAttr(resourceName, MAINTAINER_ID),
 				),
 			},
@@ -728,10 +733,10 @@ func TestAccFeatureFlag_CSAInteractionWithProjectDefaults(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, PROJECT_KEY, projectKey),
 					resource.TestCheckResourceAttr(resourceName, VARIATION_TYPE, "boolean"),
 					resource.TestCheckResourceAttr(resourceName, "variations.#", "2"),
-					resource.TestCheckNoResourceAttr(resourceName, "defaults.#"),
 					// Once the user omits client_side_availability, state drops
 					// it back to null rather than retaining the last set value.
-					resource.TestCheckNoResourceAttr(resourceName, "client_side_availability.#"),
+					resource.TestCheckNoResourceAttr(resourceName, "client_side_availability.%"),
+					resource.TestCheckNoResourceAttr(resourceName, "defaults.%"),
 					resource.TestCheckNoResourceAttr(resourceName, MAINTAINER_ID),
 				),
 			},
@@ -793,11 +798,9 @@ var importIgnoreOptionalComputedKeys = []string{
 	"variations.1.%", "variations.1.value", "variations.1.name", "variations.1.description",
 	"variations.2.%", "variations.2.value", "variations.2.name", "variations.2.description",
 	"variations.3.%", "variations.3.value", "variations.3.name", "variations.3.description",
-	"defaults.#",
-	"defaults.0.%", "defaults.0.on_variation", "defaults.0.off_variation",
-	"client_side_availability.#",
-	"client_side_availability.0.%",
-	"client_side_availability.0.using_environment_id", "client_side_availability.0.using_mobile_key",
+	"defaults.%", "defaults.on_variation", "defaults.off_variation",
+	"client_side_availability.%",
+	"client_side_availability.using_environment_id", "client_side_availability.using_mobile_key",
 }
 
 func TestAccFeatureFlag_JSONBasic(t *testing.T) {
@@ -1103,8 +1106,8 @@ func TestAccFeatureFlag_CreateAndUpdateMultivariate(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "custom_properties.0.value.#", "2"),
 					resource.TestCheckResourceAttr(resourceName, "custom_properties.0.value.0", "value1"),
 					resource.TestCheckResourceAttr(resourceName, "custom_properties.0.value.1", "value3"),
-					resource.TestCheckResourceAttr(resourceName, "defaults.0.on_variation", "2"),
-					resource.TestCheckResourceAttr(resourceName, "defaults.0.off_variation", "1"),
+					resource.TestCheckResourceAttr(resourceName, "defaults.on_variation", "2"),
+					resource.TestCheckResourceAttr(resourceName, "defaults.off_variation", "1"),
 				),
 			},
 			{
@@ -1127,7 +1130,7 @@ func TestAccFeatureFlag_CreateAndUpdateMultivariate(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "variations.2.value", "another option"),
 					// defaults is Optional-only and omitted here, so state
 					// drops it rather than retaining the previous-step value.
-					resource.TestCheckNoResourceAttr(resourceName, "defaults.#"),
+					resource.TestCheckNoResourceAttr(resourceName, "defaults.%"),
 				),
 			},
 			{
@@ -1195,8 +1198,8 @@ func TestAccFeatureFlag_UpdateDefaults(t *testing.T) {
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckProjectExists("launchdarkly_project.test"),
 					testAccCheckFeatureFlagExists(resourceName),
-					resource.TestCheckResourceAttr(resourceName, "defaults.0.on_variation", "1"),
-					resource.TestCheckResourceAttr(resourceName, "defaults.0.off_variation", "1"),
+					resource.TestCheckResourceAttr(resourceName, "defaults.on_variation", "1"),
+					resource.TestCheckResourceAttr(resourceName, "defaults.off_variation", "1"),
 				),
 			},
 			{
@@ -1210,8 +1213,8 @@ func TestAccFeatureFlag_UpdateDefaults(t *testing.T) {
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckProjectExists("launchdarkly_project.test"),
 					testAccCheckFeatureFlagExists(resourceName),
-					resource.TestCheckResourceAttr(resourceName, "defaults.0.on_variation", "0"),
-					resource.TestCheckResourceAttr(resourceName, "defaults.0.off_variation", "0"),
+					resource.TestCheckResourceAttr(resourceName, "defaults.on_variation", "0"),
+					resource.TestCheckResourceAttr(resourceName, "defaults.off_variation", "0"),
 				),
 			},
 			{
@@ -1238,8 +1241,8 @@ func TestAccFeatureFlag_UpdateMultivariateDefaults(t *testing.T) {
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckProjectExists("launchdarkly_project.test"),
 					testAccCheckFeatureFlagExists(resourceName),
-					resource.TestCheckResourceAttr(resourceName, "defaults.0.on_variation", "1"),
-					resource.TestCheckResourceAttr(resourceName, "defaults.0.off_variation", "1"),
+					resource.TestCheckResourceAttr(resourceName, "defaults.on_variation", "1"),
+					resource.TestCheckResourceAttr(resourceName, "defaults.off_variation", "1"),
 				),
 			},
 			{
@@ -1253,8 +1256,8 @@ func TestAccFeatureFlag_UpdateMultivariateDefaults(t *testing.T) {
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckProjectExists("launchdarkly_project.test"),
 					testAccCheckFeatureFlagExists(resourceName),
-					resource.TestCheckResourceAttr(resourceName, "defaults.0.on_variation", "2"),
-					resource.TestCheckResourceAttr(resourceName, "defaults.0.off_variation", "2"),
+					resource.TestCheckResourceAttr(resourceName, "defaults.on_variation", "2"),
+					resource.TestCheckResourceAttr(resourceName, "defaults.off_variation", "2"),
 				),
 			},
 			{
@@ -1268,8 +1271,8 @@ func TestAccFeatureFlag_UpdateMultivariateDefaults(t *testing.T) {
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckProjectExists("launchdarkly_project.test"),
 					testAccCheckFeatureFlagExists(resourceName),
-					resource.TestCheckResourceAttr(resourceName, "defaults.0.on_variation", "2"),
-					resource.TestCheckResourceAttr(resourceName, "defaults.0.off_variation", "2"),
+					resource.TestCheckResourceAttr(resourceName, "defaults.on_variation", "2"),
+					resource.TestCheckResourceAttr(resourceName, "defaults.off_variation", "2"),
 				),
 			},
 			{
@@ -1334,8 +1337,8 @@ func TestAccFeatureFlag_ClientSideAvailabilityUpdate(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, VARIATION_TYPE, "boolean"),
 					resource.TestCheckResourceAttr(resourceName, "variations.#", "2"),
 					resource.TestCheckNoResourceAttr(resourceName, MAINTAINER_ID),
-					resource.TestCheckResourceAttr(resourceName, "client_side_availability.0.using_environment_id", "true"),
-					resource.TestCheckResourceAttr(resourceName, "client_side_availability.0.using_mobile_key", "true"),
+					resource.TestCheckResourceAttr(resourceName, "client_side_availability.using_environment_id", "true"),
+					resource.TestCheckResourceAttr(resourceName, "client_side_availability.using_mobile_key", "true"),
 				),
 			},
 			{
@@ -1355,8 +1358,8 @@ func TestAccFeatureFlag_ClientSideAvailabilityUpdate(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, VARIATION_TYPE, "boolean"),
 					resource.TestCheckResourceAttr(resourceName, "variations.#", "2"),
 					resource.TestCheckNoResourceAttr(resourceName, MAINTAINER_ID),
-					resource.TestCheckResourceAttr(resourceName, "client_side_availability.0.using_environment_id", "false"),
-					resource.TestCheckResourceAttr(resourceName, "client_side_availability.0.using_mobile_key", "false"),
+					resource.TestCheckResourceAttr(resourceName, "client_side_availability.using_environment_id", "false"),
+					resource.TestCheckResourceAttr(resourceName, "client_side_availability.using_mobile_key", "false"),
 				),
 			},
 			{
@@ -1572,9 +1575,9 @@ resource "launchdarkly_feature_flag_environment" "dependent_env" {
 		flag_key  = launchdarkly_feature_flag.prereq.key
 		variation = 0
 	}]
-	fallthrough = [{
+	fallthrough = {
 		variation = 0
-	}]
+	}
 	off_variation = 1
 }
 `)
@@ -1605,9 +1608,9 @@ resource "launchdarkly_feature_flag_environment" "dependent_env" {
 		flag_key  = "prereq-flag"
 		variation = 0
 	}]
-	fallthrough = [{
+	fallthrough = {
 		variation = 0
-	}]
+	}
 	off_variation = 1
 }
 `)
@@ -1642,9 +1645,9 @@ resource "launchdarkly_feature_flag_environment" "dependent_env" {
 	flag_id = launchdarkly_feature_flag.dependent.id
 	env_key = "test"
 	on      = false
-	fallthrough = [{
+	fallthrough = {
 		variation = 0
-	}]
+	}
 	off_variation = 1
 }
 `)
