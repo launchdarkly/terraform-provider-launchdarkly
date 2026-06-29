@@ -132,8 +132,12 @@ func experimentIterationSchema() map[string]schema.Attribute {
 			Description: "Whether to allow the experiment to reassign traffic to different variations when you change the traffic allocation. Defaults to `true`.",
 		},
 		RANDOMIZATION_UNIT: schema.StringAttribute{
+			// Optional, not Computed: the iteration object is preserved verbatim
+			// from the plan (the API response cannot be converted back into the
+			// iteration input faithfully), so a Computed value with no config
+			// value would remain unknown after apply. Omitting this field lets
+			// the API default to the project's default randomization unit.
 			Optional:    true,
-			Computed:    true,
 			Description: "The unit of randomization for this iteration. Must match the key of a context kind enabled for experiments in the project. Defaults to the project's default randomization unit.",
 		},
 		ATTRIBUTES: schema.SetAttribute{

@@ -211,13 +211,50 @@ func (r *ExperimentationSettingsResource) readIntoModel(
 	data.ID = types.StringValue(projectKey)
 	data.ProjectKey = types.StringValue(projectKey)
 
-	objType := types.ObjectType{AttrTypes: randomizationUnitAttrTypes}
-	elems := make([]attr.Value, 0, len(settings.RandomizationUnits))
+	// The API does not preserve the order the units were submitted in (the
+	// default unit is returned first), so reorder the response to match the
+	// order already in the model (the plan on create/update, prior state on
+	// read). This keeps the list idempotent. Any units the API returns that are
+	// not already in the model are appended in API order.
+	var prior []randomizationUnitModel
+	if !data.RandomizationUnits.IsNull() && !data.RandomizationUnits.IsUnknown() {
+		// Diagnostics are intentionally discarded: a malformed prior value just
+		// means we fall back to API order.
+		_ = data.RandomizationUnits.ElementsAs(ctx, &prior, false)
+	}
+
+	byKey := make(map[string]ldapi.RandomizationUnitRep, len(settings.RandomizationUnits))
 	for _, u := range settings.RandomizationUnits {
 		// Hidden units are system-managed defaults the user does not configure.
 		if u.Hidden != nil && *u.Hidden {
 			continue
 		}
+		byKey[stringValueFromPointer(u.RandomizationUnit).ValueString()] = u
+	}
+
+	ordered := make([]ldapi.RandomizationUnitRep, 0, len(byKey))
+	seen := make(map[string]bool, len(byKey))
+	for _, p := range prior {
+		key := p.RandomizationUnit.ValueString()
+		if u, ok := byKey[key]; ok && !seen[key] {
+			ordered = append(ordered, u)
+			seen[key] = true
+		}
+	}
+	for _, u := range settings.RandomizationUnits {
+		if u.Hidden != nil && *u.Hidden {
+			continue
+		}
+		key := stringValueFromPointer(u.RandomizationUnit).ValueString()
+		if !seen[key] {
+			ordered = append(ordered, u)
+			seen[key] = true
+		}
+	}
+
+	objType := types.ObjectType{AttrTypes: randomizationUnitAttrTypes}
+	elems := make([]attr.Value, 0, len(ordered))
+	for _, u := range ordered {
 		obj, d := types.ObjectValue(randomizationUnitAttrTypes, map[string]attr.Value{
 			RANDOMIZATION_UNIT: stringValueFromPointer(u.RandomizationUnit),
 			DEFAULT:            types.BoolValue(u.Default != nil && *u.Default),
