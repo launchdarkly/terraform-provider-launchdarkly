@@ -1,6 +1,6 @@
 # migrate-tf-syntax
 
-Deterministic converter between block syntax (`name { ... }`) and list-of-objects nested-attribute syntax (`name = [{ ... }]`) for Terraform HCL. Built for the LaunchDarkly Terraform provider v2 → v3 cutover but driven by an external JSON mapping file, so it works for any provider that did the same `terraform-plugin-sdk/v2` → `terraform-plugin-framework` block-to-attribute migration.
+Deterministic converter between block syntax (`name { ... }`) and nested-attribute syntax for Terraform HCL — list-of-objects (`name = [{ ... }]`) for plural attributes, or a bare object (`name = { ... }`) for single-object attributes. Built for the LaunchDarkly Terraform provider v2 → v3 cutover but driven by an external JSON mapping file, so it works for any provider that did the same `terraform-plugin-sdk/v2` → `terraform-plugin-framework` block-to-attribute migration.
 
 ## Usage
 
@@ -31,13 +31,13 @@ go build -o ../../bin/migrate-tf-syntax .
 
 `mappings.json` (embedded as default) maps resource type → object containing three optional sections:
 
-- `blocks` — attributes that switched from block to list-of-objects nested attribute. Nested entries describe attributes inside an element that themselves migrated (e.g. `rules` contains `clauses`).
+- `blocks` — attributes that switched from block to nested attribute. Nested entries describe attributes inside an element that themselves migrated (e.g. `rules` contains `clauses`). Set `"object": true` for a genuine single-object attribute (`SingleNestedAttribute`): forward emits `name = { ... }` (no brackets) and reverse parses that object back to a block. Omit it for the default list-of-objects shape. LD's four single-object attributes are `client_side_availability`, `defaults`, `default_client_side_availability`, and `fallthrough` (REL-14237).
 - `deprecations` — attributes removed from the v3 schema. Each entry has `name`, `action`, and (for some actions) `to`. Supported actions:
   - `drop` — remove the attribute outright (no replacement).
   - `rename` — move the value verbatim onto `to` (e.g. `policy_statements` → `inline_roles`). If `to` already exists in the config, the existing value wins and the deprecated attribute is dropped.
   - `iis_to_csa` — rewrite `include_in_snippet` into a `client_side_availability`-shaped nested attribute on `to`, preserving the original expression as `using_environment_id` and synthesizing `using_mobile_key` (`using_mobile_key` in the mapping overrides the default `false`).
   - `policy_to_policy_statements` — move the custom-role `policy` list onto `to`; the inner attribute names are identical so elements transfer verbatim.
-- `ds_attr_rewrites` — data-source output attributes renamed in v3. The script rewrites every `data.<type>.<name>.<from>` reference across all files (data-source outputs are computed-only, so references are the only thing to migrate). `to` renames the terminal attribute; `to_expr` replaces it with a structurally different access path.
+- `ds_attr_rewrites` — data-source output attributes renamed in v3. The script rewrites every `data.<type>.<name>.<from>` reference across all files (data-source outputs are computed-only, so references are the only thing to migrate). `to` renames the terminal attribute; `to_expr` replaces it with a structurally different access path. Set `"strip_index": true` when the v3 target is a single object so a trailing v2 list index (`[0]` or `.0`) immediately after the attribute is dropped (`data.X.Y.from[0].z` → `data.X.Y.to.z`).
 
 ```json
 {
@@ -76,10 +76,10 @@ If a future provider release adds or renames a nested attribute, regenerate the 
 
 ```bash
 grep -nE 'tfsdk:"[^"]+"' launchdarkly/resource_*_framework.go \
-  | grep -E 'types\.(List|Set)\b'
+  | grep -E 'types\.(List|Set|Object)\b'
 ```
 
-A `types.List` / `types.Set` paired with a `*NestedAttribute` schema entry means list-of-objects; add it to `mappings.json`.
+A `types.List` / `types.Set` paired with a `ListNestedAttribute` / `SetNestedAttribute` means list-of-objects; add it to `mappings.json` without `object`. A `types.Object` paired with a `SingleNestedAttribute` means single object; add it with `"object": true`.
 
 ## Round-trip test
 

@@ -29,14 +29,14 @@
   },
   "launchdarkly_project": {
     "blocks": [
-      {"name": "default_client_side_availability"},
+      {"name": "default_client_side_availability", "object": true},
       {"name": "environments", "nested": [{"name": "approval_settings"}]}
     ],
     "deprecations": [
       {"name": "include_in_snippet", "action": "iis_to_csa", "to": "default_client_side_availability", "using_mobile_key": "true"}
     ],
     "ds_attr_rewrites": [
-      {"from": "client_side_availability", "to": "default_client_side_availability"}
+      {"from": "client_side_availability", "to": "default_client_side_availability", "strip_index": true}
     ]
   },
   "launchdarkly_environment": {
@@ -77,21 +77,26 @@
       {"name": "targets"},
       {"name": "context_targets"},
       {"name": "rules", "nested": [{"name": "clauses"}]},
-      {"name": "fallthrough"}
+      {"name": "fallthrough", "object": true}
+    ],
+    "ds_attr_rewrites": [
+      {"from": "fallthrough", "to": "fallthrough", "strip_index": true}
     ]
   },
   "launchdarkly_feature_flag": {
     "blocks": [
-      {"name": "client_side_availability"},
+      {"name": "client_side_availability", "object": true},
       {"name": "variations"},
-      {"name": "defaults"}
+      {"name": "defaults", "object": true}
     ],
     "deprecations": [
       {"name": "include_in_snippet", "action": "iis_to_csa", "to": "client_side_availability"},
       {"name": "variations", "action": "ensure_boolean_variations"}
     ],
     "ds_attr_rewrites": [
-      {"from": "include_in_snippet", "to_expr": "client_side_availability[0].using_environment_id"}
+      {"from": "include_in_snippet", "to_expr": "client_side_availability.using_environment_id"},
+      {"from": "client_side_availability", "to": "client_side_availability", "strip_index": true},
+      {"from": "defaults", "to": "defaults", "strip_index": true}
     ]
   }
 }

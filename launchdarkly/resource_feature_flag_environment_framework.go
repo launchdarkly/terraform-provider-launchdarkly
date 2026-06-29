@@ -21,6 +21,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	ldapi "github.com/launchdarkly/api-client-go/v22"
 )
 
@@ -43,7 +44,7 @@ type FeatureFlagEnvironmentResourceModel struct {
 	ContextTargets types.Set    `tfsdk:"context_targets"`
 	Rules          types.List   `tfsdk:"rules"`
 	Prerequisites  types.List   `tfsdk:"prerequisites"`
-	Fallthrough    types.List   `tfsdk:"fallthrough"`
+	Fallthrough    types.Object `tfsdk:"fallthrough"`
 	TrackEvents    types.Bool   `tfsdk:"track_events"`
 	OffVariation   types.Int64  `tfsdk:"off_variation"`
 }
@@ -194,37 +195,34 @@ func featureFlagEnvironmentSchemaAttributes() map[string]schema.Attribute {
 				},
 			},
 		},
-		FALLTHROUGH: schema.ListNestedAttribute{
+		FALLTHROUGH: schema.SingleNestedAttribute{
 			Required:    true,
 			Description: "The default variation to serve if no `prerequisites`, `target`, or `rules` apply.",
-			Validators:  []validator.List{listvalidator.SizeAtLeast(1), listvalidator.SizeAtMost(1)},
-			NestedObject: schema.NestedAttributeObject{
-				Attributes: map[string]schema.Attribute{
-					VARIATION: schema.Int64Attribute{
-						Optional:    true,
-						Computed:    true,
-						Default:     int64default.StaticInt64(0),
-						Validators:  []validator.Int64{int64validator.AtLeast(0)},
-						Description: "The default integer variation index to serve if no `prerequisites`, `target`, or `rules` apply. You must specify either `variation` or `rollout_weights`.",
+			Attributes: map[string]schema.Attribute{
+				VARIATION: schema.Int64Attribute{
+					Optional:    true,
+					Computed:    true,
+					Default:     int64default.StaticInt64(0),
+					Validators:  []validator.Int64{int64validator.AtLeast(0)},
+					Description: "The default integer variation index to serve if no `prerequisites`, `target`, or `rules` apply. You must specify either `variation` or `rollout_weights`.",
+				},
+				BUCKET_BY: schema.StringAttribute{
+					Optional:    true,
+					Description: "Group percentage rollout by a custom attribute. This argument is only valid if rollout_weights is also specified.",
+				},
+				CONTEXT_KIND: schema.StringAttribute{
+					Optional:    true,
+					Computed:    true,
+					Default:     stringdefault.StaticString("user"),
+					Description: "The context kind associated with the specified rollout. This argument is only valid if rollout_weights is also specified. If omitted, defaults to `user`.",
+				},
+				ROLLOUT_WEIGHTS: schema.ListAttribute{
+					Optional:    true,
+					ElementType: types.Int64Type,
+					Validators: []validator.List{
+						listvalidator.ValueInt64sAre(int64validator.Between(0, 100000)),
 					},
-					BUCKET_BY: schema.StringAttribute{
-						Optional:    true,
-						Description: "Group percentage rollout by a custom attribute. This argument is only valid if rollout_weights is also specified.",
-					},
-					CONTEXT_KIND: schema.StringAttribute{
-						Optional:    true,
-						Computed:    true,
-						Default:     stringdefault.StaticString("user"),
-						Description: "The context kind associated with the specified rollout. This argument is only valid if rollout_weights is also specified. If omitted, defaults to `user`.",
-					},
-					ROLLOUT_WEIGHTS: schema.ListAttribute{
-						Optional:    true,
-						ElementType: types.Int64Type,
-						Validators: []validator.List{
-							listvalidator.ValueInt64sAre(int64validator.Between(0, 100000)),
-						},
-						Description: "List of integer percentage rollout weights (in thousandths of a percent) to apply to each variation if the rule clauses evaluates to `true`. The sum of the `rollout_weights` must equal 100000 and the number of rollout weights specified in the array must match the number of flag variations. You must specify either `variation` or `rollout_weights`.",
-					},
+					Description: "List of integer percentage rollout weights (in thousandths of a percent) to apply to each variation if the rule clauses evaluates to `true`. The sum of the `rollout_weights` must equal 100000 and the number of rollout weights specified in the array must match the number of flag variations. You must specify either `variation` or `rollout_weights`.",
 				},
 			},
 		},
@@ -232,20 +230,36 @@ func featureFlagEnvironmentSchemaAttributes() map[string]schema.Attribute {
 }
 
 func (r *FeatureFlagEnvironmentResource) UpgradeState(_ context.Context) map[int64]resource.StateUpgrader {
-	priorSchema := schema.Schema{Attributes: featureFlagEnvironmentSchemaAttributes()}
+	priorSchema := schema.Schema{Attributes: featureFlagEnvironmentSchemaAttributesV0()}
 	return map[int64]resource.StateUpgrader{
 		0: {
 			PriorSchema: &priorSchema,
 			StateUpgrader: func(ctx context.Context, req resource.UpgradeStateRequest, resp *resource.UpgradeStateResponse) {
-				var data FeatureFlagEnvironmentResourceModel
-				resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
+				var prior FeatureFlagEnvironmentResourceModelV0
+				resp.Diagnostics.Append(req.State.Get(ctx, &prior)...)
 				if resp.Diagnostics.HasError() {
 					return
 				}
-				data.Targets = nullIfEmptySet(ctx, data.Targets)
-				data.ContextTargets = nullIfEmptySet(ctx, data.ContextTargets)
-				data.Rules = nullIfEmptyList(ctx, data.Rules)
-				data.Prerequisites = nullIfEmptyList(ctx, data.Prerequisites)
+				// v0 (SDKv2) stored fallthrough as a block (single-element
+				// list); v3 models it as a single object.
+				fallthroughObj, d := ffeFallthroughObjectFromV0List(ctx, prior.Fallthrough)
+				resp.Diagnostics.Append(d...)
+				if resp.Diagnostics.HasError() {
+					return
+				}
+				data := FeatureFlagEnvironmentResourceModel{
+					ID:             prior.ID,
+					FlagID:         prior.FlagID,
+					EnvKey:         prior.EnvKey,
+					On:             prior.On,
+					Targets:        nullIfEmptySet(ctx, prior.Targets),
+					ContextTargets: nullIfEmptySet(ctx, prior.ContextTargets),
+					Rules:          nullIfEmptyList(ctx, prior.Rules),
+					Prerequisites:  nullIfEmptyList(ctx, prior.Prerequisites),
+					Fallthrough:    fallthroughObj,
+					TrackEvents:    prior.TrackEvents,
+					OffVariation:   prior.OffVariation,
+				}
 				resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 			},
 		},
@@ -634,17 +648,14 @@ func ffeResourceRulesValue(ctx context.Context, rules []ldapi.Rule, diags *diag.
 	return list
 }
 
-// ffeResourceFallthroughValue emits the resource-side fallthrough list
+// ffeResourceFallthroughValue emits the resource-side fallthrough object
 // with defaults applied: variation defaults to 0 and context_kind
 // defaults to "user" so plan-vs-state stays consistent when the user
 // omits these attrs (framework Default+Computed schema flags fill the
 // plan; Read must emit matching values).
-func ffeResourceFallthroughValue(ctx context.Context, fallthroughRep *ldapi.VariationOrRolloutRep, diags *diag.Diagnostics) types.List {
-	objectType := types.ObjectType{AttrTypes: ffeFallthroughAttrTypes}
+func ffeResourceFallthroughValue(_ context.Context, fallthroughRep *ldapi.VariationOrRolloutRep, diags *diag.Diagnostics) types.Object {
 	if fallthroughRep == nil {
-		list, d := types.ListValue(objectType, []attr.Value{})
-		diags.Append(d...)
-		return list
+		return types.ObjectNull(ffeFallthroughAttrTypes)
 	}
 	variation := types.Int64Value(0)
 	bucketBy := types.StringNull()
@@ -675,9 +686,7 @@ func ffeResourceFallthroughValue(ctx context.Context, fallthroughRep *ldapi.Vari
 		CONTEXT_KIND:    contextKind,
 	})
 	diags.Append(d...)
-	list, d := types.ListValue(objectType, []attr.Value{obj})
-	diags.Append(d...)
-	return list
+	return obj
 }
 
 // ffePatchPath returns the JSON-Pointer path for an environment-scoped
@@ -747,7 +756,7 @@ func buildFFEPatches(ctx context.Context, envKey string, plan, state FeatureFlag
 		patches = append(patches, patchReplace(ffePatchPath(envKey, "contextTargets"), ctxTargets))
 	}
 
-	fall, d := ffeFallthroughFromList(ctx, plan.Fallthrough)
+	fall, d := ffeFallthroughFromObject(ctx, plan.Fallthrough)
 	diags.Append(d...)
 	if diags.HasError() {
 		return nil, diags
@@ -914,9 +923,9 @@ func ffeTargetsFromSet(ctx context.Context, set types.Set, isContextTarget bool)
 	return out, diags
 }
 
-func ffeFallthroughFromList(ctx context.Context, list types.List) (ffeFallthroughPayload, diag.Diagnostics) {
+func ffeFallthroughFromObject(ctx context.Context, obj types.Object) (ffeFallthroughPayload, diag.Diagnostics) {
 	var diags diag.Diagnostics
-	if list.IsNull() || list.IsUnknown() || len(list.Elements()) == 0 {
+	if obj.IsNull() || obj.IsUnknown() {
 		diags.AddError("feature flag fallthrough cannot be empty. Please specify at least one of variation or rollout_weights", "")
 		return ffeFallthroughPayload{}, diags
 	}
@@ -926,13 +935,12 @@ func ffeFallthroughFromList(ctx context.Context, list types.List) (ffeFallthroug
 		ContextKind    types.String `tfsdk:"context_kind"`
 		RolloutWeights types.List   `tfsdk:"rollout_weights"`
 	}
-	var models []fallthroughModel
-	d := list.ElementsAs(ctx, &models, false)
+	var m fallthroughModel
+	d := obj.As(ctx, &m, basetypes.ObjectAsOptions{})
 	diags.Append(d...)
-	if diags.HasError() || len(models) == 0 {
+	if diags.HasError() {
 		return ffeFallthroughPayload{}, diags
 	}
-	m := models[0]
 	var weights []int64
 	if !m.RolloutWeights.IsNull() && !m.RolloutWeights.IsUnknown() {
 		d := m.RolloutWeights.ElementsAs(ctx, &weights, false)

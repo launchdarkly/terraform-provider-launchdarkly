@@ -14,6 +14,7 @@ Version 3.0.0 completes the provider's migration to the HashiCorp Terraform Plug
 
 - The provider is rebuilt on the Terraform Plugin Framework. The plugin protocol moves from version 5 to version 6.
 - Block syntax is replaced by nested attribute syntax across every resource and data source.
+- Four single-object attributes (`client_side_availability`, `defaults`, `default_client_side_availability`, `fallthrough`) use object syntax (`= { ... }`), not a single-element list.
 - Five deprecated attributes are removed, across `launchdarkly_access_token`, `launchdarkly_custom_role`, `launchdarkly_feature_flag`, `launchdarkly_project`, and `launchdarkly_metric`.
 - State upgrades run automatically on first apply. No resource is destroyed or recreated.
 - v3 adds eight resources and seven data sources. It removes none.
@@ -58,6 +59,39 @@ statements, targets, urls, variations
 ```
 
 The `launchdarkly_audit_log_subscription` `config` block also moves to map attribute syntax, written as `config = { ... }`.
+
+### Single nested attributes use object syntax
+
+Most blocks become a list of objects, but four attributes hold exactly one object and use object syntax — a bare `{ ... }` with no surrounding brackets:
+
+| Resource or data source | Attribute |
+|---|---|
+| `launchdarkly_feature_flag` | `client_side_availability` |
+| `launchdarkly_feature_flag` | `defaults` |
+| `launchdarkly_project` | `default_client_side_availability` |
+| `launchdarkly_feature_flag_environment` | `fallthrough` |
+
+```hcl
+# v2 block syntax
+resource "launchdarkly_feature_flag" "example" {
+  client_side_availability {
+    using_environment_id = true
+    using_mobile_key     = false
+  }
+}
+
+# v3 object syntax (no brackets)
+resource "launchdarkly_feature_flag" "example" {
+  client_side_availability = {
+    using_environment_id = true
+    using_mobile_key     = false
+  }
+}
+```
+
+The `migrate-tf-syntax` tool emits this object form automatically. When you read these attributes from a data source, drop the list index too: `data.launchdarkly_feature_flag.x.client_side_availability.using_environment_id`, not `...client_side_availability[0].using_environment_id`.
+
+> **Upgrading from a `3.0.0-beta` pre-release?** These four attributes were modeled as single-element lists through `3.0.0-beta.3` (`= [{ ... }]`). The switch to object syntax landed for GA. The pre-release → GA jump is not state-compatible for them — re-running `terraform plan` after upgrading from a beta will show the syntax change; update the configuration to the object form. Upgrades from v2 are handled automatically by the state upgrade and the `migrate-tf-syntax` tool.
 
 ### Removed attributes
 

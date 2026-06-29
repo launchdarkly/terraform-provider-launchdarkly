@@ -33,7 +33,7 @@ data "launchdarkly_feature_flag_environment" "example" {
 ### Read-Only
 
 - `context_targets` (Attributes Set) Individual context-kind targets per variation. (see [below for nested schema](#nestedatt--context_targets))
-- `fallthrough` (Attributes List) Default variation served when no other targeting applies (single element). (see [below for nested schema](#nestedatt--fallthrough))
+- `fallthrough` (Attributes) Default variation served when no other targeting applies. (see [below for nested schema](#nestedatt--fallthrough))
 - `id` (String) Composite ID `project_key/env_key/flag_key`.
 - `off_variation` (Number) Variation index to serve when targeting is disabled.
 - `on` (Boolean) Whether targeting is enabled.

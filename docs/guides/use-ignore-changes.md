@@ -54,10 +54,10 @@ resource "launchdarkly_feature_flag" "example" {
     },
   ]
 
-  defaults = [{
+  defaults = {
     on_variation  = 1
     off_variation = 0
-  }]
+  }
 
   lifecycle {
     ignore_changes = [all]

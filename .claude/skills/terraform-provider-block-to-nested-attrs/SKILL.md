@@ -4,12 +4,15 @@ description: Migrate LaunchDarkly Terraform provider HCL configs between block s
 compatibility: Works on any directory containing `.tf` files that use `launchdarkly_*` resources. No external tools required beyond a working `terraform` CLI for validation.
 metadata:
   author: ffeldberg
-  version: "1.0.0"
+  version: "2.0.0"
 ---
 
 # LaunchDarkly Terraform Provider: Block ↔ Nested Attribute Migration
 
-The LaunchDarkly Terraform provider v3.0.0 finished the migration from `terraform-plugin-sdk/v2` to `terraform-plugin-framework`. Every former `schema.Block` is now a `*NestedAttribute` (`ListNestedAttribute` / `SetNestedAttribute`). HCL that worked against v2.x using block syntax (`name { ... }`) fails to parse against v3 with `Unsupported block type` or `Missing required argument`. The fix is mechanical: change `name { ... }` to `name = [{ ... }]`.
+The LaunchDarkly Terraform provider v3.0.0 finished the migration from `terraform-plugin-sdk/v2` to `terraform-plugin-framework`. Every former `schema.Block` is now a nested attribute. HCL that worked against v2.x using block syntax (`name { ... }`) fails to parse against v3 with `Unsupported block type` or `Missing required argument`. The fix is mechanical, but the target syntax depends on the attribute's cardinality:
+
+- **List/Set nested attributes** (genuinely plural, e.g. `variations`, `rules`, `statements`) → `name = [{ ... }]`.
+- **Single nested attributes** (genuinely one object — `client_side_availability`, `defaults`, `default_client_side_availability`, `fallthrough`) → `name = { ... }`. These four were modeled as max-1 lists through `3.0.0-beta.3` and switched to single objects for GA (REL-14237) so the bracketless object form is the correct v3.0.0 syntax. **If you are on a `3.0.0-beta.N` pre-release, use the list form `= [{ ... }]` for these four instead** — the object form is GA-only.
 
 This skill enumerates every affected attribute, gives the exact rewrite, and lists the gotchas that bite during migration.
 
@@ -26,10 +29,10 @@ This skill enumerates every affected attribute, gives the exact rewrite, and lis
 
 ## Core rule
 
-Every former block is now a **list-of-objects** (or set-of-objects). HCL syntax for both is `name = [{ ... }, { ... }]`. Even when the schema allows max 1 element (e.g. `fallthrough`, `default_client_side_availability`), it is still a list — wrap the single object in `[ ]`.
+Most former blocks are now **list-of-objects** (or set-of-objects). HCL syntax for those is `name = [{ ... }, { ... }]`.
 
 ```hcl
-# v2 (block)              # v3 (nested attribute)
+# v2 (block)              # v3 (list/set nested attribute)
 foo {                     foo = [{
   bar = "baz"               bar = "baz"
 }                         }]
@@ -40,11 +43,20 @@ foo { x = 2 }               { x = 1 },
                           ]
 ```
 
-To go v3 → v2, do the inverse: strip `= [` / `]`, change `},` separators to a new `foo {` per element.
+**Exception — four single-object attributes** (`client_side_availability`, `defaults`, `default_client_side_availability`, `fallthrough`) are `SingleNestedAttribute` in v3.0.0 GA. They take a **bare object, no brackets**:
+
+```hcl
+# v2 (block)                       # v3.0.0 GA (single nested attribute)
+client_side_availability {         client_side_availability = {
+  using_environment_id = true        using_environment_id = true
+}                                  }
+```
+
+To go v3 → v2, do the inverse: for list attributes strip `= [` / `]` and split `},` separators into a new `foo {` per element; for the four single-object attributes just drop `= ` and the braces become a block (`foo = { ... }` → `foo { ... }`).
 
 ## Mapping table
 
-Every attribute that changed from block → nested attribute in v3. All use `= [{ ... }]` syntax. Underlying type column is informational — it does not change HCL syntax (List and Set both render as `[{...}]`).
+Every attribute that changed from block → nested attribute in v3. The **Type** column drives the syntax: `List` / `Set` render as `= [{...}]`; `Object` (the four single-nested attributes) renders as `= {...}` with no brackets.
 
 | Resource | Attribute | Underlying type | Notes |
 |---|---|---|---|
@@ -55,7 +67,7 @@ Every attribute that changed from block → nested attribute in v3. All use `= [
 | `launchdarkly_custom_role` | `policy` | Set | Deprecated; prefer `policy_statements`. |
 | `launchdarkly_custom_role` | `policy_statements` | List | |
 | `launchdarkly_relay_proxy_configuration` | `policy` | List | Required. |
-| `launchdarkly_project` | `default_client_side_availability` | List (max 1) | |
+| `launchdarkly_project` | `default_client_side_availability` | **Object** | v3.0.0 GA: `= { ... }`. Was List (max 1) through `3.0.0-beta.3`. |
 | `launchdarkly_project` | `environments` | List | Required; min 1. |
 | `launchdarkly_project.environments[*]` | `approval_settings` | List (max 1) | Nested inside each environment block. |
 | `launchdarkly_environment` | `approval_settings` | List (max 1) | Same shape as inline-in-project. |
@@ -75,10 +87,10 @@ Every attribute that changed from block → nested attribute in v3. All use `= [
 | `launchdarkly_feature_flag_environment` | `context_targets` | Set | |
 | `launchdarkly_feature_flag_environment` | `rules` | List | |
 | `launchdarkly_feature_flag_environment.rules[*]` | `clauses` | List | Nested inside each rule. |
-| `launchdarkly_feature_flag_environment` | `fallthrough` | List (max 1) | |
-| `launchdarkly_feature_flag` | `client_side_availability` | List (max 1) | |
+| `launchdarkly_feature_flag_environment` | `fallthrough` | **Object** | Required. v3.0.0 GA: `= { ... }`. Was List (max 1) through `3.0.0-beta.3`. |
+| `launchdarkly_feature_flag` | `client_side_availability` | **Object** | v3.0.0 GA: `= { ... }`. Was List (max 1) through `3.0.0-beta.3`. |
 | `launchdarkly_feature_flag` | `variations` | List | **Required (min 1) in v3, including for boolean flags.** See gotcha §1. |
-| `launchdarkly_feature_flag` | `defaults` | List (max 1) | |
+| `launchdarkly_feature_flag` | `defaults` | **Object** | v3.0.0 GA: `= { ... }`. Was List (max 1) through `3.0.0-beta.3`. |
 
 If an attribute on a `launchdarkly_*` resource is not listed here, it was either already a primitive (no migration needed) or it was a `config` map (which uses `= { ... }` map syntax — not list-of-objects — and stayed the same across versions).
 
@@ -97,7 +109,9 @@ If an attribute on a `launchdarkly_*` resource is not listed here, it was either
 
 3. **`launchdarkly_view_links.segments` uses set semantics.** If `environment_id` is sourced from a data source field marked `Sensitive` (e.g. `data.launchdarkly_environment.x.client_side_id`), the set hash will be unstable across plans. Wrap the value in `nonsensitive(...)` to stabilize the hash. Without this you get perpetual "segments updated" drift.
 
-4. **Single-instance lists still need brackets.** `default_client_side_availability`, `fallthrough`, `defaults`, `boolean_defaults`, `client_side_availability`, `approval_settings`, and `instructions` are all max-1 lists. They still require `= [{ ... }]`, not `= { ... }`. A bare object map will fail with a type error.
+4. **Single-object vs single-element-list.** Two different shapes both hold one object — don't confuse them:
+   - **Single objects** (no brackets, `= { ... }`): `client_side_availability`, `defaults` (feature_flag), `default_client_side_availability` (project), `fallthrough` (flag_environment). These are `SingleNestedAttribute` in v3.0.0 GA. A bracketed list here fails with a type error. (Through `3.0.0-beta.3` they were max-1 lists — if you target a beta pre-release, use brackets.)
+   - **Max-1 lists** (still bracketed, `= [{ ... }]`): `boolean_defaults` (flag_templates), `approval_settings`, `instructions` (flag_trigger). A bare object map here fails with a type error.
 
 5. **`config` blocks on `launchdarkly_audit_log_subscription` and `launchdarkly_destination` were never blocks** — they have always been maps (`config = { ... }`). Do not wrap them in `[ ]`.
 
@@ -192,10 +206,10 @@ resource "launchdarkly_project" "main" {
   key  = "demo"
   name = "Demo"
 
-  default_client_side_availability = [{
+  default_client_side_availability = {
     using_environment_id = true
     using_mobile_key     = false
-  }]
+  }
 
   environments = [
     {
@@ -240,4 +254,4 @@ This skill's mapping table is a snapshot. If a future LD provider release adds, 
 grep -nE 'tfsdk:"(<attr_name>)"' launchdarkly/*.go
 ```
 
-inside the `terraform-provider-launchdarkly` repo. A `types.List` / `types.Set` field declaration paired with a `*NestedAttribute` schema entry means list-of-objects → use `= [{...}]`. A `types.Object` field means single object → use `= {...}` (none exist in v3.0.0 but watch for new ones in later releases).
+inside the `terraform-provider-launchdarkly` repo. A `types.List` / `types.Set` field paired with a `ListNestedAttribute` / `SetNestedAttribute` schema entry means list-of-objects → use `= [{...}]`. A `types.Object` field paired with a `SingleNestedAttribute` means single object → use `= {...}`. As of v3.0.0 GA the `types.Object` attributes are `client_side_availability`, `defaults`, `default_client_side_availability`, and `fallthrough`; watch for more in later releases.

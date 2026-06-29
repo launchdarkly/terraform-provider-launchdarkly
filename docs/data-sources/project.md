@@ -33,7 +33,7 @@ data "launchdarkly_project" "example" {
 
 ### Read-Only
 
-- `default_client_side_availability` (Attributes List) Which client-side SDKs can use new flags by default. (see [below for nested schema](#nestedatt--default_client_side_availability))
+- `default_client_side_availability` (Attributes) Which client-side SDKs can use new flags by default. (see [below for nested schema](#nestedatt--default_client_side_availability))
 - `id` (String) The project's ID.
 - `name` (String) The project's name.
 - `require_view_association_for_new_flags` (Boolean) Whether new flags created in this project must be associated with at least one view.

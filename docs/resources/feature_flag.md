@@ -44,15 +44,15 @@ resource "launchdarkly_feature_flag" "building_materials" {
     },
   ]
 
-  client_side_availability = [{
+  client_side_availability = {
     using_environment_id = false
     using_mobile_key     = true
-  }]
+  }
 
-  defaults = [{
+  defaults = {
     on_variation  = 2
     off_variation = 0
-  }]
+  }
 
   tags = [
     "example",
@@ -79,10 +79,10 @@ resource "launchdarkly_feature_flag" "json_example" {
     },
   ]
 
-  defaults = [{
+  defaults = {
     on_variation  = 1
     off_variation = 0
-  }]
+  }
 }
 
 # Example: Feature flag with view associations
@@ -141,9 +141,9 @@ resource "launchdarkly_feature_flag" "mobile_app_feature" {
 ### Optional
 
 - `archived` (Boolean) Specifies whether the flag is archived or not. Note that you cannot create a new flag that is archived, but can update a flag to be archived.
-- `client_side_availability` (Attributes List) Whether this flag should be made available to the client-side JavaScript SDK using the client-side Id, mobile key, or both. This value gets its default from your project configuration if not set. Once set, if removed, it will retain its last set value. (see [below for nested schema](#nestedatt--client_side_availability))
+- `client_side_availability` (Attributes) Whether this flag should be made available to the client-side JavaScript SDK using the client-side Id, mobile key, or both. This value gets its default from your project configuration if not set. Once set, if removed, it will retain its last set value. (see [below for nested schema](#nestedatt--client_side_availability))
 - `custom_properties` (Attributes Set) The feature flag's [custom properties](https://docs.launchdarkly.com/home/connecting/custom-properties). (see [below for nested schema](#nestedatt--custom_properties))
-- `defaults` (Attributes List) The indices of the variations to be used as the default on and off variations in all new environments. Flag configurations in existing environments will not be changed nor updated if removed. (see [below for nested schema](#nestedatt--defaults))
+- `defaults` (Attributes) The indices of the variations to be used as the default on and off variations in all new environments. Flag configurations in existing environments will not be changed nor updated if removed. (see [below for nested schema](#nestedatt--defaults))
 - `deprecated` (Boolean) Specifies whether the flag is deprecated or not. Note that you cannot create a new flag that is deprecated, but can update a flag to be deprecated.
 - `description` (String) The feature flag's description.
 - `maintainer_id` (String) The feature flag maintainer's 24 character alphanumeric team member ID. `maintainer_team_key` cannot be set if `maintainer_id` is set. If neither is set, it will automatically be or stay set to the member ID associated with the API key used by your LaunchDarkly Terraform provider or the most recently-set maintainer.

@@ -135,10 +135,10 @@ resource "launchdarkly_project" "env_test" {
 resource "launchdarkly_project" "test" {
 	key = "%s"
 	name = "test project"
-	default_client_side_availability = [{
+	default_client_side_availability = {
 		using_environment_id = true
 		using_mobile_key = true
-	}]
+	}
 	tags = [ "terraform", "test" ]
 	environments = [{
 	  name  = "Test Environment"
@@ -328,7 +328,7 @@ func TestAccProject_CSA_Update_And_Revert(t *testing.T) {
 					// default_client_side_availability is Optional-only; when
 					// the user omits it, state stays null and the LD-API
 					// defaults are not surfaced.
-					resource.TestCheckNoResourceAttr(resourceName, "default_client_side_availability.#"),
+					resource.TestCheckNoResourceAttr(resourceName, "default_client_side_availability.%"),
 				),
 			},
 			{
@@ -337,8 +337,8 @@ func TestAccProject_CSA_Update_And_Revert(t *testing.T) {
 					testAccCheckProjectExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, KEY, projectKey),
 					resource.TestCheckResourceAttr(resourceName, NAME, "test project"),
-					resource.TestCheckResourceAttr(resourceName, "default_client_side_availability.0.using_environment_id", "true"),
-					resource.TestCheckResourceAttr(resourceName, "default_client_side_availability.0.using_mobile_key", "true"),
+					resource.TestCheckResourceAttr(resourceName, "default_client_side_availability.using_environment_id", "true"),
+					resource.TestCheckResourceAttr(resourceName, "default_client_side_availability.using_mobile_key", "true"),
 				),
 			},
 			{ // make sure that removal of optional attributes reverts them to their default value
@@ -349,7 +349,7 @@ func TestAccProject_CSA_Update_And_Revert(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, NAME, "awesome test project"),
 					// Removing default_client_side_availability from config
 					// drops it from state.
-					resource.TestCheckNoResourceAttr(resourceName, "default_client_side_availability.#"),
+					resource.TestCheckNoResourceAttr(resourceName, "default_client_side_availability.%"),
 				),
 			},
 			{

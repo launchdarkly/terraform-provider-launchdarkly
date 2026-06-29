@@ -26,7 +26,7 @@ type FeatureFlagEnvironmentDataSourceModel struct {
 	ContextTargets types.Set    `tfsdk:"context_targets"`
 	Rules          types.List   `tfsdk:"rules"`
 	Prerequisites  types.List   `tfsdk:"prerequisites"`
-	Fallthrough    types.List   `tfsdk:"fallthrough"`
+	Fallthrough    types.Object `tfsdk:"fallthrough"`
 	TrackEvents    types.Bool   `tfsdk:"track_events"`
 	OffVariation   types.Int64  `tfsdk:"off_variation"`
 }
@@ -138,18 +138,16 @@ func (d *FeatureFlagEnvironmentDataSource) Schema(_ context.Context, _ datasourc
 					},
 				},
 			},
-			FALLTHROUGH: schema.ListNestedAttribute{
+			FALLTHROUGH: schema.SingleNestedAttribute{
 				Computed:    true,
-				Description: "Default variation served when no other targeting applies (single element).",
-				NestedObject: schema.NestedAttributeObject{
-					Attributes: map[string]schema.Attribute{
-						VARIATION:    schema.Int64Attribute{Computed: true},
-						BUCKET_BY:    schema.StringAttribute{Computed: true},
-						CONTEXT_KIND: schema.StringAttribute{Computed: true},
-						ROLLOUT_WEIGHTS: schema.ListAttribute{
-							Computed:    true,
-							ElementType: types.Int64Type,
-						},
+				Description: "Default variation served when no other targeting applies.",
+				Attributes: map[string]schema.Attribute{
+					VARIATION:    schema.Int64Attribute{Computed: true},
+					BUCKET_BY:    schema.StringAttribute{Computed: true},
+					CONTEXT_KIND: schema.StringAttribute{Computed: true},
+					ROLLOUT_WEIGHTS: schema.ListAttribute{
+						Computed:    true,
+						ElementType: types.Int64Type,
 					},
 				},
 			},
@@ -339,14 +337,12 @@ func ffeRulesValue(ctx context.Context, rules []ldapi.Rule, diags interface {
 	return list
 }
 
-func ffeFallthroughValue(ctx context.Context, fallthroughRep *ldapi.VariationOrRolloutRep, diags interface {
+func ffeFallthroughValue(_ context.Context, fallthroughRep *ldapi.VariationOrRolloutRep, _ interface {
 	AddError(string, string)
 },
-) types.List {
-	objectType := types.ObjectType{AttrTypes: ffeFallthroughAttrTypes}
+) types.Object {
 	if fallthroughRep == nil {
-		list, _ := types.ListValue(objectType, []attr.Value{})
-		return list
+		return types.ObjectNull(ffeFallthroughAttrTypes)
 	}
 	variation := int64(0)
 	if fallthroughRep.Variation != nil {
@@ -373,6 +369,5 @@ func ffeFallthroughValue(ctx context.Context, fallthroughRep *ldapi.VariationOrR
 		BUCKET_BY:       types.StringValue(bucketBy),
 		CONTEXT_KIND:    types.StringValue(contextKind),
 	})
-	list, _ := types.ListValue(objectType, []attr.Value{obj})
-	return list
+	return obj
 }

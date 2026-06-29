@@ -309,7 +309,7 @@ func TestAccDataSourceFeatureFlagEnvironment_WithContextFields(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "prerequisites.0.flag_key", thisConfig.Prerequisites[0].Key),
 					resource.TestCheckResourceAttr(resourceName, "prerequisites.0.variation", fmt.Sprint(thisConfig.Prerequisites[0].Variation)),
 					resource.TestCheckResourceAttr(resourceName, OFF_VARIATION, fmt.Sprint(*thisConfig.OffVariation)),
-					resource.TestCheckResourceAttr(resourceName, "fallthrough.0.context_kind", "user"), // set by default
+					resource.TestCheckResourceAttr(resourceName, "fallthrough.context_kind", "user"), // set by default
 					resource.TestCheckResourceAttr(resourceName, "targets.0.values.#", fmt.Sprint(len(thisConfig.Targets[0].Values))),
 					resource.TestCheckResourceAttr(resourceName, "targets.0.variation", "1"),
 					resource.TestCheckResourceAttr(resourceName, "context_targets.0.values.#", fmt.Sprint(len(thisConfig.Targets[0].Values))),
