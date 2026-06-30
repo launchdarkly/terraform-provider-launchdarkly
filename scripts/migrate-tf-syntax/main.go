@@ -437,6 +437,7 @@ func forward(body *hclwrite.Body, specs []*AttrSpec, where string) bool {
 			// non-literal key aborts the whole attribute with the file
 			// untouched (no blocks are mutated either way).
 			keyExprs := make([]hclwrite.Tokens, 0, len(matched))
+			seenKeys := make(map[string]bool, len(matched))
 			skip := false
 			for _, b := range matched {
 				keyAttr := b.Body().GetAttribute(s.MapKey)
@@ -450,6 +451,15 @@ func forward(body *hclwrite.Body, specs []*AttrSpec, where string) bool {
 					warnf("%s: %q block's %q is not a literal string; cannot key the v3 map automatically — convert by hand", where, s.Name, s.MapKey)
 					skip = true
 					break
+				}
+				// Duplicate keys would collapse into one map entry (last wins),
+				// silently dropping a block. Abort and leave it for the author.
+				if lit := string(keyExpr[1].Bytes); seenKeys[lit] {
+					warnf("%s: %q has duplicate %s %q across blocks; a map cannot hold duplicate keys — convert by hand", where, s.Name, s.MapKey, lit)
+					skip = true
+					break
+				} else {
+					seenKeys[lit] = true
 				}
 				keyExprs = append(keyExprs, keyExpr)
 			}

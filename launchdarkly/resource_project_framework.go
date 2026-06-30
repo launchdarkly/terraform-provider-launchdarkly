@@ -374,6 +374,11 @@ func markEnvSecretsUnknown(_ context.Context, planMap, stateMap types.Map) (type
 			continue
 		}
 		attrs := obj.Attributes()
+		// Pin the Optional+Computed `key` to the map key. The schema otherwise
+		// synthesizes "" for a new env's omitted key, which Apply replaces with
+		// the real key — an inconsistency the framework reports as "sensitive"
+		// because the env object contains sensitive members.
+		attrs[KEY] = types.StringValue(key)
 		if secrets, ok := stateByKey[key]; ok {
 			attrs[API_KEY] = secrets.api
 			attrs[MOBILE_KEY] = secrets.mobile

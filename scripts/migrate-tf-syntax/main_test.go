@@ -324,6 +324,36 @@ func TestReverseMapBlockReinjectsMissingKey(t *testing.T) {
 	}
 }
 
+func TestForwardMapSkipsDuplicateKey(t *testing.T) {
+	// Two environments blocks with the same key cannot become a map (duplicate
+	// keys) — abort with the file untouched rather than silently drop one.
+	src := `resource "launchdarkly_project" "p" {
+  environments {
+    key   = "production"
+    name  = "Production"
+    color = "000000"
+  }
+  environments {
+    key   = "production"
+    name  = "Dup"
+    color = "111111"
+  }
+}
+`
+	before := warningCount
+	f, body := parseBody(t, src)
+	spec := []*AttrSpec{{Name: "environments", MapKey: "key"}}
+	if forward(body, spec, "test.tf") {
+		t.Error("forward must skip when two blocks share a map key")
+	}
+	if warningCount != before+1 {
+		t.Errorf("warningCount delta = %d, want 1", warningCount-before)
+	}
+	if strings.Contains(string(f.Bytes()), "environments = {") {
+		t.Errorf("must not emit a lossy map, got:\n%s", string(f.Bytes()))
+	}
+}
+
 func TestWarnEnvIndexRefs(t *testing.T) {
 	src := []byte(`resource "launchdarkly_segment" "s" {
   a = launchdarkly_project.ex.environments[1].key
