@@ -522,6 +522,17 @@ func (r *ProjectResource) applyProjectUpdates(ctx context.Context, projectKey st
 	// so identity is the map key and only the keys present in config are
 	// managed; keys absent from config (e.g. UI-created envs) are left
 	// untouched.
+	//
+	// A null or unknown plan value means environments is not determined by
+	// configuration (the attribute is Optional+Computed and was omitted, or
+	// the value is still being computed) — NOT "remove every environment".
+	// Skip all reconciliation so we never create, patch, or delete based on a
+	// non-concrete plan. An explicit empty map `{}` is concrete (not null), so
+	// it still falls through and deletes managed environments as intended.
+	if plan.Environments.IsNull() || plan.Environments.IsUnknown() {
+		return diags
+	}
+
 	planEnvs, d := environmentModelsFromMap(ctx, plan.Environments)
 	diags.Append(d...)
 	if diags.HasError() {

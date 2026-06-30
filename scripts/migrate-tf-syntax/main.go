@@ -349,10 +349,12 @@ func forward(body *hclwrite.Body, specs []*AttrSpec, where string) bool {
 			// Map attribute keyed by an inner field (v3 MapNestedAttribute):
 			// emit `name = { <keyval> = { ...rest } }`, hoisting each block's
 			// MapKey attribute to the map key and dropping it from the object.
-			mapTokens := hclwrite.Tokens{
-				{Type: hclsyntax.TokenOBrace, Bytes: []byte("{")},
-				{Type: hclsyntax.TokenNewline, Bytes: []byte("\n")},
-			}
+			//
+			// Validate EVERY block's key before mutating any block. A missing
+			// or non-literal key on any block aborts the whole attribute with
+			// the file untouched — otherwise earlier blocks would already be
+			// stripped of their key, leaving invalid v2 syntax.
+			keyExprs := make([]hclwrite.Tokens, 0, len(matched))
 			skip := false
 			for _, b := range matched {
 				keyAttr := b.Body().GetAttribute(s.MapKey)
@@ -367,8 +369,18 @@ func forward(body *hclwrite.Body, specs []*AttrSpec, where string) bool {
 					skip = true
 					break
 				}
+				keyExprs = append(keyExprs, keyExpr)
+			}
+			if skip {
+				continue
+			}
+			mapTokens := hclwrite.Tokens{
+				{Type: hclsyntax.TokenOBrace, Bytes: []byte("{")},
+				{Type: hclsyntax.TokenNewline, Bytes: []byte("\n")},
+			}
+			for i, b := range matched {
 				b.Body().RemoveAttribute(s.MapKey)
-				mapTokens = append(mapTokens, keyExpr...)
+				mapTokens = append(mapTokens, keyExprs[i]...)
 				mapTokens = append(mapTokens,
 					&hclwrite.Token{Type: hclsyntax.TokenEqual, Bytes: []byte(" = ")},
 					&hclwrite.Token{Type: hclsyntax.TokenOBrace, Bytes: []byte("{")},
@@ -379,9 +391,6 @@ func forward(body *hclwrite.Body, specs []*AttrSpec, where string) bool {
 					&hclwrite.Token{Type: hclsyntax.TokenCBrace, Bytes: []byte("}")},
 					&hclwrite.Token{Type: hclsyntax.TokenNewline, Bytes: []byte("\n")},
 				)
-			}
-			if skip {
-				continue
 			}
 			mapTokens = append(mapTokens, &hclwrite.Token{Type: hclsyntax.TokenCBrace, Bytes: []byte("}")})
 			tokens = mapTokens
