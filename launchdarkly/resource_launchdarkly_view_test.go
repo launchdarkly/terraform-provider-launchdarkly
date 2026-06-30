@@ -16,11 +16,12 @@ const (
 resource "launchdarkly_project" "test" {
 	key  = "%s"
 	name = "Test project"
-	environments = [{
-		name  = "Test Environment"
-		key   = "test-env"
-		color = "000000"
-	}]
+	environments = {
+		"test-env" = {
+			name  = "Test Environment"
+			color = "000000"
+		}
+	}
 }
 
 resource "launchdarkly_view" "test" {
@@ -37,11 +38,12 @@ resource "launchdarkly_view" "test" {
 resource "launchdarkly_project" "test" {
 	key  = "%s"
 	name = "Test project"
-	environments = [{
-		name  = "Test Environment"
-		key   = "test-env"
-		color = "000000"
-	}]
+	environments = {
+		"test-env" = {
+			name  = "Test Environment"
+			color = "000000"
+		}
+	}
 }
 
 resource "launchdarkly_view" "test" {
@@ -58,11 +60,12 @@ resource "launchdarkly_view" "test" {
 resource "launchdarkly_project" "test" {
 	key  = "%s"
 	name = "Test project"
-	environments = [{
-		name  = "Test Environment"
-		key   = "test-env"
-		color = "000000"
-	}]
+	environments = {
+		"test-env" = {
+			name  = "Test Environment"
+			color = "000000"
+		}
+	}
 }
 
 resource "launchdarkly_team" "test_team" {
@@ -86,11 +89,12 @@ resource "launchdarkly_view" "test" {
 resource "launchdarkly_project" "test" {
 	key  = "%s"
 	name = "Test project"
-	environments = [{
-		name  = "Test Environment"
-		key   = "test-env"
-		color = "000000"
-	}]
+	environments = {
+		"test-env" = {
+			name  = "Test Environment"
+			color = "000000"
+		}
+	}
 }
 
 resource "launchdarkly_team" "test_team" {

@@ -27,11 +27,13 @@ resource "launchdarkly_project" "example" {
   key  = "example-project"
   name = "Example project"
 
-  environments = [{
-    key   = "production"
-    name  = "Production"
-    color = "EEEEEE"
-  }]
+  environments = {
+    "production" = {
+      key   = "production"
+      name  = "Production"
+      color = "EEEEEE"
+    }
+  }
 }
 
 # Create a boolean feature flag in that project

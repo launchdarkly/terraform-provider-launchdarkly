@@ -63,11 +63,12 @@ func TestAccDataSourceView_exists(t *testing.T) {
 resource "launchdarkly_project" "test" {
 	name = "%s"
 	key  = "%s"
-	environments = [{
-		name  = "Test Environment"
-		key   = "test-env"
-		color = "000000"
-	}]
+	environments = {
+		"test-env" = {
+			name  = "Test Environment"
+			color = "000000"
+		}
+	}
 }
 
 resource "launchdarkly_view" "test" {
@@ -124,11 +125,12 @@ func TestAccDataSourceView_withLinkedFlags(t *testing.T) {
 resource "launchdarkly_project" "test" {
 	name = "%s"
 	key  = "%s"
-	environments = [{
-		name  = "Test Environment"
-		key   = "test-env"
-		color = "000000"
-	}]
+	environments = {
+		"test-env" = {
+			name  = "Test Environment"
+			color = "000000"
+		}
+	}
 }
 
 resource "launchdarkly_view" "test" {

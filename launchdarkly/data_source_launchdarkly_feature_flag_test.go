@@ -135,11 +135,12 @@ func TestAccDataSourceFeatureFlag_withViews(t *testing.T) {
 resource "launchdarkly_project" "test" {
 	key  = "%s"
 	name = "Terraform Flag Views Test Project"
-	environments = [{
-		name  = "Test Environment"
-		key   = "test-env"
-		color = "000000"
-	}]
+	environments = {
+		"test-env" = {
+			name  = "Test Environment"
+			color = "000000"
+		}
+	}
 }
 
 resource "launchdarkly_feature_flag" "test" {

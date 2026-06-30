@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"sort"
+	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework-validators/setvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
@@ -21,10 +23,11 @@ import (
 )
 
 var (
-	_ resource.Resource                 = &ProjectResource{}
-	_ resource.ResourceWithImportState  = &ProjectResource{}
-	_ resource.ResourceWithModifyPlan   = &ProjectResource{}
-	_ resource.ResourceWithUpgradeState = &ProjectResource{}
+	_ resource.Resource                   = &ProjectResource{}
+	_ resource.ResourceWithImportState    = &ProjectResource{}
+	_ resource.ResourceWithModifyPlan     = &ProjectResource{}
+	_ resource.ResourceWithUpgradeState   = &ProjectResource{}
+	_ resource.ResourceWithValidateConfig = &ProjectResource{}
 )
 
 type ProjectResource struct {
@@ -37,7 +40,7 @@ type ProjectResourceModel struct {
 	Name                                 types.String `tfsdk:"name"`
 	DefaultClientSideAvailability        types.Object `tfsdk:"default_client_side_availability"`
 	Tags                                 types.Set    `tfsdk:"tags"`
-	Environments                         types.List   `tfsdk:"environments"`
+	Environments                         types.Map    `tfsdk:"environments"`
 	RequireViewAssociationForNewFlags    types.Bool   `tfsdk:"require_view_association_for_new_flags"`
 	RequireViewAssociationForNewSegments types.Bool   `tfsdk:"require_view_association_for_new_segments"`
 }
@@ -173,7 +176,6 @@ func (r *ProjectResource) UpgradeState(_ context.Context) map[int64]resource.Sta
 					Name:                                 prior.Name,
 					DefaultClientSideAvailability:        priorDCSA,
 					Tags:                                 prior.Tags,
-					Environments:                         prior.Environments,
 					RequireViewAssociationForNewFlags:    prior.RequireViewAssociationForNewFlags,
 					RequireViewAssociationForNewSegments: prior.RequireViewAssociationForNewSegments,
 				}
@@ -198,40 +200,16 @@ func (r *ProjectResource) UpgradeState(_ context.Context) map[int64]resource.Sta
 					// inner shape is identical.
 					data.DefaultClientSideAvailability = types.ObjectNull(projectCSAAttrTypes)
 				}
-				// each environments[].approval_settings whose 1-element matches
-				// API defaults → null. Decode envs, modify each, re-encode.
-				if !data.Environments.IsNull() && !data.Environments.IsUnknown() && len(data.Environments.Elements()) > 0 {
-					var envs []environmentModel
-					resp.Diagnostics.Append(data.Environments.ElementsAs(ctx, &envs, false)...)
-					if resp.Diagnostics.HasError() {
-						return
-					}
-					approvalListType := types.ListType{ElemType: types.ObjectType{AttrTypes: frameworkApprovalSettingsObjectAttrTypes}}
-					mutated := false
-					for i := range envs {
-						as := envs[i].ApprovalSettings
-						if as.IsNull() || as.IsUnknown() || len(as.Elements()) != 1 {
-							continue
-						}
-						var items []approvalSettingsModel
-						d := as.ElementsAs(ctx, &items, false)
-						if d.HasError() || len(items) != 1 {
-							continue
-						}
-						if approvalSettingsMatchesAPIDefaults(items[0]) {
-							envs[i].ApprovalSettings = types.ListNull(approvalListType.ElemType)
-							mutated = true
-						}
-					}
-					if mutated {
-						envObjectType := types.ObjectType{AttrTypes: environmentAttrTypes}
-						newList, d := types.ListValueFrom(ctx, envObjectType, envs)
-						resp.Diagnostics.Append(d...)
-						if !resp.Diagnostics.HasError() {
-							data.Environments = newList
-						}
-					}
+				// v0 stored environments as a positional list with the env key
+				// nested in each element. v3 keys a map by env key. Convert
+				// here, dropping each per-env approval_settings that matches the
+				// API defaults the v2.29 SDKv2 provider persisted verbatim.
+				envMap, d := environmentsMapFromV0List(ctx, prior.Environments)
+				resp.Diagnostics.Append(d...)
+				if resp.Diagnostics.HasError() {
+					return
 				}
+				data.Environments = envMap
 				resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 			},
 		},
@@ -242,15 +220,16 @@ func (r *ProjectResource) Configure(_ context.Context, req resource.ConfigureReq
 	r.client = configureResourceClient(req, resp)
 }
 
-// ModifyPlan addresses environments-level sensitive Unknowns: nested-
-// attribute schemas synthesize zero values for inner Computed fields
-// once the user supplies the required ones (key/name/color). For
-// api_key, mobile_key, client_side_id — secrets only LD can mint —
-// this produces a "" plan value that Apply replaces with the real
-// secret, tripping the framework's plan-vs-apply consistency check
-// (see [[feedback-nested-attr-computed-sensitive]]). Mark these
-// fields Unknown whenever there's no prior state entry for the same
-// env key.
+// ModifyPlan does two things:
+//
+//  1. Warns when a managed environment is being removed (or renamed, which is
+//     a remove + add), since deleting an environment is irreversible.
+//  2. Fixes environments-level sensitive Unknowns: nested-attribute schemas
+//     synthesize "" for inner Computed fields (api_key/mobile_key/
+//     client_side_id) once the user supplies the required ones, and Apply
+//     then replaces "" with the real secret, tripping the plan-vs-apply
+//     consistency check (see [[feedback-nested-attr-computed-sensitive]]).
+//     Mark those fields Unknown when there's no prior state entry for the key.
 func (r *ProjectResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
 	if req.Plan.Raw.IsNull() {
 		return
@@ -271,7 +250,22 @@ func (r *ProjectResource) ModifyPlan(ctx context.Context, req resource.ModifyPla
 		if resp.Diagnostics.HasError() {
 			return
 		}
+		// Warn loudly when a managed environment is being removed. Because
+		// environments is authoritative, any key in state but absent from the
+		// plan is deleted on apply — which destroys the environment along with
+		// its SDK/mobile/client-side keys and all of its flag targeting.
+		// Renaming an environment's key shows up here too (old key removed,
+		// new key added). This is a warning, not an error: apply is the gate
+		// (see [[feedback-prereq-destroy-plantime-warning]]).
+		if removed := removedEnvKeys(plan.Environments, state.Environments); len(removed) > 0 {
+			resp.Diagnostics.AddAttributeWarning(
+				path.Root(ENVIRONMENTS),
+				"environment(s) will be deleted",
+				fmt.Sprintf("The following environment(s) will be deleted from project %q, including their SDK/mobile/client-side keys and all flag targeting — this is irreversible: %s.\n\nIf you are renaming an environment, note that changing the map key deletes the old environment and creates a new one. To manage these environments outside Terraform instead, add `lifecycle { ignore_changes = [environments] }`.", plan.Key.ValueString(), strings.Join(removed, ", ")),
+			)
+		}
 	}
+
 	envs, diags := markEnvSecretsUnknown(ctx, plan.Environments, state.Environments)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
@@ -282,44 +276,89 @@ func (r *ProjectResource) ModifyPlan(ctx context.Context, req resource.ModifyPla
 	resp.Diagnostics.Append(resp.Plan.Set(ctx, &plan)...)
 }
 
-// markEnvSecretsUnknown rewrites plan.Environments so api_key /
-// mobile_key / client_side_id reflect the right env for each list
-// position. The framework's UseStateForUnknown plan modifier on those
-// inner attributes is index-based: when the user reorders envs, the
-// modifier paints state[i]'s sensitive values onto plan[i] regardless
-// of whether plan[i].key actually matches state[i].key. The result is
-// post-Apply state pulling fresh API values that don't match the
-// index-aligned plan and tripping the framework's plan-vs-apply
-// consistency check.
-//
-// Fix: match by env key. For each plan env, if state has an env with
-// the same key, use that state env's sensitive values; otherwise
-// mark them Unknown so Apply can fill them in.
-func markEnvSecretsUnknown(ctx context.Context, planList, stateList types.List) (types.List, diag.Diagnostics) {
-	var diags diag.Diagnostics
-	if planList.IsNull() || planList.IsUnknown() {
-		return planList, diags
+// removedEnvKeys returns the env keys present in stateMap but absent from
+// planMap — the environments an apply would delete — in sorted order.
+func removedEnvKeys(planMap, stateMap types.Map) []string {
+	if stateMap.IsNull() || stateMap.IsUnknown() {
+		return nil
 	}
-	objType := types.ObjectType{AttrTypes: environmentAttrTypes}
-	planEls := planList.Elements()
+	planKeys := map[string]bool{}
+	if !planMap.IsNull() && !planMap.IsUnknown() {
+		for k := range planMap.Elements() {
+			planKeys[k] = true
+		}
+	}
+	var removed []string
+	for k := range stateMap.Elements() {
+		if !planKeys[k] {
+			removed = append(removed, k)
+		}
+	}
+	sort.Strings(removed)
+	return removed
+}
+
+// ValidateConfig enforces that each environment's `key` (when set) equals its
+// map key. The map key is the authoritative identity; a per-attribute
+// validator can't see its own map key, so the cross-check lives here.
+func (r *ProjectResource) ValidateConfig(ctx context.Context, req resource.ValidateConfigRequest, resp *resource.ValidateConfigResponse) {
+	var config ProjectResourceModel
+	resp.Diagnostics.Append(req.Config.Get(ctx, &config)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	if config.Environments.IsNull() || config.Environments.IsUnknown() {
+		return
+	}
+	models, diags := environmentModelsFromMap(ctx, config.Environments)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	for mapKey, env := range models {
+		if env.Key.IsNull() || env.Key.IsUnknown() {
+			continue
+		}
+		if env.Key.ValueString() != mapKey {
+			resp.Diagnostics.AddAttributeError(
+				path.Root(ENVIRONMENTS).AtMapKey(mapKey).AtName(KEY),
+				"environment key must match its map key",
+				fmt.Sprintf("environment %q sets key = %q; the nested `key` must equal the map key (or be omitted). The map key is the environment's identity.", mapKey, env.Key.ValueString()),
+			)
+		}
+	}
+}
+
+// markEnvSecretsUnknown rewrites plan.Environments so api_key /
+// mobile_key / client_side_id reflect the right env for each key. The
+// framework synthesizes "" for the inner Computed sensitive fields once
+// the user supplies the required attributes; Apply then replaces "" with
+// the real secret, tripping the plan-vs-apply consistency check for new
+// envs (see [[feedback-nested-attr-computed-sensitive]]).
+//
+// Because environments is now a map keyed by env key, matching is by map
+// key directly: for each plan env, if state has the same key reuse its
+// sensitive values; otherwise mark them Unknown so Apply can fill them in.
+func markEnvSecretsUnknown(_ context.Context, planMap, stateMap types.Map) (types.Map, diag.Diagnostics) {
+	var diags diag.Diagnostics
+	if planMap.IsNull() || planMap.IsUnknown() {
+		return planMap, diags
+	}
+	planEls := planMap.Elements()
 	if len(planEls) == 0 {
-		return planList, diags
+		return planMap, diags
 	}
 
 	type envSecrets struct{ api, mobile, csid attr.Value }
 	stateByKey := make(map[string]envSecrets)
-	if !stateList.IsNull() && !stateList.IsUnknown() {
-		for _, el := range stateList.Elements() {
+	if !stateMap.IsNull() && !stateMap.IsUnknown() {
+		for key, el := range stateMap.Elements() {
 			obj, ok := el.(basetypes.ObjectValue)
 			if !ok {
 				continue
 			}
 			a := obj.Attributes()
-			keyVal, _ := a[KEY].(basetypes.StringValue)
-			if keyVal.IsNull() || keyVal.IsUnknown() {
-				continue
-			}
-			stateByKey[keyVal.ValueString()] = envSecrets{
+			stateByKey[key] = envSecrets{
 				api:    a[API_KEY],
 				mobile: a[MOBILE_KEY],
 				csid:   a[CLIENT_SIDE_ID],
@@ -327,20 +366,20 @@ func markEnvSecretsUnknown(ctx context.Context, planList, stateList types.List) 
 		}
 	}
 
-	out := make([]attr.Value, 0, len(planEls))
-	for _, el := range planEls {
+	out := make(map[string]attr.Value, len(planEls))
+	for key, el := range planEls {
 		obj, ok := el.(basetypes.ObjectValue)
 		if !ok {
-			out = append(out, el)
+			out[key] = el
 			continue
 		}
 		attrs := obj.Attributes()
-		keyVal, _ := attrs[KEY].(basetypes.StringValue)
-		envKey := ""
-		if !keyVal.IsNull() && !keyVal.IsUnknown() {
-			envKey = keyVal.ValueString()
-		}
-		if secrets, ok := stateByKey[envKey]; ok {
+		// Pin the Optional+Computed `key` to the map key. The schema otherwise
+		// synthesizes "" for a new env's omitted key, which Apply replaces with
+		// the real key — an inconsistency the framework reports as "sensitive"
+		// because the env object contains sensitive members.
+		attrs[KEY] = types.StringValue(key)
+		if secrets, ok := stateByKey[key]; ok {
 			attrs[API_KEY] = secrets.api
 			attrs[MOBILE_KEY] = secrets.mobile
 			attrs[CLIENT_SIDE_ID] = secrets.csid
@@ -351,11 +390,11 @@ func markEnvSecretsUnknown(ctx context.Context, planList, stateList types.List) 
 		}
 		newObj, d := types.ObjectValue(environmentAttrTypes, attrs)
 		diags.Append(d...)
-		out = append(out, newObj)
+		out[key] = newObj
 	}
-	newList, d := types.ListValue(objType, out)
+	newMap, d := types.MapValue(environmentObjectType, out)
 	diags.Append(d...)
-	return newList, diags
+	return newMap, diags
 }
 
 // projectCSAValueFromAPI emits the CSA attribute matching the prior
@@ -537,21 +576,35 @@ func (r *ProjectResource) applyProjectUpdates(ctx context.Context, projectKey st
 		}
 	}
 
-	// Environment reconciliation
-	planEnvs, d := environmentModelsFromList(ctx, plan.Environments)
+	// Environment reconciliation. environments is an authoritative map keyed
+	// by env key: the plan's keys are the project's complete env set, so any
+	// state env absent from the plan is deleted. New envs are created BEFORE
+	// removed envs are deleted — LaunchDarkly rejects deleting a project's
+	// last environment, so a rename (remove + add) must go 1->2->1, never
+	// through 0.
+	//
+	// Defensive guard: a null/unknown plan value means environments is not
+	// concrete (e.g. ignore_changes, or still being computed) — NOT "delete
+	// every environment". Skip reconciliation entirely in that case rather
+	// than risk deleting all environments off a non-concrete plan.
+	if plan.Environments.IsNull() || plan.Environments.IsUnknown() {
+		return diags
+	}
+
+	planEnvs, d := environmentModelsFromMap(ctx, plan.Environments)
 	diags.Append(d...)
 	if diags.HasError() {
 		return diags
 	}
 	stateEnvs := map[string]environmentModel{}
 	if !isCreate {
-		stateEnvList, d := environmentModelsFromList(ctx, state.Environments)
+		stateEnvs, d = environmentModelsFromMap(ctx, state.Environments)
 		diags.Append(d...)
 		if diags.HasError() {
 			return diags
 		}
-		for _, e := range stateEnvList {
-			stateEnvs[e.Key.ValueString()] = e
+		if stateEnvs == nil {
+			stateEnvs = map[string]environmentModel{}
 		}
 	}
 
@@ -561,12 +614,13 @@ func (r *ProjectResource) applyProjectUpdates(ctx context.Context, projectKey st
 		return diags
 	}
 
+	// Pass 1: create missing + patch existing (create-before-delete ordering).
 	desired := map[string]bool{}
-	for _, env := range planEnvs {
-		envKey := env.Key.ValueString()
+	for _, envKey := range sortedEnvKeys(planEnvs) {
+		env := planEnvs[envKey]
 		desired[envKey] = true
 		if !environmentExistsInProject(*project, envKey) {
-			envPost, d := environmentPostFromModel(ctx, env)
+			envPost, d := environmentPostFromModel(ctx, envKey, env)
 			diags.Append(d...)
 			if diags.HasError() {
 				return diags
@@ -635,14 +689,15 @@ func (r *ProjectResource) readIntoModel(ctx context.Context, projectKey string, 
 	diags.Append(d...)
 	data.DefaultClientSideAvailability = csaObj
 
-	// Environments — preserve config order, then append unmanaged ones.
+	// Environments — refresh the managed keys; on import/first read
+	// (null prior) surface all environments so import captures the project.
 	envItems := []ldapi.Environment{}
 	if project.Environments != nil {
 		envItems = project.Environments.Items
 	}
-	envList, d := environmentsListFromAPI(ctx, envItems, data.Environments)
+	envMap, d := environmentsMapFromAPI(ctx, envItems, data.Environments)
 	diags.Append(d...)
-	data.Environments = envList
+	data.Environments = envMap
 
 	// View association settings
 	settings, err := getProjectViewSettings(ctx, r.client, projectKey)

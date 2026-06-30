@@ -27,8 +27,13 @@ resource "launchdarkly_project" "example" {
   require_view_association_for_new_flags    = false
   require_view_association_for_new_segments = false
 
-  environments = [
-    {
+  # environments is a map keyed by the environment key (the map key and the
+  # nested `key` are the same value). Reordering, adding, or removing one
+  # environment does not affect the others. The map is authoritative: an
+  # environment removed from it is deleted. To manage environments outside
+  # Terraform instead, add `lifecycle { ignore_changes = [environments] }`.
+  environments = {
+    "production" = {
       key   = "production"
       name  = "Production"
       color = "EEEEEE"
@@ -39,14 +44,14 @@ resource "launchdarkly_project" "example" {
         min_num_approvals          = 3
         required_approval_tags     = ["approvals_required"]
       }]
-    },
-    {
+    }
+    "staging" = {
       key   = "staging"
       name  = "Staging"
       color = "000000"
       tags  = ["terraform"]
-    },
-  ]
+    }
+  }
 }
 ```
 
@@ -55,9 +60,13 @@ resource "launchdarkly_project" "example" {
 
 ### Required
 
-- `environments` (Attributes List) List of nested `environments` attributes describing LaunchDarkly environments that belong to the project. When managing LaunchDarkly projects in Terraform, you should always manage your environments as nested project resources.
+- `environments` (Attributes Map) Map of environments that belong to the project, keyed by environment `key`. This is the complete, authoritative set of the project's environments: any environment not present in the map is deleted on apply. Reordering, adding, or removing one environment does not affect the others. A project must have at least one environment.
 
--> **Note:** Mixing the use of nested `environments` and [`launchdarkly_environment`](/docs/providers/launchdarkly/r/environment.html) resources is not recommended. `launchdarkly_environment` resources should only be used when the encapsulating project is not managed in Terraform. (see [below for nested schema](#nestedatt--environments))
+~> **Warning:** Changing an environment's key (the map key) deletes that environment — including its SDK keys and all of its flag targeting — and creates a new one. This is irreversible.
+
+To manage the project in Terraform but manage its environments elsewhere (the LaunchDarkly UI or [`launchdarkly_environment`](/docs/providers/launchdarkly/r/environment.html) resources), declare your initial environments and add `lifecycle { ignore_changes = [environments] }`.
+
+-> **Note:** Mixing the use of nested `environments` and `launchdarkly_environment` resources for the same project is not recommended. `launchdarkly_environment` resources should be used together with `ignore_changes` on the project's `environments`, or when the encapsulating project is not managed in Terraform. (see [below for nested schema](#nestedatt--environments))
 - `key` (String) The project's unique key. A change in this field will force the destruction of the existing resource and the creation of a new one.
 - `name` (String) The project's name.
 
@@ -78,7 +87,6 @@ resource "launchdarkly_project" "example" {
 Required:
 
 - `color` (String) The color swatch as an RGB hex value with no leading `#`. For example: `000000`
-- `key` (String) The project-unique key for the environment. A change in this field will force the destruction of the existing resource and the creation of a new one.
 - `name` (String) The name of the environment.
 
 Optional:
@@ -88,6 +96,7 @@ Optional:
 - `critical` (Boolean) Denotes whether the environment is critical.
 - `default_track_events` (Boolean) Set to `true` to enable data export for every flag created in this environment after you configure this argument. This field will default to `false` when not set. To learn more, read [Data Export](https://docs.launchdarkly.com/home/data-export).
 - `default_ttl` (Number) The TTL for the environment. This must be between 0 and 60 minutes. The TTL setting only applies to environments using the PHP SDK. This field will default to `0` when not set. To learn more, read [TTL settings](https://docs.launchdarkly.com/home/organize/environments#ttl-settings).
+- `key` (String) The project-unique key for the environment. Must equal the map key; it defaults to the map key when omitted. Changing it (or the map key) replaces the environment.
 - `require_comments` (Boolean) Set to `true` if this environment requires comments for flag and segment changes. This field will default to `false` when not set.
 - `secure_mode` (Boolean) Set to `true` to ensure a user of the client-side SDK cannot impersonate another user. This field will default to `false` when not set.
 - `tags` (Set of String) Tags associated with your resource.
@@ -134,7 +143,7 @@ Import is supported using the following syntax:
 terraform import launchdarkly_project.example example-project
 ```
 
-**IMPORTANT:** Please note that, regardless of how many `environments` blocks you include on your import, _all_ of the project's environments will be saved to the Terraform state and will update with subsequent applies. This means that any environments not included in your import configuration will be torn down with any subsequent apply. If you wish to manage project properties with Terraform but not nested environments consider using Terraform's [ignore changes](https://www.terraform.io/docs/language/meta-arguments/lifecycle.html#ignore_changes) lifecycle meta-argument; see below for example.
+**IMPORTANT:** On import, _all_ of the project's environments are saved to the Terraform state, keyed by their environment `key`. `environments` is authoritative: on a subsequent apply, any environment that is in state but absent from your configuration is **deleted** (along with its SDK keys and all flag targeting). To manage the project in Terraform but leave its environments to the LaunchDarkly UI (or to [`launchdarkly_environment`](/docs/providers/launchdarkly/r/environment.html) resources), declare your environments and use Terraform's [ignore changes](https://www.terraform.io/docs/language/meta-arguments/lifecycle.html#ignore_changes) lifecycle meta-argument:
 
 ```terraform
 resource "launchdarkly_project" "example" {
@@ -142,11 +151,18 @@ resource "launchdarkly_project" "example" {
     ignore_changes = [environments]
   }
   name = "testProject"
-  key = "%s"
-  # environments not included on this configuration will not be affected by subsequent applies
+  key  = "example-project"
+  environments = {
+    "production" = {
+      key   = "production"
+      name  = "Production"
+      color = "EEEEEE"
+    }
+  }
+  # after the initial create, environment changes are ignored
 }
 ```
 
-**Note:** Following an import, the first apply may show a diff in the order of your environments as Terraform realigns its state with the order of configurations in your project configuration. This will not change your environments or their SDK keys.
+Because `environments` is a map keyed by environment `key`, reordering, adding, or removing one environment never forces changes to the others, and import is order-independent. Changing an environment's key (the map key) deletes the old environment and creates a new one.
 
 **Managing environment resources with Terraform should always be done on the project unless the project is not also managed with Terraform.**

@@ -4,7 +4,7 @@ description: Migrate LaunchDarkly Terraform provider HCL configs between block s
 compatibility: Works on any directory containing `.tf` files that use `launchdarkly_*` resources. No external tools required beyond a working `terraform` CLI for validation.
 metadata:
   author: ffeldberg
-  version: "2.0.0"
+  version: "2.2.0"
 ---
 
 # LaunchDarkly Terraform Provider: Block ↔ Nested Attribute Migration
@@ -13,6 +13,7 @@ The LaunchDarkly Terraform provider v3.0.0 finished the migration from `terrafor
 
 - **List/Set nested attributes** (genuinely plural, e.g. `variations`, `rules`, `statements`) → `name = [{ ... }]`.
 - **Single nested attributes** (genuinely one object — `client_side_availability`, `defaults`, `default_client_side_availability`, `fallthrough`) → `name = { ... }`. These four were modeled as max-1 lists through `3.0.0-beta.3` and switched to single objects for GA (REL-14237) so the bracketless object form is the correct v3.0.0 syntax. **If you are on a `3.0.0-beta.N` pre-release, use the list form `= [{ ... }]` for these four instead** — the object form is GA-only.
+- **Map nested attribute** (`launchdarkly_project.environments`, keyed by env `key`) → `name = { "<key>" = { key = "<key>", ... } }`. Each block's `key` value becomes the map key; the `key` attribute is also **kept inside** the object (Optional+Computed in v3, equals the map key) so `.environments["x"].key` references keep working (REL-14236). Reordering/adding/removing one environment no longer churns the others.
 
 This skill enumerates every affected attribute, gives the exact rewrite, and lists the gotchas that bite during migration.
 
@@ -52,11 +53,23 @@ client_side_availability {         client_side_availability = {
 }                                  }
 ```
 
-To go v3 → v2, do the inverse: for list attributes strip `= [` / `]` and split `},` separators into a new `foo {` per element; for the four single-object attributes just drop `= ` and the braces become a block (`foo = { ... }` → `foo { ... }`).
+**Exception — one map attribute** (`launchdarkly_project.environments`) is a `MapNestedAttribute` in v3 (REL-14236), keyed by the environment `key`. Each block's `key` value becomes the map key; the `key` attribute stays inside the object (it equals the map key):
+
+```hcl
+# v2 (block)              # v3 (map nested attribute)
+environments {            environments = {
+  key   = "production"      "production" = {
+  name  = "Production"        key   = "production"
+}                             name  = "Production"
+                            }
+                          }
+```
+
+To go v3 → v2, do the inverse: for list attributes strip `= [` / `]` and split `},` separators into a new `foo {` per element; for the four single-object attributes just drop `= ` and the braces become a block (`foo = { ... }` → `foo { ... }`); for the `environments` map, emit one `environments { ... }` block per map entry (the `key` is already inside the object; if a hand-written map omitted it, re-inject `key = "<map key>"`).
 
 ## Mapping table
 
-Every attribute that changed from block → nested attribute in v3. The **Type** column drives the syntax: `List` / `Set` render as `= [{...}]`; `Object` (the four single-nested attributes) renders as `= {...}` with no brackets.
+Every attribute that changed from block → nested attribute in v3. The **Type** column drives the syntax: `List` / `Set` render as `= [{...}]`; `Object` (the four single-nested attributes) renders as `= {...}` with no brackets; `Map` (`environments`) renders as `= { "<key>" = {...} }`.
 
 | Resource | Attribute | Underlying type | Notes |
 |---|---|---|---|
@@ -68,8 +81,8 @@ Every attribute that changed from block → nested attribute in v3. The **Type**
 | `launchdarkly_custom_role` | `policy_statements` | List | |
 | `launchdarkly_relay_proxy_configuration` | `policy` | List | Required. |
 | `launchdarkly_project` | `default_client_side_availability` | **Object** | v3.0.0 GA: `= { ... }`. Was List (max 1) through `3.0.0-beta.3`. |
-| `launchdarkly_project` | `environments` | List | Required; min 1. |
-| `launchdarkly_project.environments[*]` | `approval_settings` | List (max 1) | Nested inside each environment block. |
+| `launchdarkly_project` | `environments` | **Map** | Keyed by env `key`: `= { "<key>" = { key = "<key>", ... } }`. The `key` stays inside the object (Optional+Computed, equals the map key). Required, at least one entry; authoritative (an env removed from the map is deleted). Use `lifecycle { ignore_changes = [environments] }` to manage environments outside Terraform. Was an ordered List through the early v3 preview (REL-14236). |
+| `launchdarkly_project.environments["<key>"]` | `approval_settings` | List (max 1) | Nested inside each environment map value. |
 | `launchdarkly_environment` | `approval_settings` | List (max 1) | Same shape as inline-in-project. |
 | `launchdarkly_segment` | `included_contexts` | List | |
 | `launchdarkly_segment` | `excluded_contexts` | List | |
@@ -109,9 +122,10 @@ If an attribute on a `launchdarkly_*` resource is not listed here, it was either
 
 3. **`launchdarkly_view_links.segments` uses set semantics.** If `environment_id` is sourced from a data source field marked `Sensitive` (e.g. `data.launchdarkly_environment.x.client_side_id`), the set hash will be unstable across plans. Wrap the value in `nonsensitive(...)` to stabilize the hash. Without this you get perpetual "segments updated" drift.
 
-4. **Single-object vs single-element-list.** Two different shapes both hold one object — don't confuse them:
+4. **Single-object vs single-element-list vs map.** Three shapes use brace-ish syntax — don't confuse them:
    - **Single objects** (no brackets, `= { ... }`): `client_side_availability`, `defaults` (feature_flag), `default_client_side_availability` (project), `fallthrough` (flag_environment). These are `SingleNestedAttribute` in v3.0.0 GA. A bracketed list here fails with a type error. (Through `3.0.0-beta.3` they were max-1 lists — if you target a beta pre-release, use brackets.)
    - **Max-1 lists** (still bracketed, `= [{ ... }]`): `boolean_defaults` (flag_templates), `approval_settings`, `instructions` (flag_trigger). A bare object map here fails with a type error.
+   - **Map** (keyed object, `= { "<key>" = { ... } }`): `launchdarkly_project.environments`. Looks like a single object but the top-level keys are env keys, each mapping to an environment object. A list `= [{ ... }]` here fails with `map of object required`. Reference elements as `environments["<key>"]`, never `environments[0]`.
 
 5. **`config` blocks on `launchdarkly_audit_log_subscription` and `launchdarkly_destination` were never blocks** — they have always been maps (`config = { ... }`). Do not wrap them in `[ ]`.
 
@@ -211,13 +225,13 @@ resource "launchdarkly_project" "main" {
     using_mobile_key     = false
   }
 
-  environments = [
-    {
+  environments = {
+    "production" = {
       key   = "production"
       name  = "Production"
       color = "EF4444"
-    },
-    {
+    }
+    "staging" = {
       key   = "staging"
       name  = "Staging"
       color = "F59E0B"
@@ -226,8 +240,8 @@ resource "launchdarkly_project" "main" {
         required          = true
         min_num_approvals = 1
       }]
-    },
-  ]
+    }
+  }
 }
 ```
 
@@ -254,4 +268,4 @@ This skill's mapping table is a snapshot. If a future LD provider release adds, 
 grep -nE 'tfsdk:"(<attr_name>)"' launchdarkly/*.go
 ```
 
-inside the `terraform-provider-launchdarkly` repo. A `types.List` / `types.Set` field paired with a `ListNestedAttribute` / `SetNestedAttribute` schema entry means list-of-objects → use `= [{...}]`. A `types.Object` field paired with a `SingleNestedAttribute` means single object → use `= {...}`. As of v3.0.0 GA the `types.Object` attributes are `client_side_availability`, `defaults`, `default_client_side_availability`, and `fallthrough`; watch for more in later releases.
+inside the `terraform-provider-launchdarkly` repo. A `types.List` / `types.Set` field paired with a `ListNestedAttribute` / `SetNestedAttribute` schema entry means list-of-objects → use `= [{...}]`. A `types.Object` field paired with a `SingleNestedAttribute` means single object → use `= {...}`. A `types.Map` field paired with a `MapNestedAttribute` means a key-addressed map → use `= { "<key>" = {...} }`. As of v3.0.0 GA the `types.Object` attributes are `client_side_availability`, `defaults`, `default_client_side_availability`, and `fallthrough`, and the only `types.Map` nested attribute is `launchdarkly_project.environments`; watch for more in later releases.

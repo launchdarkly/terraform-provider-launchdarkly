@@ -15,11 +15,12 @@ const (
 resource "launchdarkly_project" "test" {
 	name = "%s"
 	key  = "%s"
-	environments = [{
-		name  = "Test Environment"
-		key   = "test-env"
-		color = "000000"
-	}]
+	environments = {
+		"test-env" = {
+			name  = "Test Environment"
+			color = "000000"
+		}
+	}
 }
 
 resource "launchdarkly_view" "test" {
@@ -67,11 +68,12 @@ resource "launchdarkly_view_links" "test" {
 resource "launchdarkly_project" "test" {
 	name = "%s"
 	key  = "%s"
-	environments = [{
-		name  = "Test Environment"
-		key   = "test-env"
-		color = "000000"
-	}]
+	environments = {
+		"test-env" = {
+			name  = "Test Environment"
+			color = "000000"
+		}
+	}
 }
 
 resource "launchdarkly_view" "test" {
@@ -130,11 +132,12 @@ resource "launchdarkly_view_links" "test" {
 resource "launchdarkly_project" "test" {
 	name = "%s"
 	key  = "%s"
-	environments = [{
-		name  = "Test Environment"
-		key   = "test-env"
-		color = "000000"
-	}]
+	environments = {
+		"test-env" = {
+			name  = "Test Environment"
+			color = "000000"
+		}
+	}
 }
 
 resource "launchdarkly_view" "test" {
@@ -185,15 +188,16 @@ resource "launchdarkly_feature_flag" "test3" {
 resource "launchdarkly_project" "test" {
 	name = "%s"
 	key  = "%s"
-	environments = [{
-		name  = "Test Environment"
-		key   = "test-env"
-		color = "000000"
-	}, {
-		name  = "Production"
-		key   = "production"
-		color = "AAAAAA"
-	}]
+	environments = {
+		"test-env" = {
+			name  = "Test Environment"
+			color = "000000"
+		}
+		"production" = {
+			name  = "Production"
+			color = "AAAAAA"
+		}
+	}
 }
 
 resource "launchdarkly_view" "test" {
@@ -271,10 +275,10 @@ resource "launchdarkly_view_links" "test" {
 	]
 
 	segments = [{
-		environment_id = launchdarkly_project.test.environments[0].client_side_id
+		environment_id = launchdarkly_project.test.environments["test-env"].client_side_id
 		segment_key    = launchdarkly_segment.segment1.key
 	}, {
-		environment_id = launchdarkly_project.test.environments[0].client_side_id
+		environment_id = launchdarkly_project.test.environments["test-env"].client_side_id
 		segment_key    = launchdarkly_segment.segment2.key
 	}]
 }
@@ -284,15 +288,16 @@ resource "launchdarkly_view_links" "test" {
 resource "launchdarkly_project" "test" {
 	name = "%s"
 	key  = "%s"
-	environments = [{
-		name  = "Test Environment"
-		key   = "test-env"
-		color = "000000"
-	}, {
-		name  = "Production"
-		key   = "production"
-		color = "AAAAAA"
-	}]
+	environments = {
+		"test-env" = {
+			name  = "Test Environment"
+			color = "000000"
+		}
+		"production" = {
+			name  = "Production"
+			color = "AAAAAA"
+		}
+	}
 }
 
 resource "launchdarkly_view" "test" {
@@ -370,10 +375,10 @@ resource "launchdarkly_view_links" "test" {
 	]
 
 	segments = [{
-		environment_id = launchdarkly_project.test.environments[0].client_side_id
+		environment_id = launchdarkly_project.test.environments["test-env"].client_side_id
 		segment_key    = launchdarkly_segment.segment1.key
 	}, {
-		environment_id = launchdarkly_project.test.environments[1].client_side_id
+		environment_id = launchdarkly_project.test.environments["production"].client_side_id
 		segment_key    = launchdarkly_segment.segment3.key
 	}]
 }
@@ -383,15 +388,16 @@ resource "launchdarkly_view_links" "test" {
 resource "launchdarkly_project" "test" {
 	name = "%s"
 	key  = "%s"
-	environments = [{
-		name  = "Test Environment"
-		key   = "test-env"
-		color = "000000"
-	}, {
-		name  = "Production"
-		key   = "production"
-		color = "AAAAAA"
-	}]
+	environments = {
+		"test-env" = {
+			name  = "Test Environment"
+			color = "000000"
+		}
+		"production" = {
+			name  = "Production"
+			color = "AAAAAA"
+		}
+	}
 }
 
 resource "launchdarkly_view" "test" {
@@ -469,13 +475,13 @@ resource "launchdarkly_view_links" "test" {
 	]
 
 	segments = [{
-		environment_id = launchdarkly_project.test.environments[0].client_side_id
+		environment_id = launchdarkly_project.test.environments["test-env"].client_side_id
 		segment_key    = launchdarkly_segment.segment2.key
 	}, {
-		environment_id = launchdarkly_project.test.environments[1].client_side_id
+		environment_id = launchdarkly_project.test.environments["production"].client_side_id
 		segment_key    = launchdarkly_segment.segment3.key
 	}, {
-		environment_id = launchdarkly_project.test.environments[0].client_side_id
+		environment_id = launchdarkly_project.test.environments["test-env"].client_side_id
 		segment_key    = launchdarkly_segment.segment1.key
 	}]
 }

@@ -29,11 +29,13 @@ If you currently manage context kinds via the Mastercard `restapi_object` resour
 resource "launchdarkly_project" "example" {
   key  = "example-project"
   name = "Example Project"
-  environments = [{
-    key   = "production"
-    name  = "Production"
-    color = "000000"
-  }]
+  environments = {
+    "production" = {
+      key   = "production"
+      name  = "Production"
+      color = "000000"
+    }
+  }
 }
 
 resource "launchdarkly_context_kind" "organization" {

@@ -277,11 +277,12 @@ func TestAccDataSourceSegment_WithLinkedViews(t *testing.T) {
 resource "launchdarkly_project" "test" {
 	name = "%s"
 	key  = "%s"
-	environments = [{
-		name  = "Test Environment"
-		key   = "test"
-		color = "000000"
-	}]
+	environments = {
+		"test" = {
+			name  = "Test Environment"
+			color = "000000"
+		}
+	}
 }
 
 resource "launchdarkly_view" "test" {
@@ -305,7 +306,7 @@ resource "launchdarkly_view_links" "test" {
 	project_key = launchdarkly_project.test.key
 	view_key    = launchdarkly_view.test.key
 	segments = [{
-		environment_id = launchdarkly_project.test.environments[0].client_side_id
+		environment_id = launchdarkly_project.test.environments["test"].client_side_id
 		segment_key    = launchdarkly_segment.test.key
 	}]
 }

@@ -97,6 +97,93 @@ func TestDefaultsObjectFromV0List(t *testing.T) {
 	})
 }
 
+func TestEnvironmentsMapFromV0List(t *testing.T) {
+	ctx := context.Background()
+
+	// v0 env element = current environmentAttrTypes plus the inline KEY.
+	v0Attr := map[string]attr.Type{KEY: types.StringType}
+	for k, v := range environmentAttrTypes {
+		v0Attr[k] = v
+	}
+	v0ObjType := types.ObjectType{AttrTypes: v0Attr}
+	approvalObjType := types.ObjectType{AttrTypes: frameworkApprovalSettingsObjectAttrTypes}
+
+	approval := func(required bool, min int64) basetypes.ListValue {
+		return types.ListValueMust(approvalObjType, []attr.Value{
+			types.ObjectValueMust(frameworkApprovalSettingsObjectAttrTypes, map[string]attr.Value{
+				REQUIRED:                    types.BoolValue(required),
+				CAN_REVIEW_OWN_REQUEST:      types.BoolValue(false),
+				MIN_NUM_APPROVALS:           types.Int64Value(min),
+				CAN_APPLY_DECLINED_CHANGES:  types.BoolValue(true),
+				REQUIRED_APPROVAL_TAGS:      types.ListValueMust(types.StringType, []attr.Value{}),
+				SERVICE_KIND:                types.StringValue("launchdarkly"),
+				SERVICE_CONFIG:              types.MapValueMust(types.StringType, map[string]attr.Value{}),
+				AUTO_APPLY_APPROVED_CHANGES: types.BoolValue(false),
+			}),
+		})
+	}
+
+	mkEnv := func(name string, approvals attr.Value) func(key string) attr.Value {
+		return func(key string) attr.Value {
+			return types.ObjectValueMust(v0Attr, map[string]attr.Value{
+				KEY:                  types.StringValue(key),
+				NAME:                 types.StringValue(name),
+				COLOR:                types.StringValue("000000"),
+				CRITICAL:             types.BoolValue(false),
+				API_KEY:              types.StringValue(""),
+				MOBILE_KEY:           types.StringValue(""),
+				CLIENT_SIDE_ID:       types.StringValue(""),
+				DEFAULT_TTL:          types.Int64Value(0),
+				SECURE_MODE:          types.BoolValue(false),
+				DEFAULT_TRACK_EVENTS: types.BoolValue(false),
+				REQUIRE_COMMENTS:     types.BoolValue(false),
+				CONFIRM_CHANGES:      types.BoolValue(false),
+				TAGS:                 types.SetValueMust(types.StringType, []attr.Value{}),
+				APPROVAL_SETTINGS:    approvals,
+			})
+		}
+	}
+
+	list := types.ListValueMust(v0ObjType, []attr.Value{
+		mkEnv("Production", approval(true, 2))("production"),       // real approval → preserved
+		mkEnv("Test", approval(false, 1))("test"),                  // matches API defaults → nulled
+		mkEnv("Staging", types.ListNull(approvalObjType))("stage"), // null → stays null
+	})
+
+	m, diags := environmentsMapFromV0List(ctx, list)
+	if diags.HasError() {
+		t.Fatalf("unexpected diags: %v", diags)
+	}
+	models := map[string]environmentModel{}
+	if d := m.ElementsAs(ctx, &models, false); d.HasError() {
+		t.Fatalf("decode map: %v", d)
+	}
+	if len(models) != 3 {
+		t.Fatalf("expected 3 envs keyed by env key, got %d: %v", len(models), models)
+	}
+	if got := models["production"].Name.ValueString(); got != "Production" {
+		t.Errorf("production name not preserved: %q", got)
+	}
+	if got := models["production"].Key.ValueString(); got != "production" {
+		t.Errorf("production key not preserved: %q", got)
+	}
+	if models["production"].ApprovalSettings.IsNull() || len(models["production"].ApprovalSettings.Elements()) != 1 {
+		t.Error("real approval_settings must be preserved on production")
+	}
+	if !models["test"].ApprovalSettings.IsNull() {
+		t.Error("API-default approval_settings must be nulled on test")
+	}
+	if !models["stage"].ApprovalSettings.IsNull() {
+		t.Error("null approval_settings must stay null on stage")
+	}
+
+	// A null/empty v0 list must project to an EMPTY (not null) map so the next
+	// Read manages none rather than importing every environment.
+	if nm, _ := environmentsMapFromV0List(ctx, types.ListNull(v0ObjType)); nm.IsNull() || len(nm.Elements()) != 0 {
+		t.Errorf("null list must project to an empty (non-null) map, got null=%v len=%d", nm.IsNull(), len(nm.Elements()))
+	}
+}
+
 func TestFFEFallthroughObjectFromV0List(t *testing.T) {
 	ctx := context.Background()
 	objType := types.ObjectType{AttrTypes: ffeFallthroughAttrTypes}

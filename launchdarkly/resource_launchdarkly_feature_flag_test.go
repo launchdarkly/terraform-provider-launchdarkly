@@ -539,11 +539,12 @@ func withRandomProject(randomProject, resource string) string {
 		}
 		name = "testProject"
 		key = "%s"
-		environments = [{
-			name  = "testEnvironment"
-			key   = "test"
-			color = "000000"
-		}]
+		environments = {
+			"test" = {
+				name  = "testEnvironment"
+				color = "000000"
+			}
+		}
 	}
 	
 	%s`, randomProject, resource)
@@ -561,11 +562,12 @@ func withProjectWithSpecifiedCSADefaults(randomProject string, resource string, 
 			using_environment_id = %v
 			using_mobile_key = %v
 		}
-		environments = [{
-			name  = "testEnvironment"
-			key   = "test"
-			color = "000000"
-		}]
+		environments = {
+			"test" = {
+				name  = "testEnvironment"
+				color = "000000"
+			}
+		}
 	}
 	
 	%s`, randomProject, usingEnvironmentId, usingMobileKey, resource)
@@ -579,11 +581,12 @@ func withRandomProjectAndEnv(randomProject, randomEnvironment, resource string) 
 		}
 		name = "testProject"
 		key = "%s"
-		environments = [{
-			name  = "testEnvironment"
-			key   = "%s"
-			color = "000000"
-		}]
+		environments = {
+			"%s" = {
+				name  = "testEnvironment"
+				color = "000000"
+			}
+		}
 	}
 	
 	%s`, randomProject, randomEnvironment, resource)
@@ -1452,11 +1455,12 @@ resource "launchdarkly_project" "test" {
 	key  = "%s"
 	name = "View Requirement Test"
 	require_view_association_for_new_flags = true
-	environments = [{
-		key   = "test-env"
-		name  = "Test Environment"
-		color = "010101"
-	}]
+	environments = {
+		"test-env" = {
+			name  = "Test Environment"
+			color = "010101"
+		}
+	}
 }
 
 resource "launchdarkly_feature_flag" "test" {
@@ -1477,11 +1481,12 @@ resource "launchdarkly_project" "test" {
 	key  = "%s"
 	name = "View Requirement Test"
 	require_view_association_for_new_flags = true
-	environments = [{
-		key   = "test-env"
-		name  = "Test Environment"
-		color = "010101"
-	}]
+	environments = {
+		"test-env" = {
+			name  = "Test Environment"
+			color = "010101"
+		}
+	}
 }
 
 resource "launchdarkly_view" "test" {
@@ -1825,11 +1830,12 @@ func TestAccFeatureFlag_ArchiveOnDestroy(t *testing.T) {
 		}
 		name = "testProject"
 		key = "%s"
-		environments = [{
-			name  = "testEnvironment"
-			key   = "test"
-			color = "000000"
-		}]
+		environments = {
+			"test" = {
+				name  = "testEnvironment"
+				color = "000000"
+			}
+		}
 	}
 	`, projectKey)
 

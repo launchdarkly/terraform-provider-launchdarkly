@@ -25,6 +25,27 @@ type ProjectResourceModelV0 struct {
 	RequireViewAssociationForNewSegments types.Bool   `tfsdk:"require_view_association_for_new_segments"`
 }
 
+// environmentModelV0 is the v0 (SDKv2 / pre-REL-14236) environment element
+// shape: a positional list element that carried the env key inline. The
+// v0->v1 upgrader decodes this and re-keys a map by `Key` (see
+// environmentsMapFromV0List).
+type environmentModelV0 struct {
+	Key                types.String `tfsdk:"key"`
+	Name               types.String `tfsdk:"name"`
+	Color              types.String `tfsdk:"color"`
+	Critical           types.Bool   `tfsdk:"critical"`
+	APIKey             types.String `tfsdk:"api_key"`
+	MobileKey          types.String `tfsdk:"mobile_key"`
+	ClientSideID       types.String `tfsdk:"client_side_id"`
+	DefaultTTL         types.Int64  `tfsdk:"default_ttl"`
+	SecureMode         types.Bool   `tfsdk:"secure_mode"`
+	DefaultTrackEvents types.Bool   `tfsdk:"default_track_events"`
+	RequireComments    types.Bool   `tfsdk:"require_comments"`
+	ConfirmChanges     types.Bool   `tfsdk:"confirm_changes"`
+	Tags               types.Set    `tfsdk:"tags"`
+	ApprovalSettings   types.List   `tfsdk:"approval_settings"`
+}
+
 func projectSchemaAttributesV0() map[string]schema.Attribute {
 	attrs := projectSchemaAttributes()
 	attrs[INCLUDE_IN_SNIPPET] = schema.BoolAttribute{
@@ -47,5 +68,38 @@ func projectSchemaAttributesV0() map[string]schema.Attribute {
 			},
 		},
 	}
+	// v0 (SDKv2) stored environments as a positional list whose elements
+	// carried the env key inline. The current (v3) schema models it as a
+	// map keyed by env key. Pin the prior schema to the original list shape
+	// so genuine v2.x state still decodes; the upgrader body re-keys via
+	// environmentsMapFromV0List.
+	attrs[ENVIRONMENTS] = projectEnvironmentsAttributeV0()
 	return attrs
+}
+
+// projectEnvironmentsAttributeV0 reproduces the pre-REL-14236 (v0)
+// environments list shape — a list of objects each holding its own `key`
+// — used only as PriorSchema for the v0->v1 state upgrader.
+func projectEnvironmentsAttributeV0() schema.ListNestedAttribute {
+	return schema.ListNestedAttribute{
+		Optional: true,
+		NestedObject: schema.NestedAttributeObject{
+			Attributes: map[string]schema.Attribute{
+				KEY:                  schema.StringAttribute{Required: true},
+				NAME:                 schema.StringAttribute{Required: true},
+				COLOR:                schema.StringAttribute{Required: true},
+				CRITICAL:             schema.BoolAttribute{Optional: true, Computed: true},
+				API_KEY:              schema.StringAttribute{Computed: true, Sensitive: true},
+				MOBILE_KEY:           schema.StringAttribute{Computed: true, Sensitive: true},
+				CLIENT_SIDE_ID:       schema.StringAttribute{Computed: true, Sensitive: true},
+				DEFAULT_TTL:          schema.Int64Attribute{Optional: true, Computed: true},
+				SECURE_MODE:          schema.BoolAttribute{Optional: true, Computed: true},
+				DEFAULT_TRACK_EVENTS: schema.BoolAttribute{Optional: true, Computed: true},
+				REQUIRE_COMMENTS:     schema.BoolAttribute{Optional: true, Computed: true},
+				CONFIRM_CHANGES:      schema.BoolAttribute{Optional: true, Computed: true},
+				TAGS:                 schema.SetAttribute{Optional: true, ElementType: types.StringType},
+				APPROVAL_SETTINGS:    frameworkApprovalSettingsResourceAttribute(),
+			},
+		},
+	}
 }
