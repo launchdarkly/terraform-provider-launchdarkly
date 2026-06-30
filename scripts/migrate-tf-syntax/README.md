@@ -31,7 +31,7 @@ go build -o ../../bin/migrate-tf-syntax .
 
 `mappings.json` (embedded as default) maps resource type → object containing three optional sections:
 
-- `blocks` — attributes that switched from block to nested attribute. Nested entries describe attributes inside an element that themselves migrated (e.g. `rules` contains `clauses`). Set `"object": true` for a genuine single-object attribute (`SingleNestedAttribute`): forward emits `name = { ... }` (no brackets) and reverse parses that object back to a block. Omit it for the default list-of-objects shape. LD's four single-object attributes are `client_side_availability`, `defaults`, `default_client_side_availability`, and `fallthrough` (REL-14237).
+- `blocks` — attributes that switched from block to nested attribute. Nested entries describe attributes inside an element that themselves migrated (e.g. `rules` contains `clauses`). Set `"object": true` for a genuine single-object attribute (`SingleNestedAttribute`): forward emits `name = { ... }` (no brackets) and reverse parses that object back to a block. Omit it for the default list-of-objects shape. LD's four single-object attributes are `client_side_availability`, `defaults`, `default_client_side_availability`, and `fallthrough` (REL-14237). Set `"map_key": "<inner attr>"` for a `MapNestedAttribute` keyed by one inner field (`launchdarkly_project.environments`, keyed by `key`, REL-14236): forward emits `name = { <keyval> = { ...rest } }`, hoisting that field to the map key and dropping it from the object; reverse expands the map back to repeated blocks, re-injecting `<inner attr> = <key>`. Only literal-string keys convert automatically — a non-literal key (a `var`/`local`/function call) warns and is left for the author. `object` and `map_key` are mutually exclusive.
 - `deprecations` — attributes removed from the v3 schema. Each entry has `name`, `action`, and (for some actions) `to`. Supported actions:
   - `drop` — remove the attribute outright (no replacement).
   - `rename` — move the value verbatim onto `to` (e.g. `policy_statements` → `inline_roles`). If `to` already exists in the config, the existing value wins and the deprecated attribute is dropped.
@@ -79,7 +79,7 @@ grep -nE 'tfsdk:"[^"]+"' launchdarkly/resource_*_framework.go \
   | grep -E 'types\.(List|Set|Object)\b'
 ```
 
-A `types.List` / `types.Set` paired with a `ListNestedAttribute` / `SetNestedAttribute` means list-of-objects; add it to `mappings.json` without `object`. A `types.Object` paired with a `SingleNestedAttribute` means single object; add it with `"object": true`.
+A `types.List` / `types.Set` paired with a `ListNestedAttribute` / `SetNestedAttribute` means list-of-objects; add it to `mappings.json` without `object`. A `types.Object` paired with a `SingleNestedAttribute` means single object; add it with `"object": true`. A `types.Map` paired with a `MapNestedAttribute` means a key-addressed map; add it with `"map_key": "<inner attr that became the map key>"`.
 
 ## Round-trip test
 

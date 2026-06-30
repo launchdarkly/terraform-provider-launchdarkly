@@ -16,11 +16,12 @@ resource "launchdarkly_project" "test" {
   key  = "%s"
   name = "Context kind acceptance test"
   tags = ["terraform", "context-kind-test"]
-  environments = [{
-    name  = "Test Environment"
-    key   = "test-env"
-    color = "010101"
-  }]
+  environments = {
+    "test-env" = {
+      name  = "Test Environment"
+      color = "010101"
+    }
+  }
 }
 `, projectKey)
 }

@@ -4,15 +4,21 @@ package launchdarkly
 // by launchdarkly_project and the conversion helpers between framework
 // state values and the LD-API environment shapes.
 //
+// As of REL-14236 environments is a Map keyed by the environment key
+// (was a positional List). The map key carries the environment identity,
+// so the nested object no longer has its own `key` attribute. Keying by
+// env key makes reorder/add/remove of one environment a no-op for its
+// siblings.
+//
 // The standalone launchdarkly_environment resource lives in
 // resource_environment_framework.go and uses the same approval_settings
 // shape as the nested-environments attribute here.
 
 import (
 	"context"
+	"sort"
 
 	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
-	"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/setvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
@@ -27,11 +33,11 @@ import (
 	ldapi "github.com/launchdarkly/api-client-go/v22"
 )
 
-// environmentModel matches the nested-environments element shape used
-// in launchdarkly_project. KEY is intentionally NOT ForceNew here —
-// in the nested form, terraform tracks env identity by KEY across plans.
+// environmentModel matches the nested-environments element shape used in
+// launchdarkly_project. The environment key lives in the enclosing map's
+// key, NOT in this struct — terraform tracks env identity by map key
+// across plans.
 type environmentModel struct {
-	Key                types.String `tfsdk:"key"`
 	Name               types.String `tfsdk:"name"`
 	Color              types.String `tfsdk:"color"`
 	Critical           types.Bool   `tfsdk:"critical"`
@@ -48,7 +54,6 @@ type environmentModel struct {
 }
 
 var environmentAttrTypes = map[string]attr.Type{
-	KEY:                  types.StringType,
 	NAME:                 types.StringType,
 	COLOR:                types.StringType,
 	CRITICAL:             types.BoolType,
@@ -64,21 +69,21 @@ var environmentAttrTypes = map[string]attr.Type{
 	APPROVAL_SETTINGS:    types.ListType{ElemType: types.ObjectType{AttrTypes: frameworkApprovalSettingsObjectAttrTypes}},
 }
 
+// environmentObjectType is the element type of the environments map.
+var environmentObjectType = types.ObjectType{AttrTypes: environmentAttrTypes}
+
 // projectEnvironmentsAttribute returns the nested-environments attribute
-// for the project resource schema. It is Required (Min:1 enforced by
-// the list-size validator).
-func projectEnvironmentsAttribute() schema.ListNestedAttribute {
-	return schema.ListNestedAttribute{
-		Required:    true,
-		Description: "List of nested `environments` attributes describing LaunchDarkly environments that belong to the project. When managing LaunchDarkly projects in Terraform, you should always manage your environments as nested project resources.\n\n-> **Note:** Mixing the use of nested `environments` and [`launchdarkly_environment`](/docs/providers/launchdarkly/r/environment.html) resources is not recommended. `launchdarkly_environment` resources should only be used when the encapsulating project is not managed in Terraform.",
-		Validators:  []validator.List{listvalidator.SizeAtLeast(1)},
+// for the project resource schema. It is a Map keyed by environment key.
+// Optional+Computed: omitting it (or setting `{}`) lets the project be
+// created with the environments LaunchDarkly auto-provisions without
+// terraform churn, and a declared map manages exactly its keys.
+func projectEnvironmentsAttribute() schema.MapNestedAttribute {
+	return schema.MapNestedAttribute{
+		Optional:    true,
+		Computed:    true,
+		Description: "Map of environments that belong to the project, keyed by environment `key`. When managing LaunchDarkly projects in Terraform, you should always manage your environments as nested project resources. Environments not present in the map are left unmanaged (terraform will not modify or delete them), so you can manage a subset and leave the rest to the LaunchDarkly UI. Set this to `{}` to create a project while managing none of its environments. Omitting the attribute entirely is discouraged: the provider records the environments LaunchDarkly auto-provisions into state but does not manage them, which is easy to do by accident — prefer `{}` or an explicit map.\n\n-> **Note:** Mixing the use of nested `environments` and [`launchdarkly_environment`](/docs/providers/launchdarkly/r/environment.html) resources is not recommended. `launchdarkly_environment` resources should only be used when the encapsulating project is not managed in Terraform.",
 		NestedObject: schema.NestedAttributeObject{
 			Attributes: map[string]schema.Attribute{
-				KEY: schema.StringAttribute{
-					Required:    true,
-					Description: addForceNewDescription("The project-unique key for the environment.", true),
-					Validators:  []validator.String{keyValidator()},
-				},
 				NAME: schema.StringAttribute{
 					Required:    true,
 					Description: "The name of the environment.",
@@ -154,27 +159,38 @@ func projectEnvironmentsAttribute() schema.ListNestedAttribute {
 	}
 }
 
-// environmentModelsFromList unpacks a framework ListValue of nested
-// environment blocks into a slice of typed models.
-func environmentModelsFromList(ctx context.Context, list types.List) ([]environmentModel, diag.Diagnostics) {
-	if list.IsNull() || list.IsUnknown() {
+// environmentModelsFromMap unpacks a framework MapValue of nested
+// environment objects into a map of typed models keyed by environment key.
+func environmentModelsFromMap(ctx context.Context, m types.Map) (map[string]environmentModel, diag.Diagnostics) {
+	if m.IsNull() || m.IsUnknown() {
 		return nil, nil
 	}
-	var models []environmentModel
-	diags := list.ElementsAs(ctx, &models, false)
+	models := make(map[string]environmentModel, len(m.Elements()))
+	diags := m.ElementsAs(ctx, &models, false)
 	return models, diags
 }
 
-// environmentPostsFromPlan converts the plan's environments block into a
+// sortedEnvKeys returns the keys of an environment model map in a stable
+// order so POST bodies and patch sequences are deterministic.
+func sortedEnvKeys(models map[string]environmentModel) []string {
+	keys := make([]string, 0, len(models))
+	for k := range models {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	return keys
+}
+
+// environmentPostsFromPlan converts the plan's environments map into a
 // slice of ldapi.EnvironmentPost for the initial PostProject call.
-func environmentPostsFromPlan(ctx context.Context, list types.List) ([]ldapi.EnvironmentPost, diag.Diagnostics) {
-	models, diags := environmentModelsFromList(ctx, list)
+func environmentPostsFromPlan(ctx context.Context, m types.Map) ([]ldapi.EnvironmentPost, diag.Diagnostics) {
+	models, diags := environmentModelsFromMap(ctx, m)
 	if diags.HasError() || models == nil {
 		return nil, diags
 	}
 	posts := make([]ldapi.EnvironmentPost, 0, len(models))
-	for _, m := range models {
-		p, d := environmentPostFromModel(ctx, m)
+	for _, key := range sortedEnvKeys(models) {
+		p, d := environmentPostFromModel(ctx, key, models[key])
 		diags.Append(d...)
 		if diags.HasError() {
 			return nil, diags
@@ -184,10 +200,10 @@ func environmentPostsFromPlan(ctx context.Context, list types.List) ([]ldapi.Env
 	return posts, diags
 }
 
-func environmentPostFromModel(_ context.Context, m environmentModel) (ldapi.EnvironmentPost, diag.Diagnostics) {
+func environmentPostFromModel(_ context.Context, key string, m environmentModel) (ldapi.EnvironmentPost, diag.Diagnostics) {
 	post := ldapi.EnvironmentPost{
 		Name:  m.Name.ValueString(),
-		Key:   m.Key.ValueString(),
+		Key:   key,
 		Color: m.Color.ValueString(),
 	}
 	if !m.DefaultTTL.IsNull() && !m.DefaultTTL.IsUnknown() {
@@ -234,40 +250,55 @@ func planOrNullList(hadOld bool, l types.List) types.List {
 	return l
 }
 
-// environmentsListFromAPI flattens the LD environments slice back into a
-// framework ListValue, preserving the order of envs already in `prior`
-// (the most recent state) then appending any unmanaged environments.
-func environmentsListFromAPI(ctx context.Context, envs []ldapi.Environment, prior types.List) (basetypes.ListValue, diag.Diagnostics) {
-	objType := types.ObjectType{AttrTypes: environmentAttrTypes}
+// environmentsMapFromAPI flattens the LD environments slice into a
+// framework MapValue keyed by environment key.
+//
+// Append rule: when `prior` is null/unknown (import or the first read
+// after a create that omitted environments) every API environment is
+// surfaced so import captures the whole project. When `prior` is a
+// populated map the result tracks ONLY the keys present in `prior`
+// (managed mode) — environments created outside terraform are left
+// untracked, which is what lets a user manage a subset and leave the
+// rest to the UI.
+func environmentsMapFromAPI(ctx context.Context, envs []ldapi.Environment, prior types.Map) (basetypes.MapValue, diag.Diagnostics) {
+	var diags diag.Diagnostics
 	envByKey := make(map[string]ldapi.Environment, len(envs))
 	for _, e := range envs {
 		envByKey[e.Key] = e
 	}
-	priorModels, diags := environmentModelsFromList(ctx, prior)
-	added := map[string]bool{}
-	ordered := make([]attr.Value, 0, len(envs))
-	for _, p := range priorModels {
-		envKey := p.Key.ValueString()
-		envAPI, ok := envByKey[envKey]
-		if !ok {
-			continue
+
+	elements := map[string]attr.Value{}
+	if prior.IsNull() || prior.IsUnknown() {
+		for _, e := range envs {
+			obj, d := environmentObjectFromAPI(ctx, e, nil)
+			diags.Append(d...)
+			elements[e.Key] = obj
 		}
-		added[envKey] = true
-		obj, d := environmentObjectFromAPI(ctx, envAPI, &p)
+		m, d := types.MapValue(environmentObjectType, elements)
 		diags.Append(d...)
-		ordered = append(ordered, obj)
+		return m, diags
 	}
-	for _, e := range envs {
-		if added[e.Key] {
-			continue
-		}
-		obj, d := environmentObjectFromAPI(ctx, e, nil)
-		diags.Append(d...)
-		ordered = append(ordered, obj)
-	}
-	list, d := types.ListValue(objType, ordered)
+
+	priorModels, d := environmentModelsFromMap(ctx, prior)
 	diags.Append(d...)
-	return list, diags
+	if diags.HasError() {
+		return types.MapNull(environmentObjectType), diags
+	}
+	for key, pm := range priorModels {
+		envAPI, ok := envByKey[key]
+		if !ok {
+			// Managed env deleted out-of-band: drop it so the next plan
+			// shows it being recreated rather than carrying stale state.
+			continue
+		}
+		pmCopy := pm
+		obj, d := environmentObjectFromAPI(ctx, envAPI, &pmCopy)
+		diags.Append(d...)
+		elements[key] = obj
+	}
+	m, d := types.MapValue(environmentObjectType, elements)
+	diags.Append(d...)
+	return m, diags
 }
 
 func environmentObjectFromAPI(ctx context.Context, e ldapi.Environment, prior *environmentModel) (basetypes.ObjectValue, diag.Diagnostics) {
@@ -300,7 +331,6 @@ func environmentObjectFromAPI(ctx context.Context, e ldapi.Environment, prior *e
 		approvals = list
 	}
 	obj, d := types.ObjectValue(environmentAttrTypes, map[string]attr.Value{
-		KEY:                  types.StringValue(e.Key),
 		NAME:                 types.StringValue(e.Name),
 		COLOR:                types.StringValue(e.Color),
 		CRITICAL:             types.BoolValue(e.Critical),

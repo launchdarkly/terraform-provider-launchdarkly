@@ -661,11 +661,12 @@ resource "launchdarkly_project" "test" {
 	key  = "%s"
 	name = "View Requirement Test"
 	require_view_association_for_new_segments = true
-	environments = [{
-		key   = "test-env"
-		name  = "Test Environment"
-		color = "010101"
-	}]
+	environments = {
+		"test-env" = {
+			name  = "Test Environment"
+			color = "010101"
+		}
+	}
 }
 
 resource "launchdarkly_segment" "test" {
@@ -682,11 +683,12 @@ resource "launchdarkly_project" "test" {
 	key  = "%s"
 	name = "View Requirement Test"
 	require_view_association_for_new_segments = true
-	environments = [{
-		key   = "test-env"
-		name  = "Test Environment"
-		color = "010101"
-	}]
+	environments = {
+		"test-env" = {
+			name  = "Test Environment"
+			color = "010101"
+		}
+	}
 }
 
 resource "launchdarkly_view" "test" {
@@ -752,11 +754,12 @@ func TestAccSegment_ApprovalRequired(t *testing.T) {
 resource "launchdarkly_project" "test" {
 	key  = "%s"
 	name = "Segment Approvals Test"
-	environments = [{
-		key   = "%s"
-		name  = "Test Environment"
-		color = "010101"
-	}]
+	environments = {
+		"%s" = {
+			name  = "Test Environment"
+			color = "010101"
+		}
+	}
 }
 `, projectKey, envKey)
 

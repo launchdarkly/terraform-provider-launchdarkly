@@ -83,6 +83,56 @@ func csaObjectFromV0List(ctx context.Context, l types.List, attrTypes map[string
 	return obj, diags
 }
 
+// environmentsMapFromV0List re-keys a v0 (SDKv2 / pre-REL-14236)
+// environments list — whose elements carried the env key inline — into the
+// v3 map keyed by env key. Each per-env approval_settings that matches the
+// API defaults the v2.29 SDKv2 provider persisted verbatim is collapsed to
+// null so the v3 plan doesn't churn. Returns a null map for null/empty
+// input.
+func environmentsMapFromV0List(ctx context.Context, l types.List) (types.Map, diag.Diagnostics) {
+	var diags diag.Diagnostics
+	if l.IsNull() || l.IsUnknown() || len(l.Elements()) == 0 {
+		return types.MapNull(environmentObjectType), diags
+	}
+	var v0envs []environmentModelV0
+	diags.Append(l.ElementsAs(ctx, &v0envs, false)...)
+	if diags.HasError() {
+		return types.MapNull(environmentObjectType), diags
+	}
+	approvalElemType := types.ObjectType{AttrTypes: frameworkApprovalSettingsObjectAttrTypes}
+	elements := make(map[string]attr.Value, len(v0envs))
+	for _, e := range v0envs {
+		approvals := e.ApprovalSettings
+		if !approvals.IsNull() && !approvals.IsUnknown() && len(approvals.Elements()) == 1 {
+			var items []approvalSettingsModel
+			d := approvals.ElementsAs(ctx, &items, false)
+			if !d.HasError() && len(items) == 1 && approvalSettingsMatchesAPIDefaults(items[0]) {
+				approvals = types.ListNull(approvalElemType)
+			}
+		}
+		obj, d := types.ObjectValue(environmentAttrTypes, map[string]attr.Value{
+			NAME:                 e.Name,
+			COLOR:                e.Color,
+			CRITICAL:             e.Critical,
+			API_KEY:              e.APIKey,
+			MOBILE_KEY:           e.MobileKey,
+			CLIENT_SIDE_ID:       e.ClientSideID,
+			DEFAULT_TTL:          e.DefaultTTL,
+			SECURE_MODE:          e.SecureMode,
+			DEFAULT_TRACK_EVENTS: e.DefaultTrackEvents,
+			REQUIRE_COMMENTS:     e.RequireComments,
+			CONFIRM_CHANGES:      e.ConfirmChanges,
+			TAGS:                 e.Tags,
+			APPROVAL_SETTINGS:    approvals,
+		})
+		diags.Append(d...)
+		elements[e.Key.ValueString()] = obj
+	}
+	m, d := types.MapValue(environmentObjectType, elements)
+	diags.Append(d...)
+	return m, diags
+}
+
 // defaultsObjectFromV0List projects a v0 (SDKv2) single-element
 // feature_flag defaults list into the v3 single-object shape. Returns a
 // null object for null/empty input.

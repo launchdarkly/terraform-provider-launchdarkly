@@ -41,6 +41,22 @@ client_side_availability {   client_side_availability = {
 
 When you read one of these from a data source, use object access without a list index: `data.launchdarkly_feature_flag.x.client_side_availability.using_environment_id`.
 
+`launchdarkly_project.environments` becomes a **map keyed by the environment `key`** rather than an ordered list. Each environment's `key` moves out of the object and becomes the map key, so reordering, adding, or removing one environment no longer shifts the others or forces a destructive plan. The `migrate-tf-syntax` tool performs this rewrite for you:
+
+```hcl
+# v2 block syntax              # v3 map syntax (keyed by env key)
+environments {                 environments = {
+  key   = "production"           "production" = {
+  name  = "Production"             name  = "Production"
+  color = "EEEEEE"                 color = "EEEEEE"
+}                                }
+                               }
+```
+
+Reference an environment by its key instead of by index. A v2 interpolation such as `launchdarkly_project.example.environments[0].client_side_id` becomes `launchdarkly_project.example.environments["production"].client_side_id`. The tool rewrites positional references whose key it can resolve statically and warns on any it cannot.
+
+Because environments are now keyed, you can manage a subset and leave the rest to the LaunchDarkly UI: only the environments present in your `environments` map are managed, and environments you never declared are not deleted. Set `environments = {}` (or omit the attribute) to create a project without managing any of its environments.
+
 ## Prerequisites
 
 You need the following things to complete this migration:
@@ -82,7 +98,7 @@ The provider includes a state upgrader for every resource that lost an attribute
 - `launchdarkly_access_token`: moves `policy_statements` into `inline_roles`, and discards `expire`.
 - `launchdarkly_custom_role`: converts `policy` into `policy_statements`.
 - `launchdarkly_feature_flag`: converts `include_in_snippet` into `client_side_availability`.
-- `launchdarkly_project`: converts `include_in_snippet` into `default_client_side_availability`.
+- `launchdarkly_project`: converts `include_in_snippet` into `default_client_side_availability`, and re-keys the ordered `environments` list into a map keyed by environment key.
 - `launchdarkly_metric`: discards `is_active`.
 
 ## Your first plan after upgrading

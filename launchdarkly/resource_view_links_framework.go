@@ -474,7 +474,7 @@ func (r *ViewFilterLinksResource) Schema(_ context.Context, _ resource.SchemaReq
 			},
 			SEGMENT_FILTER_ENVIRONMENT_ID: schema.StringAttribute{
 				Optional:    true,
-				Description: "The environment ID to use when resolving segment filters. Required when `segment_filter` is set. This is the environment's opaque ID (e.g. from `launchdarkly_project.environments[*].client_side_id`).",
+				Description: "The environment ID to use when resolving segment filters. Required when `segment_filter` is set. This is the environment's opaque ID (e.g. from `launchdarkly_project.environments[\"<env_key>\"].client_side_id`).",
 				Validators:  []validator.String{idValidator()},
 			},
 			RECONCILE_ON_APPLY: schema.BoolAttribute{

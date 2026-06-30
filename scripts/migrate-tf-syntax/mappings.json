@@ -30,7 +30,7 @@
   "launchdarkly_project": {
     "blocks": [
       {"name": "default_client_side_availability", "object": true},
-      {"name": "environments", "nested": [{"name": "approval_settings"}]}
+      {"name": "environments", "map_key": "key", "nested": [{"name": "approval_settings"}]}
     ],
     "deprecations": [
       {"name": "include_in_snippet", "action": "iis_to_csa", "to": "default_client_side_availability", "using_mobile_key": "true"}

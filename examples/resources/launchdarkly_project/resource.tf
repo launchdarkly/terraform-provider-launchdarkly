@@ -10,9 +10,10 @@ resource "launchdarkly_project" "example" {
   require_view_association_for_new_flags    = false
   require_view_association_for_new_segments = false
 
-  environments = [
-    {
-      key   = "production"
+  # environments is a map keyed by the environment key. Reordering, adding, or
+  # removing one environment does not affect the others.
+  environments = {
+    "production" = {
       name  = "Production"
       color = "EEEEEE"
       tags  = ["terraform"]
@@ -22,12 +23,11 @@ resource "launchdarkly_project" "example" {
         min_num_approvals          = 3
         required_approval_tags     = ["approvals_required"]
       }]
-    },
-    {
-      key   = "staging"
+    }
+    "staging" = {
       name  = "Staging"
       color = "000000"
       tags  = ["terraform"]
-    },
-  ]
+    }
+  }
 }

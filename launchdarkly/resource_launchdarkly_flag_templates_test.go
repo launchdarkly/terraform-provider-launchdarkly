@@ -17,11 +17,12 @@ resource "launchdarkly_project" "test" {
 	}
 	name = "Flag Templates Test Project"
 	key  = "%s"
-	environments = [{
-		name  = "testEnvironment"
-		key   = "test"
-		color = "000000"
-	}]
+	environments = {
+		"test" = {
+			name  = "testEnvironment"
+			color = "000000"
+		}
+	}
 }
 
 resource "launchdarkly_flag_templates" "test" {
@@ -50,11 +51,12 @@ resource "launchdarkly_project" "test" {
 	}
 	name = "Flag Templates Test Project"
 	key  = "%s"
-	environments = [{
-		name  = "testEnvironment"
-		key   = "test"
-		color = "000000"
-	}]
+	environments = {
+		"test" = {
+			name  = "testEnvironment"
+			color = "000000"
+		}
+	}
 }
 
 resource "launchdarkly_flag_templates" "test" {

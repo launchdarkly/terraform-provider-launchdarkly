@@ -15,11 +15,12 @@ const (
 resource "launchdarkly_project" "test" {
 	name = "%s"
 	key  = "%s"
-	environments = [{
-		name  = "Test Environment"
-		key   = "test-env"
-		color = "000000"
-	}]
+	environments = {
+		"test-env" = {
+			name  = "Test Environment"
+			color = "000000"
+		}
+	}
 }
 
 resource "launchdarkly_view" "test" {
@@ -70,11 +71,12 @@ resource "launchdarkly_view_filter_links" "test" {
 resource "launchdarkly_project" "test" {
 	name = "%s"
 	key  = "%s"
-	environments = [{
-		name  = "Test Environment"
-		key   = "test-env"
-		color = "000000"
-	}]
+	environments = {
+		"test-env" = {
+			name  = "Test Environment"
+			color = "000000"
+		}
+	}
 }
 
 resource "launchdarkly_view" "test" {
@@ -138,11 +140,12 @@ resource "launchdarkly_view_filter_links" "test" {
 resource "launchdarkly_project" "test" {
 	name = "%s"
 	key  = "%s"
-	environments = [{
-		name  = "Test Environment"
-		key   = "test-env"
-		color = "000000"
-	}]
+	environments = {
+		"test-env" = {
+			name  = "Test Environment"
+			color = "000000"
+		}
+	}
 }
 
 resource "launchdarkly_view" "test" {
@@ -206,11 +209,12 @@ resource "launchdarkly_view_filter_links" "test" {
 resource "launchdarkly_project" "test" {
 	name = "%s"
 	key  = "%s"
-	environments = [{
-		name  = "Test Environment"
-		key   = "test-env"
-		color = "000000"
-	}]
+	environments = {
+		"test-env" = {
+			name  = "Test Environment"
+			color = "000000"
+		}
+	}
 }
 
 resource "launchdarkly_view" "test" {
@@ -233,7 +237,7 @@ resource "launchdarkly_view_filter_links" "test" {
 	project_key                   = launchdarkly_project.test.key
 	view_key                      = launchdarkly_view.test.key
 	segment_filter                = "tags anyOf [\"segment-filter-test\"]"
-	segment_filter_environment_id = launchdarkly_project.test.environments[0].client_side_id
+	segment_filter_environment_id = launchdarkly_project.test.environments["test-env"].client_side_id
 
 	depends_on = [
 		launchdarkly_segment.test1
@@ -245,11 +249,12 @@ resource "launchdarkly_view_filter_links" "test" {
 resource "launchdarkly_project" "test" {
 	name = "%s"
 	key  = "%s"
-	environments = [{
-		name  = "Test Environment"
-		key   = "test-env"
-		color = "000000"
-	}]
+	environments = {
+		"test-env" = {
+			name  = "Test Environment"
+			color = "000000"
+		}
+	}
 }
 
 resource "launchdarkly_view" "test" {
@@ -285,7 +290,7 @@ resource "launchdarkly_view_filter_links" "test" {
 	view_key                      = launchdarkly_view.test.key
 	flag_filter                   = "tags:both-filter-test"
 	segment_filter                = "tags anyOf [\"both-filter-test\"]"
-	segment_filter_environment_id = launchdarkly_project.test.environments[0].client_side_id
+	segment_filter_environment_id = launchdarkly_project.test.environments["test-env"].client_side_id
 
 	depends_on = [
 		launchdarkly_feature_flag.test1,
@@ -298,11 +303,12 @@ resource "launchdarkly_view_filter_links" "test" {
 resource "launchdarkly_project" "test" {
 	name = "%s"
 	key  = "%s"
-	environments = [{
-		name  = "Test Environment"
-		key   = "test-env"
-		color = "000000"
-	}]
+	environments = {
+		"test-env" = {
+			name  = "Test Environment"
+			color = "000000"
+		}
+	}
 }
 
 resource "launchdarkly_view" "test" {
@@ -354,11 +360,12 @@ resource "launchdarkly_view_filter_links" "test" {
 resource "launchdarkly_project" "test" {
 	name = "%s"
 	key  = "%s"
-	environments = [{
-		name  = "Test Environment"
-		key   = "test-env"
-		color = "000000"
-	}]
+	environments = {
+		"test-env" = {
+			name  = "Test Environment"
+			color = "000000"
+		}
+	}
 }
 
 resource "launchdarkly_view" "test" {
@@ -410,11 +417,12 @@ resource "launchdarkly_view_filter_links" "test" {
 resource "launchdarkly_project" "test" {
 	name = "%s"
 	key  = "%s"
-	environments = [{
-		name  = "Test Environment"
-		key   = "test-env"
-		color = "000000"
-	}]
+	environments = {
+		"test-env" = {
+			name  = "Test Environment"
+			color = "000000"
+		}
+	}
 }
 
 resource "launchdarkly_view" "test" {
@@ -466,11 +474,12 @@ resource "launchdarkly_view_filter_links" "test" {
 resource "launchdarkly_project" "test" {
 	name = "%s"
 	key  = "%s"
-	environments = [{
-		name  = "Test Environment"
-		key   = "test-env"
-		color = "000000"
-	}]
+	environments = {
+		"test-env" = {
+			name  = "Test Environment"
+			color = "000000"
+		}
+	}
 }
 
 resource "launchdarkly_view" "test" {
@@ -522,11 +531,12 @@ resource "launchdarkly_view_filter_links" "test" {
 resource "launchdarkly_project" "test" {
 	name = "%s"
 	key  = "%s"
-	environments = [{
-		name  = "Test Environment"
-		key   = "test-env"
-		color = "000000"
-	}]
+	environments = {
+		"test-env" = {
+			name  = "Test Environment"
+			color = "000000"
+		}
+	}
 }
 
 resource "launchdarkly_view" "test" {
@@ -557,7 +567,7 @@ resource "launchdarkly_view_filter_links" "test" {
 	project_key                   = launchdarkly_project.test.key
 	view_key                      = launchdarkly_view.test.key
 	segment_filter                = "tags anyOf [\"segment-trigger-test\"]"
-	segment_filter_environment_id = launchdarkly_project.test.environments[0].client_side_id
+	segment_filter_environment_id = launchdarkly_project.test.environments["test-env"].client_side_id
 	reconcile_on_apply            = true
 
 	depends_on = [
@@ -571,11 +581,12 @@ resource "launchdarkly_view_filter_links" "test" {
 resource "launchdarkly_project" "test" {
 	name = "%s"
 	key  = "%s"
-	environments = [{
-		name  = "Test Environment"
-		key   = "test-env"
-		color = "000000"
-	}]
+	environments = {
+		"test-env" = {
+			name  = "Test Environment"
+			color = "000000"
+		}
+	}
 }
 
 resource "launchdarkly_view" "test" {
@@ -606,7 +617,7 @@ resource "launchdarkly_view_filter_links" "test" {
 	project_key                   = launchdarkly_project.test.key
 	view_key                      = launchdarkly_view.test.key
 	segment_filter                = "tags anyOf [\"segment-trigger-test\"]"
-	segment_filter_environment_id = launchdarkly_project.test.environments[0].client_side_id
+	segment_filter_environment_id = launchdarkly_project.test.environments["test-env"].client_side_id
 	reconcile_on_apply            = true
 
 	depends_on = [
@@ -620,11 +631,12 @@ resource "launchdarkly_view_filter_links" "test" {
 resource "launchdarkly_project" "test" {
 	name = "%s"
 	key  = "%s"
-	environments = [{
-		name  = "Test Environment"
-		key   = "test-env"
-		color = "000000"
-	}]
+	environments = {
+		"test-env" = {
+			name  = "Test Environment"
+			color = "000000"
+		}
+	}
 }
 
 resource "launchdarkly_view" "test" {

@@ -37,7 +37,7 @@ type ProjectResourceModel struct {
 	Name                                 types.String `tfsdk:"name"`
 	DefaultClientSideAvailability        types.Object `tfsdk:"default_client_side_availability"`
 	Tags                                 types.Set    `tfsdk:"tags"`
-	Environments                         types.List   `tfsdk:"environments"`
+	Environments                         types.Map    `tfsdk:"environments"`
 	RequireViewAssociationForNewFlags    types.Bool   `tfsdk:"require_view_association_for_new_flags"`
 	RequireViewAssociationForNewSegments types.Bool   `tfsdk:"require_view_association_for_new_segments"`
 }
@@ -173,7 +173,6 @@ func (r *ProjectResource) UpgradeState(_ context.Context) map[int64]resource.Sta
 					Name:                                 prior.Name,
 					DefaultClientSideAvailability:        priorDCSA,
 					Tags:                                 prior.Tags,
-					Environments:                         prior.Environments,
 					RequireViewAssociationForNewFlags:    prior.RequireViewAssociationForNewFlags,
 					RequireViewAssociationForNewSegments: prior.RequireViewAssociationForNewSegments,
 				}
@@ -198,40 +197,16 @@ func (r *ProjectResource) UpgradeState(_ context.Context) map[int64]resource.Sta
 					// inner shape is identical.
 					data.DefaultClientSideAvailability = types.ObjectNull(projectCSAAttrTypes)
 				}
-				// each environments[].approval_settings whose 1-element matches
-				// API defaults → null. Decode envs, modify each, re-encode.
-				if !data.Environments.IsNull() && !data.Environments.IsUnknown() && len(data.Environments.Elements()) > 0 {
-					var envs []environmentModel
-					resp.Diagnostics.Append(data.Environments.ElementsAs(ctx, &envs, false)...)
-					if resp.Diagnostics.HasError() {
-						return
-					}
-					approvalListType := types.ListType{ElemType: types.ObjectType{AttrTypes: frameworkApprovalSettingsObjectAttrTypes}}
-					mutated := false
-					for i := range envs {
-						as := envs[i].ApprovalSettings
-						if as.IsNull() || as.IsUnknown() || len(as.Elements()) != 1 {
-							continue
-						}
-						var items []approvalSettingsModel
-						d := as.ElementsAs(ctx, &items, false)
-						if d.HasError() || len(items) != 1 {
-							continue
-						}
-						if approvalSettingsMatchesAPIDefaults(items[0]) {
-							envs[i].ApprovalSettings = types.ListNull(approvalListType.ElemType)
-							mutated = true
-						}
-					}
-					if mutated {
-						envObjectType := types.ObjectType{AttrTypes: environmentAttrTypes}
-						newList, d := types.ListValueFrom(ctx, envObjectType, envs)
-						resp.Diagnostics.Append(d...)
-						if !resp.Diagnostics.HasError() {
-							data.Environments = newList
-						}
-					}
+				// v0 stored environments as a positional list with the env key
+				// nested in each element. v3 keys a map by env key. Convert
+				// here, dropping each per-env approval_settings that matches the
+				// API defaults the v2.29 SDKv2 provider persisted verbatim.
+				envMap, d := environmentsMapFromV0List(ctx, prior.Environments)
+				resp.Diagnostics.Append(d...)
+				if resp.Diagnostics.HasError() {
+					return
 				}
+				data.Environments = envMap
 				resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 			},
 		},
@@ -272,6 +247,25 @@ func (r *ProjectResource) ModifyPlan(ctx context.Context, req resource.ModifyPla
 			return
 		}
 	}
+
+	// Warn when environments is omitted entirely. Because the attribute is
+	// Optional+Computed, an omitted value records whatever environments exist
+	// at create time into state without managing them from configuration —
+	// which is easy to do by accident. `environments = {}` is the explicit way
+	// to manage no environments.
+	var config ProjectResourceModel
+	resp.Diagnostics.Append(req.Config.Get(ctx, &config)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	if config.Environments.IsNull() {
+		resp.Diagnostics.AddAttributeWarning(
+			path.Root(ENVIRONMENTS),
+			"environments not configured",
+			"`environments` is not set, so Terraform does not manage this project's environments. LaunchDarkly auto-provisions default environments, which are recorded in state but not managed from configuration. Set `environments = {}` to explicitly manage no environments, or declare the environments you want to manage as a map keyed by environment key.",
+		)
+	}
+
 	envs, diags := markEnvSecretsUnknown(ctx, plan.Environments, state.Environments)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
@@ -283,43 +277,35 @@ func (r *ProjectResource) ModifyPlan(ctx context.Context, req resource.ModifyPla
 }
 
 // markEnvSecretsUnknown rewrites plan.Environments so api_key /
-// mobile_key / client_side_id reflect the right env for each list
-// position. The framework's UseStateForUnknown plan modifier on those
-// inner attributes is index-based: when the user reorders envs, the
-// modifier paints state[i]'s sensitive values onto plan[i] regardless
-// of whether plan[i].key actually matches state[i].key. The result is
-// post-Apply state pulling fresh API values that don't match the
-// index-aligned plan and tripping the framework's plan-vs-apply
-// consistency check.
+// mobile_key / client_side_id reflect the right env for each key. The
+// framework synthesizes "" for the inner Computed sensitive fields once
+// the user supplies the required attributes; Apply then replaces "" with
+// the real secret, tripping the plan-vs-apply consistency check for new
+// envs (see [[feedback-nested-attr-computed-sensitive]]).
 //
-// Fix: match by env key. For each plan env, if state has an env with
-// the same key, use that state env's sensitive values; otherwise
-// mark them Unknown so Apply can fill them in.
-func markEnvSecretsUnknown(ctx context.Context, planList, stateList types.List) (types.List, diag.Diagnostics) {
+// Because environments is now a map keyed by env key, matching is by map
+// key directly: for each plan env, if state has the same key reuse its
+// sensitive values; otherwise mark them Unknown so Apply can fill them in.
+func markEnvSecretsUnknown(_ context.Context, planMap, stateMap types.Map) (types.Map, diag.Diagnostics) {
 	var diags diag.Diagnostics
-	if planList.IsNull() || planList.IsUnknown() {
-		return planList, diags
+	if planMap.IsNull() || planMap.IsUnknown() {
+		return planMap, diags
 	}
-	objType := types.ObjectType{AttrTypes: environmentAttrTypes}
-	planEls := planList.Elements()
+	planEls := planMap.Elements()
 	if len(planEls) == 0 {
-		return planList, diags
+		return planMap, diags
 	}
 
 	type envSecrets struct{ api, mobile, csid attr.Value }
 	stateByKey := make(map[string]envSecrets)
-	if !stateList.IsNull() && !stateList.IsUnknown() {
-		for _, el := range stateList.Elements() {
+	if !stateMap.IsNull() && !stateMap.IsUnknown() {
+		for key, el := range stateMap.Elements() {
 			obj, ok := el.(basetypes.ObjectValue)
 			if !ok {
 				continue
 			}
 			a := obj.Attributes()
-			keyVal, _ := a[KEY].(basetypes.StringValue)
-			if keyVal.IsNull() || keyVal.IsUnknown() {
-				continue
-			}
-			stateByKey[keyVal.ValueString()] = envSecrets{
+			stateByKey[key] = envSecrets{
 				api:    a[API_KEY],
 				mobile: a[MOBILE_KEY],
 				csid:   a[CLIENT_SIDE_ID],
@@ -327,20 +313,15 @@ func markEnvSecretsUnknown(ctx context.Context, planList, stateList types.List) 
 		}
 	}
 
-	out := make([]attr.Value, 0, len(planEls))
-	for _, el := range planEls {
+	out := make(map[string]attr.Value, len(planEls))
+	for key, el := range planEls {
 		obj, ok := el.(basetypes.ObjectValue)
 		if !ok {
-			out = append(out, el)
+			out[key] = el
 			continue
 		}
 		attrs := obj.Attributes()
-		keyVal, _ := attrs[KEY].(basetypes.StringValue)
-		envKey := ""
-		if !keyVal.IsNull() && !keyVal.IsUnknown() {
-			envKey = keyVal.ValueString()
-		}
-		if secrets, ok := stateByKey[envKey]; ok {
+		if secrets, ok := stateByKey[key]; ok {
 			attrs[API_KEY] = secrets.api
 			attrs[MOBILE_KEY] = secrets.mobile
 			attrs[CLIENT_SIDE_ID] = secrets.csid
@@ -351,11 +332,11 @@ func markEnvSecretsUnknown(ctx context.Context, planList, stateList types.List) 
 		}
 		newObj, d := types.ObjectValue(environmentAttrTypes, attrs)
 		diags.Append(d...)
-		out = append(out, newObj)
+		out[key] = newObj
 	}
-	newList, d := types.ListValue(objType, out)
+	newMap, d := types.MapValue(environmentObjectType, out)
 	diags.Append(d...)
-	return newList, diags
+	return newMap, diags
 }
 
 // projectCSAValueFromAPI emits the CSA attribute matching the prior
@@ -537,21 +518,24 @@ func (r *ProjectResource) applyProjectUpdates(ctx context.Context, projectKey st
 		}
 	}
 
-	// Environment reconciliation
-	planEnvs, d := environmentModelsFromList(ctx, plan.Environments)
+	// Environment reconciliation. environments is a map keyed by env key,
+	// so identity is the map key and only the keys present in config are
+	// managed; keys absent from config (e.g. UI-created envs) are left
+	// untouched.
+	planEnvs, d := environmentModelsFromMap(ctx, plan.Environments)
 	diags.Append(d...)
 	if diags.HasError() {
 		return diags
 	}
 	stateEnvs := map[string]environmentModel{}
 	if !isCreate {
-		stateEnvList, d := environmentModelsFromList(ctx, state.Environments)
+		stateEnvs, d = environmentModelsFromMap(ctx, state.Environments)
 		diags.Append(d...)
 		if diags.HasError() {
 			return diags
 		}
-		for _, e := range stateEnvList {
-			stateEnvs[e.Key.ValueString()] = e
+		if stateEnvs == nil {
+			stateEnvs = map[string]environmentModel{}
 		}
 	}
 
@@ -562,11 +546,11 @@ func (r *ProjectResource) applyProjectUpdates(ctx context.Context, projectKey st
 	}
 
 	desired := map[string]bool{}
-	for _, env := range planEnvs {
-		envKey := env.Key.ValueString()
+	for _, envKey := range sortedEnvKeys(planEnvs) {
+		env := planEnvs[envKey]
 		desired[envKey] = true
 		if !environmentExistsInProject(*project, envKey) {
-			envPost, d := environmentPostFromModel(ctx, env)
+			envPost, d := environmentPostFromModel(ctx, envKey, env)
 			diags.Append(d...)
 			if diags.HasError() {
 				return diags
@@ -635,14 +619,15 @@ func (r *ProjectResource) readIntoModel(ctx context.Context, projectKey string, 
 	diags.Append(d...)
 	data.DefaultClientSideAvailability = csaObj
 
-	// Environments — preserve config order, then append unmanaged ones.
+	// Environments — refresh the managed keys; on import/first read
+	// (null prior) surface all environments so import captures the project.
 	envItems := []ldapi.Environment{}
 	if project.Environments != nil {
 		envItems = project.Environments.Items
 	}
-	envList, d := environmentsListFromAPI(ctx, envItems, data.Environments)
+	envMap, d := environmentsMapFromAPI(ctx, envItems, data.Environments)
 	diags.Append(d...)
-	data.Environments = envList
+	data.Environments = envMap
 
 	// View association settings
 	settings, err := getProjectViewSettings(ctx, r.client, projectKey)
