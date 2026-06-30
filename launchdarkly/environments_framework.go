@@ -81,7 +81,7 @@ func projectEnvironmentsAttribute() schema.MapNestedAttribute {
 	return schema.MapNestedAttribute{
 		Optional:    true,
 		Computed:    true,
-		Description: "Map of environments that belong to the project, keyed by environment `key`. When managing LaunchDarkly projects in Terraform, you should always manage your environments as nested project resources. Environments not present in the map are left unmanaged (terraform will not modify or delete them), so you can manage a subset and leave the rest to the LaunchDarkly UI. Set this to `{}` to create a project while managing none of its environments. Omitting the attribute entirely is discouraged: the provider records the environments LaunchDarkly auto-provisions into state but does not manage them, which is easy to do by accident — prefer `{}` or an explicit map.\n\n-> **Note:** Mixing the use of nested `environments` and [`launchdarkly_environment`](/docs/providers/launchdarkly/r/environment.html) resources is not recommended. `launchdarkly_environment` resources should only be used when the encapsulating project is not managed in Terraform.",
+		Description: "Map of environments that belong to the project, keyed by environment `key`. When managing LaunchDarkly projects in Terraform, you should always manage your environments as nested project resources. Environments not present in the map are left unmanaged (terraform will not modify or delete them), so you can manage a subset and leave the rest to the LaunchDarkly UI. Set this to `{}` to create a project while managing none of its environments. Omitting the attribute entirely also manages no environments (the same effect as `{}`) but emits a plan-time warning — prefer `{}` to be explicit.\n\n-> **Note:** Mixing the use of nested `environments` and [`launchdarkly_environment`](/docs/providers/launchdarkly/r/environment.html) resources is not recommended. `launchdarkly_environment` resources should only be used when the encapsulating project is not managed in Terraform.",
 		NestedObject: schema.NestedAttributeObject{
 			Attributes: map[string]schema.Attribute{
 				NAME: schema.StringAttribute{
@@ -253,13 +253,18 @@ func planOrNullList(hadOld bool, l types.List) types.List {
 // environmentsMapFromAPI flattens the LD environments slice into a
 // framework MapValue keyed by environment key.
 //
-// Append rule: when `prior` is null/unknown (import or the first read
-// after a create that omitted environments) every API environment is
-// surfaced so import captures the whole project. When `prior` is a
-// populated map the result tracks ONLY the keys present in `prior`
-// (managed mode) — environments created outside terraform are left
-// untracked, which is what lets a user manage a subset and leave the
-// rest to the UI.
+// The `prior` value's state drives whether unmanaged environments are
+// surfaced — and null vs unknown mean different things:
+//   - unknown: a create that omitted `environments` (Optional+Computed,
+//     not yet known). Manage NOTHING — return the empty map. Materializing
+//     the environments LaunchDarkly auto-provisions would make them look
+//     managed, so a later partial config would delete the ones the user
+//     never declared.
+//   - null: import (ImportState set only key+id). Surface EVERY environment
+//     so import captures the whole project.
+//   - populated map: managed mode — track ONLY the keys present in `prior`.
+//     Environments created outside terraform are left untracked, which is
+//     what lets a user manage a subset and leave the rest to the UI.
 func environmentsMapFromAPI(ctx context.Context, envs []ldapi.Environment, prior types.Map) (basetypes.MapValue, diag.Diagnostics) {
 	var diags diag.Diagnostics
 	envByKey := make(map[string]ldapi.Environment, len(envs))
@@ -268,7 +273,12 @@ func environmentsMapFromAPI(ctx context.Context, envs []ldapi.Environment, prior
 	}
 
 	elements := map[string]attr.Value{}
-	if prior.IsNull() || prior.IsUnknown() {
+	if prior.IsUnknown() {
+		m, d := types.MapValue(environmentObjectType, elements)
+		diags.Append(d...)
+		return m, diags
+	}
+	if prior.IsNull() {
 		for _, e := range envs {
 			obj, d := environmentObjectFromAPI(ctx, e, nil)
 			diags.Append(d...)

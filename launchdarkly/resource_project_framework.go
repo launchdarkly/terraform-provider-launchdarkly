@@ -248,11 +248,9 @@ func (r *ProjectResource) ModifyPlan(ctx context.Context, req resource.ModifyPla
 		}
 	}
 
-	// Warn when environments is omitted entirely. Because the attribute is
-	// Optional+Computed, an omitted value records whatever environments exist
-	// at create time into state without managing them from configuration —
-	// which is easy to do by accident. `environments = {}` is the explicit way
-	// to manage no environments.
+	// Warn when environments is omitted entirely. An omitted value manages no
+	// environments (the same effect as `{}`), which is easy to do by accident
+	// — nudge toward the explicit form or a declared map.
 	var config ProjectResourceModel
 	resp.Diagnostics.Append(req.Config.Get(ctx, &config)...)
 	if resp.Diagnostics.HasError() {
@@ -262,7 +260,7 @@ func (r *ProjectResource) ModifyPlan(ctx context.Context, req resource.ModifyPla
 		resp.Diagnostics.AddAttributeWarning(
 			path.Root(ENVIRONMENTS),
 			"environments not configured",
-			"`environments` is not set, so Terraform does not manage this project's environments. LaunchDarkly auto-provisions default environments, which are recorded in state but not managed from configuration. Set `environments = {}` to explicitly manage no environments, or declare the environments you want to manage as a map keyed by environment key.",
+			"`environments` is not set, so Terraform manages none of this project's environments (LaunchDarkly still auto-provisions its default environments, which Terraform leaves untouched). Set `environments = {}` to manage no environments explicitly, or declare the environments you want to manage as a map keyed by environment key.",
 		)
 	}
 

@@ -53,7 +53,7 @@ environments {                 environments = {
                                }
 ```
 
-Reference an environment by its key instead of by index. A v2 interpolation such as `launchdarkly_project.example.environments[0].client_side_id` becomes `launchdarkly_project.example.environments["production"].client_side_id`. The tool rewrites positional references whose key it can resolve statically and warns on any it cannot.
+Reference an environment by its key instead of by index. A v2 interpolation such as `launchdarkly_project.example.environments[0].client_side_id` becomes `launchdarkly_project.example.environments["production"].client_side_id`. The `migrate-tf-syntax` tool converts the `environments` block to a map but does **not** rewrite these positional index references elsewhere in your configuration — update them by hand (see "Finish the migration by hand" below).
 
 Because environments are now keyed, you can manage a subset and leave the rest to the LaunchDarkly UI: only the environments present in your `environments` map are managed, and environments you never declared are not deleted. Set `environments = {}` (or omit the attribute) to create a project without managing any of its environments.
 
@@ -90,6 +90,7 @@ The tool converts syntax only. Complete these follow-ups yourself:
 - Add `variations` by hand only for a flag whose `variation_type` is a non-literal expression, such as a variable or local. The tool cannot resolve those statically, so it warns and skips them. Boolean flags with a literal `variation_type` are handled automatically, and the provider preserves any variation `name` or `description` set outside Terraform when your configuration omits them.
 - Rewrite `dynamic` blocks. A `dynamic "variations"` block needs a for expression, for example `variations = [for v in var.values : { value = v }]`. The tool warns with the file and resource address, and it leaves the attribute unchanged.
 - Upgrade modules sourced from a registry or a git URL. The tool rewrites only files it reaches on disk, so upgrade those modules at their source.
+- Rewrite positional references to `launchdarkly_project` environments. The tool converts the `environments` block to a map but does not touch index expressions elsewhere in your config — change `launchdarkly_project.x.environments[0].client_side_id` to `launchdarkly_project.x.environments["<env_key>"].client_side_id` by hand.
 
 ## How v3 upgrades your state
 

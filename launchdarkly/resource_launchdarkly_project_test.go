@@ -695,6 +695,66 @@ resource "launchdarkly_project" "subset" {
 	})
 }
 
+// TestAccProject_OmitThenSubset guards the data-loss path where a project is
+// created with environments omitted (manages none) and then a partial map is
+// added: the auto-provisioned environments the user never declared must NOT be
+// deleted. Omitting environments must store zero managed environments (not the
+// auto-provisioned ones), so adopting one later leaves the rest untouched.
+func TestAccProject_OmitThenSubset(t *testing.T) {
+	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	resourceName := "launchdarkly_project.omit"
+	omitted := fmt.Sprintf(`
+resource "launchdarkly_project" "omit" {
+	key  = "%s"
+	name = "omit project"
+}
+`, projectKey)
+	subset := fmt.Sprintf(`
+resource "launchdarkly_project" "omit" {
+	key  = "%s"
+	name = "omit project"
+	environments = {
+	  "test" = {
+	    name  = "Adopted Test"
+	    color = "AABBCC"
+	  }
+	}
+}
+`, projectKey)
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck: func() {
+			testAccPreCheck(t)
+		},
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckProjectDestroy,
+		Steps: []resource.TestStep{
+			{
+				// Omitted environments => manage none. State records zero
+				// environments even though LaunchDarkly auto-provisions some.
+				Config: omitted,
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckProjectExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, "environments.%", "0"),
+					// auto-provisioned envs exist on the project but are unmanaged
+					testAccCheckEnvironmentExistsInProject(projectKey, "test"),
+					testAccCheckEnvironmentExistsInProject(projectKey, "production"),
+				),
+			},
+			{
+				// Adopt one auto-provisioned env. The undeclared one
+				// ("production") must survive — it was never managed.
+				Config: subset,
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckProjectExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, "environments.%", "1"),
+					resource.TestCheckResourceAttr(resourceName, "environments.test.name", "Adopted Test"),
+					testAccCheckEnvironmentExistsInProject(projectKey, "production"),
+				),
+			},
+		},
+	})
+}
+
 func TestAccProject_ViewAssociationRequirement(t *testing.T) {
 	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	resourceName := "launchdarkly_project.view_req_test"
