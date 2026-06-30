@@ -20,6 +20,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/hashicorp/hcl/v2"
@@ -130,8 +131,15 @@ func main() {
 	if len(matches) == 0 {
 		die(fmt.Sprintf("no .tf files in %s", *dir))
 	}
+	// Collect each project's environment keys (in source order) up front so we
+	// can resolve positional `environments[N]` references to their map keys in
+	// migration warnings. Done before conversion, while configs are still v2.
+	projectEnvKeys := map[string][]string{}
+	if *direction == "v2-to-v3" {
+		projectEnvKeys = collectProjectEnvKeys(matches)
+	}
 	for _, f := range matches {
-		if err := process(f, *direction, spec, *dryRun); err != nil {
+		if err := process(f, *direction, spec, *dryRun, projectEnvKeys); err != nil {
 			fmt.Fprintf(os.Stderr, "FAIL %s: %v\n", f, err)
 			os.Exit(1)
 		}
@@ -185,15 +193,88 @@ func warnf(format string, args ...interface{}) {
 	fmt.Fprintf(os.Stderr, "warning: "+format+"\n", args...)
 }
 
+// envIndexRefRe matches positional references to a project's environments,
+// e.g. launchdarkly_project.<label>.environments[0] or [*].
+var envIndexRefRe = regexp.MustCompile(`launchdarkly_project\.([A-Za-z0-9_-]+)\.environments\[\s*([0-9]+|\*)\s*\]`)
+
+// collectProjectEnvKeys parses the given files and returns, per
+// launchdarkly_project resource label, the environment keys in source order.
+// Used to resolve positional environment references to their map keys in
+// migration warnings. Reads the v2 (pre-conversion) block form.
+func collectProjectEnvKeys(files []string) map[string][]string {
+	out := map[string][]string{}
+	for _, path := range files {
+		b, err := os.ReadFile(path)
+		if err != nil {
+			continue
+		}
+		f, diag := hclwrite.ParseConfig(b, path, hcl.Pos{Line: 1, Column: 1})
+		if diag.HasErrors() {
+			continue
+		}
+		for _, blk := range f.Body().Blocks() {
+			if blk.Type() != "resource" || len(blk.Labels()) != 2 || blk.Labels()[0] != "launchdarkly_project" {
+				continue
+			}
+			var keys []string
+			for _, env := range blk.Body().Blocks() {
+				if env.Type() != "environments" {
+					continue
+				}
+				keyAttr := env.Body().GetAttribute("key")
+				if keyAttr == nil {
+					continue
+				}
+				if k, ok := stringLiteralValue(keyAttr.Expr().BuildTokens(nil)); ok && len(k) == 3 {
+					keys = append(keys, string(k[1].Bytes))
+				}
+			}
+			if len(keys) > 0 {
+				out[blk.Labels()[1]] = keys
+			}
+		}
+	}
+	return out
+}
+
+// warnEnvIndexRefs warns on every positional `environments[N]` (or `[*]`)
+// reference, since environments is a map in v3 and must be addressed by key.
+// It resolves N to the env key when known. Detection-only: the tool never
+// edits these references (auto-rewriting arbitrary expressions risks silently
+// corrupting configs; the manual fix is one token).
+func warnEnvIndexRefs(path string, src []byte, projectEnvKeys map[string][]string) {
+	for i, line := range strings.Split(string(src), "\n") {
+		for _, m := range envIndexRefRe.FindAllStringSubmatch(line, -1) {
+			label, idx := m[1], m[2]
+			loc := fmt.Sprintf("%s:%d", path, i+1)
+			if idx == "*" {
+				warnf("%s: `launchdarkly_project.%s.environments[*]` is a list splat, but environments is now a map — use `values(launchdarkly_project.%s.environments)[*]...` (or `keys(...)`)", loc, label, label)
+				continue
+			}
+			n, _ := strconv.Atoi(idx)
+			if keys := projectEnvKeys[label]; n < len(keys) {
+				warnf("%s: `launchdarkly_project.%s.environments[%s]` must become `launchdarkly_project.%s.environments[%q]` — environments is now a map keyed by env key", loc, label, idx, label, keys[n])
+			} else {
+				warnf("%s: `launchdarkly_project.%s.environments[%s]` uses a list index, but environments is now a map — replace `[%s]` with `[\"<env_key>\"]`", loc, label, idx, idx)
+			}
+		}
+	}
+}
+
 func die(msg string) {
 	fmt.Fprintln(os.Stderr, msg)
 	os.Exit(2)
 }
 
-func process(path, direction string, spec Spec, dryRun bool) error {
+func process(path, direction string, spec Spec, dryRun bool, projectEnvKeys map[string][]string) error {
 	src, err := os.ReadFile(path)
 	if err != nil {
 		return err
+	}
+	// Detection-only: flag positional environments[N] references for manual
+	// fix-up (the tool converts the block to a map but never edits references).
+	if direction == "v2-to-v3" {
+		warnEnvIndexRefs(path, src, projectEnvKeys)
 	}
 	f, diag := hclwrite.ParseConfig(src, path, hcl.Pos{Line: 1, Column: 1})
 	if diag.HasErrors() {
@@ -350,10 +431,11 @@ func forward(body *hclwrite.Body, specs []*AttrSpec, where string) bool {
 			// emit `name = { <keyval> = { ...rest } }`, hoisting each block's
 			// MapKey attribute to the map key and dropping it from the object.
 			//
-			// Validate EVERY block's key before mutating any block. A missing
-			// or non-literal key on any block aborts the whole attribute with
-			// the file untouched — otherwise earlier blocks would already be
-			// stripped of their key, leaving invalid v2 syntax.
+			// The `key` attribute stays inside each object (it's Optional+
+			// Computed in v3 and equals the map key); we only read it to build
+			// the map key. Validate EVERY block's key first so a missing or
+			// non-literal key aborts the whole attribute with the file
+			// untouched (no blocks are mutated either way).
 			keyExprs := make([]hclwrite.Tokens, 0, len(matched))
 			skip := false
 			for _, b := range matched {
@@ -365,7 +447,7 @@ func forward(body *hclwrite.Body, specs []*AttrSpec, where string) bool {
 				}
 				keyExpr, ok := stringLiteralValue(keyAttr.Expr().BuildTokens(nil))
 				if !ok {
-					warnf("%s: %q block's %q is not a literal string; cannot hoist it to a map key automatically — convert by hand", where, s.Name, s.MapKey)
+					warnf("%s: %q block's %q is not a literal string; cannot key the v3 map automatically — convert by hand", where, s.Name, s.MapKey)
 					skip = true
 					break
 				}
@@ -379,7 +461,6 @@ func forward(body *hclwrite.Body, specs []*AttrSpec, where string) bool {
 				{Type: hclsyntax.TokenNewline, Bytes: []byte("\n")},
 			}
 			for i, b := range matched {
-				b.Body().RemoveAttribute(s.MapKey)
 				mapTokens = append(mapTokens, keyExprs[i]...)
 				mapTokens = append(mapTokens,
 					&hclwrite.Token{Type: hclsyntax.TokenEqual, Bytes: []byte(" = ")},
@@ -442,8 +523,11 @@ func reverse(body *hclwrite.Body, specs []*AttrSpec) bool {
 			continue
 		}
 		if s.MapKey != "" {
-			// v3 map `name = { <key> = { ... } }` → repeated v2 blocks
-			// `name { MapKey = <key> ... }`, re-injecting the hoisted key.
+			// v3 map `name = { <key> = { key = <key> ... } }` → repeated v2
+			// blocks `name { key = <key> ... }`. The `key` attribute is kept
+			// inside the object by the forward pass, so it is already present;
+			// only a hand-written v3 map that omitted it needs it re-injected
+			// from the map key.
 			entries := extractMapEntries(attr.Expr().BuildTokens(nil))
 			if len(entries) == 0 {
 				continue
@@ -451,23 +535,20 @@ func reverse(body *hclwrite.Body, specs []*AttrSpec) bool {
 			body.RemoveAttribute(s.Name)
 			for _, e := range entries {
 				bodyTokens := e.body
-				if len(s.Nested) > 0 {
-					wrapped := []byte(fmt.Sprintf("dummy {\n%s\n}\n", tokensString(ensureTrailingNewline(trimLeadingNewlines(e.body)))))
-					tmp, diag := hclwrite.ParseConfig(wrapped, "<elem>", hcl.Pos{Line: 1, Column: 1})
-					if !diag.HasErrors() && len(tmp.Body().Blocks()) > 0 {
-						reverse(tmp.Body().Blocks()[0].Body(), s.Nested)
-						bodyTokens = tmp.Body().Blocks()[0].Body().BuildTokens(nil)
+				wrapped := []byte(fmt.Sprintf("dummy {\n%s\n}\n", tokensString(ensureTrailingNewline(trimLeadingNewlines(e.body)))))
+				tmp, diag := hclwrite.ParseConfig(wrapped, "<elem>", hcl.Pos{Line: 1, Column: 1})
+				if !diag.HasErrors() && len(tmp.Body().Blocks()) > 0 {
+					eb := tmp.Body().Blocks()[0].Body()
+					if len(s.Nested) > 0 {
+						reverse(eb, s.Nested)
 					}
+					if eb.GetAttribute(s.MapKey) == nil {
+						eb.SetAttributeRaw(s.MapKey, e.key)
+					}
+					bodyTokens = eb.BuildTokens(nil)
 				}
-				keyLine := hclwrite.Tokens{
-					{Type: hclsyntax.TokenIdent, Bytes: []byte(s.MapKey)},
-					{Type: hclsyntax.TokenEqual, Bytes: []byte(" = ")},
-				}
-				keyLine = append(keyLine, e.key...)
-				keyLine = append(keyLine, &hclwrite.Token{Type: hclsyntax.TokenNewline, Bytes: []byte("\n")})
-				combined := append(keyLine, trimLeadingNewlines(bodyTokens)...)
 				newBlock := body.AppendNewBlock(s.Name, nil)
-				newBlock.Body().AppendUnstructuredTokens(ensureTrailingNewline(combined))
+				newBlock.Body().AppendUnstructuredTokens(ensureTrailingNewline(trimLeadingNewlines(bodyTokens)))
 				changed = true
 			}
 			continue

@@ -164,6 +164,9 @@ func TestEnvironmentsMapFromV0List(t *testing.T) {
 	if got := models["production"].Name.ValueString(); got != "Production" {
 		t.Errorf("production name not preserved: %q", got)
 	}
+	if got := models["production"].Key.ValueString(); got != "production" {
+		t.Errorf("production key not preserved: %q", got)
+	}
 	if models["production"].ApprovalSettings.IsNull() || len(models["production"].ApprovalSettings.Elements()) != 1 {
 		t.Error("real approval_settings must be preserved on production")
 	}

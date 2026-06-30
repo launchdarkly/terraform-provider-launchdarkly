@@ -41,21 +41,24 @@ client_side_availability {   client_side_availability = {
 
 When you read one of these from a data source, use object access without a list index: `data.launchdarkly_feature_flag.x.client_side_availability.using_environment_id`.
 
-`launchdarkly_project.environments` becomes a **map keyed by the environment `key`** rather than an ordered list. Each environment's `key` moves out of the object and becomes the map key, so reordering, adding, or removing one environment no longer shifts the others or forces a destructive plan. The `migrate-tf-syntax` tool performs this rewrite for you:
+`launchdarkly_project.environments` becomes a **map keyed by the environment `key`** rather than an ordered list, so reordering, adding, or removing one environment no longer shifts the others or forces a destructive plan. The environment's `key` is also kept inside the object (it equals the map key), so references like `launchdarkly_project.example.environments["production"].key` keep working. The `migrate-tf-syntax` tool performs this rewrite for you:
 
 ```hcl
 # v2 block syntax              # v3 map syntax (keyed by env key)
 environments {                 environments = {
   key   = "production"           "production" = {
-  name  = "Production"             name  = "Production"
-  color = "EEEEEE"                 color = "EEEEEE"
-}                                }
+  name  = "Production"             key   = "production"
+  color = "EEEEEE"                 name  = "Production"
+}                                  color = "EEEEEE"
+                                 }
                                }
 ```
 
-Reference an environment by its key instead of by index. A v2 interpolation such as `launchdarkly_project.example.environments[0].client_side_id` becomes `launchdarkly_project.example.environments["production"].client_side_id`. The `migrate-tf-syntax` tool converts the `environments` block to a map but does **not** rewrite these positional index references elsewhere in your configuration — update them by hand (see "Finish the migration by hand" below).
+The map is **authoritative**: an environment removed from the map is deleted, and a project must have at least one environment. To manage the project in Terraform but its environments in the LaunchDarkly UI (or via [`launchdarkly_environment`](/docs/providers/launchdarkly/r/environment.html) resources), declare your environments and add `lifecycle { ignore_changes = [environments] }`.
 
-Because environments are now keyed, you can manage a subset and leave the rest to the LaunchDarkly UI: only the environments present in your `environments` map are managed, and environments you never declared are not deleted. Set `environments = {}` (or omit the attribute) to create a project without managing any of its environments.
+~> **Warning:** Changing an environment's key (the map key) deletes that environment — including its SDK keys and all flag targeting — and creates a new one.
+
+Reference an environment by its key instead of by index: a v2 interpolation such as `launchdarkly_project.example.environments[0].client_side_id` becomes `launchdarkly_project.example.environments["production"].client_side_id`. The `migrate-tf-syntax` tool does **not** rewrite these positional references (auto-editing arbitrary expressions risks corrupting your config), but it **detects them and prints the exact replacement** to make — including the resolved key — so the fix is mechanical. See "Finish the migration by hand" below.
 
 ## Prerequisites
 
@@ -90,7 +93,7 @@ The tool converts syntax only. Complete these follow-ups yourself:
 - Add `variations` by hand only for a flag whose `variation_type` is a non-literal expression, such as a variable or local. The tool cannot resolve those statically, so it warns and skips them. Boolean flags with a literal `variation_type` are handled automatically, and the provider preserves any variation `name` or `description` set outside Terraform when your configuration omits them.
 - Rewrite `dynamic` blocks. A `dynamic "variations"` block needs a for expression, for example `variations = [for v in var.values : { value = v }]`. The tool warns with the file and resource address, and it leaves the attribute unchanged.
 - Upgrade modules sourced from a registry or a git URL. The tool rewrites only files it reaches on disk, so upgrade those modules at their source.
-- Rewrite positional references to `launchdarkly_project` environments. The tool converts the `environments` block to a map but does not touch index expressions elsewhere in your config — change `launchdarkly_project.x.environments[0].client_side_id` to `launchdarkly_project.x.environments["<env_key>"].client_side_id` by hand.
+- Rewrite positional references to `launchdarkly_project` environments. The tool converts the `environments` block to a map but does not edit index expressions elsewhere in your config; it warns on each one with the exact replacement (e.g. `environments[0]` → `environments["production"]`, and `environments[*]` → `values(...)`). Apply those edits by hand.
 
 ## How v3 upgrades your state
 

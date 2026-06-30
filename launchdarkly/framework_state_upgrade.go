@@ -118,6 +118,7 @@ func environmentsMapFromV0List(ctx context.Context, l types.List) (types.Map, di
 			}
 		}
 		obj, d := types.ObjectValue(environmentAttrTypes, map[string]attr.Value{
+			KEY:                  e.Key,
 			NAME:                 e.Name,
 			COLOR:                e.Color,
 			CRITICAL:             e.Critical,

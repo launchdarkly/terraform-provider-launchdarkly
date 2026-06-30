@@ -4,7 +4,7 @@ description: Migrate LaunchDarkly Terraform provider HCL configs between block s
 compatibility: Works on any directory containing `.tf` files that use `launchdarkly_*` resources. No external tools required beyond a working `terraform` CLI for validation.
 metadata:
   author: ffeldberg
-  version: "2.1.0"
+  version: "2.2.0"
 ---
 
 # LaunchDarkly Terraform Provider: Block ↔ Nested Attribute Migration
@@ -13,7 +13,7 @@ The LaunchDarkly Terraform provider v3.0.0 finished the migration from `terrafor
 
 - **List/Set nested attributes** (genuinely plural, e.g. `variations`, `rules`, `statements`) → `name = [{ ... }]`.
 - **Single nested attributes** (genuinely one object — `client_side_availability`, `defaults`, `default_client_side_availability`, `fallthrough`) → `name = { ... }`. These four were modeled as max-1 lists through `3.0.0-beta.3` and switched to single objects for GA (REL-14237) so the bracketless object form is the correct v3.0.0 syntax. **If you are on a `3.0.0-beta.N` pre-release, use the list form `= [{ ... }]` for these four instead** — the object form is GA-only.
-- **Map nested attribute** (`launchdarkly_project.environments`, keyed by env `key`) → `name = { "<key>" = { ... } }`. The environment `key` moves out of the object and becomes the map key (REL-14236). Reordering/adding/removing one environment no longer churns the others.
+- **Map nested attribute** (`launchdarkly_project.environments`, keyed by env `key`) → `name = { "<key>" = { key = "<key>", ... } }`. Each block's `key` value becomes the map key; the `key` attribute is also **kept inside** the object (Optional+Computed in v3, equals the map key) so `.environments["x"].key` references keep working (REL-14236). Reordering/adding/removing one environment no longer churns the others.
 
 This skill enumerates every affected attribute, gives the exact rewrite, and lists the gotchas that bite during migration.
 
@@ -53,18 +53,19 @@ client_side_availability {         client_side_availability = {
 }                                  }
 ```
 
-**Exception — one map attribute** (`launchdarkly_project.environments`) is a `MapNestedAttribute` in v3 (REL-14236), keyed by the environment `key`. The block's `key` argument becomes the map key and is dropped from the object:
+**Exception — one map attribute** (`launchdarkly_project.environments`) is a `MapNestedAttribute` in v3 (REL-14236), keyed by the environment `key`. Each block's `key` value becomes the map key; the `key` attribute stays inside the object (it equals the map key):
 
 ```hcl
 # v2 (block)              # v3 (map nested attribute)
 environments {            environments = {
   key   = "production"      "production" = {
-  name  = "Production"        name  = "Production"
-}                           }
+  name  = "Production"        key   = "production"
+}                             name  = "Production"
+                            }
                           }
 ```
 
-To go v3 → v2, do the inverse: for list attributes strip `= [` / `]` and split `},` separators into a new `foo {` per element; for the four single-object attributes just drop `= ` and the braces become a block (`foo = { ... }` → `foo { ... }`); for the `environments` map, emit one `environments { ... }` block per map entry and re-inject `key = "<map key>"`.
+To go v3 → v2, do the inverse: for list attributes strip `= [` / `]` and split `},` separators into a new `foo {` per element; for the four single-object attributes just drop `= ` and the braces become a block (`foo = { ... }` → `foo { ... }`); for the `environments` map, emit one `environments { ... }` block per map entry (the `key` is already inside the object; if a hand-written map omitted it, re-inject `key = "<map key>"`).
 
 ## Mapping table
 
@@ -80,7 +81,7 @@ Every attribute that changed from block → nested attribute in v3. The **Type**
 | `launchdarkly_custom_role` | `policy_statements` | List | |
 | `launchdarkly_relay_proxy_configuration` | `policy` | List | Required. |
 | `launchdarkly_project` | `default_client_side_availability` | **Object** | v3.0.0 GA: `= { ... }`. Was List (max 1) through `3.0.0-beta.3`. |
-| `launchdarkly_project` | `environments` | **Map** | Keyed by env `key`: `= { "<key>" = { ... } }`. The inner `key` is now the map key. Optional — manage a subset and leave the rest to the UI, or `= {}` to manage none (REL-14236). Was an ordered List through the early v3 preview. |
+| `launchdarkly_project` | `environments` | **Map** | Keyed by env `key`: `= { "<key>" = { key = "<key>", ... } }`. The `key` stays inside the object (Optional+Computed, equals the map key). Required, at least one entry; authoritative (an env removed from the map is deleted). Use `lifecycle { ignore_changes = [environments] }` to manage environments outside Terraform. Was an ordered List through the early v3 preview (REL-14236). |
 | `launchdarkly_project.environments["<key>"]` | `approval_settings` | List (max 1) | Nested inside each environment map value. |
 | `launchdarkly_environment` | `approval_settings` | List (max 1) | Same shape as inline-in-project. |
 | `launchdarkly_segment` | `included_contexts` | List | |
@@ -226,10 +227,12 @@ resource "launchdarkly_project" "main" {
 
   environments = {
     "production" = {
+      key   = "production"
       name  = "Production"
       color = "EF4444"
     }
     "staging" = {
+      key   = "staging"
       name  = "Staging"
       color = "F59E0B"
 

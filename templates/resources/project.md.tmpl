@@ -21,7 +21,7 @@ Import is supported using the following syntax:
 
 {{ codefile "sh" .ImportFile | trimspace }}
 
-**IMPORTANT:** On import, _all_ of the project's environments are saved to the Terraform state, keyed by their environment `key`. The `environments` you declare in your configuration are managed; on a subsequent apply, any environment that is in state but absent from your configuration is deleted. To manage only some environments and leave the rest to the LaunchDarkly UI, declare just those environments in the map (or set `environments = {}` to manage none), or use Terraform's [ignore changes](https://www.terraform.io/docs/language/meta-arguments/lifecycle.html#ignore_changes) lifecycle meta-argument; see below for example.
+**IMPORTANT:** On import, _all_ of the project's environments are saved to the Terraform state, keyed by their environment `key`. `environments` is authoritative: on a subsequent apply, any environment that is in state but absent from your configuration is **deleted** (along with its SDK keys and all flag targeting). To manage the project in Terraform but leave its environments to the LaunchDarkly UI (or to [`launchdarkly_environment`](/docs/providers/launchdarkly/r/environment.html) resources), declare your environments and use Terraform's [ignore changes](https://www.terraform.io/docs/language/meta-arguments/lifecycle.html#ignore_changes) lifecycle meta-argument:
 
 ```terraform
 resource "launchdarkly_project" "example" {
@@ -30,10 +30,17 @@ resource "launchdarkly_project" "example" {
   }
   name = "testProject"
   key  = "example-project"
-  # environments not included in this configuration will not be affected by subsequent applies
+  environments = {
+    "production" = {
+      key   = "production"
+      name  = "Production"
+      color = "EEEEEE"
+    }
+  }
+  # after the initial create, environment changes are ignored
 }
 ```
 
-Because `environments` is a map keyed by environment `key`, reordering, adding, or removing one environment never forces changes to the others, and import is order-independent.
+Because `environments` is a map keyed by environment `key`, reordering, adding, or removing one environment never forces changes to the others, and import is order-independent. Changing an environment's key (the map key) deletes the old environment and creates a new one.
 
 **Managing environment resources with Terraform should always be done on the project unless the project is not also managed with Terraform.**

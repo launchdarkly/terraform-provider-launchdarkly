@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"sort"
+	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework-validators/setvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
@@ -21,10 +23,11 @@ import (
 )
 
 var (
-	_ resource.Resource                 = &ProjectResource{}
-	_ resource.ResourceWithImportState  = &ProjectResource{}
-	_ resource.ResourceWithModifyPlan   = &ProjectResource{}
-	_ resource.ResourceWithUpgradeState = &ProjectResource{}
+	_ resource.Resource                   = &ProjectResource{}
+	_ resource.ResourceWithImportState    = &ProjectResource{}
+	_ resource.ResourceWithModifyPlan     = &ProjectResource{}
+	_ resource.ResourceWithUpgradeState   = &ProjectResource{}
+	_ resource.ResourceWithValidateConfig = &ProjectResource{}
 )
 
 type ProjectResource struct {
@@ -217,15 +220,16 @@ func (r *ProjectResource) Configure(_ context.Context, req resource.ConfigureReq
 	r.client = configureResourceClient(req, resp)
 }
 
-// ModifyPlan addresses environments-level sensitive Unknowns: nested-
-// attribute schemas synthesize zero values for inner Computed fields
-// once the user supplies the required ones (key/name/color). For
-// api_key, mobile_key, client_side_id — secrets only LD can mint —
-// this produces a "" plan value that Apply replaces with the real
-// secret, tripping the framework's plan-vs-apply consistency check
-// (see [[feedback-nested-attr-computed-sensitive]]). Mark these
-// fields Unknown whenever there's no prior state entry for the same
-// env key.
+// ModifyPlan does two things:
+//
+//  1. Warns when a managed environment is being removed (or renamed, which is
+//     a remove + add), since deleting an environment is irreversible.
+//  2. Fixes environments-level sensitive Unknowns: nested-attribute schemas
+//     synthesize "" for inner Computed fields (api_key/mobile_key/
+//     client_side_id) once the user supplies the required ones, and Apply
+//     then replaces "" with the real secret, tripping the plan-vs-apply
+//     consistency check (see [[feedback-nested-attr-computed-sensitive]]).
+//     Mark those fields Unknown when there's no prior state entry for the key.
 func (r *ProjectResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
 	if req.Plan.Raw.IsNull() {
 		return
@@ -246,22 +250,20 @@ func (r *ProjectResource) ModifyPlan(ctx context.Context, req resource.ModifyPla
 		if resp.Diagnostics.HasError() {
 			return
 		}
-	}
-
-	// Warn when environments is omitted entirely. An omitted value manages no
-	// environments (the same effect as `{}`), which is easy to do by accident
-	// — nudge toward the explicit form or a declared map.
-	var config ProjectResourceModel
-	resp.Diagnostics.Append(req.Config.Get(ctx, &config)...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
-	if config.Environments.IsNull() {
-		resp.Diagnostics.AddAttributeWarning(
-			path.Root(ENVIRONMENTS),
-			"environments not configured",
-			"`environments` is not set, so Terraform manages none of this project's environments (LaunchDarkly still auto-provisions its default environments, which Terraform leaves untouched). Set `environments = {}` to manage no environments explicitly, or declare the environments you want to manage as a map keyed by environment key.",
-		)
+		// Warn loudly when a managed environment is being removed. Because
+		// environments is authoritative, any key in state but absent from the
+		// plan is deleted on apply — which destroys the environment along with
+		// its SDK/mobile/client-side keys and all of its flag targeting.
+		// Renaming an environment's key shows up here too (old key removed,
+		// new key added). This is a warning, not an error: apply is the gate
+		// (see [[feedback-prereq-destroy-plantime-warning]]).
+		if removed := removedEnvKeys(plan.Environments, state.Environments); len(removed) > 0 {
+			resp.Diagnostics.AddAttributeWarning(
+				path.Root(ENVIRONMENTS),
+				"environment(s) will be deleted",
+				fmt.Sprintf("The following environment(s) will be deleted from project %q, including their SDK/mobile/client-side keys and all flag targeting — this is irreversible: %s.\n\nIf you are renaming an environment, note that changing the map key deletes the old environment and creates a new one. To manage these environments outside Terraform instead, add `lifecycle { ignore_changes = [environments] }`.", plan.Key.ValueString(), strings.Join(removed, ", ")),
+			)
+		}
 	}
 
 	envs, diags := markEnvSecretsUnknown(ctx, plan.Environments, state.Environments)
@@ -272,6 +274,59 @@ func (r *ProjectResource) ModifyPlan(ctx context.Context, req resource.ModifyPla
 	plan.Environments = envs
 
 	resp.Diagnostics.Append(resp.Plan.Set(ctx, &plan)...)
+}
+
+// removedEnvKeys returns the env keys present in stateMap but absent from
+// planMap — the environments an apply would delete — in sorted order.
+func removedEnvKeys(planMap, stateMap types.Map) []string {
+	if stateMap.IsNull() || stateMap.IsUnknown() {
+		return nil
+	}
+	planKeys := map[string]bool{}
+	if !planMap.IsNull() && !planMap.IsUnknown() {
+		for k := range planMap.Elements() {
+			planKeys[k] = true
+		}
+	}
+	var removed []string
+	for k := range stateMap.Elements() {
+		if !planKeys[k] {
+			removed = append(removed, k)
+		}
+	}
+	sort.Strings(removed)
+	return removed
+}
+
+// ValidateConfig enforces that each environment's `key` (when set) equals its
+// map key. The map key is the authoritative identity; a per-attribute
+// validator can't see its own map key, so the cross-check lives here.
+func (r *ProjectResource) ValidateConfig(ctx context.Context, req resource.ValidateConfigRequest, resp *resource.ValidateConfigResponse) {
+	var config ProjectResourceModel
+	resp.Diagnostics.Append(req.Config.Get(ctx, &config)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	if config.Environments.IsNull() || config.Environments.IsUnknown() {
+		return
+	}
+	models, diags := environmentModelsFromMap(ctx, config.Environments)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	for mapKey, env := range models {
+		if env.Key.IsNull() || env.Key.IsUnknown() {
+			continue
+		}
+		if env.Key.ValueString() != mapKey {
+			resp.Diagnostics.AddAttributeError(
+				path.Root(ENVIRONMENTS).AtMapKey(mapKey).AtName(KEY),
+				"environment key must match its map key",
+				fmt.Sprintf("environment %q sets key = %q; the nested `key` must equal the map key (or be omitted). The map key is the environment's identity.", mapKey, env.Key.ValueString()),
+			)
+		}
+	}
 }
 
 // markEnvSecretsUnknown rewrites plan.Environments so api_key /
@@ -516,17 +571,17 @@ func (r *ProjectResource) applyProjectUpdates(ctx context.Context, projectKey st
 		}
 	}
 
-	// Environment reconciliation. environments is a map keyed by env key,
-	// so identity is the map key and only the keys present in config are
-	// managed; keys absent from config (e.g. UI-created envs) are left
-	// untouched.
+	// Environment reconciliation. environments is an authoritative map keyed
+	// by env key: the plan's keys are the project's complete env set, so any
+	// state env absent from the plan is deleted. New envs are created BEFORE
+	// removed envs are deleted — LaunchDarkly rejects deleting a project's
+	// last environment, so a rename (remove + add) must go 1->2->1, never
+	// through 0.
 	//
-	// A null or unknown plan value means environments is not determined by
-	// configuration (the attribute is Optional+Computed and was omitted, or
-	// the value is still being computed) — NOT "remove every environment".
-	// Skip all reconciliation so we never create, patch, or delete based on a
-	// non-concrete plan. An explicit empty map `{}` is concrete (not null), so
-	// it still falls through and deletes managed environments as intended.
+	// Defensive guard: a null/unknown plan value means environments is not
+	// concrete (e.g. ignore_changes, or still being computed) — NOT "delete
+	// every environment". Skip reconciliation entirely in that case rather
+	// than risk deleting all environments off a non-concrete plan.
 	if plan.Environments.IsNull() || plan.Environments.IsUnknown() {
 		return diags
 	}
@@ -554,6 +609,7 @@ func (r *ProjectResource) applyProjectUpdates(ctx context.Context, projectKey st
 		return diags
 	}
 
+	// Pass 1: create missing + patch existing (create-before-delete ordering).
 	desired := map[string]bool{}
 	for _, envKey := range sortedEnvKeys(planEnvs) {
 		env := planEnvs[envKey]

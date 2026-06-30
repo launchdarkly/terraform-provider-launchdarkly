@@ -43,6 +43,7 @@ resource "launchdarkly_project" "example" {
 
   environments = {
     "production" = {
+      key   = "production"
       name  = "Production"
       color = "EEEEEE"
     }

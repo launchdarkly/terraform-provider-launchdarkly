@@ -7,16 +7,16 @@ import (
 	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
-	ldapi "github.com/launchdarkly/api-client-go/v22"
 )
 
 // Project resources should be formatted with a random project key because acceptance tests
 // are run in parallel on a single account.
 //
-// As of REL-14236 environments is a map keyed by env key
-// (`environments = { "key" = { ... } }`). The count key is `environments.%`
-// and elements are addressed `environments.<key>.<attr>`; there is no inner
-// `key` attribute (the map key carries it).
+// As of REL-14236 environments is an authoritative map keyed by env key
+// (`environments = { "key" = { ... } }`): the count key is `environments.%`
+// and elements are addressed `environments.<key>.<attr>`. The object also has
+// an Optional+Computed `key` attribute that equals the map key (configs may
+// omit it). A project must declare at least one environment.
 const (
 	testAccProjectCreate = `
 resource "launchdarkly_project" "test" {
@@ -236,11 +236,31 @@ resource "launchdarkly_project" "approval_env_test" {
 	}
 }`
 
-	testAccProjectZeroEnvironments = `
-resource "launchdarkly_project" "zero_env" {
-	key = "%s"
-	name = "zero env project"
-	environments = {}
+	testAccProjectRenameEnvA = `
+resource "launchdarkly_project" "rename" {
+	key  = "%s"
+	name = "rename project"
+	environments = {
+	  "alpha" = {
+	    key   = "alpha"
+	    name  = "Alpha"
+	    color = "010101"
+	  }
+	}
+}
+`
+
+	testAccProjectRenameEnvB = `
+resource "launchdarkly_project" "rename" {
+	key  = "%s"
+	name = "rename project"
+	environments = {
+	  "beta" = {
+	    key   = "beta"
+	    name  = "Beta"
+	    color = "020202"
+	  }
+	}
 }
 `
 )
@@ -297,6 +317,9 @@ func TestAccProject_Update(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "environments.%", "1"),
 					resource.TestCheckResourceAttr(resourceName, "environments.test-env.name", "Test Environment"),
 					resource.TestCheckResourceAttr(resourceName, "environments.test-env.color", "010101"),
+					// key is Optional+Computed and defaults to the map key even
+					// when omitted from config.
+					resource.TestCheckResourceAttr(resourceName, "environments.test-env.key", "test-env"),
 				),
 			},
 			{
@@ -606,14 +629,14 @@ func TestAccProject_ManyEnvironments(t *testing.T) {
 	})
 }
 
-// TestAccProject_ZeroEnvironments exercises the REL-14236 relaxation that lets
-// a project be created without managing any environments (environments = {}).
-// LaunchDarkly auto-provisions its default environments, but with an empty map
-// the provider manages none of them, so state reports zero managed environments
-// and the plan is stable.
-func TestAccProject_ZeroEnvironments(t *testing.T) {
+// TestAccProject_RenameEnvironment renames an environment by changing its map
+// key. Because the LaunchDarkly API rejects deleting a project's last
+// environment, the provider must create the new env before deleting the old
+// one (1 -> 2 -> 1). The old env is deleted (authoritative management) and the
+// new env exists afterwards.
+func TestAccProject_RenameEnvironment(t *testing.T) {
 	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
-	resourceName := "launchdarkly_project.zero_env"
+	resourceName := "launchdarkly_project.rename"
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
 			testAccPreCheck(t)
@@ -622,133 +645,24 @@ func TestAccProject_ZeroEnvironments(t *testing.T) {
 		CheckDestroy:             testAccCheckProjectDestroy,
 		Steps: []resource.TestStep{
 			{
-				Config: fmt.Sprintf(testAccProjectZeroEnvironments, projectKey),
-				Check: resource.ComposeTestCheckFunc(
-					testAccCheckProjectExists(resourceName),
-					resource.TestCheckResourceAttr(resourceName, KEY, projectKey),
-					resource.TestCheckResourceAttr(resourceName, NAME, "zero env project"),
-					resource.TestCheckResourceAttr(resourceName, "environments.%", "0"),
-				),
-			},
-		},
-	})
-}
-
-// TestAccProject_ManageSubset proves the REL-14236 manage-a-subset behavior:
-// an environment created outside Terraform (as the LaunchDarkly UI would) is
-// neither pulled into state nor deleted by a subsequent apply of the unchanged
-// config. This guards against silently destroying unmanaged environments.
-func TestAccProject_ManageSubset(t *testing.T) {
-	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
-	resourceName := "launchdarkly_project.subset"
-	config := fmt.Sprintf(`
-resource "launchdarkly_project" "subset" {
-	key  = "%s"
-	name = "subset project"
-	environments = {
-	  "alpha" = {
-	    name  = "Alpha"
-	    color = "010101"
-	  }
-	}
-}
-`, projectKey)
-	resource.ParallelTest(t, resource.TestCase{
-		PreCheck: func() {
-			testAccPreCheck(t)
-		},
-		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
-		CheckDestroy:             testAccCheckProjectDestroy,
-		Steps: []resource.TestStep{
-			{
-				Config: config,
+				Config: fmt.Sprintf(testAccProjectRenameEnvA, projectKey),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckProjectExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, "environments.%", "1"),
-					resource.TestCheckResourceAttr(resourceName, "environments.alpha.name", "Alpha"),
+					resource.TestCheckResourceAttr(resourceName, "environments.alpha.key", "alpha"),
+					testAccCheckEnvironmentExistsInProject(projectKey, "alpha"),
 				),
 			},
 			{
-				// Create "beta" out-of-band, then re-apply the unchanged config.
-				// The provider must ignore the unmanaged env: it stays out of
-				// state, the plan is empty, and it is NOT deleted.
-				PreConfig: func() {
-					client := mustTestAccClient()
-					_, _, err := client.ld.EnvironmentsApi.PostEnvironment(client.ctx, projectKey).
-						EnvironmentPost(ldapi.EnvironmentPost{Key: "beta", Name: "Beta", Color: "123456"}).Execute()
-					if err != nil {
-						t.Fatalf("failed to create out-of-band environment: %s", handleLdapiErr(err))
-					}
-				},
-				Config: config,
+				// Rename alpha -> beta. New env is created before the old one is
+				// deleted, so the project is never left with zero environments.
+				Config: fmt.Sprintf(testAccProjectRenameEnvB, projectKey),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckProjectExists(resourceName),
-					// managed env still tracked; unmanaged env not pulled into state
 					resource.TestCheckResourceAttr(resourceName, "environments.%", "1"),
-					resource.TestCheckResourceAttr(resourceName, "environments.alpha.name", "Alpha"),
-					resource.TestCheckNoResourceAttr(resourceName, "environments.beta.name"),
-					// unmanaged env survived the apply (was not deleted)
+					resource.TestCheckResourceAttr(resourceName, "environments.beta.key", "beta"),
+					resource.TestCheckNoResourceAttr(resourceName, "environments.alpha.key"),
 					testAccCheckEnvironmentExistsInProject(projectKey, "beta"),
-				),
-			},
-		},
-	})
-}
-
-// TestAccProject_OmitThenSubset guards the data-loss path where a project is
-// created with environments omitted (manages none) and then a partial map is
-// added: the auto-provisioned environments the user never declared must NOT be
-// deleted. Omitting environments must store zero managed environments (not the
-// auto-provisioned ones), so adopting one later leaves the rest untouched.
-func TestAccProject_OmitThenSubset(t *testing.T) {
-	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
-	resourceName := "launchdarkly_project.omit"
-	omitted := fmt.Sprintf(`
-resource "launchdarkly_project" "omit" {
-	key  = "%s"
-	name = "omit project"
-}
-`, projectKey)
-	subset := fmt.Sprintf(`
-resource "launchdarkly_project" "omit" {
-	key  = "%s"
-	name = "omit project"
-	environments = {
-	  "test" = {
-	    name  = "Adopted Test"
-	    color = "AABBCC"
-	  }
-	}
-}
-`, projectKey)
-	resource.ParallelTest(t, resource.TestCase{
-		PreCheck: func() {
-			testAccPreCheck(t)
-		},
-		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
-		CheckDestroy:             testAccCheckProjectDestroy,
-		Steps: []resource.TestStep{
-			{
-				// Omitted environments => manage none. State records zero
-				// environments even though LaunchDarkly auto-provisions some.
-				Config: omitted,
-				Check: resource.ComposeTestCheckFunc(
-					testAccCheckProjectExists(resourceName),
-					resource.TestCheckResourceAttr(resourceName, "environments.%", "0"),
-					// auto-provisioned envs exist on the project but are unmanaged
-					testAccCheckEnvironmentExistsInProject(projectKey, "test"),
-					testAccCheckEnvironmentExistsInProject(projectKey, "production"),
-				),
-			},
-			{
-				// Adopt one auto-provisioned env. The undeclared one
-				// ("production") must survive — it was never managed.
-				Config: subset,
-				Check: resource.ComposeTestCheckFunc(
-					testAccCheckProjectExists(resourceName),
-					resource.TestCheckResourceAttr(resourceName, "environments.%", "1"),
-					resource.TestCheckResourceAttr(resourceName, "environments.test.name", "Adopted Test"),
-					testAccCheckEnvironmentExistsInProject(projectKey, "production"),
 				),
 			},
 		},
