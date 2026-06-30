@@ -174,8 +174,10 @@ func TestEnvironmentsMapFromV0List(t *testing.T) {
 		t.Error("null approval_settings must stay null on stage")
 	}
 
-	if nm, _ := environmentsMapFromV0List(ctx, types.ListNull(v0ObjType)); !nm.IsNull() {
-		t.Error("null list must project to null map")
+	// A null/empty v0 list must project to an EMPTY (not null) map so the next
+	// Read manages none rather than importing every environment.
+	if nm, _ := environmentsMapFromV0List(ctx, types.ListNull(v0ObjType)); nm.IsNull() || len(nm.Elements()) != 0 {
+		t.Errorf("null list must project to an empty (non-null) map, got null=%v len=%d", nm.IsNull(), len(nm.Elements()))
 	}
 }
 

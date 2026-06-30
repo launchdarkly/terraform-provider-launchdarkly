@@ -92,7 +92,14 @@ func csaObjectFromV0List(ctx context.Context, l types.List, attrTypes map[string
 func environmentsMapFromV0List(ctx context.Context, l types.List) (types.Map, diag.Diagnostics) {
 	var diags diag.Diagnostics
 	if l.IsNull() || l.IsUnknown() || len(l.Elements()) == 0 {
-		return types.MapNull(environmentObjectType), diags
+		// No environments in the v0 state: manage none. Return an EMPTY map,
+		// not null — a null prior makes the next Read import every environment
+		// (the null branch of environmentsMapFromAPI), which would undo
+		// manage-none and risk later unintended deletes. (v2 required at least
+		// one environment, so this branch is defensive.)
+		m, d := types.MapValue(environmentObjectType, map[string]attr.Value{})
+		diags.Append(d...)
+		return m, diags
 	}
 	var v0envs []environmentModelV0
 	diags.Append(l.ElementsAs(ctx, &v0envs, false)...)
