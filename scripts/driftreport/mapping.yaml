@@ -222,8 +222,19 @@ families:
       - launchdarkly_environment
 
   - tag: Experiments
-    status: triage
-    notes: Experimentation-as-code is a plausible future surface; needs product alignment.
+    status: covered
+    resources:
+      - launchdarkly_experiment
+      - launchdarkly_experimentation_settings
+    notes: |
+      launchdarkly_experiment models createExperiment/getExperiment/patchExperiment
+      and createIteration (a new draft iteration is created when the iteration config
+      changes). launchdarkly_experimentation_settings models
+      getExperimentationSettings/putExperimentationSettings as a project singleton.
+      The list endpoints getExperiments and getExperimentsAnyEnv are not modeled;
+      the singular get covers declarative reads. The API has no delete-experiment
+      endpoint, so destroy archives the experiment via the archiveExperiment patch
+      instruction. Scaffolded by the autogen pipeline (stage 2).
 
   - tag: Feature flags
     status: covered
