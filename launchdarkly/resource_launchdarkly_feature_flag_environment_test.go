@@ -69,7 +69,34 @@ resource "launchdarkly_feature_flag_environment" "basic" {
 }
 `
 
-	testAccFeatureFlagEnvironmentUpdate = `	
+	// off_variation is omitted entirely. LaunchDarkly initialises the env's
+	// offVariation to the flag default (2) on flag creation, so the provider
+	// must actively remove it to model the UI's "Not set" state (issue #482).
+	testAccFeatureFlagEnvironmentNoOffVariation = `
+resource "launchdarkly_feature_flag" "basic" {
+	project_key = launchdarkly_project.test.key
+	key = "basic-flag"
+	name = "Basic feature flag"
+	variation_type = "number"
+	variations = [{
+		value = 10
+	}, {
+		value = 20
+	}, {
+		value = 30
+	}]
+}
+
+resource "launchdarkly_feature_flag_environment" "basic" {
+	flag_id 		  = launchdarkly_feature_flag.basic.id
+	env_key 		  = "test"
+	fallthrough = {
+		variation = 0
+	}
+}
+`
+
+	testAccFeatureFlagEnvironmentUpdate = `
 resource "launchdarkly_feature_flag" "basic" {
 	project_key = launchdarkly_project.test.key
 	key = "basic-flag"
@@ -712,6 +739,53 @@ func TestAccFeatureFlagEnvironment_Empty(t *testing.T) {
 				ResourceName:      resourceName,
 				ImportState:       true,
 				ImportStateVerify: true,
+			},
+		},
+	})
+}
+
+// TestAccFeatureFlagEnvironment_OffVariationUnset exercises issue #482:
+// off_variation must be omittable (modelling LD's "Not set" state) and
+// round-trip cleanly through create (remove flag default), set, and
+// remove-again (set->null) without a perpetual diff.
+func TestAccFeatureFlagEnvironment_OffVariationUnset(t *testing.T) {
+	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	resourceName := "launchdarkly_feature_flag_environment.basic"
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck: func() {
+			testAccPreCheck(t)
+		},
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			// Create with off_variation omitted -> "Not set" (null, not 0).
+			{
+				Config: withRandomProject(projectKey, testAccFeatureFlagEnvironmentNoOffVariation),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckFeatureFlagEnvironmentExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, ON, "false"),
+					resource.TestCheckNoResourceAttr(resourceName, OFF_VARIATION),
+				),
+			},
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
+			// Set a concrete value -> patchReplace.
+			{
+				Config: withRandomProject(projectKey, testAccFeatureFlagEnvironmentEmpty),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckFeatureFlagEnvironmentExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, OFF_VARIATION, "2"),
+				),
+			},
+			// Remove again -> patchRemove, back to null.
+			{
+				Config: withRandomProject(projectKey, testAccFeatureFlagEnvironmentNoOffVariation),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckFeatureFlagEnvironmentExists(resourceName),
+					resource.TestCheckNoResourceAttr(resourceName, OFF_VARIATION),
+				),
 			},
 		},
 	})

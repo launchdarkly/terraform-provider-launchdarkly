@@ -35,7 +35,7 @@ data "launchdarkly_feature_flag_environment" "example" {
 - `context_targets` (Attributes Set) Individual context-kind targets per variation. (see [below for nested schema](#nestedatt--context_targets))
 - `fallthrough` (Attributes) Default variation served when no other targeting applies. (see [below for nested schema](#nestedatt--fallthrough))
 - `id` (String) Composite ID `project_key/env_key/flag_key`.
-- `off_variation` (Number) Variation index to serve when targeting is disabled.
+- `off_variation` (Number) The index of the variation to serve when targeting is off. This is null when the environment has no off variation set (the UI's "Not set" state), which is distinct from a value of `0`.
 - `on` (Boolean) Whether targeting is enabled.
 - `prerequisites` (Attributes List) Prerequisite flag rules. (see [below for nested schema](#nestedatt--prerequisites))
 - `rules` (Attributes List) Logical targeting rules. (see [below for nested schema](#nestedatt--rules))

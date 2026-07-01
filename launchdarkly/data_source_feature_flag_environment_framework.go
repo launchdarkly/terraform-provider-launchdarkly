@@ -82,7 +82,7 @@ func (d *FeatureFlagEnvironmentDataSource) Schema(_ context.Context, _ datasourc
 			TRACK_EVENTS: schema.BoolAttribute{Computed: true, Description: "Whether to send event data back to LaunchDarkly."},
 			OFF_VARIATION: schema.Int64Attribute{
 				Computed:    true,
-				Description: "Variation index to serve when targeting is disabled.",
+				Description: "The index of the variation to serve when targeting is off. This is null when the environment has no off variation set (the UI's \"Not set\" state), which is distinct from a value of `0`.",
 			},
 			TARGETS: schema.SetNestedAttribute{
 				Computed:    true,
@@ -218,7 +218,9 @@ func (d *FeatureFlagEnvironmentDataSource) Read(ctx context.Context, req datasou
 	if environment.OffVariation != nil {
 		data.OffVariation = types.Int64Value(int64(*environment.OffVariation))
 	} else {
-		data.OffVariation = types.Int64Value(0)
+		// No offVariation on the environment ("Not set") — report null rather
+		// than a misleading literal index 0.
+		data.OffVariation = types.Int64Null()
 	}
 
 	// targets / context_targets

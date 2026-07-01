@@ -96,9 +96,9 @@ func featureFlagEnvironmentSchemaAttributes() map[string]schema.Attribute {
 			Description: "Whether to send event data back to LaunchDarkly. Defaults to `false` if not set.",
 		},
 		OFF_VARIATION: schema.Int64Attribute{
-			Required:    true,
+			Optional:    true,
 			Validators:  []validator.Int64{int64validator.AtLeast(0)},
-			Description: "The index of the variation to serve if targeting is disabled.",
+			Description: "The index of the variation to serve when targeting is off. Omitting this attribute leaves the off variation unset (the UI's \"Not set\" state), which is distinct from setting it to `0`. When it is unset and targeting is off, LaunchDarkly serves no variation: SDKs return the application-provided default value and the evaluation carries a null variation index, which affects Data Export and Experimentation.",
 		},
 		TARGETS: schema.SetNestedAttribute{
 			Optional:    true,
@@ -547,7 +547,9 @@ func (r *FeatureFlagEnvironmentResource) readIntoModel(ctx context.Context, proj
 	if environment.OffVariation != nil {
 		data.OffVariation = types.Int64Value(int64(*environment.OffVariation))
 	} else {
-		data.OffVariation = types.Int64Value(0)
+		// No offVariation on the environment ("Not set") — model as null so
+		// it round-trips instead of collapsing to a literal index 0.
+		data.OffVariation = types.Int64Null()
 	}
 
 	noopDiags := noopDiagSink{}
@@ -712,9 +714,18 @@ func buildFFEPatches(ctx context.Context, envKey string, plan, state FeatureFlag
 	if isCreate || !plan.On.Equal(state.On) {
 		patches = append(patches, patchReplace(ffePatchPath(envKey, "on"), plan.On.ValueBool()))
 	}
-	if isCreate {
-		patches = append(patches, patchReplace(ffePatchPath(envKey, "offVariation"), int32(plan.OffVariation.ValueInt64())))
-	} else if !plan.OffVariation.Equal(state.OffVariation) {
+	// off_variation is optional: a null value models LD's "Not set" state
+	// (no offVariation field on the environment). LaunchDarkly initialises
+	// every environment's offVariation to the flag's default when the flag
+	// is created, so to honour a null we must emit a JSON Patch remove —
+	// merely omitting the patch would leave the default in place and trip
+	// the "inconsistent result after apply" check. On update we only remove
+	// when a value was previously set (removing an absent path errors).
+	if plan.OffVariation.IsNull() {
+		if isCreate || !state.OffVariation.IsNull() {
+			patches = append(patches, patchRemove(ffePatchPath(envKey, "offVariation")))
+		}
+	} else if isCreate || !plan.OffVariation.Equal(state.OffVariation) {
 		patches = append(patches, patchReplace(ffePatchPath(envKey, "offVariation"), int32(plan.OffVariation.ValueInt64())))
 	}
 	if isCreate || !plan.TrackEvents.Equal(state.TrackEvents) {
