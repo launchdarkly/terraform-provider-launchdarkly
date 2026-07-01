@@ -4,8 +4,7 @@ page_title: "launchdarkly_model_config Resource - launchdarkly"
 subcategory: ""
 description: |-
   Provides a LaunchDarkly custom model config resource.
-  This resource allows you to create and manage custom AI model configurations within your LaunchDarkly project. If you wish to use global model configurations in Terraform, you can import them using the launchdarkly_model_config data source.
-  Since the API does not support updates, any field change will force recreation of the resource.
+  This resource allows you to create and manage custom AI model configurations within your LaunchDarkly project. Since the API does not support updates, any field change will force recreation of the resource.
   ~> Important: If an launchdarkly_ai_config_variation references this model config via model_config_key, use a Terraform resource reference (e.g. launchdarkly_model_config.example.key) so Terraform can order destruction correctly. A literal string key will cause the delete to fail because the API rejects deleting a model config that is still in use.
 ---
 
@@ -13,9 +12,7 @@ description: |-
 
 Provides a LaunchDarkly custom model config resource.
 
-This resource allows you to create and manage custom AI model configurations within your LaunchDarkly project. If you wish to use global model configurations in Terraform, you can import them using the `launchdarkly_model_config` data source. 
-
-Since the API does not support updates, any field change will force recreation of the resource.
+This resource allows you to create and manage custom AI model configurations within your LaunchDarkly project. Since the API does not support updates, any field change will force recreation of the resource.
 
 ~> **Important:** If an `launchdarkly_ai_config_variation` references this model config via `model_config_key`, use a Terraform resource reference (e.g. `launchdarkly_model_config.example.key`) so Terraform can order destruction correctly. A literal string key will cause the delete to fail because the API rejects deleting a model config that is still in use.
 
