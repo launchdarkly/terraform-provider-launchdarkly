@@ -2,6 +2,19 @@
 
 All notable changes to the LaunchDarkly Terraform Provider will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org).
 
+## [2.31.0](https://github.com/launchdarkly/terraform-provider-launchdarkly/compare/v2.30.0...v2.31.0) (2026-07-01)
+
+
+### Features
+
+* **autogen:** add stage-1.5 triage workflow for unclaimed operations ([#474](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/474)) ([32a91d0](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/32a91d0577b64b6aea048e555f606d918e0255ba))
+* per-family drift notifications + stage-3 verification agent ([#457](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/457)) ([7ec3be2](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/7ec3be28b032a96c9a15c0492c2a1a1d23d21f49))
+
+
+### Bug Fixes
+
+* [REL-14260] add note about global vs custom configs to AI model config documentation ([#485](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/485)) ([3a67936](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/3a67936b7ea046c6236f5741ddb27f0b88513a6e))
+
 ## [2.30.0](https://github.com/launchdarkly/terraform-provider-launchdarkly/compare/v2.29.0...v2.30.0) (2026-06-11)
 
 
