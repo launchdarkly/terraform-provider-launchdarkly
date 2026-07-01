@@ -2,6 +2,28 @@
 
 All notable changes to the LaunchDarkly Terraform Provider will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org).
 
+## [3.0.0-beta.4](https://github.com/launchdarkly/terraform-provider-launchdarkly/compare/v3.0.0-beta.3...v3.0.0-beta.4) (2026-07-01)
+
+
+### ⚠ BREAKING CHANGES
+
+* `launchdarkly_project.environments` is now a map keyed by environment key (`environments = { "production" = { ... } }`) instead of an ordered list. The inner `key` attribute is removed; the map key carries it. Rewrite configurations with `migrate-tf-syntax` (it also rewrites `environments[N]` references to `environments["<key>"]`). The v2 -> v3 state upgrade is automatic.
+* client_side_availability, defaults, default_client_side_availability, and fallthrough now use object syntax (`attr = {...}`) instead of a single-element list (`attr = [{...}]`).
+
+### Features
+
+* **autogen:** add stage-1.5 triage workflow for unclaimed operations ([#474](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/474)) ([32a91d0](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/32a91d0577b64b6aea048e555f606d918e0255ba))
+* **feature_flag_environment:** make off_variation optional to model "Not set" ([#482](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/482)) ([#483](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/483)) ([11782b0](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/11782b0b6d0bf8657d0666c8f85d3e4be10325c4))
+* key-address launchdarkly_project environments (REL-14236) ([#481](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/481)) ([779e297](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/779e29736e2c2c7114f4d9dcebbc4ed172e1637b))
+* scaffold launchdarkly_ai_agent_graph resource (autogen stage 2) ([#475](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/475)) ([8daf542](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/8daf542159d65d616f62b74be37915e78e94ab67))
+* use object syntax for single-object flag/project attributes (REL-14237) ([#480](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/480)) ([821d574](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/821d574d276e136ef63c1ca30494c439fe16072e))
+
+
+### Bug Fixes
+
+* **driftreport:** repair mapping.yaml so the drift report parses ([#473](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/473)) ([4bc9db7](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/4bc9db7c6552eed9af8d6bb9511ba57d6fde61d4))
+* **lint:** lowercase capitalized error strings in team_member_helper (ST1005) ([#477](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/477)) ([a3725e4](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/a3725e4195470148a57e3d205da018d50b6a4ebb))
+
 ## [3.0.0-beta.3](https://github.com/launchdarkly/terraform-provider-launchdarkly/compare/v3.0.0-beta.2...v3.0.0-beta.3) (2026-06-24)
 
 
