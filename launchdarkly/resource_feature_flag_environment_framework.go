@@ -16,6 +16,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64default"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
@@ -26,9 +27,11 @@ import (
 )
 
 var (
-	_ resource.Resource                 = &FeatureFlagEnvironmentResource{}
-	_ resource.ResourceWithImportState  = &FeatureFlagEnvironmentResource{}
-	_ resource.ResourceWithUpgradeState = &FeatureFlagEnvironmentResource{}
+	_ resource.Resource                   = &FeatureFlagEnvironmentResource{}
+	_ resource.ResourceWithImportState    = &FeatureFlagEnvironmentResource{}
+	_ resource.ResourceWithUpgradeState   = &FeatureFlagEnvironmentResource{}
+	_ resource.ResourceWithValidateConfig = &FeatureFlagEnvironmentResource{}
+	_ resource.ResourceWithModifyPlan     = &FeatureFlagEnvironmentResource{}
 )
 
 type FeatureFlagEnvironmentResource struct {
@@ -36,18 +39,47 @@ type FeatureFlagEnvironmentResource struct {
 }
 
 type FeatureFlagEnvironmentResourceModel struct {
-	ID             types.String `tfsdk:"id"`
-	FlagID         types.String `tfsdk:"flag_id"`
-	EnvKey         types.String `tfsdk:"env_key"`
-	On             types.Bool   `tfsdk:"on"`
-	Targets        types.Set    `tfsdk:"targets"`
-	ContextTargets types.Set    `tfsdk:"context_targets"`
-	Rules          types.List   `tfsdk:"rules"`
-	Prerequisites  types.List   `tfsdk:"prerequisites"`
-	Fallthrough    types.Object `tfsdk:"fallthrough"`
-	TrackEvents    types.Bool   `tfsdk:"track_events"`
-	OffVariation   types.Int64  `tfsdk:"off_variation"`
+	ID                types.String `tfsdk:"id"`
+	FlagID            types.String `tfsdk:"flag_id"`
+	EnvKey            types.String `tfsdk:"env_key"`
+	On                types.Bool   `tfsdk:"on"`
+	Targets           types.Set    `tfsdk:"targets"`
+	ContextTargets    types.Set    `tfsdk:"context_targets"`
+	Rules             types.List   `tfsdk:"rules"`
+	Prerequisites     types.List   `tfsdk:"prerequisites"`
+	Fallthrough       types.Object `tfsdk:"fallthrough"`
+	TrackEvents       types.Bool   `tfsdk:"track_events"`
+	OffVariation      types.Int64  `tfsdk:"off_variation"`
+	OffVariationName  types.String `tfsdk:"off_variation_name"`
+	OffVariationValue types.String `tfsdk:"off_variation_value"`
 }
+
+// ffeResourceFallthroughAttrTypes / ffeResourceRuleAttrTypes are the
+// resource-side object shapes for fallthrough/rules, distinct from the
+// data source's ffeFallthroughAttrTypes/ffeRuleAttrTypes: the resource
+// additionally carries the write-only variation_name/variation_value
+// alternatives to variation (REL-14238). The data source stays
+// index-only since it's a read-only projection.
+var (
+	ffeResourceFallthroughAttrTypes = map[string]attr.Type{
+		VARIATION:       types.Int64Type,
+		VARIATION_NAME:  types.StringType,
+		VARIATION_VALUE: types.StringType,
+		ROLLOUT_WEIGHTS: types.ListType{ElemType: types.Int64Type},
+		BUCKET_BY:       types.StringType,
+		CONTEXT_KIND:    types.StringType,
+	}
+	ffeResourceRuleAttrTypes = map[string]attr.Type{
+		DESCRIPTION:     types.StringType,
+		CLAUSES:         types.ListType{ElemType: types.ObjectType{AttrTypes: frameworkClauseAttrTypes}},
+		VARIATION:       types.Int64Type,
+		VARIATION_NAME:  types.StringType,
+		VARIATION_VALUE: types.StringType,
+		ROLLOUT_WEIGHTS: types.ListType{ElemType: types.Int64Type},
+		BUCKET_BY:       types.StringType,
+		CONTEXT_KIND:    types.StringType,
+	}
+)
 
 func NewFeatureFlagEnvironmentResource() resource.Resource {
 	return &FeatureFlagEnvironmentResource{}
@@ -96,9 +128,19 @@ func featureFlagEnvironmentSchemaAttributes() map[string]schema.Attribute {
 			Description: "Whether to send event data back to LaunchDarkly. Defaults to `false` if not set.",
 		},
 		OFF_VARIATION: schema.Int64Attribute{
+			Optional:      true,
+			Computed:      true,
+			PlanModifiers: []planmodifier.Int64{int64planmodifier.UseStateForUnknown()},
+			Validators:    []validator.Int64{int64validator.AtLeast(0)},
+			Description:   "The index of the variation to serve when targeting is off. Omitting this attribute (and `off_variation_name`/`off_variation_value`) leaves the off variation unset (the UI's \"Not set\" state), which is distinct from setting it to `0`. When it is unset and targeting is off, LaunchDarkly serves no variation: SDKs return the application-provided default value and the evaluation carries a null variation index, which affects Data Export and Experimentation. At most one of `off_variation`, `off_variation_name`, or `off_variation_value` may be set. Marked `(known after apply)` when resolved from `off_variation_name`/`off_variation_value`, since the flag's variations live on a separate `launchdarkly_feature_flag` resource this resource can't see at plan time.",
+		},
+		OFF_VARIATION_NAME: schema.StringAttribute{
 			Optional:    true,
-			Validators:  []validator.Int64{int64validator.AtLeast(0)},
-			Description: "The index of the variation to serve when targeting is off. Omitting this attribute leaves the off variation unset (the UI's \"Not set\" state), which is distinct from setting it to `0`. When it is unset and targeting is off, LaunchDarkly serves no variation: SDKs return the application-provided default value and the evaluation carries a null variation index, which affects Data Export and Experimentation.",
+			Description: "The `name` of the flag variation to serve when targeting is off. Alternative to `off_variation`. Resolved against the flag's variations when applied — errors if none, or more than one, match. At most one of `off_variation`, `off_variation_name`, or `off_variation_value` may be set.",
+		},
+		OFF_VARIATION_VALUE: schema.StringAttribute{
+			Optional:    true,
+			Description: "The `value` of the flag variation to serve when targeting is off, in the same format as the flag's `variations[].value`. Alternative to `off_variation`. Resolved against the flag's variations when applied — errors if none, or more than one, match. At most one of `off_variation`, `off_variation_name`, or `off_variation_value` may be set.",
 		},
 		TARGETS: schema.SetNestedAttribute{
 			Optional:    true,
@@ -169,9 +211,19 @@ func featureFlagEnvironmentSchemaAttributes() map[string]schema.Attribute {
 						Description: "A human-readable description of the targeting rule.",
 					},
 					VARIATION: schema.Int64Attribute{
+						Optional:      true,
+						Computed:      true,
+						PlanModifiers: []planmodifier.Int64{int64planmodifier.UseStateForUnknown()},
+						Validators:    []validator.Int64{int64validator.AtLeast(0)},
+						Description:   "The integer variation index to serve if the rule clauses evaluate to `true`. You must specify one of `variation`, `variation_name`, `variation_value`, or `rollout_weights`.",
+					},
+					VARIATION_NAME: schema.StringAttribute{
 						Optional:    true,
-						Validators:  []validator.Int64{int64validator.AtLeast(0)},
-						Description: "The integer variation index to serve if the rule clauses evaluate to `true`. You must specify either `variation` or `rollout_weights`",
+						Description: "The `name` of the flag variation to serve if the rule clauses evaluate to `true`. Alternative to `variation`. Resolved against the flag's variations when applied — errors if none, or more than one, match.",
+					},
+					VARIATION_VALUE: schema.StringAttribute{
+						Optional:    true,
+						Description: "The `value` of the flag variation to serve if the rule clauses evaluate to `true`, in the same format as the flag's `variations[].value`. Alternative to `variation`. Resolved against the flag's variations when applied — errors if none, or more than one, match.",
 					},
 					BUCKET_BY: schema.StringAttribute{
 						Optional:    true,
@@ -204,7 +256,15 @@ func featureFlagEnvironmentSchemaAttributes() map[string]schema.Attribute {
 					Computed:    true,
 					Default:     int64default.StaticInt64(0),
 					Validators:  []validator.Int64{int64validator.AtLeast(0)},
-					Description: "The default integer variation index to serve if no `prerequisites`, `target`, or `rules` apply. You must specify either `variation` or `rollout_weights`.",
+					Description: "The default integer variation index to serve if no `prerequisites`, `target`, or `rules` apply. You must specify one of `variation`, `variation_name`, `variation_value`, or `rollout_weights`. Defaults to `0` when none of `variation`, `variation_name`, `variation_value`, or `rollout_weights` is set.",
+				},
+				VARIATION_NAME: schema.StringAttribute{
+					Optional:    true,
+					Description: "The `name` of the flag variation to serve if no `prerequisites`, `target`, or `rules` apply. Alternative to `variation`. Resolved against the flag's variations when applied — errors if none, or more than one, match.",
+				},
+				VARIATION_VALUE: schema.StringAttribute{
+					Optional:    true,
+					Description: "The `value` of the flag variation to serve if no `prerequisites`, `target`, or `rules` apply, in the same format as the flag's `variations[].value`. Alternative to `variation`. Resolved against the flag's variations when applied — errors if none, or more than one, match.",
 				},
 				BUCKET_BY: schema.StringAttribute{
 					Optional:    true,
@@ -270,6 +330,152 @@ func (r *FeatureFlagEnvironmentResource) Configure(_ context.Context, req resour
 	r.client = configureResourceClient(req, resp)
 }
 
+// ffeRuleSelectorModel is the full field set of the resource's rule object
+// (ffeResourceRuleAttrTypes) — Object.As/ElementsAs require an exact 1:1
+// match between struct tags and object attribute types, so this must
+// stay in sync with ffeResourceRuleAttrTypes even where a caller only
+// needs a subset of fields.
+type ffeRuleSelectorModel struct {
+	Description    types.String `tfsdk:"description"`
+	Clauses        types.List   `tfsdk:"clauses"`
+	Variation      types.Int64  `tfsdk:"variation"`
+	VariationName  types.String `tfsdk:"variation_name"`
+	VariationValue types.String `tfsdk:"variation_value"`
+	RolloutWeights types.List   `tfsdk:"rollout_weights"`
+	BucketBy       types.String `tfsdk:"bucket_by"`
+	ContextKind    types.String `tfsdk:"context_kind"`
+}
+
+// ffeFallthroughSelectorModel is the full field set of the resource's
+// fallthrough object (ffeResourceFallthroughAttrTypes); see
+// ffeRuleSelectorModel for why every field must be present.
+type ffeFallthroughSelectorModel struct {
+	Variation      types.Int64  `tfsdk:"variation"`
+	VariationName  types.String `tfsdk:"variation_name"`
+	VariationValue types.String `tfsdk:"variation_value"`
+	RolloutWeights types.List   `tfsdk:"rollout_weights"`
+	BucketBy       types.String `tfsdk:"bucket_by"`
+	ContextKind    types.String `tfsdk:"context_kind"`
+}
+
+// ValidateConfig catches off_variation/variation _name/_value conflicts at
+// `terraform plan`, before any API call. Unlike launchdarkly_feature_flag,
+// this resource can't see the sibling flag's variations, so only the "at
+// most one set" check runs here — full resolution happens at apply time
+// in Create/Update, once the flag has been fetched.
+func (r *FeatureFlagEnvironmentResource) ValidateConfig(ctx context.Context, req resource.ValidateConfigRequest, resp *resource.ValidateConfigResponse) {
+	var config FeatureFlagEnvironmentResourceModel
+	resp.Diagnostics.Append(req.Config.Get(ctx, &config)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	checkExclusivity := func(attrPath path.Path, sel variationSelector, label string) {
+		if err := validateVariationSelectorExclusivity(sel, label); err != nil {
+			resp.Diagnostics.AddAttributeError(attrPath, "invalid "+label, err.Error())
+		}
+	}
+
+	checkExclusivity(
+		path.Root(OFF_VARIATION),
+		variationSelectorFromInt64AndStrings(config.OffVariation, config.OffVariationName, config.OffVariationValue),
+		OFF_VARIATION,
+	)
+
+	if !config.Fallthrough.IsNull() && !config.Fallthrough.IsUnknown() {
+		var m ffeFallthroughSelectorModel
+		resp.Diagnostics.Append(config.Fallthrough.As(ctx, &m, basetypes.ObjectAsOptions{})...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+		checkExclusivity(
+			path.Root(FALLTHROUGH).AtName(VARIATION),
+			variationSelectorFromInt64AndStrings(m.Variation, m.VariationName, m.VariationValue),
+			"fallthrough.variation",
+		)
+	}
+
+	if !config.Rules.IsNull() && !config.Rules.IsUnknown() {
+		var rules []ffeRuleSelectorModel
+		resp.Diagnostics.Append(config.Rules.ElementsAs(ctx, &rules, false)...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+		for i, rule := range rules {
+			checkExclusivity(
+				path.Root(RULES).AtListIndex(i).AtName(VARIATION),
+				variationSelectorFromInt64AndStrings(rule.Variation, rule.VariationName, rule.VariationValue),
+				fmt.Sprintf("rules[%d].variation", i),
+			)
+		}
+	}
+}
+
+// ModifyPlan marks off_variation/fallthrough.variation/rules[].variation
+// Unknown at plan time when their _name/_value alternative is configured
+// instead — the framework requires Computed:true attributes to explicitly
+// signal "known after apply" rather than silently locking in a stale
+// index. Actual resolution against the flag's variations happens in
+// Create/Update, since this resource can't see the sibling
+// launchdarkly_feature_flag resource's variations at plan time.
+//
+// The inverse case (off_variation/rules[].variation genuinely unset, no
+// _name/_value either) is forced back to explicit Null: Computed:true
+// with no config value otherwise defaults to Unknown, which would
+// regress the "Not set" contract off_variation already relies on
+// (#482/#483).
+func (r *FeatureFlagEnvironmentResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
+	if req.Plan.Raw.IsNull() {
+		return // destroy plan
+	}
+	var config FeatureFlagEnvironmentResourceModel
+	resp.Diagnostics.Append(req.Config.Get(ctx, &config)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	switch {
+	case !config.OffVariation.IsNull():
+		// user set the index directly; plan already mirrors config.
+	case !config.OffVariationName.IsNull() || !config.OffVariationValue.IsNull():
+		resp.Diagnostics.Append(resp.Plan.SetAttribute(ctx, path.Root(OFF_VARIATION), types.Int64Unknown())...)
+	default:
+		resp.Diagnostics.Append(resp.Plan.SetAttribute(ctx, path.Root(OFF_VARIATION), types.Int64Null())...)
+	}
+
+	if !config.Fallthrough.IsNull() && !config.Fallthrough.IsUnknown() {
+		var m ffeFallthroughSelectorModel
+		resp.Diagnostics.Append(config.Fallthrough.As(ctx, &m, basetypes.ObjectAsOptions{})...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+		// Only the "resolve from name/value" case needs an override here:
+		// the "nothing set" case is already handled correctly by the
+		// schema's existing Default(0) plan modifier.
+		if m.Variation.IsNull() && (!m.VariationName.IsNull() || !m.VariationValue.IsNull()) {
+			resp.Diagnostics.Append(resp.Plan.SetAttribute(ctx, path.Root(FALLTHROUGH).AtName(VARIATION), types.Int64Unknown())...)
+		}
+	}
+
+	if !config.Rules.IsNull() && !config.Rules.IsUnknown() {
+		var rules []ffeRuleSelectorModel
+		resp.Diagnostics.Append(config.Rules.ElementsAs(ctx, &rules, false)...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+		for i, rule := range rules {
+			rulePath := path.Root(RULES).AtListIndex(i).AtName(VARIATION)
+			switch {
+			case !rule.Variation.IsNull():
+			case !rule.VariationName.IsNull() || !rule.VariationValue.IsNull():
+				resp.Diagnostics.Append(resp.Plan.SetAttribute(ctx, rulePath, types.Int64Unknown())...)
+			default:
+				resp.Diagnostics.Append(resp.Plan.SetAttribute(ctx, rulePath, types.Int64Null())...)
+			}
+		}
+	}
+}
+
 func (r *FeatureFlagEnvironmentResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	var plan FeatureFlagEnvironmentResourceModel
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
@@ -311,22 +517,28 @@ func (r *FeatureFlagEnvironmentResource) Create(ctx context.Context, req resourc
 		return
 	}
 
-	// When off_variation is omitted we may need to remove the offVariation LD
-	// seeded from the flag default. Determine whether one is actually present
-	// first — a remove of an absent path returns 400 invalid_patch, which
-	// would otherwise block create for an environment already in "Not set".
+	// Fetch the flag unconditionally: needed both to determine whether a
+	// live offVariation is present (a remove of an absent path returns 400
+	// invalid_patch, which would otherwise block create for an environment
+	// already in "Not set") and to resolve any off_variation_name/value,
+	// fallthrough.variation_name/value, or rules[].variation_name/value
+	// against the flag's real variations (REL-14238) — this resource can't
+	// see the sibling launchdarkly_feature_flag resource's variations any
+	// other way.
+	flag, _, gerr := getFeatureFlagEnvironment(r.client, projectKey, flagKey, envKey)
+	if gerr != nil {
+		resp.Diagnostics.AddError(fmt.Sprintf("failed to read flag %q of project %q before create: %s", flagKey, projectKey, handleLdapiErr(gerr).Error()), "")
+		return
+	}
 	offVariationLiveSet := false
-	if plan.OffVariation.IsNull() {
-		flag, _, gerr := getFeatureFlagEnvironment(r.client, projectKey, flagKey, envKey)
-		if gerr != nil {
-			resp.Diagnostics.AddError(fmt.Sprintf("failed to read flag %q of project %q before create: %s", flagKey, projectKey, handleLdapiErr(gerr).Error()), "")
-			return
+	if flag.Environments != nil {
+		if env, ok := (*flag.Environments)[envKey]; ok && env.OffVariation != nil {
+			offVariationLiveSet = true
 		}
-		if flag.Environments != nil {
-			if env, ok := (*flag.Environments)[envKey]; ok && env.OffVariation != nil {
-				offVariationLiveSet = true
-			}
-		}
+	}
+	resp.Diagnostics.Append(resolveFFEVariationIndices(ctx, &plan, resolvableVariationsFromAPI(flag.Variations))...)
+	if resp.Diagnostics.HasError() {
+		return
 	}
 
 	patches, d := buildFFEPatches(ctx, envKey, plan, FeatureFlagEnvironmentResourceModel{}, true, offVariationLiveSet)
@@ -413,6 +625,21 @@ func (r *FeatureFlagEnvironmentResource) Update(ctx context.Context, req resourc
 			fmt.Sprintf("environment %q not found in project %q — env_key must be the LaunchDarkly environment **key**. Create the environment first or correct env_key.", envKey, projectKey),
 			"",
 		)
+		return
+	}
+
+	// Fetch the flag to resolve any off_variation_name/value,
+	// fallthrough.variation_name/value, or rules[].variation_name/value
+	// against the flag's real variations (REL-14238) — this resource can't
+	// see the sibling launchdarkly_feature_flag resource's variations any
+	// other way.
+	flag, _, gerr := getFeatureFlagEnvironment(r.client, projectKey, flagKey, envKey)
+	if gerr != nil {
+		resp.Diagnostics.AddError(fmt.Sprintf("failed to read flag %q of project %q before update: %s", flagKey, projectKey, handleLdapiErr(gerr).Error()), "")
+		return
+	}
+	resp.Diagnostics.Append(resolveFFEVariationIndices(ctx, &plan, resolvableVariationsFromAPI(flag.Variations))...)
+	if resp.Diagnostics.HasError() {
 		return
 	}
 
@@ -575,8 +802,13 @@ func (r *FeatureFlagEnvironmentResource) readIntoModel(ctx context.Context, proj
 	noopDiags := noopDiagSink{}
 	data.Targets = ffeTargetsValue(ctx, environment.Targets, false, noopDiags)
 	data.ContextTargets = ffeTargetsValue(ctx, environment.ContextTargets, true, noopDiags)
-	data.Rules = ffeResourceRulesValue(ctx, environment.Rules, diags)
-	data.Fallthrough = ffeResourceFallthroughValue(ctx, environment.Fallthrough, diags)
+	// variation_name/variation_value are write-only (Optional, not
+	// Computed): pass through whatever the caller already had rather than
+	// deriving fresh values from the API, or the plan-apply consistency
+	// check would trip (REL-14238).
+	priorRules, priorFallthrough := data.Rules, data.Fallthrough
+	data.Rules = ffeResourceRulesValue(ctx, environment.Rules, priorRules, diags)
+	data.Fallthrough = ffeResourceFallthroughValue(ctx, environment.Fallthrough, priorFallthrough, diags)
 
 	prereqObjectType := types.ObjectType{AttrTypes: ffePrerequisiteAttrTypes}
 	prereqElements := make([]attr.Value, 0, len(environment.Prerequisites))
@@ -604,6 +836,27 @@ type noopDiagSink struct{}
 
 func (noopDiagSink) AddError(string, string) {}
 
+// ffeRulePriorVariationRefsByIndex extracts variation_name/variation_value
+// from a prior rules list, keyed by list position (rules have no other
+// stable identity to match on). Returns nil slices when priorRules is
+// null/unknown/unreadable — callers treat any out-of-range index as null.
+func ffeRulePriorVariationRefsByIndex(ctx context.Context, priorRules types.List) (names, values []types.String) {
+	if priorRules.IsNull() || priorRules.IsUnknown() {
+		return nil, nil
+	}
+	var models []ffeRuleSelectorModel
+	if priorRules.ElementsAs(ctx, &models, false).HasError() {
+		return nil, nil
+	}
+	names = make([]types.String, len(models))
+	values = make([]types.String, len(models))
+	for i, m := range models {
+		names[i] = m.VariationName
+		values[i] = m.VariationValue
+	}
+	return names, values
+}
+
 // ffeResourceRulesValue emits null for Optional-only attributes the
 // user did not configure: variation is null when a rollout is present,
 // bucket_by / context_kind are null when not a rollout, description is
@@ -611,10 +864,15 @@ func (noopDiagSink) AddError(string, string) {}
 // instead — fine for Computed-only data source attrs but would trip
 // the plan-apply consistency check on the resource's Optional-only
 // attrs.
-func ffeResourceRulesValue(ctx context.Context, rules []ldapi.Rule, diags *diag.Diagnostics) types.List {
-	objectType := types.ObjectType{AttrTypes: ffeRuleAttrTypes}
+//
+// variation_name/variation_value are write-only (Optional, not
+// Computed): pass through priorRules by list position rather than
+// deriving fresh values from the API (REL-14238).
+func ffeResourceRulesValue(ctx context.Context, rules []ldapi.Rule, priorRules types.List, diags *diag.Diagnostics) types.List {
+	objectType := types.ObjectType{AttrTypes: ffeResourceRuleAttrTypes}
+	priorNames, priorValues := ffeRulePriorVariationRefsByIndex(ctx, priorRules)
 	elements := make([]attr.Value, 0, len(rules))
-	for _, r := range rules {
+	for i, r := range rules {
 		clauses, d := frameworkClausesValue(ctx, r.Clauses)
 		diags.Append(d...)
 
@@ -651,10 +909,16 @@ func ffeResourceRulesValue(ctx context.Context, rules []ldapi.Rule, diags *diag.
 		if r.Description != nil {
 			description = types.StringValue(*r.Description)
 		}
-		obj, d := types.ObjectValue(ffeRuleAttrTypes, map[string]attr.Value{
+		variationName, variationValue := types.StringNull(), types.StringNull()
+		if i < len(priorNames) {
+			variationName, variationValue = priorNames[i], priorValues[i]
+		}
+		obj, d := types.ObjectValue(ffeResourceRuleAttrTypes, map[string]attr.Value{
 			DESCRIPTION:     description,
 			CLAUSES:         clauses,
 			VARIATION:       variation,
+			VARIATION_NAME:  variationName,
+			VARIATION_VALUE: variationValue,
 			ROLLOUT_WEIGHTS: weights,
 			BUCKET_BY:       bucketBy,
 			CONTEXT_KIND:    contextKind,
@@ -675,9 +939,13 @@ func ffeResourceRulesValue(ctx context.Context, rules []ldapi.Rule, diags *diag.
 // defaults to "user" so plan-vs-state stays consistent when the user
 // omits these attrs (framework Default+Computed schema flags fill the
 // plan; Read must emit matching values).
-func ffeResourceFallthroughValue(_ context.Context, fallthroughRep *ldapi.VariationOrRolloutRep, diags *diag.Diagnostics) types.Object {
+//
+// variation_name/variation_value are write-only (Optional, not
+// Computed): pass through priorFallthrough rather than deriving fresh
+// values from the API (REL-14238).
+func ffeResourceFallthroughValue(ctx context.Context, fallthroughRep *ldapi.VariationOrRolloutRep, priorFallthrough types.Object, diags *diag.Diagnostics) types.Object {
 	if fallthroughRep == nil {
-		return types.ObjectNull(ffeFallthroughAttrTypes)
+		return types.ObjectNull(ffeResourceFallthroughAttrTypes)
 	}
 	variation := types.Int64Value(0)
 	bucketBy := types.StringNull()
@@ -701,8 +969,17 @@ func ffeResourceFallthroughValue(_ context.Context, fallthroughRep *ldapi.Variat
 	if fallthroughRep.Variation != nil {
 		variation = types.Int64Value(int64(*fallthroughRep.Variation))
 	}
-	obj, d := types.ObjectValue(ffeFallthroughAttrTypes, map[string]attr.Value{
+	variationName, variationValue := types.StringNull(), types.StringNull()
+	if !priorFallthrough.IsNull() && !priorFallthrough.IsUnknown() {
+		var m ffeFallthroughSelectorModel
+		if d := priorFallthrough.As(ctx, &m, basetypes.ObjectAsOptions{}); !d.HasError() {
+			variationName, variationValue = m.VariationName, m.VariationValue
+		}
+	}
+	obj, d := types.ObjectValue(ffeResourceFallthroughAttrTypes, map[string]attr.Value{
 		VARIATION:       variation,
+		VARIATION_NAME:  variationName,
+		VARIATION_VALUE: variationValue,
 		ROLLOUT_WEIGHTS: weights,
 		BUCKET_BY:       bucketBy,
 		CONTEXT_KIND:    contextKind,
@@ -722,6 +999,100 @@ func ffePatchPath(envKey, op string) string {
 type ffeFallthroughPayload struct {
 	Variation *int32         `json:"variation,omitempty"`
 	Rollout   *ldapi.Rollout `json:"rollout,omitempty"`
+}
+
+// resolveFFEVariationIndices resolves off_variation, fallthrough.variation,
+// and each rules[].variation from their _name/_value alternatives
+// (REL-14238) against the flag's real variations, mutating plan in place so
+// buildFFEPatches (and everything downstream of it) sees only concrete
+// indices — no other code needs to know resolution happened. Only sites
+// where the index is null/unknown AND a name/value is configured get
+// touched; sites where the index is already concrete (whether user-set or
+// defaulted) are left alone. Errors are reported per-site via
+// diag.AddAttributeError so a bad reference in one rule doesn't mask
+// others.
+func resolveFFEVariationIndices(ctx context.Context, plan *FeatureFlagEnvironmentResourceModel, resolvable []resolvableVariation) diag.Diagnostics {
+	var diags diag.Diagnostics
+
+	offSel := variationSelectorFromInt64AndStrings(plan.OffVariation, plan.OffVariationName, plan.OffVariationValue)
+	if offSel.Name != nil || offSel.Value != nil {
+		idx, err := resolveVariationIndex(offSel, resolvable, OFF_VARIATION)
+		if err != nil {
+			diags.AddAttributeError(path.Root(OFF_VARIATION), "invalid "+OFF_VARIATION, err.Error())
+		} else {
+			plan.OffVariation = types.Int64Value(int64(idx))
+		}
+	}
+	// else: offSel.Index set (nothing to resolve) or entirely empty
+	// (genuine "Not set" — leave plan.OffVariation as null).
+
+	if !plan.Fallthrough.IsNull() && !plan.Fallthrough.IsUnknown() {
+		var m ffeFallthroughSelectorModel
+		diags.Append(plan.Fallthrough.As(ctx, &m, basetypes.ObjectAsOptions{})...)
+		if !diags.HasError() {
+			sel := variationSelectorFromInt64AndStrings(m.Variation, m.VariationName, m.VariationValue)
+			if sel.Name != nil || sel.Value != nil {
+				idx, err := resolveVariationIndex(sel, resolvable, "fallthrough.variation")
+				if err != nil {
+					diags.AddAttributeError(path.Root(FALLTHROUGH).AtName(VARIATION), "invalid fallthrough.variation", err.Error())
+				} else {
+					obj, od := types.ObjectValue(ffeResourceFallthroughAttrTypes, map[string]attr.Value{
+						VARIATION:       types.Int64Value(int64(idx)),
+						VARIATION_NAME:  m.VariationName,
+						VARIATION_VALUE: m.VariationValue,
+						ROLLOUT_WEIGHTS: m.RolloutWeights,
+						BUCKET_BY:       m.BucketBy,
+						CONTEXT_KIND:    m.ContextKind,
+					})
+					diags.Append(od...)
+					plan.Fallthrough = obj
+				}
+			}
+		}
+	}
+
+	if !plan.Rules.IsNull() && !plan.Rules.IsUnknown() {
+		var rules []ffeRuleSelectorModel
+		diags.Append(plan.Rules.ElementsAs(ctx, &rules, false)...)
+		if !diags.HasError() {
+			changed := false
+			for i := range rules {
+				sel := variationSelectorFromInt64AndStrings(rules[i].Variation, rules[i].VariationName, rules[i].VariationValue)
+				if sel.Name == nil && sel.Value == nil {
+					continue
+				}
+				idx, err := resolveVariationIndex(sel, resolvable, fmt.Sprintf("rules[%d].variation", i))
+				if err != nil {
+					diags.AddAttributeError(path.Root(RULES).AtListIndex(i).AtName(VARIATION), fmt.Sprintf("invalid rules[%d].variation", i), err.Error())
+					continue
+				}
+				rules[i].Variation = types.Int64Value(int64(idx))
+				changed = true
+			}
+			if changed && !diags.HasError() {
+				elements := make([]attr.Value, 0, len(rules))
+				for _, r := range rules {
+					obj, od := types.ObjectValue(ffeResourceRuleAttrTypes, map[string]attr.Value{
+						DESCRIPTION:     r.Description,
+						CLAUSES:         r.Clauses,
+						VARIATION:       r.Variation,
+						VARIATION_NAME:  r.VariationName,
+						VARIATION_VALUE: r.VariationValue,
+						ROLLOUT_WEIGHTS: r.RolloutWeights,
+						BUCKET_BY:       r.BucketBy,
+						CONTEXT_KIND:    r.ContextKind,
+					})
+					diags.Append(od...)
+					elements = append(elements, obj)
+				}
+				list, ld := types.ListValue(types.ObjectType{AttrTypes: ffeResourceRuleAttrTypes}, elements)
+				diags.Append(ld...)
+				plan.Rules = list
+			}
+		}
+	}
+
+	return diags
 }
 
 // buildFFEPatches assembles the JSON-Patch document applied at
@@ -817,9 +1188,15 @@ func ffeRulesFromList(ctx context.Context, list types.List) ([]ffeRulePayload, d
 	if list.IsNull() || list.IsUnknown() {
 		return []ffeRulePayload{}, diags
 	}
+	// variation_name/variation_value aren't read here: resolveFFEVariationIndices
+	// resolves them into Variation before buildFFEPatches ever calls this
+	// function. They must still appear in the struct — Object.As/ElementsAs
+	// require an exact 1:1 field match with ffeResourceRuleAttrTypes.
 	type ruleModel struct {
 		Description    types.String `tfsdk:"description"`
 		Variation      types.Int64  `tfsdk:"variation"`
+		VariationName  types.String `tfsdk:"variation_name"`
+		VariationValue types.String `tfsdk:"variation_value"`
 		BucketBy       types.String `tfsdk:"bucket_by"`
 		ContextKind    types.String `tfsdk:"context_kind"`
 		RolloutWeights types.List   `tfsdk:"rollout_weights"`
@@ -965,8 +1342,14 @@ func ffeFallthroughFromObject(ctx context.Context, obj types.Object) (ffeFallthr
 		diags.AddError("feature flag fallthrough cannot be empty. Please specify at least one of variation or rollout_weights", "")
 		return ffeFallthroughPayload{}, diags
 	}
+	// variation_name/variation_value aren't read here: resolveFFEVariationIndices
+	// resolves them into Variation before buildFFEPatches ever calls this
+	// function. They must still appear in the struct — Object.As requires
+	// an exact 1:1 field match with ffeResourceFallthroughAttrTypes.
 	type fallthroughModel struct {
 		Variation      types.Int64  `tfsdk:"variation"`
+		VariationName  types.String `tfsdk:"variation_name"`
+		VariationValue types.String `tfsdk:"variation_value"`
 		BucketBy       types.String `tfsdk:"bucket_by"`
 		ContextKind    types.String `tfsdk:"context_kind"`
 		RolloutWeights types.List   `tfsdk:"rollout_weights"`

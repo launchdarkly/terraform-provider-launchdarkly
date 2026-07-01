@@ -51,11 +51,13 @@ func featureFlagEnvironmentSchemaAttributesV0() map[string]schema.Attribute {
 
 // ffeFallthroughObjectFromV0List projects a v0 (SDKv2) single-element
 // fallthrough list into the v3 single-object shape. Returns a null
-// object for null/empty input (defensive — fallthrough is required).
+// object for null/empty input (defensive — fallthrough is required). The
+// v0 schema predates the variation_name/variation_value alternatives to
+// variation (REL-14238), so those always come across null.
 func ffeFallthroughObjectFromV0List(ctx context.Context, l types.List) (types.Object, diag.Diagnostics) {
 	var diags diag.Diagnostics
 	if l.IsNull() || l.IsUnknown() || len(l.Elements()) == 0 {
-		return types.ObjectNull(ffeFallthroughAttrTypes), diags
+		return types.ObjectNull(ffeResourceFallthroughAttrTypes), diags
 	}
 	type fallthroughModel struct {
 		Variation      types.Int64  `tfsdk:"variation"`
@@ -66,15 +68,17 @@ func ffeFallthroughObjectFromV0List(ctx context.Context, l types.List) (types.Ob
 	var models []fallthroughModel
 	diags.Append(l.ElementsAs(ctx, &models, false)...)
 	if diags.HasError() || len(models) == 0 {
-		return types.ObjectNull(ffeFallthroughAttrTypes), diags
+		return types.ObjectNull(ffeResourceFallthroughAttrTypes), diags
 	}
 	m := models[0]
 	weights := m.RolloutWeights
 	if weights.IsNull() || weights.IsUnknown() {
 		weights = types.ListNull(types.Int64Type)
 	}
-	obj, d := types.ObjectValue(ffeFallthroughAttrTypes, map[string]attr.Value{
+	obj, d := types.ObjectValue(ffeResourceFallthroughAttrTypes, map[string]attr.Value{
 		VARIATION:       m.Variation,
+		VARIATION_NAME:  types.StringNull(),
+		VARIATION_VALUE: types.StringNull(),
 		BUCKET_BY:       m.BucketBy,
 		CONTEXT_KIND:    m.ContextKind,
 		ROLLOUT_WEIGHTS: weights,

@@ -79,13 +79,26 @@ func TestDefaultsObjectFromV0List(t *testing.T) {
 		if diags.HasError() || obj.IsNull() {
 			t.Fatalf("expected object, diags=%v null=%v", diags, obj.IsNull())
 		}
+		// Output uses the resource's 6-key shape (REL-14238 added
+		// *_name/*_value alternatives); the v0 input never had those, so
+		// they must come across null.
 		var m struct {
-			OnVariation  types.Int64 `tfsdk:"on_variation"`
-			OffVariation types.Int64 `tfsdk:"off_variation"`
+			OnVariation       types.Int64  `tfsdk:"on_variation"`
+			OnVariationName   types.String `tfsdk:"on_variation_name"`
+			OnVariationValue  types.String `tfsdk:"on_variation_value"`
+			OffVariation      types.Int64  `tfsdk:"off_variation"`
+			OffVariationName  types.String `tfsdk:"off_variation_name"`
+			OffVariationValue types.String `tfsdk:"off_variation_value"`
 		}
-		obj.As(ctx, &m, basetypes.ObjectAsOptions{})
+		diags = obj.As(ctx, &m, basetypes.ObjectAsOptions{})
+		if diags.HasError() {
+			t.Fatalf("unexpected diags decoding output object: %v", diags)
+		}
 		if m.OnVariation.ValueInt64() != 0 || m.OffVariation.ValueInt64() != 2 {
 			t.Errorf("values not preserved: on=%d off=%d", m.OnVariation.ValueInt64(), m.OffVariation.ValueInt64())
+		}
+		if !m.OnVariationName.IsNull() || !m.OnVariationValue.IsNull() || !m.OffVariationName.IsNull() || !m.OffVariationValue.IsNull() {
+			t.Errorf("expected *_name/*_value to be null for a v0-projected object, got %+v", m)
 		}
 	})
 
@@ -198,15 +211,26 @@ func TestFFEFallthroughObjectFromV0List(t *testing.T) {
 	if diags.HasError() || obj.IsNull() {
 		t.Fatalf("expected object, diags=%v null=%v", diags, obj.IsNull())
 	}
+	// Output uses the resource's 6-key shape (REL-14238 added
+	// variation_name/variation_value); the v0 input never had those, so
+	// they must come across null.
 	var m struct {
 		Variation      types.Int64  `tfsdk:"variation"`
+		VariationName  types.String `tfsdk:"variation_name"`
+		VariationValue types.String `tfsdk:"variation_value"`
 		BucketBy       types.String `tfsdk:"bucket_by"`
 		ContextKind    types.String `tfsdk:"context_kind"`
 		RolloutWeights types.List   `tfsdk:"rollout_weights"`
 	}
-	obj.As(ctx, &m, basetypes.ObjectAsOptions{})
+	diags = obj.As(ctx, &m, basetypes.ObjectAsOptions{})
+	if diags.HasError() {
+		t.Fatalf("unexpected diags decoding output object: %v", diags)
+	}
 	if m.Variation.ValueInt64() != 1 || m.ContextKind.ValueString() != "user" {
 		t.Errorf("values not preserved: variation=%d context_kind=%q", m.Variation.ValueInt64(), m.ContextKind.ValueString())
+	}
+	if !m.VariationName.IsNull() || !m.VariationValue.IsNull() {
+		t.Errorf("expected variation_name/variation_value to be null for a v0-projected object, got %+v", m)
 	}
 
 	if obj, _ := ffeFallthroughObjectFromV0List(ctx, types.ListNull(objType)); !obj.IsNull() {

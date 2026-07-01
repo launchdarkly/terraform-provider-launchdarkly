@@ -744,6 +744,173 @@ func TestAccFeatureFlagEnvironment_Empty(t *testing.T) {
 	})
 }
 
+const (
+	// Named variations so off_variation_name/off_variation_value and
+	// fallthrough.variation_name/variation_value have something to
+	// resolve against (REL-14238).
+	testAccFeatureFlagEnvironmentVariationByNameStep1 = `
+resource "launchdarkly_feature_flag" "basic" {
+	project_key = launchdarkly_project.test.key
+	key = "basic-flag"
+	name = "Basic feature flag"
+	variation_type = "string"
+	variations = [{
+		name  = "control"
+		value = "control-value"
+	}, {
+		name  = "treatment"
+		value = "treatment-value"
+	}]
+}
+
+resource "launchdarkly_feature_flag_environment" "basic" {
+	flag_id           = launchdarkly_feature_flag.basic.id
+	env_key           = "test"
+	off_variation_name = "treatment"
+	fallthrough = {
+		variation_value = "control-value"
+	}
+}
+`
+
+	// Same references expressed via off_variation_value / variation_name
+	// instead — must resolve to the identical indices as step 1.
+	testAccFeatureFlagEnvironmentVariationByNameStep2 = `
+resource "launchdarkly_feature_flag" "basic" {
+	project_key = launchdarkly_project.test.key
+	key = "basic-flag"
+	name = "Basic feature flag"
+	variation_type = "string"
+	variations = [{
+		name  = "control"
+		value = "control-value"
+	}, {
+		name  = "treatment"
+		value = "treatment-value"
+	}]
+}
+
+resource "launchdarkly_feature_flag_environment" "basic" {
+	flag_id           = launchdarkly_feature_flag.basic.id
+	env_key           = "test"
+	off_variation_value = "treatment-value"
+	fallthrough = {
+		variation_name = "control"
+	}
+}
+`
+
+	// off_variation_name references a variation that doesn't exist.
+	testAccFeatureFlagEnvironmentVariationByNameNoMatch = `
+resource "launchdarkly_feature_flag" "basic" {
+	project_key = launchdarkly_project.test.key
+	key = "basic-flag"
+	name = "Basic feature flag"
+	variation_type = "string"
+	variations = [{
+		name  = "control"
+		value = "control-value"
+	}, {
+		name  = "treatment"
+		value = "treatment-value"
+	}]
+}
+
+resource "launchdarkly_feature_flag_environment" "basic" {
+	flag_id           = launchdarkly_feature_flag.basic.id
+	env_key           = "test"
+	off_variation_name = "nonexistent"
+	fallthrough = {
+		variation = 0
+	}
+}
+`
+
+	// off_variation and off_variation_name both set — mutually exclusive.
+	testAccFeatureFlagEnvironmentVariationByNameConflict = `
+resource "launchdarkly_feature_flag" "basic" {
+	project_key = launchdarkly_project.test.key
+	key = "basic-flag"
+	name = "Basic feature flag"
+	variation_type = "string"
+	variations = [{
+		name  = "control"
+		value = "control-value"
+	}, {
+		name  = "treatment"
+		value = "treatment-value"
+	}]
+}
+
+resource "launchdarkly_feature_flag_environment" "basic" {
+	flag_id           = launchdarkly_feature_flag.basic.id
+	env_key           = "test"
+	off_variation      = 0
+	off_variation_name = "treatment"
+	fallthrough = {
+		variation = 0
+	}
+}
+`
+)
+
+// TestAccFeatureFlagEnvironment_VariationByNameAndValue exercises
+// REL-14238: off_variation and fallthrough.variation resolved from
+// off_variation_name/off_variation_value and fallthrough.variation_name/
+// variation_value against the flag's real variations, end to end against
+// a real account. Also covers the no-match and conflicting-inputs error
+// paths, which the framework only fully validates at apply time here
+// (variations live on the sibling launchdarkly_feature_flag resource).
+func TestAccFeatureFlagEnvironment_VariationByNameAndValue(t *testing.T) {
+	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	resourceName := "launchdarkly_feature_flag_environment.basic"
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck: func() {
+			testAccPreCheck(t)
+		},
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: withRandomProject(projectKey, testAccFeatureFlagEnvironmentVariationByNameStep1),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckFeatureFlagEnvironmentExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, OFF_VARIATION, "1"),
+					resource.TestCheckResourceAttr(resourceName, "off_variation_name", "treatment"),
+					resource.TestCheckNoResourceAttr(resourceName, "off_variation_value"),
+					resource.TestCheckResourceAttr(resourceName, "fallthrough.variation", "0"),
+					resource.TestCheckResourceAttr(resourceName, "fallthrough.variation_value", "control-value"),
+					resource.TestCheckNoResourceAttr(resourceName, "fallthrough.variation_name"),
+				),
+			},
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
+			{
+				Config: withRandomProject(projectKey, testAccFeatureFlagEnvironmentVariationByNameStep2),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckFeatureFlagEnvironmentExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, OFF_VARIATION, "1"),
+					resource.TestCheckResourceAttr(resourceName, "off_variation_value", "treatment-value"),
+					resource.TestCheckNoResourceAttr(resourceName, "off_variation_name"),
+					resource.TestCheckResourceAttr(resourceName, "fallthrough.variation", "0"),
+					resource.TestCheckResourceAttr(resourceName, "fallthrough.variation_name", "control"),
+					resource.TestCheckNoResourceAttr(resourceName, "fallthrough.variation_value"),
+				),
+			},
+			{
+				Config:      withRandomProject(projectKey, testAccFeatureFlagEnvironmentVariationByNameNoMatch),
+				ExpectError: regexp.MustCompile(`no variation found with name`),
+			},
+			{
+				Config:      withRandomProject(projectKey, testAccFeatureFlagEnvironmentVariationByNameConflict),
+				ExpectError: regexp.MustCompile(`only one of`),
+			},
+		},
+	})
+}
+
 // TestAccFeatureFlagEnvironment_OffVariationUnset exercises issue #482:
 // off_variation must be omittable (modelling LD's "Not set" state) and
 // round-trip cleanly through create (remove flag default), set, and

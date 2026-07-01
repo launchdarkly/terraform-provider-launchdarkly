@@ -143,11 +143,13 @@ func environmentsMapFromV0List(ctx context.Context, l types.List) (types.Map, di
 
 // defaultsObjectFromV0List projects a v0 (SDKv2) single-element
 // feature_flag defaults list into the v3 single-object shape. Returns a
-// null object for null/empty input.
+// null object for null/empty input. The v0 schema predates the
+// *_name/*_value alternatives to on_variation/off_variation (REL-14238),
+// so those always come across null.
 func defaultsObjectFromV0List(ctx context.Context, l types.List) (types.Object, diag.Diagnostics) {
 	var diags diag.Diagnostics
 	if l.IsNull() || l.IsUnknown() || len(l.Elements()) == 0 {
-		return types.ObjectNull(featureFlagDefaultsAttrTypes), diags
+		return types.ObjectNull(featureFlagResourceDefaultsAttrTypes), diags
 	}
 	type defaultsModel struct {
 		OnVariation  types.Int64 `tfsdk:"on_variation"`
@@ -156,11 +158,15 @@ func defaultsObjectFromV0List(ctx context.Context, l types.List) (types.Object, 
 	var models []defaultsModel
 	diags.Append(l.ElementsAs(ctx, &models, false)...)
 	if diags.HasError() || len(models) == 0 {
-		return types.ObjectNull(featureFlagDefaultsAttrTypes), diags
+		return types.ObjectNull(featureFlagResourceDefaultsAttrTypes), diags
 	}
-	obj, d := types.ObjectValue(featureFlagDefaultsAttrTypes, map[string]attr.Value{
-		ON_VARIATION:  models[0].OnVariation,
-		OFF_VARIATION: models[0].OffVariation,
+	obj, d := types.ObjectValue(featureFlagResourceDefaultsAttrTypes, map[string]attr.Value{
+		ON_VARIATION:        models[0].OnVariation,
+		ON_VARIATION_NAME:   types.StringNull(),
+		ON_VARIATION_VALUE:  types.StringNull(),
+		OFF_VARIATION:       models[0].OffVariation,
+		OFF_VARIATION_NAME:  types.StringNull(),
+		OFF_VARIATION_VALUE: types.StringNull(),
 	})
 	diags.Append(d...)
 	return obj, diags

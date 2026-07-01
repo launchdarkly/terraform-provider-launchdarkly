@@ -201,7 +201,9 @@ resource "launchdarkly_feature_flag_environment" "big_flag_environment" {
 ### Optional
 
 - `context_targets` (Attributes Set) Individual targets for non-user context kinds for each variation. (see [below for nested schema](#nestedatt--context_targets))
-- `off_variation` (Number) The index of the variation to serve when targeting is off. Omitting this attribute leaves the off variation unset (the UI's "Not set" state), which is distinct from setting it to `0`. When it is unset and targeting is off, LaunchDarkly serves no variation: SDKs return the application-provided default value and the evaluation carries a null variation index, which affects Data Export and Experimentation.
+- `off_variation` (Number) The index of the variation to serve when targeting is off. Omitting this attribute (and `off_variation_name`/`off_variation_value`) leaves the off variation unset (the UI's "Not set" state), which is distinct from setting it to `0`. When it is unset and targeting is off, LaunchDarkly serves no variation: SDKs return the application-provided default value and the evaluation carries a null variation index, which affects Data Export and Experimentation. At most one of `off_variation`, `off_variation_name`, or `off_variation_value` may be set. Marked `(known after apply)` when resolved from `off_variation_name`/`off_variation_value`, since the flag's variations live on a separate `launchdarkly_feature_flag` resource this resource can't see at plan time.
+- `off_variation_name` (String) The `name` of the flag variation to serve when targeting is off. Alternative to `off_variation`. Resolved against the flag's variations when applied — errors if none, or more than one, match. At most one of `off_variation`, `off_variation_name`, or `off_variation_value` may be set.
+- `off_variation_value` (String) The `value` of the flag variation to serve when targeting is off, in the same format as the flag's `variations[].value`. Alternative to `off_variation`. Resolved against the flag's variations when applied — errors if none, or more than one, match. At most one of `off_variation`, `off_variation_name`, or `off_variation_value` may be set.
 - `on` (Boolean) Whether targeting is enabled. Defaults to `false` if not set.
 - `prerequisites` (Attributes List) Prerequisite feature flag rules. (see [below for nested schema](#nestedatt--prerequisites))
 - `rules` (Attributes List) List of logical targeting rules. (see [below for nested schema](#nestedatt--rules))
@@ -220,7 +222,9 @@ Optional:
 - `bucket_by` (String) Group percentage rollout by a custom attribute. This argument is only valid if rollout_weights is also specified.
 - `context_kind` (String) The context kind associated with the specified rollout. This argument is only valid if rollout_weights is also specified. If omitted, defaults to `user`.
 - `rollout_weights` (List of Number) List of integer percentage rollout weights (in thousandths of a percent) to apply to each variation if the rule clauses evaluates to `true`. The sum of the `rollout_weights` must equal 100000 and the number of rollout weights specified in the array must match the number of flag variations. You must specify either `variation` or `rollout_weights`.
-- `variation` (Number) The default integer variation index to serve if no `prerequisites`, `target`, or `rules` apply. You must specify either `variation` or `rollout_weights`.
+- `variation` (Number) The default integer variation index to serve if no `prerequisites`, `target`, or `rules` apply. You must specify one of `variation`, `variation_name`, `variation_value`, or `rollout_weights`. Defaults to `0` when none of `variation`, `variation_name`, `variation_value`, or `rollout_weights` is set.
+- `variation_name` (String) The `name` of the flag variation to serve if no `prerequisites`, `target`, or `rules` apply. Alternative to `variation`. Resolved against the flag's variations when applied — errors if none, or more than one, match.
+- `variation_value` (String) The `value` of the flag variation to serve if no `prerequisites`, `target`, or `rules` apply, in the same format as the flag's `variations[].value`. Alternative to `variation`. Resolved against the flag's variations when applied — errors if none, or more than one, match.
 
 
 <a id="nestedatt--context_targets"></a>
@@ -255,7 +259,9 @@ Optional:
 - `context_kind` (String) The context kind associated with the specified rollout. This argument is only valid if `rollout_weights` is also specified. Defaults to `user` if omitted.
 - `description` (String) A human-readable description of the targeting rule.
 - `rollout_weights` (List of Number) List of integer percentage rollout weights (in thousandths of a percent) to apply to each variation if the rule clauses evaluates to `true`. The sum of the `rollout_weights` must equal 100000 and the number of rollout weights specified in the array must match the number of flag variations. You must specify either `variation` or `rollout_weights`.
-- `variation` (Number) The integer variation index to serve if the rule clauses evaluate to `true`. You must specify either `variation` or `rollout_weights`
+- `variation` (Number) The integer variation index to serve if the rule clauses evaluate to `true`. You must specify one of `variation`, `variation_name`, `variation_value`, or `rollout_weights`.
+- `variation_name` (String) The `name` of the flag variation to serve if the rule clauses evaluate to `true`. Alternative to `variation`. Resolved against the flag's variations when applied — errors if none, or more than one, match.
+- `variation_value` (String) The `value` of the flag variation to serve if the rule clauses evaluate to `true`, in the same format as the flag's `variations[].value`. Alternative to `variation`. Resolved against the flag's variations when applied — errors if none, or more than one, match.
 
 <a id="nestedatt--rules--clauses"></a>
 ### Nested Schema for `rules.clauses`

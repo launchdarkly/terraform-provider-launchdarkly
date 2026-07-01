@@ -36,6 +36,7 @@ var (
 	_ resource.ResourceWithModifyPlan       = &FeatureFlagResource{}
 	_ resource.ResourceWithConfigValidators = &FeatureFlagResource{}
 	_ resource.ResourceWithUpgradeState     = &FeatureFlagResource{}
+	_ resource.ResourceWithValidateConfig   = &FeatureFlagResource{}
 )
 
 type FeatureFlagResource struct {
@@ -66,6 +67,20 @@ var (
 	featureFlagCSAAttrTypes = map[string]attr.Type{
 		USING_ENVIRONMENT_ID: types.BoolType,
 		USING_MOBILE_KEY:     types.BoolType,
+	}
+
+	// featureFlagResourceDefaultsAttrTypes describes the resource-side
+	// defaults object, which additionally carries the write-only
+	// *_name/*_value alternatives to on_variation/off_variation
+	// (REL-14238). Distinct from the data source's featureFlagDefaultsAttrTypes,
+	// which stays index-only since it's a read-only projection.
+	featureFlagResourceDefaultsAttrTypes = map[string]attr.Type{
+		ON_VARIATION:        types.Int64Type,
+		ON_VARIATION_NAME:   types.StringType,
+		ON_VARIATION_VALUE:  types.StringType,
+		OFF_VARIATION:       types.Int64Type,
+		OFF_VARIATION_NAME:  types.StringType,
+		OFF_VARIATION_VALUE: types.StringType,
 	}
 )
 
@@ -244,17 +259,33 @@ func featureFlagSchemaAttributes() map[string]schema.Attribute {
 		},
 		DEFAULTS: schema.SingleNestedAttribute{
 			Optional:    true,
-			Description: "The indices of the variations to be used as the default on and off variations in all new environments. Flag configurations in existing environments will not be changed nor updated if removed.",
+			Description: "The variations to be used as the default on and off variations in all new environments. Flag configurations in existing environments will not be changed nor updated if removed. Each of `on_variation`/`off_variation` has an exactly-one-of relationship with its `_name` and `_value` siblings: set exactly one of `on_variation`, `on_variation_name`, or `on_variation_value` (and the equivalent for `off_variation`).",
 			Attributes: map[string]schema.Attribute{
 				ON_VARIATION: schema.Int64Attribute{
-					Required:    true,
+					Optional:    true,
 					Validators:  []validator.Int64{int64validator.AtLeast(0)},
-					Description: "The index of the variation the flag will default to in all new environments when on.",
+					Description: "The index of the variation the flag will default to in all new environments when on. Exactly one of `on_variation`, `on_variation_name`, or `on_variation_value` is required.",
+				},
+				ON_VARIATION_NAME: schema.StringAttribute{
+					Optional:    true,
+					Description: "The `name` of the variation the flag will default to in all new environments when on. Alternative to `on_variation`. Errors if no variation, or more than one, has this name.",
+				},
+				ON_VARIATION_VALUE: schema.StringAttribute{
+					Optional:    true,
+					Description: "The `value` of the variation the flag will default to in all new environments when on, in the same format as `variations[].value`. Alternative to `on_variation`. Errors if no variation, or more than one, has this value.",
 				},
 				OFF_VARIATION: schema.Int64Attribute{
-					Required:    true,
+					Optional:    true,
 					Validators:  []validator.Int64{int64validator.AtLeast(0)},
-					Description: "The index of the variation the flag will default to in all new environments when off.",
+					Description: "The index of the variation the flag will default to in all new environments when off. Exactly one of `off_variation`, `off_variation_name`, or `off_variation_value` is required.",
+				},
+				OFF_VARIATION_NAME: schema.StringAttribute{
+					Optional:    true,
+					Description: "The `name` of the variation the flag will default to in all new environments when off. Alternative to `off_variation`. Errors if no variation, or more than one, has this name.",
+				},
+				OFF_VARIATION_VALUE: schema.StringAttribute{
+					Optional:    true,
+					Description: "The `value` of the variation the flag will default to in all new environments when off, in the same format as `variations[].value`. Alternative to `off_variation`. Errors if no variation, or more than one, has this value.",
 				},
 			},
 		},
@@ -272,9 +303,16 @@ func featureFlagDefaultsMatchesAPIShape(ctx context.Context, defaults types.Obje
 	if variationCount == 0 {
 		return false
 	}
+	// on_variation/off_variation are always concrete ints here: this helper
+	// is only invoked from the V0 (SDKv2) state-upgrade path, whose prior
+	// schema had no *_name/*_value alternatives to leave them null.
 	type defaultsItem struct {
-		OnVariation  int64 `tfsdk:"on_variation"`
-		OffVariation int64 `tfsdk:"off_variation"`
+		OnVariation       int64        `tfsdk:"on_variation"`
+		OnVariationName   types.String `tfsdk:"on_variation_name"`
+		OnVariationValue  types.String `tfsdk:"on_variation_value"`
+		OffVariation      int64        `tfsdk:"off_variation"`
+		OffVariationName  types.String `tfsdk:"off_variation_name"`
+		OffVariationValue types.String `tfsdk:"off_variation_value"`
 	}
 	var item defaultsItem
 	d := defaults.As(ctx, &item, basetypes.ObjectAsOptions{})
@@ -343,7 +381,7 @@ func (r *FeatureFlagResource) UpgradeState(_ context.Context) map[int64]resource
 					ViewKeys:               nullIfEmptySet(ctx, prior.ViewKeys),
 				}
 				if featureFlagDefaultsMatchesAPIShape(ctx, data.Defaults, data.Variations) {
-					data.Defaults = types.ObjectNull(featureFlagDefaultsAttrTypes)
+					data.Defaults = types.ObjectNull(featureFlagResourceDefaultsAttrTypes)
 				}
 				// IIS->CSA migration: when prior state set include_in_snippet
 				// and left client_side_availability empty, materialize the
@@ -381,6 +419,34 @@ func (r *FeatureFlagResource) ConfigValidators(_ context.Context) []resource.Con
 
 func (r *FeatureFlagResource) Configure(_ context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
 	r.client = configureResourceClient(req, resp)
+}
+
+// ValidateConfig catches on_variation/off_variation _name/_value conflicts
+// and unresolvable references at `terraform plan`, before any API call.
+// Unlike feature_flag_environment, variations here live on this same
+// resource, so full resolution (not just exclusivity) is possible without
+// touching the API.
+func (r *FeatureFlagResource) ValidateConfig(ctx context.Context, req resource.ValidateConfigRequest, resp *resource.ValidateConfigResponse) {
+	var config FeatureFlagResourceModel
+	resp.Diagnostics.Append(req.Config.Get(ctx, &config)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	if config.Defaults.IsNull() || config.Defaults.IsUnknown() {
+		return
+	}
+	if config.Variations.IsNull() || config.Variations.IsUnknown() || config.VariationType.IsUnknown() {
+		// Variations/variation_type aren't fully known yet (e.g. depend on
+		// another resource) — defer resolution to apply time.
+		return
+	}
+	apiVariations, diags := flagVariationsForResolution(ctx, config.Variations, config.VariationType.ValueString())
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	_, diags = defaultsFromObject(ctx, config.Defaults, apiVariations)
+	resp.Diagnostics.Append(diags...)
 }
 
 // Check for various 400/409 issues at plan time
@@ -522,7 +588,7 @@ func (r *FeatureFlagResource) Create(ctx context.Context, req resource.CreateReq
 		t, f := true, false
 		variations = []ldapi.Variation{{Value: &t}, {Value: &f}}
 	}
-	defaults, d := defaultsFromObject(ctx, plan.Defaults)
+	defaults, d := defaultsFromObject(ctx, plan.Defaults, variations)
 	resp.Diagnostics.Append(d...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -737,7 +803,12 @@ func (r *FeatureFlagResource) applyFlagUpdate(ctx context.Context, plan, state F
 		patch.Patch = append(patch.Patch, variationPatches...)
 	}
 
-	defaults, d := defaultsFromObject(ctx, plan.Defaults)
+	apiVariations, d := flagVariationsForResolution(ctx, plan.Variations, plan.VariationType.ValueString())
+	diags.Append(d...)
+	if diags.HasError() {
+		return diags
+	}
+	defaults, d := defaultsFromObject(ctx, plan.Defaults, apiVariations)
 	diags.Append(d...)
 	if defaults != nil {
 		patch.Patch = append(patch.Patch, patchReplace("/defaults", defaults))
@@ -1218,16 +1289,41 @@ func customPropertiesSetFromAPI(ctx context.Context, props map[string]ldapi.Cust
 	return set, diags
 }
 
+// flagVariationsForResolution returns the flag's own variations as
+// []ldapi.Variation, synthesizing the implicit [true, false] pair for
+// boolean flags that omit `variations` — matching what Create actually
+// sends to the API. Used to resolve on_variation/off_variation and their
+// _name/_value alternatives (REL-14238) against the flag's real variation
+// set.
+func flagVariationsForResolution(ctx context.Context, variationsList types.List, variationType string) ([]ldapi.Variation, diag.Diagnostics) {
+	variations, diags := variationsFromList(ctx, variationsList, variationType)
+	if diags.HasError() {
+		return nil, diags
+	}
+	if variationType == BOOL_VARIATION && len(variations) == 0 {
+		t, f := true, false
+		variations = []ldapi.Variation{{Value: &t}, {Value: &f}}
+	}
+	return variations, diags
+}
+
 // defaultsFromObject converts the framework defaults object into
-// *ldapi.Defaults. Returns nil when the object is null/unknown.
-func defaultsFromObject(ctx context.Context, obj types.Object) (*ldapi.Defaults, diag.Diagnostics) {
+// *ldapi.Defaults, resolving on_variation/off_variation from their
+// _name/_value alternatives (REL-14238) against the flag's own
+// variations — no API call needed since variations live on this same
+// resource. Returns nil when the object is null/unknown.
+func defaultsFromObject(ctx context.Context, obj types.Object, apiVariations []ldapi.Variation) (*ldapi.Defaults, diag.Diagnostics) {
 	var diags diag.Diagnostics
 	if obj.IsNull() || obj.IsUnknown() {
 		return nil, diags
 	}
 	type defaultsModel struct {
-		OnVariation  types.Int64 `tfsdk:"on_variation"`
-		OffVariation types.Int64 `tfsdk:"off_variation"`
+		OnVariation       types.Int64  `tfsdk:"on_variation"`
+		OnVariationName   types.String `tfsdk:"on_variation_name"`
+		OnVariationValue  types.String `tfsdk:"on_variation_value"`
+		OffVariation      types.Int64  `tfsdk:"off_variation"`
+		OffVariationName  types.String `tfsdk:"off_variation_name"`
+		OffVariationValue types.String `tfsdk:"off_variation_value"`
 	}
 	var m defaultsModel
 	d := obj.As(ctx, &m, basetypes.ObjectAsOptions{})
@@ -1235,20 +1331,58 @@ func defaultsFromObject(ctx context.Context, obj types.Object) (*ldapi.Defaults,
 	if diags.HasError() {
 		return nil, diags
 	}
+
+	resolvable := resolvableVariationsFromAPI(apiVariations)
+
+	onIdx, err := resolveVariationIndex(variationSelectorFromInt64AndStrings(m.OnVariation, m.OnVariationName, m.OnVariationValue), resolvable, "defaults.on_variation")
+	if err != nil {
+		diags.AddAttributeError(path.Root(DEFAULTS).AtName(ON_VARIATION), "invalid defaults.on_variation", err.Error())
+	}
+	offIdx, err := resolveVariationIndex(variationSelectorFromInt64AndStrings(m.OffVariation, m.OffVariationName, m.OffVariationValue), resolvable, "defaults.off_variation")
+	if err != nil {
+		diags.AddAttributeError(path.Root(DEFAULTS).AtName(OFF_VARIATION), "invalid defaults.off_variation", err.Error())
+	}
+	if diags.HasError() {
+		return nil, diags
+	}
 	return &ldapi.Defaults{
-		OnVariation:  int32(m.OnVariation.ValueInt64()),
-		OffVariation: int32(m.OffVariation.ValueInt64()),
+		OnVariation:  onIdx,
+		OffVariation: offIdx,
 	}, diags
+}
+
+// variationSelectorFromInt64AndStrings builds a variationSelector from a
+// schema-level {index, name, value} attribute trio.
+func variationSelectorFromInt64AndStrings(index types.Int64, name, value types.String) variationSelector {
+	var sel variationSelector
+	if !index.IsNull() && !index.IsUnknown() {
+		i := int32(index.ValueInt64())
+		sel.Index = &i
+	}
+	if !name.IsNull() && !name.IsUnknown() {
+		n := name.ValueString()
+		sel.Name = &n
+	}
+	if !value.IsNull() && !value.IsUnknown() {
+		v := value.ValueString()
+		sel.Value = &v
+	}
+	return sel
 }
 
 // defaultsObjectFromAPI flattens LD-API Defaults into the single-object
 // shape. Mirrors prior-state attribute presence: emit null when the
 // user did not declare `defaults`, populated when they did.
+//
+// on_variation_name/value and off_variation_name/value are write-only
+// (Optional, not Computed): Read passes through whatever the user
+// configured unchanged rather than deriving fresh values from the API,
+// or the plan-apply consistency check would trip.
 func defaultsObjectFromAPI(_ context.Context, defaults *ldapi.Defaults, variationCount int, prior types.Object) (types.Object, diag.Diagnostics) {
 	var diags diag.Diagnostics
 	priorEmpty := prior.IsNull() || prior.IsUnknown()
 	if priorEmpty {
-		return types.ObjectNull(featureFlagDefaultsAttrTypes), diags
+		return types.ObjectNull(featureFlagResourceDefaultsAttrTypes), diags
 	}
 	var on, off int64
 	if defaults != nil {
@@ -1261,9 +1395,20 @@ func defaultsObjectFromAPI(_ context.Context, defaults *ldapi.Defaults, variatio
 			off = 0
 		}
 	}
-	obj, d := types.ObjectValue(featureFlagDefaultsAttrTypes, map[string]attr.Value{
-		ON_VARIATION:  types.Int64Value(on),
-		OFF_VARIATION: types.Int64Value(off),
+	priorAttrs := prior.Attributes()
+	passThroughOrNull := func(key string) attr.Value {
+		if v, ok := priorAttrs[key]; ok {
+			return v
+		}
+		return types.StringNull()
+	}
+	obj, d := types.ObjectValue(featureFlagResourceDefaultsAttrTypes, map[string]attr.Value{
+		ON_VARIATION:        types.Int64Value(on),
+		ON_VARIATION_NAME:   passThroughOrNull(ON_VARIATION_NAME),
+		ON_VARIATION_VALUE:  passThroughOrNull(ON_VARIATION_VALUE),
+		OFF_VARIATION:       types.Int64Value(off),
+		OFF_VARIATION_NAME:  passThroughOrNull(OFF_VARIATION_NAME),
+		OFF_VARIATION_VALUE: passThroughOrNull(OFF_VARIATION_VALUE),
 	})
 	diags.Append(d...)
 	return obj, diags

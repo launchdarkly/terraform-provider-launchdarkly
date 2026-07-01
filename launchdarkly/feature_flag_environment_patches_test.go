@@ -15,8 +15,10 @@ import (
 // OffVariation.
 func ffeTestBaselineModel(t *testing.T) FeatureFlagEnvironmentResourceModel {
 	t.Helper()
-	fallthrough_, d := types.ObjectValue(ffeFallthroughAttrTypes, map[string]attr.Value{
+	fallthrough_, d := types.ObjectValue(ffeResourceFallthroughAttrTypes, map[string]attr.Value{
 		VARIATION:       types.Int64Value(0),
+		VARIATION_NAME:  types.StringNull(),
+		VARIATION_VALUE: types.StringNull(),
 		BUCKET_BY:       types.StringNull(),
 		CONTEXT_KIND:    types.StringNull(),
 		ROLLOUT_WEIGHTS: types.ListNull(types.Int64Type),
@@ -25,7 +27,7 @@ func ffeTestBaselineModel(t *testing.T) FeatureFlagEnvironmentResourceModel {
 	return FeatureFlagEnvironmentResourceModel{
 		On:             types.BoolValue(false),
 		TrackEvents:    types.BoolValue(false),
-		Rules:          types.ListNull(types.ObjectType{AttrTypes: ffeRuleAttrTypes}),
+		Rules:          types.ListNull(types.ObjectType{AttrTypes: ffeResourceRuleAttrTypes}),
 		Prerequisites:  types.ListNull(types.ObjectType{AttrTypes: ffePrerequisiteAttrTypes}),
 		Targets:        types.SetNull(types.ObjectType{AttrTypes: ffeTargetAttrTypes}),
 		ContextTargets: types.SetNull(types.ObjectType{AttrTypes: ffeTargetAttrTypes}),
