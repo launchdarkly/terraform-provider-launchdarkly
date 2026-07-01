@@ -197,11 +197,11 @@ resource "launchdarkly_feature_flag_environment" "big_flag_environment" {
 - `env_key` (String) The environment key. A change in this field will force the destruction of the existing resource and the creation of a new one.
 - `fallthrough` (Attributes) The default variation to serve if no `prerequisites`, `target`, or `rules` apply. (see [below for nested schema](#nestedatt--fallthrough))
 - `flag_id` (String) The feature flag's unique `id` in the format `project_key/flag_key`. A change in this field will force the destruction of the existing resource and the creation of a new one.
-- `off_variation` (Number) The index of the variation to serve if targeting is disabled.
 
 ### Optional
 
 - `context_targets` (Attributes Set) Individual targets for non-user context kinds for each variation. (see [below for nested schema](#nestedatt--context_targets))
+- `off_variation` (Number) The index of the variation to serve when targeting is off. Omitting this attribute leaves the off variation unset (the UI's "Not set" state), which is distinct from setting it to `0`. When it is unset and targeting is off, LaunchDarkly serves no variation: SDKs return the application-provided default value and the evaluation carries a null variation index, which affects Data Export and Experimentation.
 - `on` (Boolean) Whether targeting is enabled. Defaults to `false` if not set.
 - `prerequisites` (Attributes List) Prerequisite feature flag rules. (see [below for nested schema](#nestedatt--prerequisites))
 - `rules` (Attributes List) List of logical targeting rules. (see [below for nested schema](#nestedatt--rules))

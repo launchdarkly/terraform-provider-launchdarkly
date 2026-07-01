@@ -139,6 +139,7 @@ This table lists the new resources, their data sources, and their API stability:
 
 - `launchdarkly_environment` gains a `segment_approval_settings` attribute. This attribute configures approval requirements for segment changes.
 - `launchdarkly_feature_flag` validates prerequisite-flag removals at plan time. If you remove a flag that another flag depends on, the provider surfaces a warning during plan instead of failing at apply.
+- `launchdarkly_feature_flag_environment` makes `off_variation` optional. In v2 it was required. Omitting it now leaves the off variation unset, matching the LaunchDarkly UI's "Not set" state, and removing a previously configured value clears it. Note the behavior change: when the off variation is unset and targeting is off, LaunchDarkly serves no variation, so SDKs return the application-provided default value and the evaluation carries a null variation index (which affects Data Export and Experimentation). Setting `off_variation = 0` remains a distinct, valid configuration. This resolves issue #482.
 
 ## Bug fixes
 

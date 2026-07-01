@@ -96,9 +96,9 @@ func featureFlagEnvironmentSchemaAttributes() map[string]schema.Attribute {
 			Description: "Whether to send event data back to LaunchDarkly. Defaults to `false` if not set.",
 		},
 		OFF_VARIATION: schema.Int64Attribute{
-			Required:    true,
+			Optional:    true,
 			Validators:  []validator.Int64{int64validator.AtLeast(0)},
-			Description: "The index of the variation to serve if targeting is disabled.",
+			Description: "The index of the variation to serve when targeting is off. Omitting this attribute leaves the off variation unset (the UI's \"Not set\" state), which is distinct from setting it to `0`. When it is unset and targeting is off, LaunchDarkly serves no variation: SDKs return the application-provided default value and the evaluation carries a null variation index, which affects Data Export and Experimentation.",
 		},
 		TARGETS: schema.SetNestedAttribute{
 			Optional:    true,
@@ -311,7 +311,25 @@ func (r *FeatureFlagEnvironmentResource) Create(ctx context.Context, req resourc
 		return
 	}
 
-	patches, d := buildFFEPatches(ctx, envKey, plan, FeatureFlagEnvironmentResourceModel{}, true)
+	// When off_variation is omitted we may need to remove the offVariation LD
+	// seeded from the flag default. Determine whether one is actually present
+	// first — a remove of an absent path returns 400 invalid_patch, which
+	// would otherwise block create for an environment already in "Not set".
+	offVariationLiveSet := false
+	if plan.OffVariation.IsNull() {
+		flag, _, gerr := getFeatureFlagEnvironment(r.client, projectKey, flagKey, envKey)
+		if gerr != nil {
+			resp.Diagnostics.AddError(fmt.Sprintf("failed to read flag %q of project %q before create: %s", flagKey, projectKey, handleLdapiErr(gerr).Error()), "")
+			return
+		}
+		if flag.Environments != nil {
+			if env, ok := (*flag.Environments)[envKey]; ok && env.OffVariation != nil {
+				offVariationLiveSet = true
+			}
+		}
+	}
+
+	patches, d := buildFFEPatches(ctx, envKey, plan, FeatureFlagEnvironmentResourceModel{}, true, offVariationLiveSet)
 	resp.Diagnostics.Append(d...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -398,7 +416,9 @@ func (r *FeatureFlagEnvironmentResource) Update(ctx context.Context, req resourc
 		return
 	}
 
-	patches, d := buildFFEPatches(ctx, envKey, plan, state, false)
+	// state is post-refresh, so its off_variation presence mirrors the live
+	// environment — a safe basis for deciding whether a remove is valid.
+	patches, d := buildFFEPatches(ctx, envKey, plan, state, false, !state.OffVariation.IsNull())
 	resp.Diagnostics.Append(d...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -547,7 +567,9 @@ func (r *FeatureFlagEnvironmentResource) readIntoModel(ctx context.Context, proj
 	if environment.OffVariation != nil {
 		data.OffVariation = types.Int64Value(int64(*environment.OffVariation))
 	} else {
-		data.OffVariation = types.Int64Value(0)
+		// No offVariation on the environment ("Not set") — model as null so
+		// it round-trips instead of collapsing to a literal index 0.
+		data.OffVariation = types.Int64Null()
 	}
 
 	noopDiags := noopDiagSink{}
@@ -705,16 +727,30 @@ type ffeFallthroughPayload struct {
 // buildFFEPatches assembles the JSON-Patch document applied at
 // Create/Update. Each attribute is patched only when it differs from
 // state (or unconditionally on create).
-func buildFFEPatches(ctx context.Context, envKey string, plan, state FeatureFlagEnvironmentResourceModel, isCreate bool) ([]ldapi.PatchOperation, diag.Diagnostics) {
+// offVariationLiveSet reports whether the live environment currently has an
+// offVariation. The caller supplies it because a JSON Patch remove of an
+// absent path returns 400 invalid_patch from LaunchDarkly: Update derives it
+// from the post-refresh state, Create reads it from the API.
+func buildFFEPatches(ctx context.Context, envKey string, plan, state FeatureFlagEnvironmentResourceModel, isCreate, offVariationLiveSet bool) ([]ldapi.PatchOperation, diag.Diagnostics) {
 	var diags diag.Diagnostics
 	patches := make([]ldapi.PatchOperation, 0)
 
 	if isCreate || !plan.On.Equal(state.On) {
 		patches = append(patches, patchReplace(ffePatchPath(envKey, "on"), plan.On.ValueBool()))
 	}
-	if isCreate {
-		patches = append(patches, patchReplace(ffePatchPath(envKey, "offVariation"), int32(plan.OffVariation.ValueInt64())))
-	} else if !plan.OffVariation.Equal(state.OffVariation) {
+	// off_variation is optional: a null value models LD's "Not set" state
+	// (no offVariation field on the environment). LaunchDarkly initialises
+	// every environment's offVariation to the flag's default when the flag
+	// is created, so honouring a null generally means emitting a JSON Patch
+	// remove — merely omitting the patch would leave the default in place and
+	// trip the "inconsistent result after apply" check. We only remove when
+	// the live environment actually has an offVariation, because a remove of
+	// an absent path returns 400 invalid_patch.
+	if plan.OffVariation.IsNull() {
+		if offVariationLiveSet {
+			patches = append(patches, patchRemove(ffePatchPath(envKey, "offVariation")))
+		}
+	} else if isCreate || !plan.OffVariation.Equal(state.OffVariation) {
 		patches = append(patches, patchReplace(ffePatchPath(envKey, "offVariation"), int32(plan.OffVariation.ValueInt64())))
 	}
 	if isCreate || !plan.TrackEvents.Equal(state.TrackEvents) {
