@@ -311,7 +311,25 @@ func (r *FeatureFlagEnvironmentResource) Create(ctx context.Context, req resourc
 		return
 	}
 
-	patches, d := buildFFEPatches(ctx, envKey, plan, FeatureFlagEnvironmentResourceModel{}, true)
+	// When off_variation is omitted we may need to remove the offVariation LD
+	// seeded from the flag default. Determine whether one is actually present
+	// first — a remove of an absent path returns 400 invalid_patch, which
+	// would otherwise block create for an environment already in "Not set".
+	offVariationLiveSet := false
+	if plan.OffVariation.IsNull() {
+		flag, _, gerr := getFeatureFlagEnvironment(r.client, projectKey, flagKey, envKey)
+		if gerr != nil {
+			resp.Diagnostics.AddError(fmt.Sprintf("failed to read flag %q of project %q before create: %s", flagKey, projectKey, handleLdapiErr(gerr).Error()), "")
+			return
+		}
+		if flag.Environments != nil {
+			if env, ok := (*flag.Environments)[envKey]; ok && env.OffVariation != nil {
+				offVariationLiveSet = true
+			}
+		}
+	}
+
+	patches, d := buildFFEPatches(ctx, envKey, plan, FeatureFlagEnvironmentResourceModel{}, true, offVariationLiveSet)
 	resp.Diagnostics.Append(d...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -398,7 +416,9 @@ func (r *FeatureFlagEnvironmentResource) Update(ctx context.Context, req resourc
 		return
 	}
 
-	patches, d := buildFFEPatches(ctx, envKey, plan, state, false)
+	// state is post-refresh, so its off_variation presence mirrors the live
+	// environment — a safe basis for deciding whether a remove is valid.
+	patches, d := buildFFEPatches(ctx, envKey, plan, state, false, !state.OffVariation.IsNull())
 	resp.Diagnostics.Append(d...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -707,7 +727,11 @@ type ffeFallthroughPayload struct {
 // buildFFEPatches assembles the JSON-Patch document applied at
 // Create/Update. Each attribute is patched only when it differs from
 // state (or unconditionally on create).
-func buildFFEPatches(ctx context.Context, envKey string, plan, state FeatureFlagEnvironmentResourceModel, isCreate bool) ([]ldapi.PatchOperation, diag.Diagnostics) {
+// offVariationLiveSet reports whether the live environment currently has an
+// offVariation. The caller supplies it because a JSON Patch remove of an
+// absent path returns 400 invalid_patch from LaunchDarkly: Update derives it
+// from the post-refresh state, Create reads it from the API.
+func buildFFEPatches(ctx context.Context, envKey string, plan, state FeatureFlagEnvironmentResourceModel, isCreate, offVariationLiveSet bool) ([]ldapi.PatchOperation, diag.Diagnostics) {
 	var diags diag.Diagnostics
 	patches := make([]ldapi.PatchOperation, 0)
 
@@ -717,12 +741,13 @@ func buildFFEPatches(ctx context.Context, envKey string, plan, state FeatureFlag
 	// off_variation is optional: a null value models LD's "Not set" state
 	// (no offVariation field on the environment). LaunchDarkly initialises
 	// every environment's offVariation to the flag's default when the flag
-	// is created, so to honour a null we must emit a JSON Patch remove —
-	// merely omitting the patch would leave the default in place and trip
-	// the "inconsistent result after apply" check. On update we only remove
-	// when a value was previously set (removing an absent path errors).
+	// is created, so honouring a null generally means emitting a JSON Patch
+	// remove — merely omitting the patch would leave the default in place and
+	// trip the "inconsistent result after apply" check. We only remove when
+	// the live environment actually has an offVariation, because a remove of
+	// an absent path returns 400 invalid_patch.
 	if plan.OffVariation.IsNull() {
-		if isCreate || !state.OffVariation.IsNull() {
+		if offVariationLiveSet {
 			patches = append(patches, patchRemove(ffePatchPath(envKey, "offVariation")))
 		}
 	} else if isCreate || !plan.OffVariation.Equal(state.OffVariation) {
