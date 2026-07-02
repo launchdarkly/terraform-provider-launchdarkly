@@ -30,7 +30,7 @@ resource "launchdarkly_feature_flag" "example" {
 }
 ```
 
-Attributes that hold exactly one object rather than a list use object syntax — a bare `{ ... }` with no brackets: `client_side_availability` and `defaults` on `launchdarkly_feature_flag`, `default_client_side_availability` on `launchdarkly_project`, `fallthrough` on `launchdarkly_feature_flag_environment`, `approval_settings` on `launchdarkly_environment` (and inside each project environment), `segment_approval_settings` on `launchdarkly_environment`, and `instructions` on `launchdarkly_flag_trigger`. The `migrate-tf-syntax` tool emits this form for you:
+Attributes that hold exactly one object rather than a list use object syntax — a bare `{ ... }` with no brackets: `client_side_availability` and `defaults` on `launchdarkly_feature_flag`, `default_client_side_availability` on `launchdarkly_project`, `fallthrough` on `launchdarkly_feature_flag_environment`, `approval_settings` on `launchdarkly_environment` (and inside each project environment), `segment_approval_settings` on `launchdarkly_environment`, `instructions` on `launchdarkly_flag_trigger`, and `boolean_defaults` on `launchdarkly_flag_templates`. The `migrate-tf-syntax` tool emits this form for you:
 
 ```hcl
 # v2 block syntax            # v3 object syntax (no brackets)
@@ -112,6 +112,7 @@ The provider includes a state upgrader for every resource whose state shape chan
 - `launchdarkly_environment`: converts `approval_settings` (and `segment_approval_settings`) to objects.
 - `launchdarkly_feature_flag_environment`: converts `fallthrough` to an object.
 - `launchdarkly_flag_trigger`: converts `instructions` to an object.
+- `launchdarkly_flag_templates`: converts `boolean_defaults` to an object.
 - `launchdarkly_team` and `launchdarkly_team_member`: re-key `role_attributes` into a map of string lists.
 - `launchdarkly_metric`: discards `is_active`.
 

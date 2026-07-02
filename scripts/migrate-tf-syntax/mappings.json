@@ -75,7 +75,7 @@
     "blocks": [{"name": "messages"}]
   },
   "launchdarkly_flag_templates": {
-    "blocks": [{"name": "boolean_defaults"}]
+    "blocks": [{"name": "boolean_defaults", "object": true}]
   },
   "launchdarkly_feature_flag_environment": {
     "blocks": [

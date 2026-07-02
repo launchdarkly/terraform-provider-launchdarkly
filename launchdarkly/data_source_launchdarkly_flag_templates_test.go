@@ -48,9 +48,9 @@ data "launchdarkly_flag_templates" "test" {
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr(resourceName, PROJECT_KEY, projectKey),
 					resource.TestCheckResourceAttrSet(resourceName, TEMPORARY),
-					resource.TestCheckResourceAttr(resourceName, "boolean_defaults.#", "1"),
-					resource.TestCheckResourceAttrSet(resourceName, "boolean_defaults.0.on_variation"),
-					resource.TestCheckResourceAttrSet(resourceName, "boolean_defaults.0.off_variation"),
+					resource.TestCheckResourceAttr(resourceName, "boolean_defaults.%", "6"),
+					resource.TestCheckResourceAttrSet(resourceName, "boolean_defaults.on_variation"),
+					resource.TestCheckResourceAttrSet(resourceName, "boolean_defaults.off_variation"),
 				),
 			},
 		},

@@ -14,7 +14,7 @@ Version 3.0.0 completes the provider's migration to the HashiCorp Terraform Plug
 
 - The provider is rebuilt on the Terraform Plugin Framework. The plugin protocol moves from version 5 to version 6.
 - Block syntax is replaced by nested attribute syntax across every resource and data source.
-- Single-object attributes (`client_side_availability`, `defaults`, `default_client_side_availability`, `fallthrough`, `approval_settings`, `segment_approval_settings`, `instructions`) use object syntax (`= { ... }`), not a single-element list.
+- Single-object attributes (`client_side_availability`, `defaults`, `default_client_side_availability`, `fallthrough`, `approval_settings`, `segment_approval_settings`, `instructions`, `boolean_defaults`) use object syntax (`= { ... }`), not a single-element list.
 - Keyed collections become maps: `launchdarkly_project.environments` (by environment key), `launchdarkly_feature_flag.custom_properties` (by property key), and `role_attributes` on `launchdarkly_team` / `launchdarkly_team_member` (a plain map of string lists). Adding or removing one entry no longer churns its siblings.
 - Five deprecated attributes are removed, across `launchdarkly_access_token`, `launchdarkly_custom_role`, `launchdarkly_feature_flag`, `launchdarkly_project`, and `launchdarkly_metric`.
 - State upgrades run automatically on first apply. No resource is destroyed or recreated.
@@ -75,6 +75,7 @@ Most blocks become a list of objects, but attributes that hold exactly one objec
 | `launchdarkly_environment` | `approval_settings` |
 | `launchdarkly_environment` | `segment_approval_settings` |
 | `launchdarkly_flag_trigger` | `instructions` |
+| `launchdarkly_flag_templates` | `boolean_defaults` |
 
 ```hcl
 # v2 block syntax
