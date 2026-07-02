@@ -32,8 +32,8 @@ type EnvironmentDataSourceModel struct {
 	ConfirmChanges          types.Bool   `tfsdk:"confirm_changes"`
 	Critical                types.Bool   `tfsdk:"critical"`
 	Tags                    types.Set    `tfsdk:"tags"`
-	ApprovalSettings        types.List   `tfsdk:"approval_settings"`
-	SegmentApprovalSettings types.List   `tfsdk:"segment_approval_settings"`
+	ApprovalSettings        types.Object `tfsdk:"approval_settings"`
+	SegmentApprovalSettings types.Object `tfsdk:"segment_approval_settings"`
 }
 
 func NewEnvironmentDataSource() datasource.DataSource {
@@ -136,8 +136,7 @@ func (d *EnvironmentDataSource) Read(ctx context.Context, req datasource.ReadReq
 	// Enterprise feature, so the beta endpoint may be unavailable
 	// (403/404) on some accounts. Degrade to a warning rather than
 	// failing the whole data-source read in that case.
-	segObjectType := types.ObjectType{AttrTypes: frameworkApprovalSettingsObjectAttrTypes}
-	data.SegmentApprovalSettings = types.ListNull(segObjectType)
+	data.SegmentApprovalSettings = types.ObjectNull(frameworkApprovalSettingsObjectAttrTypes)
 	if beta, betaErr := newBetaClient(d.client.apiKey, d.client.apiHost, false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY); betaErr != nil {
 		resp.Diagnostics.AddWarning("Could not read segment_approval_settings", betaErr.Error())
 	} else {

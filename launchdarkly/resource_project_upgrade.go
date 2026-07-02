@@ -98,7 +98,7 @@ func projectEnvironmentsAttributeV0() schema.ListNestedAttribute {
 				REQUIRE_COMMENTS:     schema.BoolAttribute{Optional: true, Computed: true},
 				CONFIRM_CHANGES:      schema.BoolAttribute{Optional: true, Computed: true},
 				TAGS:                 schema.SetAttribute{Optional: true, ElementType: types.StringType},
-				APPROVAL_SETTINGS:    frameworkApprovalSettingsResourceAttribute(),
+				APPROVAL_SETTINGS:    approvalSettingsAttributeV0(),
 			},
 		},
 	}

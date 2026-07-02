@@ -13,41 +13,39 @@ import (
 // importIgnoreApprovalSettingsKeys lists the approval_settings attribute
 // paths suppressed by ImportStateVerify. Import has no prior state, so
 // the Read path can't distinguish "user omitted approval_settings" from
-// "user supplied approval_settings = [{...all defaults...}]" and may
+// "user supplied approval_settings = {...all defaults...}" and may
 // diverge from the user-config-anchored state.
 var importIgnoreApprovalSettingsKeys = []string{
-	"approval_settings.#",
-	"approval_settings.0.%",
-	"approval_settings.0.required",
-	"approval_settings.0.can_review_own_request",
-	"approval_settings.0.can_apply_declined_changes",
-	"approval_settings.0.min_num_approvals",
-	"approval_settings.0.service_kind",
-	"approval_settings.0.service_config.%",
-	"approval_settings.0.service_config.template",
-	"approval_settings.0.service_config.detail_column",
-	"approval_settings.0.auto_apply_approved_changes",
-	"approval_settings.0.required_approval_tags.#",
-	"approval_settings.0.required_approval_tags.0",
-	"approval_settings.0.required_approval_tags.1",
+	"approval_settings.%",
+	"approval_settings.required",
+	"approval_settings.can_review_own_request",
+	"approval_settings.can_apply_declined_changes",
+	"approval_settings.min_num_approvals",
+	"approval_settings.service_kind",
+	"approval_settings.service_config.%",
+	"approval_settings.service_config.template",
+	"approval_settings.service_config.detail_column",
+	"approval_settings.auto_apply_approved_changes",
+	"approval_settings.required_approval_tags.#",
+	"approval_settings.required_approval_tags.0",
+	"approval_settings.required_approval_tags.1",
 }
 
 // importIgnoreSegmentApprovalSettingsKeys is the segment_approval_settings
 // analogue of importIgnoreApprovalSettingsKeys: Import has no prior state,
 // so the beta-read can't tell "user omitted segment_approval_settings" from
-// "user supplied segment_approval_settings = [{...all defaults...}]".
+// "user supplied segment_approval_settings = {...all defaults...}".
 var importIgnoreSegmentApprovalSettingsKeys = []string{
-	"segment_approval_settings.#",
-	"segment_approval_settings.0.%",
-	"segment_approval_settings.0.required",
-	"segment_approval_settings.0.can_review_own_request",
-	"segment_approval_settings.0.can_apply_declined_changes",
-	"segment_approval_settings.0.min_num_approvals",
-	"segment_approval_settings.0.service_kind",
-	"segment_approval_settings.0.service_config.%",
-	"segment_approval_settings.0.auto_apply_approved_changes",
-	"segment_approval_settings.0.required_approval_tags.#",
-	"segment_approval_settings.0.required_approval_tags.0",
+	"segment_approval_settings.%",
+	"segment_approval_settings.required",
+	"segment_approval_settings.can_review_own_request",
+	"segment_approval_settings.can_apply_declined_changes",
+	"segment_approval_settings.min_num_approvals",
+	"segment_approval_settings.service_kind",
+	"segment_approval_settings.service_config.%",
+	"segment_approval_settings.auto_apply_approved_changes",
+	"segment_approval_settings.required_approval_tags.#",
+	"segment_approval_settings.required_approval_tags.0",
 }
 
 const (
@@ -109,11 +107,11 @@ resource "launchdarkly_environment" "approvals_test" {
 	key = "approvals-test"
 	color = "ababab"
 	project_key = launchdarkly_project.test.key
-	approval_settings = [{
+	approval_settings = {
 		can_review_own_request = false
 		min_num_approvals = 2
 		required_approval_tags = ["approvals_required"]
-	}]
+	}
 }
 `
 	testAccEnvironmentWithApprovalsUpdate = `
@@ -122,12 +120,12 @@ resource "launchdarkly_environment" "approvals_test" {
 	key = "approvals-test"
 	color = "bababa"
 	project_key = launchdarkly_project.test.key
-	approval_settings = [{
+	approval_settings = {
 		required = true
 		can_review_own_request = true
 		min_num_approvals = 1
 		can_apply_declined_changes = false
-	}]
+	}
 }
 `
 
@@ -146,11 +144,11 @@ resource "launchdarkly_environment" "segment_approvals_test" {
 	key = "seg-approvals-test"
 	color = "ababab"
 	project_key = launchdarkly_project.test.key
-	segment_approval_settings = [{
+	segment_approval_settings = {
 		can_review_own_request = false
 		min_num_approvals = 2
 		required_approval_tags = ["approvals_required"]
-	}]
+	}
 }
 `
 	testAccEnvironmentWithSegmentApprovalsUpdate = `
@@ -159,12 +157,12 @@ resource "launchdarkly_environment" "segment_approvals_test" {
 	key = "seg-approvals-test"
 	color = "bababa"
 	project_key = launchdarkly_project.test.key
-	segment_approval_settings = [{
+	segment_approval_settings = {
 		required = true
 		can_review_own_request = true
 		min_num_approvals = 1
 		can_apply_declined_changes = false
-	}]
+	}
 }
 `
 
@@ -185,7 +183,7 @@ resource "launchdarkly_environment" "auto_apply_test" {
 	key = "auto-apply-test"
 	color = "ababab"
 	project_key = launchdarkly_project.test.key
-	approval_settings = [{
+	approval_settings = {
 		service_kind = "servicenow"
 		service_config = {
 			template = "b1c8d15147810200e90d87e8dee490f7"
@@ -196,7 +194,7 @@ resource "launchdarkly_environment" "auto_apply_test" {
 		min_num_approvals = 1
 		required_approval_tags = ["approvals_required", "auto_apply"]
 		auto_apply_approved_changes = true
-	}]
+	}
 }
 `
 
@@ -206,7 +204,7 @@ resource "launchdarkly_environment" "auto_apply_test" {
 	key = "auto-apply-test"
 	color = "bababa"
 	project_key = launchdarkly_project.test.key
-	approval_settings = [{
+	approval_settings = {
 		service_kind = "servicenow"
 		service_config = {
 			template = "508e02ec47410200e90d87e8dee49058"
@@ -216,7 +214,7 @@ resource "launchdarkly_environment" "auto_apply_test" {
 		can_review_own_request = true
 		min_num_approvals = 2
 		auto_apply_approved_changes = false
-  }]
+  }
 }
 `
 	testAccEnvironmentCritical = `
@@ -240,12 +238,12 @@ resource "launchdarkly_environment" "critical_env" {
   critical = false
   project_key = launchdarkly_project.test.key
 
-  approval_settings = [{
+  approval_settings = {
 		required = true
 		can_review_own_request = false
 		min_num_approvals = 3
 		can_apply_declined_changes = true
-	}]
+	}
 }
 `
 )
@@ -425,10 +423,10 @@ func TestAccEnvironment_WithApprovals(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, KEY, "approvals-test"),
 					resource.TestCheckResourceAttr(resourceName, COLOR, "ababab"),
 					resource.TestCheckResourceAttr(resourceName, PROJECT_KEY, projectKey),
-					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.can_review_own_request", "false"),
-					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.can_apply_declined_changes", "true"), // should default to true
-					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.min_num_approvals", "2"),
-					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.required_approval_tags.0", "approvals_required"),
+					resource.TestCheckResourceAttr(resourceName, "approval_settings.can_review_own_request", "false"),
+					resource.TestCheckResourceAttr(resourceName, "approval_settings.can_apply_declined_changes", "true"), // should default to true
+					resource.TestCheckResourceAttr(resourceName, "approval_settings.min_num_approvals", "2"),
+					resource.TestCheckResourceAttr(resourceName, "approval_settings.required_approval_tags.0", "approvals_required"),
 				),
 			},
 			{
@@ -446,11 +444,11 @@ func TestAccEnvironment_WithApprovals(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, KEY, "approvals-test"),
 					resource.TestCheckResourceAttr(resourceName, COLOR, "bababa"),
 					resource.TestCheckResourceAttr(resourceName, PROJECT_KEY, projectKey),
-					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.required", "true"),
-					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.can_review_own_request", "true"),
-					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.can_apply_declined_changes", "false"),
-					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.min_num_approvals", "1"),
-					resource.TestCheckNoResourceAttr(resourceName, "approval_settings.0.required_approval_tags.#"),
+					resource.TestCheckResourceAttr(resourceName, "approval_settings.required", "true"),
+					resource.TestCheckResourceAttr(resourceName, "approval_settings.can_review_own_request", "true"),
+					resource.TestCheckResourceAttr(resourceName, "approval_settings.can_apply_declined_changes", "false"),
+					resource.TestCheckResourceAttr(resourceName, "approval_settings.min_num_approvals", "1"),
+					resource.TestCheckNoResourceAttr(resourceName, "approval_settings.required_approval_tags.#"),
 				),
 			},
 			{
@@ -486,12 +484,12 @@ func TestAccEnvironment_WithApprovals(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, KEY, "approvals-test"),
 					resource.TestCheckResourceAttr(resourceName, COLOR, "ababab"),
 					resource.TestCheckResourceAttr(resourceName, PROJECT_KEY, projectKey),
-					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.service_kind", "launchdarkly"),
-					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.can_review_own_request", "false"),
-					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.can_apply_declined_changes", "true"), // should default to true
-					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.min_num_approvals", "2"),
-					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.required_approval_tags.0", "approvals_required"),
-					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.auto_apply_approved_changes", "false"),
+					resource.TestCheckResourceAttr(resourceName, "approval_settings.service_kind", "launchdarkly"),
+					resource.TestCheckResourceAttr(resourceName, "approval_settings.can_review_own_request", "false"),
+					resource.TestCheckResourceAttr(resourceName, "approval_settings.can_apply_declined_changes", "true"), // should default to true
+					resource.TestCheckResourceAttr(resourceName, "approval_settings.min_num_approvals", "2"),
+					resource.TestCheckResourceAttr(resourceName, "approval_settings.required_approval_tags.0", "approvals_required"),
+					resource.TestCheckResourceAttr(resourceName, "approval_settings.auto_apply_approved_changes", "false"),
 				),
 			},
 			{
@@ -525,10 +523,10 @@ func TestAccEnvironment_WithSegmentApprovals(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, NAME, "Segment Approvals Test"),
 					resource.TestCheckResourceAttr(resourceName, KEY, "seg-approvals-test"),
 					resource.TestCheckResourceAttr(resourceName, PROJECT_KEY, projectKey),
-					resource.TestCheckResourceAttr(resourceName, "segment_approval_settings.0.can_review_own_request", "false"),
-					resource.TestCheckResourceAttr(resourceName, "segment_approval_settings.0.can_apply_declined_changes", "true"), // should default to true
-					resource.TestCheckResourceAttr(resourceName, "segment_approval_settings.0.min_num_approvals", "2"),
-					resource.TestCheckResourceAttr(resourceName, "segment_approval_settings.0.required_approval_tags.0", "approvals_required"),
+					resource.TestCheckResourceAttr(resourceName, "segment_approval_settings.can_review_own_request", "false"),
+					resource.TestCheckResourceAttr(resourceName, "segment_approval_settings.can_apply_declined_changes", "true"), // should default to true
+					resource.TestCheckResourceAttr(resourceName, "segment_approval_settings.min_num_approvals", "2"),
+					resource.TestCheckResourceAttr(resourceName, "segment_approval_settings.required_approval_tags.0", "approvals_required"),
 				),
 			},
 			{
@@ -543,11 +541,11 @@ func TestAccEnvironment_WithSegmentApprovals(t *testing.T) {
 					testAccCheckProjectExists("launchdarkly_project.test"),
 					testAccCheckEnvironmentExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, NAME, "Segment Approvals Test 2.0"),
-					resource.TestCheckResourceAttr(resourceName, "segment_approval_settings.0.required", "true"),
-					resource.TestCheckResourceAttr(resourceName, "segment_approval_settings.0.can_review_own_request", "true"),
-					resource.TestCheckResourceAttr(resourceName, "segment_approval_settings.0.can_apply_declined_changes", "false"),
-					resource.TestCheckResourceAttr(resourceName, "segment_approval_settings.0.min_num_approvals", "1"),
-					resource.TestCheckNoResourceAttr(resourceName, "segment_approval_settings.0.required_approval_tags.#"),
+					resource.TestCheckResourceAttr(resourceName, "segment_approval_settings.required", "true"),
+					resource.TestCheckResourceAttr(resourceName, "segment_approval_settings.can_review_own_request", "true"),
+					resource.TestCheckResourceAttr(resourceName, "segment_approval_settings.can_apply_declined_changes", "false"),
+					resource.TestCheckResourceAttr(resourceName, "segment_approval_settings.min_num_approvals", "1"),
+					resource.TestCheckNoResourceAttr(resourceName, "segment_approval_settings.required_approval_tags.#"),
 				),
 			},
 			{
@@ -587,17 +585,17 @@ func TestAccEnvironment_WithApprovalIntegrations(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, KEY, "auto-apply-test"),
 					resource.TestCheckResourceAttr(resourceName, COLOR, "ababab"),
 					resource.TestCheckResourceAttr(resourceName, PROJECT_KEY, projectKey),
-					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.service_kind", "servicenow"),
-					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.service_config.template", "b1c8d15147810200e90d87e8dee490f7"),
-					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.service_config.detail_column", "justification"),
-					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.required", "false"),
-					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.can_review_own_request", "false"),
-					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.can_apply_declined_changes", "false"),
-					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.min_num_approvals", "1"),
-					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.required_approval_tags.#", "2"),
-					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.required_approval_tags.0", "approvals_required"),
-					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.required_approval_tags.1", "auto_apply"),
-					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.auto_apply_approved_changes", "true"),
+					resource.TestCheckResourceAttr(resourceName, "approval_settings.service_kind", "servicenow"),
+					resource.TestCheckResourceAttr(resourceName, "approval_settings.service_config.template", "b1c8d15147810200e90d87e8dee490f7"),
+					resource.TestCheckResourceAttr(resourceName, "approval_settings.service_config.detail_column", "justification"),
+					resource.TestCheckResourceAttr(resourceName, "approval_settings.required", "false"),
+					resource.TestCheckResourceAttr(resourceName, "approval_settings.can_review_own_request", "false"),
+					resource.TestCheckResourceAttr(resourceName, "approval_settings.can_apply_declined_changes", "false"),
+					resource.TestCheckResourceAttr(resourceName, "approval_settings.min_num_approvals", "1"),
+					resource.TestCheckResourceAttr(resourceName, "approval_settings.required_approval_tags.#", "2"),
+					resource.TestCheckResourceAttr(resourceName, "approval_settings.required_approval_tags.0", "approvals_required"),
+					resource.TestCheckResourceAttr(resourceName, "approval_settings.required_approval_tags.1", "auto_apply"),
+					resource.TestCheckResourceAttr(resourceName, "approval_settings.auto_apply_approved_changes", "true"),
 				),
 			},
 			{
@@ -615,15 +613,15 @@ func TestAccEnvironment_WithApprovalIntegrations(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, KEY, "auto-apply-test"),
 					resource.TestCheckResourceAttr(resourceName, COLOR, "bababa"),
 					resource.TestCheckResourceAttr(resourceName, PROJECT_KEY, projectKey),
-					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.service_kind", "servicenow"),
-					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.service_config.template", "508e02ec47410200e90d87e8dee49058"),
-					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.service_config.detail_column", "justification"),
-					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.required", "true"),
-					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.can_review_own_request", "true"),
-					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.can_apply_declined_changes", "true"),
-					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.min_num_approvals", "2"),
-					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.required_approval_tags.#", "0"),
-					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.auto_apply_approved_changes", "false"),
+					resource.TestCheckResourceAttr(resourceName, "approval_settings.service_kind", "servicenow"),
+					resource.TestCheckResourceAttr(resourceName, "approval_settings.service_config.template", "508e02ec47410200e90d87e8dee49058"),
+					resource.TestCheckResourceAttr(resourceName, "approval_settings.service_config.detail_column", "justification"),
+					resource.TestCheckResourceAttr(resourceName, "approval_settings.required", "true"),
+					resource.TestCheckResourceAttr(resourceName, "approval_settings.can_review_own_request", "true"),
+					resource.TestCheckResourceAttr(resourceName, "approval_settings.can_apply_declined_changes", "true"),
+					resource.TestCheckResourceAttr(resourceName, "approval_settings.min_num_approvals", "2"),
+					resource.TestCheckResourceAttr(resourceName, "approval_settings.required_approval_tags.#", "0"),
+					resource.TestCheckResourceAttr(resourceName, "approval_settings.auto_apply_approved_changes", "false"),
 				),
 			},
 			{
@@ -679,10 +677,10 @@ func TestAccEnvironment_Critical(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "tags.#", "2"),
 					resource.TestCheckResourceAttr(resourceName, "tags.1", "terraform"),
 					resource.TestCheckResourceAttr(resourceName, "tags.0", "staging"),
-					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.required", "true"),
-					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.can_review_own_request", "false"),
-					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.min_num_approvals", "3"),
-					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.can_apply_declined_changes", "true"),
+					resource.TestCheckResourceAttr(resourceName, "approval_settings.required", "true"),
+					resource.TestCheckResourceAttr(resourceName, "approval_settings.can_review_own_request", "false"),
+					resource.TestCheckResourceAttr(resourceName, "approval_settings.min_num_approvals", "3"),
+					resource.TestCheckResourceAttr(resourceName, "approval_settings.can_apply_declined_changes", "true"),
 				),
 			},
 			{

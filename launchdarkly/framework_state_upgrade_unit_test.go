@@ -100,13 +100,15 @@ func TestDefaultsObjectFromV0List(t *testing.T) {
 func TestEnvironmentsMapFromV0List(t *testing.T) {
 	ctx := context.Background()
 
-	// v0 env element = current environmentAttrTypes plus the inline KEY.
+	// v0 env element = current environmentAttrTypes plus the inline KEY,
+	// with approval_settings pinned back to its v0 single-element-list shape.
+	approvalObjType := types.ObjectType{AttrTypes: frameworkApprovalSettingsObjectAttrTypes}
 	v0Attr := map[string]attr.Type{KEY: types.StringType}
 	for k, v := range environmentAttrTypes {
 		v0Attr[k] = v
 	}
+	v0Attr[APPROVAL_SETTINGS] = types.ListType{ElemType: approvalObjType}
 	v0ObjType := types.ObjectType{AttrTypes: v0Attr}
-	approvalObjType := types.ObjectType{AttrTypes: frameworkApprovalSettingsObjectAttrTypes}
 
 	approval := func(required bool, min int64) basetypes.ListValue {
 		return types.ListValueMust(approvalObjType, []attr.Value{
@@ -167,8 +169,16 @@ func TestEnvironmentsMapFromV0List(t *testing.T) {
 	if got := models["production"].Key.ValueString(); got != "production" {
 		t.Errorf("production key not preserved: %q", got)
 	}
-	if models["production"].ApprovalSettings.IsNull() || len(models["production"].ApprovalSettings.Elements()) != 1 {
+	if models["production"].ApprovalSettings.IsNull() {
 		t.Error("real approval_settings must be preserved on production")
+	} else {
+		var am approvalSettingsModel
+		if d := models["production"].ApprovalSettings.As(ctx, &am, basetypes.ObjectAsOptions{}); d.HasError() {
+			t.Fatalf("decode production approval_settings: %v", d)
+		}
+		if !am.Required.ValueBool() || am.MinNumApprovals.ValueInt64() != 2 {
+			t.Errorf("approval_settings values not preserved: required=%v min=%d", am.Required.ValueBool(), am.MinNumApprovals.ValueInt64())
+		}
 	}
 	if !models["test"].ApprovalSettings.IsNull() {
 		t.Error("API-default approval_settings must be nulled on test")

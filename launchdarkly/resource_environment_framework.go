@@ -16,12 +16,14 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	ldapi "github.com/launchdarkly/api-client-go/v22"
 )
 
 var (
-	_ resource.Resource                = &EnvironmentResource{}
-	_ resource.ResourceWithImportState = &EnvironmentResource{}
+	_ resource.Resource                 = &EnvironmentResource{}
+	_ resource.ResourceWithImportState  = &EnvironmentResource{}
+	_ resource.ResourceWithUpgradeState = &EnvironmentResource{}
 )
 
 type EnvironmentResource struct {
@@ -44,8 +46,8 @@ type EnvironmentResourceModel struct {
 	ConfirmChanges          types.Bool   `tfsdk:"confirm_changes"`
 	Critical                types.Bool   `tfsdk:"critical"`
 	Tags                    types.Set    `tfsdk:"tags"`
-	ApprovalSettings        types.List   `tfsdk:"approval_settings"`
-	SegmentApprovalSettings types.List   `tfsdk:"segment_approval_settings"`
+	ApprovalSettings        types.Object `tfsdk:"approval_settings"`
+	SegmentApprovalSettings types.Object `tfsdk:"segment_approval_settings"`
 }
 
 func NewEnvironmentResource() resource.Resource {
@@ -59,6 +61,7 @@ func (r *EnvironmentResource) Metadata(_ context.Context, req resource.MetadataR
 func (r *EnvironmentResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		Description: "Provides a LaunchDarkly environment resource.",
+		Version:     1,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				Computed:      true,
@@ -198,15 +201,15 @@ func (r *EnvironmentResource) Create(ctx context.Context, req resource.CreateReq
 	plan.ID = types.StringValue(projectKey + "/" + key)
 
 	// Approval settings, if any, applied via patch.
-	if !plan.ApprovalSettings.IsNull() && !plan.ApprovalSettings.IsUnknown() && len(plan.ApprovalSettings.Elements()) > 0 {
-		if d := r.applyApprovalPatch(ctx, projectKey, key, plan.ApprovalSettings, types.ListNull(plan.ApprovalSettings.ElementType(ctx))); d != nil {
+	if !plan.ApprovalSettings.IsNull() && !plan.ApprovalSettings.IsUnknown() {
+		if d := r.applyApprovalPatch(ctx, projectKey, key, plan.ApprovalSettings, types.ObjectNull(frameworkApprovalSettingsObjectAttrTypes)); d != nil {
 			resp.Diagnostics.AddError("Failed to apply approval_settings", d.Error())
 			return
 		}
 	}
 
 	// Segment approval settings, if any, applied via the beta approvals API.
-	if !plan.SegmentApprovalSettings.IsNull() && !plan.SegmentApprovalSettings.IsUnknown() && len(plan.SegmentApprovalSettings.Elements()) > 0 {
+	if !plan.SegmentApprovalSettings.IsNull() && !plan.SegmentApprovalSettings.IsUnknown() {
 		resp.Diagnostics.Append(r.applySegmentApprovalSettings(ctx, projectKey, key, plan.SegmentApprovalSettings)...)
 		if resp.Diagnostics.HasError() {
 			return
@@ -329,10 +332,10 @@ func (r *EnvironmentResource) ImportState(ctx context.Context, req resource.Impo
 // applyApprovalPatch applies the diff between the planned and stored
 // approval_settings as a JSON-patch against the environment. Returns
 // nil on success.
-func (r *EnvironmentResource) applyApprovalPatch(ctx context.Context, projectKey, envKey string, planList, stateList types.List) error {
+func (r *EnvironmentResource) applyApprovalPatch(ctx context.Context, projectKey, envKey string, planObj, stateObj types.Object) error {
 	// Map plan -> ApprovalSettings via the deserialised model.
-	planEmpty := planList.IsNull() || planList.IsUnknown() || len(planList.Elements()) == 0
-	stateEmpty := stateList.IsNull() || stateList.IsUnknown() || len(stateList.Elements()) == 0
+	planEmpty := planObj.IsNull() || planObj.IsUnknown()
+	stateEmpty := stateObj.IsNull() || stateObj.IsUnknown()
 	if planEmpty && stateEmpty {
 		return nil
 	}
@@ -348,27 +351,12 @@ func (r *EnvironmentResource) applyApprovalPatch(ctx context.Context, projectKey
 		})
 	}
 
-	// Use framework types in the intermediate model so Computed inner
-	// attrs (which can be Unknown at plan time) don't trip the strict
-	// `[]string` / `map[string]string` decoders in ElementsAs.
-	type approvalModel struct {
-		Required                 types.Bool   `tfsdk:"required"`
-		CanReviewOwnRequest      types.Bool   `tfsdk:"can_review_own_request"`
-		MinNumApprovals          types.Int64  `tfsdk:"min_num_approvals"`
-		CanApplyDeclinedChanges  types.Bool   `tfsdk:"can_apply_declined_changes"`
-		RequiredApprovalTags     types.List   `tfsdk:"required_approval_tags"`
-		ServiceKind              types.String `tfsdk:"service_kind"`
-		ServiceConfig            types.Map    `tfsdk:"service_config"`
-		AutoApplyApprovedChanges types.Bool   `tfsdk:"auto_apply_approved_changes"`
-	}
-	var models []approvalModel
-	if d := planList.ElementsAs(ctx, &models, false); d.HasError() {
+	// approvalSettingsModel uses framework types so Computed inner attrs
+	// (which can be Unknown at plan time) don't trip strict decoders.
+	var m approvalSettingsModel
+	if d := planObj.As(ctx, &m, basetypes.ObjectAsOptions{}); d.HasError() {
 		return fmt.Errorf("decode approval_settings: %v", d)
 	}
-	if len(models) == 0 {
-		return nil
-	}
-	m := models[0]
 
 	requiredApprovalTags, d := stringSliceFromList(ctx, m.RequiredApprovalTags)
 	if d.HasError() {
@@ -410,12 +398,12 @@ func (r *EnvironmentResource) applyApprovalPatch(ctx context.Context, projectKey
 }
 
 // applySegmentApprovalSettings PATCHes the environment's segment approval
-// settings via LaunchDarkly's beta approvals API. A null/empty planList
+// settings via LaunchDarkly's beta approvals API. A null planObj
 // disables the segment approval gate (required=false). Unlike flag
 // approval_settings (an environment patch), segment approvals live on a
 // separate beta endpoint and are scoped by environmentKey + resourceKind.
-func (r *EnvironmentResource) applySegmentApprovalSettings(ctx context.Context, projectKey, envKey string, planList types.List) diag.Diagnostics {
-	body, diags := segmentApprovalSettingsPatch(ctx, planList, envKey)
+func (r *EnvironmentResource) applySegmentApprovalSettings(ctx context.Context, projectKey, envKey string, planObj types.Object) diag.Diagnostics {
+	body, diags := segmentApprovalSettingsPatch(ctx, planObj, envKey)
 	if diags.HasError() {
 		return diags
 	}
@@ -439,26 +427,25 @@ func (r *EnvironmentResource) applySegmentApprovalSettings(ctx context.Context, 
 
 // readSegmentApprovalSettings reads the environment's segment approval
 // settings via the beta approvals API and converts them to the framework
-// list value, mirroring `prior`'s attribute presence so an undeclared
+// object value, mirroring `prior`'s attribute presence so an undeclared
 // attribute stays null.
-func (r *EnvironmentResource) readSegmentApprovalSettings(ctx context.Context, projectKey, envKey string, prior types.List) (types.List, diag.Diagnostics) {
+func (r *EnvironmentResource) readSegmentApprovalSettings(ctx context.Context, projectKey, envKey string, prior types.Object) (types.Object, diag.Diagnostics) {
 	var diags diag.Diagnostics
-	objectType := types.ObjectType{AttrTypes: frameworkApprovalSettingsObjectAttrTypes}
 
 	// Only the beta approvals API can answer this, and approvals are an
 	// Enterprise feature. When the user does not manage
-	// segment_approval_settings (prior is null/empty) the result would be
+	// segment_approval_settings (prior is null) the result would be
 	// null regardless, so skip the extra call entirely. This also avoids
 	// breaking environment reads on accounts where the beta endpoint is
 	// unavailable (403/404) for users who never opted in.
-	if prior.IsNull() || prior.IsUnknown() || len(prior.Elements()) == 0 {
-		return types.ListNull(objectType), diags
+	if prior.IsNull() || prior.IsUnknown() {
+		return types.ObjectNull(frameworkApprovalSettingsObjectAttrTypes), diags
 	}
 
 	beta, err := newBetaClient(r.client.apiKey, r.client.apiHost, false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
 	if err != nil {
 		diags.AddError("Failed to create beta client for segment_approval_settings", err.Error())
-		return types.ListNull(objectType), diags
+		return types.ObjectNull(frameworkApprovalSettingsObjectAttrTypes), diags
 	}
 	var settings *map[string]ldapi.ApprovalRequestSettingWithEnvs
 	err = beta.withConcurrency(beta.ctx, func() error {
@@ -472,24 +459,24 @@ func (r *EnvironmentResource) readSegmentApprovalSettings(ctx context.Context, p
 	})
 	if err != nil {
 		diags.AddError("Failed to read segment_approval_settings", handleLdapiErr(err).Error())
-		return types.ListNull(objectType), diags
+		return types.ObjectNull(frameworkApprovalSettingsObjectAttrTypes), diags
 	}
 	seg := segmentApprovalSettingFromGET(settings, envKey)
 	if seg == nil {
-		// prior is non-empty here (we return early above otherwise), so the
+		// prior is non-null here (we return early above otherwise), so the
 		// user manages segment_approval_settings yet the beta API returned
 		// no segment setting for this environment. Surface it rather than
-		// letting frameworkApprovalSettingsValue silently null the list,
-		// which would read as a perpetual diff against the config block.
+		// letting frameworkApprovalSettingsValue silently null the object,
+		// which would read as a perpetual diff against the config.
 		diags.AddError(
 			"Could not read segment_approval_settings",
 			fmt.Sprintf("the LaunchDarkly approvals API returned no segment approval settings for environment %q in project %q, but segment_approval_settings is managed in your configuration", envKey, projectKey),
 		)
-		return types.ListNull(objectType), diags
+		return types.ObjectNull(frameworkApprovalSettingsObjectAttrTypes), diags
 	}
-	list, d := frameworkApprovalSettingsValue(ctx, approvalSettingsFromRequestSetting(seg), prior)
+	obj, d := frameworkApprovalSettingsValue(ctx, approvalSettingsFromRequestSetting(seg), prior)
 	diags.Append(d...)
-	return list, diags
+	return obj, diags
 }
 
 func (r *EnvironmentResource) readIntoModel(

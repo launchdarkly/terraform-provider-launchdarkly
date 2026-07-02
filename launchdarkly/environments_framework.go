@@ -54,7 +54,7 @@ type environmentModel struct {
 	RequireComments    types.Bool   `tfsdk:"require_comments"`
 	ConfirmChanges     types.Bool   `tfsdk:"confirm_changes"`
 	Tags               types.Set    `tfsdk:"tags"`
-	ApprovalSettings   types.List   `tfsdk:"approval_settings"`
+	ApprovalSettings   types.Object `tfsdk:"approval_settings"`
 }
 
 var environmentAttrTypes = map[string]attr.Type{
@@ -71,7 +71,7 @@ var environmentAttrTypes = map[string]attr.Type{
 	REQUIRE_COMMENTS:     types.BoolType,
 	CONFIRM_CHANGES:      types.BoolType,
 	TAGS:                 types.SetType{ElemType: types.StringType},
-	APPROVAL_SETTINGS:    types.ListType{ElemType: types.ObjectType{AttrTypes: frameworkApprovalSettingsObjectAttrTypes}},
+	APPROVAL_SETTINGS:    types.ObjectType{AttrTypes: frameworkApprovalSettingsObjectAttrTypes},
 }
 
 // environmentObjectType is the element type of the environments map.
@@ -247,7 +247,7 @@ func environmentPatchFromModels(ctx context.Context, old environmentModel, hadOl
 	}
 	patches = append(patches, patchReplace("/tags", &tags))
 
-	approvalPatches, d := approvalPatchesFromModels(ctx, env.ApprovalSettings, planOrNullList(hadOld, old.ApprovalSettings))
+	approvalPatches, d := approvalPatchesFromModels(ctx, env.ApprovalSettings, planOrNullObject(hadOld, old.ApprovalSettings))
 	diags.Append(d...)
 	if diags.HasError() {
 		return nil, diags
@@ -256,11 +256,11 @@ func environmentPatchFromModels(ctx context.Context, old environmentModel, hadOl
 	return patches, diags
 }
 
-func planOrNullList(hadOld bool, l types.List) types.List {
+func planOrNullObject(hadOld bool, o types.Object) types.Object {
 	if !hadOld {
-		return types.ListNull(types.ObjectType{AttrTypes: frameworkApprovalSettingsObjectAttrTypes})
+		return types.ObjectNull(frameworkApprovalSettingsObjectAttrTypes)
 	}
-	return l
+	return o
 }
 
 // environmentsMapFromAPI flattens the LD environments slice into a
@@ -292,7 +292,7 @@ func environmentObjectFromAPI(ctx context.Context, e ldapi.Environment, prior *e
 	var diags diag.Diagnostics
 	var (
 		tags      types.Set
-		approvals basetypes.ListValue
+		approvals basetypes.ObjectValue
 	)
 	if prior == nil {
 		// No prior state for this env (Import context or new env added
@@ -301,21 +301,20 @@ func environmentObjectFromAPI(ctx context.Context, e ldapi.Environment, prior *e
 		tagsSet, d := setFromStringSliceOrNull(ctx, e.Tags)
 		diags.Append(d...)
 		tags = tagsSet
-		objectType := types.ObjectType{AttrTypes: frameworkApprovalSettingsObjectAttrTypes}
 		if e.ApprovalSettings == nil || isZeroApprovalSettings(e.ApprovalSettings) {
-			approvals = types.ListNull(objectType)
+			approvals = types.ObjectNull(frameworkApprovalSettingsObjectAttrTypes)
 		} else {
-			list, d := frameworkApprovalSettingsDataSourceValue(ctx, e.ApprovalSettings)
+			obj, d := frameworkApprovalSettingsDataSourceValue(ctx, e.ApprovalSettings)
 			diags.Append(d...)
-			approvals = list
+			approvals = obj
 		}
 	} else {
 		tagsSet, d := setFromStringSlicePreservingPlan(ctx, e.Tags, prior.Tags)
 		diags.Append(d...)
 		tags = tagsSet
-		list, d := frameworkApprovalSettingsValue(ctx, e.ApprovalSettings, prior.ApprovalSettings)
+		obj, d := frameworkApprovalSettingsValue(ctx, e.ApprovalSettings, prior.ApprovalSettings)
 		diags.Append(d...)
-		approvals = list
+		approvals = obj
 	}
 	obj, d := types.ObjectValue(environmentAttrTypes, map[string]attr.Value{
 		KEY:                  types.StringValue(e.Key),

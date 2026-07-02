@@ -1,10 +1,12 @@
 package launchdarkly
 
 // approvals_framework.go provides the shared approval_settings schema
-// + conversion helpers. Used by the environment, project, segment, and
-// feature_flag_environment resources and data sources.
+// + conversion helpers. Used by the environment and project resources
+// and data sources.
 //
-// HCL surface: `approval_settings = [{ ... }]` — a single-element list.
+// HCL surface: `approval_settings = { ... }` — a single nested object
+// (SingleNestedAttribute). Modeled as a single-element list through
+// 3.0.0-beta.4; converted to object syntax alongside REL-14237.
 
 import (
 	"context"
@@ -21,7 +23,7 @@ import (
 )
 
 // frameworkApprovalSettingsObjectAttrTypes is the attribute-type map
-// every approval_settings list element conforms to.
+// the approval_settings object conforms to.
 var frameworkApprovalSettingsObjectAttrTypes = map[string]attr.Type{
 	REQUIRED:                    types.BoolType,
 	CAN_REVIEW_OWN_REQUEST:      types.BoolType,
@@ -33,69 +35,66 @@ var frameworkApprovalSettingsObjectAttrTypes = map[string]attr.Type{
 	AUTO_APPLY_APPROVED_CHANGES: types.BoolType,
 }
 
-// frameworkApprovalSettingsDataSourceAttribute returns a ListNestedAttribute
-// schema for use in datasource.Schema. All inner attrs are Computed.
-func frameworkApprovalSettingsDataSourceAttribute() dsschema.ListNestedAttribute {
-	return dsschema.ListNestedAttribute{
+// frameworkApprovalSettingsDataSourceAttribute returns a
+// SingleNestedAttribute schema for use in datasource.Schema. All inner
+// attrs are Computed.
+func frameworkApprovalSettingsDataSourceAttribute() dsschema.SingleNestedAttribute {
+	return dsschema.SingleNestedAttribute{
 		Computed:    true,
 		Description: "Approval settings for this environment / project.",
-		NestedObject: dsschema.NestedAttributeObject{
-			Attributes: map[string]dsschema.Attribute{
-				REQUIRED: dsschema.BoolAttribute{
-					Computed:    true,
-					Description: "Whether changes require approval.",
-				},
-				CAN_REVIEW_OWN_REQUEST: dsschema.BoolAttribute{
-					Computed:    true,
-					Description: "Whether requesters can approve their own requests.",
-				},
-				MIN_NUM_APPROVALS: dsschema.Int64Attribute{
-					Computed:    true,
-					Description: "Minimum approvers required (1-5).",
-				},
-				CAN_APPLY_DECLINED_CHANGES: dsschema.BoolAttribute{
-					Computed:    true,
-					Description: "Whether changes can be applied with the minimum number of approvals despite declines.",
-				},
-				REQUIRED_APPROVAL_TAGS: dsschema.ListAttribute{
-					Computed:    true,
-					ElementType: types.StringType,
-					Description: "Flag tags requiring approval (only one of required / required_approval_tags is set).",
-				},
-				SERVICE_KIND: dsschema.StringAttribute{
-					Computed:    true,
-					Description: "Approval service (e.g. servicenow, launchdarkly).",
-				},
-				SERVICE_CONFIG: dsschema.MapAttribute{
-					Computed:    true,
-					ElementType: types.StringType,
-					Description: "Service-specific approval config.",
-				},
-				AUTO_APPLY_APPROVED_CHANGES: dsschema.BoolAttribute{
-					Computed:    true,
-					Description: "Whether to auto-apply changes once all approvers have approved.",
-				},
+		Attributes: map[string]dsschema.Attribute{
+			REQUIRED: dsschema.BoolAttribute{
+				Computed:    true,
+				Description: "Whether changes require approval.",
+			},
+			CAN_REVIEW_OWN_REQUEST: dsschema.BoolAttribute{
+				Computed:    true,
+				Description: "Whether requesters can approve their own requests.",
+			},
+			MIN_NUM_APPROVALS: dsschema.Int64Attribute{
+				Computed:    true,
+				Description: "Minimum approvers required (1-5).",
+			},
+			CAN_APPLY_DECLINED_CHANGES: dsschema.BoolAttribute{
+				Computed:    true,
+				Description: "Whether changes can be applied with the minimum number of approvals despite declines.",
+			},
+			REQUIRED_APPROVAL_TAGS: dsschema.ListAttribute{
+				Computed:    true,
+				ElementType: types.StringType,
+				Description: "Flag tags requiring approval (only one of required / required_approval_tags is set).",
+			},
+			SERVICE_KIND: dsschema.StringAttribute{
+				Computed:    true,
+				Description: "Approval service (e.g. servicenow, launchdarkly).",
+			},
+			SERVICE_CONFIG: dsschema.MapAttribute{
+				Computed:    true,
+				ElementType: types.StringType,
+				Description: "Service-specific approval config.",
+			},
+			AUTO_APPLY_APPROVED_CHANGES: dsschema.BoolAttribute{
+				Computed:    true,
+				Description: "Whether to auto-apply changes once all approvers have approved.",
 			},
 		},
 	}
 }
 
 // frameworkApprovalSettingsValue converts an LD-API ApprovalSettings
-// into a single-element types.List, mirroring the prior state's
-// attribute presence. The `prior` argument carries the plan's view of
-// the attribute (during Create/Update) or the previous state (during
-// Refresh) so the read can emit a null list when the user did not
-// declare the attribute and a populated single-element list when they
-// did, even when both branches resolve to LD-API "default" approval
-// values. Returning null (not an empty list) is important for plan
-// parity: the framework treats `attr = null` and `attr = []`
-// differently in the plan/apply consistency check, especially when
-// the parent object contains sensitive fields.
-func frameworkApprovalSettingsValue(ctx context.Context, settings *ldapi.ApprovalSettings, prior basetypes.ListValue) (basetypes.ListValue, diag.Diagnostics) {
-	objectType := types.ObjectType{AttrTypes: frameworkApprovalSettingsObjectAttrTypes}
-	priorEmpty := prior.IsNull() || prior.IsUnknown() || len(prior.Elements()) == 0
+// into a types.Object, mirroring the prior state's attribute presence.
+// The `prior` argument carries the plan's view of the attribute (during
+// Create/Update) or the previous state (during Refresh) so the read can
+// emit a null object when the user did not declare the attribute and a
+// populated object when they did, even when both branches resolve to
+// LD-API "default" approval values. Returning null is important for
+// plan parity: the framework treats `attr = null` and a populated
+// object differently in the plan/apply consistency check, especially
+// when the parent object contains sensitive fields.
+func frameworkApprovalSettingsValue(ctx context.Context, settings *ldapi.ApprovalSettings, prior basetypes.ObjectValue) (basetypes.ObjectValue, diag.Diagnostics) {
+	priorEmpty := prior.IsNull() || prior.IsUnknown()
 	if settings == nil || priorEmpty {
-		return types.ListNull(objectType), nil
+		return types.ObjectNull(frameworkApprovalSettingsObjectAttrTypes), nil
 	}
 
 	requiredTagsList, diags := listFromStringSlice(ctx, settings.RequiredApprovalTags)
@@ -133,68 +132,63 @@ func frameworkApprovalSettingsValue(ctx context.Context, settings *ldapi.Approva
 		AUTO_APPLY_APPROVED_CHANGES: autoApply,
 	})
 	diags.Append(d...)
-
-	list, d := types.ListValue(objectType, []attr.Value{obj})
-	diags.Append(d...)
-	return list, diags
+	return obj, diags
 }
 
 // frameworkApprovalSettingsResourceAttribute returns the resource-side
-// ListNestedAttribute schema for approval_settings. Shared between
-// project's nested-environments attribute, segment, FFE, and the
-// standalone environment resource.
-func frameworkApprovalSettingsResourceAttribute() schema.ListNestedAttribute {
-	return schema.ListNestedAttribute{
+// SingleNestedAttribute schema for approval_settings. Shared between
+// project's nested-environments attribute and the standalone
+// environment resource.
+func frameworkApprovalSettingsResourceAttribute() schema.SingleNestedAttribute {
+	return schema.SingleNestedAttribute{
 		Optional: true,
-		NestedObject: schema.NestedAttributeObject{
-			Attributes: map[string]schema.Attribute{
-				REQUIRED: schema.BoolAttribute{
-					Optional:    true,
-					Computed:    true,
-					Default:     booldefault.StaticBool(false),
-					Description: "Set to `true` for changes to flags in this environment to require approval. You may only set `required` to true if `required_approval_tags` is not set and vice versa. Defaults to `false`.",
-				},
-				CAN_REVIEW_OWN_REQUEST: schema.BoolAttribute{
-					Optional:    true,
-					Computed:    true,
-					Default:     booldefault.StaticBool(false),
-					Description: "Set to `true` if requesters can approve or decline their own request. They may always comment. Defaults to `false`.",
-				},
-				MIN_NUM_APPROVALS: schema.Int64Attribute{
-					Optional:    true,
-					Computed:    true,
-					Default:     int64default.StaticInt64(1),
-					Description: "The number of approvals required before an approval request can be applied. This number must be between 1 and 5. Defaults to 1.",
-				},
-				CAN_APPLY_DECLINED_CHANGES: schema.BoolAttribute{
-					Optional:    true,
-					Computed:    true,
-					Default:     booldefault.StaticBool(true),
-					Description: "Set to `true` if changes can be applied as long as the `min_num_approvals` is met, regardless of whether any reviewers have declined a request. Defaults to `true`.",
-				},
-				REQUIRED_APPROVAL_TAGS: schema.ListAttribute{
-					Optional:    true,
-					Computed:    true,
-					ElementType: types.StringType,
-					Description: "An array of tags used to specify which flags with those tags require approval. You may only set `required_approval_tags` if `required` is set to `false` and vice versa.",
-				},
-				SERVICE_KIND: schema.StringAttribute{
-					Optional:    true,
-					Computed:    true,
-					Description: "The kind of service associated with this approval. This determines which platform is used for requesting approval. Valid values are `servicenow`, `launchdarkly`. If you use a value other than `launchdarkly`, you must have already configured the integration in the LaunchDarkly UI or your apply will fail.",
-				},
-				SERVICE_CONFIG: schema.MapAttribute{
-					Optional:    true,
-					Computed:    true,
-					ElementType: types.StringType,
-					Description: "The configuration for the service associated with this approval. This is specific to each approval service. For a `service_kind` of `servicenow`, the following fields apply:\n\n\t - `template` (String) The sys_id of the Standard Change Request Template in ServiceNow that LaunchDarkly will use when creating the change request.\n\t - `detail_column` (String) The name of the ServiceNow Change Request column LaunchDarkly uses to populate detailed approval request information. This is most commonly \"justification\".",
-				},
-				AUTO_APPLY_APPROVED_CHANGES: schema.BoolAttribute{
-					Optional:    true,
-					Computed:    true,
-					Default:     booldefault.StaticBool(false),
-					Description: "Automatically apply changes that have been approved by all reviewers. This field is only applicable for approval service kinds other than `launchdarkly`.",
-				},
+		Attributes: map[string]schema.Attribute{
+			REQUIRED: schema.BoolAttribute{
+				Optional:    true,
+				Computed:    true,
+				Default:     booldefault.StaticBool(false),
+				Description: "Set to `true` for changes to flags in this environment to require approval. You may only set `required` to true if `required_approval_tags` is not set and vice versa. Defaults to `false`.",
+			},
+			CAN_REVIEW_OWN_REQUEST: schema.BoolAttribute{
+				Optional:    true,
+				Computed:    true,
+				Default:     booldefault.StaticBool(false),
+				Description: "Set to `true` if requesters can approve or decline their own request. They may always comment. Defaults to `false`.",
+			},
+			MIN_NUM_APPROVALS: schema.Int64Attribute{
+				Optional:    true,
+				Computed:    true,
+				Default:     int64default.StaticInt64(1),
+				Description: "The number of approvals required before an approval request can be applied. This number must be between 1 and 5. Defaults to 1.",
+			},
+			CAN_APPLY_DECLINED_CHANGES: schema.BoolAttribute{
+				Optional:    true,
+				Computed:    true,
+				Default:     booldefault.StaticBool(true),
+				Description: "Set to `true` if changes can be applied as long as the `min_num_approvals` is met, regardless of whether any reviewers have declined a request. Defaults to `true`.",
+			},
+			REQUIRED_APPROVAL_TAGS: schema.ListAttribute{
+				Optional:    true,
+				Computed:    true,
+				ElementType: types.StringType,
+				Description: "An array of tags used to specify which flags with those tags require approval. You may only set `required_approval_tags` if `required` is set to `false` and vice versa.",
+			},
+			SERVICE_KIND: schema.StringAttribute{
+				Optional:    true,
+				Computed:    true,
+				Description: "The kind of service associated with this approval. This determines which platform is used for requesting approval. Valid values are `servicenow`, `launchdarkly`. If you use a value other than `launchdarkly`, you must have already configured the integration in the LaunchDarkly UI or your apply will fail.",
+			},
+			SERVICE_CONFIG: schema.MapAttribute{
+				Optional:    true,
+				Computed:    true,
+				ElementType: types.StringType,
+				Description: "The configuration for the service associated with this approval. This is specific to each approval service. For a `service_kind` of `servicenow`, the following fields apply:\n\n\t - `template` (String) The sys_id of the Standard Change Request Template in ServiceNow that LaunchDarkly will use when creating the change request.\n\t - `detail_column` (String) The name of the ServiceNow Change Request column LaunchDarkly uses to populate detailed approval request information. This is most commonly \"justification\".",
+			},
+			AUTO_APPLY_APPROVED_CHANGES: schema.BoolAttribute{
+				Optional:    true,
+				Computed:    true,
+				Default:     booldefault.StaticBool(false),
+				Description: "Automatically apply changes that have been approved by all reviewers. This field is only applicable for approval service kinds other than `launchdarkly`.",
 			},
 		},
 	}
@@ -214,11 +208,11 @@ type approvalSettingsModel struct {
 
 // approvalPatchesFromModels returns the patch operations needed to apply
 // the difference between the planned and prior state of an
-// approval_settings block.
-func approvalPatchesFromModels(ctx context.Context, planList, stateList types.List) ([]ldapi.PatchOperation, diag.Diagnostics) {
+// approval_settings object.
+func approvalPatchesFromModels(ctx context.Context, planObj, stateObj types.Object) ([]ldapi.PatchOperation, diag.Diagnostics) {
 	var diags diag.Diagnostics
-	planEmpty := planList.IsNull() || planList.IsUnknown() || len(planList.Elements()) == 0
-	stateEmpty := stateList.IsNull() || stateList.IsUnknown() || len(stateList.Elements()) == 0
+	planEmpty := planObj.IsNull() || planObj.IsUnknown()
+	stateEmpty := stateObj.IsNull() || stateObj.IsUnknown()
 	if planEmpty && stateEmpty {
 		return nil, diags
 	}
@@ -229,13 +223,12 @@ func approvalPatchesFromModels(ctx context.Context, planList, stateList types.Li
 			patchRemove("/approvalSettings/requiredApprovalTags"),
 		}, diags
 	}
-	var models []approvalSettingsModel
-	d := planList.ElementsAs(ctx, &models, false)
+	var m approvalSettingsModel
+	d := planObj.As(ctx, &m, basetypes.ObjectAsOptions{})
 	diags.Append(d...)
-	if diags.HasError() || len(models) == 0 {
+	if diags.HasError() {
 		return nil, diags
 	}
-	m := models[0]
 	requiredApprovalTags, d := stringSliceFromList(ctx, m.RequiredApprovalTags)
 	diags.Append(d...)
 	if diags.HasError() {
@@ -270,16 +263,15 @@ func approvalPatchesFromModels(ctx context.Context, planList, stateList types.Li
 }
 
 // frameworkApprovalSettingsDataSourceValue is the data-source variant
-// that always emits the populated block when LD returns approval
+// that always emits the populated object when LD returns approval
 // settings, since data source attrs are Computed-only and don't go
-// through the resource block-presence consistency check.
-func frameworkApprovalSettingsDataSourceValue(ctx context.Context, settings *ldapi.ApprovalSettings) (basetypes.ListValue, diag.Diagnostics) {
-	// Synthetic "non-empty prior" so the helper emits populated.
-	objectType := types.ObjectType{AttrTypes: frameworkApprovalSettingsObjectAttrTypes}
+// through the resource presence consistency check.
+func frameworkApprovalSettingsDataSourceValue(ctx context.Context, settings *ldapi.ApprovalSettings) (basetypes.ObjectValue, diag.Diagnostics) {
 	if settings == nil {
-		return types.ListValue(objectType, []attr.Value{})
+		return types.ObjectNull(frameworkApprovalSettingsObjectAttrTypes), nil
 	}
-	priorObj, _ := types.ObjectValue(frameworkApprovalSettingsObjectAttrTypes, map[string]attr.Value{
+	// Synthetic non-null "prior" so the helper emits populated.
+	prior, _ := types.ObjectValue(frameworkApprovalSettingsObjectAttrTypes, map[string]attr.Value{
 		REQUIRED:                    types.BoolValue(false),
 		CAN_REVIEW_OWN_REQUEST:      types.BoolValue(false),
 		MIN_NUM_APPROVALS:           types.Int64Value(0),
@@ -289,8 +281,7 @@ func frameworkApprovalSettingsDataSourceValue(ctx context.Context, settings *lda
 		SERVICE_CONFIG:              types.MapNull(types.StringType),
 		AUTO_APPLY_APPROVED_CHANGES: types.BoolValue(false),
 	})
-	priorList, _ := types.ListValue(objectType, []attr.Value{priorObj})
-	return frameworkApprovalSettingsValue(ctx, settings, priorList)
+	return frameworkApprovalSettingsValue(ctx, settings, prior)
 }
 
 // isZeroApprovalSettings reports whether LD's approval-settings doc is
@@ -342,62 +333,60 @@ const segmentResourceKind = "segment"
 const segmentApprovalSettingsWarning = "\n\n~> **Warning:** Enabling segment approvals (`required = true`) while you manage `launchdarkly_segment` resources in Terraform will cause every subsequent segment change to require manual approval before it can be applied, so your applies will not complete until a reviewer approves them. This is a known limitation tracked in [issue #370](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/370). Only enable this if you are prepared to approve segment changes out of band."
 
 // frameworkSegmentApprovalSettingsResourceAttribute returns the
-// resource-side ListNestedAttribute schema for segment_approval_settings.
+// resource-side SingleNestedAttribute schema for segment_approval_settings.
 // It mirrors frameworkApprovalSettingsResourceAttribute but with
 // segment-specific wording and the #370 warning.
-func frameworkSegmentApprovalSettingsResourceAttribute() schema.ListNestedAttribute {
-	return schema.ListNestedAttribute{
+func frameworkSegmentApprovalSettingsResourceAttribute() schema.SingleNestedAttribute {
+	return schema.SingleNestedAttribute{
 		Optional:    true,
 		Description: "Configure approval settings for segment changes in this environment. This is configured via LaunchDarkly's beta approvals API, separate from flag `approval_settings`." + segmentApprovalSettingsWarning,
-		NestedObject: schema.NestedAttributeObject{
-			Attributes: map[string]schema.Attribute{
-				REQUIRED: schema.BoolAttribute{
-					Optional:    true,
-					Computed:    true,
-					Default:     booldefault.StaticBool(false),
-					Description: "Set to `true` for changes to segments in this environment to require approval. You may only set `required` to true if `required_approval_tags` is not set and vice versa. Defaults to `false`.",
-				},
-				CAN_REVIEW_OWN_REQUEST: schema.BoolAttribute{
-					Optional:    true,
-					Computed:    true,
-					Default:     booldefault.StaticBool(false),
-					Description: "Set to `true` if requesters can approve or decline their own request. They may always comment. Defaults to `false`.",
-				},
-				MIN_NUM_APPROVALS: schema.Int64Attribute{
-					Optional:    true,
-					Computed:    true,
-					Default:     int64default.StaticInt64(1),
-					Description: "The number of approvals required before an approval request can be applied. This number must be between 1 and 5. Defaults to 1.",
-				},
-				CAN_APPLY_DECLINED_CHANGES: schema.BoolAttribute{
-					Optional:    true,
-					Computed:    true,
-					Default:     booldefault.StaticBool(true),
-					Description: "Set to `true` if changes can be applied as long as the `min_num_approvals` is met, regardless of whether any reviewers have declined a request. Defaults to `true`.",
-				},
-				REQUIRED_APPROVAL_TAGS: schema.ListAttribute{
-					Optional:    true,
-					Computed:    true,
-					ElementType: types.StringType,
-					Description: "An array of tags used to specify which segments with those tags require approval. You may only set `required_approval_tags` if `required` is set to `false` and vice versa.",
-				},
-				SERVICE_KIND: schema.StringAttribute{
-					Optional:    true,
-					Computed:    true,
-					Description: "The kind of service associated with this approval. This determines which platform is used for requesting approval. Valid values are `servicenow`, `launchdarkly`. If you use a value other than `launchdarkly`, you must have already configured the integration in the LaunchDarkly UI or your apply will fail.",
-				},
-				SERVICE_CONFIG: schema.MapAttribute{
-					Optional:    true,
-					Computed:    true,
-					ElementType: types.StringType,
-					Description: "The configuration for the service associated with this approval. This is specific to each approval service. For a `service_kind` of `servicenow`, the following fields apply:\n\n\t - `template` (String) The sys_id of the Standard Change Request Template in ServiceNow that LaunchDarkly will use when creating the change request.\n\t - `detail_column` (String) The name of the ServiceNow Change Request column LaunchDarkly uses to populate detailed approval request information. This is most commonly \"justification\".",
-				},
-				AUTO_APPLY_APPROVED_CHANGES: schema.BoolAttribute{
-					Optional:    true,
-					Computed:    true,
-					Default:     booldefault.StaticBool(false),
-					Description: "Automatically apply changes that have been approved by all reviewers. This field is only applicable for approval service kinds other than `launchdarkly`.",
-				},
+		Attributes: map[string]schema.Attribute{
+			REQUIRED: schema.BoolAttribute{
+				Optional:    true,
+				Computed:    true,
+				Default:     booldefault.StaticBool(false),
+				Description: "Set to `true` for changes to segments in this environment to require approval. You may only set `required` to true if `required_approval_tags` is not set and vice versa. Defaults to `false`.",
+			},
+			CAN_REVIEW_OWN_REQUEST: schema.BoolAttribute{
+				Optional:    true,
+				Computed:    true,
+				Default:     booldefault.StaticBool(false),
+				Description: "Set to `true` if requesters can approve or decline their own request. They may always comment. Defaults to `false`.",
+			},
+			MIN_NUM_APPROVALS: schema.Int64Attribute{
+				Optional:    true,
+				Computed:    true,
+				Default:     int64default.StaticInt64(1),
+				Description: "The number of approvals required before an approval request can be applied. This number must be between 1 and 5. Defaults to 1.",
+			},
+			CAN_APPLY_DECLINED_CHANGES: schema.BoolAttribute{
+				Optional:    true,
+				Computed:    true,
+				Default:     booldefault.StaticBool(true),
+				Description: "Set to `true` if changes can be applied as long as the `min_num_approvals` is met, regardless of whether any reviewers have declined a request. Defaults to `true`.",
+			},
+			REQUIRED_APPROVAL_TAGS: schema.ListAttribute{
+				Optional:    true,
+				Computed:    true,
+				ElementType: types.StringType,
+				Description: "An array of tags used to specify which segments with those tags require approval. You may only set `required_approval_tags` if `required` is set to `false` and vice versa.",
+			},
+			SERVICE_KIND: schema.StringAttribute{
+				Optional:    true,
+				Computed:    true,
+				Description: "The kind of service associated with this approval. This determines which platform is used for requesting approval. Valid values are `servicenow`, `launchdarkly`. If you use a value other than `launchdarkly`, you must have already configured the integration in the LaunchDarkly UI or your apply will fail.",
+			},
+			SERVICE_CONFIG: schema.MapAttribute{
+				Optional:    true,
+				Computed:    true,
+				ElementType: types.StringType,
+				Description: "The configuration for the service associated with this approval. This is specific to each approval service. For a `service_kind` of `servicenow`, the following fields apply:\n\n\t - `template` (String) The sys_id of the Standard Change Request Template in ServiceNow that LaunchDarkly will use when creating the change request.\n\t - `detail_column` (String) The name of the ServiceNow Change Request column LaunchDarkly uses to populate detailed approval request information. This is most commonly \"justification\".",
+			},
+			AUTO_APPLY_APPROVED_CHANGES: schema.BoolAttribute{
+				Optional:    true,
+				Computed:    true,
+				Default:     booldefault.StaticBool(false),
+				Description: "Automatically apply changes that have been approved by all reviewers. This field is only applicable for approval service kinds other than `launchdarkly`.",
 			},
 		},
 	}
@@ -405,46 +394,44 @@ func frameworkSegmentApprovalSettingsResourceAttribute() schema.ListNestedAttrib
 
 // frameworkSegmentApprovalSettingsDataSourceAttribute returns the
 // data-source-side schema for segment_approval_settings.
-func frameworkSegmentApprovalSettingsDataSourceAttribute() dsschema.ListNestedAttribute {
-	return dsschema.ListNestedAttribute{
+func frameworkSegmentApprovalSettingsDataSourceAttribute() dsschema.SingleNestedAttribute {
+	return dsschema.SingleNestedAttribute{
 		Computed:    true,
 		Description: "Approval settings for segment changes in this environment.",
-		NestedObject: dsschema.NestedAttributeObject{
-			Attributes: map[string]dsschema.Attribute{
-				REQUIRED: dsschema.BoolAttribute{
-					Computed:    true,
-					Description: "Whether segment changes require approval.",
-				},
-				CAN_REVIEW_OWN_REQUEST: dsschema.BoolAttribute{
-					Computed:    true,
-					Description: "Whether requesters can approve their own requests.",
-				},
-				MIN_NUM_APPROVALS: dsschema.Int64Attribute{
-					Computed:    true,
-					Description: "Minimum approvers required (1-5).",
-				},
-				CAN_APPLY_DECLINED_CHANGES: dsschema.BoolAttribute{
-					Computed:    true,
-					Description: "Whether changes can be applied with the minimum number of approvals despite declines.",
-				},
-				REQUIRED_APPROVAL_TAGS: dsschema.ListAttribute{
-					Computed:    true,
-					ElementType: types.StringType,
-					Description: "Segment tags requiring approval (only one of required / required_approval_tags is set).",
-				},
-				SERVICE_KIND: dsschema.StringAttribute{
-					Computed:    true,
-					Description: "Approval service (e.g. servicenow, launchdarkly).",
-				},
-				SERVICE_CONFIG: dsschema.MapAttribute{
-					Computed:    true,
-					ElementType: types.StringType,
-					Description: "Service-specific approval config.",
-				},
-				AUTO_APPLY_APPROVED_CHANGES: dsschema.BoolAttribute{
-					Computed:    true,
-					Description: "Whether to auto-apply changes once all approvers have approved.",
-				},
+		Attributes: map[string]dsschema.Attribute{
+			REQUIRED: dsschema.BoolAttribute{
+				Computed:    true,
+				Description: "Whether segment changes require approval.",
+			},
+			CAN_REVIEW_OWN_REQUEST: dsschema.BoolAttribute{
+				Computed:    true,
+				Description: "Whether requesters can approve their own requests.",
+			},
+			MIN_NUM_APPROVALS: dsschema.Int64Attribute{
+				Computed:    true,
+				Description: "Minimum approvers required (1-5).",
+			},
+			CAN_APPLY_DECLINED_CHANGES: dsschema.BoolAttribute{
+				Computed:    true,
+				Description: "Whether changes can be applied with the minimum number of approvals despite declines.",
+			},
+			REQUIRED_APPROVAL_TAGS: dsschema.ListAttribute{
+				Computed:    true,
+				ElementType: types.StringType,
+				Description: "Segment tags requiring approval (only one of required / required_approval_tags is set).",
+			},
+			SERVICE_KIND: dsschema.StringAttribute{
+				Computed:    true,
+				Description: "Approval service (e.g. servicenow, launchdarkly).",
+			},
+			SERVICE_CONFIG: dsschema.MapAttribute{
+				Computed:    true,
+				ElementType: types.StringType,
+				Description: "Service-specific approval config.",
+			},
+			AUTO_APPLY_APPROVED_CHANGES: dsschema.BoolAttribute{
+				Computed:    true,
+				Description: "Whether to auto-apply changes once all approvers have approved.",
 			},
 		},
 	}
@@ -496,16 +483,16 @@ func segmentApprovalSettingFromGET(resp *map[string]ldapi.ApprovalRequestSetting
 
 // segmentApprovalSettingsPatch builds the beta approval-request settings
 // PATCH body for the segment resourceKind from a segment_approval_settings
-// plan list. A null/empty list yields a "disable" patch (required=false,
+// plan object. A null object yields a "disable" patch (required=false,
 // tags cleared) since LD has no delete operation for these settings.
-func segmentApprovalSettingsPatch(ctx context.Context, planList types.List, envKey string) (ldapi.ApprovalRequestSettingsPatch, diag.Diagnostics) {
+func segmentApprovalSettingsPatch(ctx context.Context, planObj types.Object, envKey string) (ldapi.ApprovalRequestSettingsPatch, diag.Diagnostics) {
 	var diags diag.Diagnostics
 	patch := ldapi.ApprovalRequestSettingsPatch{
 		EnvironmentKey: envKey,
 		ResourceKind:   segmentResourceKind,
 	}
 
-	planEmpty := planList.IsNull() || planList.IsUnknown() || len(planList.Elements()) == 0
+	planEmpty := planObj.IsNull() || planObj.IsUnknown()
 	if planEmpty {
 		required := false
 		patch.Required = &required
@@ -513,12 +500,11 @@ func segmentApprovalSettingsPatch(ctx context.Context, planList types.List, envK
 		return patch, diags
 	}
 
-	var models []approvalSettingsModel
-	diags.Append(planList.ElementsAs(ctx, &models, false)...)
-	if diags.HasError() || len(models) == 0 {
+	var m approvalSettingsModel
+	diags.Append(planObj.As(ctx, &m, basetypes.ObjectAsOptions{})...)
+	if diags.HasError() {
 		return patch, diags
 	}
-	m := models[0]
 
 	requiredApprovalTags, d := stringSliceFromList(ctx, m.RequiredApprovalTags)
 	diags.Append(d...)
@@ -567,4 +553,66 @@ func segmentApprovalSettingsPatch(ctx context.Context, planList types.List, envK
 	}
 
 	return patch, diags
+}
+
+// approvalSettingsAttributeV0 reproduces the pre-3.0.0 (v2.x SDKv2)
+// approval_settings block shape — a single-element list — used only in
+// PriorSchema declarations for v0 state upgraders. The live schema
+// models approval_settings as a single object.
+func approvalSettingsAttributeV0() schema.ListNestedAttribute {
+	return schema.ListNestedAttribute{
+		Optional: true,
+		NestedObject: schema.NestedAttributeObject{
+			Attributes: map[string]schema.Attribute{
+				REQUIRED:                   schema.BoolAttribute{Optional: true, Computed: true},
+				CAN_REVIEW_OWN_REQUEST:     schema.BoolAttribute{Optional: true, Computed: true},
+				MIN_NUM_APPROVALS:          schema.Int64Attribute{Optional: true, Computed: true},
+				CAN_APPLY_DECLINED_CHANGES: schema.BoolAttribute{Optional: true, Computed: true},
+				REQUIRED_APPROVAL_TAGS: schema.ListAttribute{
+					Optional: true, Computed: true, ElementType: types.StringType,
+				},
+				SERVICE_KIND: schema.StringAttribute{Optional: true, Computed: true},
+				SERVICE_CONFIG: schema.MapAttribute{
+					Optional: true, Computed: true, ElementType: types.StringType,
+				},
+				AUTO_APPLY_APPROVED_CHANGES: schema.BoolAttribute{Optional: true, Computed: true},
+			},
+		},
+	}
+}
+
+// approvalSettingsObjectFromV0List projects a v0 (SDKv2) single-element
+// approval_settings list into the v3 single-object shape. Returns a null
+// object for null/empty input.
+func approvalSettingsObjectFromV0List(ctx context.Context, l types.List) (types.Object, diag.Diagnostics) {
+	var diags diag.Diagnostics
+	if l.IsNull() || l.IsUnknown() || len(l.Elements()) == 0 {
+		return types.ObjectNull(frameworkApprovalSettingsObjectAttrTypes), diags
+	}
+	var models []approvalSettingsModel
+	diags.Append(l.ElementsAs(ctx, &models, false)...)
+	if diags.HasError() || len(models) == 0 {
+		return types.ObjectNull(frameworkApprovalSettingsObjectAttrTypes), diags
+	}
+	m := models[0]
+	tags := m.RequiredApprovalTags
+	if tags.IsNull() || tags.IsUnknown() {
+		tags = types.ListNull(types.StringType)
+	}
+	serviceConfig := m.ServiceConfig
+	if serviceConfig.IsNull() || serviceConfig.IsUnknown() {
+		serviceConfig = types.MapNull(types.StringType)
+	}
+	obj, d := types.ObjectValue(frameworkApprovalSettingsObjectAttrTypes, map[string]attr.Value{
+		REQUIRED:                    m.Required,
+		CAN_REVIEW_OWN_REQUEST:      m.CanReviewOwnRequest,
+		MIN_NUM_APPROVALS:           m.MinNumApprovals,
+		CAN_APPLY_DECLINED_CHANGES:  m.CanApplyDeclinedChanges,
+		REQUIRED_APPROVAL_TAGS:      tags,
+		SERVICE_KIND:                m.ServiceKind,
+		SERVICE_CONFIG:              serviceConfig,
+		AUTO_APPLY_APPROVED_CHANGES: m.AutoApplyApprovedChanges,
+	})
+	diags.Append(d...)
+	return obj, diags
 }
