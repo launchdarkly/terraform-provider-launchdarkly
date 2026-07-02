@@ -13,6 +13,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
+	"github.com/hashicorp/terraform-plugin-framework-validators/mapvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/resourcevalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/setvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
@@ -35,6 +36,7 @@ var (
 	_ resource.ResourceWithImportState      = &FeatureFlagResource{}
 	_ resource.ResourceWithModifyPlan       = &FeatureFlagResource{}
 	_ resource.ResourceWithConfigValidators = &FeatureFlagResource{}
+	_ resource.ResourceWithValidateConfig   = &FeatureFlagResource{}
 	_ resource.ResourceWithUpgradeState     = &FeatureFlagResource{}
 )
 
@@ -55,7 +57,7 @@ type FeatureFlagResourceModel struct {
 	Variations             types.List   `tfsdk:"variations"`
 	Temporary              types.Bool   `tfsdk:"temporary"`
 	ClientSideAvailability types.Object `tfsdk:"client_side_availability"`
-	CustomProperties       types.Set    `tfsdk:"custom_properties"`
+	CustomProperties       types.Map    `tfsdk:"custom_properties"`
 	Defaults               types.Object `tfsdk:"defaults"`
 	Archived               types.Bool   `tfsdk:"archived"`
 	Deprecated             types.Bool   `tfsdk:"deprecated"`
@@ -214,16 +216,21 @@ func featureFlagSchemaAttributes() map[string]schema.Attribute {
 				},
 			},
 		},
-		CUSTOM_PROPERTIES: schema.SetNestedAttribute{
+		CUSTOM_PROPERTIES: schema.MapNestedAttribute{
 			Optional:    true,
-			Description: "The feature flag's [custom properties](https://docs.launchdarkly.com/home/connecting/custom-properties).",
-			Validators:  []validator.Set{setvalidator.SizeAtMost(CUSTOM_PROPERTY_ITEM_LIMIT)},
+			Description: "The feature flag's [custom properties](https://docs.launchdarkly.com/home/connecting/custom-properties), keyed by the custom property key. Adding or removing one custom property does not affect the others.",
+			Validators: []validator.Map{
+				mapvalidator.SizeAtMost(CUSTOM_PROPERTY_ITEM_LIMIT),
+				mapvalidator.KeysAre(stringLenBetween(1, CUSTOM_PROPERTY_CHAR_LIMIT)),
+			},
 			NestedObject: schema.NestedAttributeObject{
 				Attributes: map[string]schema.Attribute{
 					KEY: schema.StringAttribute{
-						Required:    true,
-						Description: "The unique custom property key.",
-						Validators:  []validator.String{stringLenBetween(1, CUSTOM_PROPERTY_CHAR_LIMIT)},
+						Optional:      true,
+						Computed:      true,
+						Description:   "The unique custom property key. Must equal the map key; it defaults to the map key when omitted.",
+						Validators:    []validator.String{stringLenBetween(1, CUSTOM_PROPERTY_CHAR_LIMIT)},
+						PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 					},
 					NAME: schema.StringAttribute{
 						Required:    true,
@@ -320,6 +327,10 @@ func (r *FeatureFlagResource) UpgradeState(_ context.Context) map[int64]resource
 				resp.Diagnostics.Append(d...)
 				priorDefaults, d := defaultsObjectFromV0List(ctx, prior.Defaults)
 				resp.Diagnostics.Append(d...)
+				// v0 stored custom_properties as a set whose elements carried
+				// the property key inline; v3 keys a map by property key.
+				priorCustomProps, d := customPropertiesMapFromV0Set(ctx, prior.CustomProperties)
+				resp.Diagnostics.Append(d...)
 				if resp.Diagnostics.HasError() {
 					return
 				}
@@ -336,7 +347,7 @@ func (r *FeatureFlagResource) UpgradeState(_ context.Context) map[int64]resource
 					Variations:             prior.Variations,
 					Temporary:              prior.Temporary,
 					ClientSideAvailability: priorCSA,
-					CustomProperties:       nullIfEmptySet(ctx, prior.CustomProperties),
+					CustomProperties:       priorCustomProps,
 					Defaults:               priorDefaults,
 					Archived:               prior.Archived,
 					Deprecated:             prior.Deprecated,
@@ -695,7 +706,7 @@ func (r *FeatureFlagResource) applyFlagUpdate(ctx context.Context, plan, state F
 
 	tags, d := stringSliceFromSet(ctx, plan.Tags)
 	diags.Append(d...)
-	customProps, d := customPropertiesFromSet(ctx, plan.CustomProperties)
+	customProps, d := customPropertiesFromMap(ctx, plan.CustomProperties)
 	diags.Append(d...)
 	if diags.HasError() {
 		return diags
@@ -900,10 +911,10 @@ func (r *FeatureFlagResource) readIntoModel(ctx context.Context, data *FeatureFl
 	diags.Append(d...)
 	data.Variations = variationsList
 
-	// Custom properties — sorted values, custom_properties hash parity.
-	cpSet, d := customPropertiesSetFromAPI(ctx, flag.CustomProperties)
+	// Custom properties — keyed by property key, sorted values.
+	cpMap, d := customPropertiesMapFromAPI(ctx, flag.CustomProperties)
 	diags.Append(d...)
-	data.CustomProperties = cpSet
+	data.CustomProperties = cpMap
 
 	// Defaults
 	defaultsObj, d := defaultsObjectFromAPI(ctx, flag.Defaults, len(flag.Variations), data.Defaults)
@@ -1157,48 +1168,85 @@ func jsonSemanticallyEqual(a, b string) bool {
 	return reflect.DeepEqual(aj, bj)
 }
 
-// customPropertiesFromSet converts the framework Set<custom_property>
-// into the API's map[string]ldapi.CustomProperty. Values are sorted
-// before sending to the API for stable diffs.
-func customPropertiesFromSet(ctx context.Context, set types.Set) (map[string]ldapi.CustomProperty, diag.Diagnostics) {
+// customPropertyModel matches featureFlagCustomPropertyAttrTypes.
+type customPropertyModel struct {
+	Key   types.String `tfsdk:"key"`
+	Name  types.String `tfsdk:"name"`
+	Value types.List   `tfsdk:"value"`
+}
+
+// ValidateConfig enforces that each custom property's `key` (when set)
+// equals its map key. The map key is the authoritative identity; a
+// per-attribute validator can't see its own map key, so the cross-check
+// lives here.
+func (r *FeatureFlagResource) ValidateConfig(ctx context.Context, req resource.ValidateConfigRequest, resp *resource.ValidateConfigResponse) {
+	var config FeatureFlagResourceModel
+	resp.Diagnostics.Append(req.Config.Get(ctx, &config)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	if config.CustomProperties.IsNull() || config.CustomProperties.IsUnknown() {
+		return
+	}
+	models := map[string]customPropertyModel{}
+	resp.Diagnostics.Append(config.CustomProperties.ElementsAs(ctx, &models, false)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	for mapKey, cp := range models {
+		if cp.Key.IsNull() || cp.Key.IsUnknown() {
+			continue
+		}
+		if cp.Key.ValueString() != mapKey {
+			resp.Diagnostics.AddAttributeError(
+				path.Root(CUSTOM_PROPERTIES).AtMapKey(mapKey).AtName(KEY),
+				"custom property key must match its map key",
+				fmt.Sprintf("custom property %q sets key = %q; the nested `key` must equal the map key (or be omitted). The map key is the custom property's identity.", mapKey, cp.Key.ValueString()),
+			)
+		}
+	}
+}
+
+// customPropertiesFromMap converts the framework Map<custom_property>
+// (keyed by the custom property key) into the API's
+// map[string]ldapi.CustomProperty. Values are sorted before sending to
+// the API for stable diffs. The map key is authoritative; the inner
+// `key` attribute is validated to match in ValidateConfig.
+func customPropertiesFromMap(ctx context.Context, m types.Map) (map[string]ldapi.CustomProperty, diag.Diagnostics) {
 	var diags diag.Diagnostics
 	out := map[string]ldapi.CustomProperty{}
-	if set.IsNull() || set.IsUnknown() {
+	if m.IsNull() || m.IsUnknown() {
 		return out, diags
 	}
-	type cpModel struct {
-		Key   types.String `tfsdk:"key"`
-		Name  types.String `tfsdk:"name"`
-		Value types.List   `tfsdk:"value"`
-	}
-	var models []cpModel
-	d := set.ElementsAs(ctx, &models, false)
+	models := map[string]customPropertyModel{}
+	d := m.ElementsAs(ctx, &models, false)
 	diags.Append(d...)
 	if diags.HasError() {
 		return nil, diags
 	}
-	for _, m := range models {
-		values, d := stringSliceFromList(ctx, m.Value)
+	for k, cp := range models {
+		values, d := stringSliceFromList(ctx, cp.Value)
 		diags.Append(d...)
 		sort.Strings(values)
-		out[m.Key.ValueString()] = ldapi.CustomProperty{
-			Name:  m.Name.ValueString(),
+		out[k] = ldapi.CustomProperty{
+			Name:  cp.Name.ValueString(),
 			Value: values,
 		}
 	}
 	return out, diags
 }
 
-// customPropertiesSetFromAPI converts the LD-API map[string]CustomProperty
-// into the framework Set<custom_property>, sorting values for stable
-// diffs.
-func customPropertiesSetFromAPI(ctx context.Context, props map[string]ldapi.CustomProperty) (types.Set, diag.Diagnostics) {
+// customPropertiesMapFromAPI converts the LD-API map[string]CustomProperty
+// into the framework Map<custom_property> keyed by property key, sorting
+// values for stable diffs. The inner `key` attribute always equals the
+// map key.
+func customPropertiesMapFromAPI(ctx context.Context, props map[string]ldapi.CustomProperty) (types.Map, diag.Diagnostics) {
 	objType := types.ObjectType{AttrTypes: featureFlagCustomPropertyAttrTypes}
 	var diags diag.Diagnostics
 	if len(props) == 0 {
-		return types.SetNull(objType), diags
+		return types.MapNull(objType), diags
 	}
-	elements := make([]attr.Value, 0, len(props))
+	elements := make(map[string]attr.Value, len(props))
 	for k, cp := range props {
 		sortedValues := make([]string, len(cp.Value))
 		copy(sortedValues, cp.Value)
@@ -1211,11 +1259,41 @@ func customPropertiesSetFromAPI(ctx context.Context, props map[string]ldapi.Cust
 			VALUE: valuesList,
 		})
 		diags.Append(d...)
-		elements = append(elements, obj)
+		elements[k] = obj
 	}
-	set, d := types.SetValue(objType, elements)
+	result, d := types.MapValue(objType, elements)
 	diags.Append(d...)
-	return set, diags
+	return result, diags
+}
+
+// customPropertiesMapFromV0Set projects the v0 (SDKv2 / pre-map)
+// Set<custom_property> — whose elements carried the property key inline —
+// into the current map keyed by property key. Returns a null map for
+// null/empty input.
+func customPropertiesMapFromV0Set(ctx context.Context, set types.Set) (types.Map, diag.Diagnostics) {
+	objType := types.ObjectType{AttrTypes: featureFlagCustomPropertyAttrTypes}
+	var diags diag.Diagnostics
+	if set.IsNull() || set.IsUnknown() || len(set.Elements()) == 0 {
+		return types.MapNull(objType), diags
+	}
+	var models []customPropertyModel
+	diags.Append(set.ElementsAs(ctx, &models, false)...)
+	if diags.HasError() {
+		return types.MapNull(objType), diags
+	}
+	elements := make(map[string]attr.Value, len(models))
+	for _, cp := range models {
+		obj, d := types.ObjectValue(featureFlagCustomPropertyAttrTypes, map[string]attr.Value{
+			KEY:   cp.Key,
+			NAME:  cp.Name,
+			VALUE: cp.Value,
+		})
+		diags.Append(d...)
+		elements[cp.Key.ValueString()] = obj
+	}
+	result, d := types.MapValue(objType, elements)
+	diags.Append(d...)
+	return result, diags
 }
 
 // defaultsFromObject converts the framework defaults object into

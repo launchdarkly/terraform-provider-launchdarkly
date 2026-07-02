@@ -307,18 +307,16 @@ resource "launchdarkly_feature_flag" "multivariate" {
     	"is",
     	"unordered"
   	]
-  	custom_properties = [
-		{
-			key   = "some.property"
+  	custom_properties = {
+		"some.property" = {
 			name  = "Some Property"
 			value = ["value1", "value2", "value3"]
-		},
-		{
-			key   = "some.property2"
+		}
+		"some.property2" = {
 			name  = "Some Property"
 			value = ["very special custom property"]
-		},
-	]
+		}
+	}
 }
 `
 
@@ -376,14 +374,15 @@ resource "launchdarkly_feature_flag" "multivariate" {
     	"is",
     	"unordered"
   	]
-  	custom_properties = [{
-		key = "some.property"
-		name = "Some Property Updated"
-		value = [
-			"value1",
-			"value3"
-		]
-	}]
+  	custom_properties = {
+		"some.property" = {
+			name = "Some Property Updated"
+			value = [
+				"value1",
+				"value3"
+			]
+		}
+	}
 	defaults = {
 		on_variation = 2
 		off_variation = 1
@@ -1061,17 +1060,17 @@ func TestAccFeatureFlag_CreateAndUpdateMultivariate(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "tags.0", "is"),
 					resource.TestCheckResourceAttr(resourceName, "tags.1", "this"),
 					resource.TestCheckResourceAttr(resourceName, "tags.2", "unordered"),
-					resource.TestCheckResourceAttr(resourceName, "custom_properties.#", "2"),
-					resource.TestCheckResourceAttr(resourceName, "custom_properties.0.key", "some.property"),
-					resource.TestCheckResourceAttr(resourceName, "custom_properties.0.name", "Some Property"),
-					resource.TestCheckResourceAttr(resourceName, "custom_properties.0.value.#", "3"),
-					resource.TestCheckResourceAttr(resourceName, "custom_properties.0.value.0", "value1"),
-					resource.TestCheckResourceAttr(resourceName, "custom_properties.0.value.1", "value2"),
-					resource.TestCheckResourceAttr(resourceName, "custom_properties.0.value.2", "value3"),
-					resource.TestCheckResourceAttr(resourceName, "custom_properties.1.key", "some.property2"),
-					resource.TestCheckResourceAttr(resourceName, "custom_properties.1.name", "Some Property"),
-					resource.TestCheckResourceAttr(resourceName, "custom_properties.1.value.#", "1"),
-					resource.TestCheckResourceAttr(resourceName, "custom_properties.1.value.0", "very special custom property"),
+					resource.TestCheckResourceAttr(resourceName, "custom_properties.%", "2"),
+					resource.TestCheckResourceAttr(resourceName, "custom_properties.some.property.key", "some.property"),
+					resource.TestCheckResourceAttr(resourceName, "custom_properties.some.property.name", "Some Property"),
+					resource.TestCheckResourceAttr(resourceName, "custom_properties.some.property.value.#", "3"),
+					resource.TestCheckResourceAttr(resourceName, "custom_properties.some.property.value.0", "value1"),
+					resource.TestCheckResourceAttr(resourceName, "custom_properties.some.property.value.1", "value2"),
+					resource.TestCheckResourceAttr(resourceName, "custom_properties.some.property.value.2", "value3"),
+					resource.TestCheckResourceAttr(resourceName, "custom_properties.some.property2.key", "some.property2"),
+					resource.TestCheckResourceAttr(resourceName, "custom_properties.some.property2.name", "Some Property"),
+					resource.TestCheckResourceAttr(resourceName, "custom_properties.some.property2.value.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "custom_properties.some.property2.value.0", "very special custom property"),
 				),
 			},
 			{
@@ -1103,12 +1102,12 @@ func TestAccFeatureFlag_CreateAndUpdateMultivariate(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "tags.0", "is"),
 					resource.TestCheckResourceAttr(resourceName, "tags.1", "this"),
 					resource.TestCheckResourceAttr(resourceName, "tags.2", "unordered"),
-					resource.TestCheckResourceAttr(resourceName, "custom_properties.#", "1"),
-					resource.TestCheckResourceAttr(resourceName, "custom_properties.0.key", "some.property"),
-					resource.TestCheckResourceAttr(resourceName, "custom_properties.0.name", "Some Property Updated"),
-					resource.TestCheckResourceAttr(resourceName, "custom_properties.0.value.#", "2"),
-					resource.TestCheckResourceAttr(resourceName, "custom_properties.0.value.0", "value1"),
-					resource.TestCheckResourceAttr(resourceName, "custom_properties.0.value.1", "value3"),
+					resource.TestCheckResourceAttr(resourceName, "custom_properties.%", "1"),
+					resource.TestCheckResourceAttr(resourceName, "custom_properties.some.property.key", "some.property"),
+					resource.TestCheckResourceAttr(resourceName, "custom_properties.some.property.name", "Some Property Updated"),
+					resource.TestCheckResourceAttr(resourceName, "custom_properties.some.property.value.#", "2"),
+					resource.TestCheckResourceAttr(resourceName, "custom_properties.some.property.value.0", "value1"),
+					resource.TestCheckResourceAttr(resourceName, "custom_properties.some.property.value.1", "value3"),
 					resource.TestCheckResourceAttr(resourceName, "defaults.on_variation", "2"),
 					resource.TestCheckResourceAttr(resourceName, "defaults.off_variation", "1"),
 				),

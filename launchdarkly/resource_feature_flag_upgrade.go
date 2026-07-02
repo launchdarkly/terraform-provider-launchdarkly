@@ -70,5 +70,23 @@ func featureFlagSchemaAttributesV0() map[string]schema.Attribute {
 			},
 		},
 	}
+	// v0 stored custom_properties as a set whose elements carried the
+	// property key inline. The current (v3) schema keys a map by property
+	// key. Pin the prior schema to the original set shape so genuine v2.x
+	// state still decodes; the upgrader body re-keys via
+	// customPropertiesMapFromV0Set.
+	attrs[CUSTOM_PROPERTIES] = schema.SetNestedAttribute{
+		Optional: true,
+		NestedObject: schema.NestedAttributeObject{
+			Attributes: map[string]schema.Attribute{
+				KEY:  schema.StringAttribute{Required: true},
+				NAME: schema.StringAttribute{Required: true},
+				VALUE: schema.ListAttribute{
+					Required:    true,
+					ElementType: types.StringType,
+				},
+			},
+		},
+	}
 	return attrs
 }
