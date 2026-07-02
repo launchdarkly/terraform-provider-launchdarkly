@@ -33,6 +33,19 @@ type TeamMemberResourceModel struct {
 	LastName       types.String `tfsdk:"last_name"`
 	Role           types.String `tfsdk:"role"`
 	CustomRoles    types.Set    `tfsdk:"custom_roles"`
+	RoleAttributes types.Map    `tfsdk:"role_attributes"`
+}
+
+// TeamMemberResourceModelV0 is the pre-map state shape: role_attributes
+// was a Set of {key, values} objects (v2.x SDKv2 blocks and 3.0.0-beta
+// nested attributes).
+type TeamMemberResourceModelV0 struct {
+	ID             types.String `tfsdk:"id"`
+	Email          types.String `tfsdk:"email"`
+	FirstName      types.String `tfsdk:"first_name"`
+	LastName       types.String `tfsdk:"last_name"`
+	Role           types.String `tfsdk:"role"`
+	CustomRoles    types.Set    `tfsdk:"custom_roles"`
 	RoleAttributes types.Set    `tfsdk:"role_attributes"`
 }
 
@@ -46,7 +59,7 @@ func (r *TeamMemberResource) Metadata(_ context.Context, req resource.MetadataRe
 
 func (r *TeamMemberResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Version: 1,
+		Version: 2,
 		Description: `Provides a LaunchDarkly team member resource.
 
 This resource allows you to create and manage team members within your LaunchDarkly organization.
@@ -99,21 +112,41 @@ func teamMemberSchemaAttributes() map[string]schema.Attribute {
 }
 
 func (r *TeamMemberResource) UpgradeState(_ context.Context) map[int64]resource.StateUpgrader {
-	priorSchema := schema.Schema{Attributes: teamMemberSchemaAttributes()}
-	return map[int64]resource.StateUpgrader{
-		0: {
-			PriorSchema: &priorSchema,
-			StateUpgrader: func(ctx context.Context, req resource.UpgradeStateRequest, resp *resource.UpgradeStateResponse) {
-				var data TeamMemberResourceModel
-				resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
-				if resp.Diagnostics.HasError() {
-					return
-				}
-				data.CustomRoles = nullIfEmptySet(ctx, data.CustomRoles)
-				data.RoleAttributes = nullIfEmptySet(ctx, data.RoleAttributes)
-				resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
-			},
+	// Both prior versions stored role_attributes as a Set of {key, values}
+	// objects: version 0 is genuine v2.x SDKv2 state, version 1 is
+	// 3.0.0-beta state (which additionally already normalized zero values).
+	// Pin the prior schema to that set shape and re-key it into the map.
+	priorAttrs := teamMemberSchemaAttributes()
+	priorAttrs[ROLE_ATTRIBUTES] = roleAttributesSetAttributeV0()
+	priorSchema := schema.Schema{Attributes: priorAttrs}
+	upgrader := resource.StateUpgrader{
+		PriorSchema: &priorSchema,
+		StateUpgrader: func(ctx context.Context, req resource.UpgradeStateRequest, resp *resource.UpgradeStateResponse) {
+			var prior TeamMemberResourceModelV0
+			resp.Diagnostics.Append(req.State.Get(ctx, &prior)...)
+			if resp.Diagnostics.HasError() {
+				return
+			}
+			roleAttrs, d := roleAttributesMapFromV0Set(ctx, prior.RoleAttributes)
+			resp.Diagnostics.Append(d...)
+			if resp.Diagnostics.HasError() {
+				return
+			}
+			data := TeamMemberResourceModel{
+				ID:             prior.ID,
+				Email:          prior.Email,
+				FirstName:      prior.FirstName,
+				LastName:       prior.LastName,
+				Role:           prior.Role,
+				CustomRoles:    nullIfEmptySet(ctx, prior.CustomRoles),
+				RoleAttributes: roleAttrs,
+			}
+			resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 		},
+	}
+	return map[int64]resource.StateUpgrader{
+		0: upgrader,
+		1: upgrader,
 	}
 }
 
@@ -136,7 +169,7 @@ func (r *TeamMemberResource) Create(ctx context.Context, req resource.CreateRequ
 	customRoles, diags := stringSliceFromSet(ctx, plan.CustomRoles)
 	resp.Diagnostics.Append(diags...)
 
-	roleAttrs, diags := frameworkRoleAttributesFromSet(ctx, plan.RoleAttributes)
+	roleAttrs, diags := frameworkRoleAttributesFromMap(ctx, plan.RoleAttributes)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return

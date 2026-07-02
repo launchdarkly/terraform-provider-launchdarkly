@@ -34,7 +34,7 @@ var teamMembersMemberAttrTypes = map[string]attr.Type{
 	LAST_NAME:       types.StringType,
 	ROLE:            types.StringType,
 	CUSTOM_ROLES:    types.SetType{ElemType: types.StringType},
-	ROLE_ATTRIBUTES: types.SetType{ElemType: types.ObjectType{AttrTypes: frameworkRoleAttributeAttrTypes}},
+	ROLE_ATTRIBUTES: types.MapType{ElemType: types.ListType{ElemType: types.StringType}},
 }
 
 func NewTeamMembersDataSource() datasource.DataSource {

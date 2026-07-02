@@ -25,7 +25,7 @@ type TeamDataSourceModel struct {
 	Maintainers    types.Set    `tfsdk:"maintainers"`
 	ProjectKeys    types.Set    `tfsdk:"project_keys"`
 	CustomRoleKeys types.Set    `tfsdk:"custom_role_keys"`
-	RoleAttributes types.Set    `tfsdk:"role_attributes"`
+	RoleAttributes types.Map    `tfsdk:"role_attributes"`
 }
 
 var teamMaintainerAttrTypes = map[string]attr.Type{
