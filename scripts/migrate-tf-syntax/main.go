@@ -39,7 +39,8 @@ var defaultMappings []byte
 // MapKey names an inner attribute hoisted to the map key for a MapNestedAttribute (provider v3.x):
 // forward emits `name = { <keyval> = { ...rest } }` keyed by each block's MapKey attribute (which is
 // dropped from the inner object), and reverse expands the map back to repeated blocks, re-injecting
-// `MapKey = <key>`. Only literal-string keys are hoisted automatically; non-literal keys warn+skip.
+// `MapKey = <key>`. Literal-string keys hoist verbatim; non-literal key expressions hoist as
+// parenthesized map keys (`(local.env_key) = {...}`) with a stderr note.
 // Mutually exclusive with Object. See REL-14236 (launchdarkly_project environments).
 // MapValue (requires MapKey) collapses the block to a plain map entry instead of a nested object:
 // forward emits `name = { <keyval> = <value-expr> }` where <value-expr> is the block's MapValue
@@ -230,8 +231,14 @@ func collectProjectEnvKeys(files []string) map[string][]string {
 				if keyAttr == nil {
 					continue
 				}
-				if k, ok := stringLiteralValue(keyAttr.Expr().BuildTokens(nil)); ok && len(k) == 3 {
-					keys = append(keys, string(k[1].Bytes))
+				// Store the index-expression replacement text: quoted for a
+				// literal key, the raw expression otherwise. Every block must
+				// contribute an entry or later indices resolve to the wrong key.
+				keyExpr, literal := mapKeyTokens(keyAttr.Expr().BuildTokens(nil))
+				if literal {
+					keys = append(keys, tokensText(keyExpr))
+				} else {
+					keys = append(keys, strings.TrimSuffix(strings.TrimPrefix(tokensText(keyExpr), "("), ")"))
 				}
 			}
 			if len(keys) > 0 {
@@ -258,7 +265,7 @@ func warnEnvIndexRefs(path string, src []byte, projectEnvKeys map[string][]strin
 			}
 			n, _ := strconv.Atoi(idx)
 			if keys := projectEnvKeys[label]; n < len(keys) {
-				warnf("%s: `launchdarkly_project.%s.environments[%s]` must become `launchdarkly_project.%s.environments[%q]` — environments is now a map keyed by env key", loc, label, idx, label, keys[n])
+				warnf("%s: `launchdarkly_project.%s.environments[%s]` must become `launchdarkly_project.%s.environments[%s]` — environments is now a map keyed by env key", loc, label, idx, label, keys[n])
 			} else {
 				warnf("%s: `launchdarkly_project.%s.environments[%s]` uses a list index, but environments is now a map — replace `[%s]` with `[\"<env_key>\"]`", loc, label, idx, idx)
 			}
@@ -439,8 +446,9 @@ func forward(body *hclwrite.Body, specs []*AttrSpec, where string) bool {
 			// The `key` attribute stays inside each object (it's Optional+
 			// Computed in v3 and equals the map key); we only read it to build
 			// the map key. Validate EVERY block's key first so a missing or
-			// non-literal key aborts the whole attribute with the file
-			// untouched (no blocks are mutated either way).
+			// duplicate key aborts the whole attribute with the file untouched
+			// (no blocks are mutated either way). Non-literal keys convert too:
+			// HCL object keys accept parenthesized expressions.
 			keyExprs := make([]hclwrite.Tokens, 0, len(matched))
 			seenKeys := make(map[string]bool, len(matched))
 			skip := false
@@ -451,20 +459,20 @@ func forward(body *hclwrite.Body, specs []*AttrSpec, where string) bool {
 					skip = true
 					break
 				}
-				keyExpr, ok := stringLiteralValue(keyAttr.Expr().BuildTokens(nil))
-				if !ok {
-					warnf("%s: %q block's %q is not a literal string; cannot key the v3 map automatically — convert by hand", where, s.Name, s.MapKey)
-					skip = true
-					break
+				keyExpr, literal := mapKeyTokens(keyAttr.Expr().BuildTokens(nil))
+				if !literal {
+					fmt.Fprintf(os.Stderr, "note: %s: %q block's %q is a non-literal expression; keyed the v3 map with the parenthesized expression %s\n", where, s.Name, s.MapKey, tokensText(keyExpr))
 				}
 				// Duplicate keys would collapse into one map entry (last wins),
 				// silently dropping a block. Abort and leave it for the author.
-				if lit := string(keyExpr[1].Bytes); seenKeys[lit] {
-					warnf("%s: %q has duplicate %s %q across blocks; a map cannot hold duplicate keys — convert by hand", where, s.Name, s.MapKey, lit)
+				// Identical source text only: distinct expressions that evaluate
+				// to the same key are caught by terraform at plan time.
+				if k := tokensText(keyExpr); seenKeys[k] {
+					warnf("%s: %q has duplicate %s %s across blocks; a map cannot hold duplicate keys — convert by hand", where, s.Name, s.MapKey, k)
 					skip = true
 					break
 				} else {
-					seenKeys[lit] = true
+					seenKeys[k] = true
 				}
 				keyExprs = append(keyExprs, keyExpr)
 			}
@@ -930,6 +938,37 @@ func stringLiteralValue(tokens hclwrite.Tokens) (hclwrite.Tokens, bool) {
 		return clean, true
 	}
 	return nil, false
+}
+
+// tokensText renders tokens to their source text.
+func tokensText(tokens hclwrite.Tokens) string {
+	var sb strings.Builder
+	for _, t := range tokens {
+		sb.Write(t.Bytes)
+	}
+	return sb.String()
+}
+
+// mapKeyTokens returns tokens usable as a v3 map key for the given inner-key
+// attribute expression: the cleaned quoted literal when the expression is a
+// plain string, otherwise the expression wrapped in parentheses (HCL object
+// keys accept parenthesized expressions, so `key = local.env_key` becomes the
+// map key `(local.env_key)`). The bool reports the literal case. Newlines and
+// comments are stripped so the key renders on one line.
+func mapKeyTokens(exprTokens hclwrite.Tokens) (hclwrite.Tokens, bool) {
+	if lit, ok := stringLiteralValue(exprTokens); ok {
+		return lit, true
+	}
+	clean := hclwrite.Tokens{{Type: hclsyntax.TokenOParen, Bytes: []byte("(")}}
+	for _, t := range exprTokens {
+		if t.Type == hclsyntax.TokenNewline || t.Type == hclsyntax.TokenComment {
+			continue
+		}
+		// Copy without SpacesBefore so the key renders compactly.
+		clean = append(clean, &hclwrite.Token{Type: t.Type, Bytes: t.Bytes})
+	}
+	clean = append(clean, &hclwrite.Token{Type: hclsyntax.TokenCParen, Bytes: []byte(")")})
+	return clean, false
 }
 
 // mapEntry is one `<key> = { ... }` pair of a v3 map attribute.

@@ -362,13 +362,50 @@ func TestWarnEnvIndexRefs(t *testing.T) {
 }
 `)
 	before := warningCount
-	warnEnvIndexRefs("t.tf", src, map[string][]string{"ex": {"production", "test"}})
+	warnEnvIndexRefs("t.tf", src, map[string][]string{"ex": {`"production"`, `"test"`}})
 	if got := warningCount - before; got != 3 {
 		t.Errorf("expected 3 warnings (indices 1, 0, splat), got %d", got)
 	}
 }
 
-func TestForwardMapSkipsNonLiteralKey(t *testing.T) {
+func TestCollectProjectEnvKeysKeepsNonLiteralIndices(t *testing.T) {
+	// A non-literal key must still occupy its list slot, or every later
+	// index resolves to the wrong env key in the warning text.
+	path := filepath.Join(t.TempDir(), "p.tf")
+	src := `resource "launchdarkly_project" "p" {
+  environments {
+    key = "production"
+  }
+  environments {
+    key = local.env_key
+  }
+  environments {
+    key = "qa"
+  }
+}
+`
+	if err := os.WriteFile(path, []byte(src), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	keys := collectProjectEnvKeys([]string{path})["p"]
+	want := []string{`"production"`, `local.env_key`, `"qa"`}
+	if len(keys) != len(want) {
+		t.Fatalf("got %v, want %v", keys, want)
+	}
+	for i := range want {
+		if keys[i] != want[i] {
+			t.Errorf("keys[%d] = %q, want %q", i, keys[i], want[i])
+		}
+	}
+}
+
+// collapseSpaces normalizes runs of spaces to one, mirroring what terraform
+// fmt does to the tool's output (the emitter pads tokens with extra spaces).
+func collapseSpaces(s string) string {
+	return regexp.MustCompile(` +`).ReplaceAllString(s, " ")
+}
+
+func TestForwardMapConvertsNonLiteralKey(t *testing.T) {
 	src := `resource "launchdarkly_project" "p" {
   environments {
     key   = local.env_key
@@ -380,22 +417,22 @@ func TestForwardMapSkipsNonLiteralKey(t *testing.T) {
 	warningsBefore := warningCount
 	f, body := parseBody(t, src)
 	spec := []*AttrSpec{{Name: "environments", MapKey: "key"}}
-	if forward(body, spec, "test.tf: resource launchdarkly_project.p") {
-		t.Error("forward must skip a map whose key is a non-literal expression")
+	if !forward(body, spec, "test.tf: resource launchdarkly_project.p") {
+		t.Error("forward must convert a map whose key is a non-literal expression")
 	}
-	if warningCount != warningsBefore+1 {
-		t.Errorf("warningCount delta = %d, want 1", warningCount-warningsBefore)
+	if warningCount != warningsBefore {
+		t.Errorf("warningCount delta = %d, want 0 (a note, not a warning)", warningCount-warningsBefore)
 	}
-	out := string(f.Bytes())
-	if !strings.Contains(out, "environments {") || !strings.Contains(out, "key   = local.env_key") {
-		t.Errorf("body must be left untouched, got:\n%s", out)
+	out := collapseSpaces(string(f.Bytes()))
+	if !strings.Contains(out, "(local.env_key) = {") {
+		t.Errorf("expected a parenthesized-expression map key, got:\n%s", out)
+	}
+	if !strings.Contains(out, "key = local.env_key") {
+		t.Errorf("inner key attribute must be preserved, got:\n%s", out)
 	}
 }
 
-func TestForwardMapPartialSkipLeavesFileUntouched(t *testing.T) {
-	// A literal-key block followed by a non-literal-key block must abort the
-	// whole attribute with the file untouched — the first block must NOT lose
-	// its key (regression for partial-mutation on skip).
+func TestForwardMapMixedLiteralAndExpressionKeys(t *testing.T) {
 	src := `resource "launchdarkly_project" "p" {
   environments {
     key   = "production"
@@ -412,22 +449,46 @@ func TestForwardMapPartialSkipLeavesFileUntouched(t *testing.T) {
 	warningsBefore := warningCount
 	f, body := parseBody(t, src)
 	spec := []*AttrSpec{{Name: "environments", MapKey: "key"}}
+	if !forward(body, spec, "test.tf: resource launchdarkly_project.p") {
+		t.Error("forward must convert a map mixing literal and expression keys")
+	}
+	if warningCount != warningsBefore {
+		t.Errorf("warningCount delta = %d, want 0", warningCount-warningsBefore)
+	}
+	out := collapseSpaces(string(f.Bytes()))
+	if !strings.Contains(out, `"production" = {`) || !strings.Contains(out, "(local.staging_key) = {") {
+		t.Errorf("expected both map keys, got:\n%s", out)
+	}
+	if strings.Contains(out, "environments {") {
+		t.Errorf("no blocks may remain, got:\n%s", out)
+	}
+}
+
+func TestForwardMapSkipsDuplicateExpressionKey(t *testing.T) {
+	// Two blocks keyed by the same expression text would collapse into one
+	// map entry — abort like the literal duplicate case.
+	src := `resource "launchdarkly_project" "p" {
+  environments {
+    key  = local.env_key
+    name = "A"
+  }
+  environments {
+    key  = local.env_key
+    name = "B"
+  }
+}
+`
+	warningsBefore := warningCount
+	f, body := parseBody(t, src)
+	spec := []*AttrSpec{{Name: "environments", MapKey: "key"}}
 	if forward(body, spec, "test.tf: resource launchdarkly_project.p") {
-		t.Error("forward must skip when any block has a non-literal map key")
+		t.Error("forward must skip duplicate expression keys")
 	}
 	if warningCount != warningsBefore+1 {
 		t.Errorf("warningCount delta = %d, want 1", warningCount-warningsBefore)
 	}
-	out := string(f.Bytes())
-	if strings.Contains(out, "environments = {") {
+	if out := string(f.Bytes()); strings.Contains(out, "environments = {") {
 		t.Errorf("must not emit a partial map:\n%s", out)
-	}
-	if strings.Count(out, "environments {") != 2 {
-		t.Errorf("both environments blocks must be preserved, got:\n%s", out)
-	}
-	// the literal block must keep its key (not stripped before the abort).
-	if !strings.Contains(out, `key   = "production"`) {
-		t.Errorf("first block lost its key on skip:\n%s", out)
 	}
 }
 

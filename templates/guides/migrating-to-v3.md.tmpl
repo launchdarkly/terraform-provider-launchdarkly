@@ -90,7 +90,8 @@ To convert a configuration directory:
 2. Review the dry-run output. The tool prints each file it intends to change.
 3. Run the same command without `-dry-run` to write the changes. Add `-recursive` to convert locally vendored modules in the same pass.
 4. Run `terraform fmt` to normalize whitespace.
-5. Update the provider version constraint to `~> 3.0` and run `terraform plan`.
+5. Check any `note:` lines the tool printed. For example, an environment whose `key` is a variable or local becomes a parenthesized map key, such as `(local.env_key) = { ... }`; confirm the expression is the one you expect.
+6. Update the provider version constraint to `~> 3.0` and run `terraform plan`.
 
 ## Finish the migration by hand
 
@@ -100,6 +101,7 @@ The tool converts syntax only. Complete these follow-ups yourself:
 - Rewrite `dynamic` blocks. A `dynamic "variations"` block needs a for expression, for example `variations = [for v in var.values : { value = v }]`. The tool warns with the file and resource address, and it leaves the attribute unchanged.
 - Upgrade modules sourced from a registry or a git URL. The tool rewrites only files it reaches on disk, so upgrade those modules at their source.
 - Rewrite positional references to `launchdarkly_project` environments. The tool converts the `environments` block to a map but does not edit index expressions elsewhere in your config; it warns on each one with the exact replacement (e.g. `environments[0]` → `environments["production"]`, and `environments[*]` → `values(...)`). Apply those edits by hand.
+- Review projects that pair `lifecycle { ignore_changes = [environments] }` with standalone `launchdarkly_environment` resources. This v2 pattern keeps working in v3: `ignore_changes` preserves the standalone-managed environments in the authoritative map, so nothing is deleted. If you remove the `ignore_changes` entry, first declare every environment in the project's `environments` map, or the next apply deletes the undeclared ones.
 
 ## How v3 upgrades your state
 
@@ -118,7 +120,7 @@ The provider includes a state upgrader for every resource whose state shape chan
 
 ## Your first plan after upgrading
 
-Expect a non-empty first plan after you upgrade the provider binary. v2 stored empty lists where v3 stores null, so diffs such as `policy_statements = [] -> null` appear once and apply cleanly. A few computed attributes show as known after apply on the first plan, and they resolve on apply. No resource is destroyed or recreated. The follow-up plan is empty.
+Expect a non-empty first plan after you upgrade the provider binary. v2 stored empty lists where v3 stores null, so diffs such as `policy_statements = [] -> null` appear once and apply cleanly. You may also see one-time in-place updates that re-assert values the upgrader normalized away, such as `client_side_availability` or `approval_settings` objects that match the LaunchDarkly API defaults; they apply cleanly and do not recur. A few computed attributes show as known after apply on the first plan, and they resolve on apply. No resource is destroyed or recreated. The follow-up plan is empty.
 
 ## What does not change
 
