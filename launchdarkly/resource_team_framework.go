@@ -72,43 +72,43 @@ This resource allows you to create and manage a team within your LaunchDarkly or
 
 func teamSchemaAttributes() map[string]schema.Attribute {
 	return map[string]schema.Attribute{
-			"id": schema.StringAttribute{
-				Computed:      true,
-				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
-			},
-			KEY: schema.StringAttribute{
-				Required:      true,
-				Description:   "The team key. A change in this field will force the destruction of the existing resource and the creation of a new one.",
-				PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
-			},
-			NAME: schema.StringAttribute{
-				Required:    true,
-				Description: "A human-friendly name for the team.",
-			},
-			DESCRIPTION: schema.StringAttribute{
-				Optional:    true,
-				Computed:    true,
-				Description: "The team description.",
-			},
-			MEMBER_IDS: schema.SetAttribute{
-				Optional:    true,
-				Computed:    true,
-				ElementType: types.StringType,
-				Description: "List of member IDs who belong to the team.",
-			},
-			MAINTAINERS: schema.SetAttribute{
-				Optional:    true,
-				Computed:    true,
-				ElementType: types.StringType,
-				Description: "List of member IDs for users who maintain the team.",
-			},
-			CUSTOM_ROLE_KEYS: schema.SetAttribute{
-				Optional:    true,
-				Computed:    true,
-				ElementType: types.StringType,
-				Description: "List of custom role keys the team will access. The referenced custom roles must already exist in LaunchDarkly. If they don't, the provider may behave unexpectedly.",
-			},
-			ROLE_ATTRIBUTES: frameworkRoleAttributesResourceAttribute(),
+		"id": schema.StringAttribute{
+			Computed:      true,
+			PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+		},
+		KEY: schema.StringAttribute{
+			Required:      true,
+			Description:   "The team key. A change in this field will force the destruction of the existing resource and the creation of a new one.",
+			PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
+		},
+		NAME: schema.StringAttribute{
+			Required:    true,
+			Description: "A human-friendly name for the team.",
+		},
+		DESCRIPTION: schema.StringAttribute{
+			Optional:    true,
+			Computed:    true,
+			Description: "The team description.",
+		},
+		MEMBER_IDS: schema.SetAttribute{
+			Optional:    true,
+			Computed:    true,
+			ElementType: types.StringType,
+			Description: "List of member IDs who belong to the team.",
+		},
+		MAINTAINERS: schema.SetAttribute{
+			Optional:    true,
+			Computed:    true,
+			ElementType: types.StringType,
+			Description: "List of member IDs for users who maintain the team.",
+		},
+		CUSTOM_ROLE_KEYS: schema.SetAttribute{
+			Optional:    true,
+			Computed:    true,
+			ElementType: types.StringType,
+			Description: "List of custom role keys the team will access. The referenced custom roles must already exist in LaunchDarkly. If they don't, the provider may behave unexpectedly.",
+		},
+		ROLE_ATTRIBUTES: frameworkRoleAttributesResourceAttribute(),
 	}
 }
 
