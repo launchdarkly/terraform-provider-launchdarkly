@@ -12,7 +12,7 @@ metadata:
 The LaunchDarkly Terraform provider v3.0.0 finished the migration from `terraform-plugin-sdk/v2` to `terraform-plugin-framework`. Every former `schema.Block` is now a nested attribute. HCL that worked against v2.x using block syntax (`name { ... }`) fails to parse against v3 with `Unsupported block type` or `Missing required argument`. The fix is mechanical, but the target syntax depends on the attribute's cardinality:
 
 - **List/Set nested attributes** (genuinely plural, e.g. `variations`, `rules`, `statements`) → `name = [{ ... }]`.
-- **Single nested attributes** (genuinely one object — `client_side_availability`, `defaults`, `default_client_side_availability`, `fallthrough`, `approval_settings`, `segment_approval_settings`, `instructions`, `boolean_defaults`) → `name = { ... }`. These were modeled as max-1 lists through `3.0.0-beta.3` and switched to single objects in `3.0.0-beta.4` (REL-14237), so the bracketless object form is the correct syntax from `3.0.0-beta.4` on, including GA. **Only on `3.0.0-beta.1`–`beta.3` use the list form `= [{ ... }]` instead.**
+- **Single nested attributes** (genuinely one object — `client_side_availability`, `defaults`, `default_client_side_availability`, `fallthrough`, `approval_settings`, `segment_approval_settings`, `instructions`, `boolean_defaults`) → `name = { ... }`. The bracketless object form is the correct v3 syntax (REL-14237).
 - **Map nested attributes** (keyed by a natural key — `launchdarkly_project.environments` by env `key`, `launchdarkly_feature_flag.custom_properties` by property `key`, `launchdarkly_ai_agent_graph.edges` by edge `key`) → `name = { "<key>" = { ... } }`. Each block's `key` value becomes the map key; the `key` attribute is also **kept inside** the object (Optional+Computed in v3, equals the map key) so `.environments["x"].key` references keep working (REL-14236). Reordering/adding/removing one entry no longer churns the others.
 - **Plain map attribute** (`role_attributes` on `launchdarkly_team` / `launchdarkly_team_member`) → `role_attributes = { "<key>" = ["<values>", ...] }`. The `{key, values}` object collapses entirely: the map key is the role attribute key and the value is the string list, matching `launchdarkly_team_role_mapping`.
 
@@ -81,32 +81,32 @@ Every attribute that changed from block → nested attribute in v3. The **Type**
 | `launchdarkly_custom_role` | `policy` | Set | Deprecated; prefer `policy_statements`. |
 | `launchdarkly_custom_role` | `policy_statements` | List | |
 | `launchdarkly_relay_proxy_configuration` | `policy` | List | Required. |
-| `launchdarkly_project` | `default_client_side_availability` | **Object** | v3.0.0 GA: `= { ... }`. Was List (max 1) through `3.0.0-beta.3`. |
-| `launchdarkly_project` | `environments` | **Map** | Keyed by env `key`: `= { "<key>" = { key = "<key>", ... } }`. The `key` stays inside the object (Optional+Computed, equals the map key). Required, at least one entry; authoritative (an env removed from the map is deleted). Use `lifecycle { ignore_changes = [environments] }` to manage environments outside Terraform. Was an ordered List through `3.0.0-beta.3` (REL-14236); map from `3.0.0-beta.4`. |
-| `launchdarkly_project.environments["<key>"]` | `approval_settings` | **Object** | Nested inside each environment map value. v3.0.0 GA: `= { ... }`. Was List (max 1) through `3.0.0-beta.3`. |
-| `launchdarkly_environment` | `approval_settings` | **Object** | Same shape as inline-in-project. v3.0.0 GA: `= { ... }`. |
+| `launchdarkly_project` | `default_client_side_availability` | **Object** | `= { ... }`. |
+| `launchdarkly_project` | `environments` | **Map** | Keyed by env `key`: `= { "<key>" = { key = "<key>", ... } }`. The `key` stays inside the object (Optional+Computed, equals the map key). Required, at least one entry; authoritative (an env removed from the map is deleted). Use `lifecycle { ignore_changes = [environments] }` to manage environments outside Terraform. (REL-14236) |
+| `launchdarkly_project.environments["<key>"]` | `approval_settings` | **Object** | Nested inside each environment map value. `= { ... }`. |
+| `launchdarkly_environment` | `approval_settings` | **Object** | Same shape as inline-in-project. `= { ... }`. |
 | `launchdarkly_environment` | `segment_approval_settings` | **Object** | Net-new in v3 (beta approvals API). `= { ... }`. |
 | `launchdarkly_segment` | `included_contexts` | List | |
 | `launchdarkly_segment` | `excluded_contexts` | List | |
 | `launchdarkly_segment` | `rules` | List | |
 | `launchdarkly_segment.rules[*]` | `clauses` | List | Nested inside each rule. |
-| `launchdarkly_flag_trigger` | `instructions` | **Object** | Required. v3.0.0 GA: `= { kind = "..." }`. Was List (max 1) through `3.0.0-beta.3`. |
+| `launchdarkly_flag_trigger` | `instructions` | **Object** | Required. `= { kind = "..." }`. |
 | `launchdarkly_view_links` | `segments` | Set | Wrap `environment_id` values in `nonsensitive()` to avoid set-hash churn — see `view.tf` in `local-testing/full-account-v2.29.original` for an example. |
 | `launchdarkly_metric` | `urls` | List | |
-| `launchdarkly_team` | `role_attributes` | **Plain map** | `= { "<key>" = ["<values>"] }` — the `{key, values}` object collapses to a map entry. Was Set through `3.0.0-beta.3`. |
+| `launchdarkly_team` | `role_attributes` | **Plain map** | `= { "<key>" = ["<values>"] }` — the `{key, values}` object collapses to a map entry. |
 | `launchdarkly_team_member` | `role_attributes` | **Plain map** | Same shape as on `launchdarkly_team`. |
 | `launchdarkly_ai_config_variation` | `messages` | List | |
-| `launchdarkly_flag_templates` | `boolean_defaults` | **Object** | Required. v3.0.0 GA: `= { ... }`. Was List (max 1) through `3.0.0-beta.3`. |
+| `launchdarkly_flag_templates` | `boolean_defaults` | **Object** | Required. `= { ... }`. |
 | `launchdarkly_feature_flag_environment` | `prerequisites` | List | |
 | `launchdarkly_feature_flag_environment` | `targets` | Set | |
 | `launchdarkly_feature_flag_environment` | `context_targets` | Set | |
 | `launchdarkly_feature_flag_environment` | `rules` | List | |
 | `launchdarkly_feature_flag_environment.rules[*]` | `clauses` | List | Nested inside each rule. |
-| `launchdarkly_feature_flag_environment` | `fallthrough` | **Object** | Required. v3.0.0 GA: `= { ... }`. Was List (max 1) through `3.0.0-beta.3`. |
-| `launchdarkly_feature_flag` | `client_side_availability` | **Object** | v3.0.0 GA: `= { ... }`. Was List (max 1) through `3.0.0-beta.3`. |
+| `launchdarkly_feature_flag_environment` | `fallthrough` | **Object** | Required. `= { ... }`. |
+| `launchdarkly_feature_flag` | `client_side_availability` | **Object** | `= { ... }`. |
 | `launchdarkly_feature_flag` | `variations` | List | **Required (min 1) in v3, including for boolean flags.** See gotcha §1. |
-| `launchdarkly_feature_flag` | `custom_properties` | **Map** | Keyed by property `key`: `= { "<key>" = { name = ..., value = [...] } }`. The `key` stays inside the object (Optional+Computed, equals the map key). Was Set through `3.0.0-beta.3`. |
-| `launchdarkly_feature_flag` | `defaults` | **Object** | v3.0.0 GA: `= { ... }`. Was List (max 1) through `3.0.0-beta.3`. |
+| `launchdarkly_feature_flag` | `custom_properties` | **Map** | Keyed by property `key`: `= { "<key>" = { name = ..., value = [...] } }`. The `key` stays inside the object (Optional+Computed, equals the map key). |
+| `launchdarkly_feature_flag` | `defaults` | **Object** | `= { ... }`. |
 | `launchdarkly_ai_agent_graph` | `edges` | **Map** | Net-new in v3. Keyed by edge `key`: `= { "<key>" = { source_config = ..., target_config = ... } }`. |
 
 If an attribute on a `launchdarkly_*` resource is not listed here, it was either already a primitive (no migration needed) or it was a `config` map (which uses `= { ... }` map syntax — not list-of-objects — and stayed the same across versions).
@@ -127,7 +127,7 @@ If an attribute on a `launchdarkly_*` resource is not listed here, it was either
 3. **`launchdarkly_view_links.segments` uses set semantics.** If `environment_id` is sourced from a data source field marked `Sensitive` (e.g. `data.launchdarkly_environment.x.client_side_id`), the set hash will be unstable across plans. Wrap the value in `nonsensitive(...)` to stabilize the hash. Without this you get perpetual "segments updated" drift.
 
 4. **Single-object vs map.** Several shapes use brace-ish syntax — don't confuse them:
-   - **Single objects** (no brackets, `= { ... }`): `client_side_availability`, `defaults` (feature_flag), `default_client_side_availability` (project), `fallthrough` (flag_environment), `approval_settings` (environment + project envs), `segment_approval_settings` (environment), `instructions` (flag_trigger), `boolean_defaults` (flag_templates). These are `SingleNestedAttribute` in v3.0.0 GA. A bracketed list here fails with a type error. (Through the `3.0.0-beta` pre-releases they were max-1 lists — if you target a beta pre-release, use brackets.)
+   - **Single objects** (no brackets, `= { ... }`): `client_side_availability`, `defaults` (feature_flag), `default_client_side_availability` (project), `fallthrough` (flag_environment), `approval_settings` (environment + project envs), `segment_approval_settings` (environment), `instructions` (flag_trigger), `boolean_defaults` (flag_templates). These are `SingleNestedAttribute` in v3. A bracketed list here fails with a type error.
    - **Maps of objects** (keyed object, `= { "<key>" = { ... } }`): `launchdarkly_project.environments`, `launchdarkly_feature_flag.custom_properties`, `launchdarkly_ai_agent_graph.edges`. The top-level keys are entry keys, each mapping to an object. A list `= [{ ... }]` here fails with `map of object required`. Reference elements as `environments["<key>"]`, never `environments[0]`.
    - **Plain maps** (`= { "<key>" = [ ... ] }`): `role_attributes` on team / team_member — the value is the string list directly, no inner object.
 

@@ -2,11 +2,11 @@
 
 These are the resources and data sources that v3 adds over the latest v2 line. v3 removes none. Use this matrix with Workflow B in the parent `SKILL.md`.
 
-All nine resources ship in a tagged release as of `v3.0.0-beta.4`, and all nine passed a full CRUD + data-source verification on a real account on 2026-07-02 (see the status table). Re-run Workflow B when a resource schema changes or before promoting the beta-API resources to stable. The canonical config for each is `examples/resources/launchdarkly_<name>/resource.tf` — read it at verification time rather than trusting the summaries below, since scaffolds can change.
+All nine resources ship in the current v3 release, and all nine passed a full CRUD + data-source verification on a real account on 2026-07-02 (see the status table). Re-run Workflow B when a resource schema changes or before promoting the beta-API resources to stable. The canonical config for each is `examples/resources/launchdarkly_<name>/resource.tf` — read it at verification time rather than trusting the summaries below, since scaffolds can change.
 
 | Resource | Data source | Stability | Scope | Origin |
 |---|---|---|---|---|
-| `launchdarkly_context_kind` | yes | Stable API | Project | beta.2 |
+| `launchdarkly_context_kind` | yes | Stable API | Project | core v3 line |
 | `launchdarkly_announcement` | no | Stable API | Account | scaffold #460 |
 | `launchdarkly_oauth_client` | yes | Stable API | Account | scaffold #466 |
 | `launchdarkly_ai_agent_graph` | yes | Beta API | Project | scaffold #475 |
