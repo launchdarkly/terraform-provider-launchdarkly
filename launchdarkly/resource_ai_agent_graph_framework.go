@@ -22,6 +22,7 @@ var (
 	_ resource.Resource                     = &AIAgentGraphResource{}
 	_ resource.ResourceWithImportState      = &AIAgentGraphResource{}
 	_ resource.ResourceWithConfigValidators = &AIAgentGraphResource{}
+	_ resource.ResourceWithModifyPlan       = &AIAgentGraphResource{}
 )
 
 type AIAgentGraphResource struct {
@@ -300,6 +301,26 @@ func requiresReplaceOnClearString(_ context.Context, req planmodifier.StringRequ
 func requiresReplaceOnClearMap(_ context.Context, req planmodifier.MapRequest, resp *mapplanmodifier.RequiresReplaceIfFuncResponse) {
 	if req.PlanValue.IsNull() && !req.StateValue.IsNull() {
 		resp.RequiresReplace = true
+	}
+}
+
+// ModifyPlan pins each planned edge's Optional+Computed `key` to its map
+// key. For a new map entry whose config omits `key`, the framework plans
+// it as null and Read then fills it in, tripping the plan-vs-apply
+// consistency check ("was null, but now ...").
+func (r *AIAgentGraphResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
+	if req.Plan.Raw.IsNull() {
+		return
+	}
+	var plan AIAgentGraphResourceModel
+	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	pinned, d := pinMapKeysToMapKey(agentGraphEdgeObjectType(), plan.Edges)
+	resp.Diagnostics.Append(d...)
+	if !resp.Diagnostics.HasError() && !pinned.Equal(plan.Edges) {
+		resp.Diagnostics.Append(resp.Plan.SetAttribute(ctx, path.Root(EDGES), pinned)...)
 	}
 }
 

@@ -484,6 +484,20 @@ func (r *FeatureFlagResource) ModifyPlan(ctx context.Context, req resource.Modif
 	if req.Plan.Raw.IsNull() {
 		return
 	}
+	// Pin each planned custom property's Optional+Computed `key` to its
+	// map key. For a new map entry whose config omits `key`, the
+	// framework plans it as null and Read then fills it in, tripping the
+	// plan-vs-apply consistency check ("was null, but now ...").
+	var planModel FeatureFlagResourceModel
+	resp.Diagnostics.Append(req.Plan.Get(ctx, &planModel)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	pinned, d := pinMapKeysToMapKey(types.ObjectType{AttrTypes: featureFlagCustomPropertyAttrTypes}, planModel.CustomProperties)
+	resp.Diagnostics.Append(d...)
+	if !resp.Diagnostics.HasError() && !pinned.Equal(planModel.CustomProperties) {
+		resp.Diagnostics.Append(resp.Plan.SetAttribute(ctx, path.Root(CUSTOM_PROPERTIES), pinned)...)
+	}
 	if !req.State.Raw.IsNull() {
 		return
 	}

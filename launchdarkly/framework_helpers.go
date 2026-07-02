@@ -201,3 +201,49 @@ func mapStringFromAttr(ctx context.Context, m types.Map) (map[string]string, dia
 	d := m.ElementsAs(ctx, &out, false)
 	return out, d
 }
+
+// pinMapKeysToMapKey rewrites a planned MapNestedAttribute value so each
+// element's Optional+Computed `key` attribute equals its map key. For a
+// new map entry whose config omits `key`, the framework plans it as
+// null and Read then fills it in — tripping the plan-vs-apply
+// consistency check ("was null, but now ..."). Pinning at plan time
+// (the launchdarkly_project environments pattern) makes the planned and
+// applied values identical. Elements whose key is already known are
+// passed through untouched.
+func pinMapKeysToMapKey(objType types.ObjectType, m types.Map) (types.Map, diag.Diagnostics) {
+	var diags diag.Diagnostics
+	if m.IsNull() || m.IsUnknown() {
+		return m, diags
+	}
+	els := m.Elements()
+	if len(els) == 0 {
+		return m, diags
+	}
+	out := make(map[string]attr.Value, len(els))
+	changed := false
+	for key, el := range els {
+		obj, ok := el.(types.Object)
+		if !ok || obj.IsNull() || obj.IsUnknown() {
+			out[key] = el
+			continue
+		}
+		attrs := obj.Attributes()
+		if kv, ok := attrs[KEY]; ok {
+			if sv, isStr := kv.(types.String); isStr && (sv.IsNull() || sv.IsUnknown()) {
+				attrs[KEY] = types.StringValue(key)
+				newObj, d := types.ObjectValue(objType.AttrTypes, attrs)
+				diags.Append(d...)
+				out[key] = newObj
+				changed = true
+				continue
+			}
+		}
+		out[key] = el
+	}
+	if !changed || diags.HasError() {
+		return m, diags
+	}
+	newMap, d := types.MapValue(objType, out)
+	diags.Append(d...)
+	return newMap, diags
+}
