@@ -35,12 +35,13 @@ resource "launchdarkly_ai_agent_graph" "support_workflow" {
   name            = "Support workflow"
   description     = "Routes incoming requests from the triage agent to the support agent"
   root_config_key = launchdarkly_ai_config.triage_agent.key
-  edges = [{
-    key           = "triage-to-support"
-    source_config = launchdarkly_ai_config.triage_agent.key
-    target_config = launchdarkly_ai_config.support_agent.key
-    handoff       = jsonencode({ reason = "needs_human_support" })
-  }]
+  edges = {
+    "triage-to-support" = {
+      source_config = launchdarkly_ai_config.triage_agent.key
+      target_config = launchdarkly_ai_config.support_agent.key
+      handoff       = jsonencode({ reason = "needs_human_support" })
+    }
+  }
 }
 ```
 
@@ -56,7 +57,7 @@ resource "launchdarkly_ai_agent_graph" "support_workflow" {
 ### Optional
 
 - `description` (String) A description of the agent graph.
-- `edges` (Attributes List) The edges in the graph. Each edge connects a source AI Config to a target AI Config. If `edges` or `root_config_key` is set, both must be set, and `edges` must contain at least one edge. Clearing this (reverting to a metadata-only graph) forces the destruction and recreation of the resource. (see [below for nested schema](#nestedatt--edges))
+- `edges` (Attributes Map) The edges in the graph, keyed by edge key. Each edge connects a source AI Config to a target AI Config. If `edges` or `root_config_key` is set, both must be set, and `edges` must contain at least one edge. Clearing this (reverting to a metadata-only graph) forces the destruction and recreation of the resource. (see [below for nested schema](#nestedatt--edges))
 - `maintainer_id` (String) The member ID of the maintainer for this agent graph. Defaults to the member associated with the access token. Conflicts with `maintainer_team_key`.
 - `maintainer_team_key` (String) The team key of the maintainer team for this agent graph. Conflicts with `maintainer_id`.
 - `root_config_key` (String) The AI Config key of the root node of the graph. If `root_config_key` or `edges` is set, both must be set. A graph with neither defined is a metadata-only graph. Clearing this (reverting to a metadata-only graph) forces the destruction and recreation of the resource.
@@ -72,13 +73,13 @@ resource "launchdarkly_ai_agent_graph" "support_workflow" {
 
 Required:
 
-- `key` (String) A unique key for this edge within the graph.
 - `source_config` (String) The AI Config key that is the source of this edge.
 - `target_config` (String) The AI Config key that is the target of this edge.
 
 Optional:
 
 - `handoff` (String) A JSON string representing the handoff options from the source AI Config to the target AI Config.
+- `key` (String) The unique key for this edge within the graph. Must equal the map key; it defaults to the map key when omitted.
 
 ## Import
 

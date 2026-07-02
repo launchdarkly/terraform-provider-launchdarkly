@@ -13,6 +13,48 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
+// FeatureFlagResourceModelV1 is the 3.0.0-beta (schema version 1) state
+// shape: identical to the current model except custom_properties, which
+// was a Set of objects carrying the property key inline.
+type FeatureFlagResourceModelV1 struct {
+	ID                     types.String `tfsdk:"id"`
+	ProjectKey             types.String `tfsdk:"project_key"`
+	Key                    types.String `tfsdk:"key"`
+	Name                   types.String `tfsdk:"name"`
+	Description            types.String `tfsdk:"description"`
+	MaintainerID           types.String `tfsdk:"maintainer_id"`
+	MaintainerTeamKey      types.String `tfsdk:"maintainer_team_key"`
+	Tags                   types.Set    `tfsdk:"tags"`
+	VariationType          types.String `tfsdk:"variation_type"`
+	Variations             types.List   `tfsdk:"variations"`
+	Temporary              types.Bool   `tfsdk:"temporary"`
+	ClientSideAvailability types.Object `tfsdk:"client_side_availability"`
+	CustomProperties       types.Set    `tfsdk:"custom_properties"`
+	Defaults               types.Object `tfsdk:"defaults"`
+	Archived               types.Bool   `tfsdk:"archived"`
+	Deprecated             types.Bool   `tfsdk:"deprecated"`
+	ViewKeys               types.Set    `tfsdk:"view_keys"`
+}
+
+// customPropertiesSetAttributeV0 reproduces the pre-map custom_properties
+// shape — a set of {key, name, value} objects — used only in PriorSchema
+// declarations for the v0/v1 state upgraders.
+func customPropertiesSetAttributeV0() schema.SetNestedAttribute {
+	return schema.SetNestedAttribute{
+		Optional: true,
+		NestedObject: schema.NestedAttributeObject{
+			Attributes: map[string]schema.Attribute{
+				KEY:  schema.StringAttribute{Required: true},
+				NAME: schema.StringAttribute{Required: true},
+				VALUE: schema.ListAttribute{
+					Required:    true,
+					ElementType: types.StringType,
+				},
+			},
+		},
+	}
+}
+
 type FeatureFlagResourceModelV0 struct {
 	ID                     types.String `tfsdk:"id"`
 	ProjectKey             types.String `tfsdk:"project_key"`
@@ -75,18 +117,6 @@ func featureFlagSchemaAttributesV0() map[string]schema.Attribute {
 	// key. Pin the prior schema to the original set shape so genuine v2.x
 	// state still decodes; the upgrader body re-keys via
 	// customPropertiesMapFromV0Set.
-	attrs[CUSTOM_PROPERTIES] = schema.SetNestedAttribute{
-		Optional: true,
-		NestedObject: schema.NestedAttributeObject{
-			Attributes: map[string]schema.Attribute{
-				KEY:  schema.StringAttribute{Required: true},
-				NAME: schema.StringAttribute{Required: true},
-				VALUE: schema.ListAttribute{
-					Required:    true,
-					ElementType: types.StringType,
-				},
-			},
-		},
-	}
+	attrs[CUSTOM_PROPERTIES] = customPropertiesSetAttributeV0()
 	return attrs
 }

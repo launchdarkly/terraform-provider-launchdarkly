@@ -30,7 +30,7 @@ resource "launchdarkly_feature_flag" "example" {
 }
 ```
 
-Four attributes hold exactly one object rather than a list, so they use object syntax — a bare `{ ... }` with no brackets: `client_side_availability` and `defaults` on `launchdarkly_feature_flag`, `default_client_side_availability` on `launchdarkly_project`, and `fallthrough` on `launchdarkly_feature_flag_environment`. The `migrate-tf-syntax` tool emits this form for you:
+Attributes that hold exactly one object rather than a list use object syntax — a bare `{ ... }` with no brackets: `client_side_availability` and `defaults` on `launchdarkly_feature_flag`, `default_client_side_availability` on `launchdarkly_project`, `fallthrough` on `launchdarkly_feature_flag_environment`, `approval_settings` on `launchdarkly_environment` (and inside each project environment), `segment_approval_settings` on `launchdarkly_environment`, and `instructions` on `launchdarkly_flag_trigger`. The `migrate-tf-syntax` tool emits this form for you:
 
 ```hcl
 # v2 block syntax            # v3 object syntax (no brackets)
@@ -59,6 +59,12 @@ The map is **authoritative**: an environment removed from the map is deleted, an
 ~> **Warning:** Changing an environment's key (the map key) deletes that environment — including its SDK keys and all flag targeting — and creates a new one.
 
 Reference an environment by its key instead of by index: a v2 interpolation such as `launchdarkly_project.example.environments[0].client_side_id` becomes `launchdarkly_project.example.environments["production"].client_side_id`. The `migrate-tf-syntax` tool does **not** rewrite these positional references (auto-editing arbitrary expressions risks corrupting your config), but it **detects them and prints the exact replacement** to make — including the resolved key — so the fix is mechanical. See "Finish the migration by hand" below.
+
+Three more collections follow the same key-addressed map pattern, and the tool rewrites all of them:
+
+- `custom_properties` on `launchdarkly_feature_flag` becomes a map keyed by the custom property `key`: `custom_properties = { "my.key" = { name = ..., value = [...] } }`.
+- `role_attributes` on `launchdarkly_team` and `launchdarkly_team_member` becomes a plain map of string lists keyed by the role attribute key: `role_attributes = { myAttribute = ["value1", "value2"] }` — the same shape `launchdarkly_team_role_mapping` already uses.
+- `edges` on the new `launchdarkly_ai_agent_graph` resource is a map keyed by edge key (net-new in v3, so no rewrite applies).
 
 ## Prerequisites
 
@@ -97,12 +103,16 @@ The tool converts syntax only. Complete these follow-ups yourself:
 
 ## How v3 upgrades your state
 
-The provider includes a state upgrader for every resource that lost an attribute. On your first apply, the provider migrates your state automatically. You do not edit the state file by hand:
+The provider includes a state upgrader for every resource whose state shape changed. On your first apply, the provider migrates your state automatically. You do not edit the state file by hand:
 
 - `launchdarkly_access_token`: moves `policy_statements` into `inline_roles`, and discards `expire`.
 - `launchdarkly_custom_role`: converts `policy` into `policy_statements`.
-- `launchdarkly_feature_flag`: converts `include_in_snippet` into `client_side_availability`.
-- `launchdarkly_project`: converts `include_in_snippet` into `default_client_side_availability`, and re-keys the ordered `environments` list into a map keyed by environment key.
+- `launchdarkly_feature_flag`: converts `include_in_snippet` into `client_side_availability`, and re-keys `custom_properties` into a map keyed by property key.
+- `launchdarkly_project`: converts `include_in_snippet` into `default_client_side_availability`, re-keys the ordered `environments` list into a map keyed by environment key, and converts each environment's `approval_settings` to an object.
+- `launchdarkly_environment`: converts `approval_settings` (and `segment_approval_settings`) to objects.
+- `launchdarkly_feature_flag_environment`: converts `fallthrough` to an object.
+- `launchdarkly_flag_trigger`: converts `instructions` to an object.
+- `launchdarkly_team` and `launchdarkly_team_member`: re-key `role_attributes` into a map of string lists.
 - `launchdarkly_metric`: discards `is_active`.
 
 ## Your first plan after upgrading

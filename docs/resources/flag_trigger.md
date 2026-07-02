@@ -26,9 +26,9 @@ resource "launchdarkly_flag_trigger" "example" {
   env_key         = "test"
   flag_key        = launchdarkly_feature_flag.trigger_flag.key
   integration_key = "generic-trigger"
-  instructions = [{
+  instructions = {
     kind = "turnFlagOn"
-  }]
+  }
   enabled = false
 }
 ```
@@ -41,7 +41,7 @@ resource "launchdarkly_flag_trigger" "example" {
 - `enabled` (Boolean) Whether the trigger is currently active or not.
 - `env_key` (String) The unique key of the environment the flag trigger will work in. A change in this field will force the destruction of the existing resource and the creation of a new one.
 - `flag_key` (String) The unique key of the associated flag. A change in this field will force the destruction of the existing resource and the creation of a new one.
-- `instructions` (Attributes List) Instructions containing the action to perform when invoking the trigger. Currently supported flag actions are `turnFlagOn` and `turnFlagOff`. This must be passed as the key-value pair `{ kind = "<flag_action>" }`. (see [below for nested schema](#nestedatt--instructions))
+- `instructions` (Attributes) The instruction containing the action to perform when invoking the trigger. Currently supported flag actions are `turnFlagOn` and `turnFlagOff`. This must be passed as the key-value pair `{ kind = "<flag_action>" }`. (see [below for nested schema](#nestedatt--instructions))
 - `integration_key` (String) The unique identifier of the integration you intend to set your trigger up with. Currently supported are `generic-trigger`, `datadog`, `dynatrace`, `dynatrace-cloud-automation`, `honeycomb`, `new-relic-apm`, and `signalfx`. `generic-trigger` should be used for integrations not explicitly supported. A change in this field will force the destruction of the existing resource and the creation of a new one.
 - `project_key` (String) The unique key of the project encompassing the associated flag. A change in this field will force the destruction of the existing resource and the creation of a new one.
 

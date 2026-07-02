@@ -13,12 +13,12 @@ resource "launchdarkly_environment" "approvals_example" {
   color = "ff00ff"
   tags  = ["terraform", "staging"]
 
-  approval_settings = [{
+  approval_settings = {
     required                   = true
     can_review_own_request     = true
     min_num_approvals          = 2
     can_apply_declined_changes = true
-  }]
+  }
 
   project_key = launchdarkly_project.example.key
 }
@@ -34,12 +34,12 @@ resource "launchdarkly_environment" "segment_approvals_example" {
   color = "ff00ff"
   tags  = ["terraform", "staging"]
 
-  segment_approval_settings = [{
+  segment_approval_settings = {
     required                   = true
     can_review_own_request     = true
     min_num_approvals          = 2
     can_apply_declined_changes = true
-  }]
+  }
 
   project_key = launchdarkly_project.example.key
 }

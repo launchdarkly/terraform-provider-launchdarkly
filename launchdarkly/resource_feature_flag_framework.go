@@ -81,7 +81,7 @@ func (r *FeatureFlagResource) Metadata(_ context.Context, req resource.MetadataR
 
 func (r *FeatureFlagResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Version: 1,
+		Version: 2,
 		Description: `Provides a LaunchDarkly feature flag resource.
 
 This resource allows you to create and manage feature flags within your LaunchDarkly organization.
@@ -311,7 +311,48 @@ func featureFlagCSAMatchesAPIShape(ctx context.Context, csa types.Object) bool {
 
 func (r *FeatureFlagResource) UpgradeState(_ context.Context) map[int64]resource.StateUpgrader {
 	priorSchema := schema.Schema{Attributes: featureFlagSchemaAttributesV0()}
+	// v1 (3.0.0-beta) state differs from v2 (current) only in the
+	// custom_properties shape: a set whose elements carried the property
+	// key inline, re-keyed here into the map.
+	v1Attrs := featureFlagSchemaAttributes()
+	v1Attrs[CUSTOM_PROPERTIES] = customPropertiesSetAttributeV0()
+	v1Schema := schema.Schema{Attributes: v1Attrs}
 	return map[int64]resource.StateUpgrader{
+		1: {
+			PriorSchema: &v1Schema,
+			StateUpgrader: func(ctx context.Context, req resource.UpgradeStateRequest, resp *resource.UpgradeStateResponse) {
+				var prior FeatureFlagResourceModelV1
+				resp.Diagnostics.Append(req.State.Get(ctx, &prior)...)
+				if resp.Diagnostics.HasError() {
+					return
+				}
+				priorCustomProps, d := customPropertiesMapFromV0Set(ctx, prior.CustomProperties)
+				resp.Diagnostics.Append(d...)
+				if resp.Diagnostics.HasError() {
+					return
+				}
+				data := FeatureFlagResourceModel{
+					ID:                     prior.ID,
+					ProjectKey:             prior.ProjectKey,
+					Key:                    prior.Key,
+					Name:                   prior.Name,
+					Description:            prior.Description,
+					MaintainerID:           prior.MaintainerID,
+					MaintainerTeamKey:      prior.MaintainerTeamKey,
+					Tags:                   prior.Tags,
+					VariationType:          prior.VariationType,
+					Variations:             prior.Variations,
+					Temporary:              prior.Temporary,
+					ClientSideAvailability: prior.ClientSideAvailability,
+					CustomProperties:       priorCustomProps,
+					Defaults:               prior.Defaults,
+					Archived:               prior.Archived,
+					Deprecated:             prior.Deprecated,
+					ViewKeys:               prior.ViewKeys,
+				}
+				resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+			},
+		},
 		0: {
 			PriorSchema: &priorSchema,
 			StateUpgrader: func(ctx context.Context, req resource.UpgradeStateRequest, resp *resource.UpgradeStateResponse) {
