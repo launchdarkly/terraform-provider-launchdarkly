@@ -32,15 +32,15 @@ resource "launchdarkly_ai_agent_graph" "test" {
 }
 `
 
-	// edges = [] (empty, non-null) with no root — must be rejected by the
+	// edges = {} (empty, non-null) with no root — must be rejected by the
 	// SizeAtLeast(1) validator rather than applied (the Read path reports no
-	// edges as null, so an explicit empty list would drift).
+	// edges as null, so an explicit empty map would drift).
 	testAccAIAgentGraphEmptyEdges = `
 resource "launchdarkly_ai_agent_graph" "test" {
 	project_key = launchdarkly_project.test.key
 	key         = "%s"
 	name        = "Empty edges graph"
-	edges       = []
+	edges       = {}
 }
 `
 
@@ -66,12 +66,13 @@ resource "launchdarkly_ai_agent_graph" "test" {
 	key             = "%s"
 	name            = "Graph with edges"
 	root_config_key = launchdarkly_ai_config.root.key
-	edges = [{
-		key           = "root-to-child"
-		source_config = launchdarkly_ai_config.root.key
-		target_config = launchdarkly_ai_config.child.key
-		handoff       = jsonencode({ reason = "escalate" })
-	}]
+	edges = {
+		"root-to-child" = {
+			source_config = launchdarkly_ai_config.root.key
+			target_config = launchdarkly_ai_config.child.key
+			handoff       = jsonencode({ reason = "escalate" })
+		}
+	}
 }
 `
 )
@@ -138,10 +139,10 @@ func TestAccAIAgentGraph_WithEdges(t *testing.T) {
 					testAccCheckAIAgentGraphExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, KEY, graphKey),
 					resource.TestCheckResourceAttr(resourceName, ROOT_CONFIG_KEY, rootKey),
-					resource.TestCheckResourceAttr(resourceName, "edges.#", "1"),
-					resource.TestCheckResourceAttr(resourceName, "edges.0.key", "root-to-child"),
-					resource.TestCheckResourceAttr(resourceName, "edges.0.source_config", rootKey),
-					resource.TestCheckResourceAttr(resourceName, "edges.0.target_config", childKey),
+					resource.TestCheckResourceAttr(resourceName, "edges.%", "1"),
+					resource.TestCheckResourceAttr(resourceName, "edges.root-to-child.key", "root-to-child"),
+					resource.TestCheckResourceAttr(resourceName, "edges.root-to-child.source_config", rootKey),
+					resource.TestCheckResourceAttr(resourceName, "edges.root-to-child.target_config", childKey),
 				),
 			},
 			{
@@ -174,7 +175,7 @@ func TestAccAIAgentGraph_ClearForcesReplace(t *testing.T) {
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckAIAgentGraphExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, ROOT_CONFIG_KEY, rootKey),
-					resource.TestCheckResourceAttr(resourceName, "edges.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "edges.%", "1"),
 				),
 			},
 			{

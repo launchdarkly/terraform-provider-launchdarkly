@@ -5,12 +5,12 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
+	"github.com/hashicorp/terraform-plugin-framework-validators/mapvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/mapplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
@@ -38,7 +38,7 @@ type AIAgentGraphResourceModel struct {
 	MaintainerID      types.String `tfsdk:"maintainer_id"`
 	MaintainerTeamKey types.String `tfsdk:"maintainer_team_key"`
 	RootConfigKey     types.String `tfsdk:"root_config_key"`
-	Edges             types.List   `tfsdk:"edges"`
+	Edges             types.Map    `tfsdk:"edges"`
 	CreationDate      types.Int64  `tfsdk:"creation_date"`
 	LastModified      types.Int64  `tfsdk:"last_modified"`
 }
@@ -114,19 +114,20 @@ func (r *AIAgentGraphResource) Schema(_ context.Context, _ resource.SchemaReques
 					),
 				},
 			},
-			EDGES: schema.ListNestedAttribute{
+			EDGES: schema.MapNestedAttribute{
 				Optional:    true,
-				Description: "The edges in the graph. Each edge connects a source AI Config to a target AI Config. If `edges` or `root_config_key` is set, both must be set, and `edges` must contain at least one edge. Clearing this (reverting to a metadata-only graph) forces the destruction and recreation of the resource.",
-				Validators: []validator.List{
+				Description: "The edges in the graph, keyed by edge key. Each edge connects a source AI Config to a target AI Config. If `edges` or `root_config_key` is set, both must be set, and `edges` must contain at least one edge. Clearing this (reverting to a metadata-only graph) forces the destruction and recreation of the resource.",
+				Validators: []validator.Map{
 					// edges only makes sense alongside a root (both-or-neither) and
-					// with at least one edge. Reject `edges = []`: the Read path
+					// with at least one edge. Reject `edges = {}`: the Read path
 					// reports a graph with no edges as null, so allowing an explicit
-					// empty list would cause a plan/apply inconsistency.
-					listvalidator.SizeAtLeast(1),
+					// empty map would cause a plan/apply inconsistency.
+					mapvalidator.SizeAtLeast(1),
+					mapvalidator.KeysAre(keyValidator()),
 				},
-				PlanModifiers: []planmodifier.List{
-					listplanmodifier.RequiresReplaceIf(
-						requiresReplaceOnClearList,
+				PlanModifiers: []planmodifier.Map{
+					mapplanmodifier.RequiresReplaceIf(
+						requiresReplaceOnClearMap,
 						"Clearing edges forces resource replacement.",
 						"Clearing `edges` forces resource replacement.",
 					),
@@ -134,9 +135,13 @@ func (r *AIAgentGraphResource) Schema(_ context.Context, _ resource.SchemaReques
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
 						KEY: schema.StringAttribute{
-							Required:    true,
-							Description: "A unique key for this edge within the graph.",
+							Optional:    true,
+							Computed:    true,
+							Description: "The unique key for this edge within the graph. Must equal the map key; it defaults to the map key when omitted.",
 							Validators:  []validator.String{keyValidator()},
+							PlanModifiers: []planmodifier.String{
+								stringplanmodifier.UseStateForUnknown(),
+							},
 						},
 						SOURCE_CONFIG: schema.StringAttribute{
 							Required:    true,
@@ -229,6 +234,30 @@ func (agentGraphRootEdgesValidator) ValidateResource(ctx context.Context, req re
 		return
 	}
 	checkAgentGraphRootEdgesPairing(data, &resp.Diagnostics)
+
+	// Each edge's `key` (when set) must equal its map key. The map key is
+	// the edge's authoritative identity; a per-attribute validator can't
+	// see its own map key, so the cross-check lives here.
+	if data.Edges.IsNull() {
+		return
+	}
+	edgeModels := map[string]agentGraphEdgeModel{}
+	resp.Diagnostics.Append(data.Edges.ElementsAs(ctx, &edgeModels, false)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	for mapKey, e := range edgeModels {
+		if e.Key.IsNull() || e.Key.IsUnknown() {
+			continue
+		}
+		if e.Key.ValueString() != mapKey {
+			resp.Diagnostics.AddAttributeError(
+				path.Root(EDGES).AtMapKey(mapKey).AtName(KEY),
+				"edge key must match its map key",
+				fmt.Sprintf("edge %q sets key = %q; the nested `key` must equal the map key (or be omitted). The map key is the edge's identity.", mapKey, e.Key.ValueString()),
+			)
+		}
+	}
 }
 
 const agentGraphRootEdgesPairingError = "`root_config_key` and `edges` must both be set or both be unset. Set both to define a graph with nodes, or neither for a metadata-only graph."
@@ -268,7 +297,7 @@ func requiresReplaceOnClearString(_ context.Context, req planmodifier.StringRequ
 	}
 }
 
-func requiresReplaceOnClearList(_ context.Context, req planmodifier.ListRequest, resp *listplanmodifier.RequiresReplaceIfFuncResponse) {
+func requiresReplaceOnClearMap(_ context.Context, req planmodifier.MapRequest, resp *mapplanmodifier.RequiresReplaceIfFuncResponse) {
 	if req.PlanValue.IsNull() && !req.StateValue.IsNull() {
 		resp.RequiresReplace = true
 	}
@@ -326,7 +355,7 @@ func (r *AIAgentGraphResource) Create(ctx context.Context, req resource.CreateRe
 		post.RootConfigKey = ldapi.PtrString(plan.RootConfigKey.ValueString())
 	}
 	if edgesSet {
-		var edgeModels []agentGraphEdgeModel
+		edgeModels := map[string]agentGraphEdgeModel{}
 		resp.Diagnostics.Append(plan.Edges.ElementsAs(ctx, &edgeModels, false)...)
 		if resp.Diagnostics.HasError() {
 			return
@@ -426,7 +455,7 @@ func (r *AIAgentGraphResource) Update(ctx context.Context, req resource.UpdateRe
 			patch.RootConfigKey = ldapi.PtrString(plan.RootConfigKey.ValueString())
 		}
 		if edgesSet {
-			var edgeModels []agentGraphEdgeModel
+			edgeModels := map[string]agentGraphEdgeModel{}
 			resp.Diagnostics.Append(plan.Edges.ElementsAs(ctx, &edgeModels, false)...)
 			if resp.Diagnostics.HasError() {
 				return
@@ -557,13 +586,13 @@ func (r *AIAgentGraphResource) readIntoModel(
 	}
 	if len(edgeModels) == 0 {
 		// Optional-only attr: null-when-empty so a metadata-only graph stays null.
-		data.Edges = types.ListNull(agentGraphEdgeObjectType())
+		data.Edges = types.MapNull(agentGraphEdgeObjectType())
 		return
 	}
-	edgesList, d := types.ListValueFrom(ctx, agentGraphEdgeObjectType(), edgeModels)
+	edgesMap, d := types.MapValueFrom(ctx, agentGraphEdgeObjectType(), edgeModels)
 	diags.Append(d...)
 	if diags.HasError() {
 		return
 	}
-	data.Edges = edgesList
+	data.Edges = edgesMap
 }

@@ -2,6 +2,7 @@ package launchdarkly
 
 import (
 	"fmt"
+	"sort"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -57,13 +58,26 @@ func aiAgentGraphIDToKeys(id string) (projectKey, graphKey string, err error) {
 	return parts[0], parts[1], nil
 }
 
-// agentGraphEdgePostsFromModel converts the Terraform edge models into the
-// generated client's POST representation used when creating a graph.
-func agentGraphEdgePostsFromModel(edges []agentGraphEdgeModel) ([]ldapi.AgentGraphEdgePost, error) {
+// sortedEdgeKeys returns the edge-map keys in a stable order so request
+// bodies are deterministic.
+func sortedEdgeKeys(edges map[string]agentGraphEdgeModel) []string {
+	keys := make([]string, 0, len(edges))
+	for k := range edges {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	return keys
+}
+
+// agentGraphEdgePostsFromModel converts the Terraform edge models (keyed by
+// edge key) into the generated client's POST representation used when
+// creating a graph. The map key is the edge's authoritative key.
+func agentGraphEdgePostsFromModel(edges map[string]agentGraphEdgeModel) ([]ldapi.AgentGraphEdgePost, error) {
 	out := make([]ldapi.AgentGraphEdgePost, 0, len(edges))
-	for _, e := range edges {
-		edge := ldapi.NewAgentGraphEdgePost(e.Key.ValueString(), e.SourceConfig.ValueString(), e.TargetConfig.ValueString())
-		handoff, err := edgeHandoffMap(e)
+	for _, k := range sortedEdgeKeys(edges) {
+		e := edges[k]
+		edge := ldapi.NewAgentGraphEdgePost(k, e.SourceConfig.ValueString(), e.TargetConfig.ValueString())
+		handoff, err := edgeHandoffMap(k, e)
 		if err != nil {
 			return nil, err
 		}
@@ -73,14 +87,15 @@ func agentGraphEdgePostsFromModel(edges []agentGraphEdgeModel) ([]ldapi.AgentGra
 	return out, nil
 }
 
-// agentGraphEdgesFromModel converts the Terraform edge models into the
-// generated client's representation used when updating a graph (PATCH replaces
-// all existing edges).
-func agentGraphEdgesFromModel(edges []agentGraphEdgeModel) ([]ldapi.AgentGraphEdge, error) {
+// agentGraphEdgesFromModel converts the Terraform edge models (keyed by edge
+// key) into the generated client's representation used when updating a graph
+// (PATCH replaces all existing edges).
+func agentGraphEdgesFromModel(edges map[string]agentGraphEdgeModel) ([]ldapi.AgentGraphEdge, error) {
 	out := make([]ldapi.AgentGraphEdge, 0, len(edges))
-	for _, e := range edges {
-		edge := ldapi.NewAgentGraphEdge(e.Key.ValueString(), e.SourceConfig.ValueString(), e.TargetConfig.ValueString())
-		handoff, err := edgeHandoffMap(e)
+	for _, k := range sortedEdgeKeys(edges) {
+		e := edges[k]
+		edge := ldapi.NewAgentGraphEdge(k, e.SourceConfig.ValueString(), e.TargetConfig.ValueString())
+		handoff, err := edgeHandoffMap(k, e)
 		if err != nil {
 			return nil, err
 		}
@@ -90,33 +105,33 @@ func agentGraphEdgesFromModel(edges []agentGraphEdgeModel) ([]ldapi.AgentGraphEd
 	return out, nil
 }
 
-func edgeHandoffMap(e agentGraphEdgeModel) (map[string]interface{}, error) {
+func edgeHandoffMap(key string, e agentGraphEdgeModel) (map[string]interface{}, error) {
 	if e.Handoff.IsNull() || e.Handoff.IsUnknown() || e.Handoff.ValueString() == "" {
 		return nil, nil
 	}
 	m, err := jsonStringToMap(e.Handoff.ValueString())
 	if err != nil {
-		return nil, fmt.Errorf("invalid handoff JSON for edge %q: %w", e.Key.ValueString(), err)
+		return nil, fmt.Errorf("invalid handoff JSON for edge %q: %w", key, err)
 	}
 	return m, nil
 }
 
 // agentGraphEdgeModelsFromAPI converts the API edge representation into the
-// Terraform edge models. handoff serializes back to a JSON string, null when
-// empty so an unset handoff round-trips cleanly.
-func agentGraphEdgeModelsFromAPI(edges []ldapi.AgentGraphEdge) ([]agentGraphEdgeModel, error) {
-	out := make([]agentGraphEdgeModel, 0, len(edges))
+// Terraform edge models keyed by edge key. handoff serializes back to a JSON
+// string, null when empty so an unset handoff round-trips cleanly.
+func agentGraphEdgeModelsFromAPI(edges []ldapi.AgentGraphEdge) (map[string]agentGraphEdgeModel, error) {
+	out := make(map[string]agentGraphEdgeModel, len(edges))
 	for _, e := range edges {
 		handoffJSON, err := mapToJsonString(e.Handoff)
 		if err != nil {
 			return nil, fmt.Errorf("failed to serialize handoff for edge %q: %w", e.GetKey(), err)
 		}
-		out = append(out, agentGraphEdgeModel{
+		out[e.GetKey()] = agentGraphEdgeModel{
 			Key:          types.StringValue(e.GetKey()),
 			SourceConfig: types.StringValue(e.GetSourceConfig()),
 			TargetConfig: types.StringValue(e.GetTargetConfig()),
 			Handoff:      stringValueOrNull(handoffJSON),
-		})
+		}
 	}
 	return out, nil
 }
