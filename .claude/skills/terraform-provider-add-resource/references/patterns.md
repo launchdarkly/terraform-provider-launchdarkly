@@ -12,6 +12,8 @@ This provider migrated to terraform-plugin-framework; inline SDKv2 templates wer
 | Resource-level `ModifyPlan` (cross-field / upgrade-preserving plan logic) | `launchdarkly/resource_access_token_framework.go` |
 | JSON-string attribute (validator + normalize plan modifier) | `launchdarkly/resource_ai_tool_framework.go` |
 | Nested attributes at scale (`ListNestedAttribute`, `SingleNestedAttribute`) | `launchdarkly/resource_feature_flag_framework.go` |
+| Map-keyed collection (`MapNestedAttribute`, inner key kept + `ValidateConfig` + `pinMapKeysToMapKey` ModifyPlan) | `launchdarkly/resource_feature_flag_framework.go` (`custom_properties`), `launchdarkly/resource_ai_agent_graph_framework.go` (`edges`), `launchdarkly/environments_framework.go` (project `environments`) |
+| Plain map attribute (`MapAttribute` of lists, collapsed `{key, values}` pairs) | `launchdarkly/role_attributes_framework.go` |
 | State upgrade from v2.x wire format (`UpgradeState`, null-vs-empty fixes) | `launchdarkly/resource_webhook_framework.go`, `launchdarkly/resource_metric_upgrade.go` |
 | Shared conversion helpers (use, don't reinvent) | `launchdarkly/framework_helpers.go` |
 | Validators | `launchdarkly/framework_validators.go`, `launchdarkly/framework_json_helpers.go` |

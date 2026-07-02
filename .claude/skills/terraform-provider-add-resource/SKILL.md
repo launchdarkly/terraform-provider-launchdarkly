@@ -76,7 +76,12 @@ Each resource lives in `resource_<name>_framework.go` and consists of:
 
 Schema rules:
 
-- **All nested structures are `*NestedAttribute`** (`ListNestedAttribute` / `SetNestedAttribute` / `SingleNestedAttribute`). The provider has **zero** `schema.Blocks` — do not add one. User HCL is `name = { ... }` / `name = [{ ... }]`.
+- **All nested structures are `*NestedAttribute`** (`ListNestedAttribute` / `SetNestedAttribute` / `SingleNestedAttribute` / `MapNestedAttribute`). The provider has **zero** `schema.Blocks` — do not add one. User HCL is `name = { ... }` / `name = [{ ... }]`.
+- **Pick the nested shape from the API's semantics, not from habit** (GA convention since the v3 RC sweep — REL-14236/14237):
+  - API field holds **at most one object** (max-1, or CRUD only ever reads element `[0]`) → `SingleNestedAttribute` (`name = { ... }`). Never model a single object as a max-1 list — check what the CRUD code actually does with the collection, not just how a previous schema labeled it (`boolean_defaults` was mislabeled "index-addressed" twice before conversion).
+  - Collection whose elements have a **natural unique key** the API treats as identity, and whose **order is not semantic** → `MapNestedAttribute` keyed by it (`name = { "<key>" = { ... } }`). Keep the key **inside** the object too (Optional+Computed, `UseStateForUnknown`), enforce key == map key in `ValidateConfig`, and add the ModifyPlan pinning below. Exemplars: `project.environments`, `feature_flag.custom_properties`, `ai_agent_graph.edges`.
+  - `{key, values}` **pair collections** collapse to a plain `MapAttribute` (`name = { "<key>" = [...] }`) — see `role_attributes`.
+  - Keep `ListNestedAttribute` only when order matters (rules, clauses, stages, index-addressed variations) and `SetNestedAttribute` only when there is genuinely no key. Sets with Computed or Sensitive nested fields are a trap (set-hash instability) — prefer a map if any key exists.
 - **`Default` requires `Computed: true`** — the framework enforces it; any attribute with `Default:` must also be `Computed`.
 - Identity fields (`project_key`, `key`) get `PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()}` (framework's ForceNew) and a description noting the replacement behavior.
 - Computed `id` gets `stringplanmodifier.UseStateForUnknown()`.
@@ -110,6 +115,8 @@ Read `resource_webhook_framework.go` first — it is the canonical compact examp
 Checking optionals: `plan.Field.IsNull()` / `.IsUnknown()` before `.ValueString()`. The SDKv2 `GetOk` zero-value trap does not exist here — null, unknown, and zero are distinct states; handle null/unknown explicitly.
 
 **Computed + Sensitive nested fields**: a `ListNestedAttribute` mixing user-required and Computed-only sensitive fields trips "inconsistent values for sensitive attribute" on first Apply. `UseStateForUnknown` does NOT fix it — you need resource-level `ModifyPlan` marking the computed field Unknown for new elements.
+
+**MapNestedAttribute with a kept inner `key`**: adding a NEW map entry whose config omits the Optional+Computed inner `key` plans it as **null**; Read then fills it from the map key and Terraform fails with `Provider produced inconsistent result after apply: ... .key: was null, but now ...`. `UseStateForUnknown` cannot help (a new entry has no prior state). Pin the key at plan time in `ModifyPlan` with the shared `pinMapKeysToMapKey(objType, m)` helper (framework_helpers.go). Only update-path element-adds trigger this — a create-only test passes silently, so see the Step 8 test requirement.
 
 **Eventual consistency for versioned entities**: prefer a version-advancement retry loop over fixed sleeps (see patterns.md).
 
@@ -162,6 +169,7 @@ Concrete before/after:
 
 - **All acceptance tests use `resource.Test`** — sequential, never `resource.ParallelTest`, for data source tests as much as resource tests. The CI matrix already parallelizes across resource types; in-package parallelism trips rate limits.
 - **Resource tests** include create, import, and update steps. Random project keys via `acctest.RandStringFromCharSet`. HCL configs include a `launchdarkly_project`.
+- **Map attributes need an update step that ADDS an entry** (with the inner `key` omitted, relying on the map key). The inner-key null-plan inconsistency only fires when an element is added to an existing resource — create-only coverage goes green over the bug (this is exactly how `custom_properties` shipped broken past local runs and was caught by `TestAccFeatureFlag_CreateAndUpdateMultivariate` in CI).
 - **Data source tests** scaffold test data via the API directly (not Terraform), then read it back through the data source.
 - **Fixtures must satisfy API-side constraints** — if the schema (or the API) enforces a minimum count or a cross-field rule, every fixture must already comply: HCL test-step configs (fail at plan time otherwise) AND data-source scaffolds that create fixtures via direct API calls (fail with a 4xx at setup otherwise). When you add a constraint, sweep both kinds.
 - **`CheckDestroy`** — resource tests verify the remote object 404s after the test. Non-404 errors from the existence check must FAIL the check (return the error), not pass silently — swallowing them lets transient/auth failures leak resources while the test goes green. Shared destroy checkers must skip state addresses starting with `data.`.
