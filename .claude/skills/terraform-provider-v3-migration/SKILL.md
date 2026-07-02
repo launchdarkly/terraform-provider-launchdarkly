@@ -5,8 +5,8 @@ description: >
   new resources against a real LaunchDarkly account. Use when the user wants to (1) upgrade an entire
   v2.x configuration to v3 — run migrate-tf-syntax, fix the manual follow-ups, build the v3 provider,
   apply, and confirm an idempotent state upgrade with zero forced replacements; or (2) exercise and
-  validate the new v3 resources (context_kind, announcement, oauth_client, metric_group, release_policy,
-  big_segment_store_integration, flag_import_configuration, integration_delivery_configuration) with
+  validate the new v3 resources (context_kind, announcement, oauth_client, ai_agent_graph, metric_group,
+  release_policy, big_segment_store_integration, flag_import_configuration, integration_delivery_configuration) with
   create/read/update/delete and idempotency checks before calling them GA. Triggers: "migrate a full v2
   setup", "end-to-end v3 upgrade", "verify the new v3 resources", "test the scaffolded resources",
   "validate v3 before GA", "exercise the beta resources".
@@ -123,7 +123,7 @@ The inverse appends reversed blocks at the end of each body, so attribute order 
 
 ## Workflow B — Try and verify the new v3 resources
 
-The net-new v3 resources are listed with their stability, scope, example path, and known gotchas in [references/new-resources.md](references/new-resources.md). Seven of the eight resources were added as autogen scaffolds after the `v3.0.0-beta.2` preview and have not been exercised in a tagged release, so this workflow is the gate before treating them as GA.
+The net-new v3 resources are listed with their stability, scope, example path, and known gotchas in [references/new-resources.md](references/new-resources.md). All nine ship in a tagged release as of `v3.0.0-beta.4` and passed full CRUD + data-source verification on 2026-07-02; re-run this workflow when a resource schema changes or before promoting the beta-API resources to stable.
 
 ### B1. Stand up a scratch project
 
@@ -145,11 +145,10 @@ For each resource in the matrix:
 
 Several beta resources integrate with external systems or gated account features:
 
-- `big_segment_store_integration` needs reachable store credentials, for example a Redis or DynamoDB store.
-- `flag_import_configuration` and `integration_delivery_configuration` need valid third-party credentials for the chosen integration, for example Split or Fastly.
+- `big_segment_store_integration`, `flag_import_configuration`, and `integration_delivery_configuration` accept dummy third-party credentials for CRUD verification: the LaunchDarkly API persists `config` without validating connectivity, so placeholder values with `on = false` exercise the full create/read/update/delete path (verified 2026-07-02). Live credentials only matter for verifying the integration functions end to end, which is out of scope here.
 - Any beta resource may require an account entitlement that the test account lacks.
 
-When the only blocker is a missing credential or entitlement, classify the resource **BLOCKED**, not **FAIL**. Record exactly what is missing so it can be retried on an entitled account.
+When the only blocker is a missing entitlement, classify the resource **BLOCKED**, not **FAIL**. Record exactly what is missing so it can be retried on an entitled account.
 
 ### Result classification
 

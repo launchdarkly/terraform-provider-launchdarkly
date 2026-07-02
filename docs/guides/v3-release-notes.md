@@ -97,7 +97,7 @@ resource "launchdarkly_feature_flag" "example" {
 
 The `migrate-tf-syntax` tool emits this object form automatically. When you read these attributes from a data source, drop the list index too: `data.launchdarkly_feature_flag.x.client_side_availability.using_environment_id`, not `...client_side_availability[0].using_environment_id`.
 
-> **Upgrading from a `3.0.0-beta` pre-release?** These attributes were modeled as single-element lists through the `3.0.0-beta` pre-releases (`= [{ ... }]`). The switch to object syntax landed for GA. The pre-release → GA jump is not state-compatible for them — update the configuration to the object form; the provider's state upgraders convert pre-release state in place. Upgrades from v2 are handled automatically by the state upgrade and the `migrate-tf-syntax` tool.
+> **Upgrading from a `3.0.0-beta` pre-release?** These attributes were modeled as single-element lists through `3.0.0-beta.3` (`= [{ ... }]`). The switch to object syntax landed in `v3.0.0-beta.4`. The jump from an earlier pre-release is not state-compatible for them — update the configuration to the object form; the provider's state upgraders convert pre-release state in place. Upgrades from v2 are handled automatically by the state upgrade and the `migrate-tf-syntax` tool.
 
 ### Keyed collections become maps
 
@@ -130,7 +130,7 @@ Reference environments by key, not index: `environments["production"].client_sid
 
 `custom_properties` follows the same object-map pattern (`custom_properties = { "my.key" = { name = ..., value = [...] } }`). `role_attributes` collapses further to a plain map of string lists — `role_attributes = { myAttribute = ["value1", "value2"] }` — matching both the LaunchDarkly API shape and the `launchdarkly_team_role_mapping` resource.
 
-> **Upgrading from a `3.0.0-beta` pre-release?** These collections were lists or sets through the `3.0.0-beta` pre-releases. Update the configuration to the map form; the provider's state upgraders convert both v2 and pre-release state in place (except `launchdarkly_project.environments` state from `3.0.0-beta.1`–`beta.3`, which pre-dates the map and must be re-imported).
+> **Upgrading from a `3.0.0-beta` pre-release?** These collections were lists or sets through `3.0.0-beta.3`; the map shapes landed in `v3.0.0-beta.4`. Update the configuration to the map form; the provider's state upgraders convert both v2 and pre-release state in place (except `launchdarkly_project.environments` state from `3.0.0-beta.1`–`beta.3`, which pre-dates the map and must be re-imported).
 
 ### Removed attributes
 
