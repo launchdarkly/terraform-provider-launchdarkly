@@ -61,9 +61,11 @@ func frameworkRoleAttributesFromMap(ctx context.Context, m types.Map) (*map[stri
 }
 
 // frameworkRoleAttributePatches generates the patch operations to
-// replace /roleAttributes on the server.
+// replace /roleAttributes on the server. A null plan is a deliberate
+// clear; an Unknown plan carries no user intent, so it is a no-op
+// (defensive; a non-computed attribute is concrete by apply time).
 func frameworkRoleAttributePatches(ctx context.Context, planMap, stateMap types.Map) []ldapi.PatchOperation {
-	if planMap.Equal(stateMap) {
+	if planMap.IsUnknown() || planMap.Equal(stateMap) {
 		return nil
 	}
 	plan, _ := frameworkRoleAttributesFromMap(ctx, planMap)

@@ -348,12 +348,19 @@ func (r *TeamResource) Update(ctx context.Context, req resource.UpdateRequest, r
 		}
 	}
 
-	if !plan.RoleAttributes.Equal(state.RoleAttributes) {
+	// An Unknown plan carries no user intent — never turn it into a wipe
+	// (defensive; a non-computed attribute is concrete by apply time). A
+	// null plan is a deliberate clear: replace with an empty map.
+	if !plan.RoleAttributes.IsUnknown() && !plan.RoleAttributes.Equal(state.RoleAttributes) {
 		roleAttrs, d := frameworkRoleAttributesFromMap(ctx, plan.RoleAttributes)
 		resp.Diagnostics.Append(d...)
+		value := map[string][]string{}
+		if roleAttrs != nil {
+			value = *roleAttrs
+		}
 		instructions = append(instructions, map[string]interface{}{
 			"kind":  "replaceRoleAttributes",
-			"value": roleAttrs,
+			"value": value,
 		})
 	}
 

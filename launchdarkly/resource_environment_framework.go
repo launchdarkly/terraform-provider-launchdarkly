@@ -290,10 +290,14 @@ func (r *EnvironmentResource) Update(ctx context.Context, req resource.UpdateReq
 	// Skip the segment patch if anything above already failed (e.g. the
 	// flag approval patch): the handler returns before persisting state on
 	// error, so committing a segment change we won't save would drift state
-	// from LaunchDarkly. Append diagnostics and fall through to the shared
-	// read/set tail rather than returning early here.
+	// from LaunchDarkly.
 	if !resp.Diagnostics.HasError() && !plan.SegmentApprovalSettings.Equal(state.SegmentApprovalSettings) {
 		resp.Diagnostics.Append(r.applySegmentApprovalSettings(ctx, projectKey, envKey, plan.SegmentApprovalSettings)...)
+	}
+	// Nothing gets persisted on error, so skip the refresh too (matches
+	// Create, which returns immediately after a failed approval patch).
+	if resp.Diagnostics.HasError() {
+		return
 	}
 
 	r.readIntoModel(ctx, projectKey, envKey, &plan, &resp.Diagnostics)

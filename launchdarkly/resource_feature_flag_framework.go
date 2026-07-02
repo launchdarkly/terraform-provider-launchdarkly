@@ -775,10 +775,16 @@ func (r *FeatureFlagResource) applyFlagUpdate(ctx context.Context, plan, state F
 			patchReplace("/description", desc),
 			patchReplace("/tags", tags),
 			patchReplace("/temporary", plan.Temporary.ValueBool()),
-			patchReplace("/customProperties", customProps),
 			patchReplace("/archived", plan.Archived.ValueBool()),
 			patchReplace("/deprecated", plan.Deprecated.ValueBool()),
 		},
+	}
+	// A null plan is a deliberate clear (replace with an empty map); an
+	// Unknown plan carries no user intent, so never turn it into a wipe —
+	// skip the patch op entirely (defensive; a non-computed attribute is
+	// concrete by apply time).
+	if !plan.CustomProperties.IsUnknown() {
+		patch.Patch = append(patch.Patch, patchReplace("/customProperties", customProps))
 	}
 
 	csaChanged := isCreate || !plan.ClientSideAvailability.Equal(state.ClientSideAvailability)
