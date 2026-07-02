@@ -20,12 +20,14 @@ resource "launchdarkly_ai_config" "triage_agent" {
   project_key = launchdarkly_project.example.key
   key         = "triage-agent"
   name        = "Triage agent"
+  mode        = "agent"
 }
 
 resource "launchdarkly_ai_config" "support_agent" {
   project_key = launchdarkly_project.example.key
   key         = "support-agent"
   name        = "Support agent"
+  mode        = "agent"
   depends_on  = [launchdarkly_ai_config.triage_agent]
 }
 
