@@ -39,13 +39,19 @@ var defaultMappings []byte
 // MapKey names an inner attribute hoisted to the map key for a MapNestedAttribute (provider v3.x):
 // forward emits `name = { <keyval> = { ...rest } }` keyed by each block's MapKey attribute (which is
 // dropped from the inner object), and reverse expands the map back to repeated blocks, re-injecting
-// `MapKey = <key>`. Only literal-string keys are hoisted automatically; non-literal keys warn+skip.
+// `MapKey = <key>`. Literal-string keys hoist verbatim; non-literal key expressions hoist as
+// parenthesized map keys (`(local.env_key) = {...}`) with a stderr note.
 // Mutually exclusive with Object. See REL-14236 (launchdarkly_project environments).
+// MapValue (requires MapKey) collapses the block to a plain map entry instead of a nested object:
+// forward emits `name = { <keyval> = <value-expr> }` where <value-expr> is the block's MapValue
+// attribute expression, and reverse expands each entry back to a block with `MapKey = <key>` and
+// `MapValue = <value-expr>`. Used for role_attributes ({key, values} blocks → map of string lists).
 type AttrSpec struct {
-	Name   string      `json:"name"`
-	Nested []*AttrSpec `json:"nested,omitempty"`
-	Object bool        `json:"object,omitempty"`
-	MapKey string      `json:"map_key,omitempty"`
+	Name     string      `json:"name"`
+	Nested   []*AttrSpec `json:"nested,omitempty"`
+	Object   bool        `json:"object,omitempty"`
+	MapKey   string      `json:"map_key,omitempty"`
+	MapValue string      `json:"map_value,omitempty"`
 }
 
 // DeprecationSpec describes an attribute that was removed from the provider schema between v2 and v3.
@@ -225,8 +231,14 @@ func collectProjectEnvKeys(files []string) map[string][]string {
 				if keyAttr == nil {
 					continue
 				}
-				if k, ok := stringLiteralValue(keyAttr.Expr().BuildTokens(nil)); ok && len(k) == 3 {
-					keys = append(keys, string(k[1].Bytes))
+				// Store the index-expression replacement text: quoted for a
+				// literal key, the raw expression otherwise. Every block must
+				// contribute an entry or later indices resolve to the wrong key.
+				keyExpr, literal := mapKeyTokens(keyAttr.Expr().BuildTokens(nil))
+				if literal {
+					keys = append(keys, tokensText(keyExpr))
+				} else {
+					keys = append(keys, strings.TrimSuffix(strings.TrimPrefix(tokensText(keyExpr), "("), ")"))
 				}
 			}
 			if len(keys) > 0 {
@@ -253,7 +265,7 @@ func warnEnvIndexRefs(path string, src []byte, projectEnvKeys map[string][]strin
 			}
 			n, _ := strconv.Atoi(idx)
 			if keys := projectEnvKeys[label]; n < len(keys) {
-				warnf("%s: `launchdarkly_project.%s.environments[%s]` must become `launchdarkly_project.%s.environments[%q]` — environments is now a map keyed by env key", loc, label, idx, label, keys[n])
+				warnf("%s: `launchdarkly_project.%s.environments[%s]` must become `launchdarkly_project.%s.environments[%s]` — environments is now a map keyed by env key", loc, label, idx, label, keys[n])
 			} else {
 				warnf("%s: `launchdarkly_project.%s.environments[%s]` uses a list index, but environments is now a map — replace `[%s]` with `[\"<env_key>\"]`", loc, label, idx, idx)
 			}
@@ -434,8 +446,9 @@ func forward(body *hclwrite.Body, specs []*AttrSpec, where string) bool {
 			// The `key` attribute stays inside each object (it's Optional+
 			// Computed in v3 and equals the map key); we only read it to build
 			// the map key. Validate EVERY block's key first so a missing or
-			// non-literal key aborts the whole attribute with the file
-			// untouched (no blocks are mutated either way).
+			// duplicate key aborts the whole attribute with the file untouched
+			// (no blocks are mutated either way). Non-literal keys convert too:
+			// HCL object keys accept parenthesized expressions.
 			keyExprs := make([]hclwrite.Tokens, 0, len(matched))
 			seenKeys := make(map[string]bool, len(matched))
 			skip := false
@@ -446,45 +459,76 @@ func forward(body *hclwrite.Body, specs []*AttrSpec, where string) bool {
 					skip = true
 					break
 				}
-				keyExpr, ok := stringLiteralValue(keyAttr.Expr().BuildTokens(nil))
-				if !ok {
-					warnf("%s: %q block's %q is not a literal string; cannot key the v3 map automatically — convert by hand", where, s.Name, s.MapKey)
-					skip = true
-					break
+				keyExpr, literal := mapKeyTokens(keyAttr.Expr().BuildTokens(nil))
+				if !literal {
+					fmt.Fprintf(os.Stderr, "note: %s: %q block's %q is a non-literal expression; keyed the v3 map with the parenthesized expression %s\n", where, s.Name, s.MapKey, tokensText(keyExpr))
 				}
 				// Duplicate keys would collapse into one map entry (last wins),
 				// silently dropping a block. Abort and leave it for the author.
-				if lit := string(keyExpr[1].Bytes); seenKeys[lit] {
-					warnf("%s: %q has duplicate %s %q across blocks; a map cannot hold duplicate keys — convert by hand", where, s.Name, s.MapKey, lit)
+				// Identical source text only: distinct expressions that evaluate
+				// to the same key are caught by terraform at plan time.
+				if k := tokensText(keyExpr); seenKeys[k] {
+					warnf("%s: %q has duplicate %s %s across blocks; a map cannot hold duplicate keys — convert by hand", where, s.Name, s.MapKey, k)
 					skip = true
 					break
 				} else {
-					seenKeys[lit] = true
+					seenKeys[k] = true
 				}
 				keyExprs = append(keyExprs, keyExpr)
 			}
 			if skip {
 				continue
 			}
-			mapTokens := hclwrite.Tokens{
-				{Type: hclsyntax.TokenOBrace, Bytes: []byte("{")},
-				{Type: hclsyntax.TokenNewline, Bytes: []byte("\n")},
+			if s.MapValue != "" {
+				// Plain-map form: `name = { <keyval> = <value-expr> }` where the
+				// value is the block's MapValue attribute expression. Validate
+				// every block carries MapValue before mutating anything.
+				valueExprs := make([]hclwrite.Tokens, 0, len(matched))
+				for _, b := range matched {
+					valAttr := b.Body().GetAttribute(s.MapValue)
+					if valAttr == nil {
+						warnf("%s: %q block is missing the %q attribute needed for the v3 map value; convert by hand", where, s.Name, s.MapValue)
+						skip = true
+						break
+					}
+					valueExprs = append(valueExprs, trimLeadingNewlines(valAttr.Expr().BuildTokens(nil)))
+				}
+				if skip {
+					continue
+				}
+				mapTokens := hclwrite.Tokens{
+					{Type: hclsyntax.TokenOBrace, Bytes: []byte("{")},
+					{Type: hclsyntax.TokenNewline, Bytes: []byte("\n")},
+				}
+				for i := range matched {
+					mapTokens = append(mapTokens, keyExprs[i]...)
+					mapTokens = append(mapTokens, &hclwrite.Token{Type: hclsyntax.TokenEqual, Bytes: []byte(" = ")})
+					mapTokens = append(mapTokens, valueExprs[i]...)
+					mapTokens = append(mapTokens, &hclwrite.Token{Type: hclsyntax.TokenNewline, Bytes: []byte("\n")})
+				}
+				mapTokens = append(mapTokens, &hclwrite.Token{Type: hclsyntax.TokenCBrace, Bytes: []byte("}")})
+				tokens = mapTokens
+			} else {
+				mapTokens := hclwrite.Tokens{
+					{Type: hclsyntax.TokenOBrace, Bytes: []byte("{")},
+					{Type: hclsyntax.TokenNewline, Bytes: []byte("\n")},
+				}
+				for i, b := range matched {
+					mapTokens = append(mapTokens, keyExprs[i]...)
+					mapTokens = append(mapTokens,
+						&hclwrite.Token{Type: hclsyntax.TokenEqual, Bytes: []byte(" = ")},
+						&hclwrite.Token{Type: hclsyntax.TokenOBrace, Bytes: []byte("{")},
+						&hclwrite.Token{Type: hclsyntax.TokenNewline, Bytes: []byte("\n")},
+					)
+					mapTokens = append(mapTokens, trimLeadingNewlines(b.Body().BuildTokens(nil))...)
+					mapTokens = append(mapTokens,
+						&hclwrite.Token{Type: hclsyntax.TokenCBrace, Bytes: []byte("}")},
+						&hclwrite.Token{Type: hclsyntax.TokenNewline, Bytes: []byte("\n")},
+					)
+				}
+				mapTokens = append(mapTokens, &hclwrite.Token{Type: hclsyntax.TokenCBrace, Bytes: []byte("}")})
+				tokens = mapTokens
 			}
-			for i, b := range matched {
-				mapTokens = append(mapTokens, keyExprs[i]...)
-				mapTokens = append(mapTokens,
-					&hclwrite.Token{Type: hclsyntax.TokenEqual, Bytes: []byte(" = ")},
-					&hclwrite.Token{Type: hclsyntax.TokenOBrace, Bytes: []byte("{")},
-					&hclwrite.Token{Type: hclsyntax.TokenNewline, Bytes: []byte("\n")},
-				)
-				mapTokens = append(mapTokens, trimLeadingNewlines(b.Body().BuildTokens(nil))...)
-				mapTokens = append(mapTokens,
-					&hclwrite.Token{Type: hclsyntax.TokenCBrace, Bytes: []byte("}")},
-					&hclwrite.Token{Type: hclsyntax.TokenNewline, Bytes: []byte("\n")},
-				)
-			}
-			mapTokens = append(mapTokens, &hclwrite.Token{Type: hclsyntax.TokenCBrace, Bytes: []byte("}")})
-			tokens = mapTokens
 		} else {
 			tokens = hclwrite.Tokens{
 				{Type: hclsyntax.TokenOBrack, Bytes: []byte("[")},
@@ -530,6 +574,22 @@ func reverse(body *hclwrite.Body, specs []*AttrSpec) bool {
 			newBlock := body.AppendNewBlock(s.Name, nil)
 			newBlock.Body().AppendUnstructuredTokens(ensureTrailingNewline(trimLeadingNewlines(elem)))
 			changed = true
+			continue
+		}
+		if s.MapKey != "" && s.MapValue != "" {
+			// v3 plain map `name = { <key> = <expr> }` → repeated v2 blocks
+			// `name { <MapKey> = <key>, <MapValue> = <expr> }`.
+			entries := extractPlainMapEntries(attr.Expr().BuildTokens(nil))
+			if len(entries) == 0 {
+				continue
+			}
+			body.RemoveAttribute(s.Name)
+			for _, e := range entries {
+				newBlock := body.AppendNewBlock(s.Name, nil)
+				newBlock.Body().SetAttributeRaw(s.MapKey, e.key)
+				newBlock.Body().SetAttributeRaw(s.MapValue, e.body)
+				changed = true
+			}
 			continue
 		}
 		if s.MapKey != "" {
@@ -880,6 +940,37 @@ func stringLiteralValue(tokens hclwrite.Tokens) (hclwrite.Tokens, bool) {
 	return nil, false
 }
 
+// tokensText renders tokens to their source text.
+func tokensText(tokens hclwrite.Tokens) string {
+	var sb strings.Builder
+	for _, t := range tokens {
+		sb.Write(t.Bytes)
+	}
+	return sb.String()
+}
+
+// mapKeyTokens returns tokens usable as a v3 map key for the given inner-key
+// attribute expression: the cleaned quoted literal when the expression is a
+// plain string, otherwise the expression wrapped in parentheses (HCL object
+// keys accept parenthesized expressions, so `key = local.env_key` becomes the
+// map key `(local.env_key)`). The bool reports the literal case. Newlines and
+// comments are stripped so the key renders on one line.
+func mapKeyTokens(exprTokens hclwrite.Tokens) (hclwrite.Tokens, bool) {
+	if lit, ok := stringLiteralValue(exprTokens); ok {
+		return lit, true
+	}
+	clean := hclwrite.Tokens{{Type: hclsyntax.TokenOParen, Bytes: []byte("(")}}
+	for _, t := range exprTokens {
+		if t.Type == hclsyntax.TokenNewline || t.Type == hclsyntax.TokenComment {
+			continue
+		}
+		// Copy without SpacesBefore so the key renders compactly.
+		clean = append(clean, &hclwrite.Token{Type: t.Type, Bytes: t.Bytes})
+	}
+	clean = append(clean, &hclwrite.Token{Type: hclsyntax.TokenCParen, Bytes: []byte(")")})
+	return clean, false
+}
+
 // mapEntry is one `<key> = { ... }` pair of a v3 map attribute.
 type mapEntry struct {
 	key  hclwrite.Tokens
@@ -945,6 +1036,64 @@ func extractMapEntries(tokens hclwrite.Tokens) []mapEntry {
 		}
 	done:
 		entries = append(entries, mapEntry{key: key, body: bodyToks})
+	}
+	return entries
+}
+
+// extractPlainMapEntries walks token stream `{ <key> = <expr>, <key> = <expr>, ... }` and returns
+// each entry's key tokens and value-expression tokens. Unlike extractMapEntries the value is an
+// arbitrary expression (e.g. a list literal), captured until a top-level newline or comma. Used by
+// the reverse direction for plain-map attributes (MapKey + MapValue specs, e.g. role_attributes).
+func extractPlainMapEntries(tokens hclwrite.Tokens) []mapEntry {
+	i := 0
+	for ; i < len(tokens); i++ {
+		if tokens[i].Type == hclsyntax.TokenOBrace {
+			i++
+			break
+		}
+	}
+	var entries []mapEntry
+	for i < len(tokens) {
+		for i < len(tokens) && (tokens[i].Type == hclsyntax.TokenNewline || tokens[i].Type == hclsyntax.TokenComma) {
+			i++
+		}
+		if i >= len(tokens) || tokens[i].Type == hclsyntax.TokenCBrace {
+			break
+		}
+		var key hclwrite.Tokens
+		for i < len(tokens) && tokens[i].Type != hclsyntax.TokenEqual {
+			if tokens[i].Type == hclsyntax.TokenOBrace || tokens[i].Type == hclsyntax.TokenCBrace {
+				break
+			}
+			if tokens[i].Type != hclsyntax.TokenNewline {
+				key = append(key, &hclwrite.Token{Type: tokens[i].Type, Bytes: tokens[i].Bytes})
+			}
+			i++
+		}
+		if i >= len(tokens) || tokens[i].Type != hclsyntax.TokenEqual {
+			break
+		}
+		i++ // consume '='
+		depth := 0
+		var valToks hclwrite.Tokens
+		for i < len(tokens) {
+			t := tokens[i]
+			if depth == 0 && (t.Type == hclsyntax.TokenNewline || t.Type == hclsyntax.TokenComma) {
+				break
+			}
+			if depth == 0 && t.Type == hclsyntax.TokenCBrace {
+				break
+			}
+			switch t.Type {
+			case hclsyntax.TokenOBrace, hclsyntax.TokenOBrack, hclsyntax.TokenOParen:
+				depth++
+			case hclsyntax.TokenCBrace, hclsyntax.TokenCBrack, hclsyntax.TokenCParen:
+				depth--
+			}
+			valToks = append(valToks, t)
+			i++
+		}
+		entries = append(entries, mapEntry{key: key, body: valToks})
 	}
 	return entries
 }

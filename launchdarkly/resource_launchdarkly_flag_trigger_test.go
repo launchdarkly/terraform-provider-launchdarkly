@@ -16,9 +16,9 @@ resource "launchdarkly_flag_trigger" "basic" {
 	env_key = "test"
 	flag_key = launchdarkly_feature_flag.trigger_flag.key
 	integration_key = "generic-trigger"
-	instructions = [{
+	instructions = {
 		kind = "turnFlagOn"
-	}]
+	}
 	enabled = false
 }
 `
@@ -29,9 +29,9 @@ resource "launchdarkly_flag_trigger" "basic" {
 	env_key = "test"
 	flag_key = launchdarkly_feature_flag.trigger_flag.key
 	integration_key = "generic-trigger"
-	instructions = [{
+	instructions = {
 		kind = "turnFlagOff"
-	}]
+	}
 	enabled = true
 }
 `
@@ -42,9 +42,9 @@ resource "launchdarkly_flag_trigger" "basic" {
 	env_key = "test"
 	flag_key = launchdarkly_feature_flag.trigger_flag.key
 	integration_key = "generic-trigger"
-	instructions = [{
+	instructions = {
 		kind = "turnFlagOff"
-	}]
+	}
 	enabled = true
 }
 `
@@ -55,9 +55,9 @@ resource "launchdarkly_flag_trigger" "basic" {
 	env_key = "test"
 	flag_key = launchdarkly_feature_flag.trigger_flag.key
 	integration_key = "generic-trigger"
-	instructions = [{
+	instructions = {
 		kind = "turnFlagOff"
-	}]
+	}
 	enabled = false
 }
 `
@@ -98,7 +98,7 @@ func TestAccFlagTrigger_CreateUpdate(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, ENV_KEY, "test"),
 					resource.TestCheckResourceAttr(resourceName, FLAG_KEY, flagKey),
 					resource.TestCheckResourceAttr(resourceName, INTEGRATION_KEY, "generic-trigger"),
-					resource.TestCheckResourceAttr(resourceName, "instructions.0.kind", "turnFlagOn"),
+					resource.TestCheckResourceAttr(resourceName, "instructions.kind", "turnFlagOn"),
 					resource.TestCheckResourceAttr(resourceName, ENABLED, "false"),
 					resource.TestCheckResourceAttrSet(resourceName, TRIGGER_URL),
 					resource.TestCheckResourceAttrSet(resourceName, MAINTAINER_ID),
@@ -113,7 +113,7 @@ func TestAccFlagTrigger_CreateUpdate(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, ENV_KEY, "test"),
 					resource.TestCheckResourceAttr(resourceName, FLAG_KEY, flagKey),
 					resource.TestCheckResourceAttr(resourceName, INTEGRATION_KEY, "generic-trigger"),
-					resource.TestCheckResourceAttr(resourceName, "instructions.0.kind", "turnFlagOff"),
+					resource.TestCheckResourceAttr(resourceName, "instructions.kind", "turnFlagOff"),
 					resource.TestCheckResourceAttr(resourceName, ENABLED, "true"),
 					resource.TestCheckResourceAttrSet(resourceName, TRIGGER_URL),
 					resource.TestCheckResourceAttrSet(resourceName, MAINTAINER_ID),
@@ -128,7 +128,7 @@ func TestAccFlagTrigger_CreateUpdate(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, ENV_KEY, "test"),
 					resource.TestCheckResourceAttr(resourceName, FLAG_KEY, flagKey),
 					resource.TestCheckResourceAttr(resourceName, INTEGRATION_KEY, "generic-trigger"),
-					resource.TestCheckResourceAttr(resourceName, "instructions.0.kind", "turnFlagOff"),
+					resource.TestCheckResourceAttr(resourceName, "instructions.kind", "turnFlagOff"),
 					resource.TestCheckResourceAttr(resourceName, ENABLED, "false"),
 					resource.TestCheckResourceAttrSet(resourceName, TRIGGER_URL),
 					resource.TestCheckResourceAttrSet(resourceName, MAINTAINER_ID),
@@ -164,7 +164,7 @@ func TestAccFlagTrigger_CreateEnabled(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, ENV_KEY, "test"),
 					resource.TestCheckResourceAttr(resourceName, FLAG_KEY, flagKey),
 					resource.TestCheckResourceAttr(resourceName, INTEGRATION_KEY, "generic-trigger"),
-					resource.TestCheckResourceAttr(resourceName, "instructions.0.kind", "turnFlagOff"),
+					resource.TestCheckResourceAttr(resourceName, "instructions.kind", "turnFlagOff"),
 					resource.TestCheckResourceAttr(resourceName, ENABLED, "true"),
 					resource.TestCheckResourceAttrSet(resourceName, TRIGGER_URL),
 					resource.TestCheckResourceAttrSet(resourceName, MAINTAINER_ID),

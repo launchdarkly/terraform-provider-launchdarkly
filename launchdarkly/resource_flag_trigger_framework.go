@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
@@ -16,12 +15,14 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	ldapi "github.com/launchdarkly/api-client-go/v22"
 )
 
 var (
-	_ resource.Resource                = &FlagTriggerResource{}
-	_ resource.ResourceWithImportState = &FlagTriggerResource{}
+	_ resource.Resource                 = &FlagTriggerResource{}
+	_ resource.ResourceWithImportState  = &FlagTriggerResource{}
+	_ resource.ResourceWithUpgradeState = &FlagTriggerResource{}
 )
 
 type FlagTriggerResource struct {
@@ -34,7 +35,7 @@ type FlagTriggerResourceModel struct {
 	EnvKey         types.String `tfsdk:"env_key"`
 	FlagKey        types.String `tfsdk:"flag_key"`
 	IntegrationKey types.String `tfsdk:"integration_key"`
-	Instructions   types.List   `tfsdk:"instructions"`
+	Instructions   types.Object `tfsdk:"instructions"`
 	TriggerURL     types.String `tfsdk:"trigger_url"`
 	MaintainerID   types.String `tfsdk:"maintainer_id"`
 	Enabled        types.Bool   `tfsdk:"enabled"`
@@ -57,6 +58,7 @@ func (r *FlagTriggerResource) Schema(_ context.Context, _ resource.SchemaRequest
 This resource allows you to create and manage flag triggers within your LaunchDarkly organization.
 
 -> **Note:** This resource stores the sensitive unique trigger URL value in plaintext in your Terraform state. Be sure your state is configured securely before using this resource. To learn more, read [Sensitive data in state](https://www.terraform.io/docs/state/sensitive-data.html).`,
+		Version: 1,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				Computed:      true,
@@ -109,20 +111,14 @@ This resource allows you to create and manage flag triggers within your LaunchDa
 				Required:    true,
 				Description: "Whether the trigger is currently active or not.",
 			},
-			INSTRUCTIONS: schema.ListNestedAttribute{
+			INSTRUCTIONS: schema.SingleNestedAttribute{
 				Required:    true,
-				Description: "Instructions containing the action to perform when invoking the trigger. Currently supported flag actions are `turnFlagOn` and `turnFlagOff`. This must be passed as the key-value pair `{ kind = \"<flag_action>\" }`.",
-				Validators: []validator.List{
-					listvalidator.SizeAtLeast(1),
-					listvalidator.SizeAtMost(1),
-				},
-				NestedObject: schema.NestedAttributeObject{
-					Attributes: map[string]schema.Attribute{
-						KIND: schema.StringAttribute{
-							Required:    true,
-							Description: "The action to perform when triggering. Currently supported flag actions are `turnFlagOn` and `turnFlagOff`.",
-							Validators:  []validator.String{oneOfValidator{allowed: []string{"turnFlagOn", "turnFlagOff"}}},
-						},
+				Description: "The instruction containing the action to perform when invoking the trigger. Currently supported flag actions are `turnFlagOn` and `turnFlagOff`. This must be passed as the key-value pair `{ kind = \"<flag_action>\" }`.",
+				Attributes: map[string]schema.Attribute{
+					KIND: schema.StringAttribute{
+						Required:    true,
+						Description: "The action to perform when triggering. Currently supported flag actions are `turnFlagOn` and `turnFlagOff`.",
+						Validators:  []validator.String{oneOfValidator{allowed: []string{"turnFlagOn", "turnFlagOff"}}},
 					},
 				},
 			},
@@ -150,15 +146,12 @@ func (r *FlagTriggerResource) Create(ctx context.Context, req resource.CreateReq
 	flagKey := plan.FlagKey.ValueString()
 	integrationKey := plan.IntegrationKey.ValueString()
 
-	var ins []flagTriggerInstructionModel
-	resp.Diagnostics.Append(plan.Instructions.ElementsAs(ctx, &ins, false)...)
+	var ins flagTriggerInstructionModel
+	resp.Diagnostics.Append(plan.Instructions.As(ctx, &ins, basetypes.ObjectAsOptions{})...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	postInstructions := make([]map[string]interface{}, 0, len(ins))
-	for _, in := range ins {
-		postInstructions = append(postInstructions, map[string]interface{}{KIND: in.Kind})
-	}
+	postInstructions := []map[string]interface{}{{KIND: ins.Kind}}
 
 	triggerBody := ldapi.NewTriggerPost(integrationKey)
 	triggerBody.Instructions = postInstructions
@@ -227,22 +220,20 @@ func (r *FlagTriggerResource) Update(ctx context.Context, req resource.UpdateReq
 		return
 	}
 
-	var ins []flagTriggerInstructionModel
-	resp.Diagnostics.Append(plan.Instructions.ElementsAs(ctx, &ins, false)...)
+	var ins flagTriggerInstructionModel
+	resp.Diagnostics.Append(plan.Instructions.As(ctx, &ins, basetypes.ObjectAsOptions{})...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
 	var patchInstructions []map[string]interface{}
 	if !plan.Instructions.Equal(state.Instructions) {
-		for _, in := range ins {
-			patchInstructions = append(patchInstructions, map[string]interface{}{
-				KIND: "replaceTriggerActionInstructions",
-				VALUE: []map[string]interface{}{{
-					KIND: in.Kind,
-				}},
-			})
-		}
+		patchInstructions = append(patchInstructions, map[string]interface{}{
+			KIND: "replaceTriggerActionInstructions",
+			VALUE: []map[string]interface{}{{
+				KIND: ins.Kind,
+			}},
+		})
 	}
 
 	if !plan.Enabled.Equal(state.Enabled) {
@@ -339,17 +330,20 @@ func (r *FlagTriggerResource) readIntoModel(
 	}
 	// Don't refresh TRIGGER_URL — it's only exposed at create.
 
-	// instructions
-	instObjType := types.ObjectType{AttrTypes: flagTriggerInstructionAttrTypes}
-	elems := make([]attr.Value, 0, len(trigger.Instructions))
-	for _, instr := range trigger.Instructions {
-		kindVal := types.StringNull()
-		if k, ok := instr[KIND].(string); ok {
-			kindVal = types.StringValue(k)
-		}
-		obj, _ := types.ObjectValue(flagTriggerInstructionAttrTypes, map[string]attr.Value{KIND: kindVal})
-		elems = append(elems, obj)
+	// instructions — the trigger carries exactly one action instruction.
+	data.Instructions = flagTriggerInstructionObject(trigger.Instructions)
+}
+
+// flagTriggerInstructionObject projects the API's instructions slice
+// (max one action instruction) into the single-object attribute value.
+func flagTriggerInstructionObject(instructions []map[string]interface{}) types.Object {
+	if len(instructions) == 0 {
+		return types.ObjectNull(flagTriggerInstructionAttrTypes)
 	}
-	list, _ := types.ListValue(instObjType, elems)
-	data.Instructions = list
+	kindVal := types.StringNull()
+	if k, ok := instructions[0][KIND].(string); ok {
+		kindVal = types.StringValue(k)
+	}
+	obj, _ := types.ObjectValue(flagTriggerInstructionAttrTypes, map[string]attr.Value{KIND: kindVal})
+	return obj
 }

@@ -142,7 +142,7 @@ resource "launchdarkly_feature_flag" "mobile_app_feature" {
 
 - `archived` (Boolean) Specifies whether the flag is archived or not. Note that you cannot create a new flag that is archived, but can update a flag to be archived.
 - `client_side_availability` (Attributes) Whether this flag should be made available to the client-side JavaScript SDK using the client-side Id, mobile key, or both. This value gets its default from your project configuration if not set. Once set, if removed, it will retain its last set value. (see [below for nested schema](#nestedatt--client_side_availability))
-- `custom_properties` (Attributes Set) The feature flag's [custom properties](https://docs.launchdarkly.com/home/connecting/custom-properties). (see [below for nested schema](#nestedatt--custom_properties))
+- `custom_properties` (Attributes Map) The feature flag's [custom properties](https://docs.launchdarkly.com/home/connecting/custom-properties), keyed by the custom property key. Adding or removing one custom property does not affect the others. (see [below for nested schema](#nestedatt--custom_properties))
 - `defaults` (Attributes) The indices of the variations to be used as the default on and off variations in all new environments. Flag configurations in existing environments will not be changed nor updated if removed. (see [below for nested schema](#nestedatt--defaults))
 - `deprecated` (Boolean) Specifies whether the flag is deprecated or not. Note that you cannot create a new flag that is deprecated, but can update a flag to be deprecated.
 - `description` (String) The feature flag's description.
@@ -193,9 +193,12 @@ Optional:
 
 Required:
 
-- `key` (String) The unique custom property key.
 - `name` (String) The name of the custom property.
 - `value` (List of String) The list of custom property value strings.
+
+Optional:
+
+- `key` (String) The unique custom property key. Must equal the map key; it defaults to the map key when omitted.
 
 
 <a id="nestedatt--defaults"></a>

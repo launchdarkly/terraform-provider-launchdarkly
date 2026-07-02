@@ -95,7 +95,7 @@ func TestAccDataSourceTeamMember_exists(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, FIRST_NAME, *testMember.FirstName),
 					resource.TestCheckResourceAttr(resourceName, LAST_NAME, *testMember.LastName),
 					resource.TestCheckResourceAttr(resourceName, ID, testMember.Id),
-					resource.TestCheckResourceAttr(resourceName, "role_attributes.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "role_attributes.%", "1"),
 				),
 			},
 		},

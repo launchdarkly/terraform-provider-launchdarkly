@@ -38,12 +38,12 @@ resource "launchdarkly_project" "example" {
       name  = "Production"
       color = "EEEEEE"
       tags  = ["terraform"]
-      approval_settings = [{
+      approval_settings = {
         can_review_own_request     = false
         can_apply_declined_changes = false
         min_num_approvals          = 3
         required_approval_tags     = ["approvals_required"]
-      }]
+      }
     }
     "staging" = {
       key   = "staging"
@@ -91,7 +91,7 @@ Required:
 
 Optional:
 
-- `approval_settings` (Attributes List) (see [below for nested schema](#nestedatt--environments--approval_settings))
+- `approval_settings` (Attributes) (see [below for nested schema](#nestedatt--environments--approval_settings))
 - `confirm_changes` (Boolean) Set to `true` if this environment requires confirmation for flag and segment changes. This field will default to `false` when not set.
 - `critical` (Boolean) Denotes whether the environment is critical.
 - `default_track_events` (Boolean) Set to `true` to enable data export for every flag created in this environment after you configure this argument. This field will default to `false` when not set. To learn more, read [Data Export](https://docs.launchdarkly.com/home/data-export).

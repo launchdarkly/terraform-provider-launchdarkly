@@ -37,7 +37,7 @@ data "launchdarkly_environment" "example" {
 ### Read-Only
 
 - `api_key` (String, Sensitive) The environment's SDK key.
-- `approval_settings` (Attributes List) Approval settings for this environment / project. (see [below for nested schema](#nestedatt--approval_settings))
+- `approval_settings` (Attributes) Approval settings for this environment / project. (see [below for nested schema](#nestedatt--approval_settings))
 - `client_side_id` (String, Sensitive) The environment's client-side ID.
 - `color` (String) The color swatch as an RGB hex value with no leading `#`.
 - `confirm_changes` (Boolean) Whether flag/segment changes require confirmation.
@@ -48,7 +48,7 @@ data "launchdarkly_environment" "example" {
 - `name` (String) The name of the environment.
 - `require_comments` (Boolean) Whether flag/segment changes require comments.
 - `secure_mode` (Boolean) Whether secure mode is enabled.
-- `segment_approval_settings` (Attributes List) Approval settings for segment changes in this environment. (see [below for nested schema](#nestedatt--segment_approval_settings))
+- `segment_approval_settings` (Attributes) Approval settings for segment changes in this environment. (see [below for nested schema](#nestedatt--segment_approval_settings))
 - `tags` (Set of String) Tags.
 
 <a id="nestedatt--approval_settings"></a>

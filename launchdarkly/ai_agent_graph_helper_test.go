@@ -29,15 +29,15 @@ func TestAIAgentGraphIDToKeys(t *testing.T) {
 }
 
 func TestAgentGraphEdgePostsFromModel(t *testing.T) {
-	edges := []agentGraphEdgeModel{
-		{
+	edges := map[string]agentGraphEdgeModel{
+		"edge-1": {
 			Key:          types.StringValue("edge-1"),
 			SourceConfig: types.StringValue("config-a"),
 			TargetConfig: types.StringValue("config-b"),
 			Handoff:      types.StringValue(`{"reason":"escalate"}`),
 		},
-		{
-			Key:          types.StringValue("edge-2"),
+		"edge-2": {
+			// key omitted in config: the map key is authoritative.
 			SourceConfig: types.StringValue("config-b"),
 			TargetConfig: types.StringValue("config-c"),
 			Handoff:      types.StringNull(),
@@ -58,9 +58,8 @@ func TestAgentGraphEdgePostsFromModel(t *testing.T) {
 }
 
 func TestAgentGraphEdgePostsFromModel_InvalidHandoff(t *testing.T) {
-	edges := []agentGraphEdgeModel{
-		{
-			Key:          types.StringValue("edge-1"),
+	edges := map[string]agentGraphEdgeModel{
+		"edge-1": {
 			SourceConfig: types.StringValue("config-a"),
 			TargetConfig: types.StringValue("config-b"),
 			Handoff:      types.StringValue("not-json"),
@@ -71,9 +70,8 @@ func TestAgentGraphEdgePostsFromModel_InvalidHandoff(t *testing.T) {
 }
 
 func TestAgentGraphEdgesFromModel(t *testing.T) {
-	edges := []agentGraphEdgeModel{
-		{
-			Key:          types.StringValue("edge-1"),
+	edges := map[string]agentGraphEdgeModel{
+		"edge-1": {
 			SourceConfig: types.StringValue("config-a"),
 			TargetConfig: types.StringValue("config-b"),
 			Handoff:      types.StringValue(`{"reason":"escalate"}`),
@@ -105,13 +103,13 @@ func TestAgentGraphEdgeModelsFromAPI(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, models, 2)
 
-	assert.Equal(t, "edge-1", models[0].Key.ValueString())
-	assert.Equal(t, "config-a", models[0].SourceConfig.ValueString())
-	assert.Equal(t, "config-b", models[0].TargetConfig.ValueString())
-	assert.JSONEq(t, `{"reason":"escalate"}`, models[0].Handoff.ValueString())
+	assert.Equal(t, "edge-1", models["edge-1"].Key.ValueString())
+	assert.Equal(t, "config-a", models["edge-1"].SourceConfig.ValueString())
+	assert.Equal(t, "config-b", models["edge-1"].TargetConfig.ValueString())
+	assert.JSONEq(t, `{"reason":"escalate"}`, models["edge-1"].Handoff.ValueString())
 
 	// An edge with no handoff should round-trip to a null string.
-	assert.True(t, models[1].Handoff.IsNull())
+	assert.True(t, models["edge-2"].Handoff.IsNull())
 }
 
 func TestAgentGraphEdgeModelsFromAPI_Empty(t *testing.T) {

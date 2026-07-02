@@ -28,12 +28,12 @@ resource "launchdarkly_environment" "approvals_example" {
   color = "ff00ff"
   tags  = ["terraform", "staging"]
 
-  approval_settings = [{
+  approval_settings = {
     required                   = true
     can_review_own_request     = true
     min_num_approvals          = 2
     can_apply_declined_changes = true
-  }]
+  }
 
   project_key = launchdarkly_project.example.key
 }
@@ -49,12 +49,12 @@ resource "launchdarkly_environment" "segment_approvals_example" {
   color = "ff00ff"
   tags  = ["terraform", "staging"]
 
-  segment_approval_settings = [{
+  segment_approval_settings = {
     required                   = true
     can_review_own_request     = true
     min_num_approvals          = 2
     can_apply_declined_changes = true
-  }]
+  }
 
   project_key = launchdarkly_project.example.key
 }
@@ -72,14 +72,14 @@ resource "launchdarkly_environment" "segment_approvals_example" {
 
 ### Optional
 
-- `approval_settings` (Attributes List) (see [below for nested schema](#nestedatt--approval_settings))
+- `approval_settings` (Attributes) (see [below for nested schema](#nestedatt--approval_settings))
 - `confirm_changes` (Boolean)
 - `critical` (Boolean)
 - `default_track_events` (Boolean)
 - `default_ttl` (Number) TTL (0-60 minutes).
 - `require_comments` (Boolean)
 - `secure_mode` (Boolean)
-- `segment_approval_settings` (Attributes List) Configure approval settings for segment changes in this environment. This is configured via LaunchDarkly's beta approvals API, separate from flag `approval_settings`.
+- `segment_approval_settings` (Attributes) Configure approval settings for segment changes in this environment. This is configured via LaunchDarkly's beta approvals API, separate from flag `approval_settings`.
 
 ~> **Warning:** Enabling segment approvals (`required = true`) while you manage `launchdarkly_segment` resources in Terraform will cause every subsequent segment change to require manual approval before it can be applied, so your applies will not complete until a reviewer approves them. This is a known limitation tracked in [issue #370](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/370). Only enable this if you are prepared to approve segment changes out of band. (see [below for nested schema](#nestedatt--segment_approval_settings))
 - `tags` (Set of String)

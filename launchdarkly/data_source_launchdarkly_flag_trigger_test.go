@@ -102,7 +102,7 @@ func TestAccDataSourceFlagTrigger_exists(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "id", *trigger.Id),
 					// resource.TestCheckResourceAttrSet(resourceName, "maintainer_id"),
 					resource.TestCheckResourceAttrSet(resourceName, "enabled"),
-					resource.TestCheckResourceAttr(resourceName, "instructions.0.kind", "turnFlagOff"),
+					resource.TestCheckResourceAttr(resourceName, "instructions.kind", "turnFlagOff"),
 					resource.TestCheckResourceAttr(resourceName, "project_key", projectKey),
 					resource.TestCheckResourceAttr(resourceName, "env_key", "production"),
 					resource.TestCheckResourceAttr(resourceName, "flag_key", flagKey),

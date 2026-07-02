@@ -91,11 +91,11 @@ resource "launchdarkly_project" "env_test" {
 	    name = "New approvals environment"
 	    color = "EEEEEE"
 	    tags = ["new"]
-	    approval_settings = [{
+	    approval_settings = {
 	      required                   = true
 	      can_review_own_request     = true
 	      min_num_approvals          = 2
-	    }]
+	    }
 	  }
 	}
 }
@@ -120,12 +120,12 @@ resource "launchdarkly_project" "env_test" {
 	    name = "New approvals environment"
 	    color = "EEEEEE"
 	    tags = ["new"]
-	    approval_settings = [{
+	    approval_settings = {
 	      required_approval_tags     = ["approvals_required"]
 	      can_review_own_request     = false
 	      min_num_approvals          = 1
 	      can_apply_declined_changes = false
-	    }]
+	    }
 	  }
 	}
 }
@@ -190,12 +190,12 @@ resource "launchdarkly_project" "approval_env_test" {
 	  "approval-env" = {
 	    name = "env with approval settings"
 	    color = "AAAAAA"
-	    approval_settings = [{
+	    approval_settings = {
 	      can_review_own_request     = false
 	      can_apply_declined_changes = false
 	      min_num_approvals          = 2
 	      required                   = true
-	    }]
+	    }
 	  }
 	  "default-env" = {
 	    name = "env with default approval settings"
@@ -212,22 +212,22 @@ resource "launchdarkly_project" "approval_env_test" {
 	  "new-env" = {
 	    name = "New env with approval settings"
 	    color = "AAAAAA"
-	    approval_settings = [{
+	    approval_settings = {
 	      can_review_own_request     = false
 	      can_apply_declined_changes = false
 	      min_num_approvals          = 1
 	      required                   = false
-	    }]
+	    }
 	  }
 	  "approval-env" = {
 	    name = "env with approval settings"
 	    color = "AAAAAA"
-	    approval_settings = [{
+	    approval_settings = {
 	      can_review_own_request     = false
 	      can_apply_declined_changes = false
 	      min_num_approvals          = 2
 	      required                   = true
-	    }]
+	    }
 	  }
 	  "default-env" = {
 	    name = "env with default approval settings"
@@ -466,10 +466,10 @@ func TestAccProject_WithEnvironments(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "environments.new-approvals-env.default_track_events", "false"),
 					resource.TestCheckResourceAttr(resourceName, "environments.new-approvals-env.require_comments", "false"),
 					resource.TestCheckResourceAttr(resourceName, "environments.new-approvals-env.confirm_changes", "false"),
-					resource.TestCheckResourceAttr(resourceName, "environments.new-approvals-env.approval_settings.0.required", "true"),
-					resource.TestCheckResourceAttr(resourceName, "environments.new-approvals-env.approval_settings.0.can_review_own_request", "true"),
-					resource.TestCheckResourceAttr(resourceName, "environments.new-approvals-env.approval_settings.0.min_num_approvals", "2"),
-					resource.TestCheckResourceAttr(resourceName, "environments.new-approvals-env.approval_settings.0.can_apply_declined_changes", "true"), // defaults to true
+					resource.TestCheckResourceAttr(resourceName, "environments.new-approvals-env.approval_settings.required", "true"),
+					resource.TestCheckResourceAttr(resourceName, "environments.new-approvals-env.approval_settings.can_review_own_request", "true"),
+					resource.TestCheckResourceAttr(resourceName, "environments.new-approvals-env.approval_settings.min_num_approvals", "2"),
+					resource.TestCheckResourceAttr(resourceName, "environments.new-approvals-env.approval_settings.can_apply_declined_changes", "true"), // defaults to true
 				),
 			},
 			{
@@ -493,11 +493,11 @@ func TestAccProject_WithEnvironments(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "environments.new-approvals-env.default_track_events", "false"),
 					resource.TestCheckResourceAttr(resourceName, "environments.new-approvals-env.require_comments", "false"),
 					resource.TestCheckResourceAttr(resourceName, "environments.new-approvals-env.confirm_changes", "false"),
-					resource.TestCheckResourceAttr(resourceName, "environments.new-approvals-env.approval_settings.0.required", "false"),
-					resource.TestCheckResourceAttr(resourceName, "environments.new-approvals-env.approval_settings.0.required_approval_tags.0", "approvals_required"),
-					resource.TestCheckResourceAttr(resourceName, "environments.new-approvals-env.approval_settings.0.can_review_own_request", "false"),
-					resource.TestCheckResourceAttr(resourceName, "environments.new-approvals-env.approval_settings.0.min_num_approvals", "1"),
-					resource.TestCheckResourceAttr(resourceName, "environments.new-approvals-env.approval_settings.0.can_apply_declined_changes", "false"),
+					resource.TestCheckResourceAttr(resourceName, "environments.new-approvals-env.approval_settings.required", "false"),
+					resource.TestCheckResourceAttr(resourceName, "environments.new-approvals-env.approval_settings.required_approval_tags.0", "approvals_required"),
+					resource.TestCheckResourceAttr(resourceName, "environments.new-approvals-env.approval_settings.can_review_own_request", "false"),
+					resource.TestCheckResourceAttr(resourceName, "environments.new-approvals-env.approval_settings.min_num_approvals", "1"),
+					resource.TestCheckResourceAttr(resourceName, "environments.new-approvals-env.approval_settings.can_apply_declined_changes", "false"),
 				),
 			},
 			{
@@ -550,11 +550,11 @@ func TestAccProject_EnvApprovalUpdate(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, NAME, "test project"),
 					resource.TestCheckResourceAttr(resourceName, "environments.%", "2"),
 					resource.TestCheckResourceAttr(resourceName, "environments.approval-env.name", "env with approval settings"),
-					resource.TestCheckResourceAttr(resourceName, "environments.approval-env.approval_settings.0.required", "true"),
-					resource.TestCheckResourceAttr(resourceName, "environments.approval-env.approval_settings.0.min_num_approvals", "2"),
+					resource.TestCheckResourceAttr(resourceName, "environments.approval-env.approval_settings.required", "true"),
+					resource.TestCheckResourceAttr(resourceName, "environments.approval-env.approval_settings.min_num_approvals", "2"),
 					resource.TestCheckResourceAttr(resourceName, "environments.default-env.name", "env with default approval settings"),
 					// default-env omits approval_settings so state stays null.
-					resource.TestCheckNoResourceAttr(resourceName, "environments.default-env.approval_settings.#"),
+					resource.TestCheckNoResourceAttr(resourceName, "environments.default-env.approval_settings.%"),
 				),
 			},
 			{
@@ -570,14 +570,14 @@ func TestAccProject_EnvApprovalUpdate(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, NAME, "test project"),
 					resource.TestCheckResourceAttr(resourceName, "environments.%", "3"),
 					resource.TestCheckResourceAttr(resourceName, "environments.new-env.name", "New env with approval settings"),
-					resource.TestCheckResourceAttr(resourceName, "environments.new-env.approval_settings.0.required", "false"),
-					resource.TestCheckResourceAttr(resourceName, "environments.new-env.approval_settings.0.min_num_approvals", "1"),
+					resource.TestCheckResourceAttr(resourceName, "environments.new-env.approval_settings.required", "false"),
+					resource.TestCheckResourceAttr(resourceName, "environments.new-env.approval_settings.min_num_approvals", "1"),
 					resource.TestCheckResourceAttr(resourceName, "environments.approval-env.name", "env with approval settings"),
-					resource.TestCheckResourceAttr(resourceName, "environments.approval-env.approval_settings.0.required", "true"),
-					resource.TestCheckResourceAttr(resourceName, "environments.approval-env.approval_settings.0.min_num_approvals", "2"),
+					resource.TestCheckResourceAttr(resourceName, "environments.approval-env.approval_settings.required", "true"),
+					resource.TestCheckResourceAttr(resourceName, "environments.approval-env.approval_settings.min_num_approvals", "2"),
 					resource.TestCheckResourceAttr(resourceName, "environments.default-env.name", "env with default approval settings"),
 					// default-env omits approval_settings so state stays null.
-					resource.TestCheckNoResourceAttr(resourceName, "environments.default-env.approval_settings.#"),
+					resource.TestCheckNoResourceAttr(resourceName, "environments.default-env.approval_settings.%"),
 				),
 			},
 			{
@@ -589,7 +589,7 @@ func TestAccProject_EnvApprovalUpdate(t *testing.T) {
 				// to tell "user declared" from "user omitted", so we fall back
 				// to an isZero heuristic that collapses the all-defaults case to
 				// null. Ignore that drift here.
-				ImportStateVerifyIgnore: []string{"environments.new-env.approval_settings.#", "environments.new-env.approval_settings.0.%", "environments.new-env.approval_settings.0.required", "environments.new-env.approval_settings.0.min_num_approvals", "environments.new-env.approval_settings.0.can_review_own_request", "environments.new-env.approval_settings.0.can_apply_declined_changes", "environments.new-env.approval_settings.0.auto_apply_approved_changes", "environments.new-env.approval_settings.0.service_kind", "environments.new-env.approval_settings.0.service_config.%", "environments.new-env.approval_settings.0.required_approval_tags.#"},
+				ImportStateVerifyIgnore: []string{"environments.new-env.approval_settings.%", "environments.new-env.approval_settings.%", "environments.new-env.approval_settings.required", "environments.new-env.approval_settings.min_num_approvals", "environments.new-env.approval_settings.can_review_own_request", "environments.new-env.approval_settings.can_apply_declined_changes", "environments.new-env.approval_settings.auto_apply_approved_changes", "environments.new-env.approval_settings.service_kind", "environments.new-env.approval_settings.service_config.%", "environments.new-env.approval_settings.required_approval_tags.#"},
 			},
 		},
 	})

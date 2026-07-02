@@ -83,7 +83,7 @@ output "team_notifications" {
 
 - `archived` (Boolean) Whether the flag is archived.
 - `client_side_availability` (Attributes) Client-side availability settings. (see [below for nested schema](#nestedatt--client_side_availability))
-- `custom_properties` (Attributes Set) Custom properties. (see [below for nested schema](#nestedatt--custom_properties))
+- `custom_properties` (Attributes Map) Custom properties, keyed by the custom property key. (see [below for nested schema](#nestedatt--custom_properties))
 - `defaults` (Attributes) Default variation indices for new environments. (see [below for nested schema](#nestedatt--defaults))
 - `deprecated` (Boolean) Whether the flag is deprecated.
 - `description` (String) Feature flag description.

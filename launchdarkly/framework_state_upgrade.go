@@ -106,17 +106,22 @@ func environmentsMapFromV0List(ctx context.Context, l types.List) (types.Map, di
 	if diags.HasError() {
 		return types.MapNull(environmentObjectType), diags
 	}
-	approvalElemType := types.ObjectType{AttrTypes: frameworkApprovalSettingsObjectAttrTypes}
 	elements := make(map[string]attr.Value, len(v0envs))
 	for _, e := range v0envs {
-		approvals := e.ApprovalSettings
-		if !approvals.IsNull() && !approvals.IsUnknown() && len(approvals.Elements()) == 1 {
+		// v0 stored approval_settings as a single-element list; v3 models
+		// it as a single object. Collapse the API-default settings the
+		// v2.29 SDKv2 provider persisted verbatim to null, then project
+		// the survivors into the object shape.
+		approvalsList := e.ApprovalSettings
+		if !approvalsList.IsNull() && !approvalsList.IsUnknown() && len(approvalsList.Elements()) == 1 {
 			var items []approvalSettingsModel
-			d := approvals.ElementsAs(ctx, &items, false)
+			d := approvalsList.ElementsAs(ctx, &items, false)
 			if !d.HasError() && len(items) == 1 && approvalSettingsMatchesAPIDefaults(items[0]) {
-				approvals = types.ListNull(approvalElemType)
+				approvalsList = types.ListNull(types.ObjectType{AttrTypes: frameworkApprovalSettingsObjectAttrTypes})
 			}
 		}
+		approvals, d := approvalSettingsObjectFromV0List(ctx, approvalsList)
+		diags.Append(d...)
 		obj, d := types.ObjectValue(environmentAttrTypes, map[string]attr.Value{
 			KEY:                  e.Key,
 			NAME:                 e.Name,

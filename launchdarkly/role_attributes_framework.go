@@ -3,6 +3,11 @@ package launchdarkly
 // role_attributes_framework.go provides the shared role_attributes
 // schema builder and conversion helpers. Used by the team / team_member
 // resources and data sources.
+//
+// HCL surface: `role_attributes = { <key> = [<values>...] }` — a map of
+// string lists keyed by the role attribute key, matching the LD-API
+// shape and the launchdarkly_team_role_mapping resource. Modeled as a
+// Set of {key, values} objects through 3.0.0-beta.4.
 
 import (
 	"context"
@@ -16,87 +21,54 @@ import (
 	ldapi "github.com/launchdarkly/api-client-go/v22"
 )
 
-var frameworkRoleAttributeAttrTypes = map[string]attr.Type{
-	KEY:    types.StringType,
-	VALUES: types.ListType{ElemType: types.StringType},
-}
+const roleAttributesDescription = "A map of role attributes, keyed by the role attribute key with a string array of resource keys as each value. For example, if your policy statement defines the resource `\"proj/$${roleAttribute/testAttribute}\"`, the key would be `testAttribute` and the values the keys of the projects you wanted to assign access to."
 
-// frameworkRoleAttributesDataSourceAttribute returns a SetNestedAttribute
-// schema for role_attribute objects.
-func frameworkRoleAttributesDataSourceAttribute() dsschema.SetNestedAttribute {
-	return dsschema.SetNestedAttribute{
+// frameworkRoleAttributesDataSourceAttribute returns a MapAttribute
+// schema for role_attributes.
+func frameworkRoleAttributesDataSourceAttribute() dsschema.MapAttribute {
+	return dsschema.MapAttribute{
 		Computed:    true,
-		Description: "A role attributes block. One block must be defined per role attribute. The key is the role attribute key and the value is a string array of resource keys that apply.",
-		NestedObject: dsschema.NestedAttributeObject{
-			Attributes: map[string]dsschema.Attribute{
-				KEY: dsschema.StringAttribute{
-					Computed:    true,
-					Description: "The key / name of your role attribute. In the example `$${roleAttribute/testAttribute}`, the key is `testAttribute`.",
-				},
-				VALUES: dsschema.ListAttribute{
-					Computed:    true,
-					ElementType: types.StringType,
-					Description: "A list of values for your role attribute. For example, if your policy statement defines the resource `\"proj/$${roleAttribute/testAttribute}\"`, the values would be the keys of the projects you wanted to assign access to.",
-				},
-			},
-		},
+		ElementType: types.ListType{ElemType: types.StringType},
+		Description: roleAttributesDescription,
 	}
 }
 
-// frameworkRoleAttributesResourceAttribute returns a SetNestedAttribute for
+// frameworkRoleAttributesResourceAttribute returns a MapAttribute for
 // use in resource.Schema.
-func frameworkRoleAttributesResourceAttribute() rsschema.SetNestedAttribute {
-	return rsschema.SetNestedAttribute{
+func frameworkRoleAttributesResourceAttribute() rsschema.MapAttribute {
+	return rsschema.MapAttribute{
 		Optional:    true,
-		Description: "A role attributes block. One block must be defined per role attribute. The key is the role attribute key and the value is a string array of resource keys that apply.",
-		NestedObject: rsschema.NestedAttributeObject{
-			Attributes: map[string]rsschema.Attribute{
-				KEY: rsschema.StringAttribute{
-					Required:    true,
-					Description: "The key / name of your role attribute. In the example `$${roleAttribute/testAttribute}`, the key is `testAttribute`.",
-				},
-				VALUES: rsschema.ListAttribute{
-					Required:    true,
-					ElementType: types.StringType,
-					Description: "A list of values for your role attribute. For example, if your policy statement defines the resource `\"proj/$${roleAttribute/testAttribute}\"`, the values would be the keys of the projects you wanted to assign access to.",
-				},
-			},
-		},
+		ElementType: types.ListType{ElemType: types.StringType},
+		Description: roleAttributesDescription,
 	}
 }
 
-type frameworkRoleAttributeModel struct {
-	Key    string   `tfsdk:"key"`
-	Values []string `tfsdk:"values"`
-}
-
-// frameworkRoleAttributesFromSet converts a framework types.Set of
-// role_attribute objects back into the LD-API map[string][]string
-// shape used by NewMemberForm.RoleAttributes etc.
-func frameworkRoleAttributesFromSet(ctx context.Context, set types.Set) (*map[string][]string, diag.Diagnostics) {
+// frameworkRoleAttributesFromMap converts the framework
+// Map<String, List<String>> back into the LD-API map[string][]string
+// shape used by NewMemberForm.RoleAttributes etc. Returns nil for a
+// null/unknown/empty map.
+func frameworkRoleAttributesFromMap(ctx context.Context, m types.Map) (*map[string][]string, diag.Diagnostics) {
 	var diags diag.Diagnostics
-	if set.IsNull() || set.IsUnknown() || len(set.Elements()) == 0 {
+	if m.IsNull() || m.IsUnknown() || len(m.Elements()) == 0 {
 		return nil, diags
 	}
-	var entries []frameworkRoleAttributeModel
-	diags.Append(set.ElementsAs(ctx, &entries, false)...)
+	raw, d := roleAttributesFromFrameworkMap(ctx, m)
+	diags.Append(d...)
 	if diags.HasError() {
 		return nil, diags
 	}
-	out := make(map[string][]string, len(entries))
-	for _, e := range entries {
-		out[e.Key] = append(out[e.Key], e.Values...)
-	}
-	return &out, diags
+	return &raw, diags
 }
 
 // frameworkRoleAttributePatches generates the patch operations to
-// replace /roleAttributes on the server.
-func frameworkRoleAttributePatches(ctx context.Context, planSet, stateSet types.Set) []ldapi.PatchOperation {
-	if planSet.Equal(stateSet) {
+// replace /roleAttributes on the server. A null plan is a deliberate
+// clear; an Unknown plan carries no user intent, so it is a no-op
+// (defensive; a non-computed attribute is concrete by apply time).
+func frameworkRoleAttributePatches(ctx context.Context, planMap, stateMap types.Map) []ldapi.PatchOperation {
+	if planMap.IsUnknown() || planMap.Equal(stateMap) {
 		return nil
 	}
-	plan, _ := frameworkRoleAttributesFromSet(ctx, planSet)
+	plan, _ := frameworkRoleAttributesFromMap(ctx, planMap)
 	if plan != nil {
 		return []ldapi.PatchOperation{patchReplace("/roleAttributes", plan)}
 	}
@@ -104,28 +76,55 @@ func frameworkRoleAttributePatches(ctx context.Context, planSet, stateSet types.
 }
 
 // frameworkRoleAttributesValue converts an LD-API role_attributes map
-// (map[key] -> []string values) into a framework types.Set of objects.
-// Nil or empty input returns a null set so plan-vs-apply consistency
+// (map[key] -> []string values) into a framework Map<String, List<String>>.
+// Nil or empty input returns a null map so plan-vs-apply consistency
 // holds for the resource variant (Optional-only schema).
-func frameworkRoleAttributesValue(ctx context.Context, roleAttributes *map[string][]string) (basetypes.SetValue, diag.Diagnostics) {
-	objectType := types.ObjectType{AttrTypes: frameworkRoleAttributeAttrTypes}
-	if roleAttributes == nil || len(*roleAttributes) == 0 {
-		return types.SetNull(objectType), nil
-	}
+func frameworkRoleAttributesValue(_ context.Context, roleAttributes *map[string][]string) (basetypes.MapValue, diag.Diagnostics) {
+	return roleAttributesToFrameworkMap(roleAttributes)
+}
 
+// roleAttributesMapFromV0Set projects the v0 (pre-map) Set of
+// {key, values} role_attribute objects into the current
+// Map<String, List<String>> keyed by the role attribute key. Returns a
+// null map for null/empty input.
+func roleAttributesMapFromV0Set(ctx context.Context, set types.Set) (types.Map, diag.Diagnostics) {
+	elemType := types.ListType{ElemType: types.StringType}
 	var diags diag.Diagnostics
-	elements := make([]attr.Value, 0, len(*roleAttributes))
-	for key, values := range *roleAttributes {
-		valuesList, d := listFromStringSlice(ctx, values)
-		diags.Append(d...)
-		obj, d := types.ObjectValue(frameworkRoleAttributeAttrTypes, map[string]attr.Value{
-			KEY:    types.StringValue(key),
-			VALUES: valuesList,
-		})
-		diags.Append(d...)
-		elements = append(elements, obj)
+	if set.IsNull() || set.IsUnknown() || len(set.Elements()) == 0 {
+		return types.MapNull(elemType), diags
 	}
-	set, d := types.SetValue(objectType, elements)
+	type roleAttributeModelV0 struct {
+		Key    types.String `tfsdk:"key"`
+		Values types.List   `tfsdk:"values"`
+	}
+	var entries []roleAttributeModelV0
+	diags.Append(set.ElementsAs(ctx, &entries, false)...)
+	if diags.HasError() {
+		return types.MapNull(elemType), diags
+	}
+	elements := make(map[string]attr.Value, len(entries))
+	for _, e := range entries {
+		elements[e.Key.ValueString()] = e.Values
+	}
+	m, d := types.MapValue(elemType, elements)
 	diags.Append(d...)
-	return set, diags
+	return m, diags
+}
+
+// roleAttributesSetAttributeV0 reproduces the pre-map role_attributes
+// shape — a set of {key, values} objects — used only in PriorSchema
+// declarations for v0/v1 state upgraders.
+func roleAttributesSetAttributeV0() rsschema.SetNestedAttribute {
+	return rsschema.SetNestedAttribute{
+		Optional: true,
+		NestedObject: rsschema.NestedAttributeObject{
+			Attributes: map[string]rsschema.Attribute{
+				KEY: rsschema.StringAttribute{Required: true},
+				VALUES: rsschema.ListAttribute{
+					Required:    true,
+					ElementType: types.StringType,
+				},
+			},
+		},
+	}
 }

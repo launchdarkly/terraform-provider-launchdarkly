@@ -18,14 +18,14 @@ resource "launchdarkly_flag_templates" "example" {
   tags      = ["terraform"]
   temporary = false
 
-  boolean_defaults = [{
+  boolean_defaults = {
     true_display_name  = "True"
     false_display_name = "False"
     true_description   = ""
     false_description  = ""
     on_variation       = 0
     off_variation      = 1
-  }]
+  }
 }
 ```
 
@@ -34,11 +34,11 @@ resource "launchdarkly_flag_templates" "example" {
 
 ### Required
 
+- `boolean_defaults` (Attributes) Default boolean variation settings. (see [below for nested schema](#nestedatt--boolean_defaults))
 - `project_key` (String) The project key.
 
 ### Optional
 
-- `boolean_defaults` (Attributes List) Default boolean variation settings. (see [below for nested schema](#nestedatt--boolean_defaults))
 - `tags` (Set of String)
 - `temporary` (Boolean)
 

@@ -31,7 +31,7 @@ type FeatureFlagDataSourceModel struct {
 	Variations             types.List   `tfsdk:"variations"`
 	Temporary              types.Bool   `tfsdk:"temporary"`
 	ClientSideAvailability types.Object `tfsdk:"client_side_availability"`
-	CustomProperties       types.Set    `tfsdk:"custom_properties"`
+	CustomProperties       types.Map    `tfsdk:"custom_properties"`
 	Defaults               types.Object `tfsdk:"defaults"`
 	Archived               types.Bool   `tfsdk:"archived"`
 	Deprecated             types.Bool   `tfsdk:"deprecated"`
@@ -117,9 +117,9 @@ func (d *FeatureFlagDataSource) Schema(_ context.Context, _ datasource.SchemaReq
 					USING_MOBILE_KEY:     schema.BoolAttribute{Computed: true},
 				},
 			},
-			CUSTOM_PROPERTIES: schema.SetNestedAttribute{
+			CUSTOM_PROPERTIES: schema.MapNestedAttribute{
 				Computed:    true,
-				Description: "Custom properties.",
+				Description: "Custom properties, keyed by the custom property key.",
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
 						KEY:  schema.StringAttribute{Computed: true},
@@ -258,9 +258,10 @@ func (d *FeatureFlagDataSource) Read(ctx context.Context, req datasource.ReadReq
 	resp.Diagnostics.Append(diags...)
 	data.Variations = variationsList
 
-	// custom_properties — sort each property's values for stable plan output.
+	// custom_properties — keyed by property key, values sorted for stable
+	// plan output.
 	cpObjectType := types.ObjectType{AttrTypes: featureFlagCustomPropertyAttrTypes}
-	cpElements := make([]attr.Value, 0, len(flag.CustomProperties))
+	cpElements := make(map[string]attr.Value, len(flag.CustomProperties))
 	for k, cp := range flag.CustomProperties {
 		sortedValues := make([]string, len(cp.Value))
 		copy(sortedValues, cp.Value)
@@ -273,11 +274,11 @@ func (d *FeatureFlagDataSource) Read(ctx context.Context, req datasource.ReadReq
 			VALUE: valuesList,
 		})
 		resp.Diagnostics.Append(d...)
-		cpElements = append(cpElements, obj)
+		cpElements[k] = obj
 	}
-	cpSet, diags := types.SetValue(cpObjectType, cpElements)
+	cpMap, diags := types.MapValue(cpObjectType, cpElements)
 	resp.Diagnostics.Append(diags...)
-	data.CustomProperties = cpSet
+	data.CustomProperties = cpMap
 
 	// defaults
 	var on, off int64

@@ -30,7 +30,7 @@
   "launchdarkly_project": {
     "blocks": [
       {"name": "default_client_side_availability", "object": true},
-      {"name": "environments", "map_key": "key", "nested": [{"name": "approval_settings"}]}
+      {"name": "environments", "map_key": "key", "nested": [{"name": "approval_settings", "object": true}]}
     ],
     "deprecations": [
       {"name": "include_in_snippet", "action": "iis_to_csa", "to": "default_client_side_availability", "using_mobile_key": "true"}
@@ -40,7 +40,10 @@
     ]
   },
   "launchdarkly_environment": {
-    "blocks": [{"name": "approval_settings"}]
+    "blocks": [{"name": "approval_settings", "object": true}],
+    "ds_attr_rewrites": [
+      {"from": "approval_settings", "to": "approval_settings", "strip_index": true}
+    ]
   },
   "launchdarkly_segment": {
     "blocks": [
@@ -50,7 +53,10 @@
     ]
   },
   "launchdarkly_flag_trigger": {
-    "blocks": [{"name": "instructions"}]
+    "blocks": [{"name": "instructions", "object": true}],
+    "ds_attr_rewrites": [
+      {"from": "instructions", "to": "instructions", "strip_index": true}
+    ]
   },
   "launchdarkly_view_links": {
     "blocks": [{"name": "segments"}]
@@ -60,16 +66,16 @@
     "deprecations": [{"name": "is_active", "action": "drop"}]
   },
   "launchdarkly_team": {
-    "blocks": [{"name": "role_attributes"}]
+    "blocks": [{"name": "role_attributes", "map_key": "key", "map_value": "values"}]
   },
   "launchdarkly_team_member": {
-    "blocks": [{"name": "role_attributes"}]
+    "blocks": [{"name": "role_attributes", "map_key": "key", "map_value": "values"}]
   },
   "launchdarkly_ai_config_variation": {
     "blocks": [{"name": "messages"}]
   },
   "launchdarkly_flag_templates": {
-    "blocks": [{"name": "boolean_defaults"}]
+    "blocks": [{"name": "boolean_defaults", "object": true}]
   },
   "launchdarkly_feature_flag_environment": {
     "blocks": [
@@ -87,6 +93,7 @@
     "blocks": [
       {"name": "client_side_availability", "object": true},
       {"name": "variations"},
+      {"name": "custom_properties", "map_key": "key"},
       {"name": "defaults", "object": true}
     ],
     "deprecations": [

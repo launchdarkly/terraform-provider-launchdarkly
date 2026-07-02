@@ -23,7 +23,7 @@ type FlagTriggerDataSourceModel struct {
 	EnvKey         types.String `tfsdk:"env_key"`
 	FlagKey        types.String `tfsdk:"flag_key"`
 	IntegrationKey types.String `tfsdk:"integration_key"`
-	Instructions   types.List   `tfsdk:"instructions"`
+	Instructions   types.Object `tfsdk:"instructions"`
 	TriggerURL     types.String `tfsdk:"trigger_url"`
 	MaintainerID   types.String `tfsdk:"maintainer_id"`
 	Enabled        types.Bool   `tfsdk:"enabled"`
@@ -78,15 +78,13 @@ func (d *FlagTriggerDataSource) Schema(_ context.Context, _ datasource.SchemaReq
 				Computed:    true,
 				Description: "Whether the trigger is currently active or not.",
 			},
-			INSTRUCTIONS: schema.ListNestedAttribute{
+			INSTRUCTIONS: schema.SingleNestedAttribute{
 				Computed:    true,
-				Description: "Instructions containing the action to perform when invoking the trigger. Currently supported flag actions are `turnFlagOn` and `turnFlagOff`. This must be passed as the key-value pair `{ kind = \"<flag_action>\" }`.",
-				NestedObject: schema.NestedAttributeObject{
-					Attributes: map[string]schema.Attribute{
-						KIND: schema.StringAttribute{
-							Computed:    true,
-							Description: "The action to perform when triggering. Currently supported flag actions are `turnFlagOn` and `turnFlagOff`.",
-						},
+				Description: "The instruction containing the action to perform when invoking the trigger. Currently supported flag actions are `turnFlagOn` and `turnFlagOff`.",
+				Attributes: map[string]schema.Attribute{
+					KIND: schema.StringAttribute{
+						Computed:    true,
+						Description: "The action to perform when triggering. Currently supported flag actions are `turnFlagOn` and `turnFlagOff`.",
 					},
 				},
 			},
@@ -151,24 +149,7 @@ func (d *FlagTriggerDataSource) Read(ctx context.Context, req datasource.ReadReq
 	}
 	data.TriggerURL = types.StringValue("")
 
-	objectType := types.ObjectType{AttrTypes: flagTriggerInstructionAttrTypes}
-	elements := make([]attr.Value, 0, len(trigger.Instructions))
-	for _, instr := range trigger.Instructions {
-		kindVal := types.StringNull()
-		if k, ok := instr[KIND]; ok {
-			if s, ok := k.(string); ok {
-				kindVal = types.StringValue(s)
-			}
-		}
-		obj, diags := types.ObjectValue(flagTriggerInstructionAttrTypes, map[string]attr.Value{
-			KIND: kindVal,
-		})
-		resp.Diagnostics.Append(diags...)
-		elements = append(elements, obj)
-	}
-	list, diags := types.ListValue(objectType, elements)
-	resp.Diagnostics.Append(diags...)
-	data.Instructions = list
+	data.Instructions = flagTriggerInstructionObject(trigger.Instructions)
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }

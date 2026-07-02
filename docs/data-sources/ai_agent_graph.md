@@ -34,7 +34,7 @@ data "launchdarkly_ai_agent_graph" "support_workflow" {
 
 - `creation_date` (Number) The creation timestamp of the agent graph, in Unix epoch milliseconds.
 - `description` (String) A description of the agent graph.
-- `edges` (Attributes List) The edges in the graph. Each edge connects a source AI Config to a target AI Config. (see [below for nested schema](#nestedatt--edges))
+- `edges` (Attributes Map) The edges in the graph, keyed by edge key. Each edge connects a source AI Config to a target AI Config. (see [below for nested schema](#nestedatt--edges))
 - `id` (String) The composite ID of the agent graph in the format `project_key/key`.
 - `last_modified` (Number) The timestamp of the agent graph's last update, in Unix epoch milliseconds.
 - `maintainer_id` (String) The member ID of the maintainer for this agent graph.
@@ -48,6 +48,6 @@ data "launchdarkly_ai_agent_graph" "support_workflow" {
 Read-Only:
 
 - `handoff` (String) A JSON string representing the handoff options from the source AI Config to the target AI Config.
-- `key` (String) A unique key for this edge within the graph.
+- `key` (String) The unique key for this edge within the graph. Always equals the map key.
 - `source_config` (String) The AI Config key that is the source of this edge.
 - `target_config` (String) The AI Config key that is the target of this edge.

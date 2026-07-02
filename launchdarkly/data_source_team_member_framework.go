@@ -21,7 +21,7 @@ type TeamMemberDataSourceModel struct {
 	LastName       types.String `tfsdk:"last_name"`
 	Role           types.String `tfsdk:"role"`
 	CustomRoles    types.Set    `tfsdk:"custom_roles"`
-	RoleAttributes types.Set    `tfsdk:"role_attributes"`
+	RoleAttributes types.Map    `tfsdk:"role_attributes"`
 }
 
 func NewTeamMemberDataSource() datasource.DataSource {

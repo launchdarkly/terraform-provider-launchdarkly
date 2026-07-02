@@ -37,7 +37,7 @@ output "default_flag_tags" {
 
 ### Read-Only
 
-- `boolean_defaults` (Attributes List) Default boolean flag variation settings. (see [below for nested schema](#nestedatt--boolean_defaults))
+- `boolean_defaults` (Attributes) Default boolean flag variation settings. (see [below for nested schema](#nestedatt--boolean_defaults))
 - `id` (String) Project key (the ID).
 - `tags` (Set of String) Tags applied by default.
 - `temporary` (Boolean) Whether new flags should be temporary by default.

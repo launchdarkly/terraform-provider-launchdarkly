@@ -18,8 +18,9 @@ import (
 )
 
 var (
-	_ resource.Resource                = &TeamResource{}
-	_ resource.ResourceWithImportState = &TeamResource{}
+	_ resource.Resource                 = &TeamResource{}
+	_ resource.ResourceWithImportState  = &TeamResource{}
+	_ resource.ResourceWithUpgradeState = &TeamResource{}
 )
 
 type TeamResource struct {
@@ -27,6 +28,20 @@ type TeamResource struct {
 }
 
 type TeamResourceModel struct {
+	ID             types.String `tfsdk:"id"`
+	Key            types.String `tfsdk:"key"`
+	Name           types.String `tfsdk:"name"`
+	Description    types.String `tfsdk:"description"`
+	MemberIDs      types.Set    `tfsdk:"member_ids"`
+	Maintainers    types.Set    `tfsdk:"maintainers"`
+	CustomRoleKeys types.Set    `tfsdk:"custom_role_keys"`
+	RoleAttributes types.Map    `tfsdk:"role_attributes"`
+}
+
+// TeamResourceModelV0 is the pre-map state shape: role_attributes was a
+// Set of {key, values} objects (v2.x SDKv2 blocks and 3.0.0-beta nested
+// attributes).
+type TeamResourceModelV0 struct {
 	ID             types.String `tfsdk:"id"`
 	Key            types.String `tfsdk:"key"`
 	Name           types.String `tfsdk:"name"`
@@ -50,44 +65,87 @@ func (r *TeamResource) Schema(_ context.Context, _ resource.SchemaRequest, resp 
 This resource allows you to create and manage a team within your LaunchDarkly organization.
 
 -> **Note:** Teams are available to customers on an Enterprise LaunchDarkly plan. To learn more, [read about our pricing](https://launchdarkly.com/pricing/). To upgrade your plan, [contact LaunchDarkly Sales](https://launchdarkly.com/contact-sales/).`,
-		Attributes: map[string]schema.Attribute{
-			"id": schema.StringAttribute{
-				Computed:      true,
-				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+		Version:    1,
+		Attributes: teamSchemaAttributes(),
+	}
+}
+
+func teamSchemaAttributes() map[string]schema.Attribute {
+	return map[string]schema.Attribute{
+		"id": schema.StringAttribute{
+			Computed:      true,
+			PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+		},
+		KEY: schema.StringAttribute{
+			Required:      true,
+			Description:   "The team key. A change in this field will force the destruction of the existing resource and the creation of a new one.",
+			PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
+		},
+		NAME: schema.StringAttribute{
+			Required:    true,
+			Description: "A human-friendly name for the team.",
+		},
+		DESCRIPTION: schema.StringAttribute{
+			Optional:    true,
+			Computed:    true,
+			Description: "The team description.",
+		},
+		MEMBER_IDS: schema.SetAttribute{
+			Optional:    true,
+			Computed:    true,
+			ElementType: types.StringType,
+			Description: "List of member IDs who belong to the team.",
+		},
+		MAINTAINERS: schema.SetAttribute{
+			Optional:    true,
+			Computed:    true,
+			ElementType: types.StringType,
+			Description: "List of member IDs for users who maintain the team.",
+		},
+		CUSTOM_ROLE_KEYS: schema.SetAttribute{
+			Optional:    true,
+			Computed:    true,
+			ElementType: types.StringType,
+			Description: "List of custom role keys the team will access. The referenced custom roles must already exist in LaunchDarkly. If they don't, the provider may behave unexpectedly.",
+		},
+		ROLE_ATTRIBUTES: frameworkRoleAttributesResourceAttribute(),
+	}
+}
+
+// UpgradeState projects the v0 (pre-map) role_attributes set into the
+// map keyed by role attribute key. Version 0 covers both genuine v2.x
+// SDKv2 state and 3.0.0-beta state (the team resource never bumped its
+// version before this).
+func (r *TeamResource) UpgradeState(_ context.Context) map[int64]resource.StateUpgrader {
+	priorAttrs := teamSchemaAttributes()
+	priorAttrs[ROLE_ATTRIBUTES] = roleAttributesSetAttributeV0()
+	priorSchema := schema.Schema{Attributes: priorAttrs}
+	return map[int64]resource.StateUpgrader{
+		0: {
+			PriorSchema: &priorSchema,
+			StateUpgrader: func(ctx context.Context, req resource.UpgradeStateRequest, resp *resource.UpgradeStateResponse) {
+				var prior TeamResourceModelV0
+				resp.Diagnostics.Append(req.State.Get(ctx, &prior)...)
+				if resp.Diagnostics.HasError() {
+					return
+				}
+				roleAttrs, d := roleAttributesMapFromV0Set(ctx, prior.RoleAttributes)
+				resp.Diagnostics.Append(d...)
+				if resp.Diagnostics.HasError() {
+					return
+				}
+				data := TeamResourceModel{
+					ID:             prior.ID,
+					Key:            prior.Key,
+					Name:           prior.Name,
+					Description:    prior.Description,
+					MemberIDs:      prior.MemberIDs,
+					Maintainers:    prior.Maintainers,
+					CustomRoleKeys: prior.CustomRoleKeys,
+					RoleAttributes: roleAttrs,
+				}
+				resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 			},
-			KEY: schema.StringAttribute{
-				Required:      true,
-				Description:   "The team key. A change in this field will force the destruction of the existing resource and the creation of a new one.",
-				PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
-			},
-			NAME: schema.StringAttribute{
-				Required:    true,
-				Description: "A human-friendly name for the team.",
-			},
-			DESCRIPTION: schema.StringAttribute{
-				Optional:    true,
-				Computed:    true,
-				Description: "The team description.",
-			},
-			MEMBER_IDS: schema.SetAttribute{
-				Optional:    true,
-				Computed:    true,
-				ElementType: types.StringType,
-				Description: "List of member IDs who belong to the team.",
-			},
-			MAINTAINERS: schema.SetAttribute{
-				Optional:    true,
-				Computed:    true,
-				ElementType: types.StringType,
-				Description: "List of member IDs for users who maintain the team.",
-			},
-			CUSTOM_ROLE_KEYS: schema.SetAttribute{
-				Optional:    true,
-				Computed:    true,
-				ElementType: types.StringType,
-				Description: "List of custom role keys the team will access. The referenced custom roles must already exist in LaunchDarkly. If they don't, the provider may behave unexpectedly.",
-			},
-			ROLE_ATTRIBUTES: frameworkRoleAttributesResourceAttribute(),
 		},
 	}
 }
@@ -170,7 +228,7 @@ func (r *TeamResource) Create(ctx context.Context, req resource.CreateRequest, r
 	resp.Diagnostics.Append(d...)
 	customRoleKeys, d := stringSliceFromSet(ctx, plan.CustomRoleKeys)
 	resp.Diagnostics.Append(d...)
-	roleAttrs, d := frameworkRoleAttributesFromSet(ctx, plan.RoleAttributes)
+	roleAttrs, d := frameworkRoleAttributesFromMap(ctx, plan.RoleAttributes)
 	resp.Diagnostics.Append(d...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -290,12 +348,19 @@ func (r *TeamResource) Update(ctx context.Context, req resource.UpdateRequest, r
 		}
 	}
 
-	if !plan.RoleAttributes.Equal(state.RoleAttributes) {
-		roleAttrs, d := frameworkRoleAttributesFromSet(ctx, plan.RoleAttributes)
+	// An Unknown plan carries no user intent — never turn it into a wipe
+	// (defensive; a non-computed attribute is concrete by apply time). A
+	// null plan is a deliberate clear: replace with an empty map.
+	if !plan.RoleAttributes.IsUnknown() && !plan.RoleAttributes.Equal(state.RoleAttributes) {
+		roleAttrs, d := frameworkRoleAttributesFromMap(ctx, plan.RoleAttributes)
 		resp.Diagnostics.Append(d...)
+		value := map[string][]string{}
+		if roleAttrs != nil {
+			value = *roleAttrs
+		}
 		instructions = append(instructions, map[string]interface{}{
 			"kind":  "replaceRoleAttributes",
-			"value": roleAttrs,
+			"value": value,
 		})
 	}
 

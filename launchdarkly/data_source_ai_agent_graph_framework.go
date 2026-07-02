@@ -25,7 +25,7 @@ type AIAgentGraphDataSourceModel struct {
 	MaintainerID      types.String `tfsdk:"maintainer_id"`
 	MaintainerTeamKey types.String `tfsdk:"maintainer_team_key"`
 	RootConfigKey     types.String `tfsdk:"root_config_key"`
-	Edges             types.List   `tfsdk:"edges"`
+	Edges             types.Map    `tfsdk:"edges"`
 	CreationDate      types.Int64  `tfsdk:"creation_date"`
 	LastModified      types.Int64  `tfsdk:"last_modified"`
 }
@@ -53,12 +53,12 @@ func (d *AIAgentGraphDataSource) Schema(_ context.Context, _ datasource.SchemaRe
 				Description: "The team key of the maintainer team for this agent graph.",
 			},
 			ROOT_CONFIG_KEY: schema.StringAttribute{Computed: true, Description: "The AI Config key of the root node of the graph."},
-			EDGES: schema.ListNestedAttribute{
+			EDGES: schema.MapNestedAttribute{
 				Computed:    true,
-				Description: "The edges in the graph. Each edge connects a source AI Config to a target AI Config.",
+				Description: "The edges in the graph, keyed by edge key. Each edge connects a source AI Config to a target AI Config.",
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
-						KEY:           schema.StringAttribute{Computed: true, Description: "A unique key for this edge within the graph."},
+						KEY:           schema.StringAttribute{Computed: true, Description: "The unique key for this edge within the graph. Always equals the map key."},
 						SOURCE_CONFIG: schema.StringAttribute{Computed: true, Description: "The AI Config key that is the source of this edge."},
 						TARGET_CONFIG: schema.StringAttribute{Computed: true, Description: "The AI Config key that is the target of this edge."},
 						HANDOFF:       schema.StringAttribute{Computed: true, Description: "A JSON string representing the handoff options from the source AI Config to the target AI Config."},
@@ -134,15 +134,15 @@ func (d *AIAgentGraphDataSource) Read(ctx context.Context, req datasource.ReadRe
 	}
 	if len(edgeModels) == 0 {
 		// Match the resource: a metadata-only graph reports edges as null, not an
-		// empty list, so resource and data source surface the same shape.
-		data.Edges = types.ListNull(agentGraphEdgeObjectType())
+		// empty map, so resource and data source surface the same shape.
+		data.Edges = types.MapNull(agentGraphEdgeObjectType())
 	} else {
-		edgesList, diag := types.ListValueFrom(ctx, agentGraphEdgeObjectType(), edgeModels)
+		edgesMap, diag := types.MapValueFrom(ctx, agentGraphEdgeObjectType(), edgeModels)
 		resp.Diagnostics.Append(diag...)
 		if resp.Diagnostics.HasError() {
 			return
 		}
-		data.Edges = edgesList
+		data.Edges = edgesMap
 	}
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)

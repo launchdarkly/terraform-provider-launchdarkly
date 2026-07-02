@@ -220,7 +220,7 @@ func TestForwardConvertsMapBlock(t *testing.T) {
 }
 `
 	f, body := parseBody(t, src)
-	spec := []*AttrSpec{{Name: "environments", MapKey: "key", Nested: []*AttrSpec{{Name: "approval_settings"}}}}
+	spec := []*AttrSpec{{Name: "environments", MapKey: "key", Nested: []*AttrSpec{{Name: "approval_settings", Object: true}}}}
 	if !forward(body, spec, "test.tf") {
 		t.Fatal("expected conversion")
 	}
@@ -229,7 +229,7 @@ func TestForwardConvertsMapBlock(t *testing.T) {
 		"environments = {",
 		`"production" = {`,
 		`"test" = {`,
-		"approval_settings = [{",
+		"approval_settings = {",
 		// the key attribute is kept inside each object (Optional+Computed in
 		// v3, equals the map key) — it is NOT stripped.
 		`key   = "production"`,
@@ -255,10 +255,10 @@ func TestReverseMapBlock(t *testing.T) {
       key   = "production"
       name  = "Production"
       color = "417505"
-      approval_settings = [{
+      approval_settings = {
         required          = true
         min_num_approvals = 2
-      }]
+      }
     }
     "test" = {
       key   = "test"
@@ -269,7 +269,7 @@ func TestReverseMapBlock(t *testing.T) {
 }
 `
 	f, body := parseBody(t, src)
-	spec := []*AttrSpec{{Name: "environments", MapKey: "key", Nested: []*AttrSpec{{Name: "approval_settings"}}}}
+	spec := []*AttrSpec{{Name: "environments", MapKey: "key", Nested: []*AttrSpec{{Name: "approval_settings", Object: true}}}}
 	if !reverse(body, spec) {
 		t.Fatal("expected reverse conversion")
 	}
@@ -362,13 +362,50 @@ func TestWarnEnvIndexRefs(t *testing.T) {
 }
 `)
 	before := warningCount
-	warnEnvIndexRefs("t.tf", src, map[string][]string{"ex": {"production", "test"}})
+	warnEnvIndexRefs("t.tf", src, map[string][]string{"ex": {`"production"`, `"test"`}})
 	if got := warningCount - before; got != 3 {
 		t.Errorf("expected 3 warnings (indices 1, 0, splat), got %d", got)
 	}
 }
 
-func TestForwardMapSkipsNonLiteralKey(t *testing.T) {
+func TestCollectProjectEnvKeysKeepsNonLiteralIndices(t *testing.T) {
+	// A non-literal key must still occupy its list slot, or every later
+	// index resolves to the wrong env key in the warning text.
+	path := filepath.Join(t.TempDir(), "p.tf")
+	src := `resource "launchdarkly_project" "p" {
+  environments {
+    key = "production"
+  }
+  environments {
+    key = local.env_key
+  }
+  environments {
+    key = "qa"
+  }
+}
+`
+	if err := os.WriteFile(path, []byte(src), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	keys := collectProjectEnvKeys([]string{path})["p"]
+	want := []string{`"production"`, `local.env_key`, `"qa"`}
+	if len(keys) != len(want) {
+		t.Fatalf("got %v, want %v", keys, want)
+	}
+	for i := range want {
+		if keys[i] != want[i] {
+			t.Errorf("keys[%d] = %q, want %q", i, keys[i], want[i])
+		}
+	}
+}
+
+// collapseSpaces normalizes runs of spaces to one, mirroring what terraform
+// fmt does to the tool's output (the emitter pads tokens with extra spaces).
+func collapseSpaces(s string) string {
+	return regexp.MustCompile(` +`).ReplaceAllString(s, " ")
+}
+
+func TestForwardMapConvertsNonLiteralKey(t *testing.T) {
 	src := `resource "launchdarkly_project" "p" {
   environments {
     key   = local.env_key
@@ -380,22 +417,22 @@ func TestForwardMapSkipsNonLiteralKey(t *testing.T) {
 	warningsBefore := warningCount
 	f, body := parseBody(t, src)
 	spec := []*AttrSpec{{Name: "environments", MapKey: "key"}}
-	if forward(body, spec, "test.tf: resource launchdarkly_project.p") {
-		t.Error("forward must skip a map whose key is a non-literal expression")
+	if !forward(body, spec, "test.tf: resource launchdarkly_project.p") {
+		t.Error("forward must convert a map whose key is a non-literal expression")
 	}
-	if warningCount != warningsBefore+1 {
-		t.Errorf("warningCount delta = %d, want 1", warningCount-warningsBefore)
+	if warningCount != warningsBefore {
+		t.Errorf("warningCount delta = %d, want 0 (a note, not a warning)", warningCount-warningsBefore)
 	}
-	out := string(f.Bytes())
-	if !strings.Contains(out, "environments {") || !strings.Contains(out, "key   = local.env_key") {
-		t.Errorf("body must be left untouched, got:\n%s", out)
+	out := collapseSpaces(string(f.Bytes()))
+	if !strings.Contains(out, "(local.env_key) = {") {
+		t.Errorf("expected a parenthesized-expression map key, got:\n%s", out)
+	}
+	if !strings.Contains(out, "key = local.env_key") {
+		t.Errorf("inner key attribute must be preserved, got:\n%s", out)
 	}
 }
 
-func TestForwardMapPartialSkipLeavesFileUntouched(t *testing.T) {
-	// A literal-key block followed by a non-literal-key block must abort the
-	// whole attribute with the file untouched — the first block must NOT lose
-	// its key (regression for partial-mutation on skip).
+func TestForwardMapMixedLiteralAndExpressionKeys(t *testing.T) {
 	src := `resource "launchdarkly_project" "p" {
   environments {
     key   = "production"
@@ -412,22 +449,46 @@ func TestForwardMapPartialSkipLeavesFileUntouched(t *testing.T) {
 	warningsBefore := warningCount
 	f, body := parseBody(t, src)
 	spec := []*AttrSpec{{Name: "environments", MapKey: "key"}}
+	if !forward(body, spec, "test.tf: resource launchdarkly_project.p") {
+		t.Error("forward must convert a map mixing literal and expression keys")
+	}
+	if warningCount != warningsBefore {
+		t.Errorf("warningCount delta = %d, want 0", warningCount-warningsBefore)
+	}
+	out := collapseSpaces(string(f.Bytes()))
+	if !strings.Contains(out, `"production" = {`) || !strings.Contains(out, "(local.staging_key) = {") {
+		t.Errorf("expected both map keys, got:\n%s", out)
+	}
+	if strings.Contains(out, "environments {") {
+		t.Errorf("no blocks may remain, got:\n%s", out)
+	}
+}
+
+func TestForwardMapSkipsDuplicateExpressionKey(t *testing.T) {
+	// Two blocks keyed by the same expression text would collapse into one
+	// map entry — abort like the literal duplicate case.
+	src := `resource "launchdarkly_project" "p" {
+  environments {
+    key  = local.env_key
+    name = "A"
+  }
+  environments {
+    key  = local.env_key
+    name = "B"
+  }
+}
+`
+	warningsBefore := warningCount
+	f, body := parseBody(t, src)
+	spec := []*AttrSpec{{Name: "environments", MapKey: "key"}}
 	if forward(body, spec, "test.tf: resource launchdarkly_project.p") {
-		t.Error("forward must skip when any block has a non-literal map key")
+		t.Error("forward must skip duplicate expression keys")
 	}
 	if warningCount != warningsBefore+1 {
 		t.Errorf("warningCount delta = %d, want 1", warningCount-warningsBefore)
 	}
-	out := string(f.Bytes())
-	if strings.Contains(out, "environments = {") {
+	if out := string(f.Bytes()); strings.Contains(out, "environments = {") {
 		t.Errorf("must not emit a partial map:\n%s", out)
-	}
-	if strings.Count(out, "environments {") != 2 {
-		t.Errorf("both environments blocks must be preserved, got:\n%s", out)
-	}
-	// the literal block must keep its key (not stripped before the abort).
-	if !strings.Contains(out, `key   = "production"`) {
-		t.Errorf("first block lost its key on skip:\n%s", out)
 	}
 }
 
@@ -562,5 +623,137 @@ output "iis_indexed" {
 	}
 	if !strings.Contains(s, "data.launchdarkly_feature_flag.f.client_side_availability.using_mobile_key") {
 		t.Errorf("list index not stripped:\n%s", s)
+	}
+}
+
+func TestForwardConvertsPlainMapBlock(t *testing.T) {
+	// role_attributes: {key, values} blocks collapse to a plain map of lists.
+	src := `resource "launchdarkly_team" "t" {
+  key  = "eng"
+  name = "Engineering"
+  role_attributes {
+    key    = "testAttribute"
+    values = ["staging", "production"]
+  }
+  role_attributes {
+    key    = "otherAttribute"
+    values = ["someValue"]
+  }
+}
+`
+	f, body := parseBody(t, src)
+	spec := []*AttrSpec{{Name: "role_attributes", MapKey: "key", MapValue: "values"}}
+	if !forward(body, spec, "test.tf") {
+		t.Fatal("expected conversion")
+	}
+	out := string(hclwrite.Format(f.Bytes()))
+	for _, want := range []string{
+		"role_attributes = {",
+		`"testAttribute"  = ["staging", "production"]`,
+		`"otherAttribute" = ["someValue"]`,
+	} {
+		if !strings.Contains(out, want) {
+			t.Errorf("missing %q in:\n%s", want, out)
+		}
+	}
+	if strings.Contains(out, "values") {
+		t.Errorf("plain-map form must not retain the values attribute name:\n%s", out)
+	}
+	if _, diag := hclwrite.ParseConfig([]byte(out), "out.tf", hcl.Pos{Line: 1, Column: 1}); diag.HasErrors() {
+		t.Errorf("converted output does not parse: %s", diag)
+	}
+}
+
+func TestReversePlainMapBlock(t *testing.T) {
+	src := `resource "launchdarkly_team" "t" {
+  key  = "eng"
+  name = "Engineering"
+  role_attributes = {
+    "testAttribute" = ["staging", "production"]
+    otherAttribute  = ["someValue"]
+  }
+}
+`
+	f, body := parseBody(t, src)
+	spec := []*AttrSpec{{Name: "role_attributes", MapKey: "key", MapValue: "values"}}
+	if !reverse(body, spec) {
+		t.Fatal("expected reverse conversion")
+	}
+	out := string(hclwrite.Format(f.Bytes()))
+	if n := strings.Count(out, "role_attributes {"); n != 2 {
+		t.Errorf("expected 2 role_attributes blocks, got %d:\n%s", n, out)
+	}
+	for _, want := range []string{
+		`key    = "testAttribute"`,
+		`values = ["staging", "production"]`,
+		`values = ["someValue"]`,
+	} {
+		if !strings.Contains(out, want) {
+			t.Errorf("missing %q in:\n%s", want, out)
+		}
+	}
+	if strings.Contains(out, "role_attributes = {") {
+		t.Errorf("reverse must drop the map-assignment form:\n%s", out)
+	}
+	if _, diag := hclwrite.ParseConfig([]byte(out), "out.tf", hcl.Pos{Line: 1, Column: 1}); diag.HasErrors() {
+		t.Errorf("reversed output does not parse: %s", diag)
+	}
+}
+
+func TestForwardConvertsCustomPropertiesMap(t *testing.T) {
+	src := `resource "launchdarkly_feature_flag" "f" {
+  custom_properties {
+    key   = "some.property"
+    name  = "Some Property"
+    value = ["a", "b"]
+  }
+  custom_properties {
+    key   = "other.property"
+    name  = "Other Property"
+    value = ["c"]
+  }
+}
+`
+	f, body := parseBody(t, src)
+	spec := []*AttrSpec{{Name: "custom_properties", MapKey: "key"}}
+	if !forward(body, spec, "test.tf") {
+		t.Fatal("expected conversion")
+	}
+	out := string(hclwrite.Format(f.Bytes()))
+	for _, want := range []string{
+		"custom_properties = {",
+		`"some.property" = {`,
+		`"other.property" = {`,
+	} {
+		if !strings.Contains(out, want) {
+			t.Errorf("missing %q in:\n%s", want, out)
+		}
+	}
+	if strings.Contains(out, "custom_properties = [{") {
+		t.Errorf("map attribute must not be a list:\n%s", out)
+	}
+	if _, diag := hclwrite.ParseConfig([]byte(out), "out.tf", hcl.Pos{Line: 1, Column: 1}); diag.HasErrors() {
+		t.Errorf("converted output does not parse: %s", diag)
+	}
+}
+
+func TestForwardConvertsInstructionsObject(t *testing.T) {
+	src := `resource "launchdarkly_flag_trigger" "t" {
+  enabled = true
+  instructions {
+    kind = "turnFlagOn"
+  }
+}
+`
+	f, body := parseBody(t, src)
+	if !forward(body, []*AttrSpec{{Name: "instructions", Object: true}}, "test.tf") {
+		t.Fatal("expected conversion")
+	}
+	out := string(hclwrite.Format(f.Bytes()))
+	if !strings.Contains(out, "instructions = {") {
+		t.Errorf("expected single-object syntax, got:\n%s", out)
+	}
+	if strings.Contains(out, "instructions = [{") {
+		t.Errorf("object attribute must not be wrapped in a list:\n%s", out)
 	}
 }

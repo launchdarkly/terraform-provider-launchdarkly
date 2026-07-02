@@ -22,6 +22,13 @@ Inputs:
   keys.go constants, framework nested attributes (never blocks), helpers from
   framework_helpers.go, patch helpers, handleLdapiErr wrapping, acceptance-test
   CI matrix entry, docs templates.
+- Model nested shapes to the GA conventions in the playbook's Step 2: a field
+  the API treats as at-most-one object is a SingleNestedAttribute (never a
+  max-1 list); a collection keyed by a natural unique key with non-semantic
+  order is a MapNestedAttribute keyed by it (inner key kept Optional+Computed,
+  ValidateConfig key==map-key, ModifyPlan pinMapKeysToMapKey); {key, values}
+  pairs collapse to a plain MapAttribute. Acceptance tests for map attributes
+  must include an update step that ADDS an entry.
 - Use the generated API client (github.com/launchdarkly/api-client-go/v22) for
   all API calls. If the client lacks this surface, stop and report that instead
   of hand-rolling HTTP.

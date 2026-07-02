@@ -23,7 +23,7 @@ type FlagTemplatesDataSourceModel struct {
 	ProjectKey      types.String `tfsdk:"project_key"`
 	Tags            types.Set    `tfsdk:"tags"`
 	Temporary       types.Bool   `tfsdk:"temporary"`
-	BooleanDefaults types.List   `tfsdk:"boolean_defaults"`
+	BooleanDefaults types.Object `tfsdk:"boolean_defaults"`
 }
 
 var flagTemplatesBooleanDefaultsAttrTypes = map[string]attr.Type{
@@ -51,18 +51,16 @@ func (d *FlagTemplatesDataSource) Schema(_ context.Context, _ datasource.SchemaR
 			PROJECT_KEY: schema.StringAttribute{Required: true, Description: "The project key."},
 			TAGS:        schema.SetAttribute{Computed: true, ElementType: types.StringType, Description: "Tags applied by default."},
 			TEMPORARY:   schema.BoolAttribute{Computed: true, Description: "Whether new flags should be temporary by default."},
-			BOOLEAN_DEFAULTS: schema.ListNestedAttribute{
+			BOOLEAN_DEFAULTS: schema.SingleNestedAttribute{
 				Computed:    true,
 				Description: "Default boolean flag variation settings.",
-				NestedObject: schema.NestedAttributeObject{
-					Attributes: map[string]schema.Attribute{
-						TRUE_DISPLAY_NAME:  schema.StringAttribute{Computed: true, Description: "Display name for the true variation."},
-						FALSE_DISPLAY_NAME: schema.StringAttribute{Computed: true, Description: "Display name for the false variation."},
-						TRUE_DESCRIPTION:   schema.StringAttribute{Computed: true, Description: "Description for the true variation."},
-						FALSE_DESCRIPTION:  schema.StringAttribute{Computed: true, Description: "Description for the false variation."},
-						ON_VARIATION:       schema.Int64Attribute{Computed: true, Description: "Variation index served when targeting is on (0 or 1)."},
-						OFF_VARIATION:      schema.Int64Attribute{Computed: true, Description: "Variation index served when targeting is off (0 or 1)."},
-					},
+				Attributes: map[string]schema.Attribute{
+					TRUE_DISPLAY_NAME:  schema.StringAttribute{Computed: true, Description: "Display name for the true variation."},
+					FALSE_DISPLAY_NAME: schema.StringAttribute{Computed: true, Description: "Display name for the false variation."},
+					TRUE_DESCRIPTION:   schema.StringAttribute{Computed: true, Description: "Description for the true variation."},
+					FALSE_DESCRIPTION:  schema.StringAttribute{Computed: true, Description: "Description for the false variation."},
+					ON_VARIATION:       schema.Int64Attribute{Computed: true, Description: "Variation index served when targeting is on (0 or 1)."},
+					OFF_VARIATION:      schema.Int64Attribute{Computed: true, Description: "Variation index served when targeting is off (0 or 1)."},
 				},
 			},
 		},
@@ -119,7 +117,6 @@ func (d *FlagTemplatesDataSource) Read(ctx context.Context, req datasource.ReadR
 		data.Temporary = types.BoolValue(false)
 	}
 
-	objectType := types.ObjectType{AttrTypes: flagTemplatesBooleanDefaultsAttrTypes}
 	if flagDefaults.BooleanDefaults != nil {
 		bd := flagDefaults.BooleanDefaults
 		obj, d := types.ObjectValue(flagTemplatesBooleanDefaultsAttrTypes, map[string]attr.Value{
@@ -131,13 +128,9 @@ func (d *FlagTemplatesDataSource) Read(ctx context.Context, req datasource.ReadR
 			OFF_VARIATION:      types.Int64Value(int64(bd.GetOffVariation())),
 		})
 		resp.Diagnostics.Append(d...)
-		list, diags := types.ListValue(objectType, []attr.Value{obj})
-		resp.Diagnostics.Append(diags...)
-		data.BooleanDefaults = list
+		data.BooleanDefaults = obj
 	} else {
-		empty, diags := types.ListValue(objectType, []attr.Value{})
-		resp.Diagnostics.Append(diags...)
-		data.BooleanDefaults = empty
+		data.BooleanDefaults = types.ObjectNull(flagTemplatesBooleanDefaultsAttrTypes)
 	}
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
