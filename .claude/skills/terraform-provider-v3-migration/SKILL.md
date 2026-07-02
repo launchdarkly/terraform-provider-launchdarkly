@@ -5,8 +5,8 @@ description: >
   new resources against a real LaunchDarkly account. Use when the user wants to (1) upgrade an entire
   v2.x configuration to v3 — run migrate-tf-syntax, fix the manual follow-ups, build the v3 provider,
   apply, and confirm an idempotent state upgrade with zero forced replacements; or (2) exercise and
-  validate the new v3 resources (context_kind, announcement, oauth_client, metric_group, release_policy,
-  big_segment_store_integration, flag_import_configuration, integration_delivery_configuration) with
+  validate the new v3 resources (context_kind, announcement, oauth_client, ai_agent_graph, metric_group,
+  release_policy, big_segment_store_integration, flag_import_configuration, integration_delivery_configuration) with
   create/read/update/delete and idempotency checks before calling them GA. Triggers: "migrate a full v2
   setup", "end-to-end v3 upgrade", "verify the new v3 resources", "test the scaffolded resources",
   "validate v3 before GA", "exercise the beta resources".
@@ -61,7 +61,7 @@ The goal is a clean upgrade: the first v3 plan shows only cosmetic drift, the ap
 ### A1. Prepare the v2 configuration
 
 - For a customer setup, copy their `.tf` files into a scratch directory under `local-testing/`.
-- For an internal end-to-end test, the genuine v2.29 **block-syntax** setup is in the backup archive `local-testing/full-account-v2.29-backup-*.zip`. Extract it to a scratch dir and use that as the v2 source. The on-disk `local-testing/full-account-v2.29/` and `full-account-v2.29.original/` dirs are **both already v3 nested syntax** (last applied with provider 3.0.0-beta.1) — they are not v2-block sources. To regenerate a block-syntax config from a v3 one, run the tool with `-direction v3-to-v2` first.
+- For an internal end-to-end test, the genuine v2.29 **block-syntax** setup is in the backup archive `local-testing/full-account-v2.29-backup-*.zip`. Extract it to a scratch dir and use that as the v2 source. The on-disk `local-testing/full-account-v2.29/` and `full-account-v2.29.original/` dirs are **both already v3 nested syntax** — they are not v2-block sources. To regenerate a block-syntax config from a v3 one, run the tool with `-direction v3-to-v2` first.
 - Establish a clean baseline. Against the v2 provider, `terraform apply` until the plan is empty. The migration starts from a state with no pending changes.
 
 ### A2. Convert the syntax with migrate-tf-syntax
@@ -85,7 +85,7 @@ terraform -chdir="$DIR" fmt
 
 The tool converts block syntax to nested-attribute syntax, drops `expire` and `is_active`, renames `policy_statements` to `inline_roles`, converts `policy` to `policy_statements`, rewrites `include_in_snippet` into the matching client-side-availability attribute, and updates data-source references such as `client_side_availability` on the `launchdarkly_project` data source.
 
-This also covers upgrades from an **early v3 preview to a later v3 build** (for example 3.0.0-beta.1 to GA). A preview config has no block syntax to convert, but it may still set an attribute that a later v3 removed (for example `policy` on `launchdarkly_custom_role`), which fails `terraform plan` with `Unsupported argument`. The tool drops or renames those on already-nested input too, so run it for preview-to-GA upgrades as well.
+The tool also accepts input that is already in nested-attribute syntax: it drops or renames attributes that v3 removed (for example `policy` on `launchdarkly_custom_role`, which otherwise fails `terraform plan` with `Unsupported argument`).
 
 ### A3. Finish the follow-ups the tool cannot do
 
@@ -123,7 +123,7 @@ The inverse appends reversed blocks at the end of each body, so attribute order 
 
 ## Workflow B — Try and verify the new v3 resources
 
-The net-new v3 resources are listed with their stability, scope, example path, and known gotchas in [references/new-resources.md](references/new-resources.md). Seven of the eight resources were added as autogen scaffolds after the `v3.0.0-beta.2` preview and have not been exercised in a tagged release, so this workflow is the gate before treating them as GA.
+The net-new v3 resources are listed with their stability, scope, example path, and known gotchas in [references/new-resources.md](references/new-resources.md). All nine ship in the current v3 release and passed full CRUD + data-source verification on 2026-07-02; re-run this workflow when a resource schema changes or before promoting the beta-API resources to stable.
 
 ### B1. Stand up a scratch project
 
@@ -145,11 +145,10 @@ For each resource in the matrix:
 
 Several beta resources integrate with external systems or gated account features:
 
-- `big_segment_store_integration` needs reachable store credentials, for example a Redis or DynamoDB store.
-- `flag_import_configuration` and `integration_delivery_configuration` need valid third-party credentials for the chosen integration, for example Split or Fastly.
+- `big_segment_store_integration`, `flag_import_configuration`, and `integration_delivery_configuration` accept dummy third-party credentials for CRUD verification: the LaunchDarkly API persists `config` without validating connectivity, so placeholder values with `on = false` exercise the full create/read/update/delete path (verified 2026-07-02). Live credentials only matter for verifying the integration functions end to end, which is out of scope here.
 - Any beta resource may require an account entitlement that the test account lacks.
 
-When the only blocker is a missing credential or entitlement, classify the resource **BLOCKED**, not **FAIL**. Record exactly what is missing so it can be retried on an entitled account.
+When the only blocker is a missing entitlement, classify the resource **BLOCKED**, not **FAIL**. Record exactly what is missing so it can be retried on an entitled account.
 
 ### Result classification
 

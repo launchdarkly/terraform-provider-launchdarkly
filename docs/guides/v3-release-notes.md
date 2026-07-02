@@ -6,7 +6,7 @@ description: |-
 
 # LaunchDarkly Terraform provider v3.0.0 release notes
 
-Version 3.0.0 completes the provider's migration to the HashiCorp Terraform Plugin Framework. The provider now serves the protocol version 6 plugin API, expresses every nested structure as a nested attribute instead of a configuration block, and removes the attributes that v2 deprecated. v3 also adds new resources, data sources, and a provider setting, and it ships a command-line tool that rewrites v2 configurations into v3 syntax. v3.0.0 follows a series of preview releases (v3.0.0-beta.1 through v3.0.0-beta.4).
+Version 3.0.0 completes the provider's migration to the HashiCorp Terraform Plugin Framework. The provider now serves the protocol version 6 plugin API, expresses every nested structure as a nested attribute instead of a configuration block, and removes the attributes that v2 deprecated. v3 also adds new resources, data sources, and a provider setting, and it ships a command-line tool that rewrites v2 configurations into v3 syntax.
 
 > **Before you upgrade:** your v2 configurations do not parse against v3 until you rewrite them from block syntax to nested attribute syntax. To convert them, read the [migration guide](https://registry.terraform.io/providers/launchdarkly/launchdarkly/latest/docs/guides/migrating-to-v3) and run the `migrate-tf-syntax` tool that ships with this release.
 
@@ -97,8 +97,6 @@ resource "launchdarkly_feature_flag" "example" {
 
 The `migrate-tf-syntax` tool emits this object form automatically. When you read these attributes from a data source, drop the list index too: `data.launchdarkly_feature_flag.x.client_side_availability.using_environment_id`, not `...client_side_availability[0].using_environment_id`.
 
-> **Upgrading from a `3.0.0-beta` pre-release?** These attributes were modeled as single-element lists through the `3.0.0-beta` pre-releases (`= [{ ... }]`). The switch to object syntax landed for GA. The pre-release → GA jump is not state-compatible for them — update the configuration to the object form; the provider's state upgraders convert pre-release state in place. Upgrades from v2 are handled automatically by the state upgrade and the `migrate-tf-syntax` tool.
-
 ### Keyed collections become maps
 
 Four collections whose elements have a natural unique key are maps in v3, so adding, removing, or reordering one entry no longer forces a diff (or a destructive plan) on its siblings:
@@ -129,8 +127,6 @@ The map is **authoritative**: an environment removed from the map is deleted on 
 Reference environments by key, not index: `environments["production"].client_side_id`, never `environments[0].client_side_id`. The `migrate-tf-syntax` tool rewrites the blocks and warns on each positional reference with the exact replacement.
 
 `custom_properties` follows the same object-map pattern (`custom_properties = { "my.key" = { name = ..., value = [...] } }`). `role_attributes` collapses further to a plain map of string lists — `role_attributes = { myAttribute = ["value1", "value2"] }` — matching both the LaunchDarkly API shape and the `launchdarkly_team_role_mapping` resource.
-
-> **Upgrading from a `3.0.0-beta` pre-release?** These collections were lists or sets through the `3.0.0-beta` pre-releases. Update the configuration to the map form; the provider's state upgraders convert both v2 and pre-release state in place (except `launchdarkly_project.environments` state from `3.0.0-beta.1`–`beta.3`, which pre-dates the map and must be re-imported).
 
 ### Removed attributes
 

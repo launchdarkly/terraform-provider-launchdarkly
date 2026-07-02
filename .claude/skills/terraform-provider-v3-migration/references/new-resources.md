@@ -2,13 +2,14 @@
 
 These are the resources and data sources that v3 adds over the latest v2 line. v3 removes none. Use this matrix with Workflow B in the parent `SKILL.md`.
 
-Only `launchdarkly_context_kind` shipped in a tagged preview (`v3.0.0-beta.2`). The other seven resources were added as autogen scaffolds after `beta.2`, so this matrix and Workflow B are the gate before treating them as GA. The canonical config for each is `examples/resources/launchdarkly_<name>/resource.tf` — read it at verification time rather than trusting the summaries below, since scaffolds can change.
+All nine resources ship in the current v3 release, and all nine passed a full CRUD + data-source verification on a real account on 2026-07-02 (see the status table). Re-run Workflow B when a resource schema changes or before promoting the beta-API resources to stable. The canonical config for each is `examples/resources/launchdarkly_<name>/resource.tf` — read it at verification time rather than trusting the summaries below, since scaffolds can change.
 
 | Resource | Data source | Stability | Scope | Origin |
 |---|---|---|---|---|
-| `launchdarkly_context_kind` | yes | Stable API | Project | beta.2 |
+| `launchdarkly_context_kind` | yes | Stable API | Project | core v3 line |
 | `launchdarkly_announcement` | no | Stable API | Account | scaffold #460 |
 | `launchdarkly_oauth_client` | yes | Stable API | Account | scaffold #466 |
+| `launchdarkly_ai_agent_graph` | yes | Beta API | Project | scaffold #475 |
 | `launchdarkly_metric_group` | yes | Beta API | Project | scaffold #453 |
 | `launchdarkly_release_policy` | yes | Beta API | Project | scaffold #471 |
 | `launchdarkly_big_segment_store_integration` | yes | Beta API | Project + environment | scaffold #468 |
@@ -40,7 +41,7 @@ The three integration resources do NOT need live third-party credentials for CRU
 ### launchdarkly_context_kind — Stable, project scoped
 
 - Required: `project_key`, `key`, `name`. Optional: `description`.
-- Simplest of the set and the only one validated in a tagged preview. Use it as the smoke test that the dev-override build is wired up correctly.
+- Simplest of the set. Use it as the smoke test that the dev-override build is wired up correctly.
 - Verification: expect a clean create, an empty follow-up plan, an update on `name` or `description`, and a clean delete.
 
 ### launchdarkly_announcement — Stable, account scoped, singleton
@@ -54,6 +55,12 @@ The three integration resources do NOT need live third-party credentials for CRU
 - Required: `name`, `redirect_uri`. Optional: `description`.
 - The API likely returns a client secret on create. Confirm any secret field is marked sensitive and is not echoed in plan output. Treat a secret that is settable but not returned on read as write-only, and confirm the provider does not blank it on refresh.
 - May require an Admin or Owner role on the account. A permissions error is BLOCKED.
+
+### launchdarkly_ai_agent_graph — Beta, project scoped
+
+- Required: `project_key`, `key`, `name`, `root_config_key`, and an `edges` map keyed by edge key (each edge: `source_config`, `target_config`, optional `handoff` JSON).
+- **Every node must be an agent-mode AI config.** Create the referenced `launchdarkly_ai_config` resources with `mode = "agent"` — the API rejects the default `completion` mode with `400 invalid_request` ("not allowed as an agent graph node"). Note `mode` is immutable on `launchdarkly_ai_config`; changing it plans a replace.
+- Destroy + recreate at the same graph key can transiently return `400 "could not fetch Agent Graph flag"` (beta-API delete propagation). Retry once after ~30s before calling it a defect.
 
 ### launchdarkly_metric_group — Beta, project scoped
 
