@@ -9,7 +9,8 @@ before:
     # this is just an example and not a requirement for provider building/publishing
     - go mod tidy
 builds:
-  - env:
+  - id: provider
+    env:
       # goreleaser does not work with CGO, it could also complicate
       # usage by users in CI/CD systems like Terraform Cloud where
       # they are unable to install libraries.
@@ -33,9 +34,38 @@ builds:
       - goos: darwin
         goarch: "386"
     binary: "{{ .ProjectName }}_v{{ .Version }}"
+  # Companion CLI that rewrites customer HCL between v2 block syntax and v3
+  # nested-attribute syntax. Shipped as separate release assets. The Terraform
+  # Registry only ingests assets matching the provider naming pattern, so
+  # these archives do not affect registry ingestion. Kept in sync with
+  # .goreleaser.yml so the migration guide's download step works on preview
+  # releases too.
+  - id: migrate-tf-syntax
+    dir: scripts/migrate-tf-syntax
+    binary: migrate-tf-syntax
+    env:
+      - CGO_ENABLED=0
+    mod_timestamp: "{{ .CommitTimestamp }}"
+    flags:
+      - -trimpath
+    ldflags:
+      - "-s -w"
+    goos:
+      - windows
+      - linux
+      - darwin
+    goarch:
+      - amd64
+      - arm64
 archives:
-  - format: zip
+  - id: provider
+    ids: [provider]
+    formats: [zip]
     name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+  - id: migrate-tf-syntax
+    ids: [migrate-tf-syntax]
+    formats: [zip]
+    name_template: "migrate-tf-syntax_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
 checksum:
   extra_files:
     - glob: 'terraform-registry-manifest.json'
