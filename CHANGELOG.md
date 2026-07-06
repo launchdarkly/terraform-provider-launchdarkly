@@ -2,6 +2,13 @@
 
 All notable changes to the LaunchDarkly Terraform Provider will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org).
 
+## [3.0.0-beta.6](https://github.com/launchdarkly/terraform-provider-launchdarkly/compare/v3.0.0-beta.5...v3.0.0-beta.6) (2026-07-06)
+
+
+### Bug Fixes
+
+* **release:** ship migrate-tf-syntax binaries in preview releases ([#491](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/491)) ([7a64955](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/7a6495556827d217262fd160438558e443fcc914))
+
 ## [3.0.0-beta.5](https://github.com/launchdarkly/terraform-provider-launchdarkly/compare/v3.0.0-beta.4...v3.0.0-beta.5) (2026-07-02)
 
 
