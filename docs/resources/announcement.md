@@ -5,7 +5,7 @@ subcategory: ""
 description: |-
   Provides a LaunchDarkly announcement resource.
   This resource allows you to create and manage an in-app announcement banner that appears in the LaunchDarkly user interface for everyone in your organization.
-  -> Note: LaunchDarkly supports only one announcement per account. Attempting to create a second launchdarkly_announcement while one already exists returns a 409 conflict; update the existing announcement instead.
+  -> Note: LaunchDarkly supports only one announcement per account. Attempting to create a second launchdarkly_announcement while one already exists returns a 409 conflict. Update the existing announcement instead.
 ---
 
 # launchdarkly_announcement (Resource)
@@ -14,7 +14,7 @@ Provides a LaunchDarkly announcement resource.
 
 This resource allows you to create and manage an in-app announcement banner that appears in the LaunchDarkly user interface for everyone in your organization.
 
--> **Note:** LaunchDarkly supports only one announcement per account. Attempting to create a second `launchdarkly_announcement` while one already exists returns a `409` conflict; update the existing announcement instead.
+-> **Note:** LaunchDarkly supports only one announcement per account. Attempting to create a second `launchdarkly_announcement` while one already exists returns a `409` conflict. Update the existing announcement instead.
 
 ## Example Usage
 
@@ -47,7 +47,7 @@ resource "launchdarkly_announcement" "scheduled_maintenance" {
 ### Read-Only
 
 - `id` (String) The unique announcement ID.
-- `status` (String) The computed status of the announcement (for example, `active`, `scheduled`, or `inactive`), derived by LaunchDarkly from the current time and the announcement's start and end times.
+- `status` (String) The computed status of the announcement, such as `active`, `scheduled`, or `inactive`. LaunchDarkly derives it from the current time and the announcement's start and end times.
 
 ## Import
 

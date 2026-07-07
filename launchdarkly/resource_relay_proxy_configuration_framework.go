@@ -61,7 +61,7 @@ This resource allows you to create and manage Relay Proxy configurations within 
 			FULL_KEY: schema.StringAttribute{
 				Computed:      true,
 				Sensitive:     true,
-				Description:   "The Relay Proxy configuration's unique key. Because the `full_key` is only exposed upon creation, it will not be available if the resource is imported.",
+				Description:   "The Relay Proxy configuration's unique key. Because LaunchDarkly exposes the `full_key` only on creation, it is unavailable when you import the resource.",
 				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
 			DISPLAY_KEY: schema.StringAttribute{

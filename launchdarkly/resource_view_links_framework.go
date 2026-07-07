@@ -62,13 +62,13 @@ func (r *ViewLinksResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 			},
 			PROJECT_KEY: schema.StringAttribute{
 				Required:      true,
-				Description:   "The project key. A change in this field will force the destruction of the existing resource and the creation of a new one.",
+				Description:   addForceNewDescription("The project key.", true),
 				Validators:    []validator.String{keyValidator()},
 				PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
 			},
 			VIEW_KEY: schema.StringAttribute{
 				Required:      true,
-				Description:   "The view key to link resources to. A change in this field will force the destruction of the existing resource and the creation of a new one.",
+				Description:   addForceNewDescription("The view key to link resources to.", true),
 				Validators:    []validator.String{keyValidator()},
 				PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
 			},
@@ -405,11 +405,11 @@ const viewLinksDescription = `Provides a LaunchDarkly view links resource for ma
 
 ~> **Beta:** This resource uses a beta API. Beta resources may change or be removed in future versions.
 
-This resource allows you to efficiently link multiple flags and/or segments to a specific view. This is particularly useful for administrators organizing resources by team or deployment unit.
+This resource allows you to efficiently link multiple flags and segments to a specific view. This is particularly useful for administrators organizing resources by team or deployment unit.
 
 -> **Note:** This resource manages ALL links for the specified resource types within a view. Adding or removing items from the configuration will link or unlink those resources accordingly.
 
--> **Warning:** Do not use both ` + "`view_links`" + ` and ` + "`view_keys`" + ` to manage the same flag or segment's view associations. Mixed ownership can cause conflicts; when detected, Terraform logs a warning and reconciles to the managing resource's configured associations. Choose one approach per resource.`
+-> **Warning:** Do not use both ` + "`view_links`" + ` and ` + "`view_keys`" + ` to manage the same flag or segment's view associations. Mixed ownership can cause conflicts. When Terraform detects them, it logs a warning and reconciles to the managing resource's configured associations. Choose one approach per resource.`
 
 // -----------------------------------------------------------------------------
 // launchdarkly_view_filter_links
@@ -454,34 +454,34 @@ func (r *ViewFilterLinksResource) Schema(_ context.Context, _ resource.SchemaReq
 			},
 			PROJECT_KEY: schema.StringAttribute{
 				Required:      true,
-				Description:   "The project key. A change in this field will force the destruction of the existing resource and the creation of a new one.",
+				Description:   addForceNewDescription("The project key.", true),
 				Validators:    []validator.String{keyValidator()},
 				PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
 			},
 			VIEW_KEY: schema.StringAttribute{
 				Required:      true,
-				Description:   "The view key to link resources to. A change in this field will force the destruction of the existing resource and the creation of a new one.",
+				Description:   addForceNewDescription("The view key to link resources to.", true),
 				Validators:    []validator.String{keyValidator()},
 				PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
 			},
 			FLAG_FILTER: schema.StringAttribute{
 				Optional:    true,
-				Description: "A filter expression to match feature flags for linking to the view. Uses the same filter syntax as the flag list API endpoint (e.g. `tags:frontend`, `status:active`).",
+				Description: "A filter expression to match feature flags for linking to the view. Uses the same filter syntax as the flag list API endpoint. For example, `tags:frontend` or `status:active`.",
 			},
 			SEGMENT_FILTER: schema.StringAttribute{
 				Optional:    true,
-				Description: "A filter expression to match segments for linking to the view. Uses the segment query filter syntax (e.g. `tags anyOf [\"backend\"]`, `query = \"my-segment\"`, `unbounded = true`). Requires `segment_filter_environment_id` to be set.",
+				Description: "A filter expression to match segments for linking to the view. Uses the segment query filter syntax. For example, `tags anyOf [\"backend\"]`, `query = \"my-segment\"`, or `unbounded = true`. Requires `segment_filter_environment_id` to be set.",
 			},
 			SEGMENT_FILTER_ENVIRONMENT_ID: schema.StringAttribute{
 				Optional:    true,
-				Description: "The environment ID to use when resolving segment filters. Required when `segment_filter` is set. This is the environment's opaque ID (e.g. from `launchdarkly_project.environments[\"<env_key>\"].client_side_id`).",
+				Description: "The environment ID to use when resolving segment filters. Required when `segment_filter` is set. This is the environment's opaque ID. For example, `launchdarkly_project.environments[\"<env_key>\"].client_side_id`.",
 				Validators:  []validator.String{idValidator()},
 			},
 			RECONCILE_ON_APPLY: schema.BoolAttribute{
 				Optional:    true,
 				Computed:    true,
 				Default:     booldefault.StaticBool(false),
-				Description: "Whether to re-resolve configured filters on every `terraform apply` even when no resource arguments changed. When true, Terraform will show an in-place update on each apply and `resolved_at` will change every run.",
+				Description: "Whether to re-resolve configured filters on every `terraform apply` even when no resource arguments changed. When true, Terraform shows an in-place update on each apply and `resolved_at` changes every run.",
 			},
 			RESOLVED_AT: schema.StringAttribute{
 				Computed:    true,
@@ -795,6 +795,6 @@ const viewFilterLinksDescription = `Provides a LaunchDarkly view filter links re
 
 ~> **Beta:** This resource uses a beta API. Beta resources may change or be removed in future versions.
 
-This resource allows you to link all flags and/or segments matching a filter expression to a specific view. The filter is resolved at apply time — the backend finds all resources matching the filter and links them to the view.
+This resource allows you to link all flags and segments matching a filter expression to a specific view. The filter is resolved at apply time. The backend finds all resources matching the filter and links them to the view.
 
 -> **Note:** Filter-based links are point-in-time. By default, filters are resolved only when this resource is created or updated (for example, when ` + "`flag_filter`" + ` changes). Set ` + "`reconcile_on_apply = true`" + ` to force re-resolution on every ` + "`terraform apply`" + `.`

@@ -32,7 +32,7 @@ resource "launchdarkly_team_member" "example" {
 
 ### Required
 
-- `email` (String) The unique email address associated with the team member. A change in this field will force the destruction of the existing resource and the creation of a new one.
+- `email` (String) The unique email address associated with the team member. A change in this field forces the destruction of the existing resource and the creation of a new one.
 
 ### Optional
 

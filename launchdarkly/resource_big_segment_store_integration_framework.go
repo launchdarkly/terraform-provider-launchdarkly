@@ -103,7 +103,7 @@ func bigSegmentStoreIntegrationSchemaAttributes() map[string]schema.Attribute {
 		CONFIG: schema.StringAttribute{
 			Required:    true,
 			Sensitive:   true,
-			Description: "A JSON string holding the store-specific configuration. All values are strings except `tlsEnabled`, which is a boolean. For `redis` the fields are `host`, `port`, `tlsEnabled`, `username`, and `password`; for `dynamodb` they are `tableName`, `region`, `roleArn`, and `externalId` (a UUID). Marked sensitive because it carries credentials. The API redacts secrets and normalizes this value on read, so it is treated as write-only: Terraform stores and diffs the value you provide and does not reconcile it against the server, so configuration changes made outside Terraform are not detected as drift.",
+			Description: "A JSON string holding the store-specific configuration. All values are strings except `tlsEnabled`, which is a boolean. For `redis`, the fields are `host`, `port`, `tlsEnabled`, `username`, and `password`. For `dynamodb`, they are `tableName`, `region`, `roleArn`, and `externalId`, a UUID. Marked sensitive because it carries credentials. The API redacts secrets and normalizes this value on read, so it is treated as write-only: Terraform stores and diffs the value you provide and does not reconcile it against the server, so configuration changes made outside Terraform are not detected as drift.",
 			Validators:  []validator.String{jsonStringValidator{}},
 			PlanModifiers: []planmodifier.String{
 				jsonNormalizePlanModifier{},

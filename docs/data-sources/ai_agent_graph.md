@@ -4,14 +4,14 @@ page_title: "launchdarkly_ai_agent_graph Data Source - launchdarkly"
 subcategory: ""
 description: |-
   Provides a LaunchDarkly AI agent graph data source.
-  This data source allows you to retrieve information about an agent graph (a directed graph of AI Configs) in your LaunchDarkly project.
+  This data source allows you to retrieve information about an agent graph, a directed graph of AI Configs, in your LaunchDarkly project.
 ---
 
 # launchdarkly_ai_agent_graph (Data Source)
 
 Provides a LaunchDarkly AI agent graph data source.
 
-This data source allows you to retrieve information about an agent graph (a directed graph of AI Configs) in your LaunchDarkly project.
+This data source allows you to retrieve information about an agent graph, a directed graph of AI Configs, in your LaunchDarkly project.
 
 ## Example Usage
 

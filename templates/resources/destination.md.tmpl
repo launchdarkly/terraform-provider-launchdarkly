@@ -39,7 +39,7 @@ Depending on the destination kind, the `config` argument should contain the foll
 
 - `secret` - (Required) - Your mParticle secret.
 
-- `user_identity` - (Optional) - Your mParticle user ID as a string. If defined, the LaunchDarkly context kind will be implicitly assumed to be "user". At least one of `user_identity` or `user_identities` must be defined.
+- `user_identity` - (Optional) - Your mParticle user ID as a string. If defined, LaunchDarkly implicitly assumes the context kind is `user`. At least one of `user_identity` or `user_identities` must be defined.
 
 - `user_identities` - (Optional) - A json-encoded list of objects associating mParticle user identities with LaunchDarkly context kinds. At least one of `user_identity` or `user_identities` must be defined.
 
@@ -59,9 +59,9 @@ Depending on the destination kind, the `config` argument should contain the foll
 
 - `write_key` - (Required) - Your Segment write key.
 
-- `user_id_context_kind` - (Required) - The context kind you would like to associated with the data exported to segment.
+- `user_id_context_kind` - (Required) - The context kind you would like to associate with the data exported to segment.
 
-- `anonymous_id_context_kind` - (Required) - The context kind you would like to associated with anonymous user data exported to segment.
+- `anonymous_id_context_kind` - (Required) - The context kind you would like to associate with anonymous user data exported to segment.
 
 ## Import
 

@@ -40,7 +40,7 @@ func (d *AIAgentGraphDataSource) Metadata(_ context.Context, req datasource.Meta
 
 func (d *AIAgentGraphDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "Provides a LaunchDarkly AI agent graph data source.\n\nThis data source allows you to retrieve information about an agent graph (a directed graph of AI Configs) in your LaunchDarkly project.",
+		Description: "Provides a LaunchDarkly AI agent graph data source.\n\nThis data source allows you to retrieve information about an agent graph, a directed graph of AI Configs, in your LaunchDarkly project.",
 		Attributes: map[string]schema.Attribute{
 			"id":          schema.StringAttribute{Computed: true, Description: "The composite ID of the agent graph in the format `project_key/key`."},
 			PROJECT_KEY:   schema.StringAttribute{Required: true, Description: "The project key."},

@@ -92,7 +92,7 @@ func accessTokenSchemaAttributes() map[string]schema.Attribute {
 			// framework requires Computed: true alongside Default.
 			Computed:    true,
 			Default:     booldefault.StaticBool(false),
-			Description: addForceNewDescription("Whether the token will be a [service token](https://docs.launchdarkly.com/home/account-security/api-access-tokens#service-tokens).", true),
+			Description: addForceNewDescription("Whether the token is a [service token](https://docs.launchdarkly.com/home/account-security/api-access-tokens#service-tokens).", true),
 			PlanModifiers: []planmodifier.Bool{
 				boolplanmodifier.RequiresReplace(),
 			},

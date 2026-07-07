@@ -63,7 +63,7 @@ The `launchdarkly_audit_log_subscription` `config` block also moves to map attri
 
 ### Single nested attributes use object syntax
 
-Most blocks become a list of objects, but attributes that hold exactly one object use object syntax — a bare `{ ... }` with no surrounding brackets:
+Most blocks become a list of objects, but attributes that hold exactly one object use object syntax, a bare `{ ... }` with no surrounding brackets:
 
 | Resource or data source | Attribute |
 |---|---|
@@ -99,7 +99,7 @@ The `migrate-tf-syntax` tool emits this object form automatically. When you read
 
 ### Keyed collections become maps
 
-Four collections whose elements have a natural unique key are maps in v3, so adding, removing, or reordering one entry no longer forces a diff (or a destructive plan) on its siblings:
+Four collections whose elements have a natural unique key are maps in v3, so adding, removing, or reordering one entry no longer forces a diff or a destructive plan on its siblings:
 
 | Resource | Attribute | Map key |
 |---|---|---|
@@ -108,7 +108,7 @@ Four collections whose elements have a natural unique key are maps in v3, so add
 | `launchdarkly_team`, `launchdarkly_team_member` | `role_attributes` | role attribute key |
 | `launchdarkly_ai_agent_graph` | `edges` | edge `key` |
 
-`launchdarkly_project.environments` moves from an ordered list to a map keyed by the environment `key`. The `key` attribute also stays inside each object (it is Optional+Computed and always equals the map key), so references like `launchdarkly_project.example.environments["production"].key` keep working:
+`launchdarkly_project.environments` moves from an ordered list to a map keyed by the environment `key`. The `key` attribute also stays inside each object. It is Optional and Computed and always equals the map key, so references like `launchdarkly_project.example.environments["production"].key` keep working:
 
 ```hcl
 # v2 block syntax              # v3 map syntax (keyed by env key)
@@ -122,11 +122,11 @@ environments {                 environments = {
 
 The map is **authoritative**: an environment removed from the map is deleted on apply, and a project must declare at least one environment. To manage a project in Terraform but its environments elsewhere, add `lifecycle { ignore_changes = [environments] }`.
 
-~> **Warning:** Changing an environment's key (the map key) deletes that environment — including its SDK keys and all flag targeting — and creates a new one.
+~> **Warning:** Changing an environment's key, which is the map key, deletes that environment, including its SDK keys and all flag targeting, and creates a new one.
 
 Reference environments by key, not index: `environments["production"].client_side_id`, never `environments[0].client_side_id`. The `migrate-tf-syntax` tool rewrites the blocks and warns on each positional reference with the exact replacement.
 
-`custom_properties` follows the same object-map pattern (`custom_properties = { "my.key" = { name = ..., value = [...] } }`). `role_attributes` collapses further to a plain map of string lists — `role_attributes = { myAttribute = ["value1", "value2"] }` — matching both the LaunchDarkly API shape and the `launchdarkly_team_role_mapping` resource.
+`custom_properties` follows the same object-map pattern: `custom_properties = { "my.key" = { name = ..., value = [...] } }`. `role_attributes` collapses further to a plain map of string lists, `role_attributes = { myAttribute = ["value1", "value2"] }`, matching both the LaunchDarkly API shape and the `launchdarkly_team_role_mapping` resource.
 
 ### Removed attributes
 
@@ -177,7 +177,7 @@ This table lists the new resources, their data sources, and their API stability:
 
 - `launchdarkly_environment` gains a `segment_approval_settings` attribute. This attribute configures approval requirements for segment changes.
 - `launchdarkly_feature_flag` validates prerequisite-flag removals at plan time. If you remove a flag that another flag depends on, the provider surfaces a warning during plan instead of failing at apply.
-- `launchdarkly_feature_flag_environment` makes `off_variation` optional. In v2 it was required. Omitting it now leaves the off variation unset, matching the LaunchDarkly UI's "Not set" state, and removing a previously configured value clears it. Note the behavior change: when the off variation is unset and targeting is off, LaunchDarkly serves no variation, so SDKs return the application-provided default value and the evaluation carries a null variation index (which affects Data Export and Experimentation). Setting `off_variation = 0` remains a distinct, valid configuration. This resolves issue #482.
+- `launchdarkly_feature_flag_environment` makes `off_variation` optional. In v2 it was required. Omitting it now leaves the off variation unset, matching the LaunchDarkly UI's "Not set" state, and removing a previously configured value clears it. Note the behavior change: when the off variation is unset and targeting is off, LaunchDarkly serves no variation, so SDKs return the application-provided default value and the evaluation carries a null variation index, which affects Data Export and Experimentation. Setting `off_variation = 0` remains a distinct, valid configuration. This resolves issue #482.
 
 ## Bug fixes
 

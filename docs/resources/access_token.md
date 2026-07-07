@@ -51,11 +51,11 @@ resource "launchdarkly_access_token" "token_with_policy_statements" {
 ### Optional
 
 - `custom_roles` (Set of String) A list of custom role IDs to use as access limits for the access token.
-- `default_api_version` (Number) The default API version for this token. Defaults to the latest API version. A change in this field will force the destruction of the existing resource and the creation of a new one.
+- `default_api_version` (Number) The default API version for this token. Defaults to the latest API version. A change in this field forces the destruction of the existing resource and the creation of a new one.
 - `inline_roles` (Attributes List) Define inline custom roles. An array of statements with three attributes: effect, resources, actions. May be used in place of a built-in or custom role. [Using polices](https://docs.launchdarkly.com/home/members/role-policies). (see [below for nested schema](#nestedatt--inline_roles))
 - `name` (String) A human-friendly name for the access token.
 - `role` (String) A built-in LaunchDarkly role. Can be `reader`, `writer`, or `admin`
-- `service_token` (Boolean) Whether the token will be a [service token](https://docs.launchdarkly.com/home/account-security/api-access-tokens#service-tokens). A change in this field will force the destruction of the existing resource and the creation of a new one.
+- `service_token` (Boolean) Whether the token is a [service token](https://docs.launchdarkly.com/home/account-security/api-access-tokens#service-tokens). A change in this field forces the destruction of the existing resource and the creation of a new one.
 
 ### Read-Only
 

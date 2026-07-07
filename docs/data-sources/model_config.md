@@ -38,9 +38,9 @@ data "launchdarkly_model_config" "example" {
 - `global` (Boolean) Whether the model config is available globally.
 - `icon` (String) The icon for the model config.
 - `id` (String) The ID of the model config in the format `project_key/model_config_key`.
-- `model_id` (String) The model identifier (e.g. `gpt-4`, `claude-3`).
-- `model_provider` (String) The provider name for the model config (e.g. `openai`, `anthropic`).
+- `model_id` (String) The model identifier. For example, `gpt-4` or `claude-3`.
+- `model_provider` (String) The provider name for the model config. For example, `openai` or `anthropic`.
 - `name` (String) The model config's human-readable name.
-- `params` (String) A JSON string representing the model parameters (e.g. `{"temperature": 0.7, "maxTokens": 4096}`).
+- `params` (String) A JSON string representing the model parameters. For example, `{"temperature": 0.7, "maxTokens": 4096}`.
 - `tags` (Set of String) Tags associated with the model config.
 - `version` (Number) The version of the model config.

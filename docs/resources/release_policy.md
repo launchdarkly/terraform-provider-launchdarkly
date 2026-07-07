@@ -5,7 +5,7 @@ subcategory: ""
 description: |-
   Provides a LaunchDarkly release policy resource.
   ~> Beta: This resource wraps a beta LaunchDarkly API (the release-policies endpoints, accessed with the LD-API-Version: beta header). Beta resources may change or be removed in future versions.
-  This resource lets you create and manage release policies https://launchdarkly.com/docs/home/releases within a LaunchDarkly project. A release policy defines how flag changes roll out to environments — either as a guarded-release (rollout monitored against metrics, with optional automatic rollback) or a progressive-release (rollout that advances through a fixed schedule of allocation stages).
+  This resource lets you create and manage release policies https://launchdarkly.com/docs/home/releases within a LaunchDarkly project. A release policy defines how flag changes roll out to environments, either as a guarded-release, which monitors the rollout against metrics with optional automatic rollback, or a progressive-release, which advances the rollout through a fixed schedule of allocation stages.
 ---
 
 # launchdarkly_release_policy (Resource)
@@ -14,7 +14,7 @@ Provides a LaunchDarkly release policy resource.
 
 ~> **Beta:** This resource wraps a beta LaunchDarkly API (the `release-policies` endpoints, accessed with the `LD-API-Version: beta` header). Beta resources may change or be removed in future versions.
 
-This resource lets you create and manage [release policies](https://launchdarkly.com/docs/home/releases) within a LaunchDarkly project. A release policy defines how flag changes roll out to environments — either as a `guarded-release` (rollout monitored against metrics, with optional automatic rollback) or a `progressive-release` (rollout that advances through a fixed schedule of allocation stages).
+This resource lets you create and manage [release policies](https://launchdarkly.com/docs/home/releases) within a LaunchDarkly project. A release policy defines how flag changes roll out to environments, either as a `guarded-release`, which monitors the rollout against metrics with optional automatic rollback, or a `progressive-release`, which advances the rollout through a fixed schedule of allocation stages.
 
 ## Example Usage
 
@@ -81,9 +81,9 @@ resource "launchdarkly_release_policy" "progressive_rollout" {
 
 ### Required
 
-- `key` (String) The unique human-readable key that references the release policy. A change in this field will force the destruction of the existing resource and the creation of a new one.
+- `key` (String) The unique human-readable key that references the release policy. A change in this field forces the destruction of the existing resource and the creation of a new one.
 - `name` (String) The human-friendly name for the release policy.
-- `project_key` (String) The release policy's project key. A change in this field will force the destruction of the existing resource and the creation of a new one.
+- `project_key` (String) The release policy's project key. A change in this field forces the destruction of the existing resource and the creation of a new one.
 - `release_method` (String) The release method this policy uses. Must be one of `guarded-release` or `progressive-release`. Set `guarded_release_config` for a `guarded-release` and `progressive_release_config` for a `progressive-release`.
 
 ### Optional
@@ -95,7 +95,7 @@ resource "launchdarkly_release_policy" "progressive_rollout" {
 ### Read-Only
 
 - `id` (String) The ID of this resource in the format `project_key/key`.
-- `rank` (Number) The rank (priority) of the release policy within the project. Rank is assigned and ordered by LaunchDarkly; reorder release policies in the LaunchDarkly UI.
+- `rank` (Number) The rank of the release policy within the project. LaunchDarkly assigns and orders the rank. Reorder release policies in the LaunchDarkly UI.
 
 <a id="nestedatt--guarded_release_config"></a>
 ### Nested Schema for `guarded_release_config`

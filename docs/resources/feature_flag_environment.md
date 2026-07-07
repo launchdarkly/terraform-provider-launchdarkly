@@ -194,9 +194,9 @@ resource "launchdarkly_feature_flag_environment" "big_flag_environment" {
 
 ### Required
 
-- `env_key` (String) The environment key. A change in this field will force the destruction of the existing resource and the creation of a new one.
+- `env_key` (String) The environment key. A change in this field forces the destruction of the existing resource and the creation of a new one.
 - `fallthrough` (Attributes) The default variation to serve if no `prerequisites`, `target`, or `rules` apply. (see [below for nested schema](#nestedatt--fallthrough))
-- `flag_id` (String) The feature flag's unique `id` in the format `project_key/flag_key`. A change in this field will force the destruction of the existing resource and the creation of a new one.
+- `flag_id` (String) The feature flag's unique `id` in the format `project_key/flag_key`. A change in this field forces the destruction of the existing resource and the creation of a new one.
 
 ### Optional
 

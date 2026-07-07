@@ -57,9 +57,9 @@ resource "launchdarkly_view" "team_maintained" {
 
 ### Required
 
-- `key` (String) The view's unique key. A change in this field will force the destruction of the existing resource and the creation of a new one.
+- `key` (String) The view's unique key. A change in this field forces the destruction of the existing resource and the creation of a new one.
 - `name` (String) The view's name.
-- `project_key` (String) The project key. A change in this field will force the destruction of the existing resource and the creation of a new one.
+- `project_key` (String) The project key. A change in this field forces the destruction of the existing resource and the creation of a new one.
 
 ### Optional
 

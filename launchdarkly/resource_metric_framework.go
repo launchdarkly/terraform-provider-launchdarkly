@@ -86,13 +86,13 @@ func metricSchemaAttributes() map[string]schema.Attribute {
 		},
 		PROJECT_KEY: schema.StringAttribute{
 			Required:      true,
-			Description:   "The metrics's project key. A change in this field will force the destruction of the existing resource and the creation of a new one.",
+			Description:   addForceNewDescription("The metrics's project key.", true),
 			Validators:    []validator.String{keyValidator()},
 			PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
 		},
 		KEY: schema.StringAttribute{
 			Required:      true,
-			Description:   "The unique key that references the metric. A change in this field will force the destruction of the existing resource and the creation of a new one.",
+			Description:   addForceNewDescription("The unique key that references the metric.", true),
 			Validators:    []validator.String{keyValidator()},
 			PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
 		},
@@ -102,14 +102,14 @@ func metricSchemaAttributes() map[string]schema.Attribute {
 		},
 		KIND: schema.StringAttribute{
 			Required:      true,
-			Description:   "The metric type. Available choices are `click`, `custom`, and `pageview`. A change in this field will force the destruction of the existing resource and the creation of a new one.",
+			Description:   addForceNewDescription("The metric type. Available choices are `click`, `custom`, and `pageview`.", true),
 			Validators:    []validator.String{oneOfValidator{allowed: []string{"pageview", "click", "custom"}}},
 			PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
 		},
 		MAINTAINER_ID: schema.StringAttribute{
 			Optional:    true,
 			Computed:    true,
-			Description: "The LaunchDarkly member ID of the member who will maintain the metric. If not set, the API will automatically apply the member associated with your Terraform API key or the most recently-set maintainer",
+			Description: "The LaunchDarkly member ID of the member who maintains the metric. If not set, the API automatically applies the member associated with your Terraform API key or the most recently-set maintainer.",
 			Validators:  []validator.String{idValidator()},
 		},
 		DESCRIPTION: schema.StringAttribute{

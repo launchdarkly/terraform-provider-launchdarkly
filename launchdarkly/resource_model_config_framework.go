@@ -62,7 +62,7 @@ func (r *ModelConfigResource) Metadata(_ context.Context, req resource.MetadataR
 func (r *ModelConfigResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		Version:     1,
-		Description: "Provides a LaunchDarkly model config resource.\n\nThis resource allows you to create and manage AI model configurations within your LaunchDarkly project. Since the API does not support updates, any field change will force recreation of the resource.",
+		Description: "Provides a LaunchDarkly model config resource.\n\nThis resource allows you to create and manage AI model configurations within your LaunchDarkly project. Because the API does not support updates, any field change forces recreation of the resource.",
 		Attributes:  modelConfigSchemaAttributes(),
 	}
 }
@@ -101,7 +101,7 @@ func modelConfigSchemaAttributes() map[string]schema.Attribute {
 		},
 		MODEL_ID: schema.StringAttribute{
 			Required:    true,
-			Description: addForceNewDescription("The model identifier (e.g. `gpt-4`, `claude-3`).", true),
+			Description: addForceNewDescription("The model identifier. For example, `gpt-4` or `claude-3`.", true),
 			PlanModifiers: []planmodifier.String{
 				stringplanmodifier.RequiresReplace(),
 			},
@@ -118,7 +118,7 @@ func modelConfigSchemaAttributes() map[string]schema.Attribute {
 		PROVIDER_NAME: schema.StringAttribute{
 			Optional:    true,
 			Computed:    true,
-			Description: addForceNewDescription("The provider name for the model config (e.g. `openai`, `anthropic`).", true),
+			Description: addForceNewDescription("The provider name for the model config. For example, `openai` or `anthropic`.", true),
 			PlanModifiers: []planmodifier.String{
 				stringplanmodifier.RequiresReplace(),
 				stringplanmodifier.UseStateForUnknown(),
@@ -131,7 +131,7 @@ func modelConfigSchemaAttributes() map[string]schema.Attribute {
 		PARAMS: schema.StringAttribute{
 			Optional:    true,
 			Computed:    true,
-			Description: addForceNewDescription("A JSON string representing the model parameters (e.g. `{\"temperature\": 0.7, \"maxTokens\": 4096}`).", true),
+			Description: addForceNewDescription("A JSON string representing the model parameters. For example, `{\"temperature\": 0.7, \"maxTokens\": 4096}`.", true),
 			Validators:  []validator.String{jsonStringValidator{}},
 			PlanModifiers: []planmodifier.String{
 				jsonNormalizePlanModifier{},

@@ -47,7 +47,7 @@ func (d *FlagTriggerDataSource) Schema(_ context.Context, _ datasource.SchemaReq
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				Required:    true,
-				Description: "The Terraform trigger ID. The unique trigger ID can be found in your saved trigger URL:\n\n```\nhttps://app.launchdarkly.com/webhook/triggers/THIS_IS_YOUR_TRIGGER_ID/aff25a53-17d9-4112-a9b8-12718d1a2e79\n```\n\nPlease note that if you did not save this upon creation of the resource, you will have to reset it to get a new value, which can cause breaking changes.",
+				Description: "The Terraform trigger ID. The unique trigger ID can be found in your saved trigger URL:\n\n```\nhttps://app.launchdarkly.com/webhook/triggers/THIS_IS_YOUR_TRIGGER_ID/aff25a53-17d9-4112-a9b8-12718d1a2e79\n```\n\nIf you did not save this when you created the resource, you must reset it to get a new value, which can cause breaking changes.",
 			},
 			PROJECT_KEY: schema.StringAttribute{
 				Required:    true,
@@ -55,7 +55,7 @@ func (d *FlagTriggerDataSource) Schema(_ context.Context, _ datasource.SchemaReq
 			},
 			ENV_KEY: schema.StringAttribute{
 				Required:    true,
-				Description: "The unique key of the environment the flag trigger will work in.",
+				Description: "The unique key of the environment the flag trigger runs in.",
 			},
 			FLAG_KEY: schema.StringAttribute{
 				Required:    true,

@@ -55,7 +55,7 @@ func (r *ReleasePolicyResource) Schema(_ context.Context, _ resource.SchemaReque
 
 ~> **Beta:** This resource wraps a beta LaunchDarkly API (the ` + "`release-policies`" + ` endpoints, accessed with the ` + "`LD-API-Version: beta`" + ` header). Beta resources may change or be removed in future versions.
 
-This resource lets you create and manage [release policies](https://launchdarkly.com/docs/home/releases) within a LaunchDarkly project. A release policy defines how flag changes roll out to environments — either as a ` + "`guarded-release`" + ` (rollout monitored against metrics, with optional automatic rollback) or a ` + "`progressive-release`" + ` (rollout that advances through a fixed schedule of allocation stages).`,
+This resource lets you create and manage [release policies](https://launchdarkly.com/docs/home/releases) within a LaunchDarkly project. A release policy defines how flag changes roll out to environments, either as a ` + "`guarded-release`" + `, which monitors the rollout against metrics with optional automatic rollback, or a ` + "`progressive-release`" + `, which advances the rollout through a fixed schedule of allocation stages.`,
 		Attributes: releasePolicySchemaAttributes(),
 	}
 }
@@ -92,7 +92,7 @@ func releasePolicySchemaAttributes() map[string]schema.Attribute {
 		},
 		RANK: schema.Int64Attribute{
 			Computed:      true,
-			Description:   "The rank (priority) of the release policy within the project. Rank is assigned and ordered by LaunchDarkly; reorder release policies in the LaunchDarkly UI.",
+			Description:   "The rank of the release policy within the project. LaunchDarkly assigns and orders the rank. Reorder release policies in the LaunchDarkly UI.",
 			PlanModifiers: []planmodifier.Int64{int64planmodifier.UseStateForUnknown()},
 		},
 		SCOPE: schema.SingleNestedAttribute{

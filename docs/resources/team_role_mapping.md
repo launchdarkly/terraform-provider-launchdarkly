@@ -48,9 +48,9 @@ resource "launchdarkly_team_role_mapping" "team_y" {
 
 - `team_key` - (Required) The team key.
 
-- `custom_role_keys` - (Required) List of custom role keys the team will access. The referenced custom roles must already exist in LaunchDarkly. If they don't, the provider may behave unexpectedly.
+- `custom_role_keys` - (Required) List of custom role keys granted to the team. The referenced custom roles must already exist in LaunchDarkly. If they don't, the provider may behave unexpectedly.
 
-- `role_attributes` - (Optional) Map of role-attribute keys to lists of resource keys. Applied to the team as a whole — every custom role granted to this team receives these scopes. Leave unset (or remove from configuration) to keep the team's role attributes unchanged from the LaunchDarkly side.
+- `role_attributes` - (Optional) Map of role-attribute keys to lists of resource keys. Applied to the team as a whole. Every custom role granted to this team receives these scopes. Leave unset (or remove from configuration) to keep the team's role attributes unchanged from the LaunchDarkly side.
 
   ~> **Note:** `role_attributes` is also exposed on the [`launchdarkly_team` resource](https://registry.terraform.io/providers/launchdarkly/launchdarkly/latest/docs/resources/team). If you manage the same team with both resources, only one of them should own `role_attributes`. Add `lifecycle { ignore_changes = [role_attributes] }` on whichever resource isn't the primary owner to avoid plan churn.
 

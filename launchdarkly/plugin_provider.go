@@ -68,7 +68,7 @@ func (p *launchdarklyProvider) Schema(_ context.Context, _ provider.SchemaReques
 			},
 			ARCHIVE_FLAGS_ON_DESTROY: schema.BoolAttribute{
 				Optional:    true,
-				Description: "When `true`, removing a `launchdarkly_feature_flag` resource from your Terraform configuration archives the flag in LaunchDarkly instead of deleting it. The flag's key is retained on the server, so re-applying a configuration that recreates the same flag key will fail with an error directing you to `terraform import` the archived flag. Defaults to `false`, which preserves the existing destroy-deletes behavior. This setting only affects `launchdarkly_feature_flag`; other resources continue to be deleted on destroy.",
+				Description: "When `true`, removing a `launchdarkly_feature_flag` resource from your Terraform configuration archives the flag in LaunchDarkly instead of deleting it. The flag's key is retained on the server, so re-applying a configuration that recreates the same flag key will fail with an error directing you to `terraform import` the archived flag. Defaults to `false`, which preserves the existing destroy-deletes behavior. This setting affects only `launchdarkly_feature_flag`. Other resources continue to be deleted on destroy.",
 			},
 		},
 	}

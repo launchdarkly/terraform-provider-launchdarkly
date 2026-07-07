@@ -66,7 +66,7 @@ func aiToolSchemaAttributes() map[string]schema.Attribute {
 		},
 		PROJECT_KEY: schema.StringAttribute{
 			Required:    true,
-			Description: "The project key. A change in this field will force the destruction of the existing resource and the creation of a new one.",
+			Description: addForceNewDescription("The project key.", true),
 			Validators:  []validator.String{keyValidator()},
 			PlanModifiers: []planmodifier.String{
 				stringplanmodifier.RequiresReplace(),
@@ -74,7 +74,7 @@ func aiToolSchemaAttributes() map[string]schema.Attribute {
 		},
 		KEY: schema.StringAttribute{
 			Required:    true,
-			Description: "The AI tool's unique key. A change in this field will force the destruction of the existing resource and the creation of a new one.",
+			Description: addForceNewDescription("The AI tool's unique key.", true),
 			Validators:  []validator.String{keyValidator()},
 			PlanModifiers: []planmodifier.String{
 				stringplanmodifier.RequiresReplace(),

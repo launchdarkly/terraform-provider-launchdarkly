@@ -76,19 +76,19 @@ func aiConfigVariationSchemaAttributes() map[string]schema.Attribute {
 		},
 		PROJECT_KEY: schema.StringAttribute{
 			Required:      true,
-			Description:   "The project key. A change in this field will force the destruction of the existing resource and the creation of a new one.",
+			Description:   addForceNewDescription("The project key.", true),
 			Validators:    []validator.String{keyValidator()},
 			PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
 		},
 		AI_CONFIG_KEY: schema.StringAttribute{
 			Required:      true,
-			Description:   "The AI Config key that this variation belongs to. A change in this field will force the destruction of the existing resource and the creation of a new one.",
+			Description:   addForceNewDescription("The AI Config key that this variation belongs to.", true),
 			Validators:    []validator.String{keyValidator()},
 			PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
 		},
 		KEY: schema.StringAttribute{
 			Required:      true,
-			Description:   "The variation's unique key. A change in this field will force the destruction of the existing resource and the creation of a new one.",
+			Description:   addForceNewDescription("The variation's unique key.", true),
 			Validators:    []validator.String{keyValidator()},
 			PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
 		},
@@ -119,17 +119,17 @@ func aiConfigVariationSchemaAttributes() map[string]schema.Attribute {
 		},
 		DESCRIPTION: schema.StringAttribute{
 			Optional:    true,
-			Description: "The variation's description (used in agent mode).",
+			Description: "The variation's description. Used in agent mode.",
 		},
 		INSTRUCTIONS: schema.StringAttribute{
 			Optional:    true,
-			Description: "The variation's instructions (used in agent mode).",
+			Description: "The variation's instructions. Used in agent mode.",
 		},
 		TOOL_KEYS: schema.SetAttribute{
 			Optional:    true,
 			Computed:    true,
 			ElementType: types.StringType,
-			Description: "A set of AI tool keys to associate with this variation. **Note:** The API does not currently return tool associations on read, so Terraform cannot detect drift for this field. Changes made outside of Terraform will not be reflected in state.",
+			Description: "A set of AI tool keys to associate with this variation. **Note:** The API does not currently return tool associations on read, so Terraform cannot detect drift for this field. Changes made outside of Terraform is not reflected in state.",
 			PlanModifiers: []planmodifier.Set{
 				setplanmodifier.UseStateForUnknown(),
 			},

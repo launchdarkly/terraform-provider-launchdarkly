@@ -70,7 +70,7 @@ func (d *ModelConfigDataSource) Schema(_ context.Context, _ datasource.SchemaReq
 			},
 			MODEL_ID: schema.StringAttribute{
 				Computed:    true,
-				Description: "The model identifier (e.g. `gpt-4`, `claude-3`).",
+				Description: "The model identifier. For example, `gpt-4` or `claude-3`.",
 			},
 			ICON: schema.StringAttribute{
 				Computed:    true,
@@ -78,7 +78,7 @@ func (d *ModelConfigDataSource) Schema(_ context.Context, _ datasource.SchemaReq
 			},
 			PROVIDER_NAME: schema.StringAttribute{
 				Computed:    true,
-				Description: "The provider name for the model config (e.g. `openai`, `anthropic`).",
+				Description: "The provider name for the model config. For example, `openai` or `anthropic`.",
 			},
 			GLOBAL: schema.BoolAttribute{
 				Computed:    true,
@@ -86,7 +86,7 @@ func (d *ModelConfigDataSource) Schema(_ context.Context, _ datasource.SchemaReq
 			},
 			PARAMS: schema.StringAttribute{
 				Computed:    true,
-				Description: "A JSON string representing the model parameters (e.g. `{\"temperature\": 0.7, \"maxTokens\": 4096}`).",
+				Description: "A JSON string representing the model parameters. For example, `{\"temperature\": 0.7, \"maxTokens\": 4096}`.",
 			},
 			CUSTOM_PARAMETERS: schema.StringAttribute{
 				Computed:    true,

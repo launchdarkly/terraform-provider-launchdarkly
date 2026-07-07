@@ -44,8 +44,8 @@ resource "launchdarkly_flag_import_configuration" "split_import" {
 ### Required
 
 - `config` (String, Sensitive) A JSON-encoded object of configuration values for the integration. The accepted keys vary by `integration_key` and are described by the `formVariables` in the integration's manifest (often including a secret API token). Marked sensitive because it commonly contains credentials.
-- `integration_key` (String) The integration key identifying the external feature management system to import flags from, for example `split`. A change in this field will force the destruction of the existing resource and the creation of a new one.
-- `project_key` (String) The key of the project to import flags into. A change in this field will force the destruction of the existing resource and the creation of a new one.
+- `integration_key` (String) The integration key identifying the external feature management system to import flags from, for example `split`. A change in this field forces the destruction of the existing resource and the creation of a new one.
+- `project_key` (String) The key of the project to import flags into. A change in this field forces the destruction of the existing resource and the creation of a new one.
 
 ### Optional
 

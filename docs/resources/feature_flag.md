@@ -132,25 +132,25 @@ resource "launchdarkly_feature_flag" "mobile_app_feature" {
 
 ### Required
 
-- `key` (String) The unique feature flag key that references the flag in your application code. A change in this field will force the destruction of the existing resource and the creation of a new one.
+- `key` (String) The unique feature flag key that references the flag in your application code. A change in this field forces the destruction of the existing resource and the creation of a new one.
 - `name` (String) The human-readable name of the feature flag.
-- `project_key` (String) The feature flag's project key. A change in this field will force the destruction of the existing resource and the creation of a new one.
-- `variation_type` (String) The feature flag's variation type: `boolean`, `string`, `number` or `json`. A change in this field will force the destruction of the existing resource and the creation of a new one.
+- `project_key` (String) The feature flag's project key. A change in this field forces the destruction of the existing resource and the creation of a new one.
+- `variation_type` (String) The feature flag's variation type: `boolean`, `string`, `number` or `json`. A change in this field forces the destruction of the existing resource and the creation of a new one.
 - `variations` (Attributes List) An array of possible variations for the flag. (see [below for nested schema](#nestedatt--variations))
 
 ### Optional
 
 - `archived` (Boolean) Specifies whether the flag is archived or not. Note that you cannot create a new flag that is archived, but can update a flag to be archived.
-- `client_side_availability` (Attributes) Whether this flag should be made available to the client-side JavaScript SDK using the client-side Id, mobile key, or both. This value gets its default from your project configuration if not set. Once set, if removed, it will retain its last set value. (see [below for nested schema](#nestedatt--client_side_availability))
+- `client_side_availability` (Attributes) Whether this flag should be made available to the client-side JavaScript SDK using the client-side Id, mobile key, or both. This value gets its default from your project configuration if not set. Once set, if removed, it retains its last set value. (see [below for nested schema](#nestedatt--client_side_availability))
 - `custom_properties` (Attributes Map) The feature flag's [custom properties](https://docs.launchdarkly.com/home/connecting/custom-properties), keyed by the custom property key. Adding or removing one custom property does not affect the others. (see [below for nested schema](#nestedatt--custom_properties))
-- `defaults` (Attributes) The indices of the variations to be used as the default on and off variations in all new environments. Flag configurations in existing environments will not be changed nor updated if removed. (see [below for nested schema](#nestedatt--defaults))
+- `defaults` (Attributes) The indices of the variations to use as the default on and off variations in all new environments. The provider does not change flag configurations in existing environments if you remove this field. (see [below for nested schema](#nestedatt--defaults))
 - `deprecated` (Boolean) Specifies whether the flag is deprecated or not. Note that you cannot create a new flag that is deprecated, but can update a flag to be deprecated.
 - `description` (String) The feature flag's description.
-- `maintainer_id` (String) The feature flag maintainer's 24 character alphanumeric team member ID. `maintainer_team_key` cannot be set if `maintainer_id` is set. If neither is set, it will automatically be or stay set to the member ID associated with the API key used by your LaunchDarkly Terraform provider or the most recently-set maintainer.
+- `maintainer_id` (String) The feature flag maintainer's 24 character alphanumeric team member ID. `maintainer_team_key` cannot be set if `maintainer_id` is set. If neither is set, it is automatically set to the member ID associated with the API key used by your LaunchDarkly Terraform provider or the most recently-set maintainer.
 - `maintainer_team_key` (String) The key of the associated team that maintains this feature flag. `maintainer_id` cannot be set if `maintainer_team_key` is set
 - `tags` (Set of String) Tags associated with your resource.
 - `temporary` (Boolean) Specifies whether the flag is a temporary flag.
-- `view_keys` (Set of String) A set of view keys to link this flag to. This is an alternative to using the `launchdarkly_view_links` resource for managing view associations. When set, this flag will be linked to the specified views. The field is also computed, meaning Terraform will read back the current view associations from LaunchDarkly to detect drift. To explicitly remove all view associations, set `view_keys = []`. Simply removing the field from your configuration will leave existing associations unchanged. **Important**: Avoid using both `view_keys` and `launchdarkly_view_links` to manage the same flag. Mixed ownership can cause conflicts; when detected, Terraform logs a warning and reconciles to the configured `view_keys`. Choose one approach per resource.
+- `view_keys` (Set of String) A set of view keys to link this flag to. This is an alternative to using the `launchdarkly_view_links` resource for managing view associations. When set, this flag is linked to the specified views. The field is also computed, so Terraform reads back the current view associations from LaunchDarkly to detect drift. To explicitly remove all view associations, set `view_keys = []`. Removing the field from your configuration leaves existing associations unchanged. **Important**: Avoid using both `view_keys` and `launchdarkly_view_links` to manage the same flag. Mixed ownership can cause conflicts. When Terraform detects them, it logs a warning and reconciles to the configured `view_keys`. Choose one approach per resource.
 
 ### Read-Only
 
@@ -161,7 +161,7 @@ resource "launchdarkly_feature_flag" "mobile_app_feature" {
 
 Required:
 
-- `value` (String) The variation value. The value's type must correspond to the `variation_type` argument. For example: `variation_type = "boolean"` accepts only `true` or `false`. The `number` variation type accepts both floats and ints, but please note that any trailing zeroes on floats will be trimmed (i.e. `1.1` and `1.100` will both be converted to `1.1`).
+- `value` (String) The variation value. The value's type must correspond to the `variation_type` argument. For example: `variation_type = "boolean"` accepts only `true` or `false`. The `number` variation type accepts both floats and ints, but the provider trims any trailing zeroes on floats. For example, it converts both `1.1` and `1.100` to `1.1`.
 
 If you wish to define an empty string variation, you must still define the value field like so:
 
@@ -198,7 +198,7 @@ Required:
 
 Optional:
 
-- `key` (String) The unique custom property key. Must equal the map key; it defaults to the map key when omitted.
+- `key` (String) The unique custom property key. Must equal the map key. It defaults to the map key when omitted.
 
 
 <a id="nestedatt--defaults"></a>
@@ -206,8 +206,8 @@ Optional:
 
 Required:
 
-- `off_variation` (Number) The index of the variation the flag will default to in all new environments when off.
-- `on_variation` (Number) The index of the variation the flag will default to in all new environments when on.
+- `off_variation` (Number) The index of the variation the flag defaults to in all new environments when off.
+- `on_variation` (Number) The index of the variation the flag defaults to in all new environments when on.
 
 ## Import
 

@@ -50,11 +50,11 @@ resource "launchdarkly_metric_group" "checkout_funnel" {
 
 ### Required
 
-- `key` (String) The unique key that references the metric group. A change in this field will force the destruction of the existing resource and the creation of a new one.
-- `kind` (String) The type of the metric group. Available choices are `funnel` and `standard`. A `funnel` metric group is an ordered list of metrics; a `standard` metric group is an unordered collection. A change in this field will force the destruction of the existing resource and the creation of a new one.
+- `key` (String) The unique key that references the metric group. A change in this field forces the destruction of the existing resource and the creation of a new one.
+- `kind` (String) The type of the metric group. Available choices are `funnel` and `standard`. A `funnel` metric group is an ordered list of metrics. A `standard` metric group is an unordered collection. A change in this field forces the destruction of the existing resource and the creation of a new one.
 - `metrics` (Attributes List) An ordered list of the metrics in this metric group. Must contain at least two metrics. For `funnel` metric groups the order is significant and each metric requires a `name_in_group`. (see [below for nested schema](#nestedatt--metrics))
 - `name` (String) The human-friendly name for the metric group.
-- `project_key` (String) The metric group's project key. A change in this field will force the destruction of the existing resource and the creation of a new one.
+- `project_key` (String) The metric group's project key. A change in this field forces the destruction of the existing resource and the creation of a new one.
 
 ### Optional
 

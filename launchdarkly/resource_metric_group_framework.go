@@ -85,7 +85,7 @@ func metricGroupSchemaAttributes() map[string]schema.Attribute {
 		},
 		KIND: schema.StringAttribute{
 			Required:      true,
-			Description:   addForceNewDescription("The type of the metric group. Available choices are `funnel` and `standard`. A `funnel` metric group is an ordered list of metrics; a `standard` metric group is an unordered collection.", true),
+			Description:   addForceNewDescription("The type of the metric group. Available choices are `funnel` and `standard`. A `funnel` metric group is an ordered list of metrics. A `standard` metric group is an unordered collection.", true),
 			Validators:    []validator.String{oneOfValidator{allowed: []string{METRIC_GROUP_KIND_FUNNEL, METRIC_GROUP_KIND_STANDARD}}},
 			PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
 		},

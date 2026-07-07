@@ -42,7 +42,7 @@ resource "launchdarkly_relay_proxy_configuration" "example" {
 ### Read-Only
 
 - `display_key` (String) The last 4 characters of the Relay Proxy configuration's unique key.
-- `full_key` (String, Sensitive) The Relay Proxy configuration's unique key. Because the `full_key` is only exposed upon creation, it will not be available if the resource is imported.
+- `full_key` (String, Sensitive) The Relay Proxy configuration's unique key. Because LaunchDarkly exposes the `full_key` only on creation, it is unavailable when you import the resource.
 - `id` (String) The Relay Proxy configuration's unique ID.
 
 <a id="nestedatt--policy"></a>
@@ -62,13 +62,13 @@ Either `actions` or `not_actions` must be specified. For a list of available act
 
 ## Import
 
-Relay Proxy configurations can be imported using the configuration's unique 24 character ID, e.g.
+Import a Relay Proxy configuration using the configuration's unique 24-character ID. For example:
 
 ```sh
 terraform import launchdarkly_relay_proxy_configuration.example 51d440e30c9ff61457c710f6
 ```
 
-The unique relay proxy ID can be found in the relay proxy edit page URL, which you can locate by clicking the three dot menu on your relay proxy item in the UI and selecting 'Edit configuration':
+The unique relay proxy ID can be found in the relay proxy edit page URL, which you can locate by clicking the three dot menu on your relay proxy item in the UI and selecting "Edit configuration":
 
 ```
 https://app.launchdarkly.com/settings/relay/THIS_IS_YOUR_RELAY_PROXY_ID/edit
