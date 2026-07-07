@@ -133,7 +133,7 @@ func segmentSchemaAttributes() map[string]schema.Attribute {
 			Optional:      true,
 			Computed:      true,
 			Default:       booldefault.StaticBool(false),
-			Description:   addForceNewDescription("Whether to create a standard segment (`false`) or a big segment (`true`). Standard segments include rule-based and smaller list-based segments. big segments include larger list-based segments and synced segments. Only use a big segment if you need to add more than 15,000 individual targets. It is not possible to manage the list of targeted contexts for big segments with Terraform.", true),
+			Description:   addForceNewDescription("Whether to create a standard segment (`false`) or a big segment (`true`). Standard segments include rule-based and smaller list-based segments. Big segments include larger list-based segments and synced segments. Only use a big segment if you need to add more than 15,000 individual targets. It is not possible to manage the list of targeted contexts for big segments with Terraform.", true),
 			PlanModifiers: []planmodifier.Bool{boolplanmodifier.RequiresReplace()},
 		},
 		UNBOUNDED_CONTEXT_KIND: schema.StringAttribute{
