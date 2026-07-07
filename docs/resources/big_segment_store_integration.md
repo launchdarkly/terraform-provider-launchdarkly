@@ -60,10 +60,10 @@ resource "launchdarkly_big_segment_store_integration" "dynamodb_store" {
 
 ### Required
 
-- `config` (String, Sensitive) A JSON string holding the store-specific configuration. All values are strings except `tlsEnabled`, which is a boolean. For `redis` the fields are `host`, `port`, `tlsEnabled`, `username`, and `password`; for `dynamodb` they are `tableName`, `region`, `roleArn`, and `externalId` (a UUID). Marked sensitive because it carries credentials. The API redacts secrets and normalizes this value on read, so it is treated as write-only: Terraform stores and diffs the value you provide and does not reconcile it against the server, so configuration changes made outside Terraform are not detected as drift.
-- `environment_key` (String) The key of the environment the integration belongs to. Persistent store integrations are environment-scoped. A change in this field will force the destruction of the existing resource and the creation of a new one.
-- `integration_key` (String) The persistent store technology to use. Must be one of `redis` or `dynamodb`. A change in this field will force the destruction of the existing resource and the creation of a new one.
-- `project_key` (String) The key of the project the integration belongs to. A change in this field will force the destruction of the existing resource and the creation of a new one.
+- `config` (String, Sensitive) A JSON string holding the store-specific configuration. All values are strings except `tlsEnabled`, which is a boolean. For `redis`, the fields are `host`, `port`, `tlsEnabled`, `username`, and `password`. For `dynamodb`, they are `tableName`, `region`, `roleArn`, and `externalId`, a UUID. Marked sensitive because it carries credentials. The API redacts secrets and normalizes this value on read, so it is treated as write-only: Terraform stores and diffs the value you provide and does not reconcile it against the server, so configuration changes made outside Terraform are not detected as drift.
+- `environment_key` (String) The key of the environment the integration belongs to. Persistent store integrations are environment-scoped. A change in this field forces the destruction of the existing resource and the creation of a new one.
+- `integration_key` (String) The persistent store technology to use. Must be one of `redis` or `dynamodb`. A change in this field forces the destruction of the existing resource and the creation of a new one.
+- `project_key` (String) The key of the project the integration belongs to. A change in this field forces the destruction of the existing resource and the creation of a new one.
 
 ### Optional
 

@@ -5,7 +5,7 @@ subcategory: ""
 description: |-
   Provides a LaunchDarkly flag import configuration resource.
   ~> Beta: This resource wraps a beta LaunchDarkly API. Beta resources may change or be removed in future versions.
-  This resource lets you create and manage flag import configurations, which import feature flags from an external feature management system (identified by integration_key, for example split) into a LaunchDarkly project. The shape of config varies by integration and is described by the formVariables in that integration's manifest. To learn more, read Importing flags from another provider https://docs.launchdarkly.com/home/getting-started/importing-flags.
+  This resource lets you create and manage flag import configurations, which import feature flags from an external feature management system (identified by integration_key, for example split) into a LaunchDarkly project. The shape of config varies by integration and is described by the formVariables in that integration's manifest. To learn more, read Importing flags from another provider https://launchdarkly.com/docs/home/flags/import.
 ---
 
 # launchdarkly_flag_import_configuration (Resource)
@@ -14,7 +14,7 @@ Provides a LaunchDarkly flag import configuration resource.
 
 ~> **Beta:** This resource wraps a beta LaunchDarkly API. Beta resources may change or be removed in future versions.
 
-This resource lets you create and manage flag import configurations, which import feature flags from an external feature management system (identified by `integration_key`, for example `split`) into a LaunchDarkly project. The shape of `config` varies by integration and is described by the `formVariables` in that integration's manifest. To learn more, read [Importing flags from another provider](https://docs.launchdarkly.com/home/getting-started/importing-flags).
+This resource lets you create and manage flag import configurations, which import feature flags from an external feature management system (identified by `integration_key`, for example `split`) into a LaunchDarkly project. The shape of `config` varies by integration and is described by the `formVariables` in that integration's manifest. To learn more, read [Importing flags from another provider](https://launchdarkly.com/docs/home/flags/import).
 
 ## Example Usage
 
@@ -44,8 +44,8 @@ resource "launchdarkly_flag_import_configuration" "split_import" {
 ### Required
 
 - `config` (String, Sensitive) A JSON-encoded object of configuration values for the integration. The accepted keys vary by `integration_key` and are described by the `formVariables` in the integration's manifest (often including a secret API token). Marked sensitive because it commonly contains credentials.
-- `integration_key` (String) The integration key identifying the external feature management system to import flags from, for example `split`. A change in this field will force the destruction of the existing resource and the creation of a new one.
-- `project_key` (String) The key of the project to import flags into. A change in this field will force the destruction of the existing resource and the creation of a new one.
+- `integration_key` (String) The integration key identifying the external feature management system to import flags from, for example `split`. A change in this field forces the destruction of the existing resource and the creation of a new one.
+- `project_key` (String) The key of the project to import flags into. A change in this field forces the destruction of the existing resource and the creation of a new one.
 
 ### Optional
 

@@ -64,7 +64,7 @@ func (r *TeamMemberResource) Schema(_ context.Context, _ resource.SchemaRequest,
 
 This resource allows you to create and manage team members within your LaunchDarkly organization.
 
--> **Note:** You can only manage team members with "admin" level personal access tokens. To learn more, read [Managing Teams](https://docs.launchdarkly.com/home/teams/managing).`,
+-> **Note:** You can only manage team members with "admin" level personal access tokens. To learn more, read [Managing Teams](https://launchdarkly.com/docs/home/account/manage-teams).`,
 		Attributes: teamMemberSchemaAttributes(),
 	}
 }

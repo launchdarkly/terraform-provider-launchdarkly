@@ -35,15 +35,15 @@ data "launchdarkly_ai_config_variation" "example" {
 ### Read-Only
 
 - `creation_date` (Number) The creation timestamp of the variation.
-- `description` (String) The variation's description (used in agent mode).
+- `description` (String) The variation's description. Used in agent mode.
 - `id` (String) The ID in the format `project_key/config_key/key`.
-- `instructions` (String) The variation's instructions (used in agent mode).
+- `instructions` (String) The variation's instructions. Used in agent mode.
 - `messages` (Attributes List) A list of messages for completion mode. (see [below for nested schema](#nestedatt--messages))
 - `model` (String) A JSON string representing the inline model configuration.
 - `model_config_key` (String) The key of a model config resource used for this variation.
 - `name` (String) The variation's human-readable name.
 - `state` (String) The state of the variation. Must be `archived` or `published`.
-- `tool_keys` (Set of String) A set of AI tool keys to associate with this variation. **Note:** The API does not currently return tool associations on read, so Terraform cannot detect drift for this field. Changes made outside of Terraform will not be reflected in state.
+- `tool_keys` (Set of String) A set of AI tool keys to associate with this variation. **Note:** The API does not currently return tool associations on read, so Terraform cannot detect drift for this field. Changes made outside of Terraform is not reflected in state.
 - `variation_id` (String) The internal ID of the variation.
 - `version` (Number) The version number of the variation.
 

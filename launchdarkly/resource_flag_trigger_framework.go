@@ -74,7 +74,7 @@ This resource allows you to create and manage flag triggers within your LaunchDa
 			},
 			ENV_KEY: schema.StringAttribute{
 				Required:    true,
-				Description: addForceNewDescription("The unique key of the environment the flag trigger will work in.", true),
+				Description: addForceNewDescription("The unique key of the environment the flag trigger runs in.", true),
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.RequiresReplace(),
 				},
@@ -104,7 +104,7 @@ This resource allows you to create and manage flag triggers within your LaunchDa
 			},
 			MAINTAINER_ID: schema.StringAttribute{
 				Computed:      true,
-				Description:   "The ID of the member responsible for maintaining the flag trigger. If created via Terraform, this value will be the ID of the member associated with the API key used for your provider configuration.",
+				Description:   "The ID of the member responsible for maintaining the flag trigger. If created via Terraform, this value is the ID of the member associated with the API key used for your provider configuration.",
 				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
 			ENABLED: schema.BoolAttribute{

@@ -5,7 +5,7 @@ description: |-
   Provides a LaunchDarkly Data Export Destination resource.
   -> Note: Data Export is available to customers on an Enterprise LaunchDarkly plan. To learn more, read about our pricing https://launchdarkly.com/pricing/. To upgrade your plan, contact LaunchDarkly Sales https://launchdarkly.com/contact-sales/.
   Data Export Destinations are locations that receive exported data. This resource allows you to configure destinations for the export of raw analytics data, including feature flag requests, analytics events, custom events, and more.
-  To learn more about data export, read Data Export Documentation https://docs.launchdarkly.com/integrations/data-export.
+  To learn more, read Data Export https://launchdarkly.com/docs/integrations/data-export.
 ---
 
 # launchdarkly_destination (Resource)
@@ -16,7 +16,7 @@ Provides a LaunchDarkly Data Export Destination resource.
 
 Data Export Destinations are locations that receive exported data. This resource allows you to configure destinations for the export of raw analytics data, including feature flag requests, analytics events, custom events, and more.
 
-To learn more about data export, read [Data Export Documentation](https://docs.launchdarkly.com/integrations/data-export).
+To learn more, read [Data Export](https://launchdarkly.com/docs/integrations/data-export).
 
 ## Example Usage
 
@@ -104,10 +104,10 @@ resource "launchdarkly_destination" "segment_example" {
 ### Required
 
 - `config` (Map of String) The destination-specific configuration. To learn more, read [Destination-Specific Configs](#destination-specific-configs)
-- `env_key` (String) The environment key. A change in this field will force the destruction of the existing resource and the creation of a new one.
-- `kind` (String) The data export destination type. Available choices are `kinesis`, `google-pubsub`, `mparticle`, `azure-event-hubs`, and `segment`. A change in this field will force the destruction of the existing resource and the creation of a new one.
+- `env_key` (String) The environment key. A change in this field forces the destruction of the existing resource and the creation of a new one.
+- `kind` (String) The data export destination type. Available choices are `kinesis`, `google-pubsub`, `mparticle`, `azure-event-hubs`, and `segment`. A change in this field forces the destruction of the existing resource and the creation of a new one.
 - `name` (String) A human-readable name for your data export destination.
-- `project_key` (String) The LaunchDarkly project key. A change in this field will force the destruction of the existing resource and the creation of a new one.
+- `project_key` (String) The LaunchDarkly project key. A change in this field forces the destruction of the existing resource and the creation of a new one.
 
 ### Optional
 
@@ -126,7 +126,7 @@ Depending on the destination kind, the `config` argument should contain the foll
 
 - `region` - (Required) - AWS region your Kinesis resource resides in.
 
-- `role_arn` - (Required) - Your AWS stream ARN in the format `"arn:aws:iam::{account-id}:role/{role}"`, ex. `"arn:aws:iam::123456789012:role/marketingadmin"`. Follow the directions in the [docs](https://docs.launchdarkly.com/integrations/data-export/kinesis) to set up the necessary roles if need be.
+- `role_arn` - (Required) - Your AWS stream ARN in the format `"arn:aws:iam::{account-id}:role/{role}"`, ex. `"arn:aws:iam::123456789012:role/marketingadmin"`. Follow the directions in the [docs](https://launchdarkly.com/docs/integrations/data-export/kinesis) to set up the necessary roles if need be.
 
 - `stream_name` - (Required) - The name of your Kinesis stream.
 
@@ -142,7 +142,7 @@ Depending on the destination kind, the `config` argument should contain the foll
 
 - `secret` - (Required) - Your mParticle secret.
 
-- `user_identity` - (Optional) - Your mParticle user ID as a string. If defined, the LaunchDarkly context kind will be implicitly assumed to be "user". At least one of `user_identity` or `user_identities` must be defined.
+- `user_identity` - (Optional) - Your mParticle user ID as a string. If defined, LaunchDarkly implicitly assumes the context kind is `user`. At least one of `user_identity` or `user_identities` must be defined.
 
 - `user_identities` - (Optional) - A json-encoded list of objects associating mParticle user identities with LaunchDarkly context kinds. At least one of `user_identity` or `user_identities` must be defined.
 
@@ -154,17 +154,17 @@ Depending on the destination kind, the `config` argument should contain the foll
 
 - `name` - (Required) -
 
-- `policy_name` - (Required) - The name of your Azure policy. Follow the directions in the [docs](https://docs.launchdarkly.com/home/data-export/event-hub#creating-a-policy-and-key-in-azure-event-hub) to set up a policy.
+- `policy_name` - (Required) - The name of your Azure policy. Follow the directions in the [docs](https://launchdarkly.com/docs/integrations/data-export/event-hub#creating-a-policy-and-key-in-azure-event-hub) to set up a policy.
 
-- `policy_key` - (Required) - Your Azure policy key. The name of your Azure policy. Follow the directions in the [docs](https://docs.launchdarkly.com/home/data-export/event-hub#creating-a-policy-and-key-in-azure-event-hub) to set up a policy.
+- `policy_key` - (Required) - Your Azure policy key. The name of your Azure policy. Follow the directions in the [docs](https://launchdarkly.com/docs/integrations/data-export/event-hub#creating-a-policy-and-key-in-azure-event-hub) to set up a policy.
 
 ### Segment
 
 - `write_key` - (Required) - Your Segment write key.
 
-- `user_id_context_kind` - (Required) - The context kind you would like to associated with the data exported to segment.
+- `user_id_context_kind` - (Required) - The context kind you would like to associate with the data exported to segment.
 
-- `anonymous_id_context_kind` - (Required) - The context kind you would like to associated with anonymous user data exported to segment.
+- `anonymous_id_context_kind` - (Required) - The context kind you would like to associate with anonymous user data exported to segment.
 
 ## Import
 

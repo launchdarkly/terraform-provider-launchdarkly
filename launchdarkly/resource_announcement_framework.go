@@ -56,7 +56,7 @@ func (r *AnnouncementResource) Metadata(_ context.Context, req resource.Metadata
 
 func (r *AnnouncementResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "Provides a LaunchDarkly announcement resource.\n\nThis resource allows you to create and manage an in-app announcement banner that appears in the LaunchDarkly user interface for everyone in your organization.\n\n-> **Note:** LaunchDarkly supports only one announcement per account. Attempting to create a second `launchdarkly_announcement` while one already exists returns a `409` conflict; update the existing announcement instead.",
+		Description: "Provides a LaunchDarkly announcement resource.\n\nThis resource allows you to create and manage an in-app announcement banner that appears in the LaunchDarkly user interface for everyone in your organization.\n\n-> **Note:** LaunchDarkly supports only one announcement per account. Attempting to create a second `launchdarkly_announcement` while one already exists returns a `409` conflict. Update the existing announcement instead.",
 		Attributes: map[string]schema.Attribute{
 			ID: schema.StringAttribute{
 				Computed:      true,
@@ -92,7 +92,7 @@ func (r *AnnouncementResource) Schema(_ context.Context, _ resource.SchemaReques
 			},
 			STATUS: schema.StringAttribute{
 				Computed:    true,
-				Description: "The computed status of the announcement (for example, `active`, `scheduled`, or `inactive`), derived by LaunchDarkly from the current time and the announcement's start and end times.",
+				Description: "The computed status of the announcement, such as `active`, `scheduled`, or `inactive`. LaunchDarkly derives it from the current time and the announcement's start and end times.",
 			},
 		},
 	}

@@ -120,7 +120,7 @@ func stringInSlice(a string, list []string) bool {
 
 func addForceNewDescription(description string, forceNew bool) string {
 	if forceNew {
-		description += " A change in this field will force the destruction of the existing resource and the creation of a new one."
+		description += " A change in this field forces the destruction of the existing resource and the creation of a new one."
 	}
 	return description
 }

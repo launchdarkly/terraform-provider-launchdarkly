@@ -76,7 +76,7 @@ func (d *FeatureFlagDataSource) Schema(_ context.Context, _ datasource.SchemaReq
 			MAINTAINER_ID: schema.StringAttribute{
 				Optional:    true,
 				Computed:    true,
-				Description: "The feature flag maintainer's 24 character alphanumeric team member ID. `maintainer_team_key` cannot be set if `maintainer_id` is set. If neither is set, it will automatically be or stay set to the member ID associated with the API key used by your LaunchDarkly Terraform provider or the most recently-set maintainer.",
+				Description: "The feature flag maintainer's 24 character alphanumeric team member ID. `maintainer_team_key` cannot be set if `maintainer_id` is set. If neither is set, it is automatically set to the member ID associated with the API key used by your LaunchDarkly Terraform provider or the most recently-set maintainer.",
 			},
 			MAINTAINER_TEAM_KEY: schema.StringAttribute{
 				Optional:    true,

@@ -34,12 +34,12 @@ resource "launchdarkly_team" "platform_team" {
 
 ### Required
 
-- `key` (String) The team key. A change in this field will force the destruction of the existing resource and the creation of a new one.
+- `key` (String) The team key. A change in this field forces the destruction of the existing resource and the creation of a new one.
 - `name` (String) A human-friendly name for the team.
 
 ### Optional
 
-- `custom_role_keys` (Set of String) List of custom role keys the team will access. The referenced custom roles must already exist in LaunchDarkly. If they don't, the provider may behave unexpectedly.
+- `custom_role_keys` (Set of String) List of custom role keys granted to the team. The referenced custom roles must already exist in LaunchDarkly. If they don't, the provider may behave unexpectedly.
 - `description` (String) The team description.
 - `maintainers` (Set of String) List of member IDs for users who maintain the team.
 - `member_ids` (Set of String) List of member IDs who belong to the team.

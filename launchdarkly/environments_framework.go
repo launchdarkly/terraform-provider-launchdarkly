@@ -85,13 +85,13 @@ func projectEnvironmentsAttribute() schema.MapNestedAttribute {
 	return schema.MapNestedAttribute{
 		Required:    true,
 		Validators:  []validator.Map{mapvalidator.SizeAtLeast(1)},
-		Description: "Map of environments that belong to the project, keyed by environment `key`. This is the complete, authoritative set of the project's environments: any environment not present in the map is deleted on apply. Reordering, adding, or removing one environment does not affect the others. A project must have at least one environment.\n\n~> **Warning:** Changing an environment's key (the map key) deletes that environment — including its SDK keys and all of its flag targeting — and creates a new one. This is irreversible.\n\nTo manage the project in Terraform but manage its environments elsewhere (the LaunchDarkly UI or [`launchdarkly_environment`](/docs/providers/launchdarkly/r/environment.html) resources), declare your initial environments and add `lifecycle { ignore_changes = [environments] }`.\n\n-> **Note:** Mixing the use of nested `environments` and `launchdarkly_environment` resources for the same project is not recommended. `launchdarkly_environment` resources should be used together with `ignore_changes` on the project's `environments`, or when the encapsulating project is not managed in Terraform.",
+		Description: "Map of environments that belong to the project, keyed by environment `key`. This is the complete, authoritative set of the project's environments: any environment not present in the map is deleted on apply. Reordering, adding, or removing one environment does not affect the others. A project must have at least one environment.\n\n~> **Warning:** Changing an environment's key, which is the map key, deletes that environment, including its SDK keys and all of its flag targeting, and creates a new one. This is irreversible.\n\nTo manage the project in Terraform but manage its environments elsewhere, such as in the LaunchDarkly UI or with [`launchdarkly_environment`](/docs/providers/launchdarkly/r/environment.html) resources, declare your initial environments and add `lifecycle { ignore_changes = [environments] }`.\n\n-> **Note:** Mixing the use of nested `environments` and `launchdarkly_environment` resources for the same project is not recommended. `launchdarkly_environment` resources should be used together with `ignore_changes` on the project's `environments`, or when the encapsulating project is not managed in Terraform.",
 		NestedObject: schema.NestedAttributeObject{
 			Attributes: map[string]schema.Attribute{
 				KEY: schema.StringAttribute{
 					Optional:      true,
 					Computed:      true,
-					Description:   "The project-unique key for the environment. Must equal the map key; it defaults to the map key when omitted. Changing it (or the map key) replaces the environment.",
+					Description:   "The project-unique key for the environment. Must equal the map key. It defaults to the map key when omitted. Changing it (or the map key) replaces the environment.",
 					Validators:    []validator.String{keyValidator()},
 					PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 				},
@@ -132,31 +132,31 @@ func projectEnvironmentsAttribute() schema.MapNestedAttribute {
 					Computed:    true,
 					Default:     int64default.StaticInt64(0),
 					Validators:  []validator.Int64{int64validator.Between(0, 60)},
-					Description: "The TTL for the environment. This must be between 0 and 60 minutes. The TTL setting only applies to environments using the PHP SDK. This field will default to `0` when not set. To learn more, read [TTL settings](https://docs.launchdarkly.com/home/organize/environments#ttl-settings).",
+					Description: "The TTL for the environment. This must be between 0 and 60 minutes. The TTL setting only applies to environments using the PHP SDK. This field defaults to `0` when not set. To learn more, read [TTL settings](https://launchdarkly.com/docs/home/account/environment#ttl-settings).",
 				},
 				SECURE_MODE: schema.BoolAttribute{
 					Optional:    true,
 					Computed:    true,
 					Default:     booldefault.StaticBool(false),
-					Description: "Set to `true` to ensure a user of the client-side SDK cannot impersonate another user. This field will default to `false` when not set.",
+					Description: "Set to `true` to ensure a user of the client-side SDK cannot impersonate another user. This field defaults to `false` when not set.",
 				},
 				DEFAULT_TRACK_EVENTS: schema.BoolAttribute{
 					Optional:    true,
 					Computed:    true,
 					Default:     booldefault.StaticBool(false),
-					Description: "Set to `true` to enable data export for every flag created in this environment after you configure this argument. This field will default to `false` when not set. To learn more, read [Data Export](https://docs.launchdarkly.com/home/data-export).",
+					Description: "Set to `true` to enable data export for every flag created in this environment after you configure this argument. This field defaults to `false` when not set. To learn more, read [Data Export](https://launchdarkly.com/docs/integrations/data-export).",
 				},
 				REQUIRE_COMMENTS: schema.BoolAttribute{
 					Optional:    true,
 					Computed:    true,
 					Default:     booldefault.StaticBool(false),
-					Description: "Set to `true` if this environment requires comments for flag and segment changes. This field will default to `false` when not set.",
+					Description: "Set to `true` if this environment requires comments for flag and segment changes. This field defaults to `false` when not set.",
 				},
 				CONFIRM_CHANGES: schema.BoolAttribute{
 					Optional:    true,
 					Computed:    true,
 					Default:     booldefault.StaticBool(false),
-					Description: "Set to `true` if this environment requires confirmation for flag and segment changes. This field will default to `false` when not set.",
+					Description: "Set to `true` if this environment requires confirmation for flag and segment changes. This field defaults to `false` when not set.",
 				},
 				TAGS: schema.SetAttribute{
 					Optional:    true,

@@ -64,7 +64,7 @@ func (d *WebhookDataSource) Schema(_ context.Context, _ datasource.SchemaRequest
 				ElementType: types.StringType,
 				Description: "Tags associated with the webhook.",
 			},
-			STATEMENTS: frameworkPolicyStatementsDataSourceAttribute("List of policy statement blocks used to filter webhook events. For more information on webhook policy filters read [Adding a policy filter](https://docs.launchdarkly.com/integrations/webhooks#adding-a-policy-filter)."),
+			STATEMENTS: frameworkPolicyStatementsDataSourceAttribute("List of policy statement blocks used to filter webhook events. For more information on webhook policy filters read [Adding a policy filter](https://launchdarkly.com/docs/home/infrastructure/webhooks#adding-a-policy-filter)."),
 		},
 	}
 }

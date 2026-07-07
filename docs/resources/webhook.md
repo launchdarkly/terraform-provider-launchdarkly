@@ -49,7 +49,7 @@ resource "launchdarkly_webhook" "example" {
 - `name` (String) The webhook's human-readable name.
 - `on` (Boolean) Specifies whether the webhook is enabled.
 - `secret` (String, Sensitive) The secret used to sign the webhook.
-- `statements` (Attributes List) List of policy statements used to filter webhook events. For more information on webhook policy filters read [Adding a policy filter](https://docs.launchdarkly.com/integrations/webhooks#adding-a-policy-filter). (see [below for nested schema](#nestedatt--statements))
+- `statements` (Attributes List) List of policy statements used to filter webhook events. For more information on webhook policy filters read [Adding a policy filter](https://launchdarkly.com/docs/home/infrastructure/webhooks#adding-a-policy-filter). (see [below for nested schema](#nestedatt--statements))
 - `tags` (Set of String) Tags associated with your resource.
 
 ### Read-Only
@@ -66,7 +66,7 @@ Required:
 Optional:
 
 - `actions` (List of String) The list of action specifiers defining the actions to which the statement applies.
-Either `actions` or `not_actions` must be specified. For a list of available actions read [Actions reference](https://docs.launchdarkly.com/home/account-security/custom-roles/actions#actions-reference).
+Either `actions` or `not_actions` must be specified. For a list of available actions read [Actions reference](https://launchdarkly.com/docs/home/account/roles/role-actions#actions-reference).
 - `not_actions` (List of String) The list of action specifiers defining the actions to which the statement does not apply.
 - `not_resources` (List of String) The list of resource specifiers defining the resources to which the statement does not apply.
 - `resources` (List of String) The list of resource specifiers defining the resources to which the statement applies.

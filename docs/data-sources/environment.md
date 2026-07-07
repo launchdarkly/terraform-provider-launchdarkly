@@ -63,7 +63,7 @@ Read-Only:
 - `required` (Boolean) Whether changes require approval.
 - `required_approval_tags` (List of String) Flag tags requiring approval (only one of required / required_approval_tags is set).
 - `service_config` (Map of String) Service-specific approval config.
-- `service_kind` (String) Approval service (e.g. servicenow, launchdarkly).
+- `service_kind` (String) Approval service. Valid values are `servicenow` and `launchdarkly`.
 
 
 <a id="nestedatt--segment_approval_settings"></a>
@@ -78,4 +78,4 @@ Read-Only:
 - `required` (Boolean) Whether segment changes require approval.
 - `required_approval_tags` (List of String) Segment tags requiring approval (only one of required / required_approval_tags is set).
 - `service_config` (Map of String) Service-specific approval config.
-- `service_kind` (String) Approval service (e.g. servicenow, launchdarkly).
+- `service_kind` (String) Approval service. Valid values are `servicenow` and `launchdarkly`.

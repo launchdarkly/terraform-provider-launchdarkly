@@ -76,7 +76,7 @@ output "team_notifications" {
 
 ### Optional
 
-- `maintainer_id` (String) The feature flag maintainer's 24 character alphanumeric team member ID. `maintainer_team_key` cannot be set if `maintainer_id` is set. If neither is set, it will automatically be or stay set to the member ID associated with the API key used by your LaunchDarkly Terraform provider or the most recently-set maintainer.
+- `maintainer_id` (String) The feature flag maintainer's 24 character alphanumeric team member ID. `maintainer_team_key` cannot be set if `maintainer_id` is set. If neither is set, it is automatically set to the member ID associated with the API key used by your LaunchDarkly Terraform provider or the most recently-set maintainer.
 - `maintainer_team_key` (String) The key of the associated team that maintains this feature flag. `maintainer_id` cannot be set if `maintainer_team_key` is set
 
 ### Read-Only

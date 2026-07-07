@@ -48,9 +48,9 @@ resource "launchdarkly_integration_delivery_configuration" "fastly_feature_store
 ### Required
 
 - `config` (String) A JSON string representing the integration-specific configuration. The accepted fields are defined by the integration's manifest (for example connection and authentication details). Secret fields may be returned obfuscated by the API.
-- `env_key` (String) The environment key. The integration delivery configuration is scoped to this environment. A change in this field will force the destruction of the existing resource and the creation of a new one.
-- `integration_key` (String) The integration key identifying the persistent feature store integration this configuration delivers to (for example `fastly`, `cloudflare`, or `vercel`). A change in this field will force the destruction of the existing resource and the creation of a new one.
-- `project_key` (String) The project key. The integration delivery configuration is scoped to this project. A change in this field will force the destruction of the existing resource and the creation of a new one.
+- `env_key` (String) The environment key. The integration delivery configuration is scoped to this environment. A change in this field forces the destruction of the existing resource and the creation of a new one.
+- `integration_key` (String) The integration key identifying the persistent feature store integration this configuration delivers to (for example `fastly`, `cloudflare`, or `vercel`). A change in this field forces the destruction of the existing resource and the creation of a new one.
+- `project_key` (String) The project key. The integration delivery configuration is scoped to this project. A change in this field forces the destruction of the existing resource and the creation of a new one.
 
 ### Optional
 

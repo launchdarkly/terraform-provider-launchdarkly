@@ -66,7 +66,7 @@ func frameworkApprovalSettingsDataSourceAttribute() dsschema.SingleNestedAttribu
 			},
 			SERVICE_KIND: dsschema.StringAttribute{
 				Computed:    true,
-				Description: "Approval service (e.g. servicenow, launchdarkly).",
+				Description: "Approval service. Valid values are `servicenow` and `launchdarkly`.",
 			},
 			SERVICE_CONFIG: dsschema.MapAttribute{
 				Computed:    true,
@@ -176,13 +176,13 @@ func frameworkApprovalSettingsResourceAttribute() schema.SingleNestedAttribute {
 			SERVICE_KIND: schema.StringAttribute{
 				Optional:    true,
 				Computed:    true,
-				Description: "The kind of service associated with this approval. This determines which platform is used for requesting approval. Valid values are `servicenow`, `launchdarkly`. If you use a value other than `launchdarkly`, you must have already configured the integration in the LaunchDarkly UI or your apply will fail.",
+				Description: "The kind of service associated with this approval. This determines which platform requests approval. Valid values are `servicenow`, `launchdarkly`. If you use a value other than `launchdarkly`, you must have already configured the integration in the LaunchDarkly UI or your apply will fail.",
 			},
 			SERVICE_CONFIG: schema.MapAttribute{
 				Optional:    true,
 				Computed:    true,
 				ElementType: types.StringType,
-				Description: "The configuration for the service associated with this approval. This is specific to each approval service. For a `service_kind` of `servicenow`, the following fields apply:\n\n\t - `template` (String) The sys_id of the Standard Change Request Template in ServiceNow that LaunchDarkly will use when creating the change request.\n\t - `detail_column` (String) The name of the ServiceNow Change Request column LaunchDarkly uses to populate detailed approval request information. This is most commonly \"justification\".",
+				Description: "The configuration for the service associated with this approval. This is specific to each approval service. For a `service_kind` of `servicenow`, the following fields apply:\n\n\t - `template` (String) The sys_id of the Standard Change Request Template in ServiceNow that LaunchDarkly uses when creating the change request.\n\t - `detail_column` (String) The name of the ServiceNow Change Request column LaunchDarkly uses to populate detailed approval request information. This is most commonly \"justification\".",
 			},
 			AUTO_APPLY_APPROVED_CHANGES: schema.BoolAttribute{
 				Optional:    true,
@@ -374,13 +374,13 @@ func frameworkSegmentApprovalSettingsResourceAttribute() schema.SingleNestedAttr
 			SERVICE_KIND: schema.StringAttribute{
 				Optional:    true,
 				Computed:    true,
-				Description: "The kind of service associated with this approval. This determines which platform is used for requesting approval. Valid values are `servicenow`, `launchdarkly`. If you use a value other than `launchdarkly`, you must have already configured the integration in the LaunchDarkly UI or your apply will fail.",
+				Description: "The kind of service associated with this approval. This determines which platform requests approval. Valid values are `servicenow`, `launchdarkly`. If you use a value other than `launchdarkly`, you must have already configured the integration in the LaunchDarkly UI or your apply will fail.",
 			},
 			SERVICE_CONFIG: schema.MapAttribute{
 				Optional:    true,
 				Computed:    true,
 				ElementType: types.StringType,
-				Description: "The configuration for the service associated with this approval. This is specific to each approval service. For a `service_kind` of `servicenow`, the following fields apply:\n\n\t - `template` (String) The sys_id of the Standard Change Request Template in ServiceNow that LaunchDarkly will use when creating the change request.\n\t - `detail_column` (String) The name of the ServiceNow Change Request column LaunchDarkly uses to populate detailed approval request information. This is most commonly \"justification\".",
+				Description: "The configuration for the service associated with this approval. This is specific to each approval service. For a `service_kind` of `servicenow`, the following fields apply:\n\n\t - `template` (String) The sys_id of the Standard Change Request Template in ServiceNow that LaunchDarkly uses when creating the change request.\n\t - `detail_column` (String) The name of the ServiceNow Change Request column LaunchDarkly uses to populate detailed approval request information. This is most commonly \"justification\".",
 			},
 			AUTO_APPLY_APPROVED_CHANGES: schema.BoolAttribute{
 				Optional:    true,
@@ -422,7 +422,7 @@ func frameworkSegmentApprovalSettingsDataSourceAttribute() dsschema.SingleNested
 			},
 			SERVICE_KIND: dsschema.StringAttribute{
 				Computed:    true,
-				Description: "Approval service (e.g. servicenow, launchdarkly).",
+				Description: "Approval service. Valid values are `servicenow` and `launchdarkly`.",
 			},
 			SERVICE_CONFIG: dsschema.MapAttribute{
 				Computed:    true,

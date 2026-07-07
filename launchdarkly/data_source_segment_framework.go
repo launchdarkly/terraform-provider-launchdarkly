@@ -79,7 +79,7 @@ func (d *SegmentDataSource) Schema(_ context.Context, _ datasource.SchemaRequest
 				ElementType: types.StringType,
 				Description: "User keys excluded from the segment.",
 			},
-			UNBOUNDED:              schema.BoolAttribute{Computed: true, Description: "Whether this is a Big Segment."},
+			UNBOUNDED:              schema.BoolAttribute{Computed: true, Description: "Whether this is a big segment."},
 			UNBOUNDED_CONTEXT_KIND: schema.StringAttribute{Computed: true, Description: "Context kind for the big segment."},
 			VIEW_KEYS: schema.SetAttribute{
 				Computed:    true,

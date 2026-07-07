@@ -194,9 +194,9 @@ resource "launchdarkly_feature_flag_environment" "big_flag_environment" {
 
 ### Required
 
-- `env_key` (String) The environment key. A change in this field will force the destruction of the existing resource and the creation of a new one.
+- `env_key` (String) The environment key. A change in this field forces the destruction of the existing resource and the creation of a new one.
 - `fallthrough` (Attributes) The default variation to serve if no `prerequisites`, `target`, or `rules` apply. (see [below for nested schema](#nestedatt--fallthrough))
-- `flag_id` (String) The feature flag's unique `id` in the format `project_key/flag_key`. A change in this field will force the destruction of the existing resource and the creation of a new one.
+- `flag_id` (String) The feature flag's unique `id` in the format `project_key/flag_key`. A change in this field forces the destruction of the existing resource and the creation of a new one.
 
 ### Optional
 
@@ -263,7 +263,7 @@ Optional:
 Required:
 
 - `attribute` (String) The user attribute to operate on
-- `op` (String) The operator associated with the rule clause. Available options are `in`, `endsWith`, `startsWith`, `matches`, `contains`, `lessThan`, `lessThanOrEqual`, `greaterThanOrEqual`, `before`, `after`, `segmentMatch`, `semVerEqual`, `semVerLessThan`, and `semVerGreaterThan`. Read LaunchDarkly's [Operators](https://docs.launchdarkly.com/sdk/concepts/flag-evaluation-rules#operators) documentation for more information.
+- `op` (String) The operator associated with the rule clause. Available options are `in`, `endsWith`, `startsWith`, `matches`, `contains`, `lessThan`, `lessThanOrEqual`, `greaterThanOrEqual`, `before`, `after`, `segmentMatch`, `semVerEqual`, `semVerLessThan`, and `semVerGreaterThan`. Read LaunchDarkly's [Operators](https://launchdarkly.com/docs/sdk/concepts/flag-evaluation-rules#operators) documentation for more information.
 - `values` (List of String) The list of values associated with the rule clause.
 
 Optional:

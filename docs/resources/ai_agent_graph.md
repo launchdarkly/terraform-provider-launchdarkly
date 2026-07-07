@@ -52,9 +52,9 @@ resource "launchdarkly_ai_agent_graph" "support_workflow" {
 
 ### Required
 
-- `key` (String) The unique key of the agent graph. A change in this field will force the destruction of the existing resource and the creation of a new one.
+- `key` (String) The unique key of the agent graph. A change in this field forces the destruction of the existing resource and the creation of a new one.
 - `name` (String) A human-readable name for the agent graph.
-- `project_key` (String) The project key. A change in this field will force the destruction of the existing resource and the creation of a new one.
+- `project_key` (String) The project key. A change in this field forces the destruction of the existing resource and the creation of a new one.
 
 ### Optional
 
@@ -81,7 +81,7 @@ Required:
 Optional:
 
 - `handoff` (String) A JSON string representing the handoff options from the source AI Config to the target AI Config.
-- `key` (String) The unique key for this edge within the graph. Must equal the map key; it defaults to the map key when omitted.
+- `key` (String) The unique key for this edge within the graph. Must equal the map key. It defaults to the map key when omitted.
 
 ## Import
 

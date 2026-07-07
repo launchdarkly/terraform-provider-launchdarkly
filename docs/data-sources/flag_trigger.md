@@ -32,7 +32,7 @@ data "launchdarkly_flag_trigger" "example" {
 
 ### Required
 
-- `env_key` (String) The unique key of the environment the flag trigger will work in.
+- `env_key` (String) The unique key of the environment the flag trigger runs in.
 - `flag_key` (String) The unique key of the associated flag.
 - `id` (String) The Terraform trigger ID. The unique trigger ID can be found in your saved trigger URL:
 
@@ -40,7 +40,7 @@ data "launchdarkly_flag_trigger" "example" {
 https://app.launchdarkly.com/webhook/triggers/THIS_IS_YOUR_TRIGGER_ID/aff25a53-17d9-4112-a9b8-12718d1a2e79
 ```
 
-Please note that if you did not save this upon creation of the resource, you will have to reset it to get a new value, which can cause breaking changes.
+If you did not save this when you created the resource, you must reset it to get a new value, which can cause breaking changes.
 - `project_key` (String) The unique key of the project encompassing the associated flag.
 
 ### Read-Only

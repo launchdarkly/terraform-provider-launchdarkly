@@ -47,7 +47,7 @@ func (r *OAuthClientResource) Schema(_ context.Context, _ resource.SchemaRequest
 	resp.Schema = schema.Schema{
 		Description: `Provides a LaunchDarkly OAuth 2.0 client resource.
 
-This resource allows you to register and manage LaunchDarkly OAuth 2.0 clients. OAuth 2.0 clients let you build custom integrations that use LaunchDarkly as an identity provider. This is an account-level resource; your account may register more than one OAuth 2.0 client.
+This resource allows you to register and manage LaunchDarkly OAuth 2.0 clients. OAuth 2.0 clients let you build custom integrations that use LaunchDarkly as an identity provider. This is an account-level resource. Your account may register more than one OAuth 2.0 client.
 
 -> **Note:** The client secret is returned by LaunchDarkly only once, when the client is first created. It is stored in Terraform state but cannot be read back from the API afterward, so it is not populated on import. Be sure your state is configured securely before using this resource. To learn more, read [Sensitive data in state](https://www.terraform.io/docs/state/sensitive-data.html).`,
 		Attributes: map[string]schema.Attribute{

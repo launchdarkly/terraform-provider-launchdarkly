@@ -120,7 +120,7 @@ func featureFlagSchemaAttributes() map[string]schema.Attribute {
 		MAINTAINER_ID: schema.StringAttribute{
 			Optional:    true,
 			Computed:    true,
-			Description: "The feature flag maintainer's 24 character alphanumeric team member ID. `maintainer_team_key` cannot be set if `maintainer_id` is set. If neither is set, it will automatically be or stay set to the member ID associated with the API key used by your LaunchDarkly Terraform provider or the most recently-set maintainer.",
+			Description: "The feature flag maintainer's 24 character alphanumeric team member ID. `maintainer_team_key` cannot be set if `maintainer_id` is set. If neither is set, it is automatically set to the member ID associated with the API key used by your LaunchDarkly Terraform provider or the most recently-set maintainer.",
 			Validators:  []validator.String{idValidator()},
 			// Intentionally no UseStateForUnknown: maintainer_id and
 			// maintainer_team_key are mutually exclusive, so when the
@@ -171,7 +171,7 @@ func featureFlagSchemaAttributes() map[string]schema.Attribute {
 			Optional:      true,
 			Computed:      true,
 			ElementType:   types.StringType,
-			Description:   "A set of view keys to link this flag to. This is an alternative to using the `launchdarkly_view_links` resource for managing view associations. When set, this flag will be linked to the specified views. The field is also computed, meaning Terraform will read back the current view associations from LaunchDarkly to detect drift. To explicitly remove all view associations, set `view_keys = []`. Simply removing the field from your configuration will leave existing associations unchanged. **Important**: Avoid using both `view_keys` and `launchdarkly_view_links` to manage the same flag. Mixed ownership can cause conflicts; when detected, Terraform logs a warning and reconciles to the configured `view_keys`. Choose one approach per resource.",
+			Description:   "A set of view keys to link this flag to. This is an alternative to using the `launchdarkly_view_links` resource for managing view associations. When set, this flag is linked to the specified views. The field is also computed, so Terraform reads back the current view associations from LaunchDarkly to detect drift. To explicitly remove all view associations, set `view_keys = []`. Removing the field from your configuration leaves existing associations unchanged. **Important**: Avoid using both `view_keys` and `launchdarkly_view_links` to manage the same flag. Mixed ownership can cause conflicts. When Terraform detects them, it logs a warning and reconciles to the configured `view_keys`. Choose one approach per resource.",
 			PlanModifiers: []planmodifier.Set{setplanmodifier.UseStateForUnknown()},
 		},
 		VARIATIONS: schema.ListNestedAttribute{
@@ -195,14 +195,14 @@ func featureFlagSchemaAttributes() map[string]schema.Attribute {
 						PlanModifiers: []planmodifier.String{
 							jsonNormalizePlanModifier{},
 						},
-						Description: fmt.Sprintf("The variation value. The value's type must correspond to the `variation_type` argument. For example: `variation_type = %q` accepts only `true` or `false`. The `number` variation type accepts both floats and ints, but please note that any trailing zeroes on floats will be trimmed (i.e. `1.1` and `1.100` will both be converted to `1.1`).\n\nIf you wish to define an empty string variation, you must still define the value field like so:\n\n```terraform\nvariations = [{\n  value = %q\n}]\n```\n\n-> **Note:** Terraform manages `variations` as an ordered array and identifies them by index. Changing the order of `variations` may destroy and recreate variations. Deleted variations that still have targets attached outside of Terraform may have their targets reassigned to a different variation.", "boolean", ""),
+						Description: fmt.Sprintf("The variation value. The value's type must correspond to the `variation_type` argument. For example: `variation_type = %q` accepts only `true` or `false`. The `number` variation type accepts both floats and ints, but the provider trims any trailing zeroes on floats. For example, it converts both `1.1` and `1.100` to `1.1`.\n\nIf you wish to define an empty string variation, you must still define the value field like so:\n\n```terraform\nvariations = [{\n  value = %q\n}]\n```\n\n-> **Note:** Terraform manages `variations` as an ordered array and identifies them by index. Changing the order of `variations` may destroy and recreate variations. Deleted variations that still have targets attached outside of Terraform may have their targets reassigned to a different variation.", "boolean", ""),
 					},
 				},
 			},
 		},
 		CLIENT_SIDE_AVAILABILITY: schema.SingleNestedAttribute{
 			Optional:    true,
-			Description: "Whether this flag should be made available to the client-side JavaScript SDK using the client-side Id, mobile key, or both. This value gets its default from your project configuration if not set. Once set, if removed, it will retain its last set value.",
+			Description: "Whether this flag should be made available to the client-side JavaScript SDK using the client-side Id, mobile key, or both. This value gets its default from your project configuration if not set. Once set, if removed, it retains its last set value.",
 			Attributes: map[string]schema.Attribute{
 				USING_ENVIRONMENT_ID: schema.BoolAttribute{
 					Optional:    true,
@@ -218,7 +218,7 @@ func featureFlagSchemaAttributes() map[string]schema.Attribute {
 		},
 		CUSTOM_PROPERTIES: schema.MapNestedAttribute{
 			Optional:    true,
-			Description: "The feature flag's [custom properties](https://docs.launchdarkly.com/home/connecting/custom-properties), keyed by the custom property key. Adding or removing one custom property does not affect the others.",
+			Description: "The feature flag's [custom properties](https://launchdarkly.com/docs/home/infrastructure/custom-properties), keyed by the custom property key. Adding or removing one custom property does not affect the others.",
 			Validators: []validator.Map{
 				mapvalidator.SizeAtMost(CUSTOM_PROPERTY_ITEM_LIMIT),
 				mapvalidator.KeysAre(stringLenBetween(1, CUSTOM_PROPERTY_CHAR_LIMIT)),
@@ -228,7 +228,7 @@ func featureFlagSchemaAttributes() map[string]schema.Attribute {
 					KEY: schema.StringAttribute{
 						Optional:      true,
 						Computed:      true,
-						Description:   "The unique custom property key. Must equal the map key; it defaults to the map key when omitted.",
+						Description:   "The unique custom property key. Must equal the map key. It defaults to the map key when omitted.",
 						Validators:    []validator.String{stringLenBetween(1, CUSTOM_PROPERTY_CHAR_LIMIT)},
 						PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 					},
@@ -251,17 +251,17 @@ func featureFlagSchemaAttributes() map[string]schema.Attribute {
 		},
 		DEFAULTS: schema.SingleNestedAttribute{
 			Optional:    true,
-			Description: "The indices of the variations to be used as the default on and off variations in all new environments. Flag configurations in existing environments will not be changed nor updated if removed.",
+			Description: "The indices of the variations to use as the default on and off variations in all new environments. The provider does not change flag configurations in existing environments if you remove this field.",
 			Attributes: map[string]schema.Attribute{
 				ON_VARIATION: schema.Int64Attribute{
 					Required:    true,
 					Validators:  []validator.Int64{int64validator.AtLeast(0)},
-					Description: "The index of the variation the flag will default to in all new environments when on.",
+					Description: "The index of the variation the flag defaults to in all new environments when on.",
 				},
 				OFF_VARIATION: schema.Int64Attribute{
 					Required:    true,
 					Validators:  []validator.Int64{int64validator.AtLeast(0)},
-					Description: "The index of the variation the flag will default to in all new environments when off.",
+					Description: "The index of the variation the flag defaults to in all new environments when off.",
 				},
 			},
 		},

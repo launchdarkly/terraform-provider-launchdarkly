@@ -5,7 +5,7 @@ subcategory: ""
 description: |-
   Provides a LaunchDarkly team member resource.
   This resource allows you to create and manage team members within your LaunchDarkly organization.
-  -> Note: You can only manage team members with "admin" level personal access tokens. To learn more, read Managing Teams https://docs.launchdarkly.com/home/teams/managing.
+  -> Note: You can only manage team members with "admin" level personal access tokens. To learn more, read Managing Teams https://launchdarkly.com/docs/home/account/manage-teams.
 ---
 
 # launchdarkly_team_member (Resource)
@@ -14,7 +14,7 @@ Provides a LaunchDarkly team member resource.
 
 This resource allows you to create and manage team members within your LaunchDarkly organization.
 
--> **Note:** You can only manage team members with "admin" level personal access tokens. To learn more, read [Managing Teams](https://docs.launchdarkly.com/home/teams/managing).
+-> **Note:** You can only manage team members with "admin" level personal access tokens. To learn more, read [Managing Teams](https://launchdarkly.com/docs/home/account/manage-teams).
 
 ## Example Usage
 
@@ -32,7 +32,7 @@ resource "launchdarkly_team_member" "example" {
 
 ### Required
 
-- `email` (String) The unique email address associated with the team member. A change in this field will force the destruction of the existing resource and the creation of a new one.
+- `email` (String) The unique email address associated with the team member. A change in this field forces the destruction of the existing resource and the creation of a new one.
 
 ### Optional
 

@@ -39,7 +39,7 @@ func frameworkClausesDataSourceAttribute() dsschema.ListNestedAttribute {
 		NestedObject: dsschema.NestedAttributeObject{
 			Attributes: map[string]dsschema.Attribute{
 				ATTRIBUTE: dsschema.StringAttribute{Computed: true, Description: "User attribute to operate on."},
-				OP:        dsschema.StringAttribute{Computed: true, Description: "The operator associated with the rule clause. Available options are `in`, `endsWith`, `startsWith`, `matches`, `contains`, `lessThan`, `greaterThan`, `lessThanOrEqual`, `greaterThanOrEqual`, `before`, `after`, `segmentMatch`, `semVerEqual`, `semVerLessThan`, and `semVerGreaterThan`. To learn more, read [Operators](https://docs.launchdarkly.com/sdk/concepts/flag-evaluation-rules#operators)."},
+				OP:        dsschema.StringAttribute{Computed: true, Description: "The operator associated with the rule clause. Available options are `in`, `endsWith`, `startsWith`, `matches`, `contains`, `lessThan`, `greaterThan`, `lessThanOrEqual`, `greaterThanOrEqual`, `before`, `after`, `segmentMatch`, `semVerEqual`, `semVerLessThan`, and `semVerGreaterThan`. To learn more, read [Operators](https://launchdarkly.com/docs/sdk/concepts/flag-evaluation-rules#operators)."},
 				VALUES: dsschema.ListAttribute{
 					Computed:    true,
 					ElementType: types.StringType,
@@ -67,7 +67,7 @@ func frameworkClausesResourceAttribute() schema.ListNestedAttribute {
 				},
 				OP: schema.StringAttribute{
 					Required:    true,
-					Description: "The operator associated with the rule clause. Available options are `in`, `endsWith`, `startsWith`, `matches`, `contains`, `lessThan`, `lessThanOrEqual`, `greaterThanOrEqual`, `before`, `after`, `segmentMatch`, `semVerEqual`, `semVerLessThan`, and `semVerGreaterThan`. Read LaunchDarkly's [Operators](https://docs.launchdarkly.com/sdk/concepts/flag-evaluation-rules#operators) documentation for more information.",
+					Description: "The operator associated with the rule clause. Available options are `in`, `endsWith`, `startsWith`, `matches`, `contains`, `lessThan`, `lessThanOrEqual`, `greaterThanOrEqual`, `before`, `after`, `segmentMatch`, `semVerEqual`, `semVerLessThan`, and `semVerGreaterThan`. Read LaunchDarkly's [Operators](https://launchdarkly.com/docs/sdk/concepts/flag-evaluation-rules#operators) documentation for more information.",
 					Validators:  []validator.String{opValidator()},
 				},
 				VALUES: schema.ListAttribute{

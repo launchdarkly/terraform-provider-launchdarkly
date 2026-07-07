@@ -5,7 +5,7 @@ subcategory: ""
 description: |-
   Provides a LaunchDarkly segment resource.
   This resource allows you to create and manage segments within your LaunchDarkly organization.
-  -> Note: When segment approvals https://docs.launchdarkly.com/home/releases/approvals are enabled for an environment, segment targeting changes (included, excluded, rules, included_contexts, excluded_contexts) require approval and cannot be applied by Terraform: unlike feature flags, service tokens cannot bypass segment approvals (LaunchDarkly feature request FROPS-190). A segment with no targeting can still be created and managed. If targeting is configured, terraform apply fails with an "approval is required" error — manage targeting through the approval workflow (e.g. with lifecycle { ignore_changes = [included, excluded, rules] }) or disable segment approvals for the environment.
+  -> Note: When segment approvals https://launchdarkly.com/docs/home/releases/approvals are enabled for an environment, segment targeting changes (included, excluded, rules, included_contexts, excluded_contexts) require approval and cannot be applied by Terraform: unlike feature flags, service tokens cannot bypass segment approvals. See LaunchDarkly feature request FROPS-190. A segment with no targeting can still be created and managed. If targeting is configured, terraform apply fails with an "approval is required" error. Manage targeting through the approval workflow, for example with lifecycle { ignore_changes = [included, excluded, rules] }, or disable segment approvals for the environment.
 ---
 
 # launchdarkly_segment (Resource)
@@ -14,7 +14,7 @@ Provides a LaunchDarkly segment resource.
 
 This resource allows you to create and manage segments within your LaunchDarkly organization.
 
--> **Note:** When [segment approvals](https://docs.launchdarkly.com/home/releases/approvals) are enabled for an environment, segment **targeting** changes (`included`, `excluded`, `rules`, `included_contexts`, `excluded_contexts`) require approval and cannot be applied by Terraform: unlike feature flags, service tokens cannot bypass segment approvals (LaunchDarkly feature request FROPS-190). A segment with no targeting can still be created and managed. If targeting is configured, `terraform apply` fails with an "approval is required" error — manage targeting through the approval workflow (e.g. with `lifecycle { ignore_changes = [included, excluded, rules] }`) or disable segment approvals for the environment.
+-> **Note:** When [segment approvals](https://launchdarkly.com/docs/home/releases/approvals) are enabled for an environment, segment **targeting** changes (`included`, `excluded`, `rules`, `included_contexts`, `excluded_contexts`) require approval and cannot be applied by Terraform: unlike feature flags, service tokens cannot bypass segment approvals. See LaunchDarkly feature request FROPS-190. A segment with no targeting can still be created and managed. If targeting is configured, `terraform apply` fails with an "approval is required" error. Manage targeting through the approval workflow, for example with `lifecycle { ignore_changes = [included, excluded, rules] }`, or disable segment approvals for the environment.
 
 ## Example Usage
 
@@ -203,10 +203,10 @@ resource "launchdarkly_segment" "beta_testers" {
 
 ### Required
 
-- `env_key` (String) The segment's environment key. A change in this field will force the destruction of the existing resource and the creation of a new one.
-- `key` (String) The unique key that references the segment. A change in this field will force the destruction of the existing resource and the creation of a new one.
+- `env_key` (String) The segment's environment key. A change in this field forces the destruction of the existing resource and the creation of a new one.
+- `key` (String) The unique key that references the segment. A change in this field forces the destruction of the existing resource and the creation of a new one.
 - `name` (String) The human-friendly name for the segment.
-- `project_key` (String) The segment's project key. A change in this field will force the destruction of the existing resource and the creation of a new one.
+- `project_key` (String) The segment's project key. A change in this field forces the destruction of the existing resource and the creation of a new one.
 
 ### Optional
 
@@ -217,9 +217,9 @@ resource "launchdarkly_segment" "beta_testers" {
 - `included_contexts` (Attributes List) List of non-user target objects included in the segment. This attribute is not valid when `unbounded` is set to `true`. (see [below for nested schema](#nestedatt--included_contexts))
 - `rules` (Attributes List) List of custom rules to apply to the segment. This attribute is not valid when `unbounded` is set to `true`. (see [below for nested schema](#nestedatt--rules))
 - `tags` (Set of String) Tags associated with your resource.
-- `unbounded` (Boolean) Whether to create a standard segment (`false`) or a Big Segment (`true`). Standard segments include rule-based and smaller list-based segments. Big Segments include larger list-based segments and synced segments. Only use a Big Segment if you need to add more than 15,000 individual targets. It is not possible to manage the list of targeted contexts for Big Segments with Terraform. A change in this field will force the destruction of the existing resource and the creation of a new one.
-- `unbounded_context_kind` (String) For Big Segments, the targeted context kind. If this attribute is not specified it will default to `user`. A change in this field will force the destruction of the existing resource and the creation of a new one.
-- `view_keys` (Set of String) A set of view keys to link this segment to. This is an alternative to using the `launchdarkly_view_links` resource for managing view associations. When set, this segment will be linked to the specified views. The field is also computed, meaning Terraform will read back the current view associations from LaunchDarkly to detect drift. To explicitly remove all view associations, set `view_keys = []`. Simply removing the field from your configuration will leave existing associations unchanged. **Important**: Avoid using both `view_keys` and `launchdarkly_view_links` to manage the same segment. Mixed ownership can cause conflicts; when detected, Terraform logs a warning and reconciles to the configured `view_keys`. Choose one approach per resource.
+- `unbounded` (Boolean) Whether to create a standard segment (`false`) or a big segment (`true`). Standard segments include rule-based and smaller list-based segments. Big segments include larger list-based segments and synced segments. Only use a big segment if you need to add more than 15,000 individual targets. It is not possible to manage the list of targeted contexts for big segments with Terraform. A change in this field forces the destruction of the existing resource and the creation of a new one.
+- `unbounded_context_kind` (String) For big segments, the targeted context kind. If this attribute is not specified it defaults to `user`. A change in this field forces the destruction of the existing resource and the creation of a new one.
+- `view_keys` (Set of String) A set of view keys to link this segment to. This is an alternative to using the `launchdarkly_view_links` resource for managing view associations. When set, this segment is linked to the specified views. The field is also computed, so Terraform reads back the current view associations from LaunchDarkly to detect drift. To explicitly remove all view associations, set `view_keys = []`. Removing the field from your configuration leaves existing associations unchanged. **Important**: Avoid using both `view_keys` and `launchdarkly_view_links` to manage the same segment. Mixed ownership can cause conflicts. When Terraform detects them, it logs a warning and reconciles to the configured `view_keys`. Choose one approach per resource.
 
 ### Read-Only
 
@@ -263,7 +263,7 @@ Optional:
 Required:
 
 - `attribute` (String) The user attribute to operate on
-- `op` (String) The operator associated with the rule clause. Available options are `in`, `endsWith`, `startsWith`, `matches`, `contains`, `lessThan`, `lessThanOrEqual`, `greaterThanOrEqual`, `before`, `after`, `segmentMatch`, `semVerEqual`, `semVerLessThan`, and `semVerGreaterThan`. Read LaunchDarkly's [Operators](https://docs.launchdarkly.com/sdk/concepts/flag-evaluation-rules#operators) documentation for more information.
+- `op` (String) The operator associated with the rule clause. Available options are `in`, `endsWith`, `startsWith`, `matches`, `contains`, `lessThan`, `lessThanOrEqual`, `greaterThanOrEqual`, `before`, `after`, `segmentMatch`, `semVerEqual`, `semVerLessThan`, and `semVerGreaterThan`. Read LaunchDarkly's [Operators](https://launchdarkly.com/docs/sdk/concepts/flag-evaluation-rules#operators) documentation for more information.
 - `values` (List of String) The list of values associated with the rule clause.
 
 Optional:

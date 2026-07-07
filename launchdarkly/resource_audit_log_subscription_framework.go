@@ -56,7 +56,7 @@ func (r *AuditLogSubscriptionResource) Schema(_ context.Context, _ resource.Sche
 			},
 			INTEGRATION_KEY: schema.StringAttribute{
 				Required:      true,
-				Description:   fmt.Sprintf("The integration key. Supported integration keys are %s. A change in this field will force the destruction of the existing resource and the creation of a new one.", oxfordCommaJoin(getValidIntegrationKeys())),
+				Description:   addForceNewDescription(fmt.Sprintf("The integration key. Supported integration keys are %s.", oxfordCommaJoin(getValidIntegrationKeys())), true),
 				Validators:    []validator.String{oneOfValidator{allowed: getValidIntegrationKeys()}},
 				PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
 			},
@@ -67,11 +67,11 @@ func (r *AuditLogSubscriptionResource) Schema(_ context.Context, _ resource.Sche
 			CONFIG: schema.MapAttribute{
 				Required:    true,
 				ElementType: types.StringType,
-				Description: "The set of configuration fields corresponding to the value defined for `integration_key`. Refer to the `formVariables` field in the corresponding `integrations/<integration_key>/manifest.json` file in [this repo](https://github.com/launchdarkly/integration-framework/tree/master/integrations) for a full list of fields for the integration you wish to configure. **IMPORTANT**: Please note that Terraform will only accept these in snake case, regardless of the case shown in the manifest.",
+				Description: "The set of configuration fields corresponding to the value defined for `integration_key`. Refer to the `formVariables` field in the corresponding `integrations/<integration_key>/manifest.json` file in [this repo](https://github.com/launchdarkly/integration-framework/tree/master/integrations) for a full list of fields for the integration you wish to configure. **IMPORTANT**: Terraform accepts these only in snake case, regardless of the case shown in the manifest.",
 			},
 			ON: schema.BoolAttribute{
 				Required:    true,
-				Description: "Whether or not you want your subscription enabled, i.e. to actively send events.",
+				Description: "Whether your subscription is enabled and actively sending events.",
 			},
 			TAGS: schema.SetAttribute{
 				Optional:    true,

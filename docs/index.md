@@ -2,7 +2,7 @@
 page_title: "LaunchDarkly Provider"
 subcategory: ""
 description: |-
-  The LaunchDarkly provider is used to interact with the LaunchDarkly resources
+  Use the LaunchDarkly provider to interact with LaunchDarkly resources
 ---
 
 # LaunchDarkly Provider
@@ -69,9 +69,9 @@ resource "launchdarkly_feature_flag" "example" {
 
 ### Optional
 
-- `access_token` (String) The [personal access token](https://docs.launchdarkly.com/home/account-security/api-access-tokens#personal-tokens) or [service token](https://docs.launchdarkly.com/home/account-security/api-access-tokens#service-tokens) used to authenticate with LaunchDarkly. You can also set this with the `LAUNCHDARKLY_ACCESS_TOKEN` environment variable. You must provide either `access_token` or `oauth_token`.
+- `access_token` (String) The [personal access token](https://launchdarkly.com/docs/home/account/api#personal-tokens) or [service token](https://launchdarkly.com/docs/home/account/api#service-tokens) used to authenticate with LaunchDarkly. You can also set this with the `LAUNCHDARKLY_ACCESS_TOKEN` environment variable. You must provide either `access_token` or `oauth_token`.
 - `api_host` (String) The LaunchDarkly host address. If this argument is not specified, the default host address is `https://app.launchdarkly.com`
-- `archive_flags_on_destroy` (Boolean) When `true`, removing a `launchdarkly_feature_flag` resource from your Terraform configuration archives the flag in LaunchDarkly instead of deleting it. The flag's key is retained on the server, so re-applying a configuration that recreates the same flag key will fail with an error directing you to `terraform import` the archived flag. Defaults to `false`, which preserves the existing destroy-deletes behavior. This setting only affects `launchdarkly_feature_flag`; other resources continue to be deleted on destroy.
+- `archive_flags_on_destroy` (Boolean) When `true`, removing a `launchdarkly_feature_flag` resource from your Terraform configuration archives the flag in LaunchDarkly instead of deleting it. The flag's key is retained on the server, so re-applying a configuration that recreates the same flag key will fail with an error directing you to `terraform import` the archived flag. Defaults to `false`, which preserves the existing destroy-deletes behavior. This setting affects only `launchdarkly_feature_flag`. Other resources continue to be deleted on destroy.
 - `http_timeout` (Number) The HTTP timeout (in seconds) when making API calls to LaunchDarkly. Defaults to 20 seconds.
 - `max_concurrency` (Number) The maximum number of concurrent API requests the provider makes to LaunchDarkly. Defaults to `1`. Increase this value to speed up plan and refresh operations on large configurations. Higher values make it more likely that requests exceed your account's API rate limit. If a request exceeds the rate limit, LaunchDarkly returns a `429` response and the provider retries the request automatically.
 - `oauth_token` (String) An OAuth V2 token you use to authenticate with LaunchDarkly. You can also set this with the `LAUNCHDARKLY_OAUTH_TOKEN` environment variable. You must provide either `access_token` or `oauth_token`.

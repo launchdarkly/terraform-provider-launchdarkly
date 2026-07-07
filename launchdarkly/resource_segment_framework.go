@@ -71,7 +71,7 @@ func (r *SegmentResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 
 This resource allows you to create and manage segments within your LaunchDarkly organization.
 
--> **Note:** When [segment approvals](https://docs.launchdarkly.com/home/releases/approvals) are enabled for an environment, segment **targeting** changes (` + "`included`" + `, ` + "`excluded`" + `, ` + "`rules`" + `, ` + "`included_contexts`" + `, ` + "`excluded_contexts`" + `) require approval and cannot be applied by Terraform: unlike feature flags, service tokens cannot bypass segment approvals (LaunchDarkly feature request FROPS-190). A segment with no targeting can still be created and managed. If targeting is configured, ` + "`terraform apply`" + ` fails with an "approval is required" error — manage targeting through the approval workflow (e.g. with ` + "`lifecycle { ignore_changes = [included, excluded, rules] }`" + `) or disable segment approvals for the environment.`,
+-> **Note:** When [segment approvals](https://launchdarkly.com/docs/home/releases/approvals) are enabled for an environment, segment **targeting** changes (` + "`included`" + `, ` + "`excluded`" + `, ` + "`rules`" + `, ` + "`included_contexts`" + `, ` + "`excluded_contexts`" + `) require approval and cannot be applied by Terraform: unlike feature flags, service tokens cannot bypass segment approvals. See LaunchDarkly feature request FROPS-190. A segment with no targeting can still be created and managed. If targeting is configured, ` + "`terraform apply`" + ` fails with an "approval is required" error. Manage targeting through the approval workflow, for example with ` + "`lifecycle { ignore_changes = [included, excluded, rules] }`" + `, or disable segment approvals for the environment.`,
 		Attributes: segmentSchemaAttributes(),
 	}
 }
@@ -133,13 +133,13 @@ func segmentSchemaAttributes() map[string]schema.Attribute {
 			Optional:      true,
 			Computed:      true,
 			Default:       booldefault.StaticBool(false),
-			Description:   addForceNewDescription("Whether to create a standard segment (`false`) or a Big Segment (`true`). Standard segments include rule-based and smaller list-based segments. Big Segments include larger list-based segments and synced segments. Only use a Big Segment if you need to add more than 15,000 individual targets. It is not possible to manage the list of targeted contexts for Big Segments with Terraform.", true),
+			Description:   addForceNewDescription("Whether to create a standard segment (`false`) or a big segment (`true`). Standard segments include rule-based and smaller list-based segments. Big segments include larger list-based segments and synced segments. Only use a big segment if you need to add more than 15,000 individual targets. It is not possible to manage the list of targeted contexts for big segments with Terraform.", true),
 			PlanModifiers: []planmodifier.Bool{boolplanmodifier.RequiresReplace()},
 		},
 		UNBOUNDED_CONTEXT_KIND: schema.StringAttribute{
 			Optional:    true,
 			Computed:    true,
-			Description: addForceNewDescription("For Big Segments, the targeted context kind. If this attribute is not specified it will default to `user`.", true),
+			Description: addForceNewDescription("For big segments, the targeted context kind. If this attribute is not specified it defaults to `user`.", true),
 			PlanModifiers: []planmodifier.String{
 				stringplanmodifier.UseStateForUnknown(),
 				stringplanmodifier.RequiresReplace(),
@@ -149,7 +149,7 @@ func segmentSchemaAttributes() map[string]schema.Attribute {
 			Optional:      true,
 			Computed:      true,
 			ElementType:   types.StringType,
-			Description:   "A set of view keys to link this segment to. This is an alternative to using the `launchdarkly_view_links` resource for managing view associations. When set, this segment will be linked to the specified views. The field is also computed, meaning Terraform will read back the current view associations from LaunchDarkly to detect drift. To explicitly remove all view associations, set `view_keys = []`. Simply removing the field from your configuration will leave existing associations unchanged. **Important**: Avoid using both `view_keys` and `launchdarkly_view_links` to manage the same segment. Mixed ownership can cause conflicts; when detected, Terraform logs a warning and reconciles to the configured `view_keys`. Choose one approach per resource.",
+			Description:   "A set of view keys to link this segment to. This is an alternative to using the `launchdarkly_view_links` resource for managing view associations. When set, this segment is linked to the specified views. The field is also computed, so Terraform reads back the current view associations from LaunchDarkly to detect drift. To explicitly remove all view associations, set `view_keys = []`. Removing the field from your configuration leaves existing associations unchanged. **Important**: Avoid using both `view_keys` and `launchdarkly_view_links` to manage the same segment. Mixed ownership can cause conflicts. When Terraform detects them, it logs a warning and reconciles to the configured `view_keys`. Choose one approach per resource.",
 			Validators:    []validator.Set{},
 			PlanModifiers: []planmodifier.Set{setplanmodifier.UseStateForUnknown()},
 		},

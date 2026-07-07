@@ -100,7 +100,7 @@ func frameworkPolicyStatementsResourceAttribute(required bool, description strin
 				ACTIONS: rsschema.ListAttribute{
 					Optional:    true,
 					ElementType: types.StringType,
-					Description: "The list of action specifiers defining the actions to which the statement applies.\nEither `actions` or `not_actions` must be specified. For a list of available actions read [Actions reference](https://docs.launchdarkly.com/home/account-security/custom-roles/actions#actions-reference).",
+					Description: "The list of action specifiers defining the actions to which the statement applies.\nEither `actions` or `not_actions` must be specified. For a list of available actions read [Actions reference](https://launchdarkly.com/docs/home/account/roles/role-actions#actions-reference).",
 					Validators: []validator.List{
 						listvalidator.SizeAtLeast(1),
 					},

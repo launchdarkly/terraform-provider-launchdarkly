@@ -39,16 +39,16 @@ resource "launchdarkly_flag_trigger" "example" {
 ### Required
 
 - `enabled` (Boolean) Whether the trigger is currently active or not.
-- `env_key` (String) The unique key of the environment the flag trigger will work in. A change in this field will force the destruction of the existing resource and the creation of a new one.
-- `flag_key` (String) The unique key of the associated flag. A change in this field will force the destruction of the existing resource and the creation of a new one.
+- `env_key` (String) The unique key of the environment the flag trigger runs in. A change in this field forces the destruction of the existing resource and the creation of a new one.
+- `flag_key` (String) The unique key of the associated flag. A change in this field forces the destruction of the existing resource and the creation of a new one.
 - `instructions` (Attributes) The instruction containing the action to perform when invoking the trigger. Currently supported flag actions are `turnFlagOn` and `turnFlagOff`. This must be passed as the key-value pair `{ kind = "<flag_action>" }`. (see [below for nested schema](#nestedatt--instructions))
-- `integration_key` (String) The unique identifier of the integration you intend to set your trigger up with. Currently supported are `generic-trigger`, `datadog`, `dynatrace`, `dynatrace-cloud-automation`, `honeycomb`, `new-relic-apm`, and `signalfx`. `generic-trigger` should be used for integrations not explicitly supported. A change in this field will force the destruction of the existing resource and the creation of a new one.
-- `project_key` (String) The unique key of the project encompassing the associated flag. A change in this field will force the destruction of the existing resource and the creation of a new one.
+- `integration_key` (String) The unique identifier of the integration you intend to set your trigger up with. Currently supported are `generic-trigger`, `datadog`, `dynatrace`, `dynatrace-cloud-automation`, `honeycomb`, `new-relic-apm`, and `signalfx`. `generic-trigger` should be used for integrations not explicitly supported. A change in this field forces the destruction of the existing resource and the creation of a new one.
+- `project_key` (String) The unique key of the project encompassing the associated flag. A change in this field forces the destruction of the existing resource and the creation of a new one.
 
 ### Read-Only
 
 - `id` (String) The ID of this resource.
-- `maintainer_id` (String) The ID of the member responsible for maintaining the flag trigger. If created via Terraform, this value will be the ID of the member associated with the API key used for your provider configuration.
+- `maintainer_id` (String) The ID of the member responsible for maintaining the flag trigger. If created via Terraform, this value is the ID of the member associated with the API key used for your provider configuration.
 - `trigger_url` (String, Sensitive) The unique URL used to invoke the trigger.
 
 <a id="nestedatt--instructions"></a>
@@ -73,4 +73,4 @@ The unique trigger ID can be found in your saved trigger URL:
 https://app.launchdarkly.com/webhook/triggers/THIS_IS_YOUR_TRIGGER_ID/aff25a53-17d9-4112-a9b8-12718d1a2e79
 ```
 
-Please note that if you did not save this upon creation of the resource, you will have to reset it to get a new value, which can cause breaking changes.
+If you did not save this when you created the resource, you must reset it to get a new value, which can cause breaking changes.

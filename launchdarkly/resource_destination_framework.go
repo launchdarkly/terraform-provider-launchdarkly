@@ -55,7 +55,7 @@ func (r *DestinationResource) Schema(_ context.Context, _ resource.SchemaRequest
 
 Data Export Destinations are locations that receive exported data. This resource allows you to configure destinations for the export of raw analytics data, including feature flag requests, analytics events, custom events, and more.
 
-To learn more about data export, read [Data Export Documentation](https://docs.launchdarkly.com/integrations/data-export).`,
+To learn more, read [Data Export](https://launchdarkly.com/docs/integrations/data-export).`,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				Computed:      true,
@@ -63,13 +63,13 @@ To learn more about data export, read [Data Export Documentation](https://docs.l
 			},
 			PROJECT_KEY: schema.StringAttribute{
 				Required:      true,
-				Description:   "The LaunchDarkly project key. A change in this field will force the destruction of the existing resource and the creation of a new one.",
+				Description:   addForceNewDescription("The LaunchDarkly project key.", true),
 				Validators:    []validator.String{keyValidator()},
 				PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
 			},
 			ENV_KEY: schema.StringAttribute{
 				Required:      true,
-				Description:   "The environment key. A change in this field will force the destruction of the existing resource and the creation of a new one.",
+				Description:   addForceNewDescription("The environment key.", true),
 				PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
 			},
 			NAME: schema.StringAttribute{
@@ -78,7 +78,7 @@ To learn more about data export, read [Data Export Documentation](https://docs.l
 			},
 			KIND: schema.StringAttribute{
 				Required:      true,
-				Description:   "The data export destination type. Available choices are `kinesis`, `google-pubsub`, `mparticle`, `azure-event-hubs`, and `segment`. A change in this field will force the destruction of the existing resource and the creation of a new one.",
+				Description:   addForceNewDescription("The data export destination type. Available choices are `kinesis`, `google-pubsub`, `mparticle`, `azure-event-hubs`, and `segment`.", true),
 				Validators:    []validator.String{oneOfValidator{allowed: []string{"kinesis", "google-pubsub", "mparticle", "azure-event-hubs", "segment"}}},
 				PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
 			},

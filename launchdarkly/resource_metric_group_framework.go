@@ -55,7 +55,7 @@ func (r *MetricGroupResource) Schema(_ context.Context, _ resource.SchemaRequest
 
 ~> **Beta:** This resource uses a beta LaunchDarkly API. Beta resources may change or be removed in future versions.
 
-This resource allows you to create and manage metric groups within your LaunchDarkly project. A metric group is an ordered ` + "`funnel`" + ` or an unordered ` + "`standard`" + ` collection of metrics that you can reference from experiments. To learn more, read [Experimentation Documentation](https://docs.launchdarkly.com/home/experimentation).`,
+This resource allows you to create and manage metric groups within your LaunchDarkly project. A metric group is an ordered ` + "`funnel`" + ` or an unordered ` + "`standard`" + ` collection of metrics that you can reference from experiments. To learn more, read [Experimentation Documentation](https://launchdarkly.com/docs/home/experimentation).`,
 		Attributes: metricGroupSchemaAttributes(),
 	}
 }
@@ -85,7 +85,7 @@ func metricGroupSchemaAttributes() map[string]schema.Attribute {
 		},
 		KIND: schema.StringAttribute{
 			Required:      true,
-			Description:   addForceNewDescription("The type of the metric group. Available choices are `funnel` and `standard`. A `funnel` metric group is an ordered list of metrics; a `standard` metric group is an unordered collection.", true),
+			Description:   addForceNewDescription("The type of the metric group. Available choices are `funnel` and `standard`. A `funnel` metric group is an ordered list of metrics. A `standard` metric group is an unordered collection.", true),
 			Validators:    []validator.String{oneOfValidator{allowed: []string{METRIC_GROUP_KIND_FUNNEL, METRIC_GROUP_KIND_STANDARD}}},
 			PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
 		},

@@ -78,7 +78,7 @@ func teamSchemaAttributes() map[string]schema.Attribute {
 		},
 		KEY: schema.StringAttribute{
 			Required:      true,
-			Description:   "The team key. A change in this field will force the destruction of the existing resource and the creation of a new one.",
+			Description:   addForceNewDescription("The team key.", true),
 			PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
 		},
 		NAME: schema.StringAttribute{
@@ -106,7 +106,7 @@ func teamSchemaAttributes() map[string]schema.Attribute {
 			Optional:    true,
 			Computed:    true,
 			ElementType: types.StringType,
-			Description: "List of custom role keys the team will access. The referenced custom roles must already exist in LaunchDarkly. If they don't, the provider may behave unexpectedly.",
+			Description: "List of custom role keys granted to the team. The referenced custom roles must already exist in LaunchDarkly. If they don't, the provider may behave unexpectedly.",
 		},
 		ROLE_ATTRIBUTES: frameworkRoleAttributesResourceAttribute(),
 	}

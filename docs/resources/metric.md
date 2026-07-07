@@ -5,7 +5,7 @@ subcategory: ""
 description: |-
   Provides a LaunchDarkly metric resource.
   This resource allows you to create and manage metrics within your LaunchDarkly organization.
-  To learn more about metrics and experimentation, read Experimentation Documentation https://docs.launchdarkly.com/home/experimentation.
+  To learn more about metrics and experimentation, read Experimentation Documentation https://launchdarkly.com/docs/home/experimentation.
 ---
 
 # launchdarkly_metric (Resource)
@@ -14,7 +14,7 @@ Provides a LaunchDarkly metric resource.
 
 This resource allows you to create and manage metrics within your LaunchDarkly organization.
 
-To learn more about metrics and experimentation, read [Experimentation Documentation](https://docs.launchdarkly.com/home/experimentation).
+To learn more about metrics and experimentation, read [Experimentation Documentation](https://launchdarkly.com/docs/home/experimentation).
 
 ## Example Usage
 
@@ -38,20 +38,20 @@ resource "launchdarkly_metric" "example" {
 
 ### Required
 
-- `key` (String) The unique key that references the metric. A change in this field will force the destruction of the existing resource and the creation of a new one.
-- `kind` (String) The metric type. Available choices are `click`, `custom`, and `pageview`. A change in this field will force the destruction of the existing resource and the creation of a new one.
+- `key` (String) The unique key that references the metric. A change in this field forces the destruction of the existing resource and the creation of a new one.
+- `kind` (String) The metric type. Available choices are `click`, `custom`, and `pageview`. A change in this field forces the destruction of the existing resource and the creation of a new one.
 - `name` (String) The human-friendly name for the metric.
-- `project_key` (String) The metrics's project key. A change in this field will force the destruction of the existing resource and the creation of a new one.
+- `project_key` (String) The metrics's project key. A change in this field forces the destruction of the existing resource and the creation of a new one.
 
 ### Optional
 
 - `analysis_type` (String) The method for analyzing metric events. Available choices are `mean` and `percentile`.
-- `analysis_units` (Set of String) A set of one or more context kinds that this metric can measure events from. Metrics can only use context kinds marked as "Available for experiments." For more information, read [Allocating experiment audiences](https://docs.launchdarkly.com/home/creating-experiments/allocation).
+- `analysis_units` (Set of String) A set of one or more context kinds that this metric can measure events from. Metrics can only use context kinds marked as "Available for experiments." For more information, read [Allocating experiment audiences](https://launchdarkly.com/docs/home/experimentation/allocation).
 - `description` (String) The description of the metric's purpose.
 - `event_key` (String) The event key for your metric (if custom metric)
 - `include_units_without_events` (Boolean) Include units that did not send any events and set their value to 0.
 - `is_numeric` (Boolean) Whether a `custom` metric is a numeric metric or not.
-- `maintainer_id` (String) The LaunchDarkly member ID of the member who will maintain the metric. If not set, the API will automatically apply the member associated with your Terraform API key or the most recently-set maintainer
+- `maintainer_id` (String) The LaunchDarkly member ID of the member who maintains the metric. If not set, the API automatically applies the member associated with your Terraform API key or the most recently-set maintainer.
 - `percentile_value` (Number) The percentile for the analysis method. An integer denoting the target percentile between 0 and 100. Required when analysis_type is percentile.
 - `selector` (String) The CSS selector for your metric (if click metric)
 - `success_criteria` (String) The success criteria for your metric (if numeric metric). Available choices are `HigherThanBaseline` and `LowerThanBaseline`.

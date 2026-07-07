@@ -41,7 +41,7 @@ func (r *RelayProxyConfigResource) Metadata(_ context.Context, req resource.Meta
 
 func (r *RelayProxyConfigResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: `Provides a LaunchDarkly Relay Proxy configuration resource for use with the Relay Proxy's [automatic configuration feature](https://docs.launchdarkly.com/home/relay-proxy/automatic-configuration).
+		Description: `Provides a LaunchDarkly Relay Proxy configuration resource for use with the Relay Proxy's [automatic configuration feature](https://launchdarkly.com/docs/sdk/relay-proxy/automatic-configuration).
 
 -> **Note:** Relay Proxy automatic configuration is available to customers on an Enterprise LaunchDarkly plan. To learn more, [read about our pricing](https://launchdarkly.com/pricing/). To upgrade your plan, [contact LaunchDarkly Sales](https://launchdarkly.com/contact-sales/).
 
@@ -61,7 +61,7 @@ This resource allows you to create and manage Relay Proxy configurations within 
 			FULL_KEY: schema.StringAttribute{
 				Computed:      true,
 				Sensitive:     true,
-				Description:   "The Relay Proxy configuration's unique key. Because the `full_key` is only exposed upon creation, it will not be available if the resource is imported.",
+				Description:   "The Relay Proxy configuration's unique key. Because LaunchDarkly exposes the `full_key` only on creation, it is unavailable when you import the resource.",
 				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
 			DISPLAY_KEY: schema.StringAttribute{
@@ -69,7 +69,7 @@ This resource allows you to create and manage Relay Proxy configurations within 
 				Description:   "The last 4 characters of the Relay Proxy configuration's unique key.",
 				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
-			POLICY: frameworkPolicyStatementsResourceAttribute(true, "The Relay Proxy configuration's rule policy. This determines what content the Relay Proxy receives. To learn more, read [Understanding policies](https://docs.launchdarkly.com/home/members/role-policies#understanding-policies).", ""),
+			POLICY: frameworkPolicyStatementsResourceAttribute(true, "The Relay Proxy configuration's rule policy. This determines what content the Relay Proxy receives. To learn more, read [Understanding policies](https://launchdarkly.com/docs/home/account/roles/role-policies#understanding-policies).", ""),
 		},
 	}
 }

@@ -34,16 +34,16 @@ resource "launchdarkly_sdk_key" "mobile_analytics" {
 
 ### Required
 
-- `environment_key` (String) The environment key. A change in this field will force the destruction of the existing resource and the creation of a new one.
-- `key` (String) The user-defined identifying key of the SDK key. This is distinct from the `value` attribute, which is the actual SDK key value used by your SDK. A change in this field will force the destruction of the existing resource and the creation of a new one.
+- `environment_key` (String) The environment key. A change in this field forces the destruction of the existing resource and the creation of a new one.
+- `key` (String) The user-defined identifying key of the SDK key. This is distinct from the `value` attribute, which is the actual SDK key value used by your SDK. A change in this field forces the destruction of the existing resource and the creation of a new one.
 - `name` (String) The human-readable name of the SDK key.
-- `project_key` (String) The project key. A change in this field will force the destruction of the existing resource and the creation of a new one.
+- `project_key` (String) The project key. A change in this field forces the destruction of the existing resource and the creation of a new one.
 
 ### Optional
 
 - `description` (String) The description of the SDK key.
 - `expiry` (Number) An expiration date for the SDK key, expressed as a Unix epoch time in milliseconds. When set, the key becomes invalid after this time. Once set, an expiry cannot be removed: the beta API cannot clear a scheduled expiry in place, and a deleted SDK key identifier cannot be recreated in the same environment.
-- `kind` (String) The kind of SDK key. Must be either `sdk` (server-side) or `mobile`. New keys default to `sdk`. A change in this field will force the destruction of the existing resource and the creation of a new one.
+- `kind` (String) The kind of SDK key. Must be either `sdk` (server-side) or `mobile`. New keys default to `sdk`. A change in this field forces the destruction of the existing resource and the creation of a new one.
 
 ### Read-Only
 

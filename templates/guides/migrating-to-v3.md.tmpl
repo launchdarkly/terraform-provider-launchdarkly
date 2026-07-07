@@ -30,7 +30,7 @@ resource "launchdarkly_feature_flag" "example" {
 }
 ```
 
-Attributes that hold exactly one object rather than a list use object syntax — a bare `{ ... }` with no brackets: `client_side_availability` and `defaults` on `launchdarkly_feature_flag`, `default_client_side_availability` on `launchdarkly_project`, `fallthrough` on `launchdarkly_feature_flag_environment`, `approval_settings` on `launchdarkly_environment` (and inside each project environment), `segment_approval_settings` on `launchdarkly_environment`, `instructions` on `launchdarkly_flag_trigger`, and `boolean_defaults` on `launchdarkly_flag_templates`. The `migrate-tf-syntax` tool emits this form for you:
+Attributes that hold exactly one object rather than a list use object syntax, a bare `{ ... }` with no brackets: `client_side_availability` and `defaults` on `launchdarkly_feature_flag`, `default_client_side_availability` on `launchdarkly_project`, `fallthrough` on `launchdarkly_feature_flag_environment`, `approval_settings` on `launchdarkly_environment` (and inside each project environment), `segment_approval_settings` on `launchdarkly_environment`, `instructions` on `launchdarkly_flag_trigger`, and `boolean_defaults` on `launchdarkly_flag_templates`. The `migrate-tf-syntax` tool emits this form for you:
 
 ```hcl
 # v2 block syntax            # v3 object syntax (no brackets)
@@ -41,7 +41,7 @@ client_side_availability {   client_side_availability = {
 
 When you read one of these from a data source, use object access without a list index: `data.launchdarkly_feature_flag.x.client_side_availability.using_environment_id`.
 
-`launchdarkly_project.environments` becomes a **map keyed by the environment `key`** rather than an ordered list, so reordering, adding, or removing one environment no longer shifts the others or forces a destructive plan. The environment's `key` is also kept inside the object (it equals the map key), so references like `launchdarkly_project.example.environments["production"].key` keep working. The `migrate-tf-syntax` tool performs this rewrite for you:
+`launchdarkly_project.environments` becomes a **map keyed by the environment `key`** rather than an ordered list, so reordering, adding, or removing one environment no longer shifts the others or forces a destructive plan. The environment's `key` is also kept inside the object and equals the map key, so references like `launchdarkly_project.example.environments["production"].key` keep working. The `migrate-tf-syntax` tool performs this rewrite for you:
 
 ```hcl
 # v2 block syntax              # v3 map syntax (keyed by env key)
@@ -54,17 +54,17 @@ environments {                 environments = {
                                }
 ```
 
-The map is **authoritative**: an environment removed from the map is deleted, and a project must have at least one environment. To manage the project in Terraform but its environments in the LaunchDarkly UI (or via [`launchdarkly_environment`](/docs/providers/launchdarkly/r/environment.html) resources), declare your environments and add `lifecycle { ignore_changes = [environments] }`.
+The map is **authoritative**: an environment removed from the map is deleted, and a project must have at least one environment. To manage the project in Terraform but its environments in the LaunchDarkly UI, or with [`launchdarkly_environment`](/docs/providers/launchdarkly/r/environment.html) resources, declare your environments and add `lifecycle { ignore_changes = [environments] }`.
 
-~> **Warning:** Changing an environment's key (the map key) deletes that environment — including its SDK keys and all flag targeting — and creates a new one.
+~> **Warning:** Changing an environment's key, which is the map key, deletes that environment, including its SDK keys and all flag targeting, and creates a new one.
 
-Reference an environment by its key instead of by index: a v2 interpolation such as `launchdarkly_project.example.environments[0].client_side_id` becomes `launchdarkly_project.example.environments["production"].client_side_id`. The `migrate-tf-syntax` tool does **not** rewrite these positional references (auto-editing arbitrary expressions risks corrupting your config), but it **detects them and prints the exact replacement** to make — including the resolved key — so the fix is mechanical. See "Finish the migration by hand" below.
+Reference an environment by its key instead of by index: a v2 interpolation such as `launchdarkly_project.example.environments[0].client_side_id` becomes `launchdarkly_project.example.environments["production"].client_side_id`. The `migrate-tf-syntax` tool does **not** rewrite these positional references, because auto-editing arbitrary expressions risks corrupting your config, but it **detects them and prints the exact replacement** to make, including the resolved key, so the fix is mechanical. See "Finish the migration by hand" below.
 
 Three more collections follow the same key-addressed map pattern, and the tool rewrites all of them:
 
 - `custom_properties` on `launchdarkly_feature_flag` becomes a map keyed by the custom property `key`: `custom_properties = { "my.key" = { name = ..., value = [...] } }`.
-- `role_attributes` on `launchdarkly_team` and `launchdarkly_team_member` becomes a plain map of string lists keyed by the role attribute key: `role_attributes = { myAttribute = ["value1", "value2"] }` — the same shape `launchdarkly_team_role_mapping` already uses.
-- `edges` on the new `launchdarkly_ai_agent_graph` resource is a map keyed by edge key (net-new in v3, so no rewrite applies).
+- `role_attributes` on `launchdarkly_team` and `launchdarkly_team_member` becomes a plain map of string lists keyed by the role attribute key: `role_attributes = { myAttribute = ["value1", "value2"] }`. This is the same shape `launchdarkly_team_role_mapping` already uses.
+- `edges` on the new `launchdarkly_ai_agent_graph` resource is a map keyed by edge key, net-new in v3, so no rewrite applies.
 
 ## Prerequisites
 
@@ -90,7 +90,7 @@ To convert a configuration directory:
 2. Review the dry-run output. The tool prints each file it intends to change.
 3. Run the same command without `-dry-run` to write the changes. Add `-recursive` to convert locally vendored modules in the same pass.
 4. Run `terraform fmt` to normalize whitespace.
-5. Check any `note:` lines the tool printed. For example, an environment whose `key` is a variable or local becomes a parenthesized map key, such as `(local.env_key) = { ... }`; confirm the expression is the one you expect.
+5. Check any `note:` lines the tool printed. For example, an environment whose `key` is a variable or local becomes a parenthesized map key, such as `(local.env_key) = { ... }`. Confirm the expression is the one you expect.
 6. Update the provider version constraint to `~> 3.0` and run `terraform plan`.
 
 ## Finish the migration by hand
@@ -100,7 +100,7 @@ The tool converts syntax only. Complete these follow-ups yourself:
 - Add `variations` by hand only for a flag whose `variation_type` is a non-literal expression, such as a variable or local. The tool cannot resolve those statically, so it warns and skips them. Boolean flags with a literal `variation_type` are handled automatically, and the provider preserves any variation `name` or `description` set outside Terraform when your configuration omits them.
 - Rewrite `dynamic` blocks. A `dynamic "variations"` block needs a for expression, for example `variations = [for v in var.values : { value = v }]`. The tool warns with the file and resource address, and it leaves the attribute unchanged.
 - Upgrade modules sourced from a registry or a git URL. The tool rewrites only files it reaches on disk, so upgrade those modules at their source.
-- Rewrite positional references to `launchdarkly_project` environments. The tool converts the `environments` block to a map but does not edit index expressions elsewhere in your config; it warns on each one with the exact replacement (e.g. `environments[0]` → `environments["production"]`, and `environments[*]` → `values(...)`). Apply those edits by hand.
+- Rewrite positional references to `launchdarkly_project` environments. The tool converts the `environments` block to a map but does not edit index expressions elsewhere in your config; it warns on each one with the exact replacement, for example `environments[0]` → `environments["production"]` and `environments[*]` → `values(...)`. Apply those edits by hand.
 - Review projects that pair `lifecycle { ignore_changes = [environments] }` with standalone `launchdarkly_environment` resources. This v2 pattern keeps working in v3: `ignore_changes` preserves the standalone-managed environments in the authoritative map, so nothing is deleted. If you remove the `ignore_changes` entry, first declare every environment in the project's `environments` map, or the next apply deletes the undeclared ones.
 
 ## How v3 upgrades your state
@@ -116,7 +116,7 @@ The provider includes a state upgrader for every resource whose state shape chan
 - `launchdarkly_flag_trigger`: converts `instructions` to an object.
 - `launchdarkly_flag_templates`: converts `boolean_defaults` to an object.
 - `launchdarkly_team` and `launchdarkly_team_member`: re-key `role_attributes` into a map of string lists.
-- `launchdarkly_metric`: discards `is_active`, and renames `randomization_units` to `analysis_units` (following the LaunchDarkly API's rename).
+- `launchdarkly_metric`: discards `is_active`, and renames `randomization_units` to `analysis_units`, following the LaunchDarkly API's rename.
 
 ## Your first plan after upgrading
 

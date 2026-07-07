@@ -65,7 +65,7 @@ func (r *AIAgentGraphResource) Schema(_ context.Context, _ resource.SchemaReques
 			},
 			PROJECT_KEY: schema.StringAttribute{
 				Required:    true,
-				Description: "The project key. A change in this field will force the destruction of the existing resource and the creation of a new one.",
+				Description: addForceNewDescription("The project key.", true),
 				Validators:  []validator.String{keyValidator()},
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.RequiresReplace(),
@@ -73,7 +73,7 @@ func (r *AIAgentGraphResource) Schema(_ context.Context, _ resource.SchemaReques
 			},
 			KEY: schema.StringAttribute{
 				Required:    true,
-				Description: "The unique key of the agent graph. A change in this field will force the destruction of the existing resource and the creation of a new one.",
+				Description: addForceNewDescription("The unique key of the agent graph.", true),
 				Validators:  []validator.String{keyValidator()},
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.RequiresReplace(),
@@ -138,7 +138,7 @@ func (r *AIAgentGraphResource) Schema(_ context.Context, _ resource.SchemaReques
 						KEY: schema.StringAttribute{
 							Optional:    true,
 							Computed:    true,
-							Description: "The unique key for this edge within the graph. Must equal the map key; it defaults to the map key when omitted.",
+							Description: "The unique key for this edge within the graph. Must equal the map key. It defaults to the map key when omitted.",
 							Validators:  []validator.String{keyValidator()},
 							PlanModifiers: []planmodifier.String{
 								stringplanmodifier.UseStateForUnknown(),
