@@ -15,7 +15,7 @@ require (
 
 require (
 	github.com/hashicorp/terraform-plugin-framework-validators v0.19.0
-	github.com/launchdarkly/api-client-go/v22 v22.0.0
+	github.com/launchdarkly/api-client-go/v23 v23.0.0
 	github.com/xeipuuv/gojsonschema v1.2.0
 	golang.org/x/sync v0.20.0
 )

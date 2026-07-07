@@ -6,7 +6,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/types"
-	ldapi "github.com/launchdarkly/api-client-go/v22"
+	ldapi "github.com/launchdarkly/api-client-go/v23"
 )
 
 // agentGraphBetaVersion is the LD-API-Version the agent graph endpoints

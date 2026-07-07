@@ -19,7 +19,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64default"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
-	ldapi "github.com/launchdarkly/api-client-go/v22"
+	ldapi "github.com/launchdarkly/api-client-go/v23"
 )
 
 // frameworkApprovalSettingsObjectAttrTypes is the attribute-type map

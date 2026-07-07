@@ -29,7 +29,7 @@ Inputs:
   ValidateConfig key==map-key, ModifyPlan pinMapKeysToMapKey); {key, values}
   pairs collapse to a plain MapAttribute. Acceptance tests for map attributes
   must include an update step that ADDS an entry.
-- Use the generated API client (github.com/launchdarkly/api-client-go/v22) for
+- Use the generated API client (github.com/launchdarkly/api-client-go/v23) for
   all API calls. If the client lacks this surface, stop and report that instead
   of hand-rolling HTTP.
 - If the resource is an account-scoped SINGLETON (the API allows only one per

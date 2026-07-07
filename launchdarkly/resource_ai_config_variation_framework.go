@@ -20,7 +20,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
-	ldapi "github.com/launchdarkly/api-client-go/v22"
+	ldapi "github.com/launchdarkly/api-client-go/v23"
 )
 
 var (
@@ -292,7 +292,7 @@ func (r *AIConfigVariationResource) Create(ctx context.Context, req resource.Cre
 	}
 
 	err := r.client.withConcurrency(r.client.ctx, func() error {
-		_, _, e := r.client.ld.AIConfigsApi.PostAIConfigVariation(r.client.ctx, projectKey, configKey).AIConfigVariationPost(*post).Execute()
+		_, _, e := r.client.ld.AgentControlApi.PostAIConfigVariation(r.client.ctx, projectKey, configKey).AIConfigVariationPost(*post).Execute()
 		return e
 	})
 	if err != nil {
@@ -382,7 +382,7 @@ func (r *AIConfigVariationResource) Update(ctx context.Context, req resource.Upd
 	}
 
 	err := r.client.withConcurrency(r.client.ctx, func() error {
-		_, _, e := r.client.ld.AIConfigsApi.PatchAIConfigVariation(r.client.ctx, projectKey, configKey, variationKey).AIConfigVariationPatch(*patch).Execute()
+		_, _, e := r.client.ld.AgentControlApi.PatchAIConfigVariation(r.client.ctx, projectKey, configKey, variationKey).AIConfigVariationPatch(*patch).Execute()
 		return e
 	})
 	if err != nil {
@@ -411,7 +411,7 @@ func (r *AIConfigVariationResource) Delete(ctx context.Context, req resource.Del
 	var res *http.Response
 	err := r.client.withConcurrency(r.client.ctx, func() error {
 		var e error
-		res, e = r.client.ld.AIConfigsApi.DeleteAIConfigVariation(r.client.ctx, projectKey, configKey, variationKey).Execute()
+		res, e = r.client.ld.AgentControlApi.DeleteAIConfigVariation(r.client.ctx, projectKey, configKey, variationKey).Execute()
 		return e
 	})
 	if err == nil || isStatusNotFound(res) {
@@ -484,7 +484,7 @@ func (r *AIConfigVariationResource) readIntoModel(
 	var res *http.Response
 	var err error
 	err = r.client.withConcurrency(r.client.ctx, func() error {
-		variationsResp, res, err = r.client.ld.AIConfigsApi.GetAIConfigVariation(r.client.ctx, projectKey, configKey, variationKey).Execute()
+		variationsResp, res, err = r.client.ld.AgentControlApi.GetAIConfigVariation(r.client.ctx, projectKey, configKey, variationKey).Execute()
 		return err
 	})
 	if err != nil {

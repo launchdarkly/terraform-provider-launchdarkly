@@ -377,7 +377,7 @@ func testAccCheckAIConfigExists(resourceName string) resource.TestCheckFunc {
 		configKey := rs.Primary.Attributes[KEY]
 
 		client := mustTestAccClient()
-		_, _, err := client.ld.AIConfigsApi.GetAIConfig(client.ctx, projectKey, configKey).Execute()
+		_, _, err := client.ld.AgentControlApi.GetAIConfig(client.ctx, projectKey, configKey).Execute()
 		if err != nil {
 			return fmt.Errorf("received an error getting AI config: %s", err)
 		}
@@ -395,7 +395,7 @@ var testAccCheckAIConfigDestroy = func(s *terraform.State) error {
 		projectKey := rs.Primary.Attributes[PROJECT_KEY]
 		configKey := rs.Primary.Attributes[KEY]
 
-		_, res, err := client.ld.AIConfigsApi.GetAIConfig(client.ctx, projectKey, configKey).Execute()
+		_, res, err := client.ld.AgentControlApi.GetAIConfig(client.ctx, projectKey, configKey).Execute()
 		if isStatusNotFound(res) {
 			continue
 		}

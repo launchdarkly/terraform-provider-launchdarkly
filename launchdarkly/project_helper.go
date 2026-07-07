@@ -10,7 +10,7 @@ import (
 	"net/http"
 	"net/url"
 
-	ldapi "github.com/launchdarkly/api-client-go/v22"
+	ldapi "github.com/launchdarkly/api-client-go/v23"
 )
 
 // buildProjectURL constructs a properly formatted URL for the projects API endpoint.

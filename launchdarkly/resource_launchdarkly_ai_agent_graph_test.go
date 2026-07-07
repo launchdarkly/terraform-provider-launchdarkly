@@ -237,7 +237,7 @@ func testAccCheckAIAgentGraphExists(resourceName string) resource.TestCheckFunc 
 		if err != nil {
 			return fmt.Errorf("failed to build beta client: %s", err)
 		}
-		_, _, err = beta.ld.AIConfigsApi.GetAgentGraph(beta.ctx, projectKey, graphKey).LDAPIVersion(agentGraphBetaVersion).Execute()
+		_, _, err = beta.ld.AgentControlApi.GetAgentGraph(beta.ctx, projectKey, graphKey).LDAPIVersion(agentGraphBetaVersion).Execute()
 		if err != nil {
 			return fmt.Errorf("received an error getting agent graph: %s", err)
 		}
@@ -258,7 +258,7 @@ var testAccCheckAIAgentGraphDestroy = func(s *terraform.State) error {
 		projectKey := rs.Primary.Attributes[PROJECT_KEY]
 		graphKey := rs.Primary.Attributes[KEY]
 
-		_, res, err := beta.ld.AIConfigsApi.GetAgentGraph(beta.ctx, projectKey, graphKey).LDAPIVersion(agentGraphBetaVersion).Execute()
+		_, res, err := beta.ld.AgentControlApi.GetAgentGraph(beta.ctx, projectKey, graphKey).LDAPIVersion(agentGraphBetaVersion).Execute()
 		if isStatusNotFound(res) {
 			continue
 		}
