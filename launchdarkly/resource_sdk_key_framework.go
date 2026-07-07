@@ -9,7 +9,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -19,6 +18,7 @@ import (
 var (
 	_ resource.Resource                = &SdkKeyResource{}
 	_ resource.ResourceWithImportState = &SdkKeyResource{}
+	_ resource.ResourceWithModifyPlan  = &SdkKeyResource{}
 )
 
 type SdkKeyResourceModel struct {
@@ -85,12 +85,20 @@ func sdkKeySchemaAttributes() map[string]schema.Attribute {
 			PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
 		},
 		KIND: schema.StringAttribute{
-			Optional:      true,
-			Computed:      true,
-			Default:       stringdefault.StaticString("sdk"),
-			Description:   addForceNewDescription("The kind of SDK key. Must be either `sdk` (server-side) or `mobile`. Defaults to `sdk`.", true),
-			Validators:    []validator.String{oneOfValidator{allowed: []string{"sdk", "mobile"}}},
-			PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
+			Optional: true,
+			Computed: true,
+			// No schema Default: a static default would override the state
+			// value whenever the configuration omits kind, planning a replace
+			// of an imported `mobile` key to `sdk` — destructive, and doomed
+			// because deleted SDK key identifiers are tombstoned (POST 409).
+			// UseStateForUnknown keeps the stored kind when the configuration
+			// omits it; the API defaults new keys to `sdk` server-side.
+			Description: addForceNewDescription("The kind of SDK key. Must be either `sdk` (server-side) or `mobile`. New keys default to `sdk`.", true),
+			Validators:  []validator.String{oneOfValidator{allowed: []string{"sdk", "mobile"}}},
+			PlanModifiers: []planmodifier.String{
+				stringplanmodifier.UseStateForUnknown(),
+				stringplanmodifier.RequiresReplace(),
+			},
 		},
 		NAME: schema.StringAttribute{
 			Required:    true,
@@ -103,9 +111,6 @@ func sdkKeySchemaAttributes() map[string]schema.Attribute {
 		EXPIRY: schema.Int64Attribute{
 			Optional:    true,
 			Description: "An expiration date for the SDK key, expressed as a Unix epoch time in milliseconds. When set, the key becomes invalid after this time. Once set, an expiry cannot be removed: the beta API cannot clear a scheduled expiry in place, and a deleted SDK key identifier cannot be recreated in the same environment.",
-			PlanModifiers: []planmodifier.Int64{
-				expiryRemovalGuard{},
-			},
 		},
 		VALUE: schema.StringAttribute{
 			Computed:      true,
@@ -124,47 +129,48 @@ func sdkKeySchemaAttributes() map[string]schema.Attribute {
 	}
 }
 
-// expiryRemovalGuard rejects, at plan time, any attempt to remove a
-// previously-set expiry from an SDK key. Removal is unsupported end to end:
-// the beta patch model marshals expiry with `omitempty` and cannot emit a
-// null to clear it in place (a PATCH with expiry=0 is rejected 400), and
-// replacing the resource is not viable either because a deleted SDK key
-// identifier is tombstoned by the backend and cannot be recreated in the same
-// environment (POST returns 409 "SDK key already exists"). Surfacing a plan
-// error is therefore safer than RequiresReplace, which would destroy the key
-// and then fail to recreate it. The framework does not invoke attribute plan
-// modifiers while the whole resource is being destroyed, so this does not
-// block `terraform destroy`.
-type expiryRemovalGuard struct{}
-
-func (expiryRemovalGuard) Description(context.Context) string {
-	return "Rejects removing a previously-set expiry."
-}
-
-func (expiryRemovalGuard) MarkdownDescription(context.Context) string {
-	return "Rejects removing a previously-set `expiry`."
-}
-
-func (expiryRemovalGuard) PlanModifyInt64(ctx context.Context, req planmodifier.Int64Request, resp *planmodifier.Int64Response) {
-	if req.StateValue.IsNull() || !req.PlanValue.IsNull() {
+// ModifyPlan rejects, at plan time, any attempt to remove a previously-set
+// expiry in place. Removal is unsupported end to end: the beta patch model
+// marshals expiry with `omitempty` and cannot emit a null to clear it (a
+// PATCH with expiry=0 is rejected 400), and replacing the resource at the
+// same key is not viable either because a deleted SDK key identifier is
+// tombstoned by the backend (POST returns 409 "SDK key already exists").
+// Surfacing a plan error is therefore safer than RequiresReplace, which
+// would destroy the key and then fail to recreate it.
+//
+// When a RequiresReplace attribute changes in the same plan, the resource is
+// being replaced under a fresh identifier, where omitting expiry is valid —
+// that transition is allowed. This check lives in resource-level ModifyPlan
+// rather than an attribute plan modifier because it must observe the other
+// attributes' final planned values: attribute plan modifiers run in
+// unspecified order, so an expiry-attribute guard could read `kind` before
+// UseStateForUnknown resolves it and misread the plan as a replacement.
+func (r *SdkKeyResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
+	if req.Plan.Raw.IsNull() || req.State.Raw.IsNull() {
+		// Destroy or create: no in-place expiry transition to guard.
 		return
 	}
-	// Only in-place removal is impossible. When a RequiresReplace attribute
-	// changes in the same plan, the resource is being replaced under a fresh
-	// key identifier, where omitting expiry is valid — don't block that.
-	for _, attr := range []string{PROJECT_KEY, ENVIRONMENT_KEY, KEY, KIND} {
-		var planV, stateV types.String
-		resp.Diagnostics.Append(req.Plan.GetAttribute(ctx, path.Root(attr), &planV)...)
-		resp.Diagnostics.Append(req.State.GetAttribute(ctx, path.Root(attr), &stateV)...)
-		if resp.Diagnostics.HasError() {
-			return
-		}
-		if !planV.Equal(stateV) {
+	var plan, state SdkKeyResourceModel
+	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
+	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	if state.Expiry.IsNull() || !plan.Expiry.IsNull() {
+		return
+	}
+	for _, pair := range [][2]types.String{
+		{plan.ProjectKey, state.ProjectKey},
+		{plan.EnvironmentKey, state.EnvironmentKey},
+		{plan.Key, state.Key},
+		{plan.Kind, state.Kind},
+	} {
+		if !pair[0].Equal(pair[1]) {
 			return
 		}
 	}
 	resp.Diagnostics.AddAttributeError(
-		req.Path,
+		path.Root(EXPIRY),
 		"Cannot remove expiry from an SDK key",
 		"The SDK key beta API cannot clear a scheduled expiry once set, and a deleted SDK key identifier cannot be recreated in the same environment. To manage an SDK key without an expiry, create a new resource with a different key.",
 	)
@@ -208,7 +214,9 @@ func (r *SdkKeyResource) Create(ctx context.Context, req resource.CreateRequest,
 	sdkKeyKey := plan.Key.ValueString()
 
 	post := ldapi.NewSdkKeyPost(sdkKeyKey, plan.Name.ValueString())
-	post.SetKind(plan.Kind.ValueString())
+	if !plan.Kind.IsNull() && !plan.Kind.IsUnknown() {
+		post.SetKind(plan.Kind.ValueString())
+	}
 	if !plan.Description.IsNull() && plan.Description.ValueString() != "" {
 		post.SetDescription(plan.Description.ValueString())
 	}

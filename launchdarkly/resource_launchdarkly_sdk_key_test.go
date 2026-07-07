@@ -52,6 +52,25 @@ resource "launchdarkly_sdk_key" "test" {
 }
 `
 
+	testAccSdkKeyMobile = `
+resource "launchdarkly_sdk_key" "test" {
+	project_key     = launchdarkly_project.test.key
+	environment_key = "test"
+	key             = "tf-test-mobile-key"
+	kind            = "mobile"
+	name            = "Terraform mobile key"
+}
+`
+
+	testAccSdkKeyMobileKindOmitted = `
+resource "launchdarkly_sdk_key" "test" {
+	project_key     = launchdarkly_project.test.key
+	environment_key = "test"
+	key             = "tf-test-mobile-key"
+	name            = "Terraform mobile key"
+}
+`
+
 	testAccSdkKeyExpiryRemovedViaReplace = `
 resource "launchdarkly_sdk_key" "test" {
 	project_key     = launchdarkly_project.test.key
@@ -150,6 +169,38 @@ func TestAccSdkKey_ExpiryCannotBeRemoved(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, KEY, "tf-test-sdk-key-fresh"),
 					resource.TestCheckNoResourceAttr(resourceName, EXPIRY),
 				),
+			},
+		},
+	})
+}
+
+// TestAccSdkKey_MobileKindOmittedPlansClean guards against a schema Default
+// on `kind`: a static default would override the stored `mobile` value
+// whenever the configuration omits kind (the natural state after import),
+// planning a destructive replace that then fails because the deleted key
+// identifier is tombstoned. Optional+Computed without a default must propose
+// the prior state value, so a config that omits kind plans no changes.
+func TestAccSdkKey_MobileKindOmittedPlansClean(t *testing.T) {
+	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlpha)
+	resourceName := "launchdarkly_sdk_key.test"
+	resource.Test(t, resource.TestCase{
+		PreCheck: func() {
+			testAccPreCheck(t)
+		},
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckSdkKeyDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config: withRandomProject(projectKey, testAccSdkKeyMobile),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckSdkKeyExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, KIND, "mobile"),
+				),
+			},
+			{
+				Config:             withRandomProject(projectKey, testAccSdkKeyMobileKindOmitted),
+				PlanOnly:           true,
+				ExpectNonEmptyPlan: false,
 			},
 		},
 	})
