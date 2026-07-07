@@ -116,7 +116,7 @@ The provider includes a state upgrader for every resource whose state shape chan
 - `launchdarkly_flag_trigger`: converts `instructions` to an object.
 - `launchdarkly_flag_templates`: converts `boolean_defaults` to an object.
 - `launchdarkly_team` and `launchdarkly_team_member`: re-key `role_attributes` into a map of string lists.
-- `launchdarkly_metric`: discards `is_active`.
+- `launchdarkly_metric`: discards `is_active`, and renames `randomization_units` to `analysis_units` (following the LaunchDarkly API's rename).
 
 ## Your first plan after upgrading
 
