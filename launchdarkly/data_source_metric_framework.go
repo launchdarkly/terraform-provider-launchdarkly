@@ -31,7 +31,7 @@ type MetricDataSourceModel struct {
 	EventKey                  types.String `tfsdk:"event_key"`
 	SuccessCriteria           types.String `tfsdk:"success_criteria"`
 	URLs                      types.List   `tfsdk:"urls"`
-	RandomizationUnits        types.Set    `tfsdk:"randomization_units"`
+	AnalysisUnits             types.Set    `tfsdk:"analysis_units"`
 	IncludeUnitsWithoutEvents types.Bool   `tfsdk:"include_units_without_events"`
 	UnitAggregationType       types.String `tfsdk:"unit_aggregation_type"`
 	AnalysisType              types.String `tfsdk:"analysis_type"`
@@ -111,7 +111,7 @@ func (d *MetricDataSource) Schema(_ context.Context, _ datasource.SchemaRequest,
 				Computed:    true,
 				Description: "The success criteria for your metric (if numeric metric).",
 			},
-			RANDOMIZATION_UNITS: schema.SetAttribute{
+			ANALYSIS_UNITS: schema.SetAttribute{
 				Computed:    true,
 				ElementType: types.StringType,
 				Description: "A set of one or more context kinds that this metric can measure events from.",
@@ -246,9 +246,17 @@ func (d *MetricDataSource) Read(ctx context.Context, req datasource.ReadRequest,
 	resp.Diagnostics.Append(diags...)
 	data.Tags = tagsSet
 
-	randomization, diags := setFromStringSlice(ctx, metric.RandomizationUnits)
+	// GET mirrors randomizationUnits and analysisUnits server-side at read
+	// time, regardless of metric age or which field was written (verified
+	// against the live API, incl. pre-rename metrics). The fallback is
+	// defense-in-depth only.
+	analysisUnitsRaw := metric.AnalysisUnits
+	if analysisUnitsRaw == nil {
+		analysisUnitsRaw = metric.RandomizationUnits
+	}
+	analysisUnits, diags := setFromStringSlice(ctx, analysisUnitsRaw)
 	resp.Diagnostics.Append(diags...)
-	data.RandomizationUnits = randomization
+	data.AnalysisUnits = analysisUnits
 
 	objectType := types.ObjectType{AttrTypes: metricURLAttrTypes}
 	elements := make([]attr.Value, 0, len(metric.Urls))

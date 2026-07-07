@@ -53,7 +53,7 @@ resource "launchdarkly_metric" "basic" {
 }
 `
 
-	testAccMetricCustomWithRandomizationUnitsFmt = `
+	testAccMetricCustomWithAnalysisUnitsFmt = `
 resource "launchdarkly_metric" "custom" {
 	project_key = "%s"
 	key         = "custom-metric"
@@ -62,14 +62,14 @@ resource "launchdarkly_metric" "custom" {
 	kind        = "custom"
 	is_numeric  = false
 
-	randomization_units = [
+	analysis_units = [
 		"request",
 		"user"
 	]
 }
 `
 
-	testAccMetricCustomWithRandomizationUnitsUpdateFmt = `
+	testAccMetricCustomWithAnalysisUnitsUpdateFmt = `
 resource "launchdarkly_metric" "custom" {
 	project_key = "%s"
 	key         = "custom-metric"
@@ -78,7 +78,7 @@ resource "launchdarkly_metric" "custom" {
 	kind        = "custom"
 	is_numeric  = false
 
-	randomization_units = [
+	analysis_units = [
 		"organization",
 	  "request",
 		"user"
@@ -175,7 +175,7 @@ func TestAccMetric_BasicCreateAndUpdate(t *testing.T) {
 	})
 }
 
-func TestAccMetric_WithRandomizationUnits(t *testing.T) {
+func TestAccMetric_WithAnalysisUnits(t *testing.T) {
 	accTest := os.Getenv("TF_ACC")
 	if accTest == "" {
 		t.SkipNow()
@@ -203,7 +203,7 @@ func TestAccMetric_WithRandomizationUnits(t *testing.T) {
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			{
-				Config: fmt.Sprintf(testAccMetricCustomWithRandomizationUnitsFmt, projectKey),
+				Config: fmt.Sprintf(testAccMetricCustomWithAnalysisUnitsFmt, projectKey),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckMetricExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, NAME, "Custom Metric"),
@@ -212,8 +212,8 @@ func TestAccMetric_WithRandomizationUnits(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, KIND, "custom"),
 					resource.TestCheckResourceAttr(resourceName, EVENT_KEY, "Custom event"),
 					resource.TestCheckResourceAttr(resourceName, IS_NUMERIC, "false"),
-					resource.TestCheckResourceAttr(resourceName, RANDOMIZATION_UNITS+".0", "request"),
-					resource.TestCheckResourceAttr(resourceName, RANDOMIZATION_UNITS+".1", "user"),
+					resource.TestCheckResourceAttr(resourceName, ANALYSIS_UNITS+".0", "request"),
+					resource.TestCheckResourceAttr(resourceName, ANALYSIS_UNITS+".1", "user"),
 				),
 			},
 			{
@@ -222,7 +222,7 @@ func TestAccMetric_WithRandomizationUnits(t *testing.T) {
 				ImportStateVerify: true,
 			},
 			{
-				Config: fmt.Sprintf(testAccMetricCustomWithRandomizationUnitsUpdateFmt, projectKey),
+				Config: fmt.Sprintf(testAccMetricCustomWithAnalysisUnitsUpdateFmt, projectKey),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckMetricExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, NAME, "Custom Metric"),
@@ -231,9 +231,9 @@ func TestAccMetric_WithRandomizationUnits(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, KIND, "custom"),
 					resource.TestCheckResourceAttr(resourceName, EVENT_KEY, "Custom event"),
 					resource.TestCheckResourceAttr(resourceName, IS_NUMERIC, "false"),
-					resource.TestCheckResourceAttr(resourceName, RANDOMIZATION_UNITS+".0", "organization"),
-					resource.TestCheckResourceAttr(resourceName, RANDOMIZATION_UNITS+".1", "request"),
-					resource.TestCheckResourceAttr(resourceName, RANDOMIZATION_UNITS+".2", "user"),
+					resource.TestCheckResourceAttr(resourceName, ANALYSIS_UNITS+".0", "organization"),
+					resource.TestCheckResourceAttr(resourceName, ANALYSIS_UNITS+".1", "request"),
+					resource.TestCheckResourceAttr(resourceName, ANALYSIS_UNITS+".2", "user"),
 				),
 			},
 			{
