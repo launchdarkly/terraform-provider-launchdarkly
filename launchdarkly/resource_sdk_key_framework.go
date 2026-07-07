@@ -145,14 +145,29 @@ func (expiryRemovalGuard) MarkdownDescription(context.Context) string {
 	return "Rejects removing a previously-set `expiry`."
 }
 
-func (expiryRemovalGuard) PlanModifyInt64(_ context.Context, req planmodifier.Int64Request, resp *planmodifier.Int64Response) {
-	if !req.StateValue.IsNull() && req.PlanValue.IsNull() {
-		resp.Diagnostics.AddAttributeError(
-			req.Path,
-			"Cannot remove expiry from an SDK key",
-			"The SDK key beta API cannot clear a scheduled expiry once set, and a deleted SDK key identifier cannot be recreated in the same environment. To manage an SDK key without an expiry, create a new resource with a different key.",
-		)
+func (expiryRemovalGuard) PlanModifyInt64(ctx context.Context, req planmodifier.Int64Request, resp *planmodifier.Int64Response) {
+	if req.StateValue.IsNull() || !req.PlanValue.IsNull() {
+		return
 	}
+	// Only in-place removal is impossible. When a RequiresReplace attribute
+	// changes in the same plan, the resource is being replaced under a fresh
+	// key identifier, where omitting expiry is valid — don't block that.
+	for _, attr := range []string{PROJECT_KEY, ENVIRONMENT_KEY, KEY, KIND} {
+		var planV, stateV types.String
+		resp.Diagnostics.Append(req.Plan.GetAttribute(ctx, path.Root(attr), &planV)...)
+		resp.Diagnostics.Append(req.State.GetAttribute(ctx, path.Root(attr), &stateV)...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+		if !planV.Equal(stateV) {
+			return
+		}
+	}
+	resp.Diagnostics.AddAttributeError(
+		req.Path,
+		"Cannot remove expiry from an SDK key",
+		"The SDK key beta API cannot clear a scheduled expiry once set, and a deleted SDK key identifier cannot be recreated in the same environment. To manage an SDK key without an expiry, create a new resource with a different key.",
+	)
 }
 
 func (r *SdkKeyResource) Configure(_ context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {

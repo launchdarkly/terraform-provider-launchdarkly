@@ -51,6 +51,15 @@ resource "launchdarkly_sdk_key" "test" {
 	name            = "Terraform expiry SDK key"
 }
 `
+
+	testAccSdkKeyExpiryRemovedViaReplace = `
+resource "launchdarkly_sdk_key" "test" {
+	project_key     = launchdarkly_project.test.key
+	environment_key = "test"
+	key             = "tf-test-sdk-key-fresh"
+	name            = "Terraform expiry SDK key"
+}
+`
 )
 
 func TestAccSdkKey_CreateAndUpdate(t *testing.T) {
@@ -131,6 +140,16 @@ func TestAccSdkKey_ExpiryCannotBeRemoved(t *testing.T) {
 				Config:      withRandomProject(projectKey, testAccSdkKeyExpiryRemoved),
 				PlanOnly:    true,
 				ExpectError: regexp.MustCompile("Cannot remove expiry from an SDK key"),
+			},
+			{
+				// Dropping the expiry while changing `key` is a replacement
+				// under a fresh identifier, which the guard must allow.
+				Config: withRandomProject(projectKey, testAccSdkKeyExpiryRemovedViaReplace),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckSdkKeyExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, KEY, "tf-test-sdk-key-fresh"),
+					resource.TestCheckNoResourceAttr(resourceName, EXPIRY),
+				),
 			},
 		},
 	})
