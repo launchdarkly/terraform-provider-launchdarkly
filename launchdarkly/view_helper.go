@@ -10,14 +10,6 @@ import (
 
 const viewAssociationsPageLimit = int32(100)
 
-// setViewRequestHeaders sets the common headers for View API requests
-func setViewRequestHeaders(req *http.Request, apiKey string) {
-	req.Header.Set("Authorization", apiKey)
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("LD-API-Version", "beta")
-	req.Header.Set("User-Agent", fmt.Sprintf("launchdarkly-terraform-provider/%s", version))
-}
-
 type View struct {
 	Id          string          `json:"id"`
 	Key         string          `json:"key"`

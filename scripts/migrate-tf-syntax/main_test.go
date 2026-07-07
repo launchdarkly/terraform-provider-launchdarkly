@@ -563,6 +563,39 @@ func TestApplyDSAttrRewrites(t *testing.T) {
 	}
 }
 
+// TestEmbeddedMappingsMetricAnalysisUnits guards the shipped mappings.json:
+// the metric resource's randomization_units attribute was renamed to
+// analysis_units in v3 (following the API's randomizationUnits ->
+// analysisUnits rename), both on the resource block and in data-source
+// references.
+func TestEmbeddedMappingsMetricAnalysisUnits(t *testing.T) {
+	var spec Spec
+	if err := json.Unmarshal(defaultMappings, &spec); err != nil {
+		t.Fatalf("parse embedded mappings: %v", err)
+	}
+	src := `resource "launchdarkly_metric" "m" {
+  randomization_units = ["user", "request"]
+}
+`
+	f, body := parseBody(t, src)
+	if !applyDeprecations(body, spec["launchdarkly_metric"].Deprecations, "test.tf") {
+		t.Fatal("expected rename")
+	}
+	out := string(hclwrite.Format(f.Bytes()))
+	if !strings.Contains(out, "analysis_units") || strings.Contains(out, "randomization_units") {
+		t.Errorf("randomization_units not renamed to analysis_units:\n%s", out)
+	}
+
+	dsSrc := []byte(`output "au" { value = data.launchdarkly_metric.m.randomization_units }`)
+	dsOut, changed := applyDSAttrRewrites(dsSrc, spec)
+	if !changed {
+		t.Fatal("expected data-source rewrite")
+	}
+	if !strings.Contains(string(dsOut), "data.launchdarkly_metric.m.analysis_units") {
+		t.Errorf("data-source reference not renamed:\n%s", dsOut)
+	}
+}
+
 // TestEmbeddedMappingsStripDataSourceIndices guards the shipped mappings.json:
 // every v3 single-object data-source attribute must have a ds_attr_rewrite that
 // drops a v2 list index, so v2 readers like `data.X.Y.attr[0].field` migrate to

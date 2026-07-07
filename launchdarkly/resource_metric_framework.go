@@ -49,7 +49,7 @@ type MetricResourceModel struct {
 	EventKey                  types.String `tfsdk:"event_key"`
 	SuccessCriteria           types.String `tfsdk:"success_criteria"`
 	URLs                      types.List   `tfsdk:"urls"`
-	RandomizationUnits        types.Set    `tfsdk:"randomization_units"`
+	AnalysisUnits             types.Set    `tfsdk:"analysis_units"`
 	IncludeUnitsWithoutEvents types.Bool   `tfsdk:"include_units_without_events"`
 	UnitAggregationType       types.String `tfsdk:"unit_aggregation_type"`
 	AnalysisType              types.String `tfsdk:"analysis_type"`
@@ -72,7 +72,7 @@ var metricUrlAttrTypes = map[string]attr.Type{
 
 func (r *MetricResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Version:     1,
+		Version:     2,
 		Description: "Provides a LaunchDarkly metric resource.\n\nThis resource allows you to create and manage metrics within your LaunchDarkly organization.\n\nTo learn more about metrics and experimentation, read [Experimentation Documentation](https://docs.launchdarkly.com/home/experimentation).",
 		Attributes:  metricSchemaAttributes(),
 	}
@@ -150,7 +150,7 @@ func metricSchemaAttributes() map[string]schema.Attribute {
 			Description: "The success criteria for your metric (if numeric metric). Available choices are `HigherThanBaseline` and `LowerThanBaseline`.",
 			Validators:  []validator.String{oneOfValidator{allowed: []string{"HigherThanBaseline", "LowerThanBaseline"}}},
 		},
-		RANDOMIZATION_UNITS: schema.SetAttribute{
+		ANALYSIS_UNITS: schema.SetAttribute{
 			Optional:    true,
 			Computed:    true,
 			ElementType: types.StringType,
@@ -217,10 +217,11 @@ func metricSchemaAttributes() map[string]schema.Attribute {
 }
 
 func (r *MetricResource) UpgradeState(_ context.Context) map[int64]resource.StateUpgrader {
-	priorSchema := schema.Schema{Attributes: metricSchemaAttributesV0()}
+	priorSchemaV0 := schema.Schema{Attributes: metricSchemaAttributesV0()}
+	priorSchemaV1 := schema.Schema{Attributes: metricSchemaAttributesV1()}
 	return map[int64]resource.StateUpgrader{
 		0: {
-			PriorSchema: &priorSchema,
+			PriorSchema: &priorSchemaV0,
 			StateUpgrader: func(ctx context.Context, req resource.UpgradeStateRequest, resp *resource.UpgradeStateResponse) {
 				var prior MetricResourceModelV0
 				resp.Diagnostics.Append(req.State.Get(ctx, &prior)...)
@@ -242,7 +243,40 @@ func (r *MetricResource) UpgradeState(_ context.Context) map[int64]resource.Stat
 					EventKey:                  nullIfEmptyString(prior.EventKey),
 					SuccessCriteria:           nullIfEmptyString(prior.SuccessCriteria),
 					URLs:                      nullIfEmptyList(ctx, prior.URLs),
-					RandomizationUnits:        prior.RandomizationUnits,
+					AnalysisUnits:             prior.RandomizationUnits,
+					IncludeUnitsWithoutEvents: prior.IncludeUnitsWithoutEvents,
+					UnitAggregationType:       prior.UnitAggregationType,
+					AnalysisType:              prior.AnalysisType,
+					PercentileValue:           prior.PercentileValue,
+					Version:                   prior.Version,
+				}
+				resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+			},
+		},
+		1: {
+			PriorSchema: &priorSchemaV1,
+			StateUpgrader: func(ctx context.Context, req resource.UpgradeStateRequest, resp *resource.UpgradeStateResponse) {
+				var prior MetricResourceModelV1
+				resp.Diagnostics.Append(req.State.Get(ctx, &prior)...)
+				if resp.Diagnostics.HasError() {
+					return
+				}
+				data := MetricResourceModel{
+					ID:                        prior.ID,
+					ProjectKey:                prior.ProjectKey,
+					Key:                       prior.Key,
+					Name:                      prior.Name,
+					Kind:                      prior.Kind,
+					MaintainerID:              prior.MaintainerID,
+					Description:               prior.Description,
+					Tags:                      prior.Tags,
+					IsNumeric:                 prior.IsNumeric,
+					Unit:                      prior.Unit,
+					Selector:                  prior.Selector,
+					EventKey:                  prior.EventKey,
+					SuccessCriteria:           prior.SuccessCriteria,
+					URLs:                      prior.URLs,
+					AnalysisUnits:             prior.RandomizationUnits,
 					IncludeUnitsWithoutEvents: prior.IncludeUnitsWithoutEvents,
 					UnitAggregationType:       prior.UnitAggregationType,
 					AnalysisType:              prior.AnalysisType,
@@ -455,7 +489,7 @@ func (r *MetricResource) Create(ctx context.Context, req resource.CreateRequest,
 
 	tags, d := stringSliceFromSet(ctx, plan.Tags)
 	resp.Diagnostics.Append(d...)
-	randomization, d := stringSliceFromSet(ctx, plan.RandomizationUnits)
+	analysisUnits, d := stringSliceFromSet(ctx, plan.AnalysisUnits)
 	resp.Diagnostics.Append(d...)
 
 	var urls []metricURLModel
@@ -488,7 +522,7 @@ func (r *MetricResource) Create(ctx context.Context, req resource.CreateRequest,
 		IsNumeric:           &isNumeric,
 		Selector:            &selector,
 		Urls:                metricURLPostsFromModels(urls),
-		RandomizationUnits:  randomization,
+		AnalysisUnits:       analysisUnits,
 		Unit:                &unit,
 		EventKey:            &eventKey,
 		UnitAggregationType: &unitAggType,
@@ -601,7 +635,7 @@ func (r *MetricResource) ImportState(ctx context.Context, req resource.ImportSta
 
 // applyMetricUpdate issues a PATCH against an existing metric. Shared
 // between Update and the post-create maintainer set.
-func (r *MetricResource) applyMetricUpdate(ctx context.Context, plan *MetricResourceModel, includeRandomizationUnits bool) error {
+func (r *MetricResource) applyMetricUpdate(ctx context.Context, plan *MetricResourceModel, includeAnalysisUnits bool) error {
 	projectKey := plan.ProjectKey.ValueString()
 	key := plan.Key.ValueString()
 
@@ -654,10 +688,10 @@ func (r *MetricResource) applyMetricUpdate(ctx context.Context, plan *MetricReso
 		patch = append(patch, patchReplace("/maintainerId", mid))
 	}
 
-	if includeRandomizationUnits {
-		ru, _ := stringSliceFromSet(ctx, plan.RandomizationUnits)
-		if len(ru) > 0 {
-			patch = append(patch, patchReplace("/randomizationUnits", ru))
+	if includeAnalysisUnits {
+		au, _ := stringSliceFromSet(ctx, plan.AnalysisUnits)
+		if len(au) > 0 {
+			patch = append(patch, patchReplace("/analysisUnits", au))
 		}
 	}
 
@@ -737,9 +771,17 @@ func (r *MetricResource) readIntoModel(
 	diags.Append(d...)
 	data.Tags = tagsSet
 
-	ruSet, d := setFromStringSlice(ctx, metric.RandomizationUnits)
+	// GET mirrors randomizationUnits and analysisUnits server-side at read
+	// time, regardless of metric age or which field was written (verified
+	// against the live API, incl. pre-rename metrics). The fallback is
+	// defense-in-depth only.
+	analysisUnits := metric.AnalysisUnits
+	if analysisUnits == nil {
+		analysisUnits = metric.RandomizationUnits
+	}
+	auSet, d := setFromStringSlice(ctx, analysisUnits)
 	diags.Append(d...)
-	data.RandomizationUnits = ruSet
+	data.AnalysisUnits = auSet
 
 	urlObjType := types.ObjectType{AttrTypes: metricUrlAttrTypes}
 	if len(metric.Urls) == 0 {

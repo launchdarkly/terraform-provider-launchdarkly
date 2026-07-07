@@ -31,8 +31,8 @@ func testAccDataSourceMetricScaffold(client *Client, betaClient *Client, project
 		return nil, err
 	}
 
-	randomizationUnitsInput := make([]ldapi.RandomizationUnitInput, 0, len(metricBody.RandomizationUnits))
-	for _, randomizationUnit := range metricBody.RandomizationUnits {
+	randomizationUnitsInput := make([]ldapi.RandomizationUnitInput, 0, len(metricBody.AnalysisUnits))
+	for _, randomizationUnit := range metricBody.AnalysisUnits {
 		if randomizationUnit == "user" {
 			defaultTrue := true
 			defaultRandomizationUnit := *ldapi.NewRandomizationUnitInput(randomizationUnit)
@@ -125,8 +125,8 @@ func TestAccDataSourceMetric_exists(t *testing.T) {
 			Kind:      &metricUrlKind,
 			Substring: &metricUrlSubstring,
 		}},
-		Description:        ldapi.PtrString("a metric to test the terraform metric data source"),
-		RandomizationUnits: []string{"request", "user"},
+		Description:   ldapi.PtrString("a metric to test the terraform metric data source"),
+		AnalysisUnits: []string{"request", "user"},
 	}
 	metric, err := testAccDataSourceMetricScaffold(client, betaClient, projectKey, metricBody)
 	require.NoError(t, err)
@@ -154,8 +154,8 @@ func TestAccDataSourceMetric_exists(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, DESCRIPTION, *metric.Description),
 					resource.TestCheckResourceAttr(resourceName, ID, projectKey+"/"+metric.Key),
 					resource.TestCheckResourceAttr(resourceName, KIND, metric.Kind),
-					resource.TestCheckResourceAttr(resourceName, RANDOMIZATION_UNITS+".0", metric.RandomizationUnits[0]),
-					resource.TestCheckResourceAttr(resourceName, RANDOMIZATION_UNITS+".1", metric.RandomizationUnits[1]),
+					resource.TestCheckResourceAttr(resourceName, ANALYSIS_UNITS+".0", metric.AnalysisUnits[0]),
+					resource.TestCheckResourceAttr(resourceName, ANALYSIS_UNITS+".1", metric.AnalysisUnits[1]),
 					resource.TestCheckResourceAttr(resourceName, "urls.0.kind", metricUrlKind),
 					resource.TestCheckResourceAttr(resourceName, "urls.0.substring", metricUrlSubstring),
 				),

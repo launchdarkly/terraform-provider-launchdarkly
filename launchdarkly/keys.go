@@ -10,6 +10,7 @@ const (
 	AI_CONFIG_KEY                             = "config_key"
 	ALLOCATION                                = "allocation"
 	ANALYSIS_TYPE                             = "analysis_type"
+	ANALYSIS_UNITS                            = "analysis_units"
 	API_KEY                                   = "api_key"
 	APPROVAL_SETTINGS                         = "approval_settings"
 	ARCHIVED                                  = "archived"

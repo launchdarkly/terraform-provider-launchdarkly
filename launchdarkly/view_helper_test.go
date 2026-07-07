@@ -15,18 +15,6 @@ import (
 	"golang.org/x/sync/semaphore"
 )
 
-func TestSetViewRequestHeaders(t *testing.T) {
-	req, err := http.NewRequest("GET", "http://example.com", nil)
-	require.NoError(t, err)
-
-	setViewRequestHeaders(req, "test-api-key")
-
-	require.Equal(t, "test-api-key", req.Header.Get("Authorization"))
-	require.Equal(t, "application/json", req.Header.Get("Content-Type"))
-	require.Equal(t, "beta", req.Header.Get("LD-API-Version"))
-	require.Equal(t, fmt.Sprintf("launchdarkly-terraform-provider/%s", version), req.Header.Get("User-Agent"))
-}
-
 func TestViewRequestsIncludeUserAgentHeader(t *testing.T) {
 	projectKey := "test-project"
 	viewKey := "test-view"

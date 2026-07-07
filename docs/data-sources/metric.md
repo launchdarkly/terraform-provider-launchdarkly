@@ -33,6 +33,7 @@ data "launchdarkly_metric" "example" {
 ### Read-Only
 
 - `analysis_type` (String) The method for analyzing metric events.
+- `analysis_units` (Set of String) A set of one or more context kinds that this metric can measure events from.
 - `description` (String) The description of the metric's purpose.
 - `event_key` (String) The event key for your metric (if custom metric).
 - `id` (String) The ID in the format `project_key/key`.
@@ -42,7 +43,6 @@ data "launchdarkly_metric" "example" {
 - `maintainer_id` (String) The LaunchDarkly member ID of the maintainer.
 - `name` (String) The human-friendly name for the metric.
 - `percentile_value` (Number) The percentile for the analysis method.
-- `randomization_units` (Set of String) A set of one or more context kinds that this metric can measure events from.
 - `selector` (String) The CSS selector for your metric (if click metric).
 - `success_criteria` (String) The success criteria for your metric (if numeric metric).
 - `tags` (Set of String) Tags associated with the metric.

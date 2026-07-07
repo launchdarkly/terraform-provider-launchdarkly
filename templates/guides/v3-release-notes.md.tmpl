@@ -141,6 +141,7 @@ v3 removes the attributes that v2 marked deprecated. The state upgrade migrates 
 | `launchdarkly_project` resource | `include_in_snippet` | `default_client_side_availability` |
 | `launchdarkly_project` data source | `client_side_availability` | `default_client_side_availability` |
 | `launchdarkly_metric` | `is_active` | None. Remove it from your configuration. |
+| `launchdarkly_metric` resource and data source | `randomization_units` | `analysis_units` |
 
 ### Minimum versions
 
