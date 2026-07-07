@@ -2,6 +2,18 @@
 
 All notable changes to the LaunchDarkly Terraform Provider will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org).
 
+## [3.0.0-beta.7](https://github.com/launchdarkly/terraform-provider-launchdarkly/compare/v3.0.0-beta.6...v3.0.0-beta.7) (2026-07-07)
+
+
+### ⚠ BREAKING CHANGES
+
+* adopt api-client-go v23 typed clients and field renames ([#494](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/494))
+
+### Features
+
+* adopt api-client-go v23 typed clients and field renames ([#494](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/494)) ([aefb9a3](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/aefb9a359c22858ed5cc8ae7770fe2e2a3b2ade9))
+* scaffold launchdarkly_sdk_key resource (autogen stage 2) ([#495](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/495)) ([7ab40a4](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/7ab40a41e4a23fdfb7f1be6b600a0b23b598874e))
+
 ## [3.0.0-beta.6](https://github.com/launchdarkly/terraform-provider-launchdarkly/compare/v3.0.0-beta.5...v3.0.0-beta.6) (2026-07-06)
 
 
