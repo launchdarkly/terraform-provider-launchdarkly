@@ -73,7 +73,7 @@ var metricUrlAttrTypes = map[string]attr.Type{
 func (r *MetricResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		Version:     2,
-		Description: "Provides a LaunchDarkly metric resource.\n\nThis resource allows you to create and manage metrics within your LaunchDarkly organization.\n\nTo learn more about metrics and experimentation, read [Experimentation Documentation](https://docs.launchdarkly.com/home/experimentation).",
+		Description: "Provides a LaunchDarkly metric resource.\n\nThis resource allows you to create and manage metrics within your LaunchDarkly organization.\n\nTo learn more about metrics and experimentation, read [Experimentation Documentation](https://launchdarkly.com/docs/home/experimentation).",
 		Attributes:  metricSchemaAttributes(),
 	}
 }
@@ -154,7 +154,7 @@ func metricSchemaAttributes() map[string]schema.Attribute {
 			Optional:    true,
 			Computed:    true,
 			ElementType: types.StringType,
-			Description: "A set of one or more context kinds that this metric can measure events from. Metrics can only use context kinds marked as \"Available for experiments.\" For more information, read [Allocating experiment audiences](https://docs.launchdarkly.com/home/creating-experiments/allocation).",
+			Description: "A set of one or more context kinds that this metric can measure events from. Metrics can only use context kinds marked as \"Available for experiments.\" For more information, read [Allocating experiment audiences](https://launchdarkly.com/docs/home/experimentation/allocation).",
 		},
 		INCLUDE_UNITS_WITHOUT_EVENTS: schema.BoolAttribute{
 			Optional:    true,

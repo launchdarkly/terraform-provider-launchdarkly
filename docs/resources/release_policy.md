@@ -5,7 +5,7 @@ subcategory: ""
 description: |-
   Provides a LaunchDarkly release policy resource.
   ~> Beta: This resource wraps a beta LaunchDarkly API (the release-policies endpoints, accessed with the LD-API-Version: beta header). Beta resources may change or be removed in future versions.
-  This resource lets you create and manage release policies https://launchdarkly.com/docs/home/releases within a LaunchDarkly project. A release policy defines how flag changes roll out to environments, either as a guarded-release, which monitors the rollout against metrics with optional automatic rollback, or a progressive-release, which advances the rollout through a fixed schedule of allocation stages.
+  This resource lets you create and manage release policies https://launchdarkly.com/docs/home/releases/release-policies within a LaunchDarkly project. A release policy defines how flag changes roll out to environments, either as a guarded-release, which monitors the rollout against metrics with optional automatic rollback, or a progressive-release, which advances the rollout through a fixed schedule of allocation stages.
 ---
 
 # launchdarkly_release_policy (Resource)
@@ -14,7 +14,7 @@ Provides a LaunchDarkly release policy resource.
 
 ~> **Beta:** This resource wraps a beta LaunchDarkly API (the `release-policies` endpoints, accessed with the `LD-API-Version: beta` header). Beta resources may change or be removed in future versions.
 
-This resource lets you create and manage [release policies](https://launchdarkly.com/docs/home/releases) within a LaunchDarkly project. A release policy defines how flag changes roll out to environments, either as a `guarded-release`, which monitors the rollout against metrics with optional automatic rollback, or a `progressive-release`, which advances the rollout through a fixed schedule of allocation stages.
+This resource lets you create and manage [release policies](https://launchdarkly.com/docs/home/releases/release-policies) within a LaunchDarkly project. A release policy defines how flag changes roll out to environments, either as a `guarded-release`, which monitors the rollout against metrics with optional automatic rollback, or a `progressive-release`, which advances the rollout through a fixed schedule of allocation stages.
 
 ## Example Usage
 

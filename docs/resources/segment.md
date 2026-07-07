@@ -5,7 +5,7 @@ subcategory: ""
 description: |-
   Provides a LaunchDarkly segment resource.
   This resource allows you to create and manage segments within your LaunchDarkly organization.
-  -> Note: When segment approvals https://docs.launchdarkly.com/home/releases/approvals are enabled for an environment, segment targeting changes (included, excluded, rules, included_contexts, excluded_contexts) require approval and cannot be applied by Terraform: unlike feature flags, service tokens cannot bypass segment approvals. See LaunchDarkly feature request FROPS-190. A segment with no targeting can still be created and managed. If targeting is configured, terraform apply fails with an "approval is required" error. Manage targeting through the approval workflow, for example with lifecycle { ignore_changes = [included, excluded, rules] }, or disable segment approvals for the environment.
+  -> Note: When segment approvals https://launchdarkly.com/docs/home/releases/approvals are enabled for an environment, segment targeting changes (included, excluded, rules, included_contexts, excluded_contexts) require approval and cannot be applied by Terraform: unlike feature flags, service tokens cannot bypass segment approvals. See LaunchDarkly feature request FROPS-190. A segment with no targeting can still be created and managed. If targeting is configured, terraform apply fails with an "approval is required" error. Manage targeting through the approval workflow, for example with lifecycle { ignore_changes = [included, excluded, rules] }, or disable segment approvals for the environment.
 ---
 
 # launchdarkly_segment (Resource)
@@ -14,7 +14,7 @@ Provides a LaunchDarkly segment resource.
 
 This resource allows you to create and manage segments within your LaunchDarkly organization.
 
--> **Note:** When [segment approvals](https://docs.launchdarkly.com/home/releases/approvals) are enabled for an environment, segment **targeting** changes (`included`, `excluded`, `rules`, `included_contexts`, `excluded_contexts`) require approval and cannot be applied by Terraform: unlike feature flags, service tokens cannot bypass segment approvals. See LaunchDarkly feature request FROPS-190. A segment with no targeting can still be created and managed. If targeting is configured, `terraform apply` fails with an "approval is required" error. Manage targeting through the approval workflow, for example with `lifecycle { ignore_changes = [included, excluded, rules] }`, or disable segment approvals for the environment.
+-> **Note:** When [segment approvals](https://launchdarkly.com/docs/home/releases/approvals) are enabled for an environment, segment **targeting** changes (`included`, `excluded`, `rules`, `included_contexts`, `excluded_contexts`) require approval and cannot be applied by Terraform: unlike feature flags, service tokens cannot bypass segment approvals. See LaunchDarkly feature request FROPS-190. A segment with no targeting can still be created and managed. If targeting is configured, `terraform apply` fails with an "approval is required" error. Manage targeting through the approval workflow, for example with `lifecycle { ignore_changes = [included, excluded, rules] }`, or disable segment approvals for the environment.
 
 ## Example Usage
 
@@ -263,7 +263,7 @@ Optional:
 Required:
 
 - `attribute` (String) The user attribute to operate on
-- `op` (String) The operator associated with the rule clause. Available options are `in`, `endsWith`, `startsWith`, `matches`, `contains`, `lessThan`, `lessThanOrEqual`, `greaterThanOrEqual`, `before`, `after`, `segmentMatch`, `semVerEqual`, `semVerLessThan`, and `semVerGreaterThan`. Read LaunchDarkly's [Operators](https://docs.launchdarkly.com/sdk/concepts/flag-evaluation-rules#operators) documentation for more information.
+- `op` (String) The operator associated with the rule clause. Available options are `in`, `endsWith`, `startsWith`, `matches`, `contains`, `lessThan`, `lessThanOrEqual`, `greaterThanOrEqual`, `before`, `after`, `segmentMatch`, `semVerEqual`, `semVerLessThan`, and `semVerGreaterThan`. Read LaunchDarkly's [Operators](https://launchdarkly.com/docs/sdk/concepts/flag-evaluation-rules#operators) documentation for more information.
 - `values` (List of String) The list of values associated with the rule clause.
 
 Optional:

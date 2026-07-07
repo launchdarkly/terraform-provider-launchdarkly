@@ -218,7 +218,7 @@ func featureFlagSchemaAttributes() map[string]schema.Attribute {
 		},
 		CUSTOM_PROPERTIES: schema.MapNestedAttribute{
 			Optional:    true,
-			Description: "The feature flag's [custom properties](https://docs.launchdarkly.com/home/connecting/custom-properties), keyed by the custom property key. Adding or removing one custom property does not affect the others.",
+			Description: "The feature flag's [custom properties](https://launchdarkly.com/docs/home/infrastructure/custom-properties), keyed by the custom property key. Adding or removing one custom property does not affect the others.",
 			Validators: []validator.Map{
 				mapvalidator.SizeAtMost(CUSTOM_PROPERTY_ITEM_LIMIT),
 				mapvalidator.KeysAre(stringLenBetween(1, CUSTOM_PROPERTY_CHAR_LIMIT)),

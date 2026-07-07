@@ -5,7 +5,7 @@ subcategory: ""
 description: |-
   Provides a LaunchDarkly metric resource.
   This resource allows you to create and manage metrics within your LaunchDarkly organization.
-  To learn more about metrics and experimentation, read Experimentation Documentation https://docs.launchdarkly.com/home/experimentation.
+  To learn more about metrics and experimentation, read Experimentation Documentation https://launchdarkly.com/docs/home/experimentation.
 ---
 
 # launchdarkly_metric (Resource)
@@ -14,7 +14,7 @@ Provides a LaunchDarkly metric resource.
 
 This resource allows you to create and manage metrics within your LaunchDarkly organization.
 
-To learn more about metrics and experimentation, read [Experimentation Documentation](https://docs.launchdarkly.com/home/experimentation).
+To learn more about metrics and experimentation, read [Experimentation Documentation](https://launchdarkly.com/docs/home/experimentation).
 
 ## Example Usage
 
@@ -46,7 +46,7 @@ resource "launchdarkly_metric" "example" {
 ### Optional
 
 - `analysis_type` (String) The method for analyzing metric events. Available choices are `mean` and `percentile`.
-- `analysis_units` (Set of String) A set of one or more context kinds that this metric can measure events from. Metrics can only use context kinds marked as "Available for experiments." For more information, read [Allocating experiment audiences](https://docs.launchdarkly.com/home/creating-experiments/allocation).
+- `analysis_units` (Set of String) A set of one or more context kinds that this metric can measure events from. Metrics can only use context kinds marked as "Available for experiments." For more information, read [Allocating experiment audiences](https://launchdarkly.com/docs/home/experimentation/allocation).
 - `description` (String) The description of the metric's purpose.
 - `event_key` (String) The event key for your metric (if custom metric)
 - `include_units_without_events` (Boolean) Include units that did not send any events and set their value to 0.

@@ -55,7 +55,7 @@ func (r *ContextKindResource) Metadata(_ context.Context, req resource.MetadataR
 
 func (r *ContextKindResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages a LaunchDarkly [context kind](https://launchdarkly.com/docs/home/observability/contexts/context-kinds). " +
+		MarkdownDescription: "Manages a LaunchDarkly [context kind](https://launchdarkly.com/docs/home/flags/context-kinds). " +
 			"`terraform destroy` archives the kind rather than deleting it. LaunchDarkly does not expose a delete endpoint for " +
 			"context kinds. Archived kinds remain in the project but are unavailable for targeting.\n\n" +
 			"### Migrating from the `restapi` provider\n\n" +

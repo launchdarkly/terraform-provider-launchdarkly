@@ -5,7 +5,7 @@ subcategory: ""
 description: |-
   Provides a LaunchDarkly metric group resource.
   ~> Beta: This resource uses a beta LaunchDarkly API. Beta resources may change or be removed in future versions.
-  This resource allows you to create and manage metric groups within your LaunchDarkly project. A metric group is an ordered funnel or an unordered standard collection of metrics that you can reference from experiments. To learn more, read Experimentation Documentation https://docs.launchdarkly.com/home/experimentation.
+  This resource allows you to create and manage metric groups within your LaunchDarkly project. A metric group is an ordered funnel or an unordered standard collection of metrics that you can reference from experiments. To learn more, read Experimentation Documentation https://launchdarkly.com/docs/home/experimentation.
 ---
 
 # launchdarkly_metric_group (Resource)
@@ -14,7 +14,7 @@ Provides a LaunchDarkly metric group resource.
 
 ~> **Beta:** This resource uses a beta LaunchDarkly API. Beta resources may change or be removed in future versions.
 
-This resource allows you to create and manage metric groups within your LaunchDarkly project. A metric group is an ordered `funnel` or an unordered `standard` collection of metrics that you can reference from experiments. To learn more, read [Experimentation Documentation](https://docs.launchdarkly.com/home/experimentation).
+This resource allows you to create and manage metric groups within your LaunchDarkly project. A metric group is an ordered `funnel` or an unordered `standard` collection of metrics that you can reference from experiments. To learn more, read [Experimentation Documentation](https://launchdarkly.com/docs/home/experimentation).
 
 ## Example Usage
 

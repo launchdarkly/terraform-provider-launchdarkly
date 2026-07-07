@@ -55,7 +55,7 @@ func (r *MetricGroupResource) Schema(_ context.Context, _ resource.SchemaRequest
 
 ~> **Beta:** This resource uses a beta LaunchDarkly API. Beta resources may change or be removed in future versions.
 
-This resource allows you to create and manage metric groups within your LaunchDarkly project. A metric group is an ordered ` + "`funnel`" + ` or an unordered ` + "`standard`" + ` collection of metrics that you can reference from experiments. To learn more, read [Experimentation Documentation](https://docs.launchdarkly.com/home/experimentation).`,
+This resource allows you to create and manage metric groups within your LaunchDarkly project. A metric group is an ordered ` + "`funnel`" + ` or an unordered ` + "`standard`" + ` collection of metrics that you can reference from experiments. To learn more, read [Experimentation Documentation](https://launchdarkly.com/docs/home/experimentation).`,
 		Attributes: metricGroupSchemaAttributes(),
 	}
 }

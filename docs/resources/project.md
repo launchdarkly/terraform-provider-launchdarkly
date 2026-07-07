@@ -94,8 +94,8 @@ Optional:
 - `approval_settings` (Attributes) (see [below for nested schema](#nestedatt--environments--approval_settings))
 - `confirm_changes` (Boolean) Set to `true` if this environment requires confirmation for flag and segment changes. This field defaults to `false` when not set.
 - `critical` (Boolean) Denotes whether the environment is critical.
-- `default_track_events` (Boolean) Set to `true` to enable data export for every flag created in this environment after you configure this argument. This field defaults to `false` when not set. To learn more, read [Data Export](https://docs.launchdarkly.com/home/data-export).
-- `default_ttl` (Number) The TTL for the environment. This must be between 0 and 60 minutes. The TTL setting only applies to environments using the PHP SDK. This field defaults to `0` when not set. To learn more, read [TTL settings](https://docs.launchdarkly.com/home/organize/environments#ttl-settings).
+- `default_track_events` (Boolean) Set to `true` to enable data export for every flag created in this environment after you configure this argument. This field defaults to `false` when not set. To learn more, read [Data Export](https://launchdarkly.com/docs/integrations/data-export).
+- `default_ttl` (Number) The TTL for the environment. This must be between 0 and 60 minutes. The TTL setting only applies to environments using the PHP SDK. This field defaults to `0` when not set. To learn more, read [TTL settings](https://launchdarkly.com/docs/home/account/environment#ttl-settings).
 - `key` (String) The project-unique key for the environment. Must equal the map key. It defaults to the map key when omitted. Changing it (or the map key) replaces the environment.
 - `require_comments` (Boolean) Set to `true` if this environment requires comments for flag and segment changes. This field defaults to `false` when not set.
 - `secure_mode` (Boolean) Set to `true` to ensure a user of the client-side SDK cannot impersonate another user. This field defaults to `false` when not set.

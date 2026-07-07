@@ -38,7 +38,7 @@ func (d *RelayProxyConfigurationDataSource) Metadata(_ context.Context, req data
 
 func (d *RelayProxyConfigurationDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "Provides a LaunchDarkly Relay Proxy configuration data source for use with the Relay Proxy's [automatic configuration feature](https://docs.launchdarkly.com/home/relay-proxy/automatic-configuration).\n\n-> **Note:** Relay Proxy automatic configuration is available to customers on an Enterprise LaunchDarkly plan. To learn more, [read about our pricing](https://launchdarkly.com/pricing/). To upgrade your plan, [contact LaunchDarkly Sales](https://launchdarkly.com/contact-sales/).\n\nThis data source allows you to retrieve Relay Proxy configuration information from your LaunchDarkly organization.\n\n-> **Note:** It is not possible for this data source to retrieve your Relay Proxy configuration's unique key. This is because the unique key is only exposed upon creation. If you need to reference the Relay Proxy configuration's unique key in your terraform config, use the `launchdarkly_relay_proxy_configuration` resource instead.",
+		Description: "Provides a LaunchDarkly Relay Proxy configuration data source for use with the Relay Proxy's [automatic configuration feature](https://launchdarkly.com/docs/sdk/relay-proxy/automatic-configuration).\n\n-> **Note:** Relay Proxy automatic configuration is available to customers on an Enterprise LaunchDarkly plan. To learn more, [read about our pricing](https://launchdarkly.com/pricing/). To upgrade your plan, [contact LaunchDarkly Sales](https://launchdarkly.com/contact-sales/).\n\nThis data source allows you to retrieve Relay Proxy configuration information from your LaunchDarkly organization.\n\n-> **Note:** It is not possible for this data source to retrieve your Relay Proxy configuration's unique key. This is because the unique key is only exposed upon creation. If you need to reference the Relay Proxy configuration's unique key in your terraform config, use the `launchdarkly_relay_proxy_configuration` resource instead.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				Required:    true,
@@ -52,7 +52,7 @@ func (d *RelayProxyConfigurationDataSource) Schema(_ context.Context, _ datasour
 				Computed:    true,
 				Description: "The last 4 characters of the Relay Proxy configuration's unique key.",
 			},
-			POLICY: frameworkPolicyStatementsDataSourceAttribute("The Relay Proxy configuration's rule policy block. This determines what content the Relay Proxy receives. To learn more, read [Understanding policies](https://docs.launchdarkly.com/home/members/role-policies#understanding-policies)."),
+			POLICY: frameworkPolicyStatementsDataSourceAttribute("The Relay Proxy configuration's rule policy block. This determines what content the Relay Proxy receives. To learn more, read [Understanding policies](https://launchdarkly.com/docs/home/account/roles/role-policies#understanding-policies)."),
 		},
 	}
 }

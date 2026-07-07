@@ -3,7 +3,7 @@
 page_title: "launchdarkly_context_kind Resource - launchdarkly"
 subcategory: ""
 description: |-
-  Manages a LaunchDarkly context kind https://launchdarkly.com/docs/home/observability/contexts/context-kinds. terraform destroy archives the kind rather than deleting it. LaunchDarkly does not expose a delete endpoint for context kinds. Archived kinds remain in the project but are unavailable for targeting.
+  Manages a LaunchDarkly context kind https://launchdarkly.com/docs/home/flags/context-kinds. terraform destroy archives the kind rather than deleting it. LaunchDarkly does not expose a delete endpoint for context kinds. Archived kinds remain in the project but are unavailable for targeting.
   Migrating from the restapi provider
   If you currently manage context kinds via the Mastercard restapi_object resource, follow this sequence to migrate without losing state:
   Add a launchdarkly_context_kind resource matching the existing kind.terraform import launchdarkly_context_kind.<name> <project_key>/<kind_key>.terraform plan to confirm no diff.Remove the restapi_object block.Apply.
@@ -11,7 +11,7 @@ description: |-
 
 # launchdarkly_context_kind (Resource)
 
-Manages a LaunchDarkly [context kind](https://launchdarkly.com/docs/home/observability/contexts/context-kinds). `terraform destroy` archives the kind rather than deleting it. LaunchDarkly does not expose a delete endpoint for context kinds. Archived kinds remain in the project but are unavailable for targeting.
+Manages a LaunchDarkly [context kind](https://launchdarkly.com/docs/home/flags/context-kinds). `terraform destroy` archives the kind rather than deleting it. LaunchDarkly does not expose a delete endpoint for context kinds. Archived kinds remain in the project but are unavailable for targeting.
 
 ### Migrating from the `restapi` provider
 

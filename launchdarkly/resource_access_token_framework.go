@@ -92,7 +92,7 @@ func accessTokenSchemaAttributes() map[string]schema.Attribute {
 			// framework requires Computed: true alongside Default.
 			Computed:    true,
 			Default:     booldefault.StaticBool(false),
-			Description: addForceNewDescription("Whether the token is a [service token](https://docs.launchdarkly.com/home/account-security/api-access-tokens#service-tokens).", true),
+			Description: addForceNewDescription("Whether the token is a [service token](https://launchdarkly.com/docs/home/account/api#service-tokens).", true),
 			PlanModifiers: []planmodifier.Bool{
 				boolplanmodifier.RequiresReplace(),
 			},
@@ -123,7 +123,7 @@ func accessTokenSchemaAttributes() map[string]schema.Attribute {
 		},
 		INLINE_ROLES: frameworkPolicyStatementsResourceAttribute(
 			false,
-			"Define inline custom roles. An array of statements with three attributes: effect, resources, actions. May be used in place of a built-in or custom role. [Using polices](https://docs.launchdarkly.com/home/members/role-policies).",
+			"Define inline custom roles. An array of statements with three attributes: effect, resources, actions. May be used in place of a built-in or custom role. [Using polices](https://launchdarkly.com/docs/home/account/roles/role-policies).",
 			"",
 		),
 	}

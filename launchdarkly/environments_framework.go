@@ -132,7 +132,7 @@ func projectEnvironmentsAttribute() schema.MapNestedAttribute {
 					Computed:    true,
 					Default:     int64default.StaticInt64(0),
 					Validators:  []validator.Int64{int64validator.Between(0, 60)},
-					Description: "The TTL for the environment. This must be between 0 and 60 minutes. The TTL setting only applies to environments using the PHP SDK. This field defaults to `0` when not set. To learn more, read [TTL settings](https://docs.launchdarkly.com/home/organize/environments#ttl-settings).",
+					Description: "The TTL for the environment. This must be between 0 and 60 minutes. The TTL setting only applies to environments using the PHP SDK. This field defaults to `0` when not set. To learn more, read [TTL settings](https://launchdarkly.com/docs/home/account/environment#ttl-settings).",
 				},
 				SECURE_MODE: schema.BoolAttribute{
 					Optional:    true,
@@ -144,7 +144,7 @@ func projectEnvironmentsAttribute() schema.MapNestedAttribute {
 					Optional:    true,
 					Computed:    true,
 					Default:     booldefault.StaticBool(false),
-					Description: "Set to `true` to enable data export for every flag created in this environment after you configure this argument. This field defaults to `false` when not set. To learn more, read [Data Export](https://docs.launchdarkly.com/home/data-export).",
+					Description: "Set to `true` to enable data export for every flag created in this environment after you configure this argument. This field defaults to `false` when not set. To learn more, read [Data Export](https://launchdarkly.com/docs/integrations/data-export).",
 				},
 				REQUIRE_COMMENTS: schema.BoolAttribute{
 					Optional:    true,

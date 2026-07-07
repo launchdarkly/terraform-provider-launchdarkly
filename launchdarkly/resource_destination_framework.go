@@ -55,7 +55,7 @@ func (r *DestinationResource) Schema(_ context.Context, _ resource.SchemaRequest
 
 Data Export Destinations are locations that receive exported data. This resource allows you to configure destinations for the export of raw analytics data, including feature flag requests, analytics events, custom events, and more.
 
-To learn more about data export, read [Data Export Documentation](https://docs.launchdarkly.com/integrations/data-export).`,
+To learn more about data export, read [Data Export Documentation](https://launchdarkly.com/docs/integrations/data-export).`,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				Computed:      true,
