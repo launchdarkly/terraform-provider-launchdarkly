@@ -133,7 +133,7 @@ func testAccCheckModelConfigExists(resourceName string) resource.TestCheckFunc {
 		modelConfigKey := rs.Primary.Attributes[KEY]
 
 		client := mustTestAccClient()
-		_, _, err := client.ld.AIConfigsApi.GetModelConfig(client.ctx, projectKey, modelConfigKey).Execute()
+		_, _, err := client.ld.AgentControlApi.GetModelConfig(client.ctx, projectKey, modelConfigKey).Execute()
 		if err != nil {
 			return fmt.Errorf("received an error getting model config: %s", err)
 		}
@@ -151,7 +151,7 @@ var testAccCheckModelConfigDestroy = func(s *terraform.State) error {
 		projectKey := rs.Primary.Attributes[PROJECT_KEY]
 		modelConfigKey := rs.Primary.Attributes[KEY]
 
-		_, res, err := client.ld.AIConfigsApi.GetModelConfig(client.ctx, projectKey, modelConfigKey).Execute()
+		_, res, err := client.ld.AgentControlApi.GetModelConfig(client.ctx, projectKey, modelConfigKey).Execute()
 		if isStatusNotFound(res) {
 			continue
 		}

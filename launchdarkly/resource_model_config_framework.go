@@ -21,7 +21,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
-	ldapi "github.com/launchdarkly/api-client-go/v22"
+	ldapi "github.com/launchdarkly/api-client-go/v23"
 )
 
 var (
@@ -258,7 +258,7 @@ func (r *ModelConfigResource) Create(ctx context.Context, req resource.CreateReq
 	}
 
 	err := r.client.withConcurrency(r.client.ctx, func() error {
-		_, _, err := r.client.ld.AIConfigsApi.PostModelConfig(r.client.ctx, projectKey).ModelConfigPost(post).Execute()
+		_, _, err := r.client.ld.AgentControlApi.PostModelConfig(r.client.ctx, projectKey).ModelConfigPost(post).Execute()
 		return err
 	})
 	if err != nil {
@@ -316,7 +316,7 @@ func (r *ModelConfigResource) Delete(ctx context.Context, req resource.DeleteReq
 	var res *http.Response
 	err := r.client.withConcurrency(r.client.ctx, func() error {
 		var e error
-		res, e = r.client.ld.AIConfigsApi.DeleteModelConfig(r.client.ctx, projectKey, key).Execute()
+		res, e = r.client.ld.AgentControlApi.DeleteModelConfig(r.client.ctx, projectKey, key).Execute()
 		return e
 	})
 	if err != nil {
@@ -364,7 +364,7 @@ func (r *ModelConfigResource) readIntoModel(
 	var res *http.Response
 	var err error
 	err = r.client.withConcurrency(r.client.ctx, func() error {
-		modelConfig, res, err = r.client.ld.AIConfigsApi.GetModelConfig(r.client.ctx, projectKey, key).Execute()
+		modelConfig, res, err = r.client.ld.AgentControlApi.GetModelConfig(r.client.ctx, projectKey, key).Execute()
 		return err
 	})
 	if err != nil {

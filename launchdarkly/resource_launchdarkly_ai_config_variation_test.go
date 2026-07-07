@@ -364,7 +364,7 @@ func testAccCheckAIConfigVariationExists(resourceName string) resource.TestCheck
 		variationKey := rs.Primary.Attributes[KEY]
 
 		client := mustTestAccClient()
-		_, _, err := client.ld.AIConfigsApi.GetAIConfigVariation(client.ctx, projectKey, configKey, variationKey).Execute()
+		_, _, err := client.ld.AgentControlApi.GetAIConfigVariation(client.ctx, projectKey, configKey, variationKey).Execute()
 		if err != nil {
 			return fmt.Errorf("received an error getting AI config variation: %s", err)
 		}
@@ -383,7 +383,7 @@ var testAccCheckAIConfigVariationDestroy = func(s *terraform.State) error {
 		configKey := rs.Primary.Attributes[AI_CONFIG_KEY]
 		variationKey := rs.Primary.Attributes[KEY]
 
-		_, res, err := client.ld.AIConfigsApi.GetAIConfigVariation(client.ctx, projectKey, configKey, variationKey).Execute()
+		_, res, err := client.ld.AgentControlApi.GetAIConfigVariation(client.ctx, projectKey, configKey, variationKey).Execute()
 		if isStatusNotFound(res) {
 			continue
 		}

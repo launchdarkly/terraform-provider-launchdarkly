@@ -8,7 +8,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
-	ldapi "github.com/launchdarkly/api-client-go/v22"
+	ldapi "github.com/launchdarkly/api-client-go/v23"
 )
 
 var _ datasource.DataSource = &AIConfigVariationDataSource{}
@@ -109,7 +109,7 @@ func (d *AIConfigVariationDataSource) Read(ctx context.Context, req datasource.R
 	var variationsResp *ldapi.AIConfigVariationsResponse
 	var err error
 	err = d.client.withConcurrency(d.client.ctx, func() error {
-		variationsResp, _, err = d.client.ld.AIConfigsApi.GetAIConfigVariation(d.client.ctx, projectKey, configKey, variationKey).Execute()
+		variationsResp, _, err = d.client.ld.AgentControlApi.GetAIConfigVariation(d.client.ctx, projectKey, configKey, variationKey).Execute()
 		return err
 	})
 	if err != nil {

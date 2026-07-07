@@ -18,7 +18,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
-	ldapi "github.com/launchdarkly/api-client-go/v22"
+	ldapi "github.com/launchdarkly/api-client-go/v23"
 )
 
 var (
@@ -260,7 +260,7 @@ func (r *AIConfigResource) Create(ctx context.Context, req resource.CreateReques
 	}
 
 	err := r.client.withConcurrency(r.client.ctx, func() error {
-		_, _, e := r.client.ld.AIConfigsApi.PostAIConfig(r.client.ctx, projectKey).AIConfigPost(post).Execute()
+		_, _, e := r.client.ld.AgentControlApi.PostAIConfig(r.client.ctx, projectKey).AIConfigPost(post).Execute()
 		return e
 	})
 	if err != nil {
@@ -350,7 +350,7 @@ func (r *AIConfigResource) Update(ctx context.Context, req resource.UpdateReques
 
 	if hasChanges {
 		err := r.client.withConcurrency(r.client.ctx, func() error {
-			_, _, e := r.client.ld.AIConfigsApi.PatchAIConfig(r.client.ctx, projectKey, configKey).AIConfigPatch(patch).Execute()
+			_, _, e := r.client.ld.AgentControlApi.PatchAIConfig(r.client.ctx, projectKey, configKey).AIConfigPatch(patch).Execute()
 			return e
 		})
 		if err != nil {
@@ -384,7 +384,7 @@ func (r *AIConfigResource) Delete(ctx context.Context, req resource.DeleteReques
 		var res *http.Response
 		err := r.client.withConcurrency(r.client.ctx, func() error {
 			var e error
-			res, e = r.client.ld.AIConfigsApi.DeleteAIConfig(r.client.ctx, projectKey, configKey).Execute()
+			res, e = r.client.ld.AgentControlApi.DeleteAIConfig(r.client.ctx, projectKey, configKey).Execute()
 			return e
 		})
 		if err == nil || isStatusNotFound(res) {
@@ -421,7 +421,7 @@ func (r *AIConfigResource) readIntoModel(
 	var res *http.Response
 	var err error
 	err = r.client.withConcurrency(r.client.ctx, func() error {
-		cfg, res, err = r.client.ld.AIConfigsApi.GetAIConfig(r.client.ctx, projectKey, configKey).Execute()
+		cfg, res, err = r.client.ld.AgentControlApi.GetAIConfig(r.client.ctx, projectKey, configKey).Execute()
 		return err
 	})
 	if err != nil {

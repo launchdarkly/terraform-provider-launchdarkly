@@ -15,7 +15,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
-	ldapi "github.com/launchdarkly/api-client-go/v22"
+	ldapi "github.com/launchdarkly/api-client-go/v23"
 )
 
 var (
@@ -395,7 +395,7 @@ func (r *AIAgentGraphResource) Create(ctx context.Context, req resource.CreateRe
 		return
 	}
 	err = beta.withConcurrency(beta.ctx, func() error {
-		_, _, err := beta.ld.AIConfigsApi.PostAgentGraph(beta.ctx, projectKey).LDAPIVersion(agentGraphBetaVersion).AgentGraphPost(*post).Execute()
+		_, _, err := beta.ld.AgentControlApi.PostAgentGraph(beta.ctx, projectKey).LDAPIVersion(agentGraphBetaVersion).AgentGraphPost(*post).Execute()
 		return err
 	})
 	if err != nil {
@@ -496,7 +496,7 @@ func (r *AIAgentGraphResource) Update(ctx context.Context, req resource.UpdateRe
 		return
 	}
 	err = beta.withConcurrency(beta.ctx, func() error {
-		_, _, err := beta.ld.AIConfigsApi.PatchAgentGraph(beta.ctx, projectKey, graphKey).LDAPIVersion(agentGraphBetaVersion).AgentGraphPatch(*patch).Execute()
+		_, _, err := beta.ld.AgentControlApi.PatchAgentGraph(beta.ctx, projectKey, graphKey).LDAPIVersion(agentGraphBetaVersion).AgentGraphPatch(*patch).Execute()
 		return err
 	})
 	if err != nil {
@@ -527,7 +527,7 @@ func (r *AIAgentGraphResource) Delete(ctx context.Context, req resource.DeleteRe
 	var res *http.Response
 	err = beta.withConcurrency(beta.ctx, func() error {
 		var e error
-		res, e = beta.ld.AIConfigsApi.DeleteAgentGraph(beta.ctx, projectKey, graphKey).LDAPIVersion(agentGraphBetaVersion).Execute()
+		res, e = beta.ld.AgentControlApi.DeleteAgentGraph(beta.ctx, projectKey, graphKey).LDAPIVersion(agentGraphBetaVersion).Execute()
 		return e
 	})
 	if err != nil {
@@ -567,7 +567,7 @@ func (r *AIAgentGraphResource) readIntoModel(
 	var graph *ldapi.AgentGraph
 	var res *http.Response
 	err = beta.withConcurrency(beta.ctx, func() error {
-		graph, res, err = beta.ld.AIConfigsApi.GetAgentGraph(beta.ctx, projectKey, graphKey).LDAPIVersion(agentGraphBetaVersion).Execute()
+		graph, res, err = beta.ld.AgentControlApi.GetAgentGraph(beta.ctx, projectKey, graphKey).LDAPIVersion(agentGraphBetaVersion).Execute()
 		return err
 	})
 	if err != nil {

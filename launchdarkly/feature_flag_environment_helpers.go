@@ -3,7 +3,7 @@ package launchdarkly
 import (
 	"net/http"
 
-	ldapi "github.com/launchdarkly/api-client-go/v22"
+	ldapi "github.com/launchdarkly/api-client-go/v23"
 )
 
 // rule is the patch payload shape used by acceptance tests that patch

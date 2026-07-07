@@ -2,7 +2,7 @@ package launchdarkly
 
 import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
-	ldapi "github.com/launchdarkly/api-client-go/v22"
+	ldapi "github.com/launchdarkly/api-client-go/v23"
 )
 
 // findContextKindByKey scans a context-kind list response for an item matching the given key.

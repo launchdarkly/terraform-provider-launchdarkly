@@ -157,7 +157,7 @@ func testAccCheckAIToolExists(resourceName string) resource.TestCheckFunc {
 		toolKey := rs.Primary.Attributes[KEY]
 
 		client := mustTestAccClient()
-		_, _, err := client.ld.AIConfigsApi.GetAITool(client.ctx, projectKey, toolKey).Execute()
+		_, _, err := client.ld.AgentControlApi.GetAITool(client.ctx, projectKey, toolKey).Execute()
 		if err != nil {
 			return fmt.Errorf("received an error getting AI tool: %s", err)
 		}
@@ -175,7 +175,7 @@ var testAccCheckAIToolDestroy = func(s *terraform.State) error {
 		projectKey := rs.Primary.Attributes[PROJECT_KEY]
 		toolKey := rs.Primary.Attributes[KEY]
 
-		_, res, err := client.ld.AIConfigsApi.GetAITool(client.ctx, projectKey, toolKey).Execute()
+		_, res, err := client.ld.AgentControlApi.GetAITool(client.ctx, projectKey, toolKey).Execute()
 		if isStatusNotFound(res) {
 			continue
 		}

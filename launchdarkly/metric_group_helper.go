@@ -6,7 +6,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/types"
-	ldapi "github.com/launchdarkly/api-client-go/v22"
+	ldapi "github.com/launchdarkly/api-client-go/v23"
 )
 
 // Metric group kinds. A funnel metric group orders its metrics into a
@@ -47,18 +47,13 @@ func newMetricGroupBetaClient(c *Client) (*Client, error) {
 }
 
 // metricGroupMaintainerID extracts the maintainer's member ID from the API
-// representation. The beta API returns maintainer as {key, kind, _member}, a
-// shape the v22 MaintainerRep model ({member, team}) predates — the member ID
-// arrives in AdditionalProperties["key"]. The typed read stays first so a
-// future client regen takes over transparently.
+// representation. The API returns maintainer as {key, kind, _member} where
+// key holds the member ID (or team key when kind is "team").
 func metricGroupMaintainerID(m ldapi.MaintainerRep) string {
 	if m.Member != nil && m.Member.GetId() != "" {
 		return m.Member.GetId()
 	}
-	if k, ok := m.AdditionalProperties["key"].(string); ok {
-		return k
-	}
-	return ""
+	return m.GetKey()
 }
 
 // metricGroupIdToKeys splits a composite metric group ID into its project key

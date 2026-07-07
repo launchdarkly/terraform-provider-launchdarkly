@@ -8,7 +8,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
-	ldapi "github.com/launchdarkly/api-client-go/v22"
+	ldapi "github.com/launchdarkly/api-client-go/v23"
 )
 
 var _ datasource.DataSource = &AIConfigDataSource{}
@@ -104,7 +104,7 @@ func (d *AIConfigDataSource) Read(ctx context.Context, req datasource.ReadReques
 	var aiConfig *ldapi.AIConfig
 	var err error
 	err = d.client.withConcurrency(d.client.ctx, func() error {
-		aiConfig, _, err = d.client.ld.AIConfigsApi.GetAIConfig(d.client.ctx, projectKey, key).Execute()
+		aiConfig, _, err = d.client.ld.AgentControlApi.GetAIConfig(d.client.ctx, projectKey, key).Execute()
 		return err
 	})
 	if err != nil {

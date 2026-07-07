@@ -13,7 +13,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
-	ldapi "github.com/launchdarkly/api-client-go/v22"
+	ldapi "github.com/launchdarkly/api-client-go/v23"
 )
 
 var (
@@ -217,7 +217,7 @@ func (r *AIToolResource) Create(ctx context.Context, req resource.CreateRequest,
 	}
 
 	err = r.client.withConcurrency(r.client.ctx, func() error {
-		_, _, err := r.client.ld.AIConfigsApi.PostAITool(r.client.ctx, projectKey).AIToolPost(*post).Execute()
+		_, _, err := r.client.ld.AgentControlApi.PostAITool(r.client.ctx, projectKey).AIToolPost(*post).Execute()
 		return err
 	})
 	if err != nil {
@@ -298,7 +298,7 @@ func (r *AIToolResource) Update(ctx context.Context, req resource.UpdateRequest,
 	}
 
 	err := r.client.withConcurrency(r.client.ctx, func() error {
-		_, _, err := r.client.ld.AIConfigsApi.PatchAITool(r.client.ctx, projectKey, toolKey).AIToolPatch(*patch).Execute()
+		_, _, err := r.client.ld.AgentControlApi.PatchAITool(r.client.ctx, projectKey, toolKey).AIToolPatch(*patch).Execute()
 		return err
 	})
 	if err != nil {
@@ -322,7 +322,7 @@ func (r *AIToolResource) Delete(ctx context.Context, req resource.DeleteRequest,
 	projectKey := data.ProjectKey.ValueString()
 	toolKey := data.Key.ValueString()
 	err := r.client.withConcurrency(r.client.ctx, func() error {
-		_, err := r.client.ld.AIConfigsApi.DeleteAITool(r.client.ctx, projectKey, toolKey).Execute()
+		_, err := r.client.ld.AgentControlApi.DeleteAITool(r.client.ctx, projectKey, toolKey).Execute()
 		return err
 	})
 	if err != nil {
@@ -355,7 +355,7 @@ func (r *AIToolResource) readIntoModel(
 	var res *http.Response
 	var err error
 	err = r.client.withConcurrency(r.client.ctx, func() error {
-		tool, res, err = r.client.ld.AIConfigsApi.GetAITool(r.client.ctx, projectKey, toolKey).Execute()
+		tool, res, err = r.client.ld.AgentControlApi.GetAITool(r.client.ctx, projectKey, toolKey).Execute()
 		return err
 	})
 	if err != nil {

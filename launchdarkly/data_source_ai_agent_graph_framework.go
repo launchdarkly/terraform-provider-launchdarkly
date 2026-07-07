@@ -7,7 +7,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
-	ldapi "github.com/launchdarkly/api-client-go/v22"
+	ldapi "github.com/launchdarkly/api-client-go/v23"
 )
 
 var _ datasource.DataSource = &AIAgentGraphDataSource{}
@@ -96,7 +96,7 @@ func (d *AIAgentGraphDataSource) Read(ctx context.Context, req datasource.ReadRe
 	}
 	var graph *ldapi.AgentGraph
 	err = beta.withConcurrency(beta.ctx, func() error {
-		graph, _, err = beta.ld.AIConfigsApi.GetAgentGraph(beta.ctx, projectKey, graphKey).LDAPIVersion(agentGraphBetaVersion).Execute()
+		graph, _, err = beta.ld.AgentControlApi.GetAgentGraph(beta.ctx, projectKey, graphKey).LDAPIVersion(agentGraphBetaVersion).Execute()
 		return err
 	})
 	if err != nil {

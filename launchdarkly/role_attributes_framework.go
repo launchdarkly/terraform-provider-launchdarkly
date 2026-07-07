@@ -18,7 +18,7 @@ import (
 	rsschema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
-	ldapi "github.com/launchdarkly/api-client-go/v22"
+	ldapi "github.com/launchdarkly/api-client-go/v23"
 )
 
 const roleAttributesDescription = "A map of role attributes, keyed by the role attribute key with a string array of resource keys as each value. For example, if your policy statement defines the resource `\"proj/$${roleAttribute/testAttribute}\"`, the key would be `testAttribute` and the values the keys of the projects you wanted to assign access to."
