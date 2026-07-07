@@ -234,7 +234,7 @@ func (r *IPAllowlistEntryResource) Create(ctx context.Context, req resource.Crea
 		return
 	}
 
-	plan.ID = types.StringValue(entry.ID)
+	plan.ID = types.StringValue(entry.Id)
 	r.readIntoModel(plan.ID.ValueString(), &plan, &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
 		return
@@ -309,7 +309,7 @@ func (r *IPAllowlistEntryResource) readIntoModel(id string, data *IPAllowlistEnt
 		data.ID = types.StringNull()
 		return
 	}
-	data.ID = types.StringValue(entry.ID)
+	data.ID = types.StringValue(entry.Id)
 	data.IPAddress = types.StringValue(entry.IpAddress)
 	data.Description = stringValueFromPointer(entry.Description)
 }

@@ -39,11 +39,11 @@ func cleanupOrphanIpAllowlistEntries(t *testing.T) {
 		if _, hit := targets[entry.IpAddress]; !hit {
 			continue
 		}
-		if delErr := deleteIpAllowlistEntry(client, entry.ID); delErr != nil {
-			t.Logf("ip-allowlist cleanup: failed to delete orphan %s (%s): %s", entry.ID, entry.IpAddress, delErr)
+		if delErr := deleteIpAllowlistEntry(client, entry.Id); delErr != nil {
+			t.Logf("ip-allowlist cleanup: failed to delete orphan %s (%s): %s", entry.Id, entry.IpAddress, delErr)
 			continue
 		}
-		t.Logf("ip-allowlist cleanup: deleted orphan entry %s for %s", entry.ID, entry.IpAddress)
+		t.Logf("ip-allowlist cleanup: deleted orphan entry %s for %s", entry.Id, entry.IpAddress)
 	}
 }
 
