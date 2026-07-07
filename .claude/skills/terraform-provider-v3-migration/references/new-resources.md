@@ -2,7 +2,7 @@
 
 These are the resources and data sources that v3 adds over the latest v2 line. v3 removes none. Use this matrix with Workflow B in the parent `SKILL.md`.
 
-All nine resources ship in the current v3 release, and all nine passed a full CRUD + data-source verification on a real account on 2026-07-02 (see the status table). Re-run Workflow B when a resource schema changes or before promoting the beta-API resources to stable. The canonical config for each is `examples/resources/launchdarkly_<name>/resource.tf` — read it at verification time rather than trusting the summaries below, since scaffolds can change.
+All ten resources ship in the current v3 line. The first nine passed a full CRUD + data-source verification on a real account on 2026-07-02, and `launchdarkly_sdk_key` passed the equivalent stage-3 pipeline verification on 2026-07-07 (see the status table). Re-run Workflow B when a resource schema changes or before promoting the beta-API resources to stable. The canonical config for each is `examples/resources/launchdarkly_<name>/resource.tf` — read it at verification time rather than trusting the summaries below, since scaffolds can change.
 
 | Resource | Data source | Stability | Scope | Origin |
 |---|---|---|---|---|
@@ -15,6 +15,7 @@ All nine resources ship in the current v3 release, and all nine passed a full CR
 | `launchdarkly_big_segment_store_integration` | yes | Beta API | Project + environment | scaffold #468 |
 | `launchdarkly_flag_import_configuration` | yes | Beta API | Project | scaffold #469 |
 | `launchdarkly_integration_delivery_configuration` | yes | Beta API | Project + environment | scaffold #467 |
+| `launchdarkly_sdk_key` | yes | Beta API | Project + environment | scaffold #495 |
 
 "Beta API" means the resource calls a LaunchDarkly beta endpoint through the provider's beta client. Those endpoints can change without notice and may require an account entitlement.
 
@@ -31,6 +32,7 @@ All nine resources ship in the current v3 release, and all nine passed a full CR
 | `launchdarkly_big_segment_store_integration` | PASS (full CRUD + data source; API accepts config without connectivity validation, so dummy store credentials with `on = false` suffice) |
 | `launchdarkly_flag_import_configuration` | PASS (full CRUD + data source with dummy Split credentials — the API stores config unvalidated) |
 | `launchdarkly_integration_delivery_configuration` | PASS (full CRUD + data source with dummy Fastly credentials, `on = false`) |
+| `launchdarkly_sdk_key` | PASS (stage-3 pipeline verify 2026-07-07: create/read/update/import + data source, idempotent re-plans; expiry-removal guard exercised) |
 
 No read round-trip bugs or forced replacements. All eight data sources verified against their live resources. One example defect found and fixed: the `ai_agent_graph` example omitted `mode = "agent"` on its AI configs — the API rejects `completion`-mode configs as graph nodes with `400 invalid_request`. Note `mode` is immutable on `launchdarkly_ai_config` (changing it plans a replace).
 
@@ -91,6 +93,13 @@ The three integration resources do NOT need live third-party credentials for CRU
 - Required: `project_key`, `env_key`, `integration_key` (for example `fastly`), `name`, `on`, and a `config`.
 - Note the attribute is `env_key` here, while `big_segment_store_integration` uses `environment_key`. Confirm the actual attribute name against the schema before writing config — this naming difference is a likely scaffold inconsistency worth flagging.
 - Needs valid third-party credentials for the chosen integration. Without them this is BLOCKED.
+
+### launchdarkly_sdk_key — Beta, project + environment scoped
+
+- Required: `project_key`, `environment_key`, `key` (the user-defined identifier, distinct from the generated key value), `name`. Optional: `kind` (`sdk`/`mobile`, default `sdk`), `description`, `expiry` (epoch millis, must be within 10 years).
+- The generated key value lands in the computed, sensitive `value` attribute.
+- `expiry` cannot be removed in place: the beta PATCH cannot clear it, and a deleted SDK key identifier is tombstoned server-side (GET 404 but POST 409), so replacement at the same key also fails. The provider rejects in-place expiry removal at plan time; removing it while changing `key` (a replacement under a fresh identifier) is allowed.
+- Because identifiers are tombstoned, verification runs must use fresh `key` values per attempt — a destroyed key's identifier cannot be reused.
 
 ## Data sources
 

@@ -113,6 +113,7 @@ jobs:
           - TestAccProject
           - TestAccRelayProxy
           - TestAccReleasePolicy_
+          - TestAccSdkKey_
           - TestAccSegment
           - TestAccTeamMember_CreateGeneric
           - TestAccTeamMember_UpdateGeneric

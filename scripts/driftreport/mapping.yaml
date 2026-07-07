@@ -375,8 +375,9 @@ families:
     notes: See Release pipelines.
 
   - tag: SDK Keys (beta)
-    status: ignored
-    reason: Imperative key-rotation operations; keys surface through the environment resource.
+    status: covered
+    resources:
+      - launchdarkly_sdk_key
 
   - tag: Scheduled changes
     status: triage
