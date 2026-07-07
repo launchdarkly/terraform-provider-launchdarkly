@@ -44,7 +44,7 @@ data "launchdarkly_segment" "example" {
 - `name` (String) Human-friendly name for the segment.
 - `rules` (Attributes List) Custom rules applied to the segment. (see [below for nested schema](#nestedatt--rules))
 - `tags` (Set of String) Tags.
-- `unbounded` (Boolean) Whether this is a Big Segment.
+- `unbounded` (Boolean) Whether this is a big segment.
 - `unbounded_context_kind` (String) Context kind for the big segment.
 - `view_keys` (Set of String) View keys linked to this segment.
 - `views` (List of String) Legacy view keys list (backwards-compat).
