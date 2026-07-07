@@ -18,7 +18,7 @@ Version 3.0.0 completes the provider's migration to the HashiCorp Terraform Plug
 - Keyed collections become maps: `launchdarkly_project.environments` (by environment key), `launchdarkly_feature_flag.custom_properties` (by property key), and `role_attributes` on `launchdarkly_team` / `launchdarkly_team_member` (a plain map of string lists). Adding or removing one entry no longer churns its siblings.
 - Five deprecated attributes are removed, across `launchdarkly_access_token`, `launchdarkly_custom_role`, `launchdarkly_feature_flag`, `launchdarkly_project`, and `launchdarkly_metric`.
 - State upgrades run automatically on first apply. No resource is destroyed or recreated.
-- v3 adds nine resources and eight data sources. It removes none.
+- v3 adds ten resources and nine data sources. It removes none.
 - v3 adds the `archive_flags_on_destroy` provider setting.
 - v3 ships `migrate-tf-syntax`, a configuration conversion tool, as a release asset.
 
@@ -169,8 +169,9 @@ This table lists the new resources, their data sources, and their API stability:
 | `launchdarkly_big_segment_store_integration` | `launchdarkly_big_segment_store_integration` | Beta |
 | `launchdarkly_flag_import_configuration` | `launchdarkly_flag_import_configuration` | Beta |
 | `launchdarkly_integration_delivery_configuration` | `launchdarkly_integration_delivery_configuration` | Beta |
+| `launchdarkly_sdk_key` | `launchdarkly_sdk_key` | Beta |
 
-> **Some new resources are in beta.** The `launchdarkly_ai_agent_graph`, `launchdarkly_metric_group`, `launchdarkly_release_policy`, `launchdarkly_big_segment_store_integration`, `launchdarkly_flag_import_configuration`, and `launchdarkly_integration_delivery_configuration` resources are in beta. The functionality may change without notice or become backwards incompatible.
+> **Some new resources are in beta.** The `launchdarkly_ai_agent_graph`, `launchdarkly_metric_group`, `launchdarkly_release_policy`, `launchdarkly_big_segment_store_integration`, `launchdarkly_flag_import_configuration`, `launchdarkly_integration_delivery_configuration`, and `launchdarkly_sdk_key` resources are in beta. The functionality may change without notice or become backwards incompatible.
 
 ### Other enhancements
 
