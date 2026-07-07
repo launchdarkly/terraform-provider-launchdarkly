@@ -2,8 +2,10 @@ package launchdarkly
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
@@ -28,6 +30,25 @@ resource "launchdarkly_sdk_key" "test" {
 	key             = "tf-test-sdk-key"
 	name            = "Terraform test SDK key updated"
 	description     = "Updated by Terraform"
+}
+`
+
+	testAccSdkKeyWithExpiry = `
+resource "launchdarkly_sdk_key" "test" {
+	project_key     = launchdarkly_project.test.key
+	environment_key = "test"
+	key             = "tf-test-sdk-key-expiry"
+	name            = "Terraform expiry SDK key"
+	expiry          = %d
+}
+`
+
+	testAccSdkKeyExpiryRemoved = `
+resource "launchdarkly_sdk_key" "test" {
+	project_key     = launchdarkly_project.test.key
+	environment_key = "test"
+	key             = "tf-test-sdk-key-expiry"
+	name            = "Terraform expiry SDK key"
 }
 `
 )
@@ -75,6 +96,41 @@ func TestAccSdkKey_CreateAndUpdate(t *testing.T) {
 				ResourceName:      resourceName,
 				ImportState:       true,
 				ImportStateVerify: true,
+			},
+		},
+	})
+}
+
+// TestAccSdkKey_ExpiryCannotBeRemoved asserts that once an expiry is set, a
+// config that removes it fails at plan time rather than producing an
+// inconsistent apply. The beta patch model cannot emit a null expiry to clear
+// it (PATCH expiry=0 is rejected), and a deleted SDK key identifier is
+// tombstoned so the resource cannot be recreated at the same key either — so a
+// plan-time error (expiryRemovalGuard) is the only safe behavior.
+func TestAccSdkKey_ExpiryCannotBeRemoved(t *testing.T) {
+	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlpha)
+	resourceName := "launchdarkly_sdk_key.test"
+	// Expiry must be within 10 years of now; use ~1 year out so the test stays
+	// valid over time (a hardcoded epoch would eventually fall in the past).
+	expiry := time.Now().Add(365 * 24 * time.Hour).UnixMilli()
+	resource.Test(t, resource.TestCase{
+		PreCheck: func() {
+			testAccPreCheck(t)
+		},
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckSdkKeyDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config: withRandomProject(projectKey, fmt.Sprintf(testAccSdkKeyWithExpiry, expiry)),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckSdkKeyExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, EXPIRY, fmt.Sprintf("%d", expiry)),
+				),
+			},
+			{
+				Config:      withRandomProject(projectKey, testAccSdkKeyExpiryRemoved),
+				PlanOnly:    true,
+				ExpectError: regexp.MustCompile("Cannot remove expiry from an SDK key"),
 			},
 		},
 	})

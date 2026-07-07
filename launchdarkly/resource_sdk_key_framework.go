@@ -102,7 +102,10 @@ func sdkKeySchemaAttributes() map[string]schema.Attribute {
 		},
 		EXPIRY: schema.Int64Attribute{
 			Optional:    true,
-			Description: "An expiration date for the SDK key, expressed as a Unix epoch time in milliseconds. When set, the key becomes invalid after this time.",
+			Description: "An expiration date for the SDK key, expressed as a Unix epoch time in milliseconds. When set, the key becomes invalid after this time. Once set, an expiry cannot be removed: the beta API cannot clear a scheduled expiry in place, and a deleted SDK key identifier cannot be recreated in the same environment.",
+			PlanModifiers: []planmodifier.Int64{
+				expiryRemovalGuard{},
+			},
 		},
 		VALUE: schema.StringAttribute{
 			Computed:      true,
@@ -118,6 +121,37 @@ func sdkKeySchemaAttributes() map[string]schema.Attribute {
 			Computed:    true,
 			Description: "The auto-incremented version number of the SDK key.",
 		},
+	}
+}
+
+// expiryRemovalGuard rejects, at plan time, any attempt to remove a
+// previously-set expiry from an SDK key. Removal is unsupported end to end:
+// the beta patch model marshals expiry with `omitempty` and cannot emit a
+// null to clear it in place (a PATCH with expiry=0 is rejected 400), and
+// replacing the resource is not viable either because a deleted SDK key
+// identifier is tombstoned by the backend and cannot be recreated in the same
+// environment (POST returns 409 "SDK key already exists"). Surfacing a plan
+// error is therefore safer than RequiresReplace, which would destroy the key
+// and then fail to recreate it. The framework does not invoke attribute plan
+// modifiers while the whole resource is being destroyed, so this does not
+// block `terraform destroy`.
+type expiryRemovalGuard struct{}
+
+func (expiryRemovalGuard) Description(context.Context) string {
+	return "Rejects removing a previously-set expiry."
+}
+
+func (expiryRemovalGuard) MarkdownDescription(context.Context) string {
+	return "Rejects removing a previously-set `expiry`."
+}
+
+func (expiryRemovalGuard) PlanModifyInt64(_ context.Context, req planmodifier.Int64Request, resp *planmodifier.Int64Response) {
+	if !req.StateValue.IsNull() && req.PlanValue.IsNull() {
+		resp.Diagnostics.AddAttributeError(
+			req.Path,
+			"Cannot remove expiry from an SDK key",
+			"The SDK key beta API cannot clear a scheduled expiry once set, and a deleted SDK key identifier cannot be recreated in the same environment. To manage an SDK key without an expiry, create a new resource with a different key.",
+		)
 	}
 }
 
@@ -228,6 +262,11 @@ func (r *SdkKeyResource) Update(ctx context.Context, req resource.UpdateRequest,
 		patch.SetDescription(plan.Description.ValueString())
 		changed = true
 	}
+	// Setting or moving expiry to a new value is an in-place patch. Removing it
+	// (plan null, state set) never reaches Update: expiryRemovalGuard rejects
+	// that transition at plan time, because the beta patch model cannot emit a
+	// null expiry to clear a scheduled expiration and the key cannot be
+	// recreated at the same identifier.
 	if !plan.Expiry.Equal(state.Expiry) && !plan.Expiry.IsNull() {
 		patch.SetExpiry(plan.Expiry.ValueInt64())
 		changed = true
