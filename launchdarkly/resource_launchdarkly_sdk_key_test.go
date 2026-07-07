@@ -1,0 +1,136 @@
+package launchdarkly
+
+import (
+	"fmt"
+	"strings"
+	"testing"
+
+	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
+	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/terraform"
+)
+
+const (
+	testAccSdkKeyCreate = `
+resource "launchdarkly_sdk_key" "test" {
+	project_key     = launchdarkly_project.test.key
+	environment_key = "test"
+	key             = "tf-test-sdk-key"
+	name            = "Terraform test SDK key"
+	description     = "Managed by Terraform"
+}
+`
+
+	testAccSdkKeyUpdate = `
+resource "launchdarkly_sdk_key" "test" {
+	project_key     = launchdarkly_project.test.key
+	environment_key = "test"
+	key             = "tf-test-sdk-key"
+	name            = "Terraform test SDK key updated"
+	description     = "Updated by Terraform"
+}
+`
+)
+
+func TestAccSdkKey_CreateAndUpdate(t *testing.T) {
+	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlpha)
+	resourceName := "launchdarkly_sdk_key.test"
+	resource.Test(t, resource.TestCase{
+		PreCheck: func() {
+			testAccPreCheck(t)
+		},
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckSdkKeyDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config: withRandomProject(projectKey, testAccSdkKeyCreate),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckProjectExists("launchdarkly_project.test"),
+					testAccCheckSdkKeyExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, PROJECT_KEY, projectKey),
+					resource.TestCheckResourceAttr(resourceName, ENVIRONMENT_KEY, "test"),
+					resource.TestCheckResourceAttr(resourceName, KEY, "tf-test-sdk-key"),
+					resource.TestCheckResourceAttr(resourceName, NAME, "Terraform test SDK key"),
+					resource.TestCheckResourceAttr(resourceName, DESCRIPTION, "Managed by Terraform"),
+					resource.TestCheckResourceAttr(resourceName, KIND, "sdk"),
+					resource.TestCheckResourceAttrSet(resourceName, VALUE),
+					resource.TestCheckResourceAttrSet(resourceName, VERSION),
+					resource.TestCheckResourceAttr(resourceName, ID, projectKey+"/test/tf-test-sdk-key"),
+				),
+			},
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
+			{
+				Config: withRandomProject(projectKey, testAccSdkKeyUpdate),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckSdkKeyExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, NAME, "Terraform test SDK key updated"),
+					resource.TestCheckResourceAttr(resourceName, DESCRIPTION, "Updated by Terraform"),
+				),
+			},
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
+		},
+	})
+}
+
+func testAccCheckSdkKeyExists(resourceName string) resource.TestCheckFunc {
+	return func(s *terraform.State) error {
+		rs, ok := s.RootModule().Resources[resourceName]
+		if !ok {
+			return fmt.Errorf("not found: %s", resourceName)
+		}
+		if rs.Primary.ID == "" {
+			return fmt.Errorf("SDK key ID is not set")
+		}
+		projectKey := rs.Primary.Attributes[PROJECT_KEY]
+		environmentKey := rs.Primary.Attributes[ENVIRONMENT_KEY]
+		sdkKeyKey := rs.Primary.Attributes[KEY]
+
+		client := mustTestAccClient()
+		betaClient, err := newBetaClient(client.apiKey, client.apiHost, false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
+		if err != nil {
+			return fmt.Errorf("failed to create beta client: %v", err)
+		}
+
+		_, _, err = getSdkKey(betaClient, projectKey, environmentKey, sdkKeyKey)
+		if err != nil {
+			return fmt.Errorf("received an error getting SDK key: %s", err)
+		}
+		return nil
+	}
+}
+
+func testAccCheckSdkKeyDestroy(s *terraform.State) error {
+	client := mustTestAccClient()
+	betaClient, err := newBetaClient(client.apiKey, client.apiHost, false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
+	if err != nil {
+		return fmt.Errorf("failed to create beta client: %v", err)
+	}
+
+	for _, rs := range s.RootModule().Resources {
+		// Shared destroy checkers must skip data source addresses.
+		if strings.HasPrefix(rs.Type, "data.") || rs.Type != "launchdarkly_sdk_key" {
+			continue
+		}
+		projectKey := rs.Primary.Attributes[PROJECT_KEY]
+		environmentKey := rs.Primary.Attributes[ENVIRONMENT_KEY]
+		sdkKeyKey := rs.Primary.Attributes[KEY]
+
+		_, res, err := getSdkKey(betaClient, projectKey, environmentKey, sdkKeyKey)
+		if isStatusNotFound(res) {
+			continue
+		}
+		if err != nil {
+			return err
+		}
+		return fmt.Errorf("SDK key %q still exists", sdkKeyKey)
+	}
+	return nil
+}
