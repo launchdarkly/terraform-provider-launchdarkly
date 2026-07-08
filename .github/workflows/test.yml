@@ -4,9 +4,10 @@ name: Test
 on:
   pull_request: # Fork PRs will only run the build job here. See test-fork-pr.yml for the label-gated workflow that runs generate + tests on forks.
   push:
-    branches: [main]
-  schedule: # runs tests once a day on the main branch
+    branches: [v2]
+  schedule: # cron only runs on the default branch (main/v3); v2 relies on push + PR CI
     - cron: "0 0 * * *"
+  workflow_dispatch: # allow manual test runs on the v2 maintenance branch
 
 # Testing only needs permissions to read the repository contents.
 permissions:
