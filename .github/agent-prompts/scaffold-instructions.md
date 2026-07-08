@@ -44,7 +44,7 @@ Inputs:
 
 Deliverable:
 1. Create a branch named scaffold/<resource name in SCOPED mode, else the family
-   tag> (lowercased, non-alphanumerics replaced with '-') off preview-v3.
+   tag> (lowercased, non-alphanumerics replaced with '-') off main.
 2. Implement the resource (and data source if it has GET-by-key), unit-testable
    helpers, acceptance tests, docs templates, and provider registration. In
    scripts/driftreport/mapping.yaml: in SCOPED mode, move the run's operationIds
@@ -66,7 +66,7 @@ Deliverable:
      integration-configs codegen, which needs an API token this job intentionally
      lacks. Commit the generated docs/ (and any examples/ formatting) so CI's
      generate-diff check passes.
-5. Commit, push the branch, and open a DRAFT pull request against preview-v3
+5. Commit, push the branch, and open a DRAFT pull request against main
    titled "feat: scaffold <resource name or family> resource (autogen stage 2)".
    The PR body must state it is agent-scaffolded and needs human review per stage
    3 of the autogen pipeline, and note that stage-3 verification runs
@@ -79,4 +79,4 @@ Deliverable:
    dispatched by hand. Get <N> from the `gh pr create` output URL (.../pull/<N>)
    or `gh pr view <branch> --json number`.
 
-Never push to preview-v3 directly and never merge anything.
+Never push to main directly and never merge anything.

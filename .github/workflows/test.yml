@@ -6,10 +6,9 @@ on:
   push:
     branches:
       - main
-      - moonshots/terraform-plugin-framework # SDKv2->plugin-framework migration integration branch
-  schedule: # cron runs on the default branch only (GitHub Actions limitation); for the moonshots branch, use workflow_dispatch or rely on push events
+  schedule: # cron runs on the default branch only (GitHub Actions limitation)
     - cron: "0 0 * * *"
-  workflow_dispatch: # allow manual runs against any branch (used to soak the moonshots integration branch)
+  workflow_dispatch: # allow manual runs against any branch
 
 # Testing only needs permissions to read the repository contents.
 permissions:

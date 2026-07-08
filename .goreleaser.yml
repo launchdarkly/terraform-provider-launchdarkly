@@ -83,6 +83,7 @@ signs:
       - "${artifact}"
 release:
   use_existing_draft: true # use existing draft releases
+  prerelease: auto # detect prerelease versions (beta, rc) from the tag and flag the GitHub release accordingly
   mode: keep-existing # what to do with the release notes if a release already exists
   extra_files:
     - glob: 'terraform-registry-manifest.json'

@@ -20,8 +20,8 @@ Environment already prepared for you:
 
 Do this, in order:
 
-1. REVIEW the scaffolded code on this branch. Run `git fetch origin preview-v3`
-   first, then `git diff origin/preview-v3...HEAD` to see only the scaffold, for
+1. REVIEW the scaffolded code on this branch. Run `git fetch origin main`
+   first, then `git diff origin/main...HEAD` to see only the scaffold, for
    correctness against CLAUDE.md and the vendored playbook at
    .claude/skills/terraform-provider-add-resource/ (SKILL.md + references/).
    Note real defects (schema/CRUD/helper/test/docs issues), not style nits.
