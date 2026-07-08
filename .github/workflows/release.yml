@@ -1,6 +1,6 @@
 on:
   push:
-    branches: [ main ]
+    branches: [ v2 ]
 jobs:
   release-please:
     runs-on: ubuntu-latest
@@ -13,6 +13,10 @@ jobs:
     steps:
       - uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
         id: release
+        with:
+          # v2 is the maintenance branch (fix-level releases only). Keep this
+          # release track pinned to v2 so it never picks up the v3 line on main.
+          target-branch: v2
 
   goreleaser:
     runs-on: ubuntu-latest
