@@ -2,6 +2,13 @@
 
 All notable changes to the LaunchDarkly Terraform Provider will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org).
 
+## [2.30.1](https://github.com/launchdarkly/terraform-provider-launchdarkly/compare/v2.30.0...v2.30.1) (2026-07-14)
+
+
+### Bug Fixes
+
+* [REL-14260] add note about global vs custom configs to AI model config documentation ([#485](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/485)) ([3a67936](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/3a67936b7ea046c6236f5741ddb27f0b88513a6e))
+
 ## [2.30.0](https://github.com/launchdarkly/terraform-provider-launchdarkly/compare/v2.29.0...v2.30.0) (2026-06-11)
 
 
