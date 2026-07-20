@@ -15,7 +15,7 @@ import (
 	"golang.org/x/sync/semaphore"
 
 	retryablehttp "github.com/hashicorp/go-retryablehttp"
-	ldapi "github.com/launchdarkly/api-client-go/v22"
+	ldapi "github.com/launchdarkly/api-client-go/v23"
 )
 
 //nolint:staticcheck // The version string gets updated at build time using -ldflags
@@ -43,6 +43,11 @@ type Client struct {
 	fallbackClient *http.Client
 
 	semaphore *semaphore.Weighted
+
+	// archiveFlagsOnDestroy: when true, launchdarkly_feature_flag Delete
+	// archives the flag instead of deleting it. Configured at the provider
+	// level via the archive_flags_on_destroy attribute. Defaults to false.
+	archiveFlagsOnDestroy bool
 }
 
 func (c *Client) withConcurrency(ctx context.Context, fn func() error) error {

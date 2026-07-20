@@ -4,30 +4,30 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
+	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/terraform"
 )
 
 const (
 	testAccRelayProxyConfigCreate = `
 resource "launchdarkly_relay_proxy_configuration" "test" {
 	name = "example-config"
-	policy {
+	policy = [{
 		actions   = ["*"]	
 		effect    = "allow"
 		resources = ["proj/*:env/*"]
-	}
+	}]
 }
 `
 
 	testAccRelayProxyConfigUpdate = `
 resource "launchdarkly_relay_proxy_configuration" "test" {
 	name = "updated-config"
-	policy {
+	policy = [{
 		not_actions   = ["*"]	
 		effect        = "deny"
 		not_resources = ["proj/*:env/test"]
-	}
+	}]
 }
 `
 )
@@ -48,8 +48,8 @@ func TestAccRelayProxyConfig_Create(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers:    testAccProviders,
-		CheckDestroy: testAccCheckRelayProxyConfigDestroy,
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckRelayProxyConfigDestroy,
 		Steps: []resource.TestStep{
 			{
 				Config: testAccRelayProxyConfigCreate,
@@ -78,8 +78,8 @@ func TestAccRelayProxyConfig_Update(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers:    testAccProviders,
-		CheckDestroy: testAccCheckRelayProxyConfigDestroy,
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckRelayProxyConfigDestroy,
 		Steps: []resource.TestStep{
 			{
 				Config: testAccRelayProxyConfigCreate,
@@ -131,7 +131,7 @@ func testAccCheckRelayProxyConfigExists(resourceName string) resource.TestCheckF
 			return fmt.Errorf("webhook ID is not set")
 		}
 
-		client := testAccProvider.Meta().(*Client)
+		client := mustTestAccClient()
 		_, _, err := client.ld.RelayProxyConfigurationsApi.GetRelayProxyConfig(client.ctx, rs.Primary.ID).Execute()
 		if err != nil {
 			return fmt.Errorf("received an error getting relay proxy config: %w", err)
@@ -143,7 +143,7 @@ func testAccCheckRelayProxyConfigExists(resourceName string) resource.TestCheckF
 
 // testAccCheckRelayProxyConfigDestroy verifies the relay proxy config has been destroyed
 func testAccCheckRelayProxyConfigDestroy(s *terraform.State) error {
-	client := testAccProvider.Meta().(*Client)
+	client := mustTestAccClient()
 	for _, rs := range s.RootModule().Resources {
 		if rs.Type != "launchdarkly_relay_proxy_configuration" {
 			continue

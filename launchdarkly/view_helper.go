@@ -1,125 +1,14 @@
 package launchdarkly
 
 import (
-	"context"
 	"fmt"
-	"log"
 	"net/http"
 	"strings"
 
-	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	ldapi "github.com/launchdarkly/api-client-go/v22"
+	ldapi "github.com/launchdarkly/api-client-go/v23"
 )
 
-// setViewRequestHeaders sets the common headers for View API requests
-func setViewRequestHeaders(req *http.Request, apiKey string) {
-	req.Header.Set("Authorization", apiKey)
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("LD-API-Version", "beta")
-	req.Header.Set("User-Agent", fmt.Sprintf("launchdarkly-terraform-provider/%s", version))
-}
-
-func viewRead(ctx context.Context, d *schema.ResourceData, meta interface{}, isDataSource bool) diag.Diagnostics {
-	var diags diag.Diagnostics
-	client := meta.(*Client)
-	betaClient, err := newBetaClient(client.apiKey, client.apiHost, false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
-	if err != nil {
-		return diag.FromErr(err)
-	}
-
-	projectKey := d.Get(PROJECT_KEY).(string)
-	viewKey := d.Get(KEY).(string)
-
-	view, res, err := getView(betaClient, projectKey, viewKey)
-
-	if isStatusNotFound(res) && !isDataSource {
-		log.Printf("[WARN] failed to find view with key %q in project %q, removing from state if present", viewKey, projectKey)
-		diags = append(diags, diag.Diagnostic{
-			Severity: diag.Warning,
-			Summary:  fmt.Sprintf("[WARN] failed to find view with key %q in project %q, removing from state if present", viewKey, projectKey),
-		})
-		d.SetId("")
-		return diags
-	}
-	if err != nil {
-		return diag.Errorf("failed to get view with key %q in project %q: %v", viewKey, projectKey, err)
-	}
-
-	if isDataSource {
-		d.SetId(view.Id)
-	}
-	_ = d.Set(PROJECT_KEY, view.ProjectKey)
-	_ = d.Set(KEY, view.Key)
-	_ = d.Set(NAME, view.Name)
-	description := ""
-	if view.Description != nil {
-		description = *view.Description
-	}
-	_ = d.Set(DESCRIPTION, description)
-	archived := false
-	if view.Archived != nil {
-		archived = *view.Archived
-	}
-	_ = d.Set(ARCHIVED, archived)
-
-	// Set maintainer fields in state based on API response
-	// Since ExactlyOneOf validation ensures one maintainer field is always set,
-	// we can safely set the appropriate field and clear the other
-	if view.Maintainer != nil {
-		if view.Maintainer.Kind == "member" && view.Maintainer.MaintainerMember != nil {
-			_ = d.Set(MAINTAINER_ID, view.Maintainer.MaintainerMember.Id)
-			_ = d.Set(MAINTAINER_TEAM_KEY, "")
-		} else if view.Maintainer.Kind == "team" && view.Maintainer.MaintainerTeam != nil {
-			_ = d.Set(MAINTAINER_TEAM_KEY, view.Maintainer.MaintainerTeam.Key)
-			_ = d.Set(MAINTAINER_ID, "")
-		}
-	}
-
-	err = d.Set(TAGS, view.Tags)
-	if err != nil {
-		return diag.Errorf("could not set tags on view with key %q: %v", view.Key, err)
-	}
-
-	// For data sources, also fetch and set linked flags for discovery
-	if isDataSource {
-		linkedFlags, err := getLinkedResources(betaClient, projectKey, viewKey, FLAGS)
-		if err != nil {
-			// Log warning but don't fail the read for discovery data
-			log.Printf("[WARN] failed to get linked flags for view %q in project %q: %v", viewKey, projectKey, err)
-		} else {
-			flagKeys := make([]string, len(linkedFlags))
-			for i, flag := range linkedFlags {
-				flagKeys[i] = flag.ResourceKey
-			}
-			err = d.Set(LINKED_FLAGS, flagKeys)
-			if err != nil {
-				return diag.Errorf("could not set linked_flags on view with key %q: %v", view.Key, err)
-			}
-		}
-
-		// Also fetch and set linked segments for discovery
-		linkedSegments, err := getLinkedResources(betaClient, projectKey, viewKey, SEGMENTS)
-		if err != nil {
-			// Log warning but don't fail the read for discovery data
-			log.Printf("[WARN] failed to get linked segments for view %q in project %q: %v", viewKey, projectKey, err)
-		} else {
-			segments := make([]map[string]interface{}, len(linkedSegments))
-			for i, segment := range linkedSegments {
-				segments[i] = map[string]interface{}{
-					SEGMENT_ENVIRONMENT_ID: segment.EnvironmentId,
-					SEGMENT_KEY:            segment.ResourceKey,
-				}
-			}
-			err = d.Set(LINKED_SEGMENTS, segments)
-			if err != nil {
-				return diag.Errorf("could not set linked_segments on view with key %q: %v", view.Key, err)
-			}
-		}
-	}
-
-	return diags
-}
+const viewAssociationsPageLimit = int32(100)
 
 type View struct {
 	Id          string          `json:"id"`
@@ -318,6 +207,38 @@ type ViewLinkRequest struct {
 type ViewSegmentIdentifier struct {
 	EnvironmentId string `json:"environmentId"`
 	SegmentKey    string `json:"segmentKey"`
+}
+
+// difference returns the elements in slice1 that are not in slice2.
+func difference(slice1, slice2 []string) []string {
+	set2 := make(map[string]bool, len(slice2))
+	for _, item := range slice2 {
+		set2[item] = true
+	}
+	var diff []string
+	for _, item := range slice1 {
+		if !set2[item] {
+			diff = append(diff, item)
+		}
+	}
+	return diff
+}
+
+// differenceSegmentIdentifiers returns the ViewSegmentIdentifier values
+// in slice1 that are not in slice2 (compared by environment_id/segment_key).
+func differenceSegmentIdentifiers(slice1, slice2 []ViewSegmentIdentifier) []ViewSegmentIdentifier {
+	set2 := make(map[string]bool, len(slice2))
+	for _, item := range slice2 {
+		set2[item.EnvironmentId+":"+item.SegmentKey] = true
+	}
+	var diff []ViewSegmentIdentifier
+	for _, item := range slice1 {
+		key := item.EnvironmentId + ":" + item.SegmentKey
+		if !set2[key] {
+			diff = append(diff, item)
+		}
+	}
+	return diff
 }
 
 // chunkStringSlice splits a string slice into chunks of the specified size
@@ -537,23 +458,31 @@ func unlinkSegmentChunkFromView(client *Client, projectKey, viewKey string, segm
 
 // getLinkedResources gets all linked resources of a specific type for a view
 func getLinkedResources(client *Client, projectKey, viewKey, resourceType string) ([]ViewLinkedResource, error) {
-	var (
-		apiLinkedResources *ldapi.ViewLinkedResources
-		err                error
-	)
+	allItems, err := fetchAllOffsetPagesWithInt32Total[ldapi.ViewLinkedResource](int64(viewAssociationsPageLimit), 0, func(offset, limit int64) ([]ldapi.ViewLinkedResource, int32, error) {
+		var (
+			apiLinkedResources *ldapi.ViewLinkedResources
+			err                error
+		)
+		err = client.withConcurrency(client.ctx, func() error {
+			apiLinkedResources, _, err = client.ld.ViewsBetaApi.GetLinkedResources(client.ctx, projectKey, viewKey, resourceType).
+				LDAPIVersion("beta").
+				Limit(int32(limit)).
+				Offset(int32(offset)).
+				Execute()
+			return err
+		})
+		if err != nil {
+			return nil, 0, err
+		}
 
-	err = client.withConcurrency(client.ctx, func() error {
-		apiLinkedResources, _, err = client.ld.ViewsBetaApi.GetLinkedResources(client.ctx, projectKey, viewKey, resourceType).
-			LDAPIVersion("beta").
-			Execute()
-		return err
+		return apiLinkedResources.Items, apiLinkedResources.TotalCount, nil
 	})
 	if err != nil {
 		return nil, err
 	}
 
-	linkedResources := make([]ViewLinkedResource, len(apiLinkedResources.Items))
-	for i, resource := range apiLinkedResources.Items {
+	linkedResources := make([]ViewLinkedResource, len(allItems))
+	for i, resource := range allItems {
 		environmentID := ""
 		if resource.EnvironmentId != nil {
 			environmentID = *resource.EnvironmentId
@@ -578,6 +507,36 @@ func viewIdToKeys(id string) (projectKey string, viewKey string, err error) {
 	return parts[0], parts[1], nil
 }
 
+func getAllLinkedViews(client *Client, projectKey, resourceType, resourceKey, environmentId string) ([]ldapi.View, error) {
+	allItems, err := fetchAllOffsetPagesWithInt32Total[ldapi.View](int64(viewAssociationsPageLimit), 0, func(offset, limit int64) ([]ldapi.View, int32, error) {
+		var (
+			viewsResponse *ldapi.Views
+			err           error
+		)
+		err = client.withConcurrency(client.ctx, func() error {
+			request := client.ld.ViewsBetaApi.GetLinkedViews(client.ctx, projectKey, resourceType, resourceKey).
+				LDAPIVersion("beta").
+				Limit(int32(limit)).
+				Offset(int32(offset))
+			if environmentId != "" {
+				request = request.EnvironmentId(environmentId)
+			}
+			viewsResponse, _, err = request.Execute()
+			return err
+		})
+		if err != nil {
+			return nil, 0, err
+		}
+
+		return viewsResponse.Items, viewsResponse.TotalCount, nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return allItems, nil
+}
+
 // ViewsResponse represents the response from getting all views
 type ViewsResponse struct {
 	Items []View `json:"items"`
@@ -585,24 +544,14 @@ type ViewsResponse struct {
 
 // getViewsContainingFlag finds all views that contain a specific flag using the view-associations endpoint
 func getViewsContainingFlag(client *Client, projectKey, flagKey string) ([]string, error) {
-	var (
-		viewsResponse *ldapi.Views
-		err           error
-	)
-
-	err = client.withConcurrency(client.ctx, func() error {
-		viewsResponse, _, err = client.ld.ViewsBetaApi.GetLinkedViews(client.ctx, projectKey, FLAGS, flagKey).
-			LDAPIVersion("beta").
-			Execute()
-		return err
-	})
+	views, err := getAllLinkedViews(client, projectKey, FLAGS, flagKey, "")
 	if err != nil {
 		return nil, err
 	}
 
 	// Extract view keys from the response
-	viewKeys := make([]string, len(viewsResponse.Items))
-	for i, view := range viewsResponse.Items {
+	viewKeys := make([]string, len(views))
+	for i, view := range views {
 		viewKeys[i] = view.Key
 	}
 
@@ -611,27 +560,14 @@ func getViewsContainingFlag(client *Client, projectKey, flagKey string) ([]strin
 
 // getViewsContainingSegment finds all views that contain a specific segment using the view-associations endpoint
 func getViewsContainingSegment(client *Client, projectKey, environmentId, segmentKey string) ([]string, error) {
-	var (
-		viewsResponse *ldapi.Views
-		err           error
-	)
-
-	err = client.withConcurrency(client.ctx, func() error {
-		request := client.ld.ViewsBetaApi.GetLinkedViews(client.ctx, projectKey, SEGMENTS, segmentKey).
-			LDAPIVersion("beta")
-		if environmentId != "" {
-			request = request.EnvironmentId(environmentId)
-		}
-		viewsResponse, _, err = request.Execute()
-		return err
-	})
+	views, err := getAllLinkedViews(client, projectKey, SEGMENTS, segmentKey, environmentId)
 	if err != nil {
 		return nil, err
 	}
 
 	// Extract view keys from the response
-	viewKeys := make([]string, len(viewsResponse.Items))
-	for i, view := range viewsResponse.Items {
+	viewKeys := make([]string, len(views))
+	for i, view := range views {
 		viewKeys[i] = view.Key
 	}
 

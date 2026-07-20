@@ -1,0 +1,284 @@
+{
+  "launchdarkly_access_token": {
+    "blocks": [
+      {
+        "name": "inline_roles"
+      },
+      {
+        "name": "policy_statements"
+      }
+    ],
+    "deprecations": [
+      {
+        "name": "expire",
+        "action": "drop"
+      },
+      {
+        "name": "policy_statements",
+        "action": "rename",
+        "to": "inline_roles"
+      }
+    ]
+  },
+  "launchdarkly_audit_log_subscription": {
+    "blocks": [
+      {
+        "name": "statements"
+      }
+    ]
+  },
+  "launchdarkly_webhook": {
+    "blocks": [
+      {
+        "name": "statements"
+      }
+    ]
+  },
+  "launchdarkly_custom_role": {
+    "blocks": [
+      {
+        "name": "policy"
+      },
+      {
+        "name": "policy_statements"
+      }
+    ],
+    "deprecations": [
+      {
+        "name": "policy",
+        "action": "policy_to_policy_statements",
+        "to": "policy_statements"
+      }
+    ]
+  },
+  "launchdarkly_relay_proxy_configuration": {
+    "blocks": [
+      {
+        "name": "policy"
+      }
+    ]
+  },
+  "launchdarkly_project": {
+    "blocks": [
+      {
+        "name": "default_client_side_availability",
+        "object": true
+      },
+      {
+        "name": "environments",
+        "map_key": "key",
+        "nested": [
+          {
+            "name": "approval_settings",
+            "object": true
+          }
+        ]
+      }
+    ],
+    "deprecations": [
+      {
+        "name": "include_in_snippet",
+        "action": "iis_to_csa",
+        "to": "default_client_side_availability",
+        "using_mobile_key": "true"
+      }
+    ],
+    "ds_attr_rewrites": [
+      {
+        "from": "client_side_availability",
+        "to": "default_client_side_availability",
+        "strip_index": true
+      }
+    ]
+  },
+  "launchdarkly_environment": {
+    "blocks": [
+      {
+        "name": "approval_settings",
+        "object": true
+      }
+    ],
+    "ds_attr_rewrites": [
+      {
+        "from": "approval_settings",
+        "to": "approval_settings",
+        "strip_index": true
+      }
+    ]
+  },
+  "launchdarkly_segment": {
+    "blocks": [
+      {
+        "name": "included_contexts"
+      },
+      {
+        "name": "excluded_contexts"
+      },
+      {
+        "name": "rules",
+        "nested": [
+          {
+            "name": "clauses"
+          }
+        ]
+      }
+    ]
+  },
+  "launchdarkly_flag_trigger": {
+    "blocks": [
+      {
+        "name": "instructions",
+        "object": true
+      }
+    ],
+    "ds_attr_rewrites": [
+      {
+        "from": "instructions",
+        "to": "instructions",
+        "strip_index": true
+      }
+    ]
+  },
+  "launchdarkly_view_links": {
+    "blocks": [
+      {
+        "name": "segments"
+      }
+    ]
+  },
+  "launchdarkly_metric": {
+    "blocks": [
+      {
+        "name": "urls"
+      }
+    ],
+    "deprecations": [
+      {
+        "name": "is_active",
+        "action": "drop"
+      },
+      {
+        "name": "randomization_units",
+        "action": "rename",
+        "to": "analysis_units"
+      }
+    ],
+    "ds_attr_rewrites": [
+      {
+        "from": "randomization_units",
+        "to": "analysis_units"
+      }
+    ]
+  },
+  "launchdarkly_team": {
+    "blocks": [
+      {
+        "name": "role_attributes",
+        "map_key": "key",
+        "map_value": "values"
+      }
+    ]
+  },
+  "launchdarkly_team_member": {
+    "blocks": [
+      {
+        "name": "role_attributes",
+        "map_key": "key",
+        "map_value": "values"
+      }
+    ]
+  },
+  "launchdarkly_ai_config_variation": {
+    "blocks": [
+      {
+        "name": "messages"
+      }
+    ]
+  },
+  "launchdarkly_flag_templates": {
+    "blocks": [
+      {
+        "name": "boolean_defaults",
+        "object": true
+      }
+    ]
+  },
+  "launchdarkly_feature_flag_environment": {
+    "blocks": [
+      {
+        "name": "prerequisites"
+      },
+      {
+        "name": "targets"
+      },
+      {
+        "name": "context_targets"
+      },
+      {
+        "name": "rules",
+        "nested": [
+          {
+            "name": "clauses"
+          }
+        ]
+      },
+      {
+        "name": "fallthrough",
+        "object": true
+      }
+    ],
+    "ds_attr_rewrites": [
+      {
+        "from": "fallthrough",
+        "to": "fallthrough",
+        "strip_index": true
+      }
+    ]
+  },
+  "launchdarkly_feature_flag": {
+    "blocks": [
+      {
+        "name": "client_side_availability",
+        "object": true
+      },
+      {
+        "name": "variations"
+      },
+      {
+        "name": "custom_properties",
+        "map_key": "key"
+      },
+      {
+        "name": "defaults",
+        "object": true
+      }
+    ],
+    "deprecations": [
+      {
+        "name": "include_in_snippet",
+        "action": "iis_to_csa",
+        "to": "client_side_availability"
+      },
+      {
+        "name": "variations",
+        "action": "ensure_boolean_variations"
+      }
+    ],
+    "ds_attr_rewrites": [
+      {
+        "from": "include_in_snippet",
+        "to_expr": "client_side_availability.using_environment_id"
+      },
+      {
+        "from": "client_side_availability",
+        "to": "client_side_availability",
+        "strip_index": true
+      },
+      {
+        "from": "defaults",
+        "to": "defaults",
+        "strip_index": true
+      }
+    ]
+  }
+}

@@ -5,9 +5,9 @@ import (
 	"os"
 	"testing"
 
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/acctest"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
-	ldapi "github.com/launchdarkly/api-client-go/v22"
+	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
+	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	ldapi "github.com/launchdarkly/api-client-go/v23"
 	"github.com/stretchr/testify/require"
 )
 
@@ -37,7 +37,7 @@ func TestAccDataSourceFlagTemplates_exists(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config: fmt.Sprintf(`
@@ -48,9 +48,9 @@ data "launchdarkly_flag_templates" "test" {
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr(resourceName, PROJECT_KEY, projectKey),
 					resource.TestCheckResourceAttrSet(resourceName, TEMPORARY),
-					resource.TestCheckResourceAttr(resourceName, "boolean_defaults.#", "1"),
-					resource.TestCheckResourceAttrSet(resourceName, "boolean_defaults.0.on_variation"),
-					resource.TestCheckResourceAttrSet(resourceName, "boolean_defaults.0.off_variation"),
+					resource.TestCheckResourceAttr(resourceName, "boolean_defaults.%", "6"),
+					resource.TestCheckResourceAttrSet(resourceName, "boolean_defaults.on_variation"),
+					resource.TestCheckResourceAttrSet(resourceName, "boolean_defaults.off_variation"),
 				),
 			},
 		},

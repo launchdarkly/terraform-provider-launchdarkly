@@ -7,9 +7,9 @@ import (
 	"regexp"
 	"testing"
 
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/acctest"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
-	ldapi "github.com/launchdarkly/api-client-go/v22"
+	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
+	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	ldapi "github.com/launchdarkly/api-client-go/v23"
 	"github.com/stretchr/testify/require"
 )
 
@@ -51,7 +51,7 @@ func TestAccDataSourceTeam_noMatchReturnsError(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config:      testAccDataSourceTeamConfig(key),
@@ -79,7 +79,7 @@ func TestAccDataSourceTeam_exists(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config: testAccDataSourceTeamConfig(teamKey),
@@ -89,11 +89,10 @@ func TestAccDataSourceTeam_exists(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, NAME, *team.Name),
 					resource.TestCheckResourceAttr(resourceName, DESCRIPTION, *team.Description),
 					resource.TestCheckResourceAttr(resourceName, ID, *team.Key),
-					resource.TestCheckResourceAttr(resourceName, "role_attributes.#", "1"),
-					resource.TestCheckResourceAttr(resourceName, "role_attributes.0.key", "adminPermissions"),
-					resource.TestCheckResourceAttr(resourceName, "role_attributes.0.values.#", "2"),
-					resource.TestCheckResourceAttr(resourceName, "role_attributes.0.values.0", "production"),
-					resource.TestCheckResourceAttr(resourceName, "role_attributes.0.values.1", "everything"),
+					resource.TestCheckResourceAttr(resourceName, "role_attributes.%", "1"),
+					resource.TestCheckResourceAttr(resourceName, "role_attributes.adminPermissions.#", "2"),
+					resource.TestCheckResourceAttr(resourceName, "role_attributes.adminPermissions.0", "production"),
+					resource.TestCheckResourceAttr(resourceName, "role_attributes.adminPermissions.1", "everything"),
 				),
 			},
 		},

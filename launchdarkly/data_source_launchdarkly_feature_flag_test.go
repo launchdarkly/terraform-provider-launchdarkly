@@ -6,9 +6,9 @@ import (
 	"regexp"
 	"testing"
 
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/acctest"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
-	ldapi "github.com/launchdarkly/api-client-go/v22"
+	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
+	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	ldapi "github.com/launchdarkly/api-client-go/v23"
 	"github.com/stretchr/testify/require"
 )
 
@@ -46,7 +46,7 @@ func TestAccDataSourceFeatureFlag_noMatchReturnsError(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config:      fmt.Sprintf(testAccDataSourceFeatureFlag, flagKey, project.Key),
@@ -95,7 +95,7 @@ func TestAccDataSourceFeatureFlag_exists(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config: fmt.Sprintf(testAccDataSourceFeatureFlag, flagKey, projectKey),
@@ -112,8 +112,8 @@ func TestAccDataSourceFeatureFlag_exists(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "variations.0.value", "true"),
 					resource.TestCheckResourceAttr(resourceName, "variations.1.value", "false"),
 					resource.TestCheckResourceAttr(resourceName, ID, projectKey+"/"+flag.Key),
-					resource.TestCheckResourceAttr(resourceName, "client_side_availability.0.using_environment_id", "true"),
-					resource.TestCheckResourceAttr(resourceName, "client_side_availability.0.using_mobile_key", "false"),
+					resource.TestCheckResourceAttr(resourceName, "client_side_availability.using_environment_id", "true"),
+					resource.TestCheckResourceAttr(resourceName, "client_side_availability.using_mobile_key", "false"),
 				),
 			},
 		},
@@ -129,23 +129,17 @@ func TestAccDataSourceFeatureFlag_withViews(t *testing.T) {
 	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	flagKey := "test-flag-views"
 
-	client, err := newClient(os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN), os.Getenv(LAUNCHDARKLY_API_HOST), false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
-	require.NoError(t, err)
-
-	members, _, err := client.ld.AccountMembersApi.GetMembers(client.ctx).Execute()
-	require.NoError(t, err)
-	require.True(t, len(members.Items) > 0, "This test requires at least one member in the account")
-
-	maintainerId := members.Items[0].Id
+	maintainerId := firstMemberIDForTest(t)
 
 	testAccDataSourceFeatureFlagWithViews := `
 resource "launchdarkly_project" "test" {
 	key  = "%s"
 	name = "Terraform Flag Views Test Project"
-	environments {
-		name  = "Test Environment"
-		key   = "test-env"
-		color = "000000"
+	environments = {
+		"test-env" = {
+			name  = "Test Environment"
+			color = "000000"
+		}
 	}
 }
 
@@ -155,6 +149,10 @@ resource "launchdarkly_feature_flag" "test" {
 	name           = "Test Flag with Views"
 	description    = "a flag to test views in the terraform flag data source"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 	temporary      = false
 }
 
@@ -198,7 +196,7 @@ data "launchdarkly_feature_flag" "test" {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config: fmt.Sprintf(testAccDataSourceFeatureFlagWithViews, projectKey, flagKey, maintainerId, maintainerId),

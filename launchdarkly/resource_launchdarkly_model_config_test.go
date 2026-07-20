@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/acctest"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
+	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
+	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/terraform"
 )
 
 const (
@@ -57,8 +57,8 @@ func TestAccModelConfig_CreateAndImport(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers:    testAccProviders,
-		CheckDestroy: testAccCheckModelConfigDestroy,
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckModelConfigDestroy,
 		Steps: []resource.TestStep{
 			{
 				Config: withAITestProject(projectKey, fmt.Sprintf(testAccModelConfigCreate, modelConfigKey, modelConfigName, modelID, providerName)),
@@ -92,9 +92,9 @@ func TestAccModelConfig_WithAllFields(t *testing.T) {
 	resourceName := "launchdarkly_model_config.test"
 
 	resource.ParallelTest(t, resource.TestCase{
-		PreCheck:     func() { testAccPreCheck(t) },
-		Providers:    testAccProviders,
-		CheckDestroy: testAccCheckModelConfigDestroy,
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckModelConfigDestroy,
 		Steps: []resource.TestStep{
 			{
 				Config: withAITestProject(projectKey, fmt.Sprintf(testAccModelConfigWithAllFields, modelConfigKey, modelConfigName, modelID, providerName, costInput, costOutput)),
@@ -132,8 +132,8 @@ func testAccCheckModelConfigExists(resourceName string) resource.TestCheckFunc {
 		projectKey := rs.Primary.Attributes[PROJECT_KEY]
 		modelConfigKey := rs.Primary.Attributes[KEY]
 
-		client := testAccProvider.Meta().(*Client)
-		_, _, err := client.ld.AIConfigsApi.GetModelConfig(client.ctx, projectKey, modelConfigKey).Execute()
+		client := mustTestAccClient()
+		_, _, err := client.ld.AgentControlApi.GetModelConfig(client.ctx, projectKey, modelConfigKey).Execute()
 		if err != nil {
 			return fmt.Errorf("received an error getting model config: %s", err)
 		}
@@ -142,7 +142,7 @@ func testAccCheckModelConfigExists(resourceName string) resource.TestCheckFunc {
 }
 
 var testAccCheckModelConfigDestroy = func(s *terraform.State) error {
-	client := testAccProvider.Meta().(*Client)
+	client := mustTestAccClient()
 
 	for _, rs := range s.RootModule().Resources {
 		if rs.Type != "launchdarkly_model_config" {
@@ -151,7 +151,7 @@ var testAccCheckModelConfigDestroy = func(s *terraform.State) error {
 		projectKey := rs.Primary.Attributes[PROJECT_KEY]
 		modelConfigKey := rs.Primary.Attributes[KEY]
 
-		_, res, err := client.ld.AIConfigsApi.GetModelConfig(client.ctx, projectKey, modelConfigKey).Execute()
+		_, res, err := client.ld.AgentControlApi.GetModelConfig(client.ctx, projectKey, modelConfigKey).Execute()
 		if isStatusNotFound(res) {
 			continue
 		}

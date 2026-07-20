@@ -5,8 +5,8 @@ import (
 	"regexp"
 	"testing"
 
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
+	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/terraform"
 )
 
 const (
@@ -20,11 +20,11 @@ resource "launchdarkly_audit_log_subscription" "%s_tf_test" {
 		"terraform"
 	]
 	on = true
-	statements {
+	statements = [{
 		actions = ["*"]
 		effect = "deny"
 		resources = ["proj/*:env/*:flag/*"]
-	}
+	}]
 }
 `
 
@@ -37,11 +37,11 @@ resource "launchdarkly_audit_log_subscription" "%s_tf_test" {
 	tags = [
 		"integrations"
 	]
-	statements {
+	statements = [{
 		actions = ["*"]
 		effect = "allow"
 		resources = ["proj/*:env/production"]
-	}
+	}]
 }
 `
 )
@@ -60,7 +60,7 @@ func TestAccAuditLogSubscription_CreateUpdateDatadog(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config: fmt.Sprintf(testAccAuditLogSubscriptionCreate, integrationKey, integrationKey, config),
@@ -117,7 +117,7 @@ func TestAccAuditLogSubscription_CreateDynatrace(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config: fmt.Sprintf(testAccAuditLogSubscriptionCreate, integrationKey, integrationKey, config),
@@ -155,7 +155,7 @@ func TestAccAuditLogSubscription_CreateMSTeams(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config: fmt.Sprintf(testAccAuditLogSubscriptionCreate, integrationKey, integrationKey, config),
@@ -192,7 +192,7 @@ func TestAccAuditLogSubscription_CreateSlack(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config: fmt.Sprintf(testAccAuditLogSubscriptionCreate, integrationKey, integrationKey, config),
@@ -231,7 +231,7 @@ func TestAccAuditLogSubscription_CreateSplunk(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config: fmt.Sprintf(testAccAuditLogSubscriptionCreate, integrationKey, integrationKey, config),
@@ -267,7 +267,7 @@ func TestAccAuditLogSubscription_WrongConfigReturnsError(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config:      fmt.Sprintf(testAccAuditLogSubscriptionCreate, integrationKey, integrationKey, config),
@@ -291,7 +291,7 @@ func testAccCheckIntegrationExists(resourceName string) resource.TestCheckFunc {
 		if !ok {
 			return fmt.Errorf("integration not found: %s", resourceName)
 		}
-		client := testAccProvider.Meta().(*Client)
+		client := mustTestAccClient()
 		_, _, err := client.ld.IntegrationAuditLogSubscriptionsApi.GetSubscriptionByID(client.ctx, integrationKey, integrationID).Execute()
 		if err != nil {
 			return fmt.Errorf("error getting %s integration: %s", integrationKey, err)

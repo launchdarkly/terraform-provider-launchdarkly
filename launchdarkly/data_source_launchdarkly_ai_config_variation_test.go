@@ -6,8 +6,8 @@ import (
 	"regexp"
 	"testing"
 
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/acctest"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
+	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 )
 
 const (
@@ -28,8 +28,8 @@ func TestAccDataSourceAIConfigVariation_noMatchReturnsError(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers:    testAccProviders,
-		CheckDestroy: testAccCheckAIConfigVariationDestroy,
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckAIConfigVariationDestroy,
 		Steps: []resource.TestStep{
 			{
 				Config:      fmt.Sprintf(testAccDataSourceAIConfigVariationBasic, projectKey, configKey, variationKey),
@@ -54,8 +54,8 @@ func TestAccDataSourceAIConfigVariation_exists(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers:    testAccProviders,
-		CheckDestroy: testAccCheckAIConfigVariationDestroy,
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckAIConfigVariationDestroy,
 		Steps: []resource.TestStep{
 			{
 				Config: withAITestProject(projectKey, fmt.Sprintf(`
@@ -72,10 +72,10 @@ resource "launchdarkly_ai_config_variation" "test" {
 	config_key  = launchdarkly_ai_config.test.key
 	key         = "%s"
 	name        = "Test Variation"
-	messages {
+	messages = [{
 		role    = "system"
 		content = "You are a helpful assistant."
-	}
+	}]
 }
 
 data "launchdarkly_ai_config_variation" "test" {

@@ -5,8 +5,8 @@ subcategory: ""
 description: |-
   Provides a LaunchDarkly access token resource.
   This resource allows you to create and manage access tokens within your LaunchDarkly organization.
-  -> Note: This resource will store the full plaintext secret for your access token in Terraform state. Be sure your state is configured securely before using this resource. See https://www.terraform.io/docs/state/sensitive-data.html for more details.
-  The resource must contain either a "role", "custom_role" or an "inline_roles" (previously "policy_statements") block. As of v1.7.0, "policy_statements" has been deprecated in favor of "inline_roles".
+  -> Note: This resource stores the full plaintext secret for your access token in Terraform state. Be sure your state is configured securely before using this resource. To learn more, read Sensitive data in state https://www.terraform.io/docs/state/sensitive-data.html.
+  The resource must contain either a "role", "custom_role" or an "inline_roles" block.
 ---
 
 # launchdarkly_access_token (Resource)
@@ -15,9 +15,9 @@ Provides a LaunchDarkly access token resource.
 
 This resource allows you to create and manage access tokens within your LaunchDarkly organization.
 
--> **Note:** This resource will store the full plaintext secret for your access token in Terraform state. Be sure your state is configured securely before using this resource. See https://www.terraform.io/docs/state/sensitive-data.html for more details.
+-> **Note:** This resource stores the full plaintext secret for your access token in Terraform state. Be sure your state is configured securely before using this resource. To learn more, read [Sensitive data in state](https://www.terraform.io/docs/state/sensitive-data.html).
 
-The resource must contain either a "role", "custom_role" or an "inline_roles" (previously "policy_statements") block. As of v1.7.0, "policy_statements" has been deprecated in favor of "inline_roles".
+The resource must contain either a "role", "custom_role" or an "inline_roles" block.
 
 ## Example Usage
 
@@ -36,11 +36,11 @@ resource "launchdarkly_access_token" "custom_role_token" {
 # With an inline custom role (policy statements)
 resource "launchdarkly_access_token" "token_with_policy_statements" {
   name = "Integration service token"
-  inline_roles {
+  inline_roles = [{
     actions   = ["*"]
     effect    = "deny"
     resources = ["proj/*:env/production"]
-  }
+  }]
   service_token = true
 }
 ```
@@ -51,20 +51,18 @@ resource "launchdarkly_access_token" "token_with_policy_statements" {
 ### Optional
 
 - `custom_roles` (Set of String) A list of custom role IDs to use as access limits for the access token.
-- `default_api_version` (Number) The default API version for this token. Defaults to the latest API version. A change in this field will force the destruction of the existing resource and the creation of a new one.
-- `expire` (Number, Deprecated) An expiration time for the current token secret, expressed as a Unix epoch time. Replace the computed token secret with a new value. The expired secret will no longer be able to authorize usage of the LaunchDarkly API. This field argument is **deprecated**. Please update your config to remove `expire` to maintain compatibility with future versions
-- `inline_roles` (Block List) Define inline custom roles. An array of statements represented as config blocks with three attributes: effect, resources, actions. May be used in place of a built-in or custom role. [Using polices](https://docs.launchdarkly.com/home/members/role-policies). May be specified more than once. (see [below for nested schema](#nestedblock--inline_roles))
+- `default_api_version` (Number) The default API version for this token. Defaults to the latest API version. A change in this field forces the destruction of the existing resource and the creation of a new one.
+- `inline_roles` (Attributes List) Define inline custom roles. An array of statements with three attributes: effect, resources, actions. May be used in place of a built-in or custom role. [Using polices](https://launchdarkly.com/docs/home/account/roles/role-policies). (see [below for nested schema](#nestedatt--inline_roles))
 - `name` (String) A human-friendly name for the access token.
-- `policy_statements` (Block List, Deprecated) Define inline custom roles. An array of statements represented as config blocks with three attributes: effect, resources, actions. May be used in place of a built-in or custom role. May be specified more than once. This field argument is **deprecated**. Update your config to use `inline_role` to maintain compatibility with future versions. (see [below for nested schema](#nestedblock--policy_statements))
 - `role` (String) A built-in LaunchDarkly role. Can be `reader`, `writer`, or `admin`
-- `service_token` (Boolean) Whether the token will be a [service token](https://docs.launchdarkly.com/home/account-security/api-access-tokens#service-tokens). A change in this field will force the destruction of the existing resource and the creation of a new one.
+- `service_token` (Boolean) Whether the token is a [service token](https://launchdarkly.com/docs/home/account/api#service-tokens). A change in this field forces the destruction of the existing resource and the creation of a new one.
 
 ### Read-Only
 
 - `id` (String) The ID of this resource.
 - `token` (String, Sensitive) The access token used to authorize usage of the LaunchDarkly API.
 
-<a id="nestedblock--inline_roles"></a>
+<a id="nestedatt--inline_roles"></a>
 ### Nested Schema for `inline_roles`
 
 Required:
@@ -74,23 +72,7 @@ Required:
 Optional:
 
 - `actions` (List of String) The list of action specifiers defining the actions to which the statement applies.
-Either `actions` or `not_actions` must be specified. For a list of available actions read [Actions reference](https://docs.launchdarkly.com/home/account-security/custom-roles/actions#actions-reference).
-- `not_actions` (List of String) The list of action specifiers defining the actions to which the statement does not apply.
-- `not_resources` (List of String) The list of resource specifiers defining the resources to which the statement does not apply.
-- `resources` (List of String) The list of resource specifiers defining the resources to which the statement applies.
-
-
-<a id="nestedblock--policy_statements"></a>
-### Nested Schema for `policy_statements`
-
-Required:
-
-- `effect` (String) Either `allow` or `deny`. This argument defines whether the statement allows or denies access to the named resources and actions.
-
-Optional:
-
-- `actions` (List of String) The list of action specifiers defining the actions to which the statement applies.
-Either `actions` or `not_actions` must be specified. For a list of available actions read [Actions reference](https://docs.launchdarkly.com/home/account-security/custom-roles/actions#actions-reference).
+Either `actions` or `not_actions` must be specified. For a list of available actions read [Actions reference](https://launchdarkly.com/docs/home/account/roles/role-actions#actions-reference).
 - `not_actions` (List of String) The list of action specifiers defining the actions to which the statement does not apply.
 - `not_resources` (List of String) The list of resource specifiers defining the resources to which the statement does not apply.
 - `resources` (List of String) The list of resource specifiers defining the resources to which the statement applies.

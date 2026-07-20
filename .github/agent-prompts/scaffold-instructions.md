@@ -22,7 +22,14 @@ Inputs:
   keys.go constants, framework nested attributes (never blocks), helpers from
   framework_helpers.go, patch helpers, handleLdapiErr wrapping, acceptance-test
   CI matrix entry, docs templates.
-- Use the generated API client (github.com/launchdarkly/api-client-go/v22) for
+- Model nested shapes to the GA conventions in the playbook's Step 2: a field
+  the API treats as at-most-one object is a SingleNestedAttribute (never a
+  max-1 list); a collection keyed by a natural unique key with non-semantic
+  order is a MapNestedAttribute keyed by it (inner key kept Optional+Computed,
+  ValidateConfig key==map-key, ModifyPlan pinMapKeysToMapKey); {key, values}
+  pairs collapse to a plain MapAttribute. Acceptance tests for map attributes
+  must include an update step that ADDS an entry.
+- Use the generated API client (github.com/launchdarkly/api-client-go/v23) for
   all API calls. If the client lacks this surface, stop and report that instead
   of hand-rolling HTTP.
 - If the resource is an account-scoped SINGLETON (the API allows only one per
@@ -37,7 +44,7 @@ Inputs:
 
 Deliverable:
 1. Create a branch named scaffold/<resource name in SCOPED mode, else the family
-   tag> (lowercased, non-alphanumerics replaced with '-') off preview-v3.
+   tag> (lowercased, non-alphanumerics replaced with '-') off main.
 2. Implement the resource (and data source if it has GET-by-key), unit-testable
    helpers, acceptance tests, docs templates, and provider registration. In
    scripts/driftreport/mapping.yaml: in SCOPED mode, move the run's operationIds
@@ -59,7 +66,7 @@ Deliverable:
      integration-configs codegen, which needs an API token this job intentionally
      lacks. Commit the generated docs/ (and any examples/ formatting) so CI's
      generate-diff check passes.
-5. Commit, push the branch, and open a DRAFT pull request against preview-v3
+5. Commit, push the branch, and open a DRAFT pull request against main
    titled "feat: scaffold <resource name or family> resource (autogen stage 2)".
    The PR body must state it is agent-scaffolded and needs human review per stage
    3 of the autogen pipeline, and note that stage-3 verification runs
@@ -72,4 +79,4 @@ Deliverable:
    dispatched by hand. Get <N> from the `gh pr create` output URL (.../pull/<N>)
    or `gh pr view <branch> --json number`.
 
-Never push to preview-v3 directly and never merge anything.
+Never push to main directly and never merge anything.

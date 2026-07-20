@@ -38,8 +38,8 @@ resource "launchdarkly_ai_tool" "example" {
 
 ### Required
 
-- `key` (String) The AI tool's unique key. A change in this field will force the destruction of the existing resource and the creation of a new one.
-- `project_key` (String) The project key. A change in this field will force the destruction of the existing resource and the creation of a new one.
+- `key` (String) The AI tool's unique key. A change in this field forces the destruction of the existing resource and the creation of a new one.
+- `project_key` (String) The project key. A change in this field forces the destruction of the existing resource and the creation of a new one.
 - `schema_json` (String) A JSON string representing the JSON Schema for the tool's parameters.
 
 ### Optional
@@ -52,7 +52,7 @@ resource "launchdarkly_ai_tool" "example" {
 ### Read-Only
 
 - `creation_date` (Number) The creation timestamp of the AI tool.
-- `id` (String) The ID of this resource.
+- `id` (String) Composite ID `project_key/key`.
 - `version` (Number) The version of the AI tool.
 
 ## Import

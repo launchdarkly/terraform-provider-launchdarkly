@@ -33,8 +33,8 @@ data "launchdarkly_webhook" "example" {
 - `name` (String) The webhook's human-readable name.
 - `on` (Boolean) Whether the webhook is enabled.
 - `secret` (String, Sensitive) The secret used to sign the webhook.
-- `statements` (List of Object) List of policy statement blocks used to filter webhook events. For more information on webhook policy filters read [Adding a policy filter](https://docs.launchdarkly.com/integrations/webhooks#adding-a-policy-filter). (see [below for nested schema](#nestedatt--statements))
-- `tags` (Set of String) Tags associated with your resource.
+- `statements` (Attributes List) List of policy statement blocks used to filter webhook events. For more information on webhook policy filters read [Adding a policy filter](https://launchdarkly.com/docs/home/infrastructure/webhooks#adding-a-policy-filter). (see [below for nested schema](#nestedatt--statements))
+- `tags` (Set of String) Tags associated with the webhook.
 - `url` (String) The URL of the remote webhook.
 
 <a id="nestedatt--statements"></a>
@@ -42,8 +42,8 @@ data "launchdarkly_webhook" "example" {
 
 Read-Only:
 
-- `actions` (List of String)
-- `effect` (String)
-- `not_actions` (List of String)
-- `not_resources` (List of String)
-- `resources` (List of String)
+- `actions` (List of String) The list of action specifiers defining the actions to which the statement applies.
+- `effect` (String) Either `allow` or `deny`. This argument defines whether the statement allows or denies access to the named resources and actions.
+- `not_actions` (List of String) The list of action specifiers defining the actions to which the statement does not apply.
+- `not_resources` (List of String) The list of resource specifiers defining the resources to which the statement does not apply.
+- `resources` (List of String) The list of resource specifiers defining the resources to which the statement applies.

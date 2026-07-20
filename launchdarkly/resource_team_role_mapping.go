@@ -5,14 +5,13 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
-	ldapi "github.com/launchdarkly/api-client-go/v22"
+	ldapi "github.com/launchdarkly/api-client-go/v23"
 )
 
 var (
@@ -26,6 +25,7 @@ type TeamRoleMappingResource struct {
 type TeamRoleMappingResourceModel struct {
 	TeamKey        types.String `tfsdk:"team_key"`
 	CustomRoleKeys types.Set    `tfsdk:"custom_role_keys"`
+	RoleAttributes types.Map    `tfsdk:"role_attributes"`
 	ID             types.String `tfsdk:"id"`
 }
 
@@ -49,9 +49,13 @@ func (r *TeamRoleMappingResource) Schema(ctx context.Context, req resource.Schem
 				Description: "A set of custom role keys to assign to the team.",
 				Required:    true,
 			},
-			// In SDKv2, resources and data sources automatically included an implicit, root level id attribute.
-			// In the framework, the id attribute is not implicitly added.
-			// Conventionally, id is a computed attribute that contains the identifier for the resource.
+			ROLE_ATTRIBUTES: schema.MapAttribute{
+				ElementType: types.ListType{ElemType: types.StringType},
+				Optional:    true,
+				Description: "Map of role-attribute keys to lists of resource keys. Applied to the team as a whole. Every custom role granted to this team gets these scopes. To learn more, read [role scope](https://launchdarkly.com/docs/home/account/roles/role-scope). Conflicts with `role_attributes` on `launchdarkly_team`. If you manage the team via `launchdarkly_team`, set `role_attributes` there instead, or add `lifecycle { ignore_changes = [role_attributes] }` on the `launchdarkly_team` to avoid plan churn.",
+			},
+			// Framework resources require an explicit id attribute; it
+			// is conventionally Computed and holds the resource identifier.
 			"id": schema.StringAttribute{
 				Computed:    true,
 				Description: "The ID for this resource.",
@@ -65,17 +69,7 @@ func (r *TeamRoleMappingResource) Schema(ctx context.Context, req resource.Schem
 }
 
 func (r *TeamRoleMappingResource) Configure(ctx context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
-	// Prevent panic if the provider has not been configured
-	if req.ProviderData == nil {
-		return
-	}
-
-	client, ok := req.ProviderData.(*Client)
-	if !ok {
-		resp.Diagnostics.AddError("Unexpected Resource Configure Type", fmt.Sprintf("Expected *http.Client, got: %T. Please report this issue to the provider developers.", req.ProviderData))
-	}
-
-	r.client = client
+	r.client = configureResourceClient(req, resp)
 }
 
 func (r *TeamRoleMappingResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
@@ -93,7 +87,7 @@ func (r *TeamRoleMappingResource) Create(ctx context.Context, req resource.Creat
 	var res *http.Response
 	var err error
 	err = r.client.withConcurrency(r.client.ctx, func() error {
-		team, res, err = r.client.ld404Retry.TeamsApi.GetTeam(r.client.ctx, teamKey).Expand("roles").Execute()
+		team, res, err = r.client.ld404Retry.TeamsApi.GetTeam(r.client.ctx, teamKey).Expand("roles,roleAttributes").Execute()
 		return err
 	})
 	if err != nil {
@@ -119,8 +113,14 @@ func (r *TeamRoleMappingResource) Create(ctx context.Context, req resource.Creat
 		resp.Diagnostics.AddError("The team already has custom roles assigned.", fmt.Sprintf("The team %q already has custom roles assigned.", teamKey))
 	}
 
-	customRoleKeys := make([]string, 0, len(data.CustomRoleKeys.Elements()))
-	resp.Diagnostics.Append(data.CustomRoleKeys.ElementsAs(ctx, &customRoleKeys, false)...)
+	customRoleKeys, sliceDiags := stringSliceFromSet(ctx, data.CustomRoleKeys)
+	resp.Diagnostics.Append(sliceDiags...)
+
+	desiredRoleAttrs, raDiags := roleAttributesFromFrameworkMap(ctx, data.RoleAttributes)
+	resp.Diagnostics.Append(raDiags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
 
 	patchInstructions := make([]map[string]interface{}, 0)
 
@@ -131,6 +131,14 @@ func (r *TeamRoleMappingResource) Create(ctx context.Context, req resource.Creat
 			"values": add,
 		}
 		patchInstructions = append(patchInstructions, instruction)
+	}
+
+	if !data.RoleAttributes.IsNull() && !data.RoleAttributes.IsUnknown() {
+		var existingRoleAttrs map[string][]string
+		if team.RoleAttributes != nil {
+			existingRoleAttrs = *team.RoleAttributes
+		}
+		patchInstructions = append(patchInstructions, diffRoleAttributePatches(existingRoleAttrs, desiredRoleAttrs)...)
 	}
 
 	if len(patchInstructions) > 0 {
@@ -161,10 +169,16 @@ func (r *TeamRoleMappingResource) Create(ctx context.Context, req resource.Creat
 			}
 		}
 
-		customRoleSet, diags := types.SetValueFrom(ctx, types.StringType, returnedRoleKeys)
+		customRoleSet, diags := setFromStringSlice(ctx, returnedRoleKeys)
 		resp.Diagnostics.Append(diags...)
 		data.CustomRoleKeys = customRoleSet
 	}
+
+	// data.RoleAttributes already holds the plan value (or null). The
+	// replaceRoleAttributes patch is wholesale, so the team now reflects exactly
+	// what we sent. Avoid re-reading from the API here because LD may return
+	// values in a different order than the plan, which would trip the
+	// "Provider produced inconsistent result after apply" check.
 
 	// Save data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
@@ -182,11 +196,13 @@ func (r *TeamRoleMappingResource) Read(ctx context.Context, req resource.ReadReq
 	teamKey := data.TeamKey.ValueString()
 
 	// First verify the team exists - this provides clearer error messages than
-	// failing on the roles API call
+	// failing on the roles API call. Expand roleAttributes so we can populate them
+	// in the same call.
+	var team *ldapi.Team
 	var res *http.Response
 	var err error
 	err = r.client.withConcurrency(r.client.ctx, func() error {
-		_, res, err = r.client.ld404Retry.TeamsApi.GetTeam(r.client.ctx, teamKey).Execute()
+		team, res, err = r.client.ld404Retry.TeamsApi.GetTeam(r.client.ctx, teamKey).Expand("roleAttributes").Execute()
 		return err
 	})
 	if err != nil {
@@ -210,13 +226,30 @@ func (r *TeamRoleMappingResource) Read(ctx context.Context, req resource.ReadReq
 
 	data.TeamKey = types.StringValue(teamKey)
 	data.ID = types.StringValue(teamKey)
-	coercedRoleKeys := make([]attr.Value, 0, len(roleKeys))
-	for _, roleKey := range roleKeys {
-		coercedRoleKeys = append(coercedRoleKeys, types.StringValue(roleKey))
-	}
-	customRoleSet, diags := types.SetValue(types.StringType, coercedRoleKeys)
+	customRoleSet, diags := setFromStringSlice(ctx, roleKeys)
 	resp.Diagnostics.Append(diags...)
 	data.CustomRoleKeys = customRoleSet
+
+	// Only refresh role_attributes from the API when this resource already owns
+	// the field (prior state has a non-null value). When state is null we treat
+	// the field as unmanaged here — leaving SCIM-set or launchdarkly_team-managed
+	// attributes alone instead of pulling them into our state and creating churn.
+	if !data.RoleAttributes.IsNull() {
+		priorRaw, priorDiags := roleAttributesFromFrameworkMap(ctx, data.RoleAttributes)
+		resp.Diagnostics.Append(priorDiags...)
+		var apiRaw map[string][]string
+		if team.RoleAttributes != nil {
+			apiRaw = *team.RoleAttributes
+		}
+		// Preserve the state's value ordering when the content is equal
+		// unordered. Avoids spurious plan diffs when LD returns values in a
+		// different order than the user wrote.
+		if !roleAttributesEqual(priorRaw, apiRaw) {
+			roleAttrsMap, raDiags := roleAttributesToFrameworkMap(team.RoleAttributes)
+			resp.Diagnostics.Append(raDiags...)
+			data.RoleAttributes = roleAttrsMap
+		}
+	}
 
 	// Save data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
@@ -231,14 +264,28 @@ func (r *TeamRoleMappingResource) Update(ctx context.Context, req resource.Updat
 		return
 	}
 
+	// Read prior state so we can tell whether this resource already owned
+	// role_attributes. Transitions:
+	//   prior null + plan null  → not owned, do not touch
+	//   prior null + plan set   → opting in, write
+	//   prior set  + plan set   → owned, diff and patch
+	//   prior set  + plan null  → opting out, clear team attributes
+	var prior TeamRoleMappingResourceModel
+	resp.Diagnostics.Append(req.State.Get(ctx, &prior)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
 	teamKey := data.TeamKey.ValueString()
 
 	// First verify the team exists - this provides clearer error messages than
-	// failing on the roles API call
+	// failing on the roles API call. Expand roleAttributes so we can diff against
+	// the API-current value before issuing patches.
+	var team *ldapi.Team
 	var res *http.Response
 	var err error
 	err = r.client.withConcurrency(r.client.ctx, func() error {
-		_, res, err = r.client.ld404Retry.TeamsApi.GetTeam(r.client.ctx, teamKey).Execute()
+		team, res, err = r.client.ld404Retry.TeamsApi.GetTeam(r.client.ctx, teamKey).Expand("roleAttributes").Execute()
 		return err
 	})
 	if err != nil {
@@ -257,8 +304,14 @@ func (r *TeamRoleMappingResource) Update(ctx context.Context, req resource.Updat
 		return
 	}
 
-	customRoleKeys := make([]string, 0, len(data.CustomRoleKeys.Elements()))
-	resp.Diagnostics.Append(data.CustomRoleKeys.ElementsAs(ctx, &customRoleKeys, false)...)
+	customRoleKeys, sliceDiags := stringSliceFromSet(ctx, data.CustomRoleKeys)
+	resp.Diagnostics.Append(sliceDiags...)
+
+	desiredRoleAttrs, raDiags := roleAttributesFromFrameworkMap(ctx, data.RoleAttributes)
+	resp.Diagnostics.Append(raDiags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
 
 	patchInstructions := make([]map[string]interface{}, 0)
 
@@ -277,6 +330,22 @@ func (r *TeamRoleMappingResource) Update(ctx context.Context, req resource.Updat
 			"values": remove,
 		}
 		patchInstructions = append(patchInstructions, instruction)
+	}
+
+	// Role-attributes ownership transitions, see comment at top of Update.
+	priorOwned := !prior.RoleAttributes.IsNull() && !prior.RoleAttributes.IsUnknown()
+	planOwned := !data.RoleAttributes.IsNull() && !data.RoleAttributes.IsUnknown()
+	var existingRoleAttrs map[string][]string
+	if team.RoleAttributes != nil {
+		existingRoleAttrs = *team.RoleAttributes
+	}
+	switch {
+	case planOwned:
+		patchInstructions = append(patchInstructions, diffRoleAttributePatches(existingRoleAttrs, desiredRoleAttrs)...)
+	case priorOwned && !planOwned:
+		// User removed role_attributes from configuration → clear team-side
+		// values that this resource previously wrote.
+		patchInstructions = append(patchInstructions, diffRoleAttributePatches(existingRoleAttrs, nil)...)
 	}
 
 	if len(patchInstructions) > 0 {
@@ -310,10 +379,15 @@ func (r *TeamRoleMappingResource) Update(ctx context.Context, req resource.Updat
 			}
 		}
 
-		customRoleSet, diags := types.SetValueFrom(ctx, types.StringType, returnedRoleKeys)
+		customRoleSet, diags := setFromStringSlice(ctx, returnedRoleKeys)
 		resp.Diagnostics.Append(diags...)
 		data.CustomRoleKeys = customRoleSet
 	}
+
+	// data.RoleAttributes already holds the plan value (or null for opt-out).
+	// We deliberately do not re-read it from the API: LD may return values in
+	// a different order than the plan, which would trigger Terraform's
+	// "Provider produced inconsistent result after apply" check.
 
 	// Save data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
@@ -329,17 +403,29 @@ func (r *TeamRoleMappingResource) Delete(ctx context.Context, req resource.Delet
 	}
 
 	teamKey := data.TeamKey.ValueString()
-	customRoleKeys := make([]string, 0, len(data.CustomRoleKeys.Elements()))
-	resp.Diagnostics.Append(data.CustomRoleKeys.ElementsAs(ctx, &customRoleKeys, false)...)
+	customRoleKeys, sliceDiags := stringSliceFromSet(ctx, data.CustomRoleKeys)
+	resp.Diagnostics.Append(sliceDiags...)
+
+	instructions := make([]map[string]interface{}, 0)
 
 	if len(customRoleKeys) > 0 {
-		instructions := []map[string]interface{}{
-			{
-				"kind":   "removeCustomRoles",
-				"values": customRoleKeys,
-			},
-		}
+		instructions = append(instructions, map[string]interface{}{
+			"kind":   "removeCustomRoles",
+			"values": customRoleKeys,
+		})
+	}
 
+	// If this resource owned role_attributes (state has a non-null value), clear
+	// them on the team so destroy doesn't leave stale scopes behind. When state
+	// is null we never wrote them, so leave the team alone.
+	if !data.RoleAttributes.IsNull() && !data.RoleAttributes.IsUnknown() {
+		instructions = append(instructions, map[string]interface{}{
+			"kind":  "replaceRoleAttributes",
+			"value": map[string][]string{},
+		})
+	}
+
+	if len(instructions) > 0 {
 		patch := ldapi.TeamPatchInput{
 			Comment:      strPtr("Updated by Terraform"),
 			Instructions: instructions,

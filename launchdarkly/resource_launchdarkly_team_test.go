@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/acctest"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
+	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
+	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/terraform"
 )
 
 const (
@@ -16,11 +16,11 @@ resource "launchdarkly_custom_role" "terraform_team_test" {
   key = "%s"
   name = "Teams test role %s"
   base_permissions = "no_access"
-  policy {
+  policy_statements = [{
     actions = ["*"]
     effect = "deny"
     resources = ["proj/*:env/$${roleAttribute/developer-envs}"]
-  }
+  }]
 }
 
 resource "launchdarkly_team_member" "test_member_one" {
@@ -41,17 +41,10 @@ resource "launchdarkly_team" "test" {
   member_ids = [launchdarkly_team_member.test_member_one.id]
   maintainers = [launchdarkly_team_member.test_member_two.id]
   custom_role_keys = [launchdarkly_custom_role.terraform_team_test.key]
-  role_attributes {
-	key = "fake-attribute"
-	values = ["fake-value"]
-  }
-  role_attributes {
-	key = "developer-envs"
-	values = ["development", "production"]
-  }
-  role_attributes {
-	key = "another-fake-attribute"
-	values = ["another-fake-value"]
+  role_attributes = {
+	"fake-attribute"         = ["fake-value"]
+	"developer-envs"         = ["development", "production"]
+	"another-fake-attribute" = ["another-fake-value"]
   }
 }
 `
@@ -60,11 +53,11 @@ resource "launchdarkly_custom_role" "terraform_team_test" {
   key = "%s"
   name = "Teams test role %s"
   base_permissions = "no_access"
-  policy {
+  policy_statements = [{
     actions = ["*"]
     effect = "deny"
     resources = ["proj/*:env/$${roleAttribute/developer-envs}"]
-  }
+  }]
 }
 
 resource "launchdarkly_team_member" "test_member_one" {
@@ -85,13 +78,9 @@ resource "launchdarkly_team" "test" {
   member_ids = [launchdarkly_team_member.test_member_one.id]
   maintainers = [launchdarkly_team_member.test_member_two.id]
   custom_role_keys = [launchdarkly_custom_role.terraform_team_test.key]
-  role_attributes {
-	key = "developer-envs"
-	values = ["development"]
-  }
-  role_attributes {
-	key = "fake-attribute"
-	values = ["faker-value", "fake-value"]
+  role_attributes = {
+	"developer-envs" = ["development"]
+	"fake-attribute" = ["faker-value", "fake-value"]
   }
 }
 `
@@ -100,22 +89,22 @@ resource "launchdarkly_custom_role" "terraform_team_test" {
   key = "%s"
   name = "Teams test role %s"
   base_permissions = "no_access"
-  policy {
+  policy_statements = [{
     actions = ["*"]
     effect = "deny"
     resources = ["proj/*:env/production"]
-  }
+  }]
 }
 
 resource "launchdarkly_custom_role" "other_team_test" {
   key = "%s"
   name = "Other test role %s"
   base_permissions = "no_access"
-  policy {
+  policy_statements = [{
     actions = ["*"]
     effect = "deny"
     resources = ["proj/*:env/production"]
-  }
+  }]
 }
 
 resource "launchdarkly_team_member" "test_member_one" {
@@ -143,11 +132,11 @@ resource "launchdarkly_custom_role" "other_team_test" {
   key = "%s"
   name = "Other test role %s"
   base_permissions = "no_access"
-  policy {
+  policy_statements = [{
     actions = ["*"]
     effect = "deny"
     resources = ["proj/*:env/production"]
-  }
+  }]
 }
 
 resource "launchdarkly_team_member" "test_member_one" {
@@ -174,9 +163,8 @@ resource "launchdarkly_team" "test" {
   member_ids = [launchdarkly_team_member.test_member_two.id, launchdarkly_team_member.test_member_three.id]
   maintainers = [launchdarkly_team_member.test_member_two.id, launchdarkly_team_member.test_member_one.id]
   custom_role_keys = [launchdarkly_custom_role.other_team_test.key]
-  role_attributes {
-	key = "testAttribute"
-	values = ["testValue"]
+  role_attributes = {
+	testAttribute = ["testValue"]
   }
 }
 `
@@ -197,8 +185,8 @@ func TestAccTeam_CreateAndUpdate(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers:    testAccProviders,
-		CheckDestroy: testAccCheckTeamDestroy,
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckTeamDestroy,
 		Steps: []resource.TestStep{
 			{
 				Config: fmt.Sprintf(testAccTeamCreate, randomRoleOne, randomRoleOne, randomEmailOne, randomEmailTwo, randomTeamKey),
@@ -211,17 +199,14 @@ func TestAccTeam_CreateAndUpdate(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "maintainers.#", "1"),
 					resource.TestCheckResourceAttr(resourceName, "custom_role_keys.#", "1"),
 					resource.TestCheckResourceAttr(resourceName, "custom_role_keys.0", randomRoleOne),
-					resource.TestCheckResourceAttr(resourceName, "role_attributes.#", "3"),
-					resource.TestCheckResourceAttr(resourceName, "role_attributes.0.key", "another-fake-attribute"),
-					resource.TestCheckResourceAttr(resourceName, "role_attributes.0.values.#", "1"),
-					resource.TestCheckResourceAttr(resourceName, "role_attributes.0.values.0", "another-fake-value"),
-					resource.TestCheckResourceAttr(resourceName, "role_attributes.1.key", "developer-envs"),
-					resource.TestCheckResourceAttr(resourceName, "role_attributes.1.values.#", "2"),
-					resource.TestCheckResourceAttr(resourceName, "role_attributes.1.values.0", "development"),
-					resource.TestCheckResourceAttr(resourceName, "role_attributes.1.values.1", "production"),
-					resource.TestCheckResourceAttr(resourceName, "role_attributes.2.key", "fake-attribute"),
-					resource.TestCheckResourceAttr(resourceName, "role_attributes.2.values.#", "1"),
-					resource.TestCheckResourceAttr(resourceName, "role_attributes.2.values.0", "fake-value"),
+					resource.TestCheckResourceAttr(resourceName, "role_attributes.%", "3"),
+					resource.TestCheckResourceAttr(resourceName, "role_attributes.another-fake-attribute.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "role_attributes.another-fake-attribute.0", "another-fake-value"),
+					resource.TestCheckResourceAttr(resourceName, "role_attributes.developer-envs.#", "2"),
+					resource.TestCheckResourceAttr(resourceName, "role_attributes.developer-envs.0", "development"),
+					resource.TestCheckResourceAttr(resourceName, "role_attributes.developer-envs.1", "production"),
+					resource.TestCheckResourceAttr(resourceName, "role_attributes.fake-attribute.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "role_attributes.fake-attribute.0", "fake-value"),
 				),
 			},
 			{
@@ -241,14 +226,12 @@ func TestAccTeam_CreateAndUpdate(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "maintainers.#", "1"),
 					resource.TestCheckResourceAttr(resourceName, "custom_role_keys.#", "1"),
 					resource.TestCheckResourceAttr(resourceName, "custom_role_keys.0", randomRoleOne),
-					resource.TestCheckResourceAttr(resourceName, "role_attributes.#", "2"),
-					resource.TestCheckResourceAttr(resourceName, "role_attributes.0.key", "developer-envs"),
-					resource.TestCheckResourceAttr(resourceName, "role_attributes.0.values.#", "1"),
-					resource.TestCheckResourceAttr(resourceName, "role_attributes.0.values.0", "development"),
-					resource.TestCheckResourceAttr(resourceName, "role_attributes.1.key", "fake-attribute"),
-					resource.TestCheckResourceAttr(resourceName, "role_attributes.1.values.#", "2"),
-					resource.TestCheckResourceAttr(resourceName, "role_attributes.1.values.0", "faker-value"),
-					resource.TestCheckResourceAttr(resourceName, "role_attributes.1.values.1", "fake-value"),
+					resource.TestCheckResourceAttr(resourceName, "role_attributes.%", "2"),
+					resource.TestCheckResourceAttr(resourceName, "role_attributes.developer-envs.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "role_attributes.developer-envs.0", "development"),
+					resource.TestCheckResourceAttr(resourceName, "role_attributes.fake-attribute.#", "2"),
+					resource.TestCheckResourceAttr(resourceName, "role_attributes.fake-attribute.0", "faker-value"),
+					resource.TestCheckResourceAttr(resourceName, "role_attributes.fake-attribute.1", "fake-value"),
 				),
 			},
 			{
@@ -286,10 +269,9 @@ func TestAccTeam_CreateAndUpdate(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "maintainers.#", "2"),
 					resource.TestCheckResourceAttr(resourceName, "custom_role_keys.#", "1"),
 					resource.TestCheckResourceAttr(resourceName, "custom_role_keys.0", randomRoleTwo),
-					resource.TestCheckResourceAttr(resourceName, "role_attributes.#", "1"),
-					resource.TestCheckResourceAttr(resourceName, "role_attributes.0.key", "testAttribute"),
-					resource.TestCheckResourceAttr(resourceName, "role_attributes.0.values.#", "1"),
-					resource.TestCheckResourceAttr(resourceName, "role_attributes.0.values.0", "testValue"),
+					resource.TestCheckResourceAttr(resourceName, "role_attributes.%", "1"),
+					resource.TestCheckResourceAttr(resourceName, "role_attributes.testAttribute.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "role_attributes.testAttribute.0", "testValue"),
 				),
 			},
 			{
@@ -309,10 +291,9 @@ func TestAccTeam_CreateAndUpdate(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "maintainers.#", "2"),
 					resource.TestCheckResourceAttr(resourceName, "custom_role_keys.#", "1"),
 					resource.TestCheckResourceAttr(resourceName, "custom_role_keys.0", randomRoleTwo),
-					resource.TestCheckResourceAttr(resourceName, "role_attributes.#", "1"),
-					resource.TestCheckResourceAttr(resourceName, "role_attributes.0.key", "testAttribute"),
-					resource.TestCheckResourceAttr(resourceName, "role_attributes.0.values.#", "1"),
-					resource.TestCheckResourceAttr(resourceName, "role_attributes.0.values.0", "testValue"),
+					resource.TestCheckResourceAttr(resourceName, "role_attributes.%", "1"),
+					resource.TestCheckResourceAttr(resourceName, "role_attributes.testAttribute.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "role_attributes.testAttribute.0", "testValue"),
 				),
 			},
 			{
@@ -333,7 +314,7 @@ func testAccCheckTeamExists(resourceName string) resource.TestCheckFunc {
 		if rs.Primary.ID == "" {
 			return fmt.Errorf("team ID is not set")
 		}
-		client := testAccProvider.Meta().(*Client)
+		client := mustTestAccClient()
 		_, _, err := client.ld.TeamsApi.GetTeam(client.ctx, rs.Primary.ID).Execute()
 		if err != nil {
 			return fmt.Errorf("received an error getting team: %s", err)
@@ -344,7 +325,7 @@ func testAccCheckTeamExists(resourceName string) resource.TestCheckFunc {
 
 // testAccCheckTeamDestroy verifies the team has been destroyed
 func testAccCheckTeamDestroy(s *terraform.State) error {
-	client := testAccProvider.Meta().(*Client)
+	client := mustTestAccClient()
 	for _, rs := range s.RootModule().Resources {
 		if rs.Type != "launchdarkly_team" {
 			continue
