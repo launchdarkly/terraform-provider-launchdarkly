@@ -13,6 +13,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
+	ldapi "github.com/launchdarkly/api-client-go/v23"
 )
 
 const (
@@ -737,14 +738,19 @@ resource "launchdarkly_segment" "test" {
 	})
 }
 
-// TestAccSegment_ApprovalRequired covers issue #370: when segment approvals are
-// enabled for an environment, a segment with no targeting must still create
-// (the gated, no-op targeting PATCH is skipped), while a segment that does
-// configure targeting must fail with the actionable "approval is required"
-// error rather than the old opaque failure. Segment approvals are not exposed
-// through the provider schema, so they are toggled out-of-band via the beta
-// approval-settings API in a PreConfig step. Runs serially because it mutates
-// environment-scoped approval settings.
+// TestAccSegment_ApprovalRequired covers the targeting-free half of issue #370:
+// when segment approvals are enabled for an environment, a segment with no
+// targeting must still create, because the create path skips the gated, no-op
+// targeting PATCH. Segment approvals are not exposed through the provider
+// schema, so they are toggled out-of-band via the beta approval-settings API in
+// a PreConfig step. Runs serially because it mutates environment-scoped approval
+// settings.
+//
+// The complementary "targeting change is blocked under approvals" assertion
+// lives in TestAccSegment_ApprovalRequiredWithoutBypass: the default acceptance
+// token now carries the bypassRequiredSegmentApproval permission, so it can no
+// longer demonstrate the blocked path — a token without that permission is
+// required.
 func TestAccSegment_ApprovalRequired(t *testing.T) {
 	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	envKey := "test-env"
@@ -773,23 +779,6 @@ resource "launchdarkly_segment" "bare" {
 }
 `
 
-	withRules := bareSegment + `
-resource "launchdarkly_segment" "rules" {
-	project_key = launchdarkly_project.test.key
-	env_key     = "test-env"
-	key         = "approval-rules"
-	name        = "rules under approvals"
-	rules = [{
-		clauses = [{
-			attribute    = "email"
-			op           = "in"
-			values       = ["a@b.com"]
-			context_kind = "user"
-		}]
-	}]
-}
-`
-
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
@@ -805,14 +794,6 @@ resource "launchdarkly_segment" "rules" {
 				PreConfig: func() { enableSegmentApprovalsForTest(t, projectKey, envKey) },
 				Config:    bareSegment,
 				Check:     resource.ComposeTestCheckFunc(testAccCheckSegmentExists(bareResourceName)),
-			},
-			// Step 3: a segment that configures targeting must fail with the
-			// actionable approval error; the partial shell is rolled back.
-			{
-				// Terraform word-wraps diagnostics, so tolerate whitespace
-				// (including newlines) between words.
-				Config:      withRules,
-				ExpectError: regexp.MustCompile(`approval\s+is\s+required`),
 			},
 		},
 	})
@@ -847,4 +828,170 @@ func enableSegmentApprovalsForTest(t *testing.T, projectKey, envKey string) {
 		b, _ := io.ReadAll(resp.Body)
 		t.Fatalf("enable segment approvals for %s/%s returned %d: %s", projectKey, envKey, resp.StatusCode, string(b))
 	}
+}
+
+// TestAccSegment_ApprovalBypass is the positive counterpart to
+// TestAccSegment_ApprovalRequiredWithoutBypass (issue #370 / REL-15009). It
+// verifies that when the token driving the provider holds a role that includes
+// the "bypassRequiredSegmentApproval" action, the provider CAN apply segment
+// targeting changes in an environment where segment approvals are required —
+// the "approval is required" gate is bypassed rather than surfaced as an error.
+//
+// It mints a dedicated, project-scoped service token whose inline role grants
+// the bypass action and drives a provider instance authenticated with it. The
+// scaffold (project, environment, approval settings, token) runs out-of-band
+// with the admin acceptance client because the scoped token is intentionally
+// not permitted to create account-level resources like projects. Runs serially
+// because it mutates environment-scoped approval settings.
+func TestAccSegment_ApprovalBypass(t *testing.T) {
+	projectKey, envKey, tokenSecret := segmentApprovalScopedSetup(t, "tf-acc-segment-bypass",
+		func(projectKey, envKey string) []ldapi.StatementPost {
+			// Full management of the project (the create path also reads the
+			// environment for view reconciliation) plus the explicit bypass
+			// action on segments. "*" alongside the explicit action guards
+			// against the wildcard omitting the newly added action.
+			return []ldapi.StatementPost{
+				segmentInlineStatement("allow", []string{fmt.Sprintf("proj/%s", projectKey)}, []string{"*"}),
+				segmentInlineStatement("allow", []string{fmt.Sprintf("proj/%s:env/*", projectKey)}, []string{"*"}),
+				segmentInlineStatement("allow", []string{fmt.Sprintf("proj/%s:env/*:segment/*", projectKey)}, []string{"*", "bypassRequiredSegmentApproval"}),
+			}
+		})
+
+	resourceName := "launchdarkly_segment.target"
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: segmentApprovalTargetingConfig(tokenSecret, projectKey, envKey, "approval-bypass"),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckSegmentExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, "rules.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "rules.0.clauses.0.values.0", "a@b.com"),
+				),
+			},
+		},
+	})
+}
+
+// TestAccSegment_ApprovalRequiredWithoutBypass is the negative counterpart to
+// TestAccSegment_ApprovalBypass and preserves the "targeting change is blocked
+// under approvals" coverage from issue #370 that the default acceptance token
+// can no longer demonstrate (it now carries the bypass permission). It mints a
+// service token that can fully manage segments but is explicitly denied the
+// bypassRequiredSegmentApproval action, then confirms that applying a targeting
+// change still fails with the actionable "approval is required" error. Runs
+// serially because it mutates environment-scoped approval settings.
+func TestAccSegment_ApprovalRequiredWithoutBypass(t *testing.T) {
+	projectKey, envKey, tokenSecret := segmentApprovalScopedSetup(t, "tf-acc-segment-nobypass",
+		func(projectKey, envKey string) []ldapi.StatementPost {
+			// Full segment management, but an explicit deny of the bypass
+			// action (deny overrides allow), so this token remains subject to
+			// the approval gate.
+			return []ldapi.StatementPost{
+				segmentInlineStatement("allow", []string{fmt.Sprintf("proj/%s", projectKey)}, []string{"*"}),
+				segmentInlineStatement("allow", []string{fmt.Sprintf("proj/%s:env/*", projectKey)}, []string{"*"}),
+				segmentInlineStatement("allow", []string{fmt.Sprintf("proj/%s:env/*:segment/*", projectKey)}, []string{"*"}),
+				segmentInlineStatement("deny", []string{fmt.Sprintf("proj/%s:env/*:segment/*", projectKey)}, []string{"bypassRequiredSegmentApproval"}),
+			}
+		})
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: segmentApprovalTargetingConfig(tokenSecret, projectKey, envKey, "approval-blocked"),
+				// Terraform word-wraps diagnostics, so tolerate whitespace
+				// (including newlines) between words.
+				ExpectError: regexp.MustCompile(`approval\s+is\s+required`),
+			},
+		},
+	})
+}
+
+// segmentApprovalScopedSetup scaffolds a project + environment with segment
+// approvals required, then mints a service token whose inline role is built by
+// statementsFn (called with the generated project and environment keys). It
+// registers cleanup of the token and project and returns the project key, the
+// environment key, and the token secret. The scaffold uses the admin
+// acceptance client because scoped tokens cannot create projects. Because this
+// runs live API calls before resource.Test would otherwise skip, it gates on
+// TF_ACC so `make test` (unit) stays green.
+func segmentApprovalScopedSetup(t *testing.T, tokenName string, statementsFn func(projectKey, envKey string) []ldapi.StatementPost) (projectKey, envKey, tokenSecret string) {
+	t.Helper()
+	if os.Getenv("TF_ACC") == "" {
+		t.Skip("TF_ACC not set; skipping acceptance test")
+	}
+
+	client := mustTestAccClient()
+	projectKey = acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	envKey = "test-env"
+
+	if _, err := testAccProjectScaffoldCreate(client, ldapi.ProjectPost{
+		Key:  projectKey,
+		Name: "Segment Approval Scoped Test",
+		Environments: []ldapi.EnvironmentPost{{
+			Key:   envKey,
+			Name:  "Test Environment",
+			Color: "010101",
+		}},
+	}); err != nil {
+		t.Fatalf("failed to scaffold project %q: %s", projectKey, err)
+	}
+	t.Cleanup(func() { _ = testAccProjectScaffoldDelete(client, projectKey) })
+
+	// Require segment approvals for the environment (out-of-band beta API).
+	enableSegmentApprovalsForTest(t, projectKey, envKey)
+
+	token, _, err := client.ld.AccessTokensApi.PostToken(client.ctx).AccessTokenPost(ldapi.AccessTokenPost{
+		Name:         ldapi.PtrString(tokenName + "-" + projectKey),
+		ServiceToken: ldapi.PtrBool(true),
+		InlineRole:   statementsFn(projectKey, envKey),
+	}).Execute()
+	if err != nil {
+		t.Fatalf("failed to create scoped service token: %s", handleLdapiErr(err))
+	}
+	t.Cleanup(func() { _, _ = client.ld.AccessTokensApi.DeleteToken(client.ctx, token.Id).Execute() })
+	if token.Token == nil || *token.Token == "" {
+		t.Fatal("scoped service token response did not include a token secret")
+	}
+	return projectKey, envKey, *token.Token
+}
+
+// segmentApprovalTargetingConfig builds an HCL config that authenticates the
+// provider with the given (scoped) token and manages a segment with a targeting
+// rule in an approval-gated environment. Whether the apply succeeds or fails
+// depends solely on whether the token can bypass segment approvals.
+func segmentApprovalTargetingConfig(tokenSecret, projectKey, envKey, segmentKey string) string {
+	return fmt.Sprintf(`
+provider "launchdarkly" {
+	access_token = %q
+}
+
+resource "launchdarkly_segment" "target" {
+	project_key = %q
+	env_key     = %q
+	key         = %q
+	name        = "targeting under approvals"
+	rules = [{
+		clauses = [{
+			attribute    = "email"
+			op           = "in"
+			values       = ["a@b.com"]
+			context_kind = "user"
+		}]
+	}]
+}
+`, tokenSecret, projectKey, envKey, segmentKey)
+}
+
+// segmentInlineStatement builds a single-resource-kind policy statement for an
+// inline access-token role. Policy statements may not mix resource kinds, so
+// callers pass one kind's specifiers per call.
+func segmentInlineStatement(effect string, resources, actions []string) ldapi.StatementPost {
+	s := ldapi.StatementPost{Effect: effect}
+	s.SetResources(resources)
+	s.SetActions(actions)
+	return s
 }
