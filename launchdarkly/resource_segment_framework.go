@@ -71,7 +71,7 @@ func (r *SegmentResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 
 This resource allows you to create and manage segments within your LaunchDarkly organization.
 
--> **Note:** When [segment approvals](https://launchdarkly.com/docs/home/releases/approvals) are enabled for an environment, segment **targeting** changes (` + "`included`" + `, ` + "`excluded`" + `, ` + "`rules`" + `, ` + "`included_contexts`" + `, ` + "`excluded_contexts`" + `) require approval and cannot be applied by Terraform: unlike feature flags, service tokens cannot bypass segment approvals. See LaunchDarkly feature request FROPS-190. A segment with no targeting can still be created and managed. If targeting is configured, ` + "`terraform apply`" + ` fails with an "approval is required" error. Manage targeting through the approval workflow, for example with ` + "`lifecycle { ignore_changes = [included, excluded, rules] }`" + `, or disable segment approvals for the environment.`,
+-> **Note:** When [segment approvals](https://launchdarkly.com/docs/home/releases/approvals) are enabled for an environment, segment **targeting** changes (` + "`included`" + `, ` + "`excluded`" + `, ` + "`rules`" + `, ` + "`included_contexts`" + `, ` + "`excluded_contexts`" + `) require approval. To let Terraform apply these changes non-interactively, grant its access token a custom role (` + "`launchdarkly_custom_role`" + `) that includes the ` + "`bypassRequiredSegmentApproval`" + ` action. Without that permission, ` + "`terraform apply`" + ` fails with an "approval is required" error. In that case, manage targeting through the approval workflow, for example with ` + "`lifecycle { ignore_changes = [included, excluded, rules] }`" + `, disable segment approvals for the environment, or switch to a token that has the bypass permission. A segment with no targeting can be created and managed regardless.`,
 		Attributes: segmentSchemaAttributes(),
 	}
 }
@@ -628,20 +628,20 @@ func appendSegmentTargetingOps(ops []ldapi.PatchOperation, included, excluded []
 }
 
 // segmentApprovalRequiredDiag builds the diagnostic returned when a segment
-// PATCH is rejected because segment approvals are enabled for the environment.
-// Segment targeting changes require approval and, unlike feature flags,
-// service tokens cannot bypass segment approvals yet (FROPS-190), so Terraform
-// — which applies changes non-interactively — cannot satisfy the inline
-// approval. On create the function also rolls back the shell that PostSegment
+// PATCH is rejected because segment approvals are enabled for the environment
+// and the token's role does not permit bypassing them. Terraform applies
+// changes non-interactively, so it cannot satisfy an inline approval; the fix
+// is to grant the token a custom role with the "bypassRequiredSegmentApproval"
+// action. On create the function also rolls back the shell that PostSegment
 // created (DELETE is not gated by approvals) so a retry does not collide with
 // an orphaned segment. See issue #370.
 func (r *SegmentResource) segmentApprovalRequiredDiag(isCreate bool, projectKey, envKey, key string) diag.Diagnostic {
 	verb := "updated"
-	remediation := "Remove the targeting attributes (included / excluded / rules / included_contexts / excluded_contexts) from this resource, or disable segment approvals for this environment."
+	remediation := "Grant this token a custom role that includes the \"bypassRequiredSegmentApproval\" action so Terraform can apply targeting changes directly, remove the targeting attributes (included / excluded / rules / included_contexts / excluded_contexts) from this resource, or disable segment approvals for this environment."
 	rollback := ""
 	if isCreate {
 		verb = "created"
-		remediation = "Remove the targeting attributes (included / excluded / rules / included_contexts / excluded_contexts) so Terraform creates only the segment shell and you manage targeting through the approval workflow, or disable segment approvals for this environment."
+		remediation = "Grant this token a custom role that includes the \"bypassRequiredSegmentApproval\" action so Terraform can create the segment with its targeting directly, remove the targeting attributes (included / excluded / rules / included_contexts / excluded_contexts) so Terraform creates only the segment shell and you manage targeting through the approval workflow, or disable segment approvals for this environment."
 		delErr := r.client.withConcurrency(r.client.ctx, func() error {
 			_, e := r.client.ld.SegmentsApi.DeleteSegment(r.client.ctx, projectKey, envKey, key).Execute()
 			return e
@@ -654,7 +654,7 @@ func (r *SegmentResource) segmentApprovalRequiredDiag(isCreate bool, projectKey,
 	}
 	return diag.NewErrorDiagnostic(
 		fmt.Sprintf("segment %q cannot be %s in project %q: segment approvals are enabled for environment %q", key, verb, projectKey, envKey),
-		fmt.Sprintf("LaunchDarkly rejected the segment targeting change with \"approval is required\" (HTTP 403). Segment approvals gate targeting changes in this environment, and unlike feature flags, service tokens cannot bypass segment approvals yet (LaunchDarkly feature request FROPS-190). Because Terraform applies changes non-interactively, it cannot satisfy an inline approval.%s\n\n%s", rollback, remediation),
+		fmt.Sprintf("LaunchDarkly rejected the segment targeting change with \"approval is required\" (HTTP 403). Segment approvals gate targeting changes in this environment, and this token's role does not permit bypassing them. Because Terraform applies changes non-interactively, it cannot satisfy an inline approval; grant the token a custom role with the \"bypassRequiredSegmentApproval\" action to let it apply these changes directly.%s\n\n%s", rollback, remediation),
 	)
 }
 

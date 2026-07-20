@@ -67,11 +67,11 @@ func isTimeoutError(err error) bool {
 // caused by an approval requirement. When approvals are enabled for a
 // resource, the API rejects direct mutations with HTTP 403 and the body
 // {"code":"forbidden","message":"approval is required"}. Segment approvals
-// gate targeting changes (included / excluded / rules / *_contexts) and,
-// unlike flag approvals, cannot yet be bypassed by a service token
-// (FROPS-190) — so Terraform cannot apply gated segment changes. See issue
-// #370. Keyed on the message rather than the bare 403 so ordinary
-// permission-denied 403s are not misclassified.
+// gate targeting changes (included / excluded / rules / *_contexts). A token
+// whose role includes the "bypassRequiredSegmentApproval" action is not
+// subject to the gate, so this error surfaces only for tokens lacking that
+// permission. See issue #370. Keyed on the message rather than the bare 403
+// so ordinary permission-denied 403s are not misclassified.
 func isApprovalRequiredErr(err error) bool {
 	if err == nil {
 		return false

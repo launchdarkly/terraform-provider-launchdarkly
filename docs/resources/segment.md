@@ -5,7 +5,7 @@ subcategory: ""
 description: |-
   Provides a LaunchDarkly segment resource.
   This resource allows you to create and manage segments within your LaunchDarkly organization.
-  -> Note: When segment approvals https://launchdarkly.com/docs/home/releases/approvals are enabled for an environment, segment targeting changes (included, excluded, rules, included_contexts, excluded_contexts) require approval and cannot be applied by Terraform: unlike feature flags, service tokens cannot bypass segment approvals. See LaunchDarkly feature request FROPS-190. A segment with no targeting can still be created and managed. If targeting is configured, terraform apply fails with an "approval is required" error. Manage targeting through the approval workflow, for example with lifecycle { ignore_changes = [included, excluded, rules] }, or disable segment approvals for the environment.
+  -> Note: When segment approvals https://launchdarkly.com/docs/home/releases/approvals are enabled for an environment, segment targeting changes (included, excluded, rules, included_contexts, excluded_contexts) require approval. To let Terraform apply these changes non-interactively, grant its access token a custom role (launchdarkly_custom_role) that includes the bypassRequiredSegmentApproval action. Without that permission, terraform apply fails with an "approval is required" error. In that case, manage targeting through the approval workflow, for example with lifecycle { ignore_changes = [included, excluded, rules] }, disable segment approvals for the environment, or switch to a token that has the bypass permission. A segment with no targeting can be created and managed regardless.
 ---
 
 # launchdarkly_segment (Resource)
@@ -14,7 +14,7 @@ Provides a LaunchDarkly segment resource.
 
 This resource allows you to create and manage segments within your LaunchDarkly organization.
 
--> **Note:** When [segment approvals](https://launchdarkly.com/docs/home/releases/approvals) are enabled for an environment, segment **targeting** changes (`included`, `excluded`, `rules`, `included_contexts`, `excluded_contexts`) require approval and cannot be applied by Terraform: unlike feature flags, service tokens cannot bypass segment approvals. See LaunchDarkly feature request FROPS-190. A segment with no targeting can still be created and managed. If targeting is configured, `terraform apply` fails with an "approval is required" error. Manage targeting through the approval workflow, for example with `lifecycle { ignore_changes = [included, excluded, rules] }`, or disable segment approvals for the environment.
+-> **Note:** When [segment approvals](https://launchdarkly.com/docs/home/releases/approvals) are enabled for an environment, segment **targeting** changes (`included`, `excluded`, `rules`, `included_contexts`, `excluded_contexts`) require approval. To let Terraform apply these changes non-interactively, grant its access token a custom role (`launchdarkly_custom_role`) that includes the `bypassRequiredSegmentApproval` action. Without that permission, `terraform apply` fails with an "approval is required" error. In that case, manage targeting through the approval workflow, for example with `lifecycle { ignore_changes = [included, excluded, rules] }`, disable segment approvals for the environment, or switch to a token that has the bypass permission. A segment with no targeting can be created and managed regardless.
 
 ## Example Usage
 
