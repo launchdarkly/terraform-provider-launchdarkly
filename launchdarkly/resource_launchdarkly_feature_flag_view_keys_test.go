@@ -8,9 +8,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/acctest"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
+	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
+	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/terraform"
 	"github.com/stretchr/testify/require"
 )
 
@@ -47,6 +47,10 @@ resource "launchdarkly_feature_flag" "test" {
 	key         = "test-flag-with-views"
 	name        = "Test Flag with Views"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 	
 	view_keys = [
 		launchdarkly_view.view1.key,
@@ -89,6 +93,10 @@ resource "launchdarkly_feature_flag" "test" {
 	key         = "test-flag-with-views"
 	name        = "Test Flag with Views"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 	
 	view_keys = [
 		launchdarkly_view.view1.key,
@@ -131,6 +139,10 @@ resource "launchdarkly_feature_flag" "test" {
 	key         = "test-flag-with-views"
 	name        = "Test Flag with Views"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 	
 	view_keys = []
 	
@@ -170,6 +182,10 @@ resource "launchdarkly_feature_flag" "test" {
 	key         = "test-flag-with-views"
 	name        = "Test Flag with Views"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 
 	view_keys = [
 		launchdarkly_view.view1.key
@@ -213,6 +229,10 @@ resource "launchdarkly_feature_flag" "test" {
 	key         = "test-flag-bad-view"
 	name        = "Test Flag with Bad View"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 	
 	view_keys = [
 		launchdarkly_view.view1.key,
@@ -232,21 +252,14 @@ func TestAccFeatureFlagViewKeys_CreateAndUpdate(t *testing.T) {
 	projectName := "flag-view-keys-test-" + projectKey
 	resourceName := "launchdarkly_feature_flag.test"
 
-	client, err := newClient(os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN), os.Getenv(LAUNCHDARKLY_API_HOST), false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
-	require.NoError(t, err)
-
-	members, _, err := client.ld.AccountMembersApi.GetMembers(client.ctx).Execute()
-	require.NoError(t, err)
-	require.True(t, len(members.Items) > 0, "This test requires at least one member in the account")
-
-	maintainerId := members.Items[0].Id
+	maintainerId := firstMemberIDForTest(t)
 
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers:    testAccProviders,
-		CheckDestroy: testAccCheckFeatureFlagDestroy,
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckFeatureFlagDestroy,
 		Steps: []resource.TestStep{
 			{
 				Config: fmt.Sprintf(testAccFeatureFlagWithViewKeysCreate, projectName, projectKey, maintainerId, maintainerId, maintainerId),
@@ -297,21 +310,14 @@ func TestAccFeatureFlagViewKeys_NonexistentView(t *testing.T) {
 	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	projectName := "flag-bad-view-test-" + projectKey
 
-	client, err := newClient(os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN), os.Getenv(LAUNCHDARKLY_API_HOST), false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
-	require.NoError(t, err)
-
-	members, _, err := client.ld.AccountMembersApi.GetMembers(client.ctx).Execute()
-	require.NoError(t, err)
-	require.True(t, len(members.Items) > 0, "This test requires at least one member in the account")
-
-	maintainerId := members.Items[0].Id
+	maintainerId := firstMemberIDForTest(t)
 
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers:    testAccProviders,
-		CheckDestroy: testAccCheckFeatureFlagDestroy,
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckFeatureFlagDestroy,
 		Steps: []resource.TestStep{
 			// Step 1: Create project and view first
 			{
@@ -343,21 +349,14 @@ func TestAccFeatureFlagViewKeys_ReconcileUnexpectedViewAssociation(t *testing.T)
 	projectName := "flag-view-keys-reconcile-test-" + projectKey
 	resourceName := "launchdarkly_feature_flag.test"
 
-	client, err := newClient(os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN), os.Getenv(LAUNCHDARKLY_API_HOST), false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
-	require.NoError(t, err)
-
-	members, _, err := client.ld.AccountMembersApi.GetMembers(client.ctx).Execute()
-	require.NoError(t, err)
-	require.True(t, len(members.Items) > 0, "This test requires at least one member in the account")
-
-	maintainerId := members.Items[0].Id
+	maintainerId := firstMemberIDForTest(t)
 
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers:    testAccProviders,
-		CheckDestroy: testAccCheckFeatureFlagDestroy,
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckFeatureFlagDestroy,
 		Steps: []resource.TestStep{
 			{
 				Config: fmt.Sprintf(testAccFeatureFlagWithViewKeysCreate, projectName, projectKey, maintainerId, maintainerId, maintainerId),
@@ -403,7 +402,7 @@ func TestAccFeatureFlagViewKeys_ReconcileUnexpectedViewAssociation(t *testing.T)
 // testAccCheckFlagLinkedToViews verifies that a flag is linked to specific views via API
 func testAccCheckFlagLinkedToViews(projectKey, flagKey string, expectedViewKeys []string) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
-		client := testAccProvider.Meta().(*Client)
+		client := mustTestAccClient()
 		betaClient, err := newBetaClient(client.apiKey, client.apiHost, false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
 		if err != nil {
 			return fmt.Errorf("failed to create beta client: %v", err)
@@ -440,7 +439,7 @@ func testAccCheckFlagLinkedToViews(projectKey, flagKey string, expectedViewKeys 
 
 // testAccCheckFeatureFlagDestroy verifies the flag has been destroyed
 func testAccCheckFeatureFlagDestroy(s *terraform.State) error {
-	client := testAccProvider.Meta().(*Client)
+	client := mustTestAccClient()
 	for _, rs := range s.RootModule().Resources {
 		if rs.Type != "launchdarkly_feature_flag" {
 			continue

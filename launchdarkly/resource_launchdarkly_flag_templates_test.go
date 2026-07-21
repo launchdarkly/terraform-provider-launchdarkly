@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/acctest"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
+	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
+	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/terraform"
 )
 
 func testAccFlagTemplatesConfig(projectKey string) string {
@@ -17,10 +17,11 @@ resource "launchdarkly_project" "test" {
 	}
 	name = "Flag Templates Test Project"
 	key  = "%s"
-	environments {
-		name  = "testEnvironment"
-		key   = "test"
-		color = "000000"
+	environments = {
+		"test" = {
+			name  = "testEnvironment"
+			color = "000000"
+		}
 	}
 }
 
@@ -30,7 +31,7 @@ resource "launchdarkly_flag_templates" "test" {
 	tags      = ["terraform"]
 	temporary = false
 
-	boolean_defaults {
+	boolean_defaults = {
 		true_display_name  = "True"
 		false_display_name = "False"
 		true_description   = ""
@@ -50,10 +51,11 @@ resource "launchdarkly_project" "test" {
 	}
 	name = "Flag Templates Test Project"
 	key  = "%s"
-	environments {
-		name  = "testEnvironment"
-		key   = "test"
-		color = "000000"
+	environments = {
+		"test" = {
+			name  = "testEnvironment"
+			color = "000000"
+		}
 	}
 }
 
@@ -63,7 +65,7 @@ resource "launchdarkly_flag_templates" "test" {
 	tags      = ["terraform", "updated"]
 	temporary = true
 
-	boolean_defaults {
+	boolean_defaults = {
 		true_display_name  = "Enabled"
 		false_display_name = "Disabled"
 		true_description   = "Flag is enabled"
@@ -83,7 +85,7 @@ func TestAccFlagTemplates_CreateAndUpdate(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config: testAccFlagTemplatesConfig(projectKey),
@@ -92,12 +94,12 @@ func TestAccFlagTemplates_CreateAndUpdate(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, PROJECT_KEY, projectKey),
 					resource.TestCheckResourceAttr(resourceName, TEMPORARY, "false"),
 					resource.TestCheckResourceAttr(resourceName, "tags.#", "1"),
-					resource.TestCheckResourceAttr(resourceName, "boolean_defaults.0.true_display_name", "True"),
-					resource.TestCheckResourceAttr(resourceName, "boolean_defaults.0.false_display_name", "False"),
-					resource.TestCheckResourceAttr(resourceName, "boolean_defaults.0.true_description", ""),
-					resource.TestCheckResourceAttr(resourceName, "boolean_defaults.0.false_description", ""),
-					resource.TestCheckResourceAttr(resourceName, "boolean_defaults.0.on_variation", "0"),
-					resource.TestCheckResourceAttr(resourceName, "boolean_defaults.0.off_variation", "1"),
+					resource.TestCheckResourceAttr(resourceName, "boolean_defaults.true_display_name", "True"),
+					resource.TestCheckResourceAttr(resourceName, "boolean_defaults.false_display_name", "False"),
+					resource.TestCheckResourceAttr(resourceName, "boolean_defaults.true_description", ""),
+					resource.TestCheckResourceAttr(resourceName, "boolean_defaults.false_description", ""),
+					resource.TestCheckResourceAttr(resourceName, "boolean_defaults.on_variation", "0"),
+					resource.TestCheckResourceAttr(resourceName, "boolean_defaults.off_variation", "1"),
 				),
 			},
 			{
@@ -112,12 +114,12 @@ func TestAccFlagTemplates_CreateAndUpdate(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, PROJECT_KEY, projectKey),
 					resource.TestCheckResourceAttr(resourceName, TEMPORARY, "true"),
 					resource.TestCheckResourceAttr(resourceName, "tags.#", "2"),
-					resource.TestCheckResourceAttr(resourceName, "boolean_defaults.0.true_display_name", "Enabled"),
-					resource.TestCheckResourceAttr(resourceName, "boolean_defaults.0.false_display_name", "Disabled"),
-					resource.TestCheckResourceAttr(resourceName, "boolean_defaults.0.true_description", "Flag is enabled"),
-					resource.TestCheckResourceAttr(resourceName, "boolean_defaults.0.false_description", "Flag is disabled"),
-					resource.TestCheckResourceAttr(resourceName, "boolean_defaults.0.on_variation", "0"),
-					resource.TestCheckResourceAttr(resourceName, "boolean_defaults.0.off_variation", "1"),
+					resource.TestCheckResourceAttr(resourceName, "boolean_defaults.true_display_name", "Enabled"),
+					resource.TestCheckResourceAttr(resourceName, "boolean_defaults.false_display_name", "Disabled"),
+					resource.TestCheckResourceAttr(resourceName, "boolean_defaults.true_description", "Flag is enabled"),
+					resource.TestCheckResourceAttr(resourceName, "boolean_defaults.false_description", "Flag is disabled"),
+					resource.TestCheckResourceAttr(resourceName, "boolean_defaults.on_variation", "0"),
+					resource.TestCheckResourceAttr(resourceName, "boolean_defaults.off_variation", "1"),
 				),
 			},
 		},
@@ -133,7 +135,7 @@ func testAccCheckFlagTemplatesExists(resourceName string) resource.TestCheckFunc
 		if rs.Primary.ID == "" {
 			return fmt.Errorf("flag templates ID is not set")
 		}
-		client := testAccProvider.Meta().(*Client)
+		client := mustTestAccClient()
 		_, _, err := client.ld.ProjectsApi.GetFlagDefaultsByProject(client.ctx, rs.Primary.ID).Execute()
 		if err != nil {
 			return fmt.Errorf("received an error getting flag templates: %s", err)

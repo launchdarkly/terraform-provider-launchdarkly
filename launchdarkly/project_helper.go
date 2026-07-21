@@ -10,9 +10,7 @@ import (
 	"net/http"
 	"net/url"
 
-	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	ldapi "github.com/launchdarkly/api-client-go/v22"
+	ldapi "github.com/launchdarkly/api-client-go/v23"
 )
 
 // buildProjectURL constructs a properly formatted URL for the projects API endpoint.
@@ -23,123 +21,31 @@ func buildProjectURL(apiHost, projectKey string) string {
 		host = DEFAULT_LAUNCHDARKLY_HOST
 	}
 
-	// Parse the host - if it doesn't have a scheme, add https://
 	if u, err := url.Parse(host); err == nil && u.Scheme != "" {
-		// Host already has a scheme, use it directly
 		u.Path = fmt.Sprintf("/api/v2/projects/%s", projectKey)
 		return u.String()
 	}
 
-	// No scheme present, construct URL with https
 	return fmt.Sprintf("https://%s/api/v2/projects/%s", host, projectKey)
 }
 
-func projectRead(ctx context.Context, d *schema.ResourceData, meta interface{}, isDataSource bool) diag.Diagnostics {
-	var diags diag.Diagnostics
-	client := meta.(*Client)
-	projectKey := d.Get(KEY).(string)
-
-	project, res, err := getFullProject(client, projectKey)
-
-	// return nil error for resource reads but 404 for data source reads
-	if isStatusNotFound(res) && !isDataSource {
-		log.Printf("[WARN] failed to find project with key %q, removing from state if present", projectKey)
-		diags = append(diags, diag.Diagnostic{
-			Severity: diag.Warning,
-			Summary:  fmt.Sprintf("[WARN] failed to find project with key %q, removing from state if present", projectKey),
-		})
-		d.SetId("")
-		return diags
+// projectExists reports whether a project with the given key exists.
+// Used by framework feature_flag / segment / FFE / metric resources.
+func projectExists(projectKey string, client *Client) (bool, error) {
+	var res *http.Response
+	var err error
+	err = client.withConcurrency(client.ctx, func() error {
+		_, res, err = client.ld.ProjectsApi.GetProject(client.ctx, projectKey).Execute()
+		return err
+	})
+	if isStatusNotFound(res) {
+		log.Println("got 404 when getting project. returning false.")
+		return false, nil
 	}
 	if err != nil {
-		return diag.Errorf("failed to get project with key %q: %v", projectKey, err)
+		return false, fmt.Errorf("failed to get project with key %q: %v", projectKey, handleLdapiErr(err))
 	}
-
-	defaultCSA := *project.DefaultClientSideAvailability
-	clientSideAvailability := []map[string]interface{}{{
-		"using_environment_id": defaultCSA.UsingEnvironmentId,
-		"using_mobile_key":     defaultCSA.UsingMobileKey,
-	}}
-	// the Id and deprecated client_side_availability need to be set on reads for the data source, but it will mess up the state for resource reads
-	if isDataSource {
-		d.SetId(project.Id)
-		err = d.Set(CLIENT_SIDE_AVAILABILITY, clientSideAvailability)
-		if err != nil {
-			return diag.Errorf("could not set client_side_availability on project with key %q: %v", project.Key, err)
-		}
-	}
-	_ = d.Set(KEY, project.Key)
-	_ = d.Set(NAME, project.Name)
-
-	// Only allow nested environments for the launchdarkly_project resource. The dedicated environment data source
-	// should be used if a data source is required for a LaunchDarkly environment
-	if !isDataSource {
-		// Convert the returned environment list to a map so we can lookup each environment by key while preserving the
-		// order defined in the config
-		envMap := environmentsToResourceDataMap(project.Environments.Items)
-
-		// iterate over the environment keys in the order defined by the config and look up the environment returned by
-		// LD's API
-		rawEnvs := getOptionalInterfaceSlice(d, ENVIRONMENTS)
-
-		envConfigKeys := rawEnvironmentConfigsToKeyList(rawEnvs)
-		envAddedMap := make(map[string]bool, len(project.Environments.Items))
-		environments := make([]interface{}, 0, len(envConfigKeys))
-		for _, envKey := range envConfigKeys {
-			environments = append(environments, envMap[envKey])
-			envAddedMap[envKey] = true
-		}
-
-		// Now add all environments that are not specified in the config.
-		// This is required in order to successfully import nested environments because rawEnvs is always an empty slice
-		// durning import, even if nested environments are defined in the config.
-		for _, env := range project.Environments.Items {
-			alreadyAdded := envAddedMap[env.Key]
-			if !alreadyAdded {
-				environments = append(environments, envMap[env.Key])
-				envAddedMap[env.Key] = true
-			}
-		}
-
-		err = d.Set(ENVIRONMENTS, environments)
-		if err != nil {
-			return diag.Errorf("could not set environments on project with key %q: %v", project.Key, err)
-		}
-
-		err = resourceDataSetSkipMissingKey(d, INCLUDE_IN_SNIPPET, project.IncludeInSnippetByDefault)
-		if err != nil {
-			return diag.Errorf("could not set include_in_snippet on project with key %q: %v", project.Key, err)
-		}
-	}
-
-	err = d.Set(TAGS, project.Tags)
-	if err != nil {
-		return diag.Errorf("could not set tags on project with key %q: %v", project.Key, err)
-	}
-
-	err = resourceDataSetSkipMissingKey(d, DEFAULT_CLIENT_SIDE_AVAILABILITY, clientSideAvailability)
-	if err != nil {
-		return diag.Errorf("could not set default_client_side_availability on project with key %q: %v", project.Key, err)
-	}
-
-	// Fetch and set view association requirement fields using raw HTTP
-	// These fields are not in the official API client model yet
-	viewSettings, viewSettingsErr := getProjectViewSettings(ctx, client, projectKey)
-	if viewSettingsErr != nil {
-		// Log warning but don't fail the read - these fields may not be available on all accounts
-		log.Printf("[WARN] failed to get view association settings for project %q: %v", projectKey, viewSettingsErr)
-	} else {
-		err = d.Set(REQUIRE_VIEW_ASSOCIATION_FOR_NEW_FLAGS, viewSettings.RequireViewAssociationForNewFlags)
-		if err != nil {
-			return diag.Errorf("could not set require_view_association_for_new_flags on project with key %q: %v", project.Key, err)
-		}
-		err = d.Set(REQUIRE_VIEW_ASSOCIATION_FOR_NEW_SEGMENTS, viewSettings.RequireViewAssociationForNewSegments)
-		if err != nil {
-			return diag.Errorf("could not set require_view_association_for_new_segments on project with key %q: %v", project.Key, err)
-		}
-	}
-
-	return diags
+	return true, nil
 }
 
 func getFullProject(client *Client, projectKey string) (*ldapi.Project, *http.Response, error) {
@@ -164,25 +70,24 @@ func getFullProject(client *Client, projectKey string) (*ldapi.Project, *http.Re
 }
 
 func getAllEnvironments(client *Client, projectKey string) (ldapi.Environments, *http.Response, error) {
-	envItems := make([]ldapi.Environment, 0)
-	pageLimit := int64(20)
-	allFetched := false
-	for currentPage := int64(0); !allFetched; currentPage++ {
+	var lastResp *http.Response
+	envItems, err := fetchAllOffsetPagesWithOptionalInt32Total[ldapi.Environment](20, 0, func(offset, limit int64) ([]ldapi.Environment, *int32, error) {
 		var envPage *ldapi.Environments
 		var resp *http.Response
 		var err error
 		err = client.withConcurrency(client.ctx, func() error {
 			envPage, resp, err = client.ld.EnvironmentsApi.GetEnvironmentsByProject(
-				client.ctx, projectKey).Limit(pageLimit).Offset(currentPage * pageLimit).Execute()
+				client.ctx, projectKey).Limit(limit).Offset(offset).Execute()
 			return err
 		})
+		lastResp = resp
 		if err != nil {
-			return *ldapi.NewEnvironments(envItems), resp, err
+			return nil, nil, err
 		}
-		envItems = append(envItems, envPage.Items...)
-		if len(envItems) >= int(envPage.GetTotalCount()) {
-			allFetched = true
-		}
+		return envPage.Items, envPage.TotalCount, nil
+	})
+	if err != nil {
+		return *ldapi.NewEnvironments(envItems), lastResp, err
 	}
 
 	envs := *ldapi.NewEnvironments(envItems)
@@ -240,7 +145,6 @@ func getProjectViewSettings(ctx context.Context, client *Client, projectKey stri
 func patchProjectViewSettings(ctx context.Context, client *Client, projectKey string, flagsRequired, segmentsRequired bool, flagsChanged, segmentsChanged bool) error {
 	endpoint := buildProjectURL(client.apiHost, projectKey)
 
-	// Build patch operations only for fields that changed
 	var patchOps []map[string]interface{}
 	if flagsChanged {
 		patchOps = append(patchOps, map[string]interface{}{

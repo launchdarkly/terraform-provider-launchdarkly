@@ -2,7 +2,7 @@
 page_title: "LaunchDarkly Provider"
 subcategory: ""
 description: |-
-  The LaunchDarkly provider is used to interact with the LaunchDarkly resources
+  Use the LaunchDarkly provider to interact with LaunchDarkly resources
 ---
 
 # LaunchDarkly Provider
@@ -16,24 +16,51 @@ terraform {
   required_providers {
     launchdarkly = {
       source  = "launchdarkly/launchdarkly"
-      version = "~> 2.0"
+      version = "~> 3.0"
     }
   }
 }
 
 # Configure the LaunchDarkly provider
 provider "launchdarkly" {
+  # The access token can also be set with the LAUNCHDARKLY_ACCESS_TOKEN environment variable.
   access_token = var.launchdarkly_access_token
+
+  # Optional. The maximum number of concurrent API requests the provider makes. Defaults to 1.
+  # Raise it to speed up plan and refresh on large configurations, at the cost of a higher chance
+  # of hitting your account's API rate limit.
+  max_concurrency = 1
+
+  # Optional. When true, removing a launchdarkly_feature_flag from your configuration archives the
+  # flag in LaunchDarkly instead of deleting it. Defaults to false.
+  archive_flags_on_destroy = false
 }
 
-# Create a new project
-resource "launchdarkly_project" "terraform" {
-  # ...
+# Create a project with a single environment
+resource "launchdarkly_project" "example" {
+  key  = "example-project"
+  name = "Example project"
+
+  environments = {
+    "production" = {
+      key   = "production"
+      name  = "Production"
+      color = "EEEEEE"
+    }
+  }
 }
 
-# Create a new feature flag
-resource "launchdarkly_feature_flag" "terraform" {
-  # ...
+# Create a boolean feature flag in that project
+resource "launchdarkly_feature_flag" "example" {
+  project_key    = launchdarkly_project.example.key
+  key            = "example-flag"
+  name           = "Example flag"
+  variation_type = "boolean"
+
+  variations = [
+    { value = "true" },
+    { value = "false" },
+  ]
 }
 ```
 
@@ -42,8 +69,9 @@ resource "launchdarkly_feature_flag" "terraform" {
 
 ### Optional
 
-- `access_token` (String) The [personal access token](https://docs.launchdarkly.com/home/account-security/api-access-tokens#personal-tokens) or [service token](https://docs.launchdarkly.com/home/account-security/api-access-tokens#service-tokens) used to authenticate with LaunchDarkly. You can also set this with the `LAUNCHDARKLY_ACCESS_TOKEN` environment variable. You must provide either `access_token` or `oauth_token`.
+- `access_token` (String) The [personal access token](https://launchdarkly.com/docs/home/account/api#personal-tokens) or [service token](https://launchdarkly.com/docs/home/account/api#service-tokens) used to authenticate with LaunchDarkly. You can also set this with the `LAUNCHDARKLY_ACCESS_TOKEN` environment variable. You must provide either `access_token` or `oauth_token`.
 - `api_host` (String) The LaunchDarkly host address. If this argument is not specified, the default host address is `https://app.launchdarkly.com`
+- `archive_flags_on_destroy` (Boolean) When `true`, removing a `launchdarkly_feature_flag` resource from your Terraform configuration archives the flag in LaunchDarkly instead of deleting it. The flag's key is retained on the server, so re-applying a configuration that recreates the same flag key will fail with an error directing you to `terraform import` the archived flag. Defaults to `false`, which preserves the existing destroy-deletes behavior. This setting affects only `launchdarkly_feature_flag`. Other resources continue to be deleted on destroy.
 - `http_timeout` (Number) The HTTP timeout (in seconds) when making API calls to LaunchDarkly. Defaults to 20 seconds.
 - `max_concurrency` (Number) The maximum number of concurrent API requests the provider makes to LaunchDarkly. Defaults to `1`. Increase this value to speed up plan and refresh operations on large configurations. Higher values make it more likely that requests exceed your account's API rate limit. If a request exceeds the rate limit, LaunchDarkly returns a `429` response and the provider retries the request automatically.
 - `oauth_token` (String) An OAuth V2 token you use to authenticate with LaunchDarkly. You can also set this with the `LAUNCHDARKLY_OAUTH_TOKEN` environment variable. You must provide either `access_token` or `oauth_token`.

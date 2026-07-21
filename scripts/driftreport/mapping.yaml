@@ -1,0 +1,431 @@
+# Curated mapping of LaunchDarkly OpenAPI endpoint families (spec tags) to
+# provider coverage. Consumed by scripts/driftreport (see
+# .claude/plans/AUTOGEN_PIPELINE.md).
+#
+# Statuses:
+#   covered — family is modeled by the listed resources/data sources
+#   partial — some endpoints modeled; requires per-resource operationId lists,
+#             plus ignored_operations (id + reason) for deliberately unmodeled
+#             endpoints and/or triage_operations (bare opIds; acknowledged,
+#             decision pending — listed in report, not drift). Any other spec
+#             operation in the family is drift.
+#   ignored — deliberately not an IaC surface; reason required
+#   triage  — acknowledged, coverage decision pending (listed in report, not drift)
+#
+# Resource entries are either a bare string (tag-level claim, covered families)
+# or {name, operations: [opId, ...]} (operation-level claim, partial families).
+# A spec tag missing from this file is reported as drift (new API family).
+#
+# ─────────────────────────────────────────────────────────────────────────────
+# BLIND SPOTS — product surfaces with NO openapi.json tag (2026-06-15 audit of
+# launchdarkly.com/docs vs the live spec). This tool only sees the spec, so
+# "no drift" does NOT mean "fully covered" for these. They will only ever
+# surface here if/when LD adds public REST tags for them:
+#   - SSO / SAML / SCIM / domain verification (Okta, Entra, OneLogin, etc.) —
+#     SCIM is a separate API; SSO config is account/UI-level, not in the REST
+#     spec. Not Terraform-able via the v2 API today.
+#   - Observability product config (dashboards, alerts, service map, session
+#     replay, traces/logs). Spec carries only read-only `Insights * (beta)`
+#     tags (all ignored). No config tags yet — a real IaC gap until LD ships them.
+#
+# PRODUCT-PILLAR → FAMILY MAP (context for future scaffolding agents). The docs
+# home presents three product brands; mapping them to spec tags:
+#   - CodeControl (feature management): Feature flags, Flag triggers, Segments,
+#     Contexts, Scheduled changes, Projects, Environments.
+#   - AgentControl (AI): the `AgentControl` tag IS the AI Config CRUD surface
+#     (configs/variations/tools/model-configs) — NOT the near-empty `AI Configs`
+#     tag, which holds 2 stray analytics ops. Agent graphs/optimizations,
+#     prompt snippets, restricted models, targeting are triage_operations there.
+#   - Release Management: Release pipelines/policies/releases, Workflows,
+#     Workflow templates, Layers — ALL currently `triage`; highest-value
+#     cluster to promote next (named GA pillar, not experimental).
+# ─────────────────────────────────────────────────────────────────────────────
+version: 1
+families:
+  - tag: AI Configs
+    status: ignored
+    reason: Two stray read-only analytics endpoints (AI tool references, agent-optimization runs). The AI Config CRUD surface is tagged AgentControl — see that entry.
+
+  - tag: Access tokens
+    status: covered
+    resources:
+      - launchdarkly_access_token
+
+  - tag: Account members
+    status: covered
+    resources:
+      - launchdarkly_team_member
+      - launchdarkly_team_members
+
+  - tag: Account usage (beta)
+    status: ignored
+    reason: Read-only usage metering/analytics, not a declarative IaC surface.
+
+  - tag: AgentControl
+    status: partial
+    resources:
+      - name: launchdarkly_ai_config
+        operations:
+          - postAIConfig
+          - getAIConfig
+          - patchAIConfig
+          - deleteAIConfig
+      - name: launchdarkly_ai_config_variation
+        operations:
+          - postAIConfigVariation
+          - getAIConfigVariation
+          - patchAIConfigVariation
+          - deleteAIConfigVariation
+      - name: launchdarkly_ai_tool
+        operations:
+          - postAITool
+          - getAITool
+          - patchAITool
+          - deleteAITool
+      - name: launchdarkly_model_config
+        operations:
+          - postModelConfig
+          - getModelConfig
+          - deleteModelConfig
+      # Agent graphs — clean CRUD on their own path; scaffolded by the autogen
+      # pipeline (stage 2) without touching the AI Config resources.
+      # listAgentGraphs backs the resource read fallback / data source plumbing.
+      - name: launchdarkly_ai_agent_graph
+        operations:
+          - listAgentGraphs
+          - postAgentGraph
+          - getAgentGraph
+          - patchAgentGraph
+          - deleteAgentGraph
+    new_resource_candidates:
+      # Prompt snippets — clean CRUD; the references/versions read endpoints
+      # stay in triage pending a data-source decision.
+      - name: launchdarkly_prompt_snippet
+        operations:
+          - listPromptSnippets
+          - postPromptSnippet
+          - getPromptSnippet
+          - patchPromptSnippet
+          - deletePromptSnippet
+    ignored_operations:
+      - id: getAIConfigs
+        reason: List/index endpoint; the singular get covers declarative reads.
+      - id: getAIConfigQuickStats
+        reason: Read-only analytics, not declarative configuration.
+      - id: getAIConfigMetrics
+        reason: Read-only analytics, not declarative configuration.
+      - id: getAIConfigMetricsByVariation
+        reason: Read-only analytics, not declarative configuration.
+      - id: listModelConfigs
+        reason: List/index endpoint; the singular get covers declarative reads.
+      - id: listAITools
+        reason: List/index endpoint; the singular get covers declarative reads.
+      - id: listAIToolVersions
+        reason: Read-only version history, not declarative configuration.
+    triage_operations:
+      # AI Config targeting — EXTENDS the existing ai_config resource (a future
+      # ai_config_environment-style attribute), not a net-new resource, so it is
+      # not a scaffold candidate.
+      - getAIConfigTargeting
+      - patchAIConfigTargeting
+      # Agent optimizations — resource boundary still unclear (optimizations +
+      # results + runs); promote to a candidate once the shape settles.
+      - listAgentOptimizations
+      - postAgentOptimization
+      - getAgentOptimization
+      - patchAgentOptimization
+      - deleteAgentOptimization
+      - listAgentOptimizationResults
+      - listAllAgentOptimizationResults
+      - postAgentOptimizationResult
+      - patchAgentOptimizationResult
+      - deleteAgentOptimizationRun
+      - listAgentOptimizationResultsByRunId
+      # Prompt snippet auxiliary reads — the candidate models the CRUD; these
+      # stay pending a data-source decision.
+      - listPromptSnippetReferences
+      - listPromptSnippetVersions
+      # Restricted models — account-level allow/deny, plausible resource.
+      - postRestrictedModels
+      - deleteRestrictedModels
+    notes: Despite the tag name, this family carries the AI Config CRUD surface — the spec's "AI Configs" tag holds only two stray analytics endpoints. The four AI resources cover 15 of 49 ops; agent graphs and prompt snippets are curated as scaffoldable net-new resources, while agent optimizations, AI config targeting, prompt-snippet aux reads, and restricted models remain in triage.
+
+  - tag: Announcements
+    status: covered
+    resources:
+      - launchdarkly_announcement
+    notes: In-app announcement banners. The resource covers create/update/delete; reads resolve by ID through the list endpoint since the API exposes no GET-by-ID (hence no data source). Scaffolded by the autogen pipeline (stage 2).
+
+  - tag: Applications (beta)
+    status: triage
+    notes: Application/version metadata for mobile targeting; mostly SDK-populated, declarative value unclear.
+
+  - tag: Approvals
+    status: ignored
+    reason: Imperative approval-request workflow operations; the declarative side (approval_settings) lives on environment/project resources.
+
+  - tag: Approvals (beta)
+    status: ignored
+    reason: Same as stable Approvals — runtime workflow, not declarative state.
+
+  - tag: Audit log
+    status: ignored
+    reason: Read-only audit query API. Subscriptions are covered under Integration audit log subscriptions.
+
+  - tag: Code references
+    status: ignored
+    reason: Populated by the ld-find-code-refs CLI, not Terraform-managed.
+
+  - tag: Context settings
+    status: ignored
+    reason: Per-context runtime settings, not declarative configuration.
+
+  - tag: Contexts
+    status: partial
+    resources:
+      - name: launchdarkly_context_kind
+        operations:
+          - getContextKindsByProjectKey
+          - putContextKind
+    ignored_operations:
+      - id: getContextAttributeNames
+        reason: Runtime context-attribute analytics, not declarative configuration.
+      - id: getContextAttributeValues
+        reason: Runtime context-attribute analytics, not declarative configuration.
+      - id: searchContextInstances
+        reason: Runtime context-instance data, not declarative configuration.
+      - id: getContextInstances
+        reason: Runtime context-instance data, not declarative configuration.
+      - id: deleteContextInstances
+        reason: Runtime context-instance data, not declarative configuration.
+      - id: searchContexts
+        reason: Runtime context-instance data, not declarative configuration.
+      - id: getContexts
+        reason: Runtime context-instance data, not declarative configuration.
+      - id: evaluateContextInstance
+        reason: Imperative flag-evaluation debugging endpoint, not declarative configuration.
+    notes: context-kinds endpoints are covered; context instance/search endpoints are runtime data, intentionally unmodeled.
+
+  - tag: Custom roles
+    status: covered
+    resources:
+      - launchdarkly_custom_role
+
+  - tag: Data Export destinations
+    status: covered
+    resources:
+      - launchdarkly_destination
+
+  - tag: Environments
+    status: covered
+    resources:
+      - launchdarkly_environment
+
+  - tag: Experiments
+    status: triage
+    notes: Experimentation-as-code is a plausible future surface; needs product alignment.
+
+  - tag: Feature flags
+    status: covered
+    resources:
+      - launchdarkly_feature_flag
+      - launchdarkly_feature_flag_environment
+
+  - tag: Feature flags (beta)
+    status: triage
+    notes: Beta flag endpoints (e.g. migration safety); revisit when stable.
+
+  - tag: Flag import configurations (beta)
+    status: covered
+    resources:
+      - launchdarkly_flag_import_configuration
+    notes: |
+      Covered by launchdarkly_flag_import_configuration (resource + data source),
+      wrapping the beta FlagImportConfigurationsBetaApi. triggerFlagImportJob is an
+      imperative run-now action that does not map to declarative Terraform state and
+      is intentionally not modeled.
+
+  - tag: Flag links (beta)
+    status: triage
+
+  - tag: Flag triggers
+    status: covered
+    resources:
+      - launchdarkly_flag_trigger
+
+  - tag: Follow flags
+    status: ignored
+    reason: Per-member notification preferences, not infrastructure.
+
+  - tag: Holdouts
+    status: triage
+    notes: Experimentation holdouts; pairs with the Experiments decision.
+
+  - tag: IP Allowlist (beta)
+    status: covered
+    resources:
+      - launchdarkly_ip_allowlist_config
+      - launchdarkly_ip_allowlist_entry
+
+  - tag: Insights charts (beta)
+    status: ignored
+    reason: Engineering-insights analytics, read-only.
+
+  - tag: Insights deployments (beta)
+    status: ignored
+    reason: Engineering-insights analytics, read-only.
+
+  - tag: Insights flag events (beta)
+    status: ignored
+    reason: Engineering-insights analytics, read-only.
+
+  - tag: Insights pull requests (beta)
+    status: ignored
+    reason: Engineering-insights analytics, read-only.
+
+  - tag: Insights repositories (beta)
+    status: ignored
+    reason: Engineering-insights analytics, read-only.
+
+  - tag: Insights scores (beta)
+    status: ignored
+    reason: Engineering-insights analytics, read-only.
+
+  - tag: Integration audit log subscriptions
+    status: covered
+    resources:
+      - launchdarkly_audit_log_subscription
+
+  - tag: Integration delivery configurations (beta)
+    status: covered
+    resources:
+      - launchdarkly_integration_delivery_configuration
+    notes: "Beta family scaffolded by the autogen pipeline (stage 2). Persistent feature store delivery configurations scoped per project/environment/integration; wraps the IntegrationDeliveryConfigurationsBetaApi via a beta client (LD-API-Version: beta). The validate endpoint is an imperative action, not modeled as a resource."
+
+  - tag: Integrations (beta)
+    status: triage
+
+  - tag: Layers
+    status: triage
+    notes: Experimentation layers; pairs with the Experiments decision.
+
+  - tag: Metrics
+    status: covered
+    resources:
+      - launchdarkly_metric
+
+  - tag: Metrics (beta)
+    status: partial
+    resources:
+      - name: launchdarkly_metric_group
+        operations:
+          - createMetricGroup
+          - getMetricGroup
+          - patchMetricGroup
+          - deleteMetricGroup
+    ignored_operations:
+      - id: getMetricGroups
+        reason: List/index endpoint; the singular get covers declarative reads.
+    notes: Promoted to operation-level after the metric-group pilot (PR #453) merged — dogfood entry for drift tool v2.
+
+  - tag: OAuth2 Clients
+    status: covered
+    resources:
+      - launchdarkly_oauth_client
+    notes: Account-level OAuth app registration. Scaffolded by the autogen pipeline (stage 2). The client secret is returned only on create, so it is modeled as a computed/sensitive attribute and is not reconciled on import.
+
+  - tag: Other
+    status: ignored
+    reason: Miscellaneous root/meta endpoints (API root, versioning).
+
+  - tag: Persistent store integrations (beta)
+    status: covered
+    resources:
+      - launchdarkly_big_segment_store_integration
+    notes: "Environment-scoped big-segment (persistent) store integrations backed by Redis or DynamoDB. Scaffolded by the autogen pipeline (stage 2) against the PersistentStoreIntegrationsBetaApi (LD-API-Version beta). config carries credentials and is modeled as a sensitive JSON string. The account-wide list endpoint getBigSegmentStoreIntegrations is not modeled (the singular get covers declarative reads)."
+
+  - tag: Projects
+    status: covered
+    resources:
+      - launchdarkly_project
+      - launchdarkly_flag_templates
+
+  - tag: Relay Proxy configurations
+    status: covered
+    resources:
+      - launchdarkly_relay_proxy_configuration
+
+  - tag: Release pipelines (beta)
+    status: triage
+    notes: Active product area; release-policies datasource work exists on branch RO-2042.
+
+  - tag: Release policies (beta)
+    status: covered
+    notes: >-
+      launchdarkly_release_policy models per-policy CRUD (PostReleasePolicy,
+      GetReleasePolicy, PutReleasePolicy, DeleteReleasePolicy) and reads the
+      collection via GetReleasePolicies. PostReleasePoliciesOrder (rank
+      reordering) is not modeled as a separate surface; rank is exposed as a
+      computed attribute and ordered in the LaunchDarkly UI.
+    resources:
+      - launchdarkly_release_policy
+
+  - tag: Releases (beta)
+    status: triage
+    notes: See Release pipelines.
+
+  - tag: SDK Keys (beta)
+    status: covered
+    resources:
+      - launchdarkly_sdk_key
+
+  - tag: Scheduled changes
+    status: triage
+    notes: Scheduled flag changes; declarative-adjacent but time-bound workflow.
+
+  - tag: Segments
+    status: covered
+    resources:
+      - launchdarkly_segment
+
+  - tag: Tags
+    status: ignored
+    reason: Read-only tag listing endpoint.
+
+  - tag: Teams
+    status: covered
+    resources:
+      - launchdarkly_team
+      - launchdarkly_team_role_mapping
+
+  - tag: Teams (beta)
+    status: triage
+    notes: Single beta endpoint; verify whether the stable team resource already covers it.
+
+  - tag: User settings
+    status: ignored
+    reason: Legacy users API (superseded by contexts); runtime data.
+
+  - tag: Users
+    status: ignored
+    reason: Legacy users API (superseded by contexts); runtime data.
+
+  - tag: Views (beta)
+    status: covered
+    resources:
+      - launchdarkly_view
+      - launchdarkly_view_links
+      - launchdarkly_view_filter_links
+
+  - tag: Webhooks
+    status: covered
+    resources:
+      - launchdarkly_webhook
+
+  - tag: Workflow templates
+    status: triage
+    notes: Flag workflows as code; pairs with Workflows decision.
+
+  - tag: Workflows
+    status: triage
+    notes: Flag workflows as code; plausible future surface.

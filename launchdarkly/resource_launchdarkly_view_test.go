@@ -6,10 +6,9 @@ import (
 	"regexp"
 	"testing"
 
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/acctest"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
-	"github.com/stretchr/testify/require"
+	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
+	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/terraform"
 )
 
 const (
@@ -17,10 +16,11 @@ const (
 resource "launchdarkly_project" "test" {
 	key  = "%s"
 	name = "Test project"
-	environments {
-		name  = "Test Environment"
-		key   = "test-env"
-		color = "000000"
+	environments = {
+		"test-env" = {
+			name  = "Test Environment"
+			color = "000000"
+		}
 	}
 }
 
@@ -38,10 +38,11 @@ resource "launchdarkly_view" "test" {
 resource "launchdarkly_project" "test" {
 	key  = "%s"
 	name = "Test project"
-	environments {
-		name  = "Test Environment"
-		key   = "test-env"
-		color = "000000"
+	environments = {
+		"test-env" = {
+			name  = "Test Environment"
+			color = "000000"
+		}
 	}
 }
 
@@ -59,10 +60,11 @@ resource "launchdarkly_view" "test" {
 resource "launchdarkly_project" "test" {
 	key  = "%s"
 	name = "Test project"
-	environments {
-		name  = "Test Environment"
-		key   = "test-env"
-		color = "000000"
+	environments = {
+		"test-env" = {
+			name  = "Test Environment"
+			color = "000000"
+		}
 	}
 }
 
@@ -87,10 +89,11 @@ resource "launchdarkly_view" "test" {
 resource "launchdarkly_project" "test" {
 	key  = "%s"
 	name = "Test project"
-	environments {
-		name  = "Test Environment"
-		key   = "test-env"
-		color = "000000"
+	environments = {
+		"test-env" = {
+			name  = "Test Environment"
+			color = "000000"
+		}
 	}
 }
 
@@ -121,21 +124,14 @@ func TestAccView_Update(t *testing.T) {
 	updatedViewDescription := "Updated test view description"
 	resourceName := "launchdarkly_view.test"
 
-	client, err := newClient(os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN), os.Getenv(LAUNCHDARKLY_API_HOST), false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
-	require.NoError(t, err)
-
-	members, _, err := client.ld.AccountMembersApi.GetMembers(client.ctx).Execute()
-	require.NoError(t, err)
-	require.True(t, len(members.Items) > 0, "This test requires at least one member in the account")
-
-	maintainerId := members.Items[0].Id
+	maintainerId := firstMemberIDForTest(t)
 
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers:    testAccProviders,
-		CheckDestroy: testAccCheckViewDestroy,
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckViewDestroy,
 		Steps: []resource.TestStep{
 			{
 				Config: fmt.Sprintf(testAccViewCreate, projectKey, viewKey, viewName, viewDescription, maintainerId),
@@ -202,21 +198,14 @@ func TestAccView_WithMaintainer(t *testing.T) {
 	viewDescription := "Test view description"
 	resourceName := "launchdarkly_view.test"
 
-	client, err := newClient(os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN), os.Getenv(LAUNCHDARKLY_API_HOST), false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
-	require.NoError(t, err)
-
-	members, _, err := client.ld.AccountMembersApi.GetMembers(client.ctx).Execute()
-	require.NoError(t, err)
-	require.True(t, len(members.Items) > 0, "This test requires at least one member in the account")
-
-	maintainerId := members.Items[0].Id
+	maintainerId := firstMemberIDForTest(t)
 
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers:    testAccProviders,
-		CheckDestroy: testAccCheckViewDestroy,
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckViewDestroy,
 		Steps: []resource.TestStep{
 			// Set the view to be maintained by a team
 			{
@@ -224,7 +213,12 @@ func TestAccView_WithMaintainer(t *testing.T) {
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckViewExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, MAINTAINER_TEAM_KEY, teamKey),
-					resource.TestCheckResourceAttr(resourceName, MAINTAINER_ID, ""),
+					// Framework-served resource: the unused maintainer side is
+					// null (absent), not "". The view Read picks one side per
+					// API response; the other stays unset. See
+					// resource_view_framework.go (default both to null, then
+					// switch on Maintainer.Kind).
+					resource.TestCheckNoResourceAttr(resourceName, MAINTAINER_ID),
 				),
 			},
 			{
@@ -238,7 +232,7 @@ func TestAccView_WithMaintainer(t *testing.T) {
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckViewExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, MAINTAINER_ID, maintainerId),
-					resource.TestCheckResourceAttr(resourceName, MAINTAINER_TEAM_KEY, ""),
+					resource.TestCheckNoResourceAttr(resourceName, MAINTAINER_TEAM_KEY),
 				),
 			},
 			{
@@ -252,7 +246,7 @@ func TestAccView_WithMaintainer(t *testing.T) {
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckViewExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, MAINTAINER_TEAM_KEY, teamKey),
-					resource.TestCheckResourceAttr(resourceName, MAINTAINER_ID, ""),
+					resource.TestCheckNoResourceAttr(resourceName, MAINTAINER_ID),
 				),
 			},
 			{
@@ -275,20 +269,13 @@ func TestAccView_InvalidKey(t *testing.T) {
 	viewName := "Test View"
 	viewDescription := "Test view description"
 
-	client, err := newClient(os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN), os.Getenv(LAUNCHDARKLY_API_HOST), false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
-	require.NoError(t, err)
-
-	members, _, err := client.ld.AccountMembersApi.GetMembers(client.ctx).Execute()
-	require.NoError(t, err)
-	require.True(t, len(members.Items) > 0, "This test requires at least one member in the account")
-
-	maintainerId := members.Items[0].Id
+	maintainerId := firstMemberIDForTest(t)
 
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config:      fmt.Sprintf(testAccViewCreate, projectKey, invalidViewKey, viewName, viewDescription, maintainerId),
@@ -310,7 +297,7 @@ func testAccCheckViewExists(resourceName string) resource.TestCheckFunc {
 		projectKey := rs.Primary.Attributes[PROJECT_KEY]
 		viewKey := rs.Primary.Attributes[KEY]
 
-		client := testAccProvider.Meta().(*Client)
+		client := mustTestAccClient()
 		betaClient, err := newBetaClient(client.apiKey, client.apiHost, false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
 		if err != nil {
 			return fmt.Errorf("failed to create beta client: %v", err)
@@ -325,7 +312,7 @@ func testAccCheckViewExists(resourceName string) resource.TestCheckFunc {
 }
 
 func testAccCheckViewDestroy(s *terraform.State) error {
-	client := testAccProvider.Meta().(*Client)
+	client := mustTestAccClient()
 	betaClient, err := newBetaClient(client.apiKey, client.apiHost, false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
 	if err != nil {
 		return fmt.Errorf("failed to create beta client: %v", err)

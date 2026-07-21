@@ -57,9 +57,9 @@ resource "launchdarkly_view" "team_maintained" {
 
 ### Required
 
-- `key` (String) The view's unique key. A change in this field will force the destruction of the existing resource and the creation of a new one.
+- `key` (String) The view's unique key. A change in this field forces the destruction of the existing resource and the creation of a new one.
 - `name` (String) The view's name.
-- `project_key` (String) The project key. A change in this field will force the destruction of the existing resource and the creation of a new one.
+- `project_key` (String) The project key. A change in this field forces the destruction of the existing resource and the creation of a new one.
 
 ### Optional
 
@@ -72,3 +72,12 @@ resource "launchdarkly_view" "team_maintained" {
 ### Read-Only
 
 - `id` (String) The ID of this resource.
+
+## Import
+
+Import is supported using the following syntax:
+
+```shell
+# LaunchDarkly views are imported using the resource's ID in the form `project_key/view_key`
+terraform import launchdarkly_view.example example-project/example-view-key
+```

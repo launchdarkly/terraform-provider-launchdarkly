@@ -1,6 +1,6 @@
 module github.com/launchdarkly/terraform-provider-launchdarkly/scripts/codegen
 
-go 1.25.5
+go 1.25.8
 
 require (
 	github.com/dave/jennifer v1.7.0

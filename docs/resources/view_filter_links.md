@@ -6,11 +6,8 @@ description: |-
   Provides a LaunchDarkly view filter links resource for linking resources to views using filter expressions.
   -> Note: Views are available to customers on an Enterprise LaunchDarkly plan. To learn more, read about our pricing https://launchdarkly.com/pricing/. To upgrade your plan, contact LaunchDarkly Sales https://launchdarkly.com/contact-sales/.
   ~> Beta: This resource uses a beta API. Beta resources may change or be removed in future versions.
-  This resource allows you to link all flags and/or segments matching a filter expression to a specific view. The filter is resolved at apply time — the backend finds all resources matching the filter and links them to the view.
+  This resource allows you to link all flags and segments matching a filter expression to a specific view. The filter is resolved at apply time. The backend finds all resources matching the filter and links them to the view.
   -> Note: Filter-based links are point-in-time. By default, filters are resolved only when this resource is created or updated (for example, when flag_filter changes). Set reconcile_on_apply = true to force re-resolution on every terraform apply.
-  When to use which resource
-  view_links: You know the exact flag/segment keys to link. Terraform tracks the explicit list and detects drift if links are removed externally.view_filter_links (this resource): You want to link all resources matching a dynamic query (e.g. all flags tagged "frontend"). No drift detection on resolved keys. By default, only resource argument changes trigger updates; set reconcile_on_apply to refresh links every apply.view_keys on individual resources: Each flag/segment declares its own view membership. Best for modular Terraform structures.
-  -> Warning: Do not use view_filter_links and view_links targeting the same view and resource type, as conflicts may cause unexpected behavior.
 ---
 
 # launchdarkly_view_filter_links (Resource)
@@ -21,17 +18,9 @@ Provides a LaunchDarkly view filter links resource for linking resources to view
 
 ~> **Beta:** This resource uses a beta API. Beta resources may change or be removed in future versions.
 
-This resource allows you to link all flags and/or segments matching a filter expression to a specific view. The filter is resolved at apply time — the backend finds all resources matching the filter and links them to the view.
+This resource allows you to link all flags and segments matching a filter expression to a specific view. The filter is resolved at apply time. The backend finds all resources matching the filter and links them to the view.
 
 -> **Note:** Filter-based links are point-in-time. By default, filters are resolved only when this resource is created or updated (for example, when `flag_filter` changes). Set `reconcile_on_apply = true` to force re-resolution on every `terraform apply`.
-
-## When to use which resource
-
-- **`view_links`**: You know the exact flag/segment keys to link. Terraform tracks the explicit list and detects drift if links are removed externally.
-- **`view_filter_links` (this resource)**: You want to link all resources matching a dynamic query (e.g. all flags tagged "frontend"). No drift detection on resolved keys. By default, only resource argument changes trigger updates; set `reconcile_on_apply` to refresh links every apply.
-- **`view_keys` on individual resources**: Each flag/segment declares its own view membership. Best for modular Terraform structures.
-
--> **Warning:** Do not use `view_filter_links` and `view_links` targeting the same view and resource type, as conflicts may cause unexpected behavior.
 
 ## Example Usage
 
@@ -49,7 +38,7 @@ resource "launchdarkly_view_filter_links" "platform_resources" {
   view_key                      = "platform-team"
   flag_filter                   = "tags:platform"
   segment_filter                = "tags anyOf [\"platform\"]"
-  segment_filter_environment_id = launchdarkly_project.my_project.environments[0].client_side_id
+  segment_filter_environment_id = launchdarkly_project.my_project.environments["production"].client_side_id
 }
 
 # Link only segments matching a filter
@@ -57,7 +46,7 @@ resource "launchdarkly_view_filter_links" "beta_segments" {
   project_key                   = "my-project"
   view_key                      = "beta-program"
   segment_filter                = "tags anyOf [\"beta\"]"
-  segment_filter_environment_id = launchdarkly_project.my_project.environments[0].client_side_id
+  segment_filter_environment_id = launchdarkly_project.my_project.environments["production"].client_side_id
 }
 ```
 
@@ -66,17 +55,26 @@ resource "launchdarkly_view_filter_links" "beta_segments" {
 
 ### Required
 
-- `project_key` (String) The project key. A change in this field will force the destruction of the existing resource and the creation of a new one.
-- `view_key` (String) The view key to link resources to. A change in this field will force the destruction of the existing resource and the creation of a new one.
+- `project_key` (String) The project key. A change in this field forces the destruction of the existing resource and the creation of a new one.
+- `view_key` (String) The view key to link resources to. A change in this field forces the destruction of the existing resource and the creation of a new one.
 
 ### Optional
 
-- `flag_filter` (String) A filter expression to match feature flags for linking to the view. Uses the same filter syntax as the flag list API endpoint (e.g. `tags:frontend`, `status:active`).
-- `reconcile_on_apply` (Boolean) Whether to re-resolve configured filters on every `terraform apply` even when no resource arguments changed. When true, Terraform will show an in-place update on each apply and `resolved_at` will change every run.
-- `segment_filter` (String) A filter expression to match segments for linking to the view. Uses the segment query filter syntax (e.g. `tags anyOf ["backend"]`, `query = "my-segment"`, `unbounded = true`). Requires `segment_filter_environment_id` to be set.
-- `segment_filter_environment_id` (String) The environment ID to use when resolving segment filters. Required when `segment_filter` is set. This is the environment's opaque ID (e.g. from `launchdarkly_project.environments[*].client_side_id`).
+- `flag_filter` (String) A filter expression to match feature flags for linking to the view. Uses the same filter syntax as the flag list API endpoint. For example, `tags:frontend` or `status:active`.
+- `reconcile_on_apply` (Boolean) Whether to re-resolve configured filters on every `terraform apply` even when no resource arguments changed. When true, Terraform shows an in-place update on each apply and `resolved_at` changes every run.
+- `segment_filter` (String) A filter expression to match segments for linking to the view. Uses the segment query filter syntax. For example, `tags anyOf ["backend"]`, `query = "my-segment"`, or `unbounded = true`. Requires `segment_filter_environment_id` to be set.
+- `segment_filter_environment_id` (String) The environment ID to use when resolving segment filters. Required when `segment_filter` is set. This is the environment's opaque ID. For example, `launchdarkly_project.environments["<env_key>"].client_side_id`.
 
 ### Read-Only
 
 - `id` (String) The ID of this resource.
 - `resolved_at` (String) Timestamp of the last successful filter resolution. This value updates when the resource is created or updated, and on every apply when `reconcile_on_apply` is true.
+
+## Import
+
+Import is supported using the following syntax:
+
+```shell
+# LaunchDarkly view filter links are imported using the resource's ID in the form `project_key/view_key`
+terraform import launchdarkly_view_filter_links.example example-project/example-view-key
+```

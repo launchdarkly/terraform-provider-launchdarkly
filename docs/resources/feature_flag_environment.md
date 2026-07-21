@@ -26,43 +26,48 @@ resource "launchdarkly_feature_flag_environment" "number_ff_env" {
 
   on = true
 
-  prerequisites {
+  prerequisites = [{
     flag_key  = launchdarkly_feature_flag.basic.key
     variation = 0
-  }
+  }]
 
-  targets {
-    values    = ["user0"]
-    variation = 0
-  }
-  targets {
-    values    = ["user1", "user2"]
-    variation = 1
-  }
-  context_targets {
+  targets = [
+    {
+      values    = ["user0"]
+      variation = 0
+    },
+    {
+      values    = ["user1", "user2"]
+      variation = 1
+    },
+  ]
+
+  context_targets = [{
     values       = ["accountX"]
     variation    = 1
     context_kind = "account"
-  }
+  }]
 
-  rules {
+  rules = [{
     description = "example targeting rule with two clauses"
-    clauses {
-      attribute = "country"
-      op        = "startsWith"
-      values    = ["aus", "de", "united"]
-      negate    = false
-    }
-    clauses {
-      attribute = "segmentMatch"
-      op        = "segmentMatch"
-      values    = [launchdarkly_segment.example.key]
-      negate    = false
-    }
+    clauses = [
+      {
+        attribute = "country"
+        op        = "startsWith"
+        values    = ["aus", "de", "united"]
+        negate    = false
+      },
+      {
+        attribute = "segmentMatch"
+        op        = "segmentMatch"
+        values    = [launchdarkly_segment.example.key]
+        negate    = false
+      },
+    ]
     variation = 0
-  }
+  }]
 
-  fallthrough {
+  fallthrough = {
     rollout_weights = [60000, 40000, 0]
     context_kind    = "account"
     bucket_by       = "accountId"
@@ -77,7 +82,7 @@ resource "launchdarkly_feature_flag_environment" "basic_flag_environment" {
 
   on = true
 
-  fallthrough {
+  fallthrough = {
     variation = 1
   }
   off_variation = 0
@@ -90,92 +95,94 @@ resource "launchdarkly_feature_flag_environment" "big_flag_environment" {
 
   on = true
 
-  rules {
+  rules = [{
     description = "Example targeting rule with every clause operator"
-    clauses {
-      attribute = "username"
-      op        = "in" // Maps to 'is one of' in the UI
-      values    = ["henrietta powell", "wally waterbear"]
-    }
-    clauses {
-      attribute = "username"
-      op        = "endsWith" // Maps to 'ends with' in the UI
-      values    = ["powell", "waterbear"]
-    }
-    clauses {
-      attribute = "username"
-      op        = "startsWith" // Maps to 'starts with' in the UI
-      values    = ["henrietta", "wally"]
-    }
-    clauses {
-      attribute = "username"
-      op        = "matches" // Maps to 'matches regex' in the UI
-      values    = ["henr*"]
-    }
-    clauses {
-      attribute = "username"
-      op        = "contains" // Maps to 'contains' in the UI
-      values    = ["water"]
-    }
-    clauses {
-      attribute = "pageVisits"
-      op        = "lessThan" // Maps to 'less than (<)' in the UI
-      values    = [100]
-    }
-    clauses {
-      attribute = "pageVisits"
-      op        = "lessThanOrEqual" // Maps to 'less than or equal to (<=)' in the UI
-      values    = [100]
-    }
-    clauses {
-      attribute = "pageVisits"
-      op        = "greaterThan" // Maps to 'greater than (>)' in the UI
-      values    = [100]
-    }
-    clauses {
-      attribute = "pageVisits"
-      op        = "greaterThanOrEqual" // Maps to 'greater than or equal to (>=)' in the UI
-      values    = [100]
-    }
-    clauses {
-      attribute = "creationDate"
-      op        = "before" // Maps to 'before' in the UI
-      values    = ["2024-05-03T15:57:30Z"]
-    }
-    clauses {
-      attribute = "creationDate"
-      op        = "after" // Maps to 'after' in the UI
-      values    = ["2024-05-03T15:57:30Z"]
-    }
-    clauses {
-      attribute    = "version"
-      op           = "semVerEqual" // Maps to 'semantic version is one of (=)' in the UI
-      values       = ["1.0.0", "1.0.1"]
-      context_kind = "application"
-    }
-    clauses {
-      attribute    = "version"
-      op           = "semVerLessThan" // Maps to 'semantic version less than (<)' in the UI
-      values       = ["1.0.0"]
-      context_kind = "application"
-    }
-    clauses {
-      attribute    = "version"
-      op           = "semVerGreaterThan" // Maps to 'semantic version greater than (>)' in the UI
-      values       = ["1.0.0"]
-      context_kind = "application"
-    }
-    clauses {
-      attribute = "context"
-      op        = "segmentMatch" // Maps to 'Context is in' in the UI
-      values    = ["test-segment"]
-    }
+    clauses = [
+      {
+        attribute = "username"
+        op        = "in" // Maps to 'is one of' in the UI
+        values    = ["henrietta powell", "wally waterbear"]
+      },
+      {
+        attribute = "username"
+        op        = "endsWith" // Maps to 'ends with' in the UI
+        values    = ["powell", "waterbear"]
+      },
+      {
+        attribute = "username"
+        op        = "startsWith" // Maps to 'starts with' in the UI
+        values    = ["henrietta", "wally"]
+      },
+      {
+        attribute = "username"
+        op        = "matches" // Maps to 'matches regex' in the UI
+        values    = ["henr*"]
+      },
+      {
+        attribute = "username"
+        op        = "contains" // Maps to 'contains' in the UI
+        values    = ["water"]
+      },
+      {
+        attribute = "pageVisits"
+        op        = "lessThan" // Maps to 'less than (<)' in the UI
+        values    = [100]
+      },
+      {
+        attribute = "pageVisits"
+        op        = "lessThanOrEqual" // Maps to 'less than or equal to (<=)' in the UI
+        values    = [100]
+      },
+      {
+        attribute = "pageVisits"
+        op        = "greaterThan" // Maps to 'greater than (>)' in the UI
+        values    = [100]
+      },
+      {
+        attribute = "pageVisits"
+        op        = "greaterThanOrEqual" // Maps to 'greater than or equal to (>=)' in the UI
+        values    = [100]
+      },
+      {
+        attribute = "creationDate"
+        op        = "before" // Maps to 'before' in the UI
+        values    = ["2024-05-03T15:57:30Z"]
+      },
+      {
+        attribute = "creationDate"
+        op        = "after" // Maps to 'after' in the UI
+        values    = ["2024-05-03T15:57:30Z"]
+      },
+      {
+        attribute    = "version"
+        op           = "semVerEqual" // Maps to 'semantic version is one of (=)' in the UI
+        values       = ["1.0.0", "1.0.1"]
+        context_kind = "application"
+      },
+      {
+        attribute    = "version"
+        op           = "semVerLessThan" // Maps to 'semantic version less than (<)' in the UI
+        values       = ["1.0.0"]
+        context_kind = "application"
+      },
+      {
+        attribute    = "version"
+        op           = "semVerGreaterThan" // Maps to 'semantic version greater than (>)' in the UI
+        values       = ["1.0.0"]
+        context_kind = "application"
+      },
+      {
+        attribute = "context"
+        op        = "segmentMatch" // Maps to 'Context is in' in the UI
+        values    = ["test-segment"]
+      },
+    ]
     rollout_weights = [40000, 60000]
     bucket_by       = "country"
     context_kind    = "account"
-  }
+  }]
 
-  fallthrough {
+  fallthrough = {
     variation = 1
   }
   off_variation = 0
@@ -187,25 +194,25 @@ resource "launchdarkly_feature_flag_environment" "big_flag_environment" {
 
 ### Required
 
-- `env_key` (String) The environment key. A change in this field will force the destruction of the existing resource and the creation of a new one.
-- `fallthrough` (Block List, Min: 1, Max: 1) Nested block describing the default variation to serve if no `prerequisites`, `target`, or `rules` apply. (see [below for nested schema](#nestedblock--fallthrough))
-- `flag_id` (String) The feature flag's unique `id` in the format `project_key/flag_key`. A change in this field will force the destruction of the existing resource and the creation of a new one.
-- `off_variation` (Number) The index of the variation to serve if targeting is disabled.
+- `env_key` (String) The environment key. A change in this field forces the destruction of the existing resource and the creation of a new one.
+- `fallthrough` (Attributes) The default variation to serve if no `prerequisites`, `target`, or `rules` apply. (see [below for nested schema](#nestedatt--fallthrough))
+- `flag_id` (String) The feature flag's unique `id` in the format `project_key/flag_key`. A change in this field forces the destruction of the existing resource and the creation of a new one.
 
 ### Optional
 
-- `context_targets` (Block Set) The set of nested blocks describing the individual targets for non-user context kinds for each variation. (see [below for nested schema](#nestedblock--context_targets))
+- `context_targets` (Attributes Set) Individual targets for non-user context kinds for each variation. (see [below for nested schema](#nestedatt--context_targets))
+- `off_variation` (Number) The index of the variation to serve when targeting is off. Omitting this attribute leaves the off variation unset (the UI's "Not set" state), which is distinct from setting it to `0`. When it is unset and targeting is off, LaunchDarkly serves no variation: SDKs return the application-provided default value and the evaluation carries a null variation index, which affects Data Export and Experimentation.
 - `on` (Boolean) Whether targeting is enabled. Defaults to `false` if not set.
-- `prerequisites` (Block List) List of nested blocks describing prerequisite feature flags rules. (see [below for nested schema](#nestedblock--prerequisites))
-- `rules` (Block List) List of logical targeting rules. (see [below for nested schema](#nestedblock--rules))
-- `targets` (Block Set) Set of nested blocks describing the individual user targets for each variation. (see [below for nested schema](#nestedblock--targets))
+- `prerequisites` (Attributes List) Prerequisite feature flag rules. (see [below for nested schema](#nestedatt--prerequisites))
+- `rules` (Attributes List) List of logical targeting rules. (see [below for nested schema](#nestedatt--rules))
+- `targets` (Attributes Set) Individual user targets for each variation. (see [below for nested schema](#nestedatt--targets))
 - `track_events` (Boolean) Whether to send event data back to LaunchDarkly. Defaults to `false` if not set.
 
 ### Read-Only
 
 - `id` (String) The ID of this resource.
 
-<a id="nestedblock--fallthrough"></a>
+<a id="nestedatt--fallthrough"></a>
 ### Nested Schema for `fallthrough`
 
 Optional:
@@ -216,17 +223,17 @@ Optional:
 - `variation` (Number) The default integer variation index to serve if no `prerequisites`, `target`, or `rules` apply. You must specify either `variation` or `rollout_weights`.
 
 
-<a id="nestedblock--context_targets"></a>
+<a id="nestedatt--context_targets"></a>
 ### Nested Schema for `context_targets`
 
 Required:
 
-- `context_kind` (String) The context kind on which the flag should target in this environment. User (`user`) targets should be specified as `targets` attribute blocks.
+- `context_kind` (String) The context kind on which the flag should target in this environment. User (`user`) targets should be specified as `targets`.
 - `values` (List of String) List of `user` strings to target.
 - `variation` (Number) The index of the variation to serve if a user target value is matched.
 
 
-<a id="nestedblock--prerequisites"></a>
+<a id="nestedatt--prerequisites"></a>
 ### Nested Schema for `prerequisites`
 
 Required:
@@ -235,25 +242,28 @@ Required:
 - `variation` (Number) The index of the prerequisite feature flag's variation to target.
 
 
-<a id="nestedblock--rules"></a>
+<a id="nestedatt--rules"></a>
 ### Nested Schema for `rules`
+
+Required:
+
+- `clauses` (Attributes List) List of clauses specifying the logical conditions to evaluate (see [below for nested schema](#nestedatt--rules--clauses))
 
 Optional:
 
 - `bucket_by` (String) Group percentage rollout by a custom attribute. This argument is only valid if `rollout_weights` is also specified.
-- `clauses` (Block List) List of nested blocks specifying the logical clauses to evaluate (see [below for nested schema](#nestedblock--rules--clauses))
 - `context_kind` (String) The context kind associated with the specified rollout. This argument is only valid if `rollout_weights` is also specified. Defaults to `user` if omitted.
 - `description` (String) A human-readable description of the targeting rule.
 - `rollout_weights` (List of Number) List of integer percentage rollout weights (in thousandths of a percent) to apply to each variation if the rule clauses evaluates to `true`. The sum of the `rollout_weights` must equal 100000 and the number of rollout weights specified in the array must match the number of flag variations. You must specify either `variation` or `rollout_weights`.
 - `variation` (Number) The integer variation index to serve if the rule clauses evaluate to `true`. You must specify either `variation` or `rollout_weights`
 
-<a id="nestedblock--rules--clauses"></a>
+<a id="nestedatt--rules--clauses"></a>
 ### Nested Schema for `rules.clauses`
 
 Required:
 
 - `attribute` (String) The user attribute to operate on
-- `op` (String) The operator associated with the rule clause. Available options are `in`, `endsWith`, `startsWith`, `matches`, `contains`, `lessThan`, `lessThanOrEqual`, `greaterThanOrEqual`, `before`, `after`, `segmentMatch`, `semVerEqual`, `semVerLessThan`, and `semVerGreaterThan`. Read LaunchDarkly's [Operators](https://docs.launchdarkly.com/sdk/concepts/flag-evaluation-rules#operators) documentation for more information.
+- `op` (String) The operator associated with the rule clause. Available options are `in`, `endsWith`, `startsWith`, `matches`, `contains`, `lessThan`, `lessThanOrEqual`, `greaterThanOrEqual`, `before`, `after`, `segmentMatch`, `semVerEqual`, `semVerLessThan`, and `semVerGreaterThan`. Read LaunchDarkly's [Operators](https://launchdarkly.com/docs/sdk/concepts/flag-evaluation-rules#operators) documentation for more information.
 - `values` (List of String) The list of values associated with the rule clause.
 
 Optional:
@@ -264,7 +274,7 @@ Optional:
 
 
 
-<a id="nestedblock--targets"></a>
+<a id="nestedatt--targets"></a>
 ### Nested Schema for `targets`
 
 Required:

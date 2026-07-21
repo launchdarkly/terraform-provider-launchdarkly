@@ -6,9 +6,9 @@ import (
 	"regexp"
 	"testing"
 
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/acctest"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
-	ldapi "github.com/launchdarkly/api-client-go/v22"
+	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
+	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	ldapi "github.com/launchdarkly/api-client-go/v23"
 	"github.com/stretchr/testify/require"
 )
 
@@ -50,11 +50,11 @@ func TestAccDataSourceTeamMember_noMatchReturnsError(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config:      testAccDataSourceTeamMemberConfig(email),
-				ExpectError: regexp.MustCompile(`failed to find team member`),
+				ExpectError: regexp.MustCompile(`(?i)failed to find team member`),
 			},
 		},
 	})
@@ -85,7 +85,7 @@ func TestAccDataSourceTeamMember_exists(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config: testAccDataSourceTeamMemberConfig(testMember.Email),
@@ -95,7 +95,7 @@ func TestAccDataSourceTeamMember_exists(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, FIRST_NAME, *testMember.FirstName),
 					resource.TestCheckResourceAttr(resourceName, LAST_NAME, *testMember.LastName),
 					resource.TestCheckResourceAttr(resourceName, ID, testMember.Id),
-					resource.TestCheckResourceAttr(resourceName, "role_attributes.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "role_attributes.%", "1"),
 				),
 			},
 		},

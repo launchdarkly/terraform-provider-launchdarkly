@@ -7,10 +7,12 @@ import (
 	"os"
 	"strings"
 
+	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/provider"
 	"github.com/hashicorp/terraform-plugin-framework/provider/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
@@ -23,11 +25,12 @@ type launchdarklyProvider struct {
 }
 
 type launchdarklyProviderModel struct {
-	AccessToken    types.String `tfsdk:"access_token"`
-	OAuthToken     types.String `tfsdk:"oauth_token"`
-	Host           types.String `tfsdk:"api_host"`
-	HttpTimeout    types.Int64  `tfsdk:"http_timeout"`
-	MaxConcurrency types.Int64  `tfsdk:"max_concurrency"`
+	AccessToken           types.String `tfsdk:"access_token"`
+	OAuthToken            types.String `tfsdk:"oauth_token"`
+	Host                  types.String `tfsdk:"api_host"`
+	HttpTimeout           types.Int64  `tfsdk:"http_timeout"`
+	MaxConcurrency        types.Int64  `tfsdk:"max_concurrency"`
+	ArchiveFlagsOnDestroy types.Bool   `tfsdk:"archive_flags_on_destroy"`
 }
 
 // Metadata returns the provider type name.
@@ -38,28 +41,34 @@ func (p *launchdarklyProvider) Metadata(_ context.Context, _ provider.MetadataRe
 
 // Schema defines the provider-level schema for configuration data.
 func (p *launchdarklyProvider) Schema(_ context.Context, _ provider.SchemaRequest, resp *provider.SchemaResponse) {
-	sdkProviderSchema := providerSchema()
 	resp.Schema = schema.Schema{
 		Attributes: map[string]schema.Attribute{
 			ACCESS_TOKEN: schema.StringAttribute{
 				Optional:    true,
-				Description: sdkProviderSchema[ACCESS_TOKEN].Description,
+				Description: "The [personal access token](https://launchdarkly.com/docs/home/account/api#personal-tokens) or [service token](https://launchdarkly.com/docs/home/account/api#service-tokens) used to authenticate with LaunchDarkly. You can also set this with the `LAUNCHDARKLY_ACCESS_TOKEN` environment variable. You must provide either `access_token` or `oauth_token`.",
 			},
 			OAUTH_TOKEN: schema.StringAttribute{
 				Optional:    true,
-				Description: sdkProviderSchema[OAUTH_TOKEN].Description,
+				Description: "An OAuth V2 token you use to authenticate with LaunchDarkly. You can also set this with the `LAUNCHDARKLY_OAUTH_TOKEN` environment variable. You must provide either `access_token` or `oauth_token`.",
 			},
 			API_HOST: schema.StringAttribute{
 				Optional:    true,
-				Description: sdkProviderSchema[API_HOST].Description,
+				Description: "The LaunchDarkly host address. If this argument is not specified, the default host address is `https://app.launchdarkly.com`",
 			},
 			HTTP_TIMEOUT: schema.Int64Attribute{
 				Optional:    true,
-				Description: sdkProviderSchema[HTTP_TIMEOUT].Description,
+				Description: "The HTTP timeout (in seconds) when making API calls to LaunchDarkly. Defaults to 20 seconds.",
 			},
 			MAX_CONCURRENCY: schema.Int64Attribute{
 				Optional:    true,
-				Description: sdkProviderSchema[MAX_CONCURRENCY].Description,
+				Description: "The maximum number of concurrent API requests the provider makes to LaunchDarkly. Defaults to `1`. Increase this value to speed up plan and refresh operations on large configurations. Higher values make it more likely that requests exceed your account's API rate limit. If a request exceeds the rate limit, LaunchDarkly returns a `429` response and the provider retries the request automatically.",
+				Validators: []validator.Int64{
+					int64validator.AtLeast(1),
+				},
+			},
+			ARCHIVE_FLAGS_ON_DESTROY: schema.BoolAttribute{
+				Optional:    true,
+				Description: "When `true`, removing a `launchdarkly_feature_flag` resource from your Terraform configuration archives the flag in LaunchDarkly instead of deleting it. The flag's key is retained on the server, so re-applying a configuration that recreates the same flag key will fail with an error directing you to `terraform import` the archived flag. Defaults to `false`, which preserves the existing destroy-deletes behavior. This setting affects only `launchdarkly_feature_flag`. Other resources continue to be deleted on destroy.",
 			},
 		},
 	}
@@ -114,13 +123,17 @@ func (p *launchdarklyProvider) Configure(ctx context.Context, req provider.Confi
 		return
 	}
 
+	archiveOnDestroy := data.ArchiveFlagsOnDestroy.ValueBool()
+
 	if oauthToken != "" {
 		client, err := newClient(oauthToken, host, true, httpTimeoutSeconds, maxConcurrency)
 		if err != nil {
 			resp.Diagnostics.AddError("Unable to create LaunchDarkly client", err.Error())
 			return
 		}
+		client.archiveFlagsOnDestroy = archiveOnDestroy
 		resp.ResourceData = client
+		resp.DataSourceData = client
 		return
 	}
 
@@ -129,18 +142,84 @@ func (p *launchdarklyProvider) Configure(ctx context.Context, req provider.Confi
 		resp.Diagnostics.AddError("Unable to create LaunchDarkly client", err.Error())
 		return
 	}
+	client.archiveFlagsOnDestroy = archiveOnDestroy
 	resp.ResourceData = client
+	resp.DataSourceData = client
 }
 
 // DataSources defines the data sources implemented in the provider.
 func (p *launchdarklyProvider) DataSources(_ context.Context) []func() datasource.DataSource {
-	return nil
+	return []func() datasource.DataSource{
+		NewAIAgentGraphDataSource,
+		NewAIConfigDataSource,
+		NewAIConfigVariationDataSource,
+		NewAIToolDataSource,
+		NewAuditLogSubscriptionDataSource,
+		NewBigSegmentStoreIntegrationDataSource,
+		NewContextKindDataSource,
+		NewEnvironmentDataSource,
+		NewFeatureFlagDataSource,
+		NewFeatureFlagEnvironmentDataSource,
+		NewFlagImportConfigurationDataSource,
+		NewFlagTemplatesDataSource,
+		NewFlagTriggerDataSource,
+		NewIntegrationDeliveryConfigurationDataSource,
+		NewMetricDataSource,
+		NewMetricGroupDataSource,
+		NewModelConfigDataSource,
+		NewOAuthClientDataSource,
+		NewProjectDataSource,
+		NewRelayProxyConfigurationDataSource,
+		NewReleasePolicyDataSource,
+		NewSdkKeyDataSource,
+		NewSegmentDataSource,
+		NewTeamDataSource,
+		NewTeamMemberDataSource,
+		NewTeamMembersDataSource,
+		NewViewDataSource,
+		NewWebhookDataSource,
+	}
 }
 
 // Resources defines the resources implemented in the provider.
 func (p *launchdarklyProvider) Resources(_ context.Context) []func() resource.Resource {
 	return []func() resource.Resource{
+		NewAccessTokenResource,
+		NewAnnouncementResource,
+		NewAIAgentGraphResource,
+		NewAIConfigResource,
+		NewAIConfigVariationResource,
+		NewAIToolResource,
+		NewAuditLogSubscriptionResource,
+		NewBigSegmentStoreIntegrationResource,
+		NewContextKindResource,
+		NewCustomRoleResource,
+		NewDestinationResource,
+		NewEnvironmentResource,
+		NewFlagImportConfigurationResource,
+		NewFlagTemplatesResource,
+		NewIntegrationDeliveryConfigurationResource,
+		NewIPAllowlistConfigResource,
+		NewIPAllowlistEntryResource,
+		NewMetricResource,
+		NewMetricGroupResource,
+		NewRelayProxyConfigResource,
+		NewReleasePolicyResource,
+		NewSdkKeyResource,
+		NewTeamMemberResource,
+		NewTeamResource,
+		NewViewFilterLinksResource,
+		NewViewLinksResource,
+		NewViewResource,
+		NewWebhookResource,
+		NewFlagTriggerResource,
+		NewModelConfigResource,
+		NewOAuthClientResource,
 		NewTeamRoleMappingResource,
+		NewProjectResource,
+		NewSegmentResource,
+		NewFeatureFlagResource,
+		NewFeatureFlagEnvironmentResource,
 	}
 }
 

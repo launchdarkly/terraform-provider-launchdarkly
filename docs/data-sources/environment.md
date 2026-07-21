@@ -37,29 +37,45 @@ data "launchdarkly_environment" "example" {
 ### Read-Only
 
 - `api_key` (String, Sensitive) The environment's SDK key.
-- `approval_settings` (List of Object) (see [below for nested schema](#nestedatt--approval_settings))
+- `approval_settings` (Attributes) Approval settings for this environment / project. (see [below for nested schema](#nestedatt--approval_settings))
 - `client_side_id` (String, Sensitive) The environment's client-side ID.
-- `color` (String)
-- `confirm_changes` (Boolean) Set to `true` if this environment requires confirmation for flag and segment changes. This field will default to `false` when not set.
-- `default_track_events` (Boolean) Set to `true` to enable data export for every flag created in this environment after you configure this argument. This field will default to `false` when not set. To learn more, read [Data Export](https://docs.launchdarkly.com/home/data-export).
-- `default_ttl` (Number) The TTL for the environment. This must be between 0 and 60 minutes. The TTL setting only applies to environments using the PHP SDK. This field will default to `0` when not set. To learn more, read [TTL settings](https://docs.launchdarkly.com/home/organize/environments#ttl-settings).
-- `id` (String) The ID of this resource.
+- `color` (String) The color swatch as an RGB hex value with no leading `#`.
+- `confirm_changes` (Boolean) Whether flag/segment changes require confirmation.
+- `default_track_events` (Boolean) Whether data export is enabled for new flags.
+- `default_ttl` (Number) The default TTL (0-60 minutes).
+- `id` (String) The ID in the format `project_key/key`.
 - `mobile_key` (String, Sensitive) The environment's mobile key.
-- `name` (String)
-- `require_comments` (Boolean) Set to `true` if this environment requires comments for flag and segment changes. This field will default to `false` when not set.
-- `secure_mode` (Boolean) Set to `true` to ensure a user of the client-side SDK cannot impersonate another user. This field will default to `false` when not set.
-- `tags` (Set of String) Tags associated with your resource.
+- `name` (String) The name of the environment.
+- `require_comments` (Boolean) Whether flag/segment changes require comments.
+- `secure_mode` (Boolean) Whether secure mode is enabled.
+- `segment_approval_settings` (Attributes) Approval settings for segment changes in this environment. (see [below for nested schema](#nestedatt--segment_approval_settings))
+- `tags` (Set of String) Tags.
 
 <a id="nestedatt--approval_settings"></a>
 ### Nested Schema for `approval_settings`
 
 Read-Only:
 
-- `auto_apply_approved_changes` (Boolean)
-- `can_apply_declined_changes` (Boolean)
-- `can_review_own_request` (Boolean)
-- `min_num_approvals` (Number)
-- `required` (Boolean)
-- `required_approval_tags` (List of String)
-- `service_config` (Map of String)
-- `service_kind` (String)
+- `auto_apply_approved_changes` (Boolean) Whether to auto-apply changes once all approvers have approved.
+- `can_apply_declined_changes` (Boolean) Whether changes can be applied with the minimum number of approvals despite declines.
+- `can_review_own_request` (Boolean) Whether requesters can approve their own requests.
+- `min_num_approvals` (Number) Minimum approvers required (1-5).
+- `required` (Boolean) Whether changes require approval.
+- `required_approval_tags` (List of String) Flag tags requiring approval (only one of required / required_approval_tags is set).
+- `service_config` (Map of String) Service-specific approval config.
+- `service_kind` (String) Approval service. Valid values are `servicenow` and `launchdarkly`.
+
+
+<a id="nestedatt--segment_approval_settings"></a>
+### Nested Schema for `segment_approval_settings`
+
+Read-Only:
+
+- `auto_apply_approved_changes` (Boolean) Whether to auto-apply changes once all approvers have approved.
+- `can_apply_declined_changes` (Boolean) Whether changes can be applied with the minimum number of approvals despite declines.
+- `can_review_own_request` (Boolean) Whether requesters can approve their own requests.
+- `min_num_approvals` (Number) Minimum approvers required (1-5).
+- `required` (Boolean) Whether segment changes require approval.
+- `required_approval_tags` (List of String) Segment tags requiring approval (only one of required / required_approval_tags is set).
+- `service_config` (Map of String) Service-specific approval config.
+- `service_kind` (String) Approval service. Valid values are `servicenow` and `launchdarkly`.

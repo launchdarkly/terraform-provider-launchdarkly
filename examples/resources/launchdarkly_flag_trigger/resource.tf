@@ -3,7 +3,7 @@ resource "launchdarkly_flag_trigger" "example" {
   env_key         = "test"
   flag_key        = launchdarkly_feature_flag.trigger_flag.key
   integration_key = "generic-trigger"
-  instructions {
+  instructions = {
     kind = "turnFlagOn"
   }
   enabled = false

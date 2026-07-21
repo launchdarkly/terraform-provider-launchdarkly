@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
+	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/terraform"
 )
 
 const (
@@ -36,7 +36,7 @@ func TestAccIpAllowlistConfig(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config: testAccIpAllowlistConfigDefaults,
@@ -93,7 +93,7 @@ func testAccCheckIpAllowlistConfigExists(resourceName string) resource.TestCheck
 		if rs.Primary.ID == "" {
 			return fmt.Errorf("IP allowlist config ID is not set")
 		}
-		client := testAccProvider.Meta().(*Client)
+		client := mustTestAccClient()
 		_, err := getIpAllowlist(client)
 		if err != nil {
 			return fmt.Errorf("error getting IP allowlist config: %s", err)

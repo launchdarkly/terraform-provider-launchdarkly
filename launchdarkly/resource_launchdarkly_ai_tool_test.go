@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/acctest"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
+	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
+	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/terraform"
 )
 
 const (
@@ -79,8 +79,8 @@ func TestAccAITool_CreateAndUpdate(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers:    testAccProviders,
-		CheckDestroy: testAccCheckAIToolDestroy,
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckAIToolDestroy,
 		Steps: []resource.TestStep{
 			{
 				Config: withAITestProject(projectKey, fmt.Sprintf(testAccAIToolCreate, toolKey, toolDescription)),
@@ -120,9 +120,9 @@ func TestAccAITool_WithCustomParameters(t *testing.T) {
 	resourceName := "launchdarkly_ai_tool.test"
 
 	resource.ParallelTest(t, resource.TestCase{
-		PreCheck:     func() { testAccPreCheck(t) },
-		Providers:    testAccProviders,
-		CheckDestroy: testAccCheckAIToolDestroy,
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckAIToolDestroy,
 		Steps: []resource.TestStep{
 			{
 				Config: withAITestProject(projectKey, fmt.Sprintf(testAccAIToolWithCustomParams, toolKey)),
@@ -156,8 +156,8 @@ func testAccCheckAIToolExists(resourceName string) resource.TestCheckFunc {
 		projectKey := rs.Primary.Attributes[PROJECT_KEY]
 		toolKey := rs.Primary.Attributes[KEY]
 
-		client := testAccProvider.Meta().(*Client)
-		_, _, err := client.ld.AIConfigsApi.GetAITool(client.ctx, projectKey, toolKey).Execute()
+		client := mustTestAccClient()
+		_, _, err := client.ld.AgentControlApi.GetAITool(client.ctx, projectKey, toolKey).Execute()
 		if err != nil {
 			return fmt.Errorf("received an error getting AI tool: %s", err)
 		}
@@ -166,7 +166,7 @@ func testAccCheckAIToolExists(resourceName string) resource.TestCheckFunc {
 }
 
 var testAccCheckAIToolDestroy = func(s *terraform.State) error {
-	client := testAccProvider.Meta().(*Client)
+	client := mustTestAccClient()
 
 	for _, rs := range s.RootModule().Resources {
 		if rs.Type != "launchdarkly_ai_tool" {
@@ -175,7 +175,7 @@ var testAccCheckAIToolDestroy = func(s *terraform.State) error {
 		projectKey := rs.Primary.Attributes[PROJECT_KEY]
 		toolKey := rs.Primary.Attributes[KEY]
 
-		_, res, err := client.ld.AIConfigsApi.GetAITool(client.ctx, projectKey, toolKey).Execute()
+		_, res, err := client.ld.AgentControlApi.GetAITool(client.ctx, projectKey, toolKey).Execute()
 		if isStatusNotFound(res) {
 			continue
 		}

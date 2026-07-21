@@ -6,10 +6,10 @@ import (
 	"regexp"
 	"testing"
 
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/acctest"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
-	ldapi "github.com/launchdarkly/api-client-go/v22"
+	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
+	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/terraform"
+	ldapi "github.com/launchdarkly/api-client-go/v23"
 	"github.com/stretchr/testify/require"
 )
 
@@ -24,14 +24,13 @@ resource "launchdarkly_metric" "basic" {
 	tags           = [
 	  "test"
 	]
-	urls {
+	urls = [{
 	  kind = "substring"
 	  substring = "foo"
-	}
-	urls {
+	}, {
 		kind = "regex"
 		pattern = "foo"
-	  }
+	  }]
 }
 `
 	testAccMetricUpdate = `
@@ -44,18 +43,17 @@ resource "launchdarkly_metric" "basic" {
 	tags           = [
 	  "test"
 	]
-	urls {
+	urls = [{
 	  kind = "substring"
 	  substring = "bar"
-	}
-	urls {
+	}, {
 		kind = "regex"
 		pattern = "bar"
-	  }
+	  }]
 }
 `
 
-	testAccMetricCustomWithRandomizationUnitsFmt = `
+	testAccMetricCustomWithAnalysisUnitsFmt = `
 resource "launchdarkly_metric" "custom" {
 	project_key = "%s"
 	key         = "custom-metric"
@@ -64,14 +62,14 @@ resource "launchdarkly_metric" "custom" {
 	kind        = "custom"
 	is_numeric  = false
 
-	randomization_units = [
+	analysis_units = [
 		"request",
 		"user"
 	]
 }
 `
 
-	testAccMetricCustomWithRandomizationUnitsUpdateFmt = `
+	testAccMetricCustomWithAnalysisUnitsUpdateFmt = `
 resource "launchdarkly_metric" "custom" {
 	project_key = "%s"
 	key         = "custom-metric"
@@ -80,7 +78,7 @@ resource "launchdarkly_metric" "custom" {
 	kind        = "custom"
 	is_numeric  = false
 
-	randomization_units = [
+	analysis_units = [
 		"organization",
 	  "request",
 		"user"
@@ -131,7 +129,7 @@ func TestAccMetric_BasicCreateAndUpdate(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config: withRandomProject(projectKey, testAccMetricBasic),
@@ -177,7 +175,7 @@ func TestAccMetric_BasicCreateAndUpdate(t *testing.T) {
 	})
 }
 
-func TestAccMetric_WithRandomizationUnits(t *testing.T) {
+func TestAccMetric_WithAnalysisUnits(t *testing.T) {
 	accTest := os.Getenv("TF_ACC")
 	if accTest == "" {
 		t.SkipNow()
@@ -202,10 +200,10 @@ func TestAccMetric_WithRandomizationUnits(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			{
-				Config: fmt.Sprintf(testAccMetricCustomWithRandomizationUnitsFmt, projectKey),
+				Config: fmt.Sprintf(testAccMetricCustomWithAnalysisUnitsFmt, projectKey),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckMetricExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, NAME, "Custom Metric"),
@@ -214,8 +212,8 @@ func TestAccMetric_WithRandomizationUnits(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, KIND, "custom"),
 					resource.TestCheckResourceAttr(resourceName, EVENT_KEY, "Custom event"),
 					resource.TestCheckResourceAttr(resourceName, IS_NUMERIC, "false"),
-					resource.TestCheckResourceAttr(resourceName, RANDOMIZATION_UNITS+".0", "request"),
-					resource.TestCheckResourceAttr(resourceName, RANDOMIZATION_UNITS+".1", "user"),
+					resource.TestCheckResourceAttr(resourceName, ANALYSIS_UNITS+".0", "request"),
+					resource.TestCheckResourceAttr(resourceName, ANALYSIS_UNITS+".1", "user"),
 				),
 			},
 			{
@@ -224,7 +222,7 @@ func TestAccMetric_WithRandomizationUnits(t *testing.T) {
 				ImportStateVerify: true,
 			},
 			{
-				Config: fmt.Sprintf(testAccMetricCustomWithRandomizationUnitsUpdateFmt, projectKey),
+				Config: fmt.Sprintf(testAccMetricCustomWithAnalysisUnitsUpdateFmt, projectKey),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckMetricExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, NAME, "Custom Metric"),
@@ -233,9 +231,9 @@ func TestAccMetric_WithRandomizationUnits(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, KIND, "custom"),
 					resource.TestCheckResourceAttr(resourceName, EVENT_KEY, "Custom event"),
 					resource.TestCheckResourceAttr(resourceName, IS_NUMERIC, "false"),
-					resource.TestCheckResourceAttr(resourceName, RANDOMIZATION_UNITS+".0", "organization"),
-					resource.TestCheckResourceAttr(resourceName, RANDOMIZATION_UNITS+".1", "request"),
-					resource.TestCheckResourceAttr(resourceName, RANDOMIZATION_UNITS+".2", "user"),
+					resource.TestCheckResourceAttr(resourceName, ANALYSIS_UNITS+".0", "organization"),
+					resource.TestCheckResourceAttr(resourceName, ANALYSIS_UNITS+".1", "request"),
+					resource.TestCheckResourceAttr(resourceName, ANALYSIS_UNITS+".2", "user"),
 				),
 			},
 			{
@@ -256,7 +254,7 @@ func TestAccMetric_MetricAnalysisFields(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			// 1. Set none of the analysis fields, verify the metric is created with default values
 			{
@@ -522,7 +520,7 @@ func TestAccMetric_IncludeUnitsWithoutEvents(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			// Default value is "true" when "analysis_type" is "mean"
 			{
@@ -642,7 +640,7 @@ func testAccCheckMetricExists(resourceName string) resource.TestCheckFunc {
 		if !ok {
 			return fmt.Errorf("project key not found: %s", resourceName)
 		}
-		client := testAccProvider.Meta().(*Client)
+		client := mustTestAccClient()
 		_, _, err := client.ld.MetricsApi.GetMetric(client.ctx, projKey, metricKey).Execute()
 		if err != nil {
 			return fmt.Errorf("received an error getting metric. %s", err)

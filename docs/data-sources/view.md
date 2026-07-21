@@ -69,13 +69,13 @@ output "team_flag_access" {
 
 - `archived` (Boolean) Whether the view is archived.
 - `description` (String) The view's description.
-- `id` (String) The ID of this resource.
-- `linked_flags` (List of String) A list of feature flag keys that are linked to this view.
-- `linked_segments` (List of Object) A list of segments that are linked to this view. (see [below for nested schema](#nestedatt--linked_segments))
-- `maintainer_id` (String) The member ID of the maintainer for this view.
-- `maintainer_team_key` (String) The team key of the maintainer team for this view.
+- `id` (String) View ID.
+- `linked_flags` (List of String) Feature flag keys linked to this view.
+- `linked_segments` (Attributes List) Segments linked to this view. (see [below for nested schema](#nestedatt--linked_segments))
+- `maintainer_id` (String) Member ID of the maintainer.
+- `maintainer_team_key` (String) Team key of the maintainer team.
 - `name` (String) The view's name.
-- `tags` (Set of String) Tags associated with your resource.
+- `tags` (Set of String) Tags.
 
 <a id="nestedatt--linked_segments"></a>
 ### Nested Schema for `linked_segments`

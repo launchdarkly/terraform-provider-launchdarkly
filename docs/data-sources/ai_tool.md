@@ -35,7 +35,7 @@ data "launchdarkly_ai_tool" "example" {
 - `creation_date` (Number) The creation timestamp of the AI tool.
 - `custom_parameters` (String) A JSON string representing custom application-level metadata for the AI tool.
 - `description` (String) The AI tool's description.
-- `id` (String) The ID of this resource.
+- `id` (String) The ID in the format `project_key/key`.
 - `maintainer_id` (String) The member ID of the maintainer for this AI tool. Conflicts with `maintainer_team_key`.
 - `maintainer_team_key` (String) The team key of the maintainer team for this AI tool. Conflicts with `maintainer_id`.
 - `schema_json` (String) A JSON string representing the JSON Schema for the tool's parameters.

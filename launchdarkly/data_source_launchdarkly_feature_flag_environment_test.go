@@ -5,9 +5,9 @@ import (
 	"os"
 	"testing"
 
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/acctest"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
-	ldapi "github.com/launchdarkly/api-client-go/v22"
+	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
+	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	ldapi "github.com/launchdarkly/api-client-go/v23"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -165,7 +165,7 @@ func TestAccDataSourceFeatureFlagEnvironment_exists(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config: fmt.Sprintf(testAccDataSourceFeatureFlagEnvironment, envKey, flagId),
@@ -292,7 +292,7 @@ func TestAccDataSourceFeatureFlagEnvironment_WithContextFields(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config: fmt.Sprintf(testAccDataSourceFeatureFlagEnvironment, envKey, flagId),
@@ -309,7 +309,7 @@ func TestAccDataSourceFeatureFlagEnvironment_WithContextFields(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "prerequisites.0.flag_key", thisConfig.Prerequisites[0].Key),
 					resource.TestCheckResourceAttr(resourceName, "prerequisites.0.variation", fmt.Sprint(thisConfig.Prerequisites[0].Variation)),
 					resource.TestCheckResourceAttr(resourceName, OFF_VARIATION, fmt.Sprint(*thisConfig.OffVariation)),
-					resource.TestCheckResourceAttr(resourceName, "fallthrough.0.context_kind", "user"), // set by default
+					resource.TestCheckResourceAttr(resourceName, "fallthrough.context_kind", "user"), // set by default
 					resource.TestCheckResourceAttr(resourceName, "targets.0.values.#", fmt.Sprint(len(thisConfig.Targets[0].Values))),
 					resource.TestCheckResourceAttr(resourceName, "targets.0.variation", "1"),
 					resource.TestCheckResourceAttr(resourceName, "context_targets.0.values.#", fmt.Sprint(len(thisConfig.Targets[0].Values))),
