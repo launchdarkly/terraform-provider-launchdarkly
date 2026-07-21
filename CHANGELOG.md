@@ -2,6 +2,17 @@
 
 All notable changes to the LaunchDarkly Terraform Provider will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org).
 
+## [3.0.0](https://github.com/launchdarkly/terraform-provider-launchdarkly/compare/v2.30.1...v3.0.0) (2026-07-21)
+
+
+### ⚠ BREAKING CHANGES
+
+* migrates to the Terraform Plugin Framework (protocol 6), replaces block syntax with nested attributes, and removes v2-deprecated attributes. See the migration guide.
+
+### Features
+
+* promote v3 to main (v3.0.0 GA) ([#505](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/505)) ([8fc7c30](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/8fc7c30d5c51e59346c5123bf483ec8bc2f3cc9e))
+
 ## [3.0.0-beta.7](https://github.com/launchdarkly/terraform-provider-launchdarkly/compare/v3.0.0-beta.6...v3.0.0-beta.7) (2026-07-07)
 
 
