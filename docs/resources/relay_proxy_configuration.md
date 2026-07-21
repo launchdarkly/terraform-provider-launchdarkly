@@ -68,7 +68,7 @@ Import a Relay Proxy configuration using the configuration's unique 24-character
 terraform import launchdarkly_relay_proxy_configuration.example 51d440e30c9ff61457c710f6
 ```
 
-The unique relay proxy ID can be found in the relay proxy edit page URL, which you can locate by clicking the three dot menu on your relay proxy item in the UI and selecting "Edit configuration":
+You can find the unique Relay Proxy ID in the Relay Proxy edit page URL, which you can locate by clicking the three-dot menu on your Relay Proxy item in the UI and selecting "Edit configuration":
 
 ```
 https://app.launchdarkly.com/settings/relay/THIS_IS_YOUR_RELAY_PROXY_ID/edit
