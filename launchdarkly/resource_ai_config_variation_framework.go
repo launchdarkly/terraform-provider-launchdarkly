@@ -134,7 +134,7 @@ func aiConfigVariationSchemaAttributes() map[string]schema.Attribute {
 			Optional:    true,
 			Computed:    true,
 			ElementType: types.StringType,
-			Description: "A set of AI tool keys to associate with this variation. **Note:** The API does not currently return tool associations on read, so Terraform cannot detect drift for this field. Changes made outside of Terraform is not reflected in state.",
+			Description: "A set of AI tool keys to associate with this variation.",
 			PlanModifiers: []planmodifier.Set{
 				setplanmodifier.UseStateForUnknown(),
 			},

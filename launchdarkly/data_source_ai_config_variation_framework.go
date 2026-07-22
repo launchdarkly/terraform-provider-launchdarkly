@@ -72,7 +72,7 @@ func (d *AIConfigVariationDataSource) Schema(_ context.Context, _ datasource.Sch
 			TOOL_KEYS: schema.SetAttribute{
 				Computed:    true,
 				ElementType: types.StringType,
-				Description: "A set of AI tool keys to associate with this variation. **Note:** The API does not currently return tool associations on read, so Terraform cannot detect drift for this field. Changes made outside of Terraform is not reflected in state.",
+				Description: "A set of AI tool keys associated with this variation.",
 			},
 			JUDGES: schema.MapNestedAttribute{
 				Computed:    true,
