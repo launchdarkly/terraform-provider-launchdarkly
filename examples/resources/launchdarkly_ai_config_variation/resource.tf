@@ -24,8 +24,9 @@ resource "launchdarkly_ai_config_variation" "example" {
 }
 
 resource "launchdarkly_ai_config" "response_quality_judge" {
-  project_key = launchdarkly_project.example.key
-  key         = "response-quality-judge"
-  name        = "Response Quality Judge"
-  mode        = "judge"
+  project_key           = launchdarkly_project.example.key
+  key                   = "response-quality-judge"
+  name                  = "Response Quality Judge"
+  mode                  = "judge"
+  evaluation_metric_key = "$ld:ai:judge:response-quality"
 }

@@ -129,15 +129,16 @@ resource "launchdarkly_ai_config_variation" "test" {
 
 	testAccAIConfigVariationWithJudges = `
 resource "launchdarkly_ai_config" "quality_judge" {
-	project_key = launchdarkly_project.test.key
-	key         = "%s"
-	name        = "Quality Judge"
-	mode        = "judge"
+	project_key           = launchdarkly_project.test.key
+	key                   = "%[1]s"
+	name                  = "Quality Judge"
+	mode                  = "judge"
+	evaluation_metric_key = "$ld:ai:judge:%[1]s"
 }
 
 resource "launchdarkly_ai_config" "test" {
 	project_key = launchdarkly_project.test.key
-	key         = "%s"
+	key         = "%[2]s"
 	name        = "Parent AI Config"
 	description = "Parent for judges test"
 	depends_on  = [launchdarkly_ai_config.quality_judge]
@@ -146,7 +147,7 @@ resource "launchdarkly_ai_config" "test" {
 resource "launchdarkly_ai_config_variation" "test" {
 	project_key = launchdarkly_project.test.key
 	config_key  = launchdarkly_ai_config.test.key
-	key         = "%s"
+	key         = "%[3]s"
 	name        = "Variation with judges"
 	messages = [{
 		role    = "system"
@@ -162,23 +163,25 @@ resource "launchdarkly_ai_config_variation" "test" {
 
 	testAccAIConfigVariationWithJudgesUpdate = `
 resource "launchdarkly_ai_config" "quality_judge" {
-	project_key = launchdarkly_project.test.key
-	key         = "%s"
-	name        = "Quality Judge"
-	mode        = "judge"
+	project_key           = launchdarkly_project.test.key
+	key                   = "%[1]s"
+	name                  = "Quality Judge"
+	mode                  = "judge"
+	evaluation_metric_key = "$ld:ai:judge:%[1]s"
 }
 
 resource "launchdarkly_ai_config" "accuracy_judge" {
-	project_key = launchdarkly_project.test.key
-	key         = "%s"
-	name        = "Accuracy Judge"
-	mode        = "judge"
-	depends_on  = [launchdarkly_ai_config.quality_judge]
+	project_key           = launchdarkly_project.test.key
+	key                   = "%[2]s"
+	name                  = "Accuracy Judge"
+	mode                  = "judge"
+	evaluation_metric_key = "$ld:ai:judge:%[2]s"
+	depends_on            = [launchdarkly_ai_config.quality_judge]
 }
 
 resource "launchdarkly_ai_config" "test" {
 	project_key = launchdarkly_project.test.key
-	key         = "%s"
+	key         = "%[3]s"
 	name        = "Parent AI Config"
 	description = "Parent for judges test"
 	depends_on  = [launchdarkly_ai_config.accuracy_judge]
@@ -187,7 +190,7 @@ resource "launchdarkly_ai_config" "test" {
 resource "launchdarkly_ai_config_variation" "test" {
 	project_key = launchdarkly_project.test.key
 	config_key  = launchdarkly_ai_config.test.key
-	key         = "%s"
+	key         = "%[4]s"
 	name        = "Variation with judges"
 	messages = [{
 		role    = "system"
@@ -206,23 +209,25 @@ resource "launchdarkly_ai_config_variation" "test" {
 
 	testAccAIConfigVariationWithJudgesRemoved = `
 resource "launchdarkly_ai_config" "quality_judge" {
-	project_key = launchdarkly_project.test.key
-	key         = "%s"
-	name        = "Quality Judge"
-	mode        = "judge"
+	project_key           = launchdarkly_project.test.key
+	key                   = "%[1]s"
+	name                  = "Quality Judge"
+	mode                  = "judge"
+	evaluation_metric_key = "$ld:ai:judge:%[1]s"
 }
 
 resource "launchdarkly_ai_config" "accuracy_judge" {
-	project_key = launchdarkly_project.test.key
-	key         = "%s"
-	name        = "Accuracy Judge"
-	mode        = "judge"
-	depends_on  = [launchdarkly_ai_config.quality_judge]
+	project_key           = launchdarkly_project.test.key
+	key                   = "%[2]s"
+	name                  = "Accuracy Judge"
+	mode                  = "judge"
+	evaluation_metric_key = "$ld:ai:judge:%[2]s"
+	depends_on            = [launchdarkly_ai_config.quality_judge]
 }
 
 resource "launchdarkly_ai_config" "test" {
 	project_key = launchdarkly_project.test.key
-	key         = "%s"
+	key         = "%[3]s"
 	name        = "Parent AI Config"
 	description = "Parent for judges test"
 	depends_on  = [launchdarkly_ai_config.accuracy_judge]
@@ -231,7 +236,7 @@ resource "launchdarkly_ai_config" "test" {
 resource "launchdarkly_ai_config_variation" "test" {
 	project_key = launchdarkly_project.test.key
 	config_key  = launchdarkly_ai_config.test.key
-	key         = "%s"
+	key         = "%[4]s"
 	name        = "Variation with judges"
 	messages = [{
 		role    = "system"
