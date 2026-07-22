@@ -2,6 +2,13 @@
 
 All notable changes to the LaunchDarkly Terraform Provider will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org).
 
+## [3.0.1](https://github.com/launchdarkly/terraform-provider-launchdarkly/compare/v3.0.0...v3.0.1) (2026-07-22)
+
+
+### Bug Fixes
+
+* v3 migration gotchas for empty tags, FFE import ID order, and metric rename docs ([#509](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/509)) ([6e6a8ca](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/6e6a8ca8025bcc01bf6382a27398fbde187e2307))
+
 ## [3.0.0](https://github.com/launchdarkly/terraform-provider-launchdarkly/compare/v2.30.1...v3.0.0) (2026-07-21)
 
 
