@@ -59,11 +59,14 @@ jobs:
     name: Scaffold ${{ inputs.resource_name || inputs.family }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
-    # Serialize per family/resource so a double dispatch (e.g. a double-clicked
-    # Slack link or an impatient re-run) doesn't race two runs onto the same
-    # scaffold/<slug> branch + PR. Queue, don't cancel.
+    # Serialize per FAMILY (not per resource) so a double dispatch doesn't race
+    # two runs onto the same scaffold/<slug> branch + PR, AND a scoped dispatch
+    # can't run concurrently with a whole-family dispatch for the same family —
+    # both edit the family's mapping.yaml entry. Two scoped resources in the
+    # same family also serialize; that queues a little more than strictly
+    # necessary, which is fine. Queue, don't cancel.
     concurrency:
-      group: scaffold-${{ inputs.resource_name || inputs.family }}
+      group: scaffold-${{ inputs.family }}
       cancel-in-progress: false
     # Exposed to the downstream verify job so it knows which PR to verify.
     # Empty when the agent created no PR (e.g. graceful abort) -> verify skipped.
