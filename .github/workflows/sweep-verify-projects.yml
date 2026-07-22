@@ -61,9 +61,15 @@ jobs:
           # Enumerate ALL project keys (paginated), then filter to the exact
           # tf-verify-pr<N> shape. Server-side filters vary by plan/version, so
           # client-side filtering on the canonical key regex is the robust path.
+          # `offset` + `limit` are documented query params on GET /api/v2/projects
+          # (verified against the live openapi.json). MAX_PAGES only bounds the
+          # loop if the server ever ignored offset (same full page repeating) —
+          # a warning then, not a 10-minute hang.
           keys=""
           offset=0
           LIMIT=100
+          MAX_PAGES=50
+          pages=0
           while :; do
             page="$(curl -sS -f -H "Authorization: $LD_TOKEN" \
               "$API/projects?limit=$LIMIT&offset=$offset")"
@@ -74,6 +80,11 @@ jobs:
             # A short page is the last page. No totalCount dependency — the field
             # missing from a response must not truncate the sweep to page one.
             [ "$n" -lt "$LIMIT" ] && break
+            pages=$((pages + 1))
+            if [ "$pages" -ge "$MAX_PAGES" ]; then
+              echo "::warning::Stopped paging after $MAX_PAGES pages ($offset projects) — raise MAX_PAGES if the account genuinely has more."
+              break
+            fi
           done
 
           swept=0 kept=0

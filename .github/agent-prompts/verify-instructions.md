@@ -79,14 +79,22 @@ Do this, in order:
      removes what THIS run created (terraform state) — it never touches unrelated
      account data. Say in the report which resources you retained vs destroyed.
 
-5. COMMIT any fixes to this branch (clear conventional-commit message; touch only
-   files relevant to the fix — never the scratch config or state) and push.
+5. LEDGER + COMMIT + PUSH — in this order, and ALWAYS (even when the scaffold
+   needed no fixes):
 
-   Also append ONE line to `.github/agent-prompts/verify-findings.jsonl` (create
-   it if missing) and include it in the commit — unlike verify-result.json this
-   ledger IS committed; it is the pipeline's durable record of recurring scaffold
-   defects, periodically folded back into scaffold-instructions.md and the
-   vendored skill. Exactly one JSON object on one line:
+   a. FIRST append ONE line to `.github/agent-prompts/verify-findings.jsonl`
+      (create it if missing). Unlike verify-result.json this ledger IS
+      committed; it is the pipeline's durable record of recurring scaffold
+      defects, periodically folded back into scaffold-instructions.md and the
+      vendored skill — a clean run's empty-categories line is signal too.
+   b. THEN commit: any fixes plus the ledger line in one commit (clear
+      conventional-commit message; touch only files relevant to the fix and the
+      ledger — never the scratch config or state). If there were no fixes,
+      commit the ledger line alone.
+   c. THEN push. Never push before the ledger line is committed — the ledger
+      and the Slack defect_categories must not diverge from the branch.
+
+   Ledger line format — exactly one JSON object on one line:
      {"pr": <PR number>, "resource": "<terraform resource name>",
       "defect_categories": [...], "notes": "<one sentence>"}
    defect_categories is a list of short kebab-case labels for the REAL defects
