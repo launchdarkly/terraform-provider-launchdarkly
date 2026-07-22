@@ -33,6 +33,19 @@ resource "launchdarkly_ai_config_variation" "example" {
       content = "{{ ldctx.query }}"
     },
   ]
+
+  judges = {
+    (launchdarkly_ai_config.response_quality_judge.key) = {
+      sampling_rate = 0.1
+    }
+  }
+}
+
+resource "launchdarkly_ai_config" "response_quality_judge" {
+  project_key = launchdarkly_project.example.key
+  key         = "response-quality-judge"
+  name        = "Response Quality Judge"
+  mode        = "judge"
 }
 ```
 
@@ -50,6 +63,7 @@ resource "launchdarkly_ai_config_variation" "example" {
 
 - `description` (String) The variation's description. Used in agent mode.
 - `instructions` (String) The variation's instructions. Used in agent mode.
+- `judges` (Attributes Map) The judges attached to this variation, keyed by the key of the judge AI Config (an AI Config with `mode = "judge"`). Applying this attribute replaces all judge attachments on the variation; removing it detaches all judges. (see [below for nested schema](#nestedatt--judges))
 - `messages` (Attributes List) A list of messages for completion mode. Each message has a `role` and `content`. (see [below for nested schema](#nestedatt--messages))
 - `model` (String) A JSON string representing the inline model configuration for the variation. Conflicts with `model_config_key`.
 - `model_config_key` (String) The key of a model config resource to use for this variation. Conflicts with `model`.
@@ -62,6 +76,14 @@ resource "launchdarkly_ai_config_variation" "example" {
 - `id` (String) The ID of this resource.
 - `variation_id` (String) The internal ID of the variation.
 - `version` (Number) The version number of the variation.
+
+<a id="nestedatt--judges"></a>
+### Nested Schema for `judges`
+
+Required:
+
+- `sampling_rate` (Number) The fraction of generations this judge evaluates. Must be between `0.0` and `1.0`. Stored with 32-bit float precision.
+
 
 <a id="nestedatt--messages"></a>
 ### Nested Schema for `messages`

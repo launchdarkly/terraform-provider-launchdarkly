@@ -38,6 +38,7 @@ data "launchdarkly_ai_config_variation" "example" {
 - `description` (String) The variation's description. Used in agent mode.
 - `id` (String) The ID in the format `project_key/config_key/key`.
 - `instructions` (String) The variation's instructions. Used in agent mode.
+- `judges` (Attributes Map) The judges attached to this variation, keyed by the key of the judge AI Config. (see [below for nested schema](#nestedatt--judges))
 - `messages` (Attributes List) A list of messages for completion mode. (see [below for nested schema](#nestedatt--messages))
 - `model` (String) A JSON string representing the inline model configuration.
 - `model_config_key` (String) The key of a model config resource used for this variation.
@@ -46,6 +47,14 @@ data "launchdarkly_ai_config_variation" "example" {
 - `tool_keys` (Set of String) A set of AI tool keys to associate with this variation. **Note:** The API does not currently return tool associations on read, so Terraform cannot detect drift for this field. Changes made outside of Terraform is not reflected in state.
 - `variation_id` (String) The internal ID of the variation.
 - `version` (Number) The version number of the variation.
+
+<a id="nestedatt--judges"></a>
+### Nested Schema for `judges`
+
+Read-Only:
+
+- `sampling_rate` (Number) The fraction of generations this judge evaluates.
+
 
 <a id="nestedatt--messages"></a>
 ### Nested Schema for `messages`

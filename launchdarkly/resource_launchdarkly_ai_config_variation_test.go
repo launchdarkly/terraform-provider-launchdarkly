@@ -127,6 +127,119 @@ resource "launchdarkly_ai_config_variation" "test" {
 }
 `
 
+	testAccAIConfigVariationWithJudges = `
+resource "launchdarkly_ai_config" "quality_judge" {
+	project_key = launchdarkly_project.test.key
+	key         = "%s"
+	name        = "Quality Judge"
+	mode        = "judge"
+}
+
+resource "launchdarkly_ai_config" "test" {
+	project_key = launchdarkly_project.test.key
+	key         = "%s"
+	name        = "Parent AI Config"
+	description = "Parent for judges test"
+	depends_on  = [launchdarkly_ai_config.quality_judge]
+}
+
+resource "launchdarkly_ai_config_variation" "test" {
+	project_key = launchdarkly_project.test.key
+	config_key  = launchdarkly_ai_config.test.key
+	key         = "%s"
+	name        = "Variation with judges"
+	messages = [{
+		role    = "system"
+		content = "You are a helpful assistant."
+	}]
+	judges = {
+		(launchdarkly_ai_config.quality_judge.key) = {
+			sampling_rate = 0.1
+		}
+	}
+}
+`
+
+	testAccAIConfigVariationWithJudgesUpdate = `
+resource "launchdarkly_ai_config" "quality_judge" {
+	project_key = launchdarkly_project.test.key
+	key         = "%s"
+	name        = "Quality Judge"
+	mode        = "judge"
+}
+
+resource "launchdarkly_ai_config" "accuracy_judge" {
+	project_key = launchdarkly_project.test.key
+	key         = "%s"
+	name        = "Accuracy Judge"
+	mode        = "judge"
+	depends_on  = [launchdarkly_ai_config.quality_judge]
+}
+
+resource "launchdarkly_ai_config" "test" {
+	project_key = launchdarkly_project.test.key
+	key         = "%s"
+	name        = "Parent AI Config"
+	description = "Parent for judges test"
+	depends_on  = [launchdarkly_ai_config.accuracy_judge]
+}
+
+resource "launchdarkly_ai_config_variation" "test" {
+	project_key = launchdarkly_project.test.key
+	config_key  = launchdarkly_ai_config.test.key
+	key         = "%s"
+	name        = "Variation with judges"
+	messages = [{
+		role    = "system"
+		content = "You are a helpful assistant."
+	}]
+	judges = {
+		(launchdarkly_ai_config.quality_judge.key) = {
+			sampling_rate = 0.25
+		}
+		(launchdarkly_ai_config.accuracy_judge.key) = {
+			sampling_rate = 1
+		}
+	}
+}
+`
+
+	testAccAIConfigVariationWithJudgesRemoved = `
+resource "launchdarkly_ai_config" "quality_judge" {
+	project_key = launchdarkly_project.test.key
+	key         = "%s"
+	name        = "Quality Judge"
+	mode        = "judge"
+}
+
+resource "launchdarkly_ai_config" "accuracy_judge" {
+	project_key = launchdarkly_project.test.key
+	key         = "%s"
+	name        = "Accuracy Judge"
+	mode        = "judge"
+	depends_on  = [launchdarkly_ai_config.quality_judge]
+}
+
+resource "launchdarkly_ai_config" "test" {
+	project_key = launchdarkly_project.test.key
+	key         = "%s"
+	name        = "Parent AI Config"
+	description = "Parent for judges test"
+	depends_on  = [launchdarkly_ai_config.accuracy_judge]
+}
+
+resource "launchdarkly_ai_config_variation" "test" {
+	project_key = launchdarkly_project.test.key
+	config_key  = launchdarkly_ai_config.test.key
+	key         = "%s"
+	name        = "Variation with judges"
+	messages = [{
+		role    = "system"
+		content = "You are a helpful assistant."
+	}]
+}
+`
+
 	testAccAIConfigVariationWithToolKeys = `
 resource "launchdarkly_ai_tool" "test" {
 	project_key = launchdarkly_project.test.key
@@ -290,6 +403,56 @@ func TestAccAIConfigVariation_AgentMode(t *testing.T) {
 				ResourceName:      resourceName,
 				ImportState:       true,
 				ImportStateVerify: true,
+			},
+		},
+	})
+}
+
+// TestAccAIConfigVariation_WithJudges tests attaching judge AI configs to a
+// variation: create with one judge, update to add a second and change a
+// sampling rate, then remove all judges and confirm convergence on null.
+func TestAccAIConfigVariation_WithJudges(t *testing.T) {
+	aiTestCooldown()
+	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	qualityJudgeKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	accuracyJudgeKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	configKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	variationKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	resourceName := "launchdarkly_ai_config_variation.test"
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckAIConfigVariationDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config: withAITestProject(projectKey, fmt.Sprintf(testAccAIConfigVariationWithJudges, qualityJudgeKey, configKey, variationKey)),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckAIConfigVariationExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, "judges.%", "1"),
+					resource.TestCheckResourceAttr(resourceName, fmt.Sprintf("judges.%s.sampling_rate", qualityJudgeKey), "0.1"),
+				),
+			},
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
+			{
+				Config: withAITestProject(projectKey, fmt.Sprintf(testAccAIConfigVariationWithJudgesUpdate, qualityJudgeKey, accuracyJudgeKey, configKey, variationKey)),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckAIConfigVariationExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, "judges.%", "2"),
+					resource.TestCheckResourceAttr(resourceName, fmt.Sprintf("judges.%s.sampling_rate", qualityJudgeKey), "0.25"),
+					resource.TestCheckResourceAttr(resourceName, fmt.Sprintf("judges.%s.sampling_rate", accuracyJudgeKey), "1"),
+				),
+			},
+			{
+				Config: withAITestProject(projectKey, fmt.Sprintf(testAccAIConfigVariationWithJudgesRemoved, qualityJudgeKey, accuracyJudgeKey, configKey, variationKey)),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckAIConfigVariationExists(resourceName),
+					resource.TestCheckNoResourceAttr(resourceName, "judges.%"),
+				),
 			},
 		},
 	})

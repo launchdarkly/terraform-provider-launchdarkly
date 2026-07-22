@@ -15,4 +15,17 @@ resource "launchdarkly_ai_config_variation" "example" {
       content = "{{ ldctx.query }}"
     },
   ]
+
+  judges = {
+    (launchdarkly_ai_config.response_quality_judge.key) = {
+      sampling_rate = 0.1
+    }
+  }
+}
+
+resource "launchdarkly_ai_config" "response_quality_judge" {
+  project_key = launchdarkly_project.example.key
+  key         = "response-quality-judge"
+  name        = "Response Quality Judge"
+  mode        = "judge"
 }
