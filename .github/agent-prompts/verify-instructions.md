@@ -82,6 +82,21 @@ Do this, in order:
 5. COMMIT any fixes to this branch (clear conventional-commit message; touch only
    files relevant to the fix — never the scratch config or state) and push.
 
+   Also append ONE line to `.github/agent-prompts/verify-findings.jsonl` (create
+   it if missing) and include it in the commit — unlike verify-result.json this
+   ledger IS committed; it is the pipeline's durable record of recurring scaffold
+   defects, periodically folded back into scaffold-instructions.md and the
+   vendored skill. Exactly one JSON object on one line:
+     {"pr": <PR number>, "resource": "<terraform resource name>",
+      "defect_categories": [...], "notes": "<one sentence>"}
+   defect_categories is a list of short kebab-case labels for the REAL defects
+   you found in the scaffold (empty list if none). Reuse labels already in the
+   ledger when one fits; otherwise coin a new one in the same style. Examples:
+   missing-ci-matrix-entry, docs-not-regenerated, plan-inconsistency-null-inner-key,
+   beta-helper-redeclared, missing-update-path, wrong-attribute-type.
+   PUBLIC REPO: labels + notes must describe the defect class only — no API
+   paths, operationIds, or roadmap detail.
+
 6. REPORT. Post a PR comment on the PR. This repo is PUBLIC, so keep the comment
    to: the verification verdict (did plan/apply succeed? was the re-plan clean?
    which tests ran?), any code fixes you made, and the retained project key
@@ -94,5 +109,8 @@ Do this, in order:
    NOT commit it) with exactly these fields:
      {"status":"pass"|"fail","project_key":"tf-verify-pr<PR number>",
       "ld_url":"https://app.launchdarkly.com/projects/tf-verify-pr<PR number>",
-      "summary":"<one or two sentences: what you verified and any fixes>"}
+      "summary":"<one or two sentences: what you verified and any fixes>",
+      "defect_categories":[...]}
    status is "pass" only if apply succeeded AND the re-plan was clean.
+   defect_categories repeats the same labels you appended to the ledger in
+   step 5 (empty list if the scaffold had no real defects).

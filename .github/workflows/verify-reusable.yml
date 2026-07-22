@@ -326,15 +326,18 @@ jobs:
             ld_url="$(jq -r '.ld_url // ""' "$RESULT")"
             summary="$(jq -r '.summary // ""' "$RESULT")"
             project="$(jq -r '.project_key // ""' "$RESULT")"
+            # Defect classes the agent found in the scaffold (also appended to the
+            # committed ledger .github/agent-prompts/verify-findings.jsonl) — the
+            # per-run training signal for the scaffold prompt/skill.
+            defects="$(jq -r '(.defect_categories // []) | join(", ")' "$RESULT")"
             if [ "$status" = "pass" ]; then icon="✅"; else icon="⚠️"; fi
             title="$icon Scaffold PR #$PR_NUMBER verified ($status)"
-            # shellcheck disable=SC2016  # backticks are literal Slack mrkdwn, not command subst
-            body="$(printf '%s\nRetained in `%s`: <%s|open in LaunchDarkly> · <%s|PR #%s>' \
-              "$summary" "$project" "$ld_url" "$PR_URL" "$PR_NUMBER")"
+            body="$(printf '%s\nScaffold defects: %s\nRetained in %s: %s\nPR #%s: %s' \
+              "$summary" "${defects:-none}" "$project" "$ld_url" "$PR_NUMBER" "$PR_URL")"
           else
             title="❌ Scaffold PR #$PR_NUMBER verification did not complete"
-            body="$(printf 'Stage-3 verification produced no result file — the run likely errored. See the <%s|workflow run> and <%s|PR #%s>.' \
-              "$RUN_URL" "$PR_URL" "$PR_NUMBER")"
+            body="$(printf 'Stage-3 verification produced no result file — the run likely errored.\nWorkflow run: %s\nPR #%s: %s' \
+              "$RUN_URL" "$PR_NUMBER" "$PR_URL")"
           fi
           payload="$(jq -nc --arg title "$title" --arg body "$body" '{title: $title, body: $body}')"
           curl -sS -f --retry 3 --retry-connrefused --retry-delay 2 \
