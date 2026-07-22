@@ -1,0 +1,107 @@
+# Housekeeping for stage 3 of the autogen pipeline (see
+# .claude/plans/AUTOGEN_PIPELINE.md): delete orphaned tf-verify-pr<N> projects.
+#
+# Stage-3 verification RETAINS its project-scoped example resources in a
+# project keyed tf-verify-pr<N> so a human can inspect them; the verify
+# workflow pre-cleans that project only when the SAME PR is re-verified. A
+# merged or closed PR therefore leaves its project behind forever. This sweep
+# deletes every tf-verify-pr<N> project whose PR is no longer open.
+#
+# Deterministic bash only — no agent, no secrets beyond the same AWS-OIDC ->
+# SSM token path verify-reusable.yml uses. Project keys embed public PR
+# numbers, so logging them leaks no roadmap.
+name: Sweep orphaned verify projects
+
+on:
+  schedule:
+    - cron: "0 13 * * 1" # weekly, Mondays 13:00 UTC (an hour after the drift report)
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "List what would be deleted without deleting"
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  pull-requests: read
+  id-token: write # AWS OIDC to read the LD token from SSM
+
+jobs:
+  sweep:
+    name: Sweep tf-verify-pr* projects
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: aws-actions/configure-aws-credentials@e7f100cf4c008499ea8adda475de1042d6975c7b # v6.2.0
+        with:
+          audience: https://github.com/launchdarkly
+          aws-region: us-east-1
+          role-to-assume: arn:aws:iam::061661829416:role/github-actions-terraform-provider-launchdarkly
+          role-session-name: GitHubActionsSweep_run-${{ github.run_id }}
+      - id: get-launchdarkly-access-token
+        uses: dkershner6/aws-ssm-getparameters-action@4fcb4872421f387a6c43058473acc1b22443fe13 # v2.0.3
+        with:
+          parameterPairs: |
+            /global/services/github/terraform-provider/launchdarkly-access-token = LAUNCHDARKLY_ACCESS_TOKEN
+      - name: Mask the LD token
+        run: echo "::add-mask::$LAUNCHDARKLY_ACCESS_TOKEN"
+
+      - name: Delete projects for closed/merged PRs
+        env:
+          LD_TOKEN: ${{ env.LAUNCHDARKLY_ACCESS_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          DRY_RUN: ${{ inputs.dry_run }}
+        run: |
+          set -euo pipefail
+          API="https://app.launchdarkly.com/api/v2"
+
+          # Enumerate ALL project keys (paginated), then filter to the exact
+          # tf-verify-pr<N> shape. Server-side filters vary by plan/version, so
+          # client-side filtering on the canonical key regex is the robust path.
+          keys=""
+          offset=0
+          while :; do
+            page="$(curl -sS -f -H "Authorization: $LD_TOKEN" \
+              "$API/projects?limit=100&offset=$offset")"
+            n="$(printf '%s' "$page" | jq '.items | length')"
+            [ "$n" -eq 0 ] && break
+            keys="$keys $(printf '%s' "$page" | jq -r '.items[].key')"
+            offset=$((offset + n))
+            total="$(printf '%s' "$page" | jq -r '.totalCount // 0')"
+            [ "$offset" -ge "$total" ] && break
+          done
+
+          swept=0 kept=0
+          for key in $keys; do
+            case "$key" in tf-verify-pr[0-9]*) : ;; *) continue ;; esac
+            pr="${key#tf-verify-pr}"
+            if ! printf '%s' "$pr" | grep -Eq '^[0-9]+$'; then
+              echo "skip $key (key suffix is not a bare PR number)"
+              kept=$((kept + 1))
+              continue
+            fi
+            # Unknown PR (gh error) -> keep the project; never delete on ambiguity.
+            state="$(gh pr view "$pr" --repo "$REPO" --json state --jq .state 2>/dev/null || echo UNKNOWN)"
+            if [ "$state" = "OPEN" ] || [ "$state" = "UNKNOWN" ]; then
+              echo "keep  $key (PR #$pr state=$state)"
+              kept=$((kept + 1))
+              continue
+            fi
+            if [ "$DRY_RUN" = "true" ]; then
+              echo "would delete $key (PR #$pr state=$state)"
+              swept=$((swept + 1))
+              continue
+            fi
+            code="$(curl -sS -X DELETE -H "Authorization: $LD_TOKEN" \
+              "$API/projects/$key" -o /dev/null -w '%{http_code}' || true)"
+            # 404 = already gone (racing run); anything else non-2xx is worth a
+            # warning but must not fail the whole sweep.
+            case "$code" in
+              2*|404) echo "swept $key (PR #$pr state=$state) -> HTTP $code"; swept=$((swept + 1)) ;;
+              *) echo "::warning::DELETE $key returned HTTP $code (left in place)" ;;
+            esac
+          done
+          echo "Sweep complete: $swept swept, $kept kept." | tee -a "$GITHUB_STEP_SUMMARY"
