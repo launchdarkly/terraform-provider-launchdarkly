@@ -688,7 +688,7 @@ func (r *SegmentResource) readIntoModel(ctx context.Context, data *SegmentResour
 	}
 	data.CreationDate = types.Int64Value(segment.CreationDate)
 
-	tagsSet, d := setFromStringSliceOrNull(ctx, segment.Tags)
+	tagsSet, d := setFromStringSlicePreservingPlan(ctx, segment.Tags, data.Tags)
 	diags.Append(d...)
 	data.Tags = tagsSet
 

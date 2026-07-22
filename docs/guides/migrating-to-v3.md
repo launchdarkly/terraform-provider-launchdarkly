@@ -76,7 +76,9 @@ You need the following things to complete this migration:
 
 ## Convert your configuration with migrate-tf-syntax
 
-The provider ships `migrate-tf-syntax`, a deterministic command-line tool that rewrites every affected attribute across a directory of `.tf` files. It also updates the attributes that v3 removed. For example, it renames `policy_statements` to `inline_roles` on `launchdarkly_access_token`, and it updates references to renamed data source attributes such as `client_side_availability` on the `launchdarkly_project` data source. It adds the now-required `variations` to boolean flags that omitted them.
+The provider ships `migrate-tf-syntax`, a deterministic command-line tool that rewrites every affected attribute across a directory of `.tf` files. It also updates the attributes that v3 renamed or removed. For example, it renames `policy_statements` to `inline_roles` on `launchdarkly_access_token`, renames `randomization_units` to `analysis_units` on `launchdarkly_metric`, and it updates references to renamed data source attributes such as `client_side_availability` on the `launchdarkly_project` data source. It adds the now-required `variations` to boolean flags that omitted them.
+
+~> **Note:** The `randomization_units` argument on `launchdarkly_metric` was renamed to `analysis_units` in v3, following the LaunchDarkly API. This is a breaking configuration change, not only a state change: if you leave `randomization_units` in your `.tf` files, `terraform plan` fails with `Unsupported argument`. The `migrate-tf-syntax` tool renames it for you; if you migrate by hand, rename `randomization_units = ["user"]` to `analysis_units = ["user"]`.
 
 To convert a configuration directory:
 
@@ -102,6 +104,7 @@ The tool converts syntax only. Complete these follow-ups yourself:
 - Upgrade modules sourced from a registry or a git URL. The tool rewrites only files it reaches on disk, so upgrade those modules at their source.
 - Rewrite positional references to `launchdarkly_project` environments. The tool converts the `environments` block to a map but does not edit index expressions elsewhere in your config; it warns on each one with the exact replacement, for example `environments[0]` → `environments["production"]` and `environments[*]` → `values(...)`. Apply those edits by hand.
 - Review projects that pair `lifecycle { ignore_changes = [environments] }` with standalone `launchdarkly_environment` resources. This v2 pattern keeps working in v3: `ignore_changes` preserves the standalone-managed environments in the authoritative map, so nothing is deleted. If you remove the `ignore_changes` entry, first declare every environment in the project's `environments` map, or the next apply deletes the undeclared ones.
+- No action is required for existing `launchdarkly_feature_flag_environment` imports. The import ID order changed from `project_key/flag_key/env_key` in v2 to `project_key/env_key/flag_key` in v3, but the provider auto-corrects a v2-ordered ID at import time: it writes the correct v3 identity to state and emits a one-time warning. Existing `terraform import` commands and `import {}` blocks keep working with no downstream drift. Use the v3 order for new imports. The `migrate-tf-syntax` tool does not rewrite import IDs.
 
 ## How v3 upgrades your state
 
@@ -121,6 +124,8 @@ The provider includes a state upgrader for every resource whose state shape chan
 ## Your first plan after upgrading
 
 Expect a non-empty first plan after you upgrade the provider binary. v2 stored empty lists where v3 stores null, so diffs such as `policy_statements = [] -> null` appear once and apply cleanly. You may also see one-time in-place updates that re-assert values the upgrader normalized away, such as `client_side_availability` or `approval_settings` objects that match the LaunchDarkly API defaults; they apply cleanly and do not recur. A few computed attributes show as known after apply on the first plan, and they resolve on apply. No resource is destroyed or recreated. The follow-up plan is empty.
+
+An explicit `tags = []` in your configuration is preserved as an empty set and applies cleanly. Earlier v3 releases reported `Provider produced inconsistent result after apply` with `.tags: was cty.SetValEmpty(cty.String), but now null` for `launchdarkly_feature_flag`, `launchdarkly_environment`, and `launchdarkly_segment`, which forced you to remove the line; that is fixed. If you prefer, you can still omit the `tags` argument entirely instead of setting it to an empty list.
 
 ## What does not change
 
