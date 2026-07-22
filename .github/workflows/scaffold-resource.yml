@@ -204,8 +204,11 @@ jobs:
           # `make` scoped to `make fmt` (NOT `make generate`, which needs an API token this
           # job lacks). NOTE: tool scoping can't forbid `git push` to a specific branch —
           # branch protection on main is the authoritative guard against a direct push.
+          # --max-turns is the token brake: timeout-minutes bounds wall-clock only, so a
+          # stuck loop would otherwise burn spend to the timeout. The pilot scaffold
+          # (PR #453) took 123 turns; 200 gives headroom without funding a runaway.
           claude_args: |
-            ${{ steps.prompt.outputs.model_arg }} --allowedTools "Read,Edit,Write,Glob,Grep,Bash(go:*),Bash(make fmt:*),Bash(git fetch:*),Bash(git checkout:*),Bash(git switch:*),Bash(git branch:*),Bash(git add:*),Bash(git commit:*),Bash(git push:*),Bash(git status:*),Bash(git diff:*),Bash(git log:*),Bash(git restore:*),Bash(gh pr create:*),Bash(gh pr view:*),Bash(gofmt:*),Bash(terraform:*),WebFetch(domain:app.launchdarkly.com)"
+            ${{ steps.prompt.outputs.model_arg }} --max-turns 200 --allowedTools "Read,Edit,Write,Glob,Grep,Bash(go:*),Bash(make fmt:*),Bash(git fetch:*),Bash(git checkout:*),Bash(git switch:*),Bash(git branch:*),Bash(git add:*),Bash(git commit:*),Bash(git push:*),Bash(git status:*),Bash(git diff:*),Bash(git log:*),Bash(git restore:*),Bash(gh pr create:*),Bash(gh pr view:*),Bash(gofmt:*),Bash(terraform:*),WebFetch(domain:app.launchdarkly.com)"
 
       # Resolve the PR number the agent just opened so the downstream verify job can
       # pick it up — SOLELY from scaffold-result.json (the agent writes the exact PR

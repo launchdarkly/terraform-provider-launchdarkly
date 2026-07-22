@@ -286,10 +286,18 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           prompt: ${{ steps.prompt.outputs.prompt }}
           # No Bash(curl:*): prereq cleanup is a workflow step, so the agent never
-          # needs raw HTTP with the live admin token (closes an exfil path). git is
-          # scoped to the subcommands the flow needs (no `git config` token read).
+          # needs raw HTTP with the live admin token. NOTE: this narrows the surface
+          # but is NOT a security boundary — Bash(go:*) can run arbitrary network
+          # code (`go run`) and Bash(terraform:*) can pull registry providers via
+          # the .terraformrc `direct {}` fallback, both with the LD token in the
+          # process env. The real mitigation is scoping the token itself (custom
+          # role limited to tf-verify-* projects + the singleton kinds verify
+          # touches). git is scoped to the subcommands the flow needs (no
+          # `git config` token read).
+          # --max-turns is the token brake: timeout-minutes bounds wall-clock only,
+          # so a stuck plan/apply/fix loop would otherwise burn spend to the timeout.
           claude_args: |
-            ${{ steps.prompt.outputs.model_arg }} --allowedTools "Read,Edit,Write,Glob,Grep,Bash(go:*),Bash(make fmt:*),Bash(git fetch:*),Bash(git diff:*),Bash(git log:*),Bash(git status:*),Bash(git add:*),Bash(git commit:*),Bash(git push:*),Bash(gh pr comment:*),Bash(gh pr view:*),Bash(gofmt:*),Bash(terraform:*),WebFetch(domain:app.launchdarkly.com)"
+            ${{ steps.prompt.outputs.model_arg }} --max-turns 150 --allowedTools "Read,Edit,Write,Glob,Grep,Bash(go:*),Bash(make fmt:*),Bash(git fetch:*),Bash(git diff:*),Bash(git log:*),Bash(git status:*),Bash(git add:*),Bash(git commit:*),Bash(git push:*),Bash(gh pr comment:*),Bash(gh pr view:*),Bash(gofmt:*),Bash(terraform:*),WebFetch(domain:app.launchdarkly.com)"
 
       # Deterministic, log-safe Slack notification. Reads the agent's result file
       # if present; otherwise reports the run errored (no internal detail leaks).
