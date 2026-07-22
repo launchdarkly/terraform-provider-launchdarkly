@@ -74,9 +74,11 @@ Deliverable:
 6. Write the PR number you just created to scaffold-result.json at the repo root
    (do NOT commit it), exactly:
      {"pr_number": <N>, "branch": "<your branch name>"}
-   The pipeline reads this to auto-trigger stage-3 verification on YOUR PR; if you
-   omit it, verification falls back to a best-effort branch-name match or must be
-   dispatched by hand. Get <N> from the `gh pr create` output URL (.../pull/<N>)
-   or `gh pr view <branch> --json number`.
+   The pipeline reads this to auto-trigger stage-3 verification on YOUR PR. There
+   is NO fallback: if you omit it, verification is SKIPPED entirely (the pipeline
+   deliberately never matches by branch name — a stale same-name PR could receive
+   real applies) and a human must dispatch verify-scaffold.yml by hand. Get <N>
+   from the `gh pr create` output URL (.../pull/<N>) or
+   `gh pr view <branch> --json number`.
 
 Never push to main directly and never merge anything.

@@ -170,5 +170,8 @@ jobs:
           # The triager only curates scripts/driftreport/mapping.yaml. No terraform, no real
           # LD account, no curl: it reads the spec via WebFetch and validates by re-running the
           # drift tool with go. Branch protection on main guards against a direct push.
+          # --max-turns is the token brake: timeout-minutes bounds wall-clock only, so a
+          # stuck loop would otherwise burn spend to the timeout. Triage is the lightest
+          # stage (mapping edits + spec reads), so it gets the tightest ceiling.
           claude_args: |
-            ${{ steps.prompt.outputs.model_arg }} --allowedTools "Read,Edit,Write,Glob,Grep,Bash(go:*),Bash(git fetch:*),Bash(git checkout:*),Bash(git switch:*),Bash(git branch:*),Bash(git add:*),Bash(git commit:*),Bash(git push:*),Bash(git status:*),Bash(git diff:*),Bash(git log:*),Bash(gh pr create:*),Bash(gh pr view:*),WebFetch(domain:app.launchdarkly.com)"
+            ${{ steps.prompt.outputs.model_arg }} --max-turns 100 --allowedTools "Read,Edit,Write,Glob,Grep,Bash(go:*),Bash(git fetch:*),Bash(git checkout:*),Bash(git switch:*),Bash(git branch:*),Bash(git add:*),Bash(git commit:*),Bash(git push:*),Bash(git status:*),Bash(git diff:*),Bash(git log:*),Bash(gh pr create:*),Bash(gh pr view:*),WebFetch(domain:app.launchdarkly.com)"
