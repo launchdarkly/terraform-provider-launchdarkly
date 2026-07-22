@@ -63,15 +63,17 @@ jobs:
           # client-side filtering on the canonical key regex is the robust path.
           keys=""
           offset=0
+          LIMIT=100
           while :; do
             page="$(curl -sS -f -H "Authorization: $LD_TOKEN" \
-              "$API/projects?limit=100&offset=$offset")"
+              "$API/projects?limit=$LIMIT&offset=$offset")"
             n="$(printf '%s' "$page" | jq '.items | length')"
             [ "$n" -eq 0 ] && break
             keys="$keys $(printf '%s' "$page" | jq -r '.items[].key')"
             offset=$((offset + n))
-            total="$(printf '%s' "$page" | jq -r '.totalCount // 0')"
-            [ "$offset" -ge "$total" ] && break
+            # A short page is the last page. No totalCount dependency — the field
+            # missing from a response must not truncate the sweep to page one.
+            [ "$n" -lt "$LIMIT" ] && break
           done
 
           swept=0 kept=0

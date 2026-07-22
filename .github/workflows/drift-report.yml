@@ -135,8 +135,11 @@ jobs:
 
           # 1) Summary — one tally line (zero categories dropped) + scaffoldable
           # families + run link. The title carries the headline, so the body
-          # doesn't restate it.
-          summary_body="$(jq -r --arg run "$RUN_URL" '
+          # doesn't restate it. Triage lines (tally + names) are MANUAL-DISPATCH
+          # only, matching the per-family triage messages below — a cron-triggered
+          # drift summary must not re-post the static triage backlog every week.
+          manual="$([ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ] && echo true || echo false)"
+          summary_body="$(jq -r --arg run "$RUN_URL" --argjson manual "$manual" '
             def lbl($n; $one; $many): if $n > 0 then "\($n) \(if $n == 1 then $one else $many end)" else empty end;
             ([ lbl(.new_families | length;          "new family";            "new families"),
                lbl(.scaffoldable_resources | length; "scaffoldable resource"; "scaffoldable resources"),
@@ -145,12 +148,12 @@ jobs:
                lbl(.stale_operations | length;       "stale op claim";       "stale op claims"),
                lbl(.unmapped_resources | length;     "unmapped resource";    "unmapped resources"),
                lbl(.registered_candidates | length;  "miscurated candidate"; "miscurated candidates"),
-               lbl(.triage_families | length;        "triage family";        "triage families")
+               (if $manual then lbl(.triage_families | length; "triage family"; "triage families") else empty end)
              ] | join(" · ")) +
             (([.new_families[].tag] + [.scaffoldable_resources[].name]) as $s
              | if ($s | length) > 0 then "\nScaffoldable: " + ($s | join(", ")) else "" end) +
             (.triage_families as $t
-             | if ($t | length) > 0 then "\nTriage backlog (decide scope, then dispatch): " + ($t | join(", ")) else "" end) +
+             | if $manual and ($t | length) > 0 then "\nTriage backlog (decide scope, then dispatch): " + ($t | join(", ")) else "" end) +
             "\nDrift run: \($run)"
           ' "$JSON")"
           post_slack "🔎 API coverage report" "$summary_body"
