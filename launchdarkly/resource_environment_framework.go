@@ -521,7 +521,7 @@ func (r *EnvironmentResource) readIntoModel(
 	data.ConfirmChanges = types.BoolValue(env.ConfirmChanges)
 	data.Critical = types.BoolValue(env.Critical)
 
-	tagsSet, d := setFromStringSliceOrNull(ctx, env.Tags)
+	tagsSet, d := setFromStringSlicePreservingPlan(ctx, env.Tags, data.Tags)
 	diags.Append(d...)
 	data.Tags = tagsSet
 
