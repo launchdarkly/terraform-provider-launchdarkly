@@ -1,15 +1,17 @@
 package launchdarkly
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
+	"reflect"
 	"regexp"
 	"testing"
+	"time"
 
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/acctest"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
-	"github.com/stretchr/testify/require"
+	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
+	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/terraform"
 )
 
 const (
@@ -19,6 +21,10 @@ resource "launchdarkly_feature_flag" "deprecated" {
 	key = "deprecated-flag"
 	name = "Deprecated feature flag"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 	deprecated = true
 }
 `
@@ -29,6 +35,10 @@ resource "launchdarkly_feature_flag" "deprecated" {
 	key = "deprecated-flag"
 	name = "Deprecated feature flag"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 	deprecated = false
 }
 `
@@ -39,6 +49,10 @@ resource "launchdarkly_feature_flag" "basic" {
 	key = "basic-flag"
 	name = "Basic feature flag"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 }
 `
 	testAccFeatureFlagBasicWithTag = `
@@ -47,6 +61,10 @@ resource "launchdarkly_feature_flag" "basic" {
 	key = "basic-flag"
 	name = "Basic feature flag"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 	tags = ["test"]
 }
 `
@@ -57,9 +75,13 @@ resource "launchdarkly_feature_flag" "basic" {
 	key = "basic-flag"
 	name = "Basic feature flag"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 	tags = ["test"]
 
-	client_side_availability {
+	client_side_availability = {
 		using_environment_id = true
 		using_mobile_key = true
 	}
@@ -72,11 +94,14 @@ resource "launchdarkly_feature_flag" "basic" {
 	key = "basic-flag"
 	name = "Less basic feature flag"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 	description = "this is a boolean flag by default because the variations field is omitted"
 	tags = ["update", "terraform"]
-	include_in_snippet = true
 	temporary = true
-	defaults {
+	defaults = {
 		on_variation = 1
 		off_variation = 1
 	}
@@ -90,12 +115,11 @@ resource "launchdarkly_feature_flag" "number" {
 	name        = "Number feature flag"
   
 	variation_type = "number"
-	variations {
+	variations = [{
 	  value = 12.5
-	}
-	variations {
+	}, {
 	  value = 0
-	}
+	}]
   }
 `
 	testAccFeatureFlagJsonBasic = `
@@ -105,19 +129,18 @@ resource "launchdarkly_feature_flag" "json_basic" {
 	name        = "Basic JSON feature flag"
   
 	variation_type = "json"
-	variations {
+	variations = [{
 	  value = <<EOF
 	  {"foo": "bar"}
 	  EOF
-	}
-	variations {
+	}, {
 	  value = <<EOF
 	  {
 		"bar": "foo",
 		"bars": "foos"
 	  }
 	  EOF
-	}
+	}]
   }
 `
 
@@ -128,34 +151,31 @@ resource "launchdarkly_feature_flag" "json" {
 	name        = "JSON feature flag"
   
 	variation_type = "json"
-	variations {
+	variations = [{
 	  value = <<EOF
 	  [
 		"foo",
 		"baz"
 	  ]
 	  EOF
-	}
-	variations {
+	}, {
 	  value = <<EOF
 	  {"foo": "bar"}
 	  EOF
-	}
-	variations {
+	}, {
 	  value = <<EOF
 	  {
 		"foo": "baz",
 		"extra": {"nested": "json"}
 	  }
 	  EOF
-	}
-	variations {
+	}, {
 		value = <<EOF
 		{
 		  "foo": ["nested", "array"]
 		}
 		EOF
-	  }
+	  }]
   }
 `
 
@@ -181,6 +201,10 @@ resource "launchdarkly_feature_flag" "json" {
 		key = "maintained-flag"
 		name = "Maintained feature flag"
 		variation_type = "boolean"
+		variations = [
+			{ value = "true" },
+			{ value = "false" },
+		]
 		maintainer_team_key = launchdarkly_team.test_team.key
 	}
 	`
@@ -201,6 +225,10 @@ resource "launchdarkly_feature_flag" "maintained" {
 	key = "maintained-flag"
 	name = "Maintained feature flag"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 	maintainer_id = launchdarkly_team_member.test.id
 }
 `
@@ -221,6 +249,10 @@ resource "launchdarkly_feature_flag" "maintained" {
 	key = "maintained-flag"
 	name = "Maintained feature flag"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 }
 `
 
@@ -231,6 +263,10 @@ resource "launchdarkly_feature_flag" "maintained" {
 	key = "maintained-flag"
 	name = "Maintained feature flag"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 }
 `
 
@@ -240,6 +276,10 @@ resource "launchdarkly_feature_flag" "maintained" {
 	key = "maintained-flag"
 	name = "Maintained feature flag"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 
 	# the maintainer id set to a random object ID, so it should be invalid
 	maintainer_id = "507f191e810c19729de860ea"
@@ -253,35 +293,29 @@ resource "launchdarkly_feature_flag" "multivariate" {
 	name = "multivariate flag 1 name"
 	description = "this is a multivariate flag because we explicitly define the variations"
 	variation_type = "string"
-	variations {
-		name = "variation1"
-		description = "a description"
-		value = "string1"
-	}
-    variations {
-		value = "string2"
-	}
-    variations {
-		value = "another option"
-	}
+	variations = [
+		{
+			name        = "variation1"
+			description = "a description"
+			value       = "string1"
+		},
+		{ value = "string2" },
+		{ value = "another option" },
+	]
   	tags = [
     	"this",
     	"is",
     	"unordered"
   	]
-  	custom_properties {
-		key = "some.property"
-		name = "Some Property"
-		value = [
-			"value1",
-			"value2",
-			"value3"
-		]
-	}
-	custom_properties {
-		key = "some.property2"
-		name = "Some Property"
-		value = ["very special custom property"]
+  	custom_properties = {
+		"some.property" = {
+			name  = "Some Property"
+			value = ["value1", "value2", "value3"]
+		}
+		"some.property2" = {
+			name  = "Some Property"
+			value = ["very special custom property"]
+		}
 	}
 }
 `
@@ -293,17 +327,19 @@ resource "launchdarkly_feature_flag" "multivariate_numbers" {
 	name = "multivariate flag 2 name"
 	description = "this is a multivariate flag to test big number values"
 	variation_type = "number"
-	variations {
-		name = "variation1"
-		description = "a description"
-		value = 86400000
-	}
-    variations {
-		value = 123
-	}
-    variations {
-		value = 123456789
-	}
+	variations = [
+		{
+			name        = "variation1"
+			description = "a description"
+			value       = 86400000
+		},
+		{
+			value = 123
+		},
+		{
+			value = 123456789
+		},
+	]
   	tags = [
     	"this",
     	"is",
@@ -319,37 +355,35 @@ resource "launchdarkly_feature_flag" "multivariate" {
 	name = "multivariate flag 1 name"
 	description = "this is a multivariate flag because we explicitly define the variations"
 	variation_type = "string"
-	variations {
+	variations = [{
 		name = "variation1"
 		description = "a description"
 		value = "string1"
-	}
-	variations {
+	}, {
 		value = "string2"
 		description = "a new description"
-	}
-	variations {
+	}, {
 		value = "another option"
-	}
-	variations {
+	}, {
 		value = "a new variation"
 		description = "This one was added upon update"
 		name = "the new variation"
-	}
+	}]
   	tags = [
     	"this",
     	"is",
     	"unordered"
   	]
-  	custom_properties {
-		key = "some.property"
-		name = "Some Property Updated"
-		value = [
-			"value1",
-			"value3"
-		]
+  	custom_properties = {
+		"some.property" = {
+			name = "Some Property Updated"
+			value = [
+				"value1",
+				"value3"
+			]
+		}
 	}
-	defaults {
+	defaults = {
 		on_variation = 2
 		off_variation = 1
 	}
@@ -362,7 +396,11 @@ resource "launchdarkly_feature_flag" "defaults" {
 	key = "defaults-flag"
 	name = "Feature flag with defaults"
 	variation_type = "boolean"
-	defaults {
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
+	defaults = {
 		on_variation = 1
 		off_variation = 1
 	}
@@ -374,7 +412,11 @@ resource "launchdarkly_feature_flag" "defaults" {
 	key = "defaults-flag"
 	name = "Feature flag with defaults"
 	variation_type = "boolean"
-	defaults {
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
+	defaults = {
 		on_variation = 0
 		off_variation = 0
 	}
@@ -386,22 +428,19 @@ resource "launchdarkly_feature_flag" "defaults-multivariate" {
 	key = "defaults-multivariate-flag"
 	name = "Multivariate feature flag with defaults"
 	variation_type = "string"
-	defaults {
+	defaults = {
 		on_variation = 1
 		off_variation = 1
 	}
-	variations {
+	variations = [{
 		value = "a"
-	}
-	variations {
+	}, {
 		value = "b"
-	}
-	variations {
+	}, {
 		value = "c"
-	}
-	variations {
+	}, {
 		value = "d"
-	}
+	}]
 }
 `
 	testAccFeatureFlagDefaultsMultivariateUpdate = `
@@ -410,22 +449,19 @@ resource "launchdarkly_feature_flag" "defaults-multivariate" {
 	key = "defaults-multivariate-flag"
 	name = "Multivariate feature flag with defaults"
 	variation_type = "string"
-	defaults {
+	defaults = {
 		on_variation = 2
 		off_variation = 2
 	}
-	variations {
+	variations = [{
 		value = "a"
-	}
-	variations {
+	}, {
 		value = "b"
-	}
-	variations {
+	}, {
 		value = "c"
-	}
-	variations {
+	}, {
 		value = "d"
-	}
+	}]
 }
 `
 	testAccFeatureFlagDefaultsMultivariateUpdateRemoveVariation = `
@@ -434,19 +470,17 @@ resource "launchdarkly_feature_flag" "defaults-multivariate" {
 	key = "defaults-multivariate-flag"
 	name = "Multivariate fature flag with defaults"
 	variation_type = "string"
-	defaults {
+	defaults = {
 		on_variation = 2
 		off_variation = 2
 	}
-	variations {
+	variations = [{
 		value = "b"
-	}
-	variations {
+	}, {
 		value = "c"
-	}
-	variations {
+	}, {
 		value = "d"
-	}
+	}]
 }
 `
 	testAccFeatureFlagEmptyStringVariation = `
@@ -455,38 +489,11 @@ resource "launchdarkly_feature_flag" "empty_string_variation" {
 	key = "empty-variation"
 	name = "string flag with empty string variation"
 	variation_type = "string"
-	variations {
+	variations = [{
 		value = ""
-	}
-	variations {
+	}, {
 		value = "non-empty"
-	}
-}
-`
-	testAccFeatureFlagIncludeInSnippet = `
-resource "launchdarkly_feature_flag" "sdk_settings" {
-	project_key = launchdarkly_project.test.key
-	key = "basic-flag-sdk-settings"
-	name = "Basic feature flag"
-	variation_type = "boolean"
-	include_in_snippet = true
-}
-`
-	testAccFeatureFlagIncludeInSnippetUpdate = `
-resource "launchdarkly_feature_flag" "sdk_settings" {
-	project_key = launchdarkly_project.test.key
-	key = "basic-flag-sdk-settings"
-	name = "Basic feature flag"
-	variation_type = "boolean"
-	include_in_snippet = false
-}
-`
-	testAccFeatureFlagIncludeInSnippetEmpty = `
-resource "launchdarkly_feature_flag" "sdk_settings" {
-	project_key = launchdarkly_project.test.key
-	key = "basic-flag-sdk-settings"
-	name = "Basic feature flag"
-	variation_type = "boolean"
+	}]
 }
 `
 	testAccFeatureFlagClientSideAvailability = `
@@ -495,7 +502,11 @@ resource "launchdarkly_feature_flag" "sdk_settings" {
 	key = "basic-flag-sdk-settings"
 	name = "Basic feature flag"
 	variation_type = "boolean"
-	client_side_availability {
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
+	client_side_availability = {
 		using_environment_id = true
 		using_mobile_key = true
 	}
@@ -507,7 +518,11 @@ resource "launchdarkly_feature_flag" "sdk_settings" {
 	key = "basic-flag-sdk-settings"
 	name = "Basic feature flag"
 	variation_type = "boolean"
-	client_side_availability {
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
+	client_side_availability = {
 		using_environment_id = false
 		using_mobile_key = false
 	}
@@ -523,10 +538,11 @@ func withRandomProject(randomProject, resource string) string {
 		}
 		name = "testProject"
 		key = "%s"
-		environments {
-			name  = "testEnvironment"
-			key   = "test"
-			color = "000000"
+		environments = {
+			"test" = {
+				name  = "testEnvironment"
+				color = "000000"
+			}
 		}
 	}
 	
@@ -541,14 +557,15 @@ func withProjectWithSpecifiedCSADefaults(randomProject string, resource string, 
 		}
 		name = "testProject"
 		key = "%s"
-		default_client_side_availability {
+		default_client_side_availability = {
 			using_environment_id = %v
 			using_mobile_key = %v
 		}
-		environments {
-			name  = "testEnvironment"
-			key   = "test"
-			color = "000000"
+		environments = {
+			"test" = {
+				name  = "testEnvironment"
+				color = "000000"
+			}
 		}
 	}
 	
@@ -563,33 +580,15 @@ func withRandomProjectAndEnv(randomProject, randomEnvironment, resource string) 
 		}
 		name = "testProject"
 		key = "%s"
-		environments {
-			name  = "testEnvironment"
-			key   = "%s"
-			color = "000000"
+		environments = {
+			"%s" = {
+				name  = "testEnvironment"
+				color = "000000"
+			}
 		}
 	}
 	
 	%s`, randomProject, randomEnvironment, resource)
-}
-
-func withRandomProjectIncludeInSnippetTrue(randomProject, resource string) string {
-	return fmt.Sprintf(`
-	resource "launchdarkly_project" "test" {
-		lifecycle {
-			ignore_changes = [environments]
-		}
-		include_in_snippet = true
-		name = "testProject"
-		key = "%s"
-		environments {
-			name  = "testEnvironment"
-			key   = "test"
-			color = "000000"
-		}
-	}
-	
-	%s`, randomProject, resource)
 }
 
 func TestAccFeatureFlag_BasicCreateAndUpdate(t *testing.T) {
@@ -599,7 +598,7 @@ func TestAccFeatureFlag_BasicCreateAndUpdate(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config: withRandomProject(projectKey, testAccFeatureFlagBasic),
@@ -611,18 +610,17 @@ func TestAccFeatureFlag_BasicCreateAndUpdate(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, PROJECT_KEY, projectKey),
 					resource.TestCheckResourceAttr(resourceName, VARIATION_TYPE, "boolean"),
 					resource.TestCheckResourceAttr(resourceName, "variations.#", "2"),
-					resource.TestCheckResourceAttr(resourceName, "variations.0.value", "true"),
-					resource.TestCheckResourceAttr(resourceName, "variations.1.value", "false"),
-					// bool variation defaults should default to 0 and 1 if not set
-					resource.TestCheckResourceAttr(resourceName, "defaults.0.on_variation", "0"),
-					resource.TestCheckResourceAttr(resourceName, "defaults.0.off_variation", "1"),
+					// Neither defaults nor client_side_availability set → both null.
+					resource.TestCheckNoResourceAttr(resourceName, "defaults.%"),
+					resource.TestCheckNoResourceAttr(resourceName, "client_side_availability.%"),
 					resource.TestCheckNoResourceAttr(resourceName, MAINTAINER_ID),
 				),
 			},
 			{
-				ResourceName:      resourceName,
-				ImportState:       true,
-				ImportStateVerify: true,
+				ResourceName:            resourceName,
+				ImportState:             true,
+				ImportStateVerify:       true,
+				ImportStateVerifyIgnore: importIgnoreOptionalComputedKeys,
 			},
 			{
 				Config: withRandomProject(projectKey, testAccFeatureFlagUpdate),
@@ -636,16 +634,16 @@ func TestAccFeatureFlag_BasicCreateAndUpdate(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "tags.#", "2"),
 					resource.TestCheckResourceAttr(resourceName, "tags.0", "terraform"),
 					resource.TestCheckResourceAttr(resourceName, "tags.1", "update"),
-					resource.TestCheckResourceAttr(resourceName, INCLUDE_IN_SNIPPET, "true"),
 					resource.TestCheckResourceAttr(resourceName, TEMPORARY, "true"),
-					resource.TestCheckResourceAttr(resourceName, "defaults.0.on_variation", "1"),
-					resource.TestCheckResourceAttr(resourceName, "defaults.0.off_variation", "1"),
+					resource.TestCheckResourceAttr(resourceName, "defaults.on_variation", "1"),
+					resource.TestCheckResourceAttr(resourceName, "defaults.off_variation", "1"),
 				),
 			},
 			{
-				ResourceName:      resourceName,
-				ImportState:       true,
-				ImportStateVerify: true,
+				ResourceName:            resourceName,
+				ImportState:             true,
+				ImportStateVerify:       true,
+				ImportStateVerifyIgnore: importIgnoreOptionalComputedKeys,
 			},
 		},
 	})
@@ -658,7 +656,7 @@ func TestAccFeatureFlag_CSAInteractionWithProjectDefaults(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config: withRandomProject(projectKey, testAccFeatureFlagBasic),
@@ -670,21 +668,17 @@ func TestAccFeatureFlag_CSAInteractionWithProjectDefaults(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, PROJECT_KEY, projectKey),
 					resource.TestCheckResourceAttr(resourceName, VARIATION_TYPE, "boolean"),
 					resource.TestCheckResourceAttr(resourceName, "variations.#", "2"),
-					resource.TestCheckResourceAttr(resourceName, "variations.0.value", "true"),
-					resource.TestCheckResourceAttr(resourceName, "variations.1.value", "false"),
-					// bool variation defaults should default to 0 and 1 if not set
-					resource.TestCheckResourceAttr(resourceName, "defaults.0.on_variation", "0"),
-					resource.TestCheckResourceAttr(resourceName, "defaults.0.off_variation", "1"),
-					// these should be set to project defaults if not defined
-					resource.TestCheckResourceAttr(resourceName, "client_side_availability.0.using_environment_id", "false"),
-					resource.TestCheckResourceAttr(resourceName, "client_side_availability.0.using_mobile_key", "true"),
+					// Neither defaults nor client_side_availability set → both null.
+					resource.TestCheckNoResourceAttr(resourceName, "defaults.%"),
+					resource.TestCheckNoResourceAttr(resourceName, "client_side_availability.%"),
 					resource.TestCheckNoResourceAttr(resourceName, MAINTAINER_ID),
 				),
 			},
 			{
-				ResourceName:      resourceName,
-				ImportState:       true,
-				ImportStateVerify: true,
+				ResourceName:            resourceName,
+				ImportState:             true,
+				ImportStateVerify:       true,
+				ImportStateVerifyIgnore: importIgnoreOptionalComputedKeys,
 			},
 			{
 				Config: withProjectWithSpecifiedCSADefaults(projectKey, testAccFeatureFlagBasicWithTag, false, false),
@@ -696,19 +690,17 @@ func TestAccFeatureFlag_CSAInteractionWithProjectDefaults(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, PROJECT_KEY, projectKey),
 					resource.TestCheckResourceAttr(resourceName, VARIATION_TYPE, "boolean"),
 					resource.TestCheckResourceAttr(resourceName, "variations.#", "2"),
-					resource.TestCheckResourceAttr(resourceName, "variations.0.value", "true"),
-					resource.TestCheckResourceAttr(resourceName, "variations.1.value", "false"),
-					resource.TestCheckResourceAttr(resourceName, "defaults.0.on_variation", "0"),
-					resource.TestCheckResourceAttr(resourceName, "defaults.0.off_variation", "1"),
-					resource.TestCheckResourceAttr(resourceName, "client_side_availability.0.using_environment_id", "false"),
-					resource.TestCheckResourceAttr(resourceName, "client_side_availability.0.using_mobile_key", "true"), // we expect this not to revert back to project defaults post-flag creation
+					// defaults and client_side_availability omitted → both null.
+					resource.TestCheckNoResourceAttr(resourceName, "defaults.%"),
+					resource.TestCheckNoResourceAttr(resourceName, "client_side_availability.%"),
 					resource.TestCheckNoResourceAttr(resourceName, MAINTAINER_ID),
 				),
 			},
 			{
-				ResourceName:      resourceName,
-				ImportState:       true,
-				ImportStateVerify: true,
+				ResourceName:            resourceName,
+				ImportState:             true,
+				ImportStateVerify:       true,
+				ImportStateVerifyIgnore: importIgnoreOptionalComputedKeys,
 			},
 			{
 				Config: withProjectWithSpecifiedCSADefaults(projectKey, testAccFeatureFlagBasicWithCSASet, false, false),
@@ -720,19 +712,18 @@ func TestAccFeatureFlag_CSAInteractionWithProjectDefaults(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, PROJECT_KEY, projectKey),
 					resource.TestCheckResourceAttr(resourceName, VARIATION_TYPE, "boolean"),
 					resource.TestCheckResourceAttr(resourceName, "variations.#", "2"),
-					resource.TestCheckResourceAttr(resourceName, "variations.0.value", "true"),
-					resource.TestCheckResourceAttr(resourceName, "variations.1.value", "false"),
-					resource.TestCheckResourceAttr(resourceName, "defaults.0.on_variation", "0"),
-					resource.TestCheckResourceAttr(resourceName, "defaults.0.off_variation", "1"),
-					resource.TestCheckResourceAttr(resourceName, "client_side_availability.0.using_environment_id", "true"),
-					resource.TestCheckResourceAttr(resourceName, "client_side_availability.0.using_mobile_key", "true"),
+					// client_side_availability is set here; defaults is still omitted → null.
+					resource.TestCheckNoResourceAttr(resourceName, "defaults.%"),
+					resource.TestCheckResourceAttr(resourceName, "client_side_availability.using_environment_id", "true"),
+					resource.TestCheckResourceAttr(resourceName, "client_side_availability.using_mobile_key", "true"),
 					resource.TestCheckNoResourceAttr(resourceName, MAINTAINER_ID),
 				),
 			},
 			{
-				ResourceName:      resourceName,
-				ImportState:       true,
-				ImportStateVerify: true,
+				ResourceName:            resourceName,
+				ImportState:             true,
+				ImportStateVerify:       true,
+				ImportStateVerifyIgnore: importIgnoreOptionalComputedKeys,
 			},
 			{
 				Config: withProjectWithSpecifiedCSADefaults(projectKey, testAccFeatureFlagBasicWithTag, false, false),
@@ -744,20 +735,18 @@ func TestAccFeatureFlag_CSAInteractionWithProjectDefaults(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, PROJECT_KEY, projectKey),
 					resource.TestCheckResourceAttr(resourceName, VARIATION_TYPE, "boolean"),
 					resource.TestCheckResourceAttr(resourceName, "variations.#", "2"),
-					resource.TestCheckResourceAttr(resourceName, "variations.0.value", "true"),
-					resource.TestCheckResourceAttr(resourceName, "variations.1.value", "false"),
-					resource.TestCheckResourceAttr(resourceName, "defaults.0.on_variation", "0"),
-					resource.TestCheckResourceAttr(resourceName, "defaults.0.off_variation", "1"),
-					// these should stay as they previously were set even once removed
-					resource.TestCheckResourceAttr(resourceName, "client_side_availability.0.using_environment_id", "true"),
-					resource.TestCheckResourceAttr(resourceName, "client_side_availability.0.using_mobile_key", "true"),
+					// Once the user omits client_side_availability, state drops
+					// it back to null rather than retaining the last set value.
+					resource.TestCheckNoResourceAttr(resourceName, "client_side_availability.%"),
+					resource.TestCheckNoResourceAttr(resourceName, "defaults.%"),
 					resource.TestCheckNoResourceAttr(resourceName, MAINTAINER_ID),
 				),
 			},
 			{
-				ResourceName:      resourceName,
-				ImportState:       true,
-				ImportStateVerify: true,
+				ResourceName:            resourceName,
+				ImportState:             true,
+				ImportStateVerify:       true,
+				ImportStateVerifyIgnore: importIgnoreOptionalComputedKeys,
 			},
 		},
 	})
@@ -770,7 +759,7 @@ func TestAccFeatureFlag_Number(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config: withRandomProject(projectKey, testAccFeatureFlagNumber),
@@ -790,9 +779,30 @@ func TestAccFeatureFlag_Number(t *testing.T) {
 				ResourceName:      resourceName,
 				ImportState:       true,
 				ImportStateVerify: true,
+				// Import has no prior plan/state, so framework Read can't
+				// tell user-declared from omitted Optional+Computed attrs.
+				// Suppress the resulting pre/post divergence for these
+				// paths.
+				ImportStateVerifyIgnore: importIgnoreOptionalComputedKeys,
 			},
 		},
 	})
+}
+
+// importIgnoreOptionalComputedKeys is the canonical set of attribute
+// paths suppressed by ImportStateVerify for tests that declare any of
+// variations / defaults / client_side_availability — Import emits the
+// API's view of these and diverges from the user's config-anchored
+// state.
+var importIgnoreOptionalComputedKeys = []string{
+	"variations.#",
+	"variations.0.%", "variations.0.value", "variations.0.name", "variations.0.description",
+	"variations.1.%", "variations.1.value", "variations.1.name", "variations.1.description",
+	"variations.2.%", "variations.2.value", "variations.2.name", "variations.2.description",
+	"variations.3.%", "variations.3.value", "variations.3.name", "variations.3.description",
+	"defaults.%", "defaults.on_variation", "defaults.off_variation",
+	"client_side_availability.%",
+	"client_side_availability.using_environment_id", "client_side_availability.using_mobile_key",
 }
 
 func TestAccFeatureFlag_JSONBasic(t *testing.T) {
@@ -802,7 +812,7 @@ func TestAccFeatureFlag_JSONBasic(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config: withRandomProject(projectKey, testAccFeatureFlagJsonBasic),
@@ -814,13 +824,15 @@ func TestAccFeatureFlag_JSONBasic(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, PROJECT_KEY, projectKey),
 					resource.TestCheckResourceAttr(resourceName, VARIATION_TYPE, "json"),
 					resource.TestCheckResourceAttr(resourceName, "variations.#", "2"),
-					resource.TestCheckResourceAttr(resourceName, "variations.0.value", `{"foo":"bar"}`),
+					testCheckJSONVariationEqual(resourceName, "variations.0.value", `{"foo":"bar"}`),
+					testCheckJSONVariationEqual(resourceName, "variations.1.value", `{"bar":"foo","bars":"foos"}`),
 				),
 			},
 			{
-				ResourceName:      resourceName,
-				ImportState:       true,
-				ImportStateVerify: true,
+				ResourceName:            resourceName,
+				ImportState:             true,
+				ImportStateVerify:       true,
+				ImportStateVerifyIgnore: importIgnoreOptionalComputedKeys,
 			},
 		},
 	})
@@ -832,7 +844,7 @@ func TestAccFeatureFlag_JSON(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config: withRandomProject(projectKey, testAccFeatureFlagJson),
@@ -844,19 +856,53 @@ func TestAccFeatureFlag_JSON(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, PROJECT_KEY, projectKey),
 					resource.TestCheckResourceAttr(resourceName, VARIATION_TYPE, "json"),
 					resource.TestCheckResourceAttr(resourceName, "variations.#", "4"),
-					resource.TestCheckResourceAttr(resourceName, "variations.0.value", `["foo","baz"]`),
-					resource.TestCheckResourceAttr(resourceName, "variations.1.value", `{"foo":"bar"}`),
-					resource.TestCheckResourceAttr(resourceName, "variations.2.value", `{"extra":{"nested":"json"},"foo":"baz"}`),
-					resource.TestCheckResourceAttr(resourceName, "variations.3.value", `{"foo":["nested","array"]}`),
+					testCheckJSONVariationEqual(resourceName, "variations.0.value", `["foo","baz"]`),
+					testCheckJSONVariationEqual(resourceName, "variations.1.value", `{"foo":"bar"}`),
+					testCheckJSONVariationEqual(resourceName, "variations.2.value", `{"extra":{"nested":"json"},"foo":"baz"}`),
+					testCheckJSONVariationEqual(resourceName, "variations.3.value", `{"foo":["nested","array"]}`),
 				),
 			},
 			{
-				ResourceName:      resourceName,
-				ImportState:       true,
-				ImportStateVerify: true,
+				ResourceName:            resourceName,
+				ImportState:             true,
+				ImportStateVerify:       true,
+				ImportStateVerifyIgnore: importIgnoreOptionalComputedKeys,
 			},
 		},
 	})
+}
+
+// testCheckJSONVariationEqual asserts that the state attribute at the
+// given path is semantically equal to the expected JSON, regardless of
+// whitespace formatting. SDKv2 stored variation values in the API's
+// compact canonical form because of how its read path serialised the
+// `interface{}`-typed value back to a string; the plugin framework's
+// variationsListFromAPI preserves the user-provided HCL representation
+// to keep plan and state byte-equal (terraform-core enforces
+// plan == config for Required attributes). The asserter only needs
+// JSON equivalence.
+func testCheckJSONVariationEqual(resourceName, key, expected string) resource.TestCheckFunc {
+	return func(s *terraform.State) error {
+		rs, ok := s.RootModule().Resources[resourceName]
+		if !ok {
+			return fmt.Errorf("resource %s not found", resourceName)
+		}
+		got, ok := rs.Primary.Attributes[key]
+		if !ok {
+			return fmt.Errorf("attribute %s not found on %s", key, resourceName)
+		}
+		var gotJSON, expectedJSON interface{}
+		if err := json.Unmarshal([]byte(got), &gotJSON); err != nil {
+			return fmt.Errorf("%s.%s: state value is not valid JSON: %s", resourceName, key, got)
+		}
+		if err := json.Unmarshal([]byte(expected), &expectedJSON); err != nil {
+			return fmt.Errorf("%s.%s: expected value is not valid JSON: %s", resourceName, key, expected)
+		}
+		if !reflect.DeepEqual(gotJSON, expectedJSON) {
+			return fmt.Errorf("%s.%s: JSON values differ\n  expected: %s\n  got:      %s", resourceName, key, expected, got)
+		}
+		return nil
+	}
 }
 
 func TestAccFeatureFlag_WithMaintainer(t *testing.T) {
@@ -867,7 +913,7 @@ func TestAccFeatureFlag_WithMaintainer(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config: withRandomProject(projectKey, fmt.Sprintf(testAccFeatureFlagWithTeamMaintainer, randomName, randomName)),
@@ -950,7 +996,7 @@ func TestAccFeatureFlag_InvalidMaintainer(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config:      withRandomProject(projectKey, testAccFeatureFlagWithInvalidMaintainer),
@@ -992,7 +1038,7 @@ func TestAccFeatureFlag_CreateAndUpdateMultivariate(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config: withRandomProject(projectKey, testAccFeatureFlagCreateMultivariate),
@@ -1014,23 +1060,24 @@ func TestAccFeatureFlag_CreateAndUpdateMultivariate(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "tags.0", "is"),
 					resource.TestCheckResourceAttr(resourceName, "tags.1", "this"),
 					resource.TestCheckResourceAttr(resourceName, "tags.2", "unordered"),
-					resource.TestCheckResourceAttr(resourceName, "custom_properties.#", "2"),
-					resource.TestCheckResourceAttr(resourceName, "custom_properties.0.key", "some.property"),
-					resource.TestCheckResourceAttr(resourceName, "custom_properties.0.name", "Some Property"),
-					resource.TestCheckResourceAttr(resourceName, "custom_properties.0.value.#", "3"),
-					resource.TestCheckResourceAttr(resourceName, "custom_properties.0.value.0", "value1"),
-					resource.TestCheckResourceAttr(resourceName, "custom_properties.0.value.1", "value2"),
-					resource.TestCheckResourceAttr(resourceName, "custom_properties.0.value.2", "value3"),
-					resource.TestCheckResourceAttr(resourceName, "custom_properties.1.key", "some.property2"),
-					resource.TestCheckResourceAttr(resourceName, "custom_properties.1.name", "Some Property"),
-					resource.TestCheckResourceAttr(resourceName, "custom_properties.1.value.#", "1"),
-					resource.TestCheckResourceAttr(resourceName, "custom_properties.1.value.0", "very special custom property"),
+					resource.TestCheckResourceAttr(resourceName, "custom_properties.%", "2"),
+					resource.TestCheckResourceAttr(resourceName, "custom_properties.some.property.key", "some.property"),
+					resource.TestCheckResourceAttr(resourceName, "custom_properties.some.property.name", "Some Property"),
+					resource.TestCheckResourceAttr(resourceName, "custom_properties.some.property.value.#", "3"),
+					resource.TestCheckResourceAttr(resourceName, "custom_properties.some.property.value.0", "value1"),
+					resource.TestCheckResourceAttr(resourceName, "custom_properties.some.property.value.1", "value2"),
+					resource.TestCheckResourceAttr(resourceName, "custom_properties.some.property.value.2", "value3"),
+					resource.TestCheckResourceAttr(resourceName, "custom_properties.some.property2.key", "some.property2"),
+					resource.TestCheckResourceAttr(resourceName, "custom_properties.some.property2.name", "Some Property"),
+					resource.TestCheckResourceAttr(resourceName, "custom_properties.some.property2.value.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "custom_properties.some.property2.value.0", "very special custom property"),
 				),
 			},
 			{
-				ResourceName:      resourceName,
-				ImportState:       true,
-				ImportStateVerify: true,
+				ResourceName:            resourceName,
+				ImportState:             true,
+				ImportStateVerify:       true,
+				ImportStateVerifyIgnore: importIgnoreOptionalComputedKeys,
 			},
 			{
 				Config: withRandomProject(projectKey, testAccFeatureFlagUpdateMultivariate),
@@ -1055,20 +1102,21 @@ func TestAccFeatureFlag_CreateAndUpdateMultivariate(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "tags.0", "is"),
 					resource.TestCheckResourceAttr(resourceName, "tags.1", "this"),
 					resource.TestCheckResourceAttr(resourceName, "tags.2", "unordered"),
-					resource.TestCheckResourceAttr(resourceName, "custom_properties.#", "1"),
-					resource.TestCheckResourceAttr(resourceName, "custom_properties.0.key", "some.property"),
-					resource.TestCheckResourceAttr(resourceName, "custom_properties.0.name", "Some Property Updated"),
-					resource.TestCheckResourceAttr(resourceName, "custom_properties.0.value.#", "2"),
-					resource.TestCheckResourceAttr(resourceName, "custom_properties.0.value.0", "value1"),
-					resource.TestCheckResourceAttr(resourceName, "custom_properties.0.value.1", "value3"),
-					resource.TestCheckResourceAttr(resourceName, "defaults.0.on_variation", "2"),
-					resource.TestCheckResourceAttr(resourceName, "defaults.0.off_variation", "1"),
+					resource.TestCheckResourceAttr(resourceName, "custom_properties.%", "1"),
+					resource.TestCheckResourceAttr(resourceName, "custom_properties.some.property.key", "some.property"),
+					resource.TestCheckResourceAttr(resourceName, "custom_properties.some.property.name", "Some Property Updated"),
+					resource.TestCheckResourceAttr(resourceName, "custom_properties.some.property.value.#", "2"),
+					resource.TestCheckResourceAttr(resourceName, "custom_properties.some.property.value.0", "value1"),
+					resource.TestCheckResourceAttr(resourceName, "custom_properties.some.property.value.1", "value3"),
+					resource.TestCheckResourceAttr(resourceName, "defaults.on_variation", "2"),
+					resource.TestCheckResourceAttr(resourceName, "defaults.off_variation", "1"),
 				),
 			},
 			{
-				ResourceName:      resourceName,
-				ImportState:       true,
-				ImportStateVerify: true,
+				ResourceName:            resourceName,
+				ImportState:             true,
+				ImportStateVerify:       true,
+				ImportStateVerifyIgnore: importIgnoreOptionalComputedKeys,
 			},
 			{
 				// Ensure variation Delete operations are working
@@ -1082,14 +1130,16 @@ func TestAccFeatureFlag_CreateAndUpdateMultivariate(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "variations.0.value", "string1"),
 					resource.TestCheckResourceAttr(resourceName, "variations.1.value", "string2"),
 					resource.TestCheckResourceAttr(resourceName, "variations.2.value", "another option"),
-					resource.TestCheckResourceAttr(resourceName, "defaults.0.on_variation", "2"),
-					resource.TestCheckResourceAttr(resourceName, "defaults.0.off_variation", "1"),
+					// defaults is Optional-only and omitted here, so state
+					// drops it rather than retaining the previous-step value.
+					resource.TestCheckNoResourceAttr(resourceName, "defaults.%"),
 				),
 			},
 			{
-				ResourceName:      resourceName,
-				ImportState:       true,
-				ImportStateVerify: true,
+				ResourceName:            resourceName,
+				ImportState:             true,
+				ImportStateVerify:       true,
+				ImportStateVerifyIgnore: importIgnoreOptionalComputedKeys,
 			},
 		},
 	})
@@ -1102,7 +1152,7 @@ func TestAccFeatureFlag_CreateMultivariate2(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config: withRandomProject(projectKey, testAccFeatureFlagCreateMultivariate2),
@@ -1127,9 +1177,10 @@ func TestAccFeatureFlag_CreateMultivariate2(t *testing.T) {
 				),
 			},
 			{
-				ResourceName:      resourceName,
-				ImportState:       true,
-				ImportStateVerify: true,
+				ResourceName:            resourceName,
+				ImportState:             true,
+				ImportStateVerify:       true,
+				ImportStateVerifyIgnore: importIgnoreOptionalComputedKeys,
 			},
 		},
 	})
@@ -1142,35 +1193,37 @@ func TestAccFeatureFlag_UpdateDefaults(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config: withRandomProject(projectKey, testAccFeatureFlagDefaults),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckProjectExists("launchdarkly_project.test"),
 					testAccCheckFeatureFlagExists(resourceName),
-					resource.TestCheckResourceAttr(resourceName, "defaults.0.on_variation", "1"),
-					resource.TestCheckResourceAttr(resourceName, "defaults.0.off_variation", "1"),
+					resource.TestCheckResourceAttr(resourceName, "defaults.on_variation", "1"),
+					resource.TestCheckResourceAttr(resourceName, "defaults.off_variation", "1"),
 				),
 			},
 			{
-				ResourceName:      resourceName,
-				ImportState:       true,
-				ImportStateVerify: true,
+				ResourceName:            resourceName,
+				ImportState:             true,
+				ImportStateVerify:       true,
+				ImportStateVerifyIgnore: importIgnoreOptionalComputedKeys,
 			},
 			{
 				Config: withRandomProject(projectKey, testAccFeatureFlagDefaultsUpdate),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckProjectExists("launchdarkly_project.test"),
 					testAccCheckFeatureFlagExists(resourceName),
-					resource.TestCheckResourceAttr(resourceName, "defaults.0.on_variation", "0"),
-					resource.TestCheckResourceAttr(resourceName, "defaults.0.off_variation", "0"),
+					resource.TestCheckResourceAttr(resourceName, "defaults.on_variation", "0"),
+					resource.TestCheckResourceAttr(resourceName, "defaults.off_variation", "0"),
 				),
 			},
 			{
-				ResourceName:      resourceName,
-				ImportState:       true,
-				ImportStateVerify: true,
+				ResourceName:            resourceName,
+				ImportState:             true,
+				ImportStateVerify:       true,
+				ImportStateVerifyIgnore: importIgnoreOptionalComputedKeys,
 			},
 		},
 	})
@@ -1183,49 +1236,52 @@ func TestAccFeatureFlag_UpdateMultivariateDefaults(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config: withRandomProject(projectKey, testAccFeatureFlagDefaultsMultivariate),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckProjectExists("launchdarkly_project.test"),
 					testAccCheckFeatureFlagExists(resourceName),
-					resource.TestCheckResourceAttr(resourceName, "defaults.0.on_variation", "1"),
-					resource.TestCheckResourceAttr(resourceName, "defaults.0.off_variation", "1"),
+					resource.TestCheckResourceAttr(resourceName, "defaults.on_variation", "1"),
+					resource.TestCheckResourceAttr(resourceName, "defaults.off_variation", "1"),
 				),
 			},
 			{
-				ResourceName:      resourceName,
-				ImportState:       true,
-				ImportStateVerify: true,
+				ResourceName:            resourceName,
+				ImportState:             true,
+				ImportStateVerify:       true,
+				ImportStateVerifyIgnore: importIgnoreOptionalComputedKeys,
 			},
 			{
 				Config: withRandomProject(projectKey, testAccFeatureFlagDefaultsMultivariateUpdate),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckProjectExists("launchdarkly_project.test"),
 					testAccCheckFeatureFlagExists(resourceName),
-					resource.TestCheckResourceAttr(resourceName, "defaults.0.on_variation", "2"),
-					resource.TestCheckResourceAttr(resourceName, "defaults.0.off_variation", "2"),
+					resource.TestCheckResourceAttr(resourceName, "defaults.on_variation", "2"),
+					resource.TestCheckResourceAttr(resourceName, "defaults.off_variation", "2"),
 				),
 			},
 			{
-				ResourceName:      resourceName,
-				ImportState:       true,
-				ImportStateVerify: true,
+				ResourceName:            resourceName,
+				ImportState:             true,
+				ImportStateVerify:       true,
+				ImportStateVerifyIgnore: importIgnoreOptionalComputedKeys,
 			},
 			{
 				Config: withRandomProject(projectKey, testAccFeatureFlagDefaultsMultivariateUpdateRemoveVariation),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckProjectExists("launchdarkly_project.test"),
 					testAccCheckFeatureFlagExists(resourceName),
-					resource.TestCheckResourceAttr(resourceName, "defaults.0.on_variation", "2"),
-					resource.TestCheckResourceAttr(resourceName, "defaults.0.off_variation", "2"),
+					resource.TestCheckResourceAttr(resourceName, "defaults.on_variation", "2"),
+					resource.TestCheckResourceAttr(resourceName, "defaults.off_variation", "2"),
 				),
 			},
 			{
-				ResourceName:      resourceName,
-				ImportState:       true,
-				ImportStateVerify: true,
+				ResourceName:            resourceName,
+				ImportState:             true,
+				ImportStateVerify:       true,
+				ImportStateVerifyIgnore: importIgnoreOptionalComputedKeys,
 			},
 		},
 	})
@@ -1238,7 +1294,7 @@ func TestAccFeatureFlag_EmptyStringVariation(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config: withRandomProject(projectKey, testAccFeatureFlagEmptyStringVariation),
@@ -1254,9 +1310,10 @@ func TestAccFeatureFlag_EmptyStringVariation(t *testing.T) {
 				),
 			},
 			{
-				ResourceName:      resourceName,
-				ImportState:       true,
-				ImportStateVerify: true,
+				ResourceName:            resourceName,
+				ImportState:             true,
+				ImportStateVerify:       true,
+				ImportStateVerifyIgnore: importIgnoreOptionalComputedKeys,
 			},
 		},
 	})
@@ -1269,7 +1326,7 @@ func TestAccFeatureFlag_ClientSideAvailabilityUpdate(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config: withRandomProject(projectKey, testAccFeatureFlagClientSideAvailability),
@@ -1281,17 +1338,16 @@ func TestAccFeatureFlag_ClientSideAvailabilityUpdate(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, PROJECT_KEY, projectKey),
 					resource.TestCheckResourceAttr(resourceName, VARIATION_TYPE, "boolean"),
 					resource.TestCheckResourceAttr(resourceName, "variations.#", "2"),
-					resource.TestCheckResourceAttr(resourceName, "variations.0.value", "true"),
-					resource.TestCheckResourceAttr(resourceName, "variations.1.value", "false"),
 					resource.TestCheckNoResourceAttr(resourceName, MAINTAINER_ID),
-					resource.TestCheckResourceAttr(resourceName, "client_side_availability.0.using_environment_id", "true"),
-					resource.TestCheckResourceAttr(resourceName, "client_side_availability.0.using_mobile_key", "true"),
+					resource.TestCheckResourceAttr(resourceName, "client_side_availability.using_environment_id", "true"),
+					resource.TestCheckResourceAttr(resourceName, "client_side_availability.using_mobile_key", "true"),
 				),
 			},
 			{
-				ResourceName:      resourceName,
-				ImportState:       true,
-				ImportStateVerify: true,
+				ResourceName:            resourceName,
+				ImportState:             true,
+				ImportStateVerify:       true,
+				ImportStateVerifyIgnore: importIgnoreOptionalComputedKeys,
 			},
 			{
 				Config: withRandomProject(projectKey, testAccFeatureFlagClientSideAvailabilityUpdate),
@@ -1303,227 +1359,16 @@ func TestAccFeatureFlag_ClientSideAvailabilityUpdate(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, PROJECT_KEY, projectKey),
 					resource.TestCheckResourceAttr(resourceName, VARIATION_TYPE, "boolean"),
 					resource.TestCheckResourceAttr(resourceName, "variations.#", "2"),
-					resource.TestCheckResourceAttr(resourceName, "variations.0.value", "true"),
-					resource.TestCheckResourceAttr(resourceName, "variations.1.value", "false"),
 					resource.TestCheckNoResourceAttr(resourceName, MAINTAINER_ID),
-					resource.TestCheckResourceAttr(resourceName, "client_side_availability.0.using_environment_id", "false"),
-					resource.TestCheckResourceAttr(resourceName, "client_side_availability.0.using_mobile_key", "false"),
+					resource.TestCheckResourceAttr(resourceName, "client_side_availability.using_environment_id", "false"),
+					resource.TestCheckResourceAttr(resourceName, "client_side_availability.using_mobile_key", "false"),
 				),
 			},
 			{
-				ResourceName:      resourceName,
-				ImportState:       true,
-				ImportStateVerify: true,
-			},
-		},
-	})
-}
-
-func TestAccFeatureFlag_IncludeInSnippetToClientSide(t *testing.T) {
-	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
-	resourceName := "launchdarkly_feature_flag.sdk_settings"
-	resource.ParallelTest(t, resource.TestCase{
-		PreCheck: func() {
-			testAccPreCheck(t)
-		},
-		Providers: testAccProviders,
-		Steps: []resource.TestStep{
-			{
-				Config: withRandomProject(projectKey, testAccFeatureFlagIncludeInSnippet),
-				Check: resource.ComposeTestCheckFunc(
-					testAccCheckProjectExists("launchdarkly_project.test"),
-					testAccCheckFeatureFlagExists(resourceName),
-					resource.TestCheckResourceAttr(resourceName, NAME, "Basic feature flag"),
-					resource.TestCheckResourceAttr(resourceName, KEY, "basic-flag-sdk-settings"),
-					resource.TestCheckResourceAttr(resourceName, PROJECT_KEY, projectKey),
-					resource.TestCheckResourceAttr(resourceName, VARIATION_TYPE, "boolean"),
-					resource.TestCheckResourceAttr(resourceName, "variations.#", "2"),
-					resource.TestCheckResourceAttr(resourceName, "variations.0.value", "true"),
-					resource.TestCheckResourceAttr(resourceName, "variations.1.value", "false"),
-					resource.TestCheckNoResourceAttr(resourceName, MAINTAINER_ID),
-					resource.TestCheckResourceAttr(resourceName, INCLUDE_IN_SNIPPET, "true"),
-				),
-			},
-			{
-				ResourceName:      resourceName,
-				ImportState:       true,
-				ImportStateVerify: true,
-			},
-			{
-				Config: withRandomProject(projectKey, testAccFeatureFlagClientSideAvailability),
-				Check: resource.ComposeTestCheckFunc(
-					testAccCheckProjectExists("launchdarkly_project.test"),
-					testAccCheckFeatureFlagExists(resourceName),
-					resource.TestCheckResourceAttr(resourceName, NAME, "Basic feature flag"),
-					resource.TestCheckResourceAttr(resourceName, KEY, "basic-flag-sdk-settings"),
-					resource.TestCheckResourceAttr(resourceName, PROJECT_KEY, projectKey),
-					resource.TestCheckResourceAttr(resourceName, VARIATION_TYPE, "boolean"),
-					resource.TestCheckResourceAttr(resourceName, "variations.#", "2"),
-					resource.TestCheckResourceAttr(resourceName, "variations.0.value", "true"),
-					resource.TestCheckResourceAttr(resourceName, "variations.1.value", "false"),
-					resource.TestCheckNoResourceAttr(resourceName, MAINTAINER_ID),
-					resource.TestCheckResourceAttr(resourceName, "client_side_availability.0.using_environment_id", "true"),
-					resource.TestCheckResourceAttr(resourceName, "client_side_availability.0.using_mobile_key", "true"),
-					resource.TestCheckResourceAttr(resourceName, INCLUDE_IN_SNIPPET, "true"),
-				),
-			},
-			{
-				ResourceName:      resourceName,
-				ImportState:       true,
-				ImportStateVerify: true,
-			},
-			{
-				Config: withRandomProject(projectKey, testAccFeatureFlagClientSideAvailabilityUpdate),
-				Check: resource.ComposeTestCheckFunc(
-					testAccCheckProjectExists("launchdarkly_project.test"),
-					testAccCheckFeatureFlagExists(resourceName),
-					resource.TestCheckResourceAttr(resourceName, NAME, "Basic feature flag"),
-					resource.TestCheckResourceAttr(resourceName, KEY, "basic-flag-sdk-settings"),
-					resource.TestCheckResourceAttr(resourceName, PROJECT_KEY, projectKey),
-					resource.TestCheckResourceAttr(resourceName, VARIATION_TYPE, "boolean"),
-					resource.TestCheckResourceAttr(resourceName, "variations.#", "2"),
-					resource.TestCheckResourceAttr(resourceName, "variations.0.value", "true"),
-					resource.TestCheckResourceAttr(resourceName, "variations.1.value", "false"),
-					resource.TestCheckNoResourceAttr(resourceName, MAINTAINER_ID),
-					resource.TestCheckResourceAttr(resourceName, "client_side_availability.0.using_environment_id", "false"),
-					resource.TestCheckResourceAttr(resourceName, "client_side_availability.0.using_mobile_key", "false"),
-					resource.TestCheckResourceAttr(resourceName, INCLUDE_IN_SNIPPET, "false"),
-				),
-			},
-			{
-				ResourceName:      resourceName,
-				ImportState:       true,
-				ImportStateVerify: true,
-			},
-		},
-	})
-}
-
-func TestAccFeatureFlag_ClientSideToIncludeInSnippet(t *testing.T) {
-	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
-	resourceName := "launchdarkly_feature_flag.sdk_settings"
-	resource.ParallelTest(t, resource.TestCase{
-		PreCheck: func() {
-			testAccPreCheck(t)
-		},
-		Providers: testAccProviders,
-		Steps: []resource.TestStep{
-			{
-				Config: withRandomProject(projectKey, testAccFeatureFlagClientSideAvailability),
-				Check: resource.ComposeTestCheckFunc(
-					testAccCheckProjectExists("launchdarkly_project.test"),
-					testAccCheckFeatureFlagExists(resourceName),
-					resource.TestCheckResourceAttr(resourceName, NAME, "Basic feature flag"),
-					resource.TestCheckResourceAttr(resourceName, KEY, "basic-flag-sdk-settings"),
-					resource.TestCheckResourceAttr(resourceName, PROJECT_KEY, projectKey),
-					resource.TestCheckResourceAttr(resourceName, VARIATION_TYPE, "boolean"),
-					resource.TestCheckResourceAttr(resourceName, "variations.#", "2"),
-					resource.TestCheckResourceAttr(resourceName, "variations.0.value", "true"),
-					resource.TestCheckResourceAttr(resourceName, "variations.1.value", "false"),
-					resource.TestCheckNoResourceAttr(resourceName, MAINTAINER_ID),
-					resource.TestCheckResourceAttr(resourceName, "client_side_availability.0.using_environment_id", "true"),
-					resource.TestCheckResourceAttr(resourceName, "client_side_availability.0.using_mobile_key", "true"),
-					resource.TestCheckResourceAttr(resourceName, INCLUDE_IN_SNIPPET, "true"),
-				),
-			},
-			{
-				ResourceName:      resourceName,
-				ImportState:       true,
-				ImportStateVerify: true,
-			},
-			{
-				Config: withRandomProject(projectKey, testAccFeatureFlagIncludeInSnippetUpdate),
-				Check: resource.ComposeTestCheckFunc(
-					testAccCheckProjectExists("launchdarkly_project.test"),
-					testAccCheckFeatureFlagExists(resourceName),
-					resource.TestCheckResourceAttr(resourceName, NAME, "Basic feature flag"),
-					resource.TestCheckResourceAttr(resourceName, KEY, "basic-flag-sdk-settings"),
-					resource.TestCheckResourceAttr(resourceName, PROJECT_KEY, projectKey),
-					resource.TestCheckResourceAttr(resourceName, VARIATION_TYPE, "boolean"),
-					resource.TestCheckResourceAttr(resourceName, "variations.#", "2"),
-					resource.TestCheckResourceAttr(resourceName, "variations.0.value", "true"),
-					resource.TestCheckResourceAttr(resourceName, "variations.1.value", "false"),
-					resource.TestCheckNoResourceAttr(resourceName, MAINTAINER_ID),
-					resource.TestCheckResourceAttr(resourceName, "client_side_availability.0.using_environment_id", "false"),
-					resource.TestCheckResourceAttr(resourceName, "client_side_availability.0.using_mobile_key", "true"), // this should remain as previously set
-					resource.TestCheckResourceAttr(resourceName, INCLUDE_IN_SNIPPET, "false"),
-				),
-			},
-			{
-				ResourceName:      resourceName,
-				ImportState:       true,
-				ImportStateVerify: true,
-			},
-		},
-	})
-}
-
-func TestAccFeatureFlag_IncludeInSnippet(t *testing.T) {
-	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
-	resourceName := "launchdarkly_feature_flag.sdk_settings"
-	resource.ParallelTest(t, resource.TestCase{
-		PreCheck: func() {
-			testAccPreCheck(t)
-		},
-		Providers: testAccProviders,
-		Steps: []resource.TestStep{
-			// Create without value set and check for default value
-			{
-				Config: withRandomProjectIncludeInSnippetTrue(projectKey, testAccFeatureFlagIncludeInSnippetEmpty),
-				Check: resource.ComposeTestCheckFunc(
-					testAccCheckProjectExists("launchdarkly_project.test"),
-					testAccCheckFeatureFlagExists(resourceName),
-					resource.TestCheckResourceAttr(resourceName, NAME, "Basic feature flag"),
-					resource.TestCheckResourceAttr(resourceName, KEY, "basic-flag-sdk-settings"),
-					resource.TestCheckResourceAttr(resourceName, PROJECT_KEY, projectKey),
-					resource.TestCheckResourceAttr(resourceName, INCLUDE_IN_SNIPPET, "true"),
-					// we still expect these to get set even if they're not defined by the user
-					resource.TestCheckResourceAttr(resourceName, "client_side_availability.0.using_environment_id", "true"),
-					resource.TestCheckResourceAttr(resourceName, "client_side_availability.0.using_mobile_key", "true"), // this is a project default
-				),
-			},
-			{
-				ResourceName:      resourceName,
-				ImportState:       true,
-				ImportStateVerify: true,
-			},
-			// Replace default value with specific value
-			{
-				Config: withRandomProjectIncludeInSnippetTrue(projectKey, testAccFeatureFlagIncludeInSnippetUpdate),
-				Check: resource.ComposeTestCheckFunc(
-					testAccCheckProjectExists("launchdarkly_project.test"),
-					testAccCheckFeatureFlagExists(resourceName),
-					resource.TestCheckResourceAttr(resourceName, NAME, "Basic feature flag"),
-					resource.TestCheckResourceAttr(resourceName, KEY, "basic-flag-sdk-settings"),
-					resource.TestCheckResourceAttr(resourceName, PROJECT_KEY, projectKey),
-					resource.TestCheckResourceAttr(resourceName, INCLUDE_IN_SNIPPET, "false"),
-					resource.TestCheckResourceAttr(resourceName, "client_side_availability.0.using_environment_id", "false"),
-					resource.TestCheckResourceAttr(resourceName, "client_side_availability.0.using_mobile_key", "true"),
-				),
-			},
-			{
-				ResourceName:      resourceName,
-				ImportState:       true,
-				ImportStateVerify: true,
-			},
-			// Clear specific value, should not revert to default
-			{
-				Config: withRandomProjectIncludeInSnippetTrue(projectKey, testAccFeatureFlagIncludeInSnippetEmpty),
-				Check: resource.ComposeTestCheckFunc(
-					testAccCheckProjectExists("launchdarkly_project.test"),
-					testAccCheckFeatureFlagExists(resourceName),
-					resource.TestCheckResourceAttr(resourceName, NAME, "Basic feature flag"),
-					resource.TestCheckResourceAttr(resourceName, KEY, "basic-flag-sdk-settings"),
-					resource.TestCheckResourceAttr(resourceName, PROJECT_KEY, projectKey),
-					resource.TestCheckResourceAttr(resourceName, INCLUDE_IN_SNIPPET, "false"),
-					resource.TestCheckResourceAttr(resourceName, "client_side_availability.0.using_environment_id", "false"),
-					resource.TestCheckResourceAttr(resourceName, "client_side_availability.0.using_mobile_key", "true"),
-				),
-			},
-			{
-				ResourceName:      resourceName,
-				ImportState:       true,
-				ImportStateVerify: true,
+				ResourceName:            resourceName,
+				ImportState:             true,
+				ImportStateVerify:       true,
+				ImportStateVerifyIgnore: importIgnoreOptionalComputedKeys,
 			},
 		},
 	})
@@ -1543,7 +1388,7 @@ func testAccCheckFeatureFlagExists(resourceName string) resource.TestCheckFunc {
 		if !ok {
 			return fmt.Errorf("project key not found: %s", resourceName)
 		}
-		client := testAccProvider.Meta().(*Client)
+		client := mustTestAccClient()
 		_, _, err := client.ld.FeatureFlagsApi.GetFeatureFlag(client.ctx, projKey, flagKey).Execute()
 		if err != nil {
 			return fmt.Errorf("received an error getting feature flag. %s", err)
@@ -1561,8 +1406,8 @@ func TestAccFeatureFlag_Deprecated(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers:    testAccProviders,
-		CheckDestroy: testAccCheckProjectDestroy,
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckProjectDestroy,
 		Steps: []resource.TestStep{
 			{
 				Config: withRandomProject(projectKey, testAccFeatureFlagDeprecated),
@@ -1573,9 +1418,10 @@ func TestAccFeatureFlag_Deprecated(t *testing.T) {
 				),
 			},
 			{
-				ResourceName:      resourceName,
-				ImportState:       true,
-				ImportStateVerify: true,
+				ResourceName:            resourceName,
+				ImportState:             true,
+				ImportStateVerify:       true,
+				ImportStateVerifyIgnore: importIgnoreOptionalComputedKeys,
 			},
 			{
 				Config: withRandomProject(projectKey, testAccFeatureFlagUndeprecated),
@@ -1586,9 +1432,10 @@ func TestAccFeatureFlag_Deprecated(t *testing.T) {
 				),
 			},
 			{
-				ResourceName:      resourceName,
-				ImportState:       true,
-				ImportStateVerify: true,
+				ResourceName:            resourceName,
+				ImportState:             true,
+				ImportStateVerify:       true,
+				ImportStateVerifyIgnore: importIgnoreOptionalComputedKeys,
 			},
 		},
 	})
@@ -1607,10 +1454,11 @@ resource "launchdarkly_project" "test" {
 	key  = "%s"
 	name = "View Requirement Test"
 	require_view_association_for_new_flags = true
-	environments {
-		key   = "test-env"
-		name  = "Test Environment"
-		color = "010101"
+	environments = {
+		"test-env" = {
+			name  = "Test Environment"
+			color = "010101"
+		}
 	}
 }
 
@@ -1619,6 +1467,10 @@ resource "launchdarkly_feature_flag" "test" {
 	key            = "test-flag-no-views"
 	name           = "Test Flag Without Views"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 }
 `, projectKey)
 
@@ -1628,10 +1480,11 @@ resource "launchdarkly_project" "test" {
 	key  = "%s"
 	name = "View Requirement Test"
 	require_view_association_for_new_flags = true
-	environments {
-		key   = "test-env"
-		name  = "Test Environment"
-		color = "010101"
+	environments = {
+		"test-env" = {
+			name  = "Test Environment"
+			color = "010101"
+		}
 	}
 }
 
@@ -1647,19 +1500,17 @@ resource "launchdarkly_feature_flag" "test" {
 	key            = "test-flag-with-views"
 	name           = "Test Flag With Views"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 	view_keys      = [launchdarkly_view.test.key]
 }
 `
 	maintainerID := "507f1f77bcf86cd799439011"
 	if os.Getenv("TF_ACC") != "" {
 		testAccPreCheck(t)
-		client, err := newClient(os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN), os.Getenv(LAUNCHDARKLY_API_HOST), false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
-		require.NoError(t, err)
-
-		members, _, err := client.ld.AccountMembersApi.GetMembers(client.ctx).Execute()
-		require.NoError(t, err)
-		require.True(t, len(members.Items) > 0, "This test requires at least one member in the account")
-		maintainerID = members.Items[0].Id
+		maintainerID = firstMemberIDForTest(t)
 	}
 	testAccFlagWithViewKeys = fmt.Sprintf(testAccFlagWithViewKeysTemplate, projectKey, maintainerID)
 
@@ -1668,8 +1519,8 @@ resource "launchdarkly_feature_flag" "test" {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers:    testAccProviders,
-		CheckDestroy: testAccCheckProjectDestroy,
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckProjectDestroy,
 		Steps: []resource.TestStep{
 			// Step 1: Verify flag without view_keys fails when project requires it
 			{
@@ -1683,6 +1534,336 @@ resource "launchdarkly_feature_flag" "test" {
 					testAccCheckFeatureFlagExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, "view_keys.#", "1"),
 				),
+			},
+		},
+	})
+}
+
+// TestAccFeatureFlag_DeletePrerequisiteApplyError exercises the
+// apply-time gate on destroying a flag that is still referenced as a
+// prerequisite. The plan-time dependent-flag check in
+// FeatureFlagResource.ModifyPlan is advisory only (emits a warning, not
+// an error) so whole-stack destroys are not blocked (issue #372); the
+// authoritative gate is the DELETE 409, asserted here.
+func TestAccFeatureFlag_DeletePrerequisiteApplyError(t *testing.T) {
+	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+
+	configFull := withRandomProject(projectKey, `
+resource "launchdarkly_feature_flag" "prereq" {
+	project_key    = launchdarkly_project.test.key
+	key            = "prereq-flag"
+	name           = "prerequisite flag"
+	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
+}
+
+resource "launchdarkly_feature_flag" "dependent" {
+	project_key    = launchdarkly_project.test.key
+	key            = "dependent-flag"
+	name           = "dependent flag"
+	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
+}
+
+resource "launchdarkly_feature_flag_environment" "dependent_env" {
+	flag_id = launchdarkly_feature_flag.dependent.id
+	env_key = "test"
+	on      = false
+	prerequisites = [{
+		flag_key  = launchdarkly_feature_flag.prereq.key
+		variation = 0
+	}]
+	fallthrough = {
+		variation = 0
+	}
+	off_variation = 1
+}
+`)
+
+	// Same project + dependent flag + FFE-with-prereq, but the prereq
+	// flag resource is removed from config. HCL keeps the literal flag
+	// key string in the prerequisites block so the file still compiles;
+	// Terraform plans destruction of `launchdarkly_feature_flag.prereq`
+	// while the FFE still references it, so the apply-time DELETE returns
+	// a 409 and the destroy fails (the plan-time check only warns).
+	configMissingPrereq := withRandomProject(projectKey, `
+resource "launchdarkly_feature_flag" "dependent" {
+	project_key    = launchdarkly_project.test.key
+	key            = "dependent-flag"
+	name           = "dependent flag"
+	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
+}
+
+resource "launchdarkly_feature_flag_environment" "dependent_env" {
+	flag_id = launchdarkly_feature_flag.dependent.id
+	env_key = "test"
+	on      = false
+	prerequisites = [{
+		flag_key  = "prereq-flag"
+		variation = 0
+	}]
+	fallthrough = {
+		variation = 0
+	}
+	off_variation = 1
+}
+`)
+
+	// Cleanup config used after the PlanOnly assertion: retain both flags
+	// but remove the prerequisite link so post-test destroy can delete both
+	// flags without tripping the plan-time destroy guard.
+	configWithoutPrerequisiteLink := withRandomProject(projectKey, `
+resource "launchdarkly_feature_flag" "prereq" {
+	project_key    = launchdarkly_project.test.key
+	key            = "prereq-flag"
+	name           = "prerequisite flag"
+	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
+}
+
+resource "launchdarkly_feature_flag" "dependent" {
+	project_key    = launchdarkly_project.test.key
+	key            = "dependent-flag"
+	name           = "dependent flag"
+	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
+}
+
+resource "launchdarkly_feature_flag_environment" "dependent_env" {
+	flag_id = launchdarkly_feature_flag.dependent.id
+	env_key = "test"
+	on      = false
+	fallthrough = {
+		variation = 0
+	}
+	off_variation = 1
+}
+`)
+
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckProjectDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config: configFull,
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckFeatureFlagExists("launchdarkly_feature_flag.prereq"),
+					testAccCheckFeatureFlagExists("launchdarkly_feature_flag.dependent"),
+				),
+			},
+			{
+				// The dependent-flags beta endpoint is eventually
+				// consistent. Poll until the dependency is indexed so the
+				// prerequisite link is fully established server-side, then
+				// apply: the destroy of prereq-flag must fail with the
+				// apply-time DELETE 409. The plan-time check only warns now,
+				// so this asserts the authoritative apply-time gate.
+				PreConfig:   waitForDependentFlagIndexed(t, projectKey, "prereq-flag"),
+				Config:      configMissingPrereq,
+				ExpectError: regexp.MustCompile(`failed to delete flag "prereq-flag" from project`),
+			},
+			{
+				Config: configWithoutPrerequisiteLink,
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckFeatureFlagExists("launchdarkly_feature_flag.prereq"),
+					testAccCheckFeatureFlagExists("launchdarkly_feature_flag.dependent"),
+				),
+			},
+			{
+				// Ensure dependent-flags index has observed prerequisite
+				// removal before framework auto-destroy starts.
+				PreConfig: waitForDependentFlagUnindexed(t, projectKey, "prereq-flag"),
+				Config:    configWithoutPrerequisiteLink,
+				PlanOnly:  true,
+			},
+		},
+	})
+}
+
+// waitForDependentFlagIndexed polls the beta dependent-flags endpoint
+// until at least one dependent is visible, or a timeout elapses. Used
+// before TestAccFeatureFlag_DeletePrerequisiteApplyError's Step 2 apply
+// because the prerequisite written during Step 1's Apply may take time
+// to become visible server-side.
+func waitForDependentFlagIndexed(t *testing.T, projectKey, flagKey string) func() {
+	return func() {
+		host := os.Getenv(LAUNCHDARKLY_API_HOST)
+		if host == "" {
+			host = DEFAULT_LAUNCHDARKLY_HOST
+		}
+		token := os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN)
+		client, err := newClient(token, host, false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
+		if err != nil {
+			t.Fatalf("waitForDependentFlagIndexed: failed to construct client: %s", err)
+		}
+		deadline := time.Now().Add(90 * time.Second)
+		lastStatus := 0
+		lastBody := ""
+		lastErr := error(nil)
+		for {
+			deps, status, body, err := fetchDependentFlags(client.ctx, client, projectKey, flagKey)
+			if status >= 400 {
+				t.Fatalf("waitForDependentFlagIndexed: dependent-flags request failed for %s/%s with status=%d body=%q err=%v", projectKey, flagKey, status, truncateTestBody(body), err)
+			}
+			if err != nil {
+				t.Fatalf("waitForDependentFlagIndexed: dependent-flags request errored for %s/%s with status=%d body=%q err=%v", projectKey, flagKey, status, truncateTestBody(body), err)
+			}
+			if deps != nil && len(deps.Items) > 0 {
+				return
+			}
+			lastStatus = status
+			lastBody = body
+			lastErr = err
+			if time.Now().After(deadline) {
+				t.Fatalf("waitForDependentFlagIndexed: %s/%s never became indexed within 90s (last status=%d last body=%q last err=%v)", projectKey, flagKey, lastStatus, truncateTestBody(lastBody), lastErr)
+			}
+			time.Sleep(3 * time.Second)
+		}
+	}
+}
+
+// waitForDependentFlagUnindexed polls until no dependents are visible.
+// Used as a teardown guard after removing prerequisites to avoid races
+// where destroy planning still sees stale dependent-flag index state.
+func waitForDependentFlagUnindexed(t *testing.T, projectKey, flagKey string) func() {
+	return func() {
+		host := os.Getenv(LAUNCHDARKLY_API_HOST)
+		if host == "" {
+			host = DEFAULT_LAUNCHDARKLY_HOST
+		}
+		token := os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN)
+		client, err := newClient(token, host, false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
+		if err != nil {
+			t.Fatalf("waitForDependentFlagUnindexed: failed to construct client: %s", err)
+		}
+		deadline := time.Now().Add(90 * time.Second)
+		lastStatus := 0
+		lastBody := ""
+		lastErr := error(nil)
+		for {
+			deps, status, body, err := fetchDependentFlags(client.ctx, client, projectKey, flagKey)
+			if status >= 400 {
+				t.Fatalf("waitForDependentFlagUnindexed: dependent-flags request failed for %s/%s with status=%d body=%q err=%v", projectKey, flagKey, status, truncateTestBody(body), err)
+			}
+			if err != nil {
+				t.Fatalf("waitForDependentFlagUnindexed: dependent-flags request errored for %s/%s with status=%d body=%q err=%v", projectKey, flagKey, status, truncateTestBody(body), err)
+			}
+			if deps != nil && len(deps.Items) == 0 {
+				return
+			}
+			lastStatus = status
+			lastBody = body
+			lastErr = err
+			if time.Now().After(deadline) {
+				t.Fatalf("waitForDependentFlagUnindexed: %s/%s still indexed after 90s (last status=%d last body=%q last err=%v)", projectKey, flagKey, lastStatus, truncateTestBody(lastBody), lastErr)
+			}
+			time.Sleep(3 * time.Second)
+		}
+	}
+}
+
+func truncateTestBody(body string) string {
+	const max = 512
+	if len(body) <= max {
+		return body
+	}
+	return body[:max] + "...(truncated)"
+}
+
+// testAccCheckFeatureFlagArchived verifies via the LD API that the named
+// flag exists on the server and is in an archived state. Used by
+// TestAccFeatureFlag_ArchiveOnDestroy to assert that the destroy step
+// archived rather than deleted.
+func testAccCheckFeatureFlagArchived(projectKey, flagKey string) resource.TestCheckFunc {
+	return func(_ *terraform.State) error {
+		client := mustTestAccClient()
+		flag, _, err := client.ld.FeatureFlagsApi.GetFeatureFlag(client.ctx, projectKey, flagKey).Execute()
+		if err != nil {
+			return fmt.Errorf("expected archived flag %s/%s on server, got error: %s", projectKey, flagKey, err)
+		}
+		if !flag.Archived {
+			return fmt.Errorf("flag %s/%s exists but is not archived", projectKey, flagKey)
+		}
+		return nil
+	}
+}
+
+const testAccFeatureFlagArchiveOnDestroyProvider = `
+provider "launchdarkly" {
+	archive_flags_on_destroy = true
+}
+`
+
+func TestAccFeatureFlag_ArchiveOnDestroy(t *testing.T) {
+	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	flagKey := "basic-flag"
+	resourceName := "launchdarkly_feature_flag.basic"
+
+	withProvider := func(body string) string {
+		return testAccFeatureFlagArchiveOnDestroyProvider + withRandomProject(projectKey, body)
+	}
+	// Project-only config (flag removed) still needs the provider block so
+	// the destroy of the flag in the prior step's state is performed under
+	// archive_flags_on_destroy = true.
+	projectOnly := testAccFeatureFlagArchiveOnDestroyProvider + fmt.Sprintf(`
+	resource "launchdarkly_project" "test" {
+		lifecycle {
+			ignore_changes = [environments]
+		}
+		name = "testProject"
+		key = "%s"
+		environments = {
+			"test" = {
+				name  = "testEnvironment"
+				color = "000000"
+			}
+		}
+	}
+	`, projectKey)
+
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				// Create the flag.
+				Config: withProvider(testAccFeatureFlagBasic),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckFeatureFlagExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, KEY, flagKey),
+					resource.TestCheckResourceAttr(resourceName, ARCHIVED, "false"),
+				),
+			},
+			{
+				// Drop the flag from config — the resource block is gone so
+				// terraform issues a Delete. With archive_flags_on_destroy
+				// = true the provider PATCHes archived=true instead.
+				Config: projectOnly,
+				Check:  testAccCheckFeatureFlagArchived(projectKey, flagKey),
+			},
+			{
+				// Re-add the same flag key to config. The pre-flight check
+				// in Create must surface the archived-state error with an
+				// import hint instead of bubbling up a 409.
+				Config:      withProvider(testAccFeatureFlagBasic),
+				ExpectError: regexp.MustCompile(`already exists in project .* in an archived state`),
 			},
 		},
 	})

@@ -24,16 +24,18 @@ resource "launchdarkly_custom_role" "example" {
   name        = "example role"
   description = "This is an example role"
 
-  policy_statements {
-    effect    = "allow"
-    resources = ["proj/*:env/production:flag/*"]
-    actions   = ["*"]
-  }
-  policy_statements {
-    effect    = "allow"
-    resources = ["proj/*:env/production"]
-    actions   = ["*"]
-  }
+  policy_statements = [
+    {
+      effect    = "allow"
+      resources = ["proj/*:env/production:flag/*"]
+      actions   = ["*"]
+    },
+    {
+      effect    = "allow"
+      resources = ["proj/*:env/production"]
+      actions   = ["*"]
+    },
+  ]
 }
 ```
 
@@ -42,31 +44,21 @@ resource "launchdarkly_custom_role" "example" {
 
 ### Required
 
-- `key` (String) A unique key that will be used to reference the custom role in your code. A change in this field will force the destruction of the existing resource and the creation of a new one.
+- `key` (String) A unique key that references the custom role in your code. A change in this field forces the destruction of the existing resource and the creation of a new one.
 - `name` (String) A name for the custom role. This must be unique within your organization.
 
 ### Optional
 
 - `base_permissions` (String) The base permission level - either `reader` or `no_access`. While newer API versions default to `no_access`, this field defaults to `reader` in keeping with previous API versions.
 - `description` (String) Description of the custom role.
-- `policy` (Block Set, Deprecated) (see [below for nested schema](#nestedblock--policy))
-- `policy_statements` (Block List) An array of the policy statements that define the permissions for the custom role. This field accepts [role attributes](https://docs.launchdarkly.com/home/getting-started/vocabulary#role-attribute). To use role attributes, use the syntax `$${roleAttribute/<YOUR_ROLE_ATTRIBUTE>}` in lieu of your usual resource keys. (see [below for nested schema](#nestedblock--policy_statements))
+- `policy_statements` (Attributes List) An array of the policy statements that define the permissions for the custom role. This field accepts [role attributes](https://launchdarkly.com/docs/home/getting-started/vocabulary#role-attribute). To use role attributes, use the syntax `$${roleAttribute/<YOUR_ROLE_ATTRIBUTE>}` in lieu of your usual resource keys. (see [below for nested schema](#nestedatt--policy_statements))
+- `policy_statements_json` (String) Policy statements expressed as a single JSON document, an array of statement objects with the same keys as the `policy_statements` attribute (`resources`, `not_resources`, `actions`, `not_actions`, `effect`). Mutually exclusive with `policy_statements`. Use this form when reading the policy from a file or templating it dynamically, for example with `jsonencode(...)` or `file("policy.json")`. To use [role attributes](https://launchdarkly.com/docs/home/getting-started/vocabulary#role-attribute), escape the `$` as `$${roleAttribute/<YOUR_ROLE_ATTRIBUTE>}` inside HCL strings.
 
 ### Read-Only
 
 - `id` (String) The ID of this resource.
 
-<a id="nestedblock--policy"></a>
-### Nested Schema for `policy`
-
-Required:
-
-- `actions` (List of String)
-- `effect` (String)
-- `resources` (List of String)
-
-
-<a id="nestedblock--policy_statements"></a>
+<a id="nestedatt--policy_statements"></a>
 ### Nested Schema for `policy_statements`
 
 Required:
@@ -76,7 +68,7 @@ Required:
 Optional:
 
 - `actions` (List of String) The list of action specifiers defining the actions to which the statement applies.
-Either `actions` or `not_actions` must be specified. For a list of available actions read [Actions reference](https://docs.launchdarkly.com/home/account-security/custom-roles/actions#actions-reference).
+Either `actions` or `not_actions` must be specified. For a list of available actions read [Actions reference](https://launchdarkly.com/docs/home/account/roles/role-actions#actions-reference).
 - `not_actions` (List of String) The list of action specifiers defining the actions to which the statement does not apply.
 - `not_resources` (List of String) The list of resource specifiers defining the resources to which the statement does not apply.
 - `resources` (List of String) The list of resource specifiers defining the resources to which the statement applies.

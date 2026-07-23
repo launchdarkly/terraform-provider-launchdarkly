@@ -2,32 +2,32 @@
 page_title: "launchdarkly_relay_proxy_configuration Resource - launchdarkly"
 subcategory: ""
 description: |-
-  Provides a LaunchDarkly Relay Proxy configuration resource for use with the Relay Proxy's automatic configuration feature https://docs.launchdarkly.com/home/relay-proxy/automatic-configuration.
+  Provides a LaunchDarkly Relay Proxy configuration resource for use with the Relay Proxy's automatic configuration feature https://launchdarkly.com/docs/sdk/relay-proxy/automatic-configuration.
   -> Note: Relay Proxy automatic configuration is available to customers on an Enterprise LaunchDarkly plan. To learn more, read about our pricing https://launchdarkly.com/pricing/. To upgrade your plan, contact LaunchDarkly Sales https://launchdarkly.com/contact-sales/.
   This resource allows you to create and manage Relay Proxy configurations within your LaunchDarkly organization.
-  -> Note: This resource will store the full plaintext secret for your Relay Proxy configuration's unique key in Terraform state. Be sure your state is configured securely before using this resource. See https://www.terraform.io/docs/state/sensitive-data.html for more details.
+  -> Note: This resource stores the full plaintext secret for your Relay Proxy configuration's unique key in Terraform state. Be sure your state is configured securely before using this resource. To learn more, read Sensitive data in state https://www.terraform.io/docs/state/sensitive-data.html.
 ---
 
 # launchdarkly_relay_proxy_configuration (Resource)
 
-Provides a LaunchDarkly Relay Proxy configuration resource for use with the Relay Proxy's [automatic configuration feature](https://docs.launchdarkly.com/home/relay-proxy/automatic-configuration).
+Provides a LaunchDarkly Relay Proxy configuration resource for use with the Relay Proxy's [automatic configuration feature](https://launchdarkly.com/docs/sdk/relay-proxy/automatic-configuration).
 
 -> **Note:** Relay Proxy automatic configuration is available to customers on an Enterprise LaunchDarkly plan. To learn more, [read about our pricing](https://launchdarkly.com/pricing/). To upgrade your plan, [contact LaunchDarkly Sales](https://launchdarkly.com/contact-sales/).
 
 This resource allows you to create and manage Relay Proxy configurations within your LaunchDarkly organization.
 
--> **Note:** This resource will store the full plaintext secret for your Relay Proxy configuration's unique key in Terraform state. Be sure your state is configured securely before using this resource. See https://www.terraform.io/docs/state/sensitive-data.html for more details.
+-> **Note:** This resource stores the full plaintext secret for your Relay Proxy configuration's unique key in Terraform state. Be sure your state is configured securely before using this resource. To learn more, read [Sensitive data in state](https://www.terraform.io/docs/state/sensitive-data.html).
 
 ## Example Usage
 
 ```terraform
 resource "launchdarkly_relay_proxy_configuration" "example" {
   name = "example-config"
-  policy {
+  policy = [{
     actions   = ["*"]
     effect    = "allow"
     resources = ["proj/*:env/*"]
-  }
+  }]
 }
 ```
 
@@ -37,15 +37,15 @@ resource "launchdarkly_relay_proxy_configuration" "example" {
 ### Required
 
 - `name` (String) The human-readable name for your Relay Proxy configuration.
-- `policy` (Block List, Min: 1) The Relay Proxy configuration's rule policy block. This determines what content the Relay Proxy receives. To learn more, read [Understanding policies](https://docs.launchdarkly.com/home/members/role-policies#understanding-policies). (see [below for nested schema](#nestedblock--policy))
+- `policy` (Attributes List) The Relay Proxy configuration's rule policy. This determines what content the Relay Proxy receives. To learn more, read [Understanding policies](https://launchdarkly.com/docs/home/account/roles/role-policies#understanding-policies). (see [below for nested schema](#nestedatt--policy))
 
 ### Read-Only
 
 - `display_key` (String) The last 4 characters of the Relay Proxy configuration's unique key.
-- `full_key` (String, Sensitive) The Relay Proxy configuration's unique key. Because the `full_key` is only exposed upon creation, it will not be available if the resource is imported.
-- `id` (String) The ID of this resource.
+- `full_key` (String, Sensitive) The Relay Proxy configuration's unique key. Because LaunchDarkly exposes the `full_key` only on creation, it is unavailable when you import the resource.
+- `id` (String) The Relay Proxy configuration's unique ID.
 
-<a id="nestedblock--policy"></a>
+<a id="nestedatt--policy"></a>
 ### Nested Schema for `policy`
 
 Required:
@@ -55,20 +55,20 @@ Required:
 Optional:
 
 - `actions` (List of String) The list of action specifiers defining the actions to which the statement applies.
-Either `actions` or `not_actions` must be specified. For a list of available actions read [Actions reference](https://docs.launchdarkly.com/home/account-security/custom-roles/actions#actions-reference).
+Either `actions` or `not_actions` must be specified. For a list of available actions read [Actions reference](https://launchdarkly.com/docs/home/account/roles/role-actions#actions-reference).
 - `not_actions` (List of String) The list of action specifiers defining the actions to which the statement does not apply.
 - `not_resources` (List of String) The list of resource specifiers defining the resources to which the statement does not apply.
 - `resources` (List of String) The list of resource specifiers defining the resources to which the statement applies.
 
 ## Import
 
-Relay Proxy configurations can be imported using the configuration's unique 24 character ID, e.g.
+Import a Relay Proxy configuration using the configuration's unique 24-character ID. For example:
 
 ```sh
 terraform import launchdarkly_relay_proxy_configuration.example 51d440e30c9ff61457c710f6
 ```
 
-The unique relay proxy ID can be found in the relay proxy edit page URL, which you can locate by clicking the three dot menu on your relay proxy item in the UI and selecting 'Edit configuration':
+You can find the unique Relay Proxy ID in the Relay Proxy edit page URL, which you can locate by clicking the three-dot menu on your Relay Proxy item in the UI and selecting "Edit configuration":
 
 ```
 https://app.launchdarkly.com/settings/relay/THIS_IS_YOUR_RELAY_PROXY_ID/edit

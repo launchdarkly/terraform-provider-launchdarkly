@@ -4,9 +4,11 @@ name: Test
 on:
   pull_request: # Fork PRs will only run the build job here. See test-fork-pr.yml for the label-gated workflow that runs generate + tests on forks.
   push:
-    branches: [main]
-  schedule: # runs tests once a day on the main branch
+    branches:
+      - main
+  schedule: # cron runs on the default branch only (GitHub Actions limitation)
     - cron: "0 0 * * *"
+  workflow_dispatch: # allow manual runs against any branch
 
 # Testing only needs permissions to read the repository contents.
 permissions:
@@ -84,12 +86,15 @@ jobs:
     strategy:
       matrix:
         test_case:
+          - TestAccAIAgentGraph_
           - TestAccAIConfig_
           - TestAccAIConfigVariation
           - TestAccAITool
           - TestAccDataSource
           - TestAccAccessToken
+          - TestAccAnnouncement_
           - TestAccAuditLogSubscription
+          - TestAccContextKind
           - TestAccCustomRole
           - TestAccDestination
           - TestAccEnvironment
@@ -99,10 +104,15 @@ jobs:
           - TestAccFlagTrigger
           - TestAccIpAllowlistConfig
           - TestAccIpAllowlistEntry
-          - TestAccMetric
+          - TestAccIntegrationDeliveryConfiguration_
+          - TestAccMetricGroup_
+          - TestAccMetric_
           - TestAccModelConfig
+          - TestAccOAuthClient_
           - TestAccProject
           - TestAccRelayProxy
+          - TestAccReleasePolicy_
+          - TestAccSdkKey_
           - TestAccSegment
           - TestAccTeamMember_CreateGeneric
           - TestAccTeamMember_UpdateGeneric

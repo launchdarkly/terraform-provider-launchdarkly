@@ -1,13 +1,9 @@
 package launchdarkly
 
 import (
-	"bytes"
-	"encoding/json"
-	"fmt"
-	"io"
-	"net/http"
-	"strings"
 	"sync"
+
+	ldapi "github.com/launchdarkly/api-client-go/v23"
 )
 
 // LD's IP allowlist API persists the whole allowlist as a single account
@@ -24,179 +20,140 @@ import (
 // handle the orphan scenario.
 var ipAllowlistWriteMu sync.Mutex
 
-func ipAllowlistMethodMutates(method string) bool {
-	switch method {
-	case http.MethodPost, http.MethodPatch, http.MethodPut, http.MethodDelete:
-		return true
-	}
-	return false
-}
-
-type ipAllowlistResponse struct {
-	SessionAllowlistEnabled  bool                       `json:"sessionAllowlistEnabled"`
-	ApiTokenAllowlistEnabled bool                       `json:"apiTokenAllowlistEnabled"`
-	Entries                  []ipAllowlistEntryResponse `json:"entries"`
-}
-
-type ipAllowlistEntryResponse struct {
-	ID          string  `json:"_id"`
-	IpAddress   string  `json:"ipAddress"`
-	Description *string `json:"description,omitempty"`
-}
-
-type createIpAllowlistEntryRequest struct {
-	IpAddress   string  `json:"ipAddress"`
-	Description *string `json:"description,omitempty"`
-}
-
-type patchIpAllowlistEntryRequest struct {
-	Description string `json:"description"`
-}
-
-type patchIpAllowlistConfigRequest struct {
-	SessionAllowlistEnabled  *bool `json:"sessionAllowlistEnabled,omitempty"`
-	ApiTokenAllowlistEnabled *bool `json:"apiTokenAllowlistEnabled,omitempty"`
-}
-
-type ipAllowlistErrorResponse struct {
-	Message string `json:"message"`
-	Code    string `json:"code"`
-}
-
-const ipAllowlistBasePath = "/api/v2/account/ip-allowlist"
-
-func ipAllowlistRequest(client *Client, method, path string, body interface{}) (*http.Response, []byte, error) {
-	endpoint := fmt.Sprintf("%s%s", client.apiHost, path)
-	if !strings.HasPrefix(endpoint, "http") {
-		endpoint = "https://" + endpoint
-	}
-
-	var bodyReader io.Reader
-	if body != nil {
-		rawBody, err := json.Marshal(body)
-		if err != nil {
-			return nil, nil, fmt.Errorf("failed to marshal request body: %w", err)
-		}
-		bodyReader = bytes.NewBuffer(rawBody)
-	}
-
-	req, err := http.NewRequest(method, endpoint, bodyReader)
+// ipAllowlistBetaClient returns a beta-configured client for the IP
+// allowlist endpoints. The generated IPAllowlistBetaApi request builders
+// do not expose a per-request `.LDAPIVersion("beta")` setter, so we force
+// the `LD-API-Version: beta` header at the transport layer (see
+// betaVersionRoundTripper for why a default header is insufficient).
+func ipAllowlistBetaClient(c *Client) (*Client, error) {
+	beta, err := newBetaClient(c.apiKey, c.apiHost, false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to create request: %w", err)
+		return nil, err
 	}
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", client.apiKey)
-	req.Header.Set("LD-API-Version", "beta")
-
-	// Mutating calls serialise in-process so two test goroutines don't
-	// race the LD account allowlist version. GETs skip the mutex.
-	if ipAllowlistMethodMutates(method) {
-		ipAllowlistWriteMu.Lock()
-		defer ipAllowlistWriteMu.Unlock()
-	}
-
-	var resp *http.Response
-	err = client.withConcurrency(client.ctx, func() error {
-		resp, err = client.fallbackClient.Do(req)
-		return err
-	})
-	if err != nil {
-		return resp, nil, fmt.Errorf("request failed: %w", err)
-	}
-
-	respBody, err := io.ReadAll(resp.Body)
-	defer resp.Body.Close()
-	if err != nil {
-		return resp, nil, fmt.Errorf("failed to read response body: %w", err)
-	}
-
-	if resp.StatusCode >= 400 {
-		var apiErr ipAllowlistErrorResponse
-		if jsonErr := json.Unmarshal(respBody, &apiErr); jsonErr == nil && apiErr.Message != "" {
-			return resp, respBody, fmt.Errorf("API error (%d): %s", resp.StatusCode, apiErr.Message)
-		}
-		return resp, respBody, fmt.Errorf("API error (%d): %s", resp.StatusCode, string(respBody))
-	}
-
-	return resp, respBody, nil
+	forceBetaAPIVersion(beta.ld)
+	forceBetaAPIVersion(beta.ld404Retry)
+	return beta, nil
 }
 
-func getIpAllowlist(client *Client) (*ipAllowlistResponse, error) {
-	_, respBody, err := ipAllowlistRequest(client, http.MethodGet, ipAllowlistBasePath, nil)
+func getIpAllowlist(client *Client) (*ldapi.IpAllowlistResponse, error) {
+	beta, err := ipAllowlistBetaClient(client)
 	if err != nil {
 		return nil, err
 	}
 
-	var result ipAllowlistResponse
-	if err := json.Unmarshal(respBody, &result); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal IP allowlist response: %w", err)
+	var result *ldapi.IpAllowlistResponse
+	err = beta.withConcurrency(beta.ctx, func() error {
+		result, _, err = beta.ld.IPAllowlistBetaApi.GetIpAllowlist(beta.ctx).Execute()
+		return err
+	})
+	if err != nil {
+		return nil, handleLdapiErr(err)
 	}
-	return &result, nil
+	return result, nil
 }
 
-func createIpAllowlistEntry(client *Client, ipAddress string, description *string) (*ipAllowlistEntryResponse, error) {
-	reqBody := createIpAllowlistEntryRequest{
+func createIpAllowlistEntry(client *Client, ipAddress string, description *string) (*ldapi.IpAllowlistEntryResponse, error) {
+	beta, err := ipAllowlistBetaClient(client)
+	if err != nil {
+		return nil, err
+	}
+
+	reqBody := ldapi.CreateIpAllowlistEntryRequest{
 		IpAddress:   ipAddress,
 		Description: description,
 	}
 
-	_, respBody, err := ipAllowlistRequest(client, http.MethodPost, ipAllowlistBasePath, reqBody)
+	ipAllowlistWriteMu.Lock()
+	defer ipAllowlistWriteMu.Unlock()
+
+	var result *ldapi.IpAllowlistEntryResponse
+	err = beta.withConcurrency(beta.ctx, func() error {
+		result, _, err = beta.ld.IPAllowlistBetaApi.CreateIpAllowlistEntry(beta.ctx).
+			CreateIpAllowlistEntryRequest(reqBody).
+			Execute()
+		return err
+	})
+	if err != nil {
+		return nil, handleLdapiErr(err)
+	}
+	return result, nil
+}
+
+func patchIpAllowlistEntry(client *Client, id string, description string) (*ldapi.IpAllowlistEntryResponse, error) {
+	beta, err := ipAllowlistBetaClient(client)
 	if err != nil {
 		return nil, err
 	}
 
-	var result ipAllowlistEntryResponse
-	if err := json.Unmarshal(respBody, &result); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal IP allowlist entry response: %w", err)
-	}
-	return &result, nil
-}
-
-func patchIpAllowlistEntry(client *Client, id string, description string) (*ipAllowlistEntryResponse, error) {
-	path := fmt.Sprintf("%s/%s", ipAllowlistBasePath, id)
-	reqBody := patchIpAllowlistEntryRequest{
+	reqBody := ldapi.PatchIpAllowlistEntryRequest{
 		Description: description,
 	}
 
-	_, respBody, err := ipAllowlistRequest(client, http.MethodPatch, path, reqBody)
+	ipAllowlistWriteMu.Lock()
+	defer ipAllowlistWriteMu.Unlock()
+
+	var result *ldapi.IpAllowlistEntryResponse
+	err = beta.withConcurrency(beta.ctx, func() error {
+		result, _, err = beta.ld.IPAllowlistBetaApi.PatchIpAllowlistEntry(beta.ctx, id).
+			PatchIpAllowlistEntryRequest(reqBody).
+			Execute()
+		return err
+	})
+	if err != nil {
+		return nil, handleLdapiErr(err)
+	}
+	return result, nil
+}
+
+func deleteIpAllowlistEntry(client *Client, id string) error {
+	beta, err := ipAllowlistBetaClient(client)
+	if err != nil {
+		return err
+	}
+
+	ipAllowlistWriteMu.Lock()
+	defer ipAllowlistWriteMu.Unlock()
+
+	err = beta.withConcurrency(beta.ctx, func() error {
+		_, err = beta.ld.IPAllowlistBetaApi.DeleteIpAllowlistEntry(beta.ctx, id).Execute()
+		return err
+	})
+	if err != nil {
+		return handleLdapiErr(err)
+	}
+	return nil
+}
+
+func patchIpAllowlistConfig(client *Client, sessionEnabled, scopedEnabled *bool) (*ldapi.IpAllowlistResponse, error) {
+	beta, err := ipAllowlistBetaClient(client)
 	if err != nil {
 		return nil, err
 	}
 
-	var result ipAllowlistEntryResponse
-	if err := json.Unmarshal(respBody, &result); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal IP allowlist entry response: %w", err)
-	}
-	return &result, nil
-}
-
-func deleteIpAllowlistEntry(client *Client, id string) error {
-	path := fmt.Sprintf("%s/%s", ipAllowlistBasePath, id)
-	_, _, err := ipAllowlistRequest(client, http.MethodDelete, path, nil)
-	return err
-}
-
-func patchIpAllowlistConfig(client *Client, sessionEnabled, scopedEnabled *bool) (*ipAllowlistResponse, error) {
-	reqBody := patchIpAllowlistConfigRequest{
+	reqBody := ldapi.PatchIpAllowlistConfigRequest{
 		SessionAllowlistEnabled:  sessionEnabled,
 		ApiTokenAllowlistEnabled: scopedEnabled,
 	}
 
-	_, respBody, err := ipAllowlistRequest(client, http.MethodPatch, ipAllowlistBasePath, reqBody)
-	if err != nil {
-		return nil, err
-	}
+	ipAllowlistWriteMu.Lock()
+	defer ipAllowlistWriteMu.Unlock()
 
-	var result ipAllowlistResponse
-	if err := json.Unmarshal(respBody, &result); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal IP allowlist response: %w", err)
+	var result *ldapi.IpAllowlistResponse
+	err = beta.withConcurrency(beta.ctx, func() error {
+		result, _, err = beta.ld.IPAllowlistBetaApi.PatchIpAllowlistConfig(beta.ctx).
+			PatchIpAllowlistConfigRequest(reqBody).
+			Execute()
+		return err
+	})
+	if err != nil {
+		return nil, handleLdapiErr(err)
 	}
-	return &result, nil
+	return result, nil
 }
 
-func findIpAllowlistEntryByID(entries []ipAllowlistEntryResponse, id string) *ipAllowlistEntryResponse {
+func findIpAllowlistEntryByID(entries []ldapi.IpAllowlistEntryResponse, id string) *ldapi.IpAllowlistEntryResponse {
 	for _, entry := range entries {
-		if entry.ID == id {
+		if entry.Id == id {
 			return &entry
 		}
 	}

@@ -6,9 +6,9 @@ import (
 	"regexp"
 	"testing"
 
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/acctest"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
-	ldapi "github.com/launchdarkly/api-client-go/v22"
+	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
+	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	ldapi "github.com/launchdarkly/api-client-go/v23"
 	"github.com/stretchr/testify/require"
 )
 
@@ -103,7 +103,7 @@ func TestAccDataSourceSegment_noMatchReturnsError(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config:      fmt.Sprintf(testAccDataSourceSegment, segmentKey, projectKey),
@@ -169,7 +169,7 @@ func TestAccDataSourceSegment_exists(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config: fmt.Sprintf(testAccDataSourceSegment, segmentKey, projectKey),
@@ -232,7 +232,7 @@ func TestAccDataSourceSegment_UnboundedExists(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config: fmt.Sprintf(testAccDataSourceSegment, segmentKey, projectKey),
@@ -264,30 +264,24 @@ func TestAccDataSourceSegment_WithLinkedViews(t *testing.T) {
 	segmentKey := "test-segment"
 	resourceName := "data.launchdarkly_segment.test"
 
-	client, err := newClient(os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN), os.Getenv(LAUNCHDARKLY_API_HOST), false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
-	require.NoError(t, err)
-
-	members, _, err := client.ld.AccountMembersApi.GetMembers(client.ctx).Execute()
-	require.NoError(t, err)
-	require.True(t, len(members.Items) > 0, "This test requires at least one member in the account")
-
-	maintainerId := members.Items[0].Id
+	maintainerId := firstMemberIDForTest(t)
 
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config: fmt.Sprintf(`
 resource "launchdarkly_project" "test" {
 	name = "%s"
 	key  = "%s"
-	environments {
-		name  = "Test Environment"
-		key   = "test"
-		color = "000000"
+	environments = {
+		"test" = {
+			name  = "Test Environment"
+			color = "000000"
+		}
 	}
 }
 
@@ -311,10 +305,10 @@ resource "launchdarkly_segment" "test" {
 resource "launchdarkly_view_links" "test" {
 	project_key = launchdarkly_project.test.key
 	view_key    = launchdarkly_view.test.key
-	segments {
-		environment_id = launchdarkly_project.test.environments[0].client_side_id
+	segments = [{
+		environment_id = launchdarkly_project.test.environments["test"].client_side_id
 		segment_key    = launchdarkly_segment.test.key
-	}
+	}]
 }
 
 data "launchdarkly_segment" "test" {

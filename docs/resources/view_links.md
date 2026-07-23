@@ -6,17 +6,9 @@ description: |-
   Provides a LaunchDarkly view links resource for managing bulk resource linkage to views.
   -> Note: Views are available to customers on an Enterprise LaunchDarkly plan. To learn more, read about our pricing https://launchdarkly.com/pricing/. To upgrade your plan, contact LaunchDarkly Sales https://launchdarkly.com/contact-sales/.
   ~> Beta: This resource uses a beta API. Beta resources may change or be removed in future versions.
-  This resource allows you to efficiently link multiple flags and/or segments to a specific view. This is particularly useful for administrators organizing resources by team or deployment unit.
+  This resource allows you to efficiently link multiple flags and segments to a specific view. This is particularly useful for administrators organizing resources by team or deployment unit.
   -> Note: This resource manages ALL links for the specified resource types within a view. Adding or removing items from the configuration will link or unlink those resources accordingly.
-  Alternative Approach: view_keys on Individual Resources
-  For modular Terraform configurations where flags and segments are defined in separate files or modules, you can use the view_keys field directly on the resource instead of using this centralized view_links resource:
-  Feature Flags: Use the view_keys attribute on launchdarkly_feature_flag resourcesSegments: Use the view_keys attribute on launchdarkly_segment resources
-  When to use view_links (this resource):
-  Managing many flags/segments for a single view (bulk operations)Centralized view management across your infrastructureAdministrative view organization
-  When to use view_keys on individual resources:
-  Modular Terraform structures with separate files per flag/segmentEach team/module manages their own resourcesWant view membership defined alongside the resource
-  -> Warning: Do not use both view_links and view_keys to manage the same flag or segment's view associations. Mixed ownership can cause conflicts; when detected, Terraform logs a warning and reconciles to the managing resource's configured associations. Choose one approach per resource.
-  See the feature flag resource documentation and segment resource documentation for details on the view_keys attribute.
+  -> Warning: Do not use both view_links and view_keys to manage the same flag or segment's view associations. Mixed ownership can cause conflicts. When Terraform detects them, it logs a warning and reconciles to the managing resource's configured associations. Choose one approach per resource.
 ---
 
 # launchdarkly_view_links (Resource)
@@ -27,30 +19,11 @@ Provides a LaunchDarkly view links resource for managing bulk resource linkage t
 
 ~> **Beta:** This resource uses a beta API. Beta resources may change or be removed in future versions.
 
-This resource allows you to efficiently link multiple flags and/or segments to a specific view. This is particularly useful for administrators organizing resources by team or deployment unit.
+This resource allows you to efficiently link multiple flags and segments to a specific view. This is particularly useful for administrators organizing resources by team or deployment unit.
 
 -> **Note:** This resource manages ALL links for the specified resource types within a view. Adding or removing items from the configuration will link or unlink those resources accordingly.
 
-## Alternative Approach: view_keys on Individual Resources
-
-For modular Terraform configurations where flags and segments are defined in separate files or modules, you can use the `view_keys` field directly on the resource instead of using this centralized `view_links` resource:
-
-- **Feature Flags**: Use the `view_keys` attribute on `launchdarkly_feature_flag` resources
-- **Segments**: Use the `view_keys` attribute on `launchdarkly_segment` resources
-
-**When to use `view_links` (this resource):**
-- Managing many flags/segments for a single view (bulk operations)
-- Centralized view management across your infrastructure
-- Administrative view organization
-
-**When to use `view_keys` on individual resources:**
-- Modular Terraform structures with separate files per flag/segment
-- Each team/module manages their own resources
-- Want view membership defined alongside the resource
-
--> **Warning:** Do not use both `view_links` and `view_keys` to manage the same flag or segment's view associations. Mixed ownership can cause conflicts; when detected, Terraform logs a warning and reconciles to the managing resource's configured associations. Choose one approach per resource.
-
-See the feature flag resource documentation and segment resource documentation for details on the `view_keys` attribute.
+-> **Warning:** Do not use both `view_links` and `view_keys` to manage the same flag or segment's view associations. Mixed ownership can cause conflicts. When Terraform detects them, it logs a warning and reconciles to the managing resource's configured associations. Choose one approach per resource.
 
 ## Example Usage
 
@@ -72,19 +45,20 @@ resource "launchdarkly_view_links" "frontend_team" {
     "feature-filters",
     "feature-analytics",
     "feature-dark-mode",
-    # ... can easily scale to 100+ flags
+    # Add more flag keys here to scale beyond 100 flags
   ]
 
   # Link segments relevant to this team's view
-  segments {
-    environment_id = "507f1f77bcf86cd799439011"
-    segment_key    = "frontend-beta-users"
-  }
-
-  segments {
-    environment_id = "507f1f77bcf86cd799439011"
-    segment_key    = "premium-customers"
-  }
+  segments = [
+    {
+      environment_id = "507f1f77bcf86cd799439011"
+      segment_key    = "frontend-beta-users"
+    },
+    {
+      environment_id = "507f1f77bcf86cd799439011"
+      segment_key    = "premium-customers"
+    },
+  ]
 }
 
 # Example: Mobile team view with different flags
@@ -132,15 +106,16 @@ resource "launchdarkly_view_links" "backend_team" {
   ]
 
   # Link backend-specific segments across multiple environments
-  segments {
-    environment_id = "507f1f77bcf86cd799439011"
-    segment_key    = "high-volume-api-users"
-  }
-
-  segments {
-    environment_id = "507f1f77bcf86cd799439022" # Production environment
-    segment_key    = "database-migration-pilot"
-  }
+  segments = [
+    {
+      environment_id = "507f1f77bcf86cd799439011"
+      segment_key    = "high-volume-api-users"
+    },
+    {
+      environment_id = "507f1f77bcf86cd799439022" # Production environment
+      segment_key    = "database-migration-pilot"
+    },
+  ]
 }
 
 # Example: View with only segments (no flags)
@@ -148,20 +123,20 @@ resource "launchdarkly_view_links" "segments_only" {
   project_key = "my-project"
   view_key    = "user-segments-view"
 
-  segments {
-    environment_id = "507f1f77bcf86cd799439011"
-    segment_key    = "vip-customers"
-  }
-
-  segments {
-    environment_id = "507f1f77bcf86cd799439011"
-    segment_key    = "enterprise-customers"
-  }
-
-  segments {
-    environment_id = "507f1f77bcf86cd799439011"
-    segment_key    = "trial-users"
-  }
+  segments = [
+    {
+      environment_id = "507f1f77bcf86cd799439011"
+      segment_key    = "vip-customers"
+    },
+    {
+      environment_id = "507f1f77bcf86cd799439011"
+      segment_key    = "enterprise-customers"
+    },
+    {
+      environment_id = "507f1f77bcf86cd799439011"
+      segment_key    = "trial-users"
+    },
+  ]
 }
 ```
 
@@ -170,22 +145,31 @@ resource "launchdarkly_view_links" "segments_only" {
 
 ### Required
 
-- `project_key` (String) The project key. A change in this field will force the destruction of the existing resource and the creation of a new one.
-- `view_key` (String) The view key to link resources to. A change in this field will force the destruction of the existing resource and the creation of a new one.
+- `project_key` (String) The project key. A change in this field forces the destruction of the existing resource and the creation of a new one.
+- `view_key` (String) The view key to link resources to. A change in this field forces the destruction of the existing resource and the creation of a new one.
 
 ### Optional
 
 - `flags` (Set of String) A set of feature flag keys to link to the view.
-- `segments` (Block Set) A set of segments to link to the view. Each segment is identified by its environment ID and segment key. (see [below for nested schema](#nestedblock--segments))
+- `segments` (Attributes Set) A set of segments to link to the view. Each segment is identified by its environment ID and segment key. (see [below for nested schema](#nestedatt--segments))
 
 ### Read-Only
 
 - `id` (String) The ID of this resource.
 
-<a id="nestedblock--segments"></a>
+<a id="nestedatt--segments"></a>
 ### Nested Schema for `segments`
 
 Required:
 
 - `environment_id` (String) The environment ID of the segment.
 - `segment_key` (String) The key of the segment.
+
+## Import
+
+Import is supported using the following syntax:
+
+```shell
+# LaunchDarkly view links are imported using the resource's ID in the form `project_key/view_key`
+terraform import launchdarkly_view_links.example example-project/example-view-key
+```

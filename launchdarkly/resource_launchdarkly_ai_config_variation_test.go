@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/acctest"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
+	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
+	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/terraform"
 )
 
 const (
@@ -24,10 +24,10 @@ resource "launchdarkly_ai_config_variation" "test" {
 	config_key  = launchdarkly_ai_config.test.key
 	key         = "%s"
 	name        = "%s"
-	messages {
+	messages = [{
 		role    = "system"
 		content = "You are a helpful assistant."
-	}
+	}]
 }
 `
 
@@ -45,14 +45,13 @@ resource "launchdarkly_ai_config_variation" "test" {
 	config_key  = launchdarkly_ai_config.test.key
 	key         = "%s"
 	name        = "%s"
-	messages {
+	messages = [{
 		role    = "system"
 		content = "You are an expert assistant."
-	}
-	messages {
+	}, {
 		role    = "user"
 		content = "Hello!"
-	}
+	}]
 }
 `
 	testAccAIConfigVariationWithModelConfigKey = `
@@ -79,10 +78,10 @@ resource "launchdarkly_ai_config_variation" "test" {
 	key              = "%s"
 	name             = "Variation with model config"
 	model_config_key = launchdarkly_model_config.test.key
-	messages {
+	messages = [{
 		role    = "system"
 		content = "You are a helpful assistant."
-	}
+	}]
 }
 `
 
@@ -121,10 +120,10 @@ resource "launchdarkly_ai_config_variation" "test" {
 		modelName  = "gpt-4"
 		parameters = { temperature = 0.7 }
 	})
-	messages {
+	messages = [{
 		role    = "system"
 		content = "You are a helpful assistant."
-	}
+	}]
 }
 `
 
@@ -155,10 +154,10 @@ resource "launchdarkly_ai_config_variation" "test" {
 	key         = "%s"
 	name        = "Variation with tools"
 	tool_keys   = [launchdarkly_ai_tool.test.key]
-	messages {
+	messages = [{
 		role    = "system"
 		content = "You are a helpful assistant."
-	}
+	}]
 }
 `
 )
@@ -176,8 +175,8 @@ func TestAccAIConfigVariation_CreateAndUpdate(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers:    testAccProviders,
-		CheckDestroy: testAccCheckAIConfigVariationDestroy,
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckAIConfigVariationDestroy,
 		Steps: []resource.TestStep{
 			{
 				Config: withAITestProject(projectKey, fmt.Sprintf(testAccAIConfigVariationCreate, configKey, variationKey, variationName)),
@@ -227,9 +226,9 @@ func TestAccAIConfigVariation_WithModelConfigKey(t *testing.T) {
 	resourceName := "launchdarkly_ai_config_variation.test"
 
 	resource.Test(t, resource.TestCase{
-		PreCheck:     func() { testAccPreCheck(t) },
-		Providers:    testAccProviders,
-		CheckDestroy: testAccCheckAIConfigVariationDestroy,
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckAIConfigVariationDestroy,
 		Steps: []resource.TestStep{
 			{
 				Config: withAITestProject(projectKey, fmt.Sprintf(testAccAIConfigVariationWithModelConfigKey, modelConfigKey, configKey, variationKey)),
@@ -264,9 +263,9 @@ func TestAccAIConfigVariation_AgentMode(t *testing.T) {
 	resourceName := "launchdarkly_ai_config_variation.test"
 
 	resource.Test(t, resource.TestCase{
-		PreCheck:     func() { testAccPreCheck(t) },
-		Providers:    testAccProviders,
-		CheckDestroy: testAccCheckAIConfigVariationDestroy,
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckAIConfigVariationDestroy,
 		Steps: []resource.TestStep{
 			{
 				Config: withAITestProject(projectKey, fmt.Sprintf(testAccAIConfigVariationAgentMode, configKey, variationKey, variationName)),
@@ -306,9 +305,9 @@ func TestAccAIConfigVariation_WithToolKeys(t *testing.T) {
 	resourceName := "launchdarkly_ai_config_variation.test"
 
 	resource.Test(t, resource.TestCase{
-		PreCheck:     func() { testAccPreCheck(t) },
-		Providers:    testAccProviders,
-		CheckDestroy: testAccCheckAIConfigVariationDestroy,
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckAIConfigVariationDestroy,
 		Steps: []resource.TestStep{
 			{
 				Config: withAITestProject(projectKey, fmt.Sprintf(testAccAIConfigVariationWithToolKeys, toolKey, configKey, variationKey)),
@@ -330,9 +329,9 @@ func TestAccAIConfigVariation_WithInlineModel(t *testing.T) {
 	resourceName := "launchdarkly_ai_config_variation.test"
 
 	resource.Test(t, resource.TestCase{
-		PreCheck:     func() { testAccPreCheck(t) },
-		Providers:    testAccProviders,
-		CheckDestroy: testAccCheckAIConfigVariationDestroy,
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckAIConfigVariationDestroy,
 		Steps: []resource.TestStep{
 			{
 				Config: withAITestProject(projectKey, fmt.Sprintf(testAccAIConfigVariationWithInlineModel, configKey, variationKey)),
@@ -364,8 +363,8 @@ func testAccCheckAIConfigVariationExists(resourceName string) resource.TestCheck
 		configKey := rs.Primary.Attributes[AI_CONFIG_KEY]
 		variationKey := rs.Primary.Attributes[KEY]
 
-		client := testAccProvider.Meta().(*Client)
-		_, _, err := client.ld.AIConfigsApi.GetAIConfigVariation(client.ctx, projectKey, configKey, variationKey).Execute()
+		client := mustTestAccClient()
+		_, _, err := client.ld.AgentControlApi.GetAIConfigVariation(client.ctx, projectKey, configKey, variationKey).Execute()
 		if err != nil {
 			return fmt.Errorf("received an error getting AI config variation: %s", err)
 		}
@@ -374,7 +373,7 @@ func testAccCheckAIConfigVariationExists(resourceName string) resource.TestCheck
 }
 
 var testAccCheckAIConfigVariationDestroy = func(s *terraform.State) error {
-	client := testAccProvider.Meta().(*Client)
+	client := mustTestAccClient()
 
 	for _, rs := range s.RootModule().Resources {
 		if rs.Type != "launchdarkly_ai_config_variation" {
@@ -384,7 +383,7 @@ var testAccCheckAIConfigVariationDestroy = func(s *terraform.State) error {
 		configKey := rs.Primary.Attributes[AI_CONFIG_KEY]
 		variationKey := rs.Primary.Attributes[KEY]
 
-		_, res, err := client.ld.AIConfigsApi.GetAIConfigVariation(client.ctx, projectKey, configKey, variationKey).Execute()
+		_, res, err := client.ld.AgentControlApi.GetAIConfigVariation(client.ctx, projectKey, configKey, variationKey).Execute()
 		if isStatusNotFound(res) {
 			continue
 		}

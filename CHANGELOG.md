@@ -2,12 +2,385 @@
 
 All notable changes to the LaunchDarkly Terraform Provider will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org).
 
-## [2.30.1](https://github.com/launchdarkly/terraform-provider-launchdarkly/compare/v2.30.0...v2.30.1) (2026-07-14)
+## [3.0.1](https://github.com/launchdarkly/terraform-provider-launchdarkly/compare/v3.0.0...v3.0.1) (2026-07-22)
 
 
 ### Bug Fixes
 
-* [REL-14260] add note about global vs custom configs to AI model config documentation ([#485](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/485)) ([3a67936](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/3a67936b7ea046c6236f5741ddb27f0b88513a6e))
+* v3 migration gotchas for empty tags, FFE import ID order, and metric rename docs ([#509](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/509)) ([6e6a8ca](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/6e6a8ca8025bcc01bf6382a27398fbde187e2307))
+
+## [3.0.0](https://github.com/launchdarkly/terraform-provider-launchdarkly/compare/v2.30.1...v3.0.0) (2026-07-21)
+
+
+
+Version 3.0.0 completes the provider's migration to the HashiCorp Terraform Plugin Framework. The provider now serves the protocol version 6 plugin API, expresses every nested structure as a nested attribute instead of a configuration block, and removes the attributes that v2 deprecated. v3 also adds new resources, data sources, and a provider setting, and it ships a command-line tool that rewrites v2 configurations into v3 syntax.
+
+> **Before you upgrade:** your v2 configurations do not parse against v3 until you rewrite them from block syntax to nested attribute syntax. To convert them, read the [migration guide](https://registry.terraform.io/providers/launchdarkly/launchdarkly/latest/docs/guides/migrating-to-v3) and run the `migrate-tf-syntax` tool that ships with this release.
+
+### Summary
+
+- The provider is rebuilt on the Terraform Plugin Framework. The plugin protocol moves from version 5 to version 6.
+- Block syntax is replaced by nested attribute syntax across every resource and data source.
+- Single-object attributes (`client_side_availability`, `defaults`, `default_client_side_availability`, `fallthrough`, `approval_settings`, `segment_approval_settings`, `instructions`, `boolean_defaults`) use object syntax (`= { ... }`), not a single-element list.
+- Keyed collections become maps: `launchdarkly_project.environments` (by environment key), `launchdarkly_feature_flag.custom_properties` (by property key), `role_attributes` on `launchdarkly_team` / `launchdarkly_team_member` (a plain map of string lists), and `edges` on `launchdarkly_ai_agent_graph`. Adding or removing one entry no longer churns its siblings.
+- Eight deprecated attributes are removed, across five resources and their data sources (`launchdarkly_access_token`, `launchdarkly_custom_role`, `launchdarkly_feature_flag`, `launchdarkly_project`, and `launchdarkly_metric`).
+- State upgrades run automatically on first apply. No resource is destroyed or recreated.
+- v3 adds ten resources and nine data sources. It removes none.
+- v3 adds the `archive_flags_on_destroy` provider setting.
+- v3 ships `migrate-tf-syntax`, a configuration conversion tool, as a release asset.
+
+### Breaking changes
+
+#### Migration to the Terraform Plugin Framework
+
+The provider no longer uses the legacy Terraform SDK. Every nested block becomes a nested attribute, so you assign a single nested structure with `=` and you wrap a repeated structure in a list of objects.
+
+Here is an example:
+
+```hcl
+# v2 block syntax
+resource "launchdarkly_feature_flag" "example" {
+  variation_type = "boolean"
+  variations { value = "true" }
+  variations { value = "false" }
+}
+
+# v3 nested attribute syntax
+resource "launchdarkly_feature_flag" "example" {
+  variation_type = "boolean"
+  variations = [
+    { value = "true" },
+    { value = "false" },
+  ]
+}
+```
+
+This change affects every block in the provider. These are the affected attribute names:
+
+```
+approval_settings, boolean_defaults, clauses, client_side_availability,
+context_targets, custom_properties, default_client_side_availability,
+defaults, environments, excluded_contexts, fallthrough, included_contexts,
+inline_roles, instructions, linked_segments, maintainers, messages, policy,
+policy_statements, prerequisites, role_attributes, rules, segments,
+statements, targets, urls, variations
+```
+
+The `launchdarkly_audit_log_subscription` `config` block also moves to map attribute syntax, written as `config = { ... }`.
+
+#### Single nested attributes use object syntax
+
+Most blocks become a list of objects, but attributes that hold exactly one object use object syntax, a bare `{ ... }` with no surrounding brackets:
+
+| Resource or data source | Attribute |
+|---|---|
+| `launchdarkly_feature_flag` | `client_side_availability` |
+| `launchdarkly_feature_flag` | `defaults` |
+| `launchdarkly_project` | `default_client_side_availability` |
+| `launchdarkly_project` | `approval_settings` (inside each `environments` entry) |
+| `launchdarkly_feature_flag_environment` | `fallthrough` |
+| `launchdarkly_environment` | `approval_settings` |
+| `launchdarkly_environment` | `segment_approval_settings` |
+| `launchdarkly_flag_trigger` | `instructions` |
+| `launchdarkly_flag_templates` | `boolean_defaults` |
+
+```hcl
+# v2 block syntax
+resource "launchdarkly_feature_flag" "example" {
+  client_side_availability {
+    using_environment_id = true
+    using_mobile_key     = false
+  }
+}
+
+# v3 object syntax (no brackets)
+resource "launchdarkly_feature_flag" "example" {
+  client_side_availability = {
+    using_environment_id = true
+    using_mobile_key     = false
+  }
+}
+```
+
+The `migrate-tf-syntax` tool emits this object form automatically. When you read these attributes from a data source, drop the list index too: `data.launchdarkly_feature_flag.x.client_side_availability.using_environment_id`, not `...client_side_availability[0].using_environment_id`.
+
+#### Keyed collections become maps
+
+Four collections whose elements have a natural unique key are maps in v3, so adding, removing, or reordering one entry no longer forces a diff or a destructive plan on its siblings:
+
+| Resource | Attribute | Map key |
+|---|---|---|
+| `launchdarkly_project` | `environments` | environment `key` |
+| `launchdarkly_feature_flag` | `custom_properties` | custom property `key` |
+| `launchdarkly_team`, `launchdarkly_team_member` | `role_attributes` | role attribute key |
+| `launchdarkly_ai_agent_graph` | `edges` | edge `key` |
+
+`launchdarkly_project.environments` moves from an ordered list to a map keyed by the environment `key`. The `key` attribute also stays inside each object. It is Optional and Computed and always equals the map key, so references like `launchdarkly_project.example.environments["production"].key` keep working:
+
+```hcl
+# v2 block syntax              # v3 map syntax (keyed by env key)
+environments {                 environments = {
+  key   = "production"           "production" = {
+  name  = "Production"             name  = "Production"
+  color = "EEEEEE"                 color = "EEEEEE"
+}                                }
+                               }
+```
+
+The map is **authoritative**: an environment removed from the map is deleted on apply, and a project must declare at least one environment. To manage a project in Terraform but its environments elsewhere, add `lifecycle { ignore_changes = [environments] }`.
+
+~> **Warning:** Changing an environment's key, which is the map key, deletes that environment, including its SDK keys and all flag targeting, and creates a new one.
+
+Reference environments by key, not index: `environments["production"].client_side_id`, never `environments[0].client_side_id`. The `migrate-tf-syntax` tool rewrites the blocks and warns on each positional reference with the exact replacement.
+
+`custom_properties` follows the same object-map pattern: `custom_properties = { "my.key" = { name = ..., value = [...] } }`. `role_attributes` collapses further to a plain map of string lists, `role_attributes = { myAttribute = ["value1", "value2"] }`, matching both the LaunchDarkly API shape and the `launchdarkly_team_role_mapping` resource.
+
+#### Removed attributes
+
+v3 removes the attributes that v2 marked deprecated. The state upgrade migrates existing state for each one, and the `migrate-tf-syntax` tool rewrites your configuration. This table lists each removed attribute and its replacement:
+
+| Resource or data source | Removed attribute | Replacement |
+|---|---|---|
+| `launchdarkly_access_token` | `policy_statements` | `inline_roles` |
+| `launchdarkly_access_token` | `expire` | None. Remove it from your configuration. |
+| `launchdarkly_custom_role` | `policy` | `policy_statements` |
+| `launchdarkly_feature_flag` | `include_in_snippet` | `client_side_availability` |
+| `launchdarkly_project` resource | `include_in_snippet` | `default_client_side_availability` |
+| `launchdarkly_project` data source | `client_side_availability` | `default_client_side_availability` |
+| `launchdarkly_metric` | `is_active` | None. Remove it from your configuration. |
+| `launchdarkly_metric` resource and data source | `randomization_units` | `analysis_units` |
+
+#### Minimum versions
+
+- Terraform: the protocol version 6 plugin API requires Terraform 1.0 or later.
+- Go: building the provider from source requires Go 1.25.8, up from 1.25.5. This does not affect anyone who installs the provider from the Terraform Registry.
+
+### New features
+
+#### New provider setting
+
+v3 adds `archive_flags_on_destroy`. When you set it to `true`, removing a `launchdarkly_feature_flag` resource from your configuration archives the flag in LaunchDarkly instead of deleting it. The default is `false`, which preserves the v2 destroy behavior. This setting affects only `launchdarkly_feature_flag`.
+
+#### New resources and data sources
+
+This table lists the new resources, their data sources, and their API stability:
+
+| Resource | Data source | API stability |
+|---|---|---|
+| `launchdarkly_context_kind` | `launchdarkly_context_kind` | Stable API |
+| `launchdarkly_announcement` | None | Stable API |
+| `launchdarkly_oauth_client` | `launchdarkly_oauth_client` | Stable API |
+| `launchdarkly_ai_agent_graph` | `launchdarkly_ai_agent_graph` | Beta |
+| `launchdarkly_metric_group` | `launchdarkly_metric_group` | Beta |
+| `launchdarkly_release_policy` | `launchdarkly_release_policy` | Beta |
+| `launchdarkly_big_segment_store_integration` | `launchdarkly_big_segment_store_integration` | Beta |
+| `launchdarkly_flag_import_configuration` | `launchdarkly_flag_import_configuration` | Beta |
+| `launchdarkly_integration_delivery_configuration` | `launchdarkly_integration_delivery_configuration` | Beta |
+| `launchdarkly_sdk_key` | `launchdarkly_sdk_key` | Beta |
+
+> **Some new resources are in beta.** The `launchdarkly_ai_agent_graph`, `launchdarkly_metric_group`, `launchdarkly_release_policy`, `launchdarkly_big_segment_store_integration`, `launchdarkly_flag_import_configuration`, `launchdarkly_integration_delivery_configuration`, and `launchdarkly_sdk_key` resources are in beta. The functionality may change without notice or become backwards incompatible.
+
+#### Other enhancements
+
+- `launchdarkly_environment` gains a `segment_approval_settings` attribute. This attribute configures approval requirements for segment changes.
+- `launchdarkly_feature_flag` validates prerequisite-flag removals at plan time. If you remove a flag that another flag depends on, the provider surfaces a warning during plan instead of failing at apply.
+- `launchdarkly_feature_flag_environment` makes `off_variation` optional. In v2 it was required. Omitting it now leaves the off variation unset, matching the LaunchDarkly UI's "Not set" state, and removing a previously configured value clears it. Note the behavior change: when the off variation is unset and targeting is off, LaunchDarkly serves no variation, so SDKs return the application-provided default value and the evaluation carries a null variation index, which affects Data Export and Experimentation. Setting `off_variation = 0` remains a distinct, valid configuration. This resolves issue #482.
+
+### Bug fixes
+
+- The provider creates a segment correctly when the target environment requires approvals for segment changes. This resolves issue #370.
+- `launchdarkly_access_token` applies cleanly when you upgrade state for a token that set a role or custom roles without an inline policy. v2 stored an empty list where v3 stores null, and the update path now treats the two as equal.
+- `launchdarkly_ai_config_variation` preserves the configured `description` and `instructions`. The LaunchDarkly API does not return these write-only fields on a read, so the provider keeps your configured value instead of clearing it.
+- `launchdarkly_feature_flag` preserves variation `name` and `description` set outside Terraform. When your configuration omits them, the provider no longer clears them on apply.
+
+### Upgrade tooling
+
+v3 ships `migrate-tf-syntax`, a deterministic command-line tool that rewrites v2 block syntax to v3 nested attribute syntax and updates the removed attributes. The release publishes prebuilt binaries for macOS, Linux, and Windows on amd64 and arm64, as separate archives next to the provider. You can also run the tool with Go. To learn how to convert a configuration, read the [migration guide](https://registry.terraform.io/providers/launchdarkly/launchdarkly/latest/docs/guides/migrating-to-v3).
+
+## [3.0.0-beta.7](https://github.com/launchdarkly/terraform-provider-launchdarkly/compare/v3.0.0-beta.6...v3.0.0-beta.7) (2026-07-07)
+
+
+### ⚠ BREAKING CHANGES
+
+* adopt api-client-go v23 typed clients and field renames ([#494](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/494))
+
+### Features
+
+* adopt api-client-go v23 typed clients and field renames ([#494](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/494)) ([aefb9a3](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/aefb9a359c22858ed5cc8ae7770fe2e2a3b2ade9))
+* scaffold launchdarkly_sdk_key resource (autogen stage 2) ([#495](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/495)) ([7ab40a4](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/7ab40a41e4a23fdfb7f1be6b600a0b23b598874e))
+
+## [3.0.0-beta.6](https://github.com/launchdarkly/terraform-provider-launchdarkly/compare/v3.0.0-beta.5...v3.0.0-beta.6) (2026-07-06)
+
+
+### Bug Fixes
+
+* **release:** ship migrate-tf-syntax binaries in preview releases ([#491](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/491)) ([7a64955](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/7a6495556827d217262fd160438558e443fcc914))
+
+## [3.0.0-beta.5](https://github.com/launchdarkly/terraform-provider-launchdarkly/compare/v3.0.0-beta.4...v3.0.0-beta.5) (2026-07-02)
+
+
+### ⚠ BREAKING CHANGES
+
+* v3 RC prep — finish single-object and map conversions (REL-13579) ([#486](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/486))
+* `launchdarkly_project.environments` is now a map keyed by environment key (`environments = { "production" = { ... } }`) instead of an ordered list. The inner `key` attribute is retained (Optional+Computed) and must equal the map key. The map is authoritative: an environment removed from it is deleted on apply; use `lifecycle { ignore_changes = [environments] }` to manage environments outside Terraform. Rewrite configurations with `migrate-tf-syntax` (it converts the blocks and warns on positional `environments[N]` references with the exact replacement — it does not rewrite them). The v2 -> v3 state upgrade is automatic; `3.0.0-beta.1`–`beta.3` list-shaped state must be re-imported.
+* client_side_availability, defaults, default_client_side_availability, and fallthrough now use object syntax (`attr = {...}`) instead of a single-element list (`attr = [{...}]`).
+* **access_token:** remove deprecated expire and policy_statements ([#442](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/442))
+* **custom_role:** remove deprecated policy attribute ([#441](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/441))
+* **project:** remove deprecated include_in_snippet and DS client_side_availability ([#440](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/440))
+* **feature_flag:** remove deprecated include_in_snippet attribute ([#439](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/439))
+* **metric:** remove deprecated is_active attribute ([#438](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/438))
+* all user HCL using block syntax for approval_settings, variations, rules, targets, context_targets, prerequisites, fallthrough, client_side_availability, custom_properties, defaults, environments, policy, policy_statements, inline_roles, statements, role_attributes, included_contexts, excluded_contexts, urls, instructions, boolean_defaults, messages, segments, linked_segments must be rewritten to attribute syntax in v3.0.0.
+
+### Features
+
+* [bot] Regenerate integration configs ([#346](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/346)) ([15a0ef3](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/15a0ef3afb4d0e8ddcc9f9a0c8f68960b66819bf))
+* [bot] Regenerate integration configs ([#391](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/391)) ([b772383](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/b7723839b7c4a45f5010c9990c755e28f1272509))
+* [REL-12555] Release Views Resources from preview provider into main ([#400](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/400)) ([b718a8c](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/b718a8c489cff57fa5e75fd3b297d42cc69d7d8e))
+* [REL-12731] - add support for flag templates ([#403](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/403)) ([927d50b](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/927d50b7113dc21d3a2a4cc48ef686be2d7b49c5))
+* [REL-13052] add IP allowlist config and entry resources ([#411](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/411)) ([03a540b](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/03a540beb0dc302ad6d424ddf8ddbabd27cc78ae))
+* **access_token:** remove deprecated expire and policy_statements ([#442](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/442)) ([68cb932](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/68cb932441186502dee8a2f467678642c3183155))
+* add ai configs resources ([#404](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/404)) ([874bdec](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/874bdecc599212808089b9d5a0d6cced593d20c3))
+* add API-coverage drift report (autogen pipeline stage 1) ([#445](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/445)) ([13c2b21](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/13c2b21ab49aa6a8b0a533b9767571ec6622f2bd))
+* add deprecated field to feature flag schema ([#410](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/410)) ([87bee57](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/87bee579d3be89de5535a0d68228b2ce8d33b828))
+* add scaffold-resource workflow (autogen pipeline stage 2 v0) ([#446](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/446)) ([3025320](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/3025320681b776291cc48e0d04e83e9886043a79))
+* add segment_approval_settings to launchdarkly_environment ([#339](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/339)) ([#464](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/464)) ([b553252](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/b553252a406a9fe86a850e7526911b10be8e8862))
+* add state upgrade flow, add script to migrate between v2 and v3, add skill ([3694cee](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/3694cee50daaace3d4185faedf41b4001a5ce84e))
+* **autogen:** add stage-1.5 triage workflow for unclaimed operations ([#474](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/474)) ([32a91d0](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/32a91d0577b64b6aea048e555f606d918e0255ba))
+* **custom_role:** remove deprecated policy attribute ([#441](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/441)) ([66327fe](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/66327feaf176fdb83fdc016c1b3fb0e58ab30341))
+* expose max_concurrency as an optional provider attribute ([#449](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/449)) ([20fb75e](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/20fb75ee5217fd188c4b7647faddac72452a5641))
+* expose max_concurrency as an optional provider attribute (preview-v3) ([#450](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/450)) ([59ed7ad](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/59ed7ad45f9b5fbdefc766ee88531e0b05dcdc46))
+* **feature_flag_environment:** make off_variation optional to model "Not set" ([#482](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/482)) ([#483](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/483)) ([11782b0](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/11782b0b6d0bf8657d0666c8f85d3e4be10325c4))
+* **feature_flag:** remove deprecated include_in_snippet attribute ([#439](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/439)) ([2c88ac3](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/2c88ac32d29599395c1b44178ce4e4fbbb3dc99f))
+* key-address launchdarkly_project environments (REL-14236) ([779e297](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/779e29736e2c2c7114f4d9dcebbc4ed172e1637b))
+* **metric:** remove deprecated is_active attribute ([#438](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/438)) ([5ef4be1](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/5ef4be1f9948c060fdf18dc44f5bd85ea5c82bff))
+* migrate complex resources (Phase 4) ([#423](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/423)) ([17ebe3b](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/17ebe3bab443ed8b0d914e1b4660da8ab3ad8c58))
+* migrate data sources ([#418](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/418)) ([d4fc98b](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/d4fc98b98df8588cdc06f53f36f49a57e7a92199))
+* migrate medium resources (Phase 3) ([#422](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/422)) ([c6bbc04](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/c6bbc047cde52fb7e59f1c1efbf3cd0a7562e05e))
+* migrate simple resources ([#419](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/419)) ([008314b](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/008314bcd679a3867619ff257d0ce6e4c9b0e46b))
+* **migrate-tf-syntax:** auto-synthesize required boolean variations ([866faaa](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/866faaadaaf5907243ed2e6069b9573742bbc587))
+* net-new resource candidates in partial families (drift report) ([#458](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/458)) ([1fdf445](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/1fdf4458280697923291515f7e2682d1562f4f76))
+* operation-level coverage in API drift report (autogen pipeline stage 1b) ([#456](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/456)) ([52f5ec2](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/52f5ec2bdf33d456ca9411959d2fc0b0893b89c5))
+* per-family drift notifications + stage-3 verification agent ([#457](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/457)) ([7ec3be2](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/7ec3be28b032a96c9a15c0492c2a1a1d23d21f49))
+* plan-time validation for prerequisite flag destroy ([#372](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/372)) ([#430](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/430)) ([d796a1c](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/d796a1cc14f363532c0d580f3624e5d1abd29e4a))
+* port launchdarkly_context_kind to plugin framework ([#433](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/433)) ([db90c70](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/db90c70a608d1ecf39fdd4796aa5d728c37ea437))
+* port policy_statements_json to framework custom_role ([#432](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/432)) ([f392bf6](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/f392bf6fd1a8464f0139fd39598e6186bd2bc742))
+* port role_attributes on team_role_mapping to plugin framework ([#431](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/431)) ([b2f910f](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/b2f910f1dc7094fc6d8eb474d379838a0782eb9d))
+* **project:** remove deprecated include_in_snippet and DS client_side_availability ([#440](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/440)) ([b188650](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/b1886503551820aace0e5cfb634658e2b82055d8))
+* scaffold Announcements resource (autogen stage 2) ([#460](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/460)) ([6cd11bb](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/6cd11bbcf46a9a6376e225968e2993364add4a5e))
+* scaffold big segment store integration resource (autogen stage 2) ([#468](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/468)) ([a1b799e](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/a1b799ee0f1589a60987448c3bff560290410901))
+* scaffold Flag import configurations resource (autogen stage 2) ([#469](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/469)) ([2728f22](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/2728f2223e87d68f5bcd6af29a32e5acffd7a787))
+* scaffold integration delivery configurations (beta) resource (autogen stage 2) ([#467](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/467)) ([95cd2c0](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/95cd2c06616a827ca72f94f6666d6158a4fd2fcf))
+* scaffold launchdarkly_ai_agent_graph resource (autogen stage 2) ([#475](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/475)) ([8daf542](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/8daf542159d65d616f62b74be37915e78e94ab67))
+* scaffold Metrics (beta) resource (autogen stage 2) ([#453](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/453)) ([3972d91](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/3972d91dbd5f485bf40dde75e3724bb687b77ec7))
+* scaffold OAuth2 Clients resource (autogen stage 2) ([#466](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/466)) ([0cfb297](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/0cfb29706673b81953b8d429d923c2f3ac5a9e69))
+* scaffold release policies (beta) resource (autogen stage 2) ([#471](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/471)) ([e4cab28](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/e4cab28a645d482fde61a9a2ea220b6cac2774b3))
+* ship migrate-tf-syntax binaries and v3 migration guide ([#448](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/448)) ([644e5d8](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/644e5d8e43587d373015b33e3874c6d8e788c99f))
+* use object syntax for single-object flag/project attributes (REL-14237) ([#480](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/480)) ([821d574](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/821d574d276e136ef63c1ca30494c439fe16072e))
+* v3 RC prep — finish single-object and map conversions (REL-13579) ([#486](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/486)) ([21acf6d](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/21acf6dcd85712e92c68679dbd5bb04e77291996))
+
+
+### Bug Fixes
+
+* [REL-10234] Imiller/rel 10234/terraform flag resource does not smoothly switch between rollout weights and variation ([#366](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/366)) ([c42cfa3](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/c42cfa3ee258f33b5d5347db7602d2ef86bfff91))
+* [REL-11737] Add pagination to teams resource nested fields roles and maintainers ([#375](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/375)) ([a22a7a0](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/a22a7a0d28a7fcdf2ce3d66d3effba6601b1c8db))
+* [REL-8483] limit concurrency on the client to address 429/timeouts issue ([#338](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/338)) ([f38b51f](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/f38b51f5009c955e804dee9f4b5206a344ac41be))
+* disable Go cache in fork PR workflow to prevent cache poisoning ([#420](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/420)) ([6d0a5cc](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/6d0a5cc6be17adc93ca2b93a0b34e1cf8a828d39))
+* **driftreport:** repair mapping.yaml so the drift report parses ([#473](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/473)) ([4bc9db7](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/4bc9db7c6552eed9af8d6bb9511ba57d6fde61d4))
+* **feature_flag:** demote prereq destroy plan check to a warning ([#451](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/451)) ([ed6e6b0](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/ed6e6b0679d156ca2d78222bb3ccd5536e1e3573))
+* **feature_flag:** preserve variation name and description when omitted from config ([d99725b](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/d99725b18cca78b61d45b3a432a66e94ca937a65))
+* fix ip allowlist behaviour/tests ([#421](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/421)) ([5ddbb56](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/5ddbb5648211110e311652282afe7b25f0a107e3))
+* handle segment create under segment approvals ([#370](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/370)) ([#463](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/463)) ([80f478b](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/80f478b7051c49cc163d939eb375f0fe1e9f643c))
+* improve custom_properties hashing to resolve false / missing diffs ([#373](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/373)) ([ff36941](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/ff3694144eea34d0958b9d4b9d3d376378520f1c))
+* **lint:** lowercase capitalized error strings in team_member_helper (ST1005) ([#477](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/477)) ([a3725e4](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/a3725e4195470148a57e3d205da018d50b6a4ebb))
+* prevent nil-pointer panics in optional schema attributes and harden embedded-schema (Upjet) compatibility ([#387](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/387)) ([#415](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/415)) ([4844112](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/484411229387ba44ab40ce298f363e515eeb4cf8))
+* remove deprecated `generate_sdk_keys` field from beta views resource ([#412](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/412)) ([bdf36e4](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/bdf36e481e26a4576f19e0b82046571d6eaece30))
+
+## [3.0.0-beta.4](https://github.com/launchdarkly/terraform-provider-launchdarkly/compare/v3.0.0-beta.3...v3.0.0-beta.4) (2026-07-02)
+
+
+### ⚠ BREAKING CHANGES
+
+* v3 RC prep — finish single-object and map conversions (REL-13579) ([#486](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/486))
+* `launchdarkly_project.environments` is now a map keyed by environment key (`environments = { "production" = { ... } }`) instead of an ordered list. The inner `key` attribute is retained (Optional+Computed) and must equal the map key. The map is authoritative: an environment removed from it is deleted on apply; use `lifecycle { ignore_changes = [environments] }` to manage environments outside Terraform. Rewrite configurations with `migrate-tf-syntax` (it converts the blocks and warns on positional `environments[N]` references with the exact replacement — it does not rewrite them). The v2 -> v3 state upgrade is automatic; `3.0.0-beta.1`–`beta.3` list-shaped state must be re-imported.
+* client_side_availability, defaults, default_client_side_availability, and fallthrough now use object syntax (`attr = {...}`) instead of a single-element list (`attr = [{...}]`).
+
+### Features
+
+* **autogen:** add stage-1.5 triage workflow for unclaimed operations ([#474](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/474)) ([32a91d0](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/32a91d0577b64b6aea048e555f606d918e0255ba))
+* **feature_flag_environment:** make off_variation optional to model "Not set" ([#482](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/482)) ([#483](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/483)) ([11782b0](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/11782b0b6d0bf8657d0666c8f85d3e4be10325c4))
+* key-address launchdarkly_project environments (REL-14236) ([779e297](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/779e29736e2c2c7114f4d9dcebbc4ed172e1637b))
+* scaffold launchdarkly_ai_agent_graph resource (autogen stage 2) ([#475](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/475)) ([8daf542](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/8daf542159d65d616f62b74be37915e78e94ab67))
+* use object syntax for single-object flag/project attributes (REL-14237) ([#480](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/480)) ([821d574](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/821d574d276e136ef63c1ca30494c439fe16072e))
+* v3 RC prep — finish single-object and map conversions (REL-13579) ([#486](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/486)) ([21acf6d](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/21acf6dcd85712e92c68679dbd5bb04e77291996))
+
+
+### Bug Fixes
+
+* **driftreport:** repair mapping.yaml so the drift report parses ([#473](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/473)) ([4bc9db7](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/4bc9db7c6552eed9af8d6bb9511ba57d6fde61d4))
+* **lint:** lowercase capitalized error strings in team_member_helper (ST1005) ([#477](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/477)) ([a3725e4](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/a3725e4195470148a57e3d205da018d50b6a4ebb))
+
+## [3.0.0-beta.3](https://github.com/launchdarkly/terraform-provider-launchdarkly/compare/v3.0.0-beta.2...v3.0.0-beta.3) (2026-06-24)
+
+
+### Features
+
+* add API-coverage drift report (autogen pipeline stage 1) ([#445](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/445)) ([13c2b21](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/13c2b21ab49aa6a8b0a533b9767571ec6622f2bd))
+* add scaffold-resource workflow (autogen pipeline stage 2 v0) ([#446](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/446)) ([3025320](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/3025320681b776291cc48e0d04e83e9886043a79))
+* add segment_approval_settings to launchdarkly_environment ([#339](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/339)) ([#464](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/464)) ([b553252](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/b553252a406a9fe86a850e7526911b10be8e8862))
+* expose max_concurrency as an optional provider attribute (preview-v3) ([#450](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/450)) ([59ed7ad](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/59ed7ad45f9b5fbdefc766ee88531e0b05dcdc46))
+* **migrate-tf-syntax:** auto-synthesize required boolean variations ([866faaa](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/866faaadaaf5907243ed2e6069b9573742bbc587))
+* net-new resource candidates in partial families (drift report) ([#458](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/458)) ([1fdf445](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/1fdf4458280697923291515f7e2682d1562f4f76))
+* operation-level coverage in API drift report (autogen pipeline stage 1b) ([#456](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/456)) ([52f5ec2](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/52f5ec2bdf33d456ca9411959d2fc0b0893b89c5))
+* scaffold Announcements resource (autogen stage 2) ([#460](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/460)) ([6cd11bb](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/6cd11bbcf46a9a6376e225968e2993364add4a5e))
+* scaffold big segment store integration resource (autogen stage 2) ([#468](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/468)) ([a1b799e](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/a1b799ee0f1589a60987448c3bff560290410901))
+* scaffold Flag import configurations resource (autogen stage 2) ([#469](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/469)) ([2728f22](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/2728f2223e87d68f5bcd6af29a32e5acffd7a787))
+* scaffold integration delivery configurations (beta) resource (autogen stage 2) ([#467](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/467)) ([95cd2c0](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/95cd2c06616a827ca72f94f6666d6158a4fd2fcf))
+* scaffold Metrics (beta) resource (autogen stage 2) ([#453](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/453)) ([3972d91](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/3972d91dbd5f485bf40dde75e3724bb687b77ec7))
+* scaffold OAuth2 Clients resource (autogen stage 2) ([#466](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/466)) ([0cfb297](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/0cfb29706673b81953b8d429d923c2f3ac5a9e69))
+* scaffold release policies (beta) resource (autogen stage 2) ([#471](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/471)) ([e4cab28](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/e4cab28a645d482fde61a9a2ea220b6cac2774b3))
+* ship migrate-tf-syntax binaries and v3 migration guide ([#448](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/448)) ([644e5d8](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/644e5d8e43587d373015b33e3874c6d8e788c99f))
+
+
+### Bug Fixes
+
+* **feature_flag:** demote prereq destroy plan check to a warning ([#451](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/451)) ([ed6e6b0](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/ed6e6b0679d156ca2d78222bb3ccd5536e1e3573))
+* **feature_flag:** preserve variation name and description when omitted from config ([d99725b](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/d99725b18cca78b61d45b3a432a66e94ca937a65))
+* handle segment create under segment approvals ([#370](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/370)) ([#463](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/463)) ([80f478b](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/80f478b7051c49cc163d939eb375f0fe1e9f643c))
+
+## [3.0.0-beta.2](https://github.com/launchdarkly/terraform-provider-launchdarkly/compare/v3.0.0-beta.1...v3.0.0-beta.2) (2026-06-10)
+
+
+### ⚠ BREAKING CHANGES
+
+* **access_token:** remove deprecated expire and policy_statements ([#442](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/442))
+* **custom_role:** remove deprecated policy attribute ([#441](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/441))
+* **project:** remove deprecated include_in_snippet and DS client_side_availability ([#440](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/440))
+* **feature_flag:** remove deprecated include_in_snippet attribute ([#439](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/439))
+* **metric:** remove deprecated is_active attribute ([#438](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/438))
+
+### Features
+
+* **access_token:** remove deprecated expire and policy_statements ([#442](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/442)) ([68cb932](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/68cb932441186502dee8a2f467678642c3183155))
+* add state upgrade flow, add script to migrate between v2 and v3, add skill ([3694cee](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/3694cee50daaace3d4185faedf41b4001a5ce84e))
+* **custom_role:** remove deprecated policy attribute ([#441](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/441)) ([66327fe](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/66327feaf176fdb83fdc016c1b3fb0e58ab30341))
+* **feature_flag:** remove deprecated include_in_snippet attribute ([#439](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/439)) ([2c88ac3](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/2c88ac32d29599395c1b44178ce4e4fbbb3dc99f))
+* **metric:** remove deprecated is_active attribute ([#438](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/438)) ([5ef4be1](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/5ef4be1f9948c060fdf18dc44f5bd85ea5c82bff))
+* **project:** remove deprecated include_in_snippet and DS client_side_availability ([#440](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/440)) ([b188650](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/b1886503551820aace0e5cfb634658e2b82055d8))
+
+## [3.0.0-beta.1](https://github.com/launchdarkly/terraform-provider-launchdarkly/compare/v3.0.0-beta.0...v3.0.0-beta.1) (2026-05-22)
+
+First preview release of the v3.0 line.
+
+### ⚠ BREAKING CHANGES
+
+* The provider has been fully migrated to the [Terraform Plugin Framework](https://developer.hashicorp.com/terraform/plugin/framework). All schema previously expressed as configuration blocks (`variations`, `rules`, `targets`, `context_targets`, `prerequisites`, `fallthrough`, `client_side_availability`, `custom_properties`, `defaults`, `environments`, `policy`, `policy_statements`, `inline_roles`, `statements`, `role_attributes`, `included_contexts`, `excluded_contexts`, `urls`, `instructions`, `boolean_defaults`, `messages`, `segments`, `linked_segments`, `approval_settings`) is now expressed as nested attributes. Existing HCL must be updated from block syntax to attribute syntax before upgrading.
+
+### Highlights
+
+* Full migration from the legacy Terraform SDKv2 to the Terraform Plugin Framework across all resources and data sources.
+* All block-based schema replaced with nested attribute syntax, enabling clearer plan output, stronger validation, and better editor support.
+* Plan-time validation for prerequisite flag destroy, surfacing invalid removals before apply rather than at the API.
+* A handful of long-standing issues addressed along the way.
 
 ## [2.30.0](https://github.com/launchdarkly/terraform-provider-launchdarkly/compare/v2.29.0...v2.30.0) (2026-06-11)
 

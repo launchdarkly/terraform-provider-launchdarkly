@@ -2,18 +2,12 @@
 page_title: "launchdarkly_flag_templates Resource - launchdarkly"
 subcategory: ""
 description: |-
-  Provides a LaunchDarkly flag templates resource.
-  This resource allows you to manage the "Custom" flag template settings applied to new feature flags created within a LaunchDarkly project. LaunchDarkly projects include several built-in flag templates (Release, Kill switch, Experiment, Custom, Migration). This resource manages the Custom template only.
-  -> Note: Flag templates are a singleton per project. Destroying this resource only removes it from Terraform state. The flag templates will continue to exist in LaunchDarkly.
+  Manages the Custom flag-template settings for a LaunchDarkly project.
 ---
 
 # launchdarkly_flag_templates (Resource)
 
-Provides a LaunchDarkly flag templates resource.
-
-This resource allows you to manage the "Custom" flag template settings applied to new feature flags created within a LaunchDarkly project. LaunchDarkly projects include several built-in flag templates (Release, Kill switch, Experiment, Custom, Migration). This resource manages the Custom template only.
-
--> **Note:** Flag templates are a singleton per project. Destroying this resource only removes it from Terraform state. The flag templates will continue to exist in LaunchDarkly.
+Manages the Custom flag-template settings for a LaunchDarkly project.
 
 ## Example Usage
 
@@ -24,7 +18,7 @@ resource "launchdarkly_flag_templates" "example" {
   tags      = ["terraform"]
   temporary = false
 
-  boolean_defaults {
+  boolean_defaults = {
     true_display_name  = "True"
     false_display_name = "False"
     true_description   = ""
@@ -40,29 +34,29 @@ resource "launchdarkly_flag_templates" "example" {
 
 ### Required
 
-- `boolean_defaults` (Block List, Min: 1, Max: 1) A block describing the default boolean flag variation settings. (see [below for nested schema](#nestedblock--boolean_defaults))
-- `project_key` (String) The project key. A change in this field will force the destruction of the existing resource and the creation of a new one.
+- `boolean_defaults` (Attributes) Default boolean variation settings. (see [below for nested schema](#nestedatt--boolean_defaults))
+- `project_key` (String) The project key.
 
 ### Optional
 
-- `tags` (Set of String) Tags associated with your resource.
-- `temporary` (Boolean) Whether new flags should be temporary by default.
+- `tags` (Set of String)
+- `temporary` (Boolean)
 
 ### Read-Only
 
 - `id` (String) The ID of this resource.
 
-<a id="nestedblock--boolean_defaults"></a>
+<a id="nestedatt--boolean_defaults"></a>
 ### Nested Schema for `boolean_defaults`
 
 Required:
 
-- `false_description` (String) The description for the false variation.
-- `false_display_name` (String) The display name for the false variation.
-- `off_variation` (Number) The variation index of the boolean flag variation to serve when the flag's targeting is off.
-- `on_variation` (Number) The variation index of the boolean flag variation to serve when the flag's targeting is on.
-- `true_description` (String) The description for the true variation.
-- `true_display_name` (String) The display name for the true variation.
+- `false_description` (String)
+- `false_display_name` (String)
+- `off_variation` (Number)
+- `on_variation` (Number)
+- `true_description` (String)
+- `true_display_name` (String)
 
 ## Import
 

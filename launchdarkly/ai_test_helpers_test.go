@@ -22,10 +22,11 @@ func withAITestProject(projectKey, resource string) string {
 resource "launchdarkly_project" "test" {
 	key  = "%s"
 	name = "AI Config Test Project"
-	environments {
-		name  = "Test Environment"
-		key   = "test-env"
-		color = "000000"
+	environments = {
+		"test-env" = {
+			name  = "Test Environment"
+			color = "000000"
+		}
 	}
 }
 

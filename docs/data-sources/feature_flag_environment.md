@@ -28,19 +28,19 @@ data "launchdarkly_feature_flag_environment" "example" {
 ### Required
 
 - `env_key` (String) The environment key.
-- `flag_id` (String) The feature flag's unique `id` in the format `project_key/flag_key`.
+- `flag_id` (String) Flag ID in the format `project_key/flag_key`.
 
 ### Read-Only
 
-- `context_targets` (Set of Object) The set of nested blocks describing the individual targets for non-user context kinds for each variation. (see [below for nested schema](#nestedatt--context_targets))
-- `fallthrough` (List of Object) Nested block describing the default variation to serve if no `prerequisites`, `target`, or `rules` apply. (see [below for nested schema](#nestedatt--fallthrough))
-- `id` (String) The ID of this resource.
-- `off_variation` (Number) The index of the variation to serve if targeting is disabled.
-- `on` (Boolean) Whether targeting is enabled. Defaults to `false` if not set.
-- `prerequisites` (List of Object) List of nested blocks describing prerequisite feature flags rules. (see [below for nested schema](#nestedatt--prerequisites))
-- `rules` (List of Object) List of logical targeting rules. (see [below for nested schema](#nestedatt--rules))
-- `targets` (Set of Object) Set of nested blocks describing the individual user targets for each variation. (see [below for nested schema](#nestedatt--targets))
-- `track_events` (Boolean) Whether to send event data back to LaunchDarkly. Defaults to `false` if not set.
+- `context_targets` (Attributes Set) Individual context-kind targets per variation. (see [below for nested schema](#nestedatt--context_targets))
+- `fallthrough` (Attributes) Default variation served when no other targeting applies. (see [below for nested schema](#nestedatt--fallthrough))
+- `id` (String) Composite ID `project_key/env_key/flag_key`.
+- `off_variation` (Number) The index of the variation to serve when targeting is off. This is null when the environment has no off variation set (the UI's "Not set" state), which is distinct from a value of `0`.
+- `on` (Boolean) Whether targeting is enabled.
+- `prerequisites` (Attributes List) Prerequisite flag rules. (see [below for nested schema](#nestedatt--prerequisites))
+- `rules` (Attributes List) Logical targeting rules. (see [below for nested schema](#nestedatt--rules))
+- `targets` (Attributes Set) Individual user targets per variation. (see [below for nested schema](#nestedatt--targets))
+- `track_events` (Boolean) Whether to send event data back to LaunchDarkly.
 
 <a id="nestedatt--context_targets"></a>
 ### Nested Schema for `context_targets`
@@ -78,23 +78,23 @@ Read-Only:
 Read-Only:
 
 - `bucket_by` (String)
-- `clauses` (List of Object) (see [below for nested schema](#nestedobjatt--rules--clauses))
+- `clauses` (Attributes List) Clauses applied as the rule's logical condition. (see [below for nested schema](#nestedatt--rules--clauses))
 - `context_kind` (String)
 - `description` (String)
 - `rollout_weights` (List of Number)
 - `variation` (Number)
 
-<a id="nestedobjatt--rules--clauses"></a>
+<a id="nestedatt--rules--clauses"></a>
 ### Nested Schema for `rules.clauses`
 
 Read-Only:
 
-- `attribute` (String)
-- `context_kind` (String)
-- `negate` (Boolean)
-- `op` (String)
-- `value_type` (String)
-- `values` (List of String)
+- `attribute` (String) User attribute to operate on.
+- `context_kind` (String) Context kind for the clause.
+- `negate` (Boolean) Whether to negate the clause.
+- `op` (String) The operator associated with the rule clause. Available options are `in`, `endsWith`, `startsWith`, `matches`, `contains`, `lessThan`, `greaterThan`, `lessThanOrEqual`, `greaterThanOrEqual`, `before`, `after`, `segmentMatch`, `semVerEqual`, `semVerLessThan`, and `semVerGreaterThan`. To learn more, read [Operators](https://launchdarkly.com/docs/sdk/concepts/flag-evaluation-rules#operators).
+- `value_type` (String) Type of each clause value (boolean / string / number).
+- `values` (List of String) Values for the clause.
 
 
 

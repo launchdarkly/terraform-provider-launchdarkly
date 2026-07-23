@@ -5,10 +5,48 @@ import (
 	"regexp"
 	"testing"
 
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/acctest"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
+	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
+	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/terraform"
 )
+
+// importIgnoreApprovalSettingsKeys lists the approval_settings attribute
+// paths suppressed by ImportStateVerify. Import has no prior state, so
+// the Read path can't distinguish "user omitted approval_settings" from
+// "user supplied approval_settings = {...all defaults...}" and may
+// diverge from the user-config-anchored state.
+var importIgnoreApprovalSettingsKeys = []string{
+	"approval_settings.%",
+	"approval_settings.required",
+	"approval_settings.can_review_own_request",
+	"approval_settings.can_apply_declined_changes",
+	"approval_settings.min_num_approvals",
+	"approval_settings.service_kind",
+	"approval_settings.service_config.%",
+	"approval_settings.service_config.template",
+	"approval_settings.service_config.detail_column",
+	"approval_settings.auto_apply_approved_changes",
+	"approval_settings.required_approval_tags.#",
+	"approval_settings.required_approval_tags.0",
+	"approval_settings.required_approval_tags.1",
+}
+
+// importIgnoreSegmentApprovalSettingsKeys is the segment_approval_settings
+// analogue of importIgnoreApprovalSettingsKeys: Import has no prior state,
+// so the beta-read can't tell "user omitted segment_approval_settings" from
+// "user supplied segment_approval_settings = {...all defaults...}".
+var importIgnoreSegmentApprovalSettingsKeys = []string{
+	"segment_approval_settings.%",
+	"segment_approval_settings.required",
+	"segment_approval_settings.can_review_own_request",
+	"segment_approval_settings.can_apply_declined_changes",
+	"segment_approval_settings.min_num_approvals",
+	"segment_approval_settings.service_kind",
+	"segment_approval_settings.service_config.%",
+	"segment_approval_settings.auto_apply_approved_changes",
+	"segment_approval_settings.required_approval_tags.#",
+	"segment_approval_settings.required_approval_tags.0",
+}
 
 const (
 	testAccEnvironmentCreate = `
@@ -69,7 +107,7 @@ resource "launchdarkly_environment" "approvals_test" {
 	key = "approvals-test"
 	color = "ababab"
 	project_key = launchdarkly_project.test.key
-	approval_settings {
+	approval_settings = {
 		can_review_own_request = false
 		min_num_approvals = 2
 		required_approval_tags = ["approvals_required"]
@@ -82,7 +120,7 @@ resource "launchdarkly_environment" "approvals_test" {
 	key = "approvals-test"
 	color = "bababa"
 	project_key = launchdarkly_project.test.key
-	approval_settings {
+	approval_settings = {
 		required = true
 		can_review_own_request = true
 		min_num_approvals = 1
@@ -100,6 +138,43 @@ resource "launchdarkly_environment" "approvals_test" {
 }
 `
 
+	testAccEnvironmentWithSegmentApprovals = `
+resource "launchdarkly_environment" "segment_approvals_test" {
+	name = "Segment Approvals Test"
+	key = "seg-approvals-test"
+	color = "ababab"
+	project_key = launchdarkly_project.test.key
+	segment_approval_settings = {
+		can_review_own_request = false
+		min_num_approvals = 2
+		required_approval_tags = ["approvals_required"]
+	}
+}
+`
+	testAccEnvironmentWithSegmentApprovalsUpdate = `
+resource "launchdarkly_environment" "segment_approvals_test" {
+	name = "Segment Approvals Test 2.0"
+	key = "seg-approvals-test"
+	color = "bababa"
+	project_key = launchdarkly_project.test.key
+	segment_approval_settings = {
+		required = true
+		can_review_own_request = true
+		min_num_approvals = 1
+		can_apply_declined_changes = false
+	}
+}
+`
+
+	testAccEnvironmentWithSegmentApprovalsRemoved = `
+resource "launchdarkly_environment" "segment_approvals_test" {
+	name = "Segment Approvals Test 2.1"
+	key = "seg-approvals-test"
+	color = "bababa"
+	project_key = launchdarkly_project.test.key
+}
+`
+
 	// the template is hardcoded against the servicenow connection
 	// that is set up in our Terraform test account
 	testAccEnvironmentWithServiceNowApprovals = `
@@ -108,7 +183,7 @@ resource "launchdarkly_environment" "auto_apply_test" {
 	key = "auto-apply-test"
 	color = "ababab"
 	project_key = launchdarkly_project.test.key
-	approval_settings {
+	approval_settings = {
 		service_kind = "servicenow"
 		service_config = {
 			template = "b1c8d15147810200e90d87e8dee490f7"
@@ -129,7 +204,7 @@ resource "launchdarkly_environment" "auto_apply_test" {
 	key = "auto-apply-test"
 	color = "bababa"
 	project_key = launchdarkly_project.test.key
-	approval_settings {
+	approval_settings = {
 		service_kind = "servicenow"
 		service_config = {
 			template = "508e02ec47410200e90d87e8dee49058"
@@ -163,7 +238,7 @@ resource "launchdarkly_environment" "critical_env" {
   critical = false
   project_key = launchdarkly_project.test.key
 
-  approval_settings {
+  approval_settings = {
 		required = true
 		can_review_own_request = false
 		min_num_approvals = 3
@@ -180,7 +255,7 @@ func TestAccEnvironment_Create(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config: withRandomProject(projectKey, testAccEnvironmentCreate),
@@ -202,9 +277,10 @@ func TestAccEnvironment_Create(t *testing.T) {
 				),
 			},
 			{
-				ResourceName:      resourceName,
-				ImportState:       true,
-				ImportStateVerify: true,
+				ResourceName:            resourceName,
+				ImportState:             true,
+				ImportStateVerify:       true,
+				ImportStateVerifyIgnore: importIgnoreApprovalSettingsKeys,
 			},
 		},
 	})
@@ -217,7 +293,7 @@ func TestAccEnvironment_Update(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config: withRandomProject(projectKey, testAccEnvironmentCreate),
@@ -260,7 +336,7 @@ func TestAccEnvironment_RemoveAttributes(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config: withRandomProject(projectKey, testAccEnvironmentCreate),
@@ -303,7 +379,7 @@ func TestAccEnvironment_Invalid(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config:      withRandomProject(projectKey, testAccEnvironmentInvalid),
@@ -336,7 +412,7 @@ func TestAccEnvironment_WithApprovals(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config: withRandomProject(projectKey, testAccEnvironmentWithApprovals),
@@ -347,16 +423,17 @@ func TestAccEnvironment_WithApprovals(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, KEY, "approvals-test"),
 					resource.TestCheckResourceAttr(resourceName, COLOR, "ababab"),
 					resource.TestCheckResourceAttr(resourceName, PROJECT_KEY, projectKey),
-					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.can_review_own_request", "false"),
-					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.can_apply_declined_changes", "true"), // should default to true
-					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.min_num_approvals", "2"),
-					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.required_approval_tags.0", "approvals_required"),
+					resource.TestCheckResourceAttr(resourceName, "approval_settings.can_review_own_request", "false"),
+					resource.TestCheckResourceAttr(resourceName, "approval_settings.can_apply_declined_changes", "true"), // should default to true
+					resource.TestCheckResourceAttr(resourceName, "approval_settings.min_num_approvals", "2"),
+					resource.TestCheckResourceAttr(resourceName, "approval_settings.required_approval_tags.0", "approvals_required"),
 				),
 			},
 			{
-				ResourceName:      resourceName,
-				ImportState:       true,
-				ImportStateVerify: true,
+				ResourceName:            resourceName,
+				ImportState:             true,
+				ImportStateVerify:       true,
+				ImportStateVerifyIgnore: importIgnoreApprovalSettingsKeys,
 			},
 			{
 				Config: withRandomProject(projectKey, testAccEnvironmentWithApprovalsUpdate),
@@ -367,17 +444,18 @@ func TestAccEnvironment_WithApprovals(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, KEY, "approvals-test"),
 					resource.TestCheckResourceAttr(resourceName, COLOR, "bababa"),
 					resource.TestCheckResourceAttr(resourceName, PROJECT_KEY, projectKey),
-					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.required", "true"),
-					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.can_review_own_request", "true"),
-					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.can_apply_declined_changes", "false"),
-					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.min_num_approvals", "1"),
-					resource.TestCheckNoResourceAttr(resourceName, "approval_settings.0.required_approval_tags.#"),
+					resource.TestCheckResourceAttr(resourceName, "approval_settings.required", "true"),
+					resource.TestCheckResourceAttr(resourceName, "approval_settings.can_review_own_request", "true"),
+					resource.TestCheckResourceAttr(resourceName, "approval_settings.can_apply_declined_changes", "false"),
+					resource.TestCheckResourceAttr(resourceName, "approval_settings.min_num_approvals", "1"),
+					resource.TestCheckNoResourceAttr(resourceName, "approval_settings.required_approval_tags.#"),
 				),
 			},
 			{
-				ResourceName:      resourceName,
-				ImportState:       true,
-				ImportStateVerify: true,
+				ResourceName:            resourceName,
+				ImportState:             true,
+				ImportStateVerify:       true,
+				ImportStateVerifyIgnore: importIgnoreApprovalSettingsKeys,
 			},
 			{
 				Config: withRandomProject(projectKey, testAccEnvironmentWithApprovalsRemoved),
@@ -392,9 +470,10 @@ func TestAccEnvironment_WithApprovals(t *testing.T) {
 				),
 			},
 			{
-				ResourceName:      resourceName,
-				ImportState:       true,
-				ImportStateVerify: true,
+				ResourceName:            resourceName,
+				ImportState:             true,
+				ImportStateVerify:       true,
+				ImportStateVerifyIgnore: importIgnoreApprovalSettingsKeys,
 			},
 			{ // reset back to original state
 				Config: withRandomProject(projectKey, testAccEnvironmentWithApprovals),
@@ -405,18 +484,84 @@ func TestAccEnvironment_WithApprovals(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, KEY, "approvals-test"),
 					resource.TestCheckResourceAttr(resourceName, COLOR, "ababab"),
 					resource.TestCheckResourceAttr(resourceName, PROJECT_KEY, projectKey),
-					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.service_kind", "launchdarkly"),
-					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.can_review_own_request", "false"),
-					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.can_apply_declined_changes", "true"), // should default to true
-					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.min_num_approvals", "2"),
-					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.required_approval_tags.0", "approvals_required"),
-					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.auto_apply_approved_changes", "false"),
+					resource.TestCheckResourceAttr(resourceName, "approval_settings.service_kind", "launchdarkly"),
+					resource.TestCheckResourceAttr(resourceName, "approval_settings.can_review_own_request", "false"),
+					resource.TestCheckResourceAttr(resourceName, "approval_settings.can_apply_declined_changes", "true"), // should default to true
+					resource.TestCheckResourceAttr(resourceName, "approval_settings.min_num_approvals", "2"),
+					resource.TestCheckResourceAttr(resourceName, "approval_settings.required_approval_tags.0", "approvals_required"),
+					resource.TestCheckResourceAttr(resourceName, "approval_settings.auto_apply_approved_changes", "false"),
 				),
 			},
 			{
-				ResourceName:      resourceName,
-				ImportState:       true,
-				ImportStateVerify: true,
+				ResourceName:            resourceName,
+				ImportState:             true,
+				ImportStateVerify:       true,
+				ImportStateVerifyIgnore: importIgnoreApprovalSettingsKeys,
+			},
+		},
+	})
+}
+
+// TestAccEnvironment_WithSegmentApprovals exercises the segment_approval_settings
+// attribute, which is configured against LaunchDarkly's beta approvals API
+// (GET/PATCH /api/v2/approval-requests/projects/{projectKey}/settings) rather
+// than the environment patch used by flag approval_settings.
+func TestAccEnvironment_WithSegmentApprovals(t *testing.T) {
+	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	resourceName := "launchdarkly_environment.segment_approvals_test"
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck: func() {
+			testAccPreCheck(t)
+		},
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: withRandomProject(projectKey, testAccEnvironmentWithSegmentApprovals),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckProjectExists("launchdarkly_project.test"),
+					testAccCheckEnvironmentExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, NAME, "Segment Approvals Test"),
+					resource.TestCheckResourceAttr(resourceName, KEY, "seg-approvals-test"),
+					resource.TestCheckResourceAttr(resourceName, PROJECT_KEY, projectKey),
+					resource.TestCheckResourceAttr(resourceName, "segment_approval_settings.can_review_own_request", "false"),
+					resource.TestCheckResourceAttr(resourceName, "segment_approval_settings.can_apply_declined_changes", "true"), // should default to true
+					resource.TestCheckResourceAttr(resourceName, "segment_approval_settings.min_num_approvals", "2"),
+					resource.TestCheckResourceAttr(resourceName, "segment_approval_settings.required_approval_tags.0", "approvals_required"),
+				),
+			},
+			{
+				ResourceName:            resourceName,
+				ImportState:             true,
+				ImportStateVerify:       true,
+				ImportStateVerifyIgnore: importIgnoreSegmentApprovalSettingsKeys,
+			},
+			{
+				Config: withRandomProject(projectKey, testAccEnvironmentWithSegmentApprovalsUpdate),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckProjectExists("launchdarkly_project.test"),
+					testAccCheckEnvironmentExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, NAME, "Segment Approvals Test 2.0"),
+					resource.TestCheckResourceAttr(resourceName, "segment_approval_settings.required", "true"),
+					resource.TestCheckResourceAttr(resourceName, "segment_approval_settings.can_review_own_request", "true"),
+					resource.TestCheckResourceAttr(resourceName, "segment_approval_settings.can_apply_declined_changes", "false"),
+					resource.TestCheckResourceAttr(resourceName, "segment_approval_settings.min_num_approvals", "1"),
+					resource.TestCheckNoResourceAttr(resourceName, "segment_approval_settings.required_approval_tags.#"),
+				),
+			},
+			{
+				Config: withRandomProject(projectKey, testAccEnvironmentWithSegmentApprovalsRemoved),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckProjectExists("launchdarkly_project.test"),
+					testAccCheckEnvironmentExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, NAME, "Segment Approvals Test 2.1"),
+					resource.TestCheckNoResourceAttr(resourceName, fmt.Sprintf("%s.%%", SEGMENT_APPROVAL_SETTINGS)),
+				),
+			},
+			{
+				ResourceName:            resourceName,
+				ImportState:             true,
+				ImportStateVerify:       true,
+				ImportStateVerifyIgnore: importIgnoreSegmentApprovalSettingsKeys,
 			},
 		},
 	})
@@ -429,7 +574,7 @@ func TestAccEnvironment_WithApprovalIntegrations(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config: withRandomProject(projectKey, testAccEnvironmentWithServiceNowApprovals),
@@ -440,23 +585,24 @@ func TestAccEnvironment_WithApprovalIntegrations(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, KEY, "auto-apply-test"),
 					resource.TestCheckResourceAttr(resourceName, COLOR, "ababab"),
 					resource.TestCheckResourceAttr(resourceName, PROJECT_KEY, projectKey),
-					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.service_kind", "servicenow"),
-					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.service_config.template", "b1c8d15147810200e90d87e8dee490f7"),
-					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.service_config.detail_column", "justification"),
-					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.required", "false"),
-					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.can_review_own_request", "false"),
-					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.can_apply_declined_changes", "false"),
-					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.min_num_approvals", "1"),
-					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.required_approval_tags.#", "2"),
-					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.required_approval_tags.0", "approvals_required"),
-					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.required_approval_tags.1", "auto_apply"),
-					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.auto_apply_approved_changes", "true"),
+					resource.TestCheckResourceAttr(resourceName, "approval_settings.service_kind", "servicenow"),
+					resource.TestCheckResourceAttr(resourceName, "approval_settings.service_config.template", "b1c8d15147810200e90d87e8dee490f7"),
+					resource.TestCheckResourceAttr(resourceName, "approval_settings.service_config.detail_column", "justification"),
+					resource.TestCheckResourceAttr(resourceName, "approval_settings.required", "false"),
+					resource.TestCheckResourceAttr(resourceName, "approval_settings.can_review_own_request", "false"),
+					resource.TestCheckResourceAttr(resourceName, "approval_settings.can_apply_declined_changes", "false"),
+					resource.TestCheckResourceAttr(resourceName, "approval_settings.min_num_approvals", "1"),
+					resource.TestCheckResourceAttr(resourceName, "approval_settings.required_approval_tags.#", "2"),
+					resource.TestCheckResourceAttr(resourceName, "approval_settings.required_approval_tags.0", "approvals_required"),
+					resource.TestCheckResourceAttr(resourceName, "approval_settings.required_approval_tags.1", "auto_apply"),
+					resource.TestCheckResourceAttr(resourceName, "approval_settings.auto_apply_approved_changes", "true"),
 				),
 			},
 			{
-				ResourceName:      resourceName,
-				ImportState:       true,
-				ImportStateVerify: true,
+				ResourceName:            resourceName,
+				ImportState:             true,
+				ImportStateVerify:       true,
+				ImportStateVerifyIgnore: importIgnoreApprovalSettingsKeys,
 			},
 			{
 				Config: withRandomProject(projectKey, testAccEnvironmentWithServiceNowApprovalsUpdate),
@@ -467,21 +613,22 @@ func TestAccEnvironment_WithApprovalIntegrations(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, KEY, "auto-apply-test"),
 					resource.TestCheckResourceAttr(resourceName, COLOR, "bababa"),
 					resource.TestCheckResourceAttr(resourceName, PROJECT_KEY, projectKey),
-					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.service_kind", "servicenow"),
-					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.service_config.template", "508e02ec47410200e90d87e8dee49058"),
-					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.service_config.detail_column", "justification"),
-					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.required", "true"),
-					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.can_review_own_request", "true"),
-					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.can_apply_declined_changes", "true"),
-					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.min_num_approvals", "2"),
-					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.required_approval_tags.#", "0"),
-					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.auto_apply_approved_changes", "false"),
+					resource.TestCheckResourceAttr(resourceName, "approval_settings.service_kind", "servicenow"),
+					resource.TestCheckResourceAttr(resourceName, "approval_settings.service_config.template", "508e02ec47410200e90d87e8dee49058"),
+					resource.TestCheckResourceAttr(resourceName, "approval_settings.service_config.detail_column", "justification"),
+					resource.TestCheckResourceAttr(resourceName, "approval_settings.required", "true"),
+					resource.TestCheckResourceAttr(resourceName, "approval_settings.can_review_own_request", "true"),
+					resource.TestCheckResourceAttr(resourceName, "approval_settings.can_apply_declined_changes", "true"),
+					resource.TestCheckResourceAttr(resourceName, "approval_settings.min_num_approvals", "2"),
+					resource.TestCheckResourceAttr(resourceName, "approval_settings.required_approval_tags.#", "0"),
+					resource.TestCheckResourceAttr(resourceName, "approval_settings.auto_apply_approved_changes", "false"),
 				),
 			},
 			{
-				ResourceName:      resourceName,
-				ImportState:       true,
-				ImportStateVerify: true,
+				ResourceName:            resourceName,
+				ImportState:             true,
+				ImportStateVerify:       true,
+				ImportStateVerifyIgnore: importIgnoreApprovalSettingsKeys,
 			},
 		},
 	})
@@ -494,7 +641,7 @@ func TestAccEnvironment_Critical(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config: withRandomProject(projectKey, testAccEnvironmentCritical),
@@ -512,9 +659,10 @@ func TestAccEnvironment_Critical(t *testing.T) {
 				),
 			},
 			{
-				ResourceName:      resourceName,
-				ImportState:       true,
-				ImportStateVerify: true,
+				ResourceName:            resourceName,
+				ImportState:             true,
+				ImportStateVerify:       true,
+				ImportStateVerifyIgnore: importIgnoreApprovalSettingsKeys,
 			},
 			{
 				Config: withRandomProject(projectKey, testAccEnvironmentCriticalUpdate),
@@ -529,16 +677,17 @@ func TestAccEnvironment_Critical(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "tags.#", "2"),
 					resource.TestCheckResourceAttr(resourceName, "tags.1", "terraform"),
 					resource.TestCheckResourceAttr(resourceName, "tags.0", "staging"),
-					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.required", "true"),
-					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.can_review_own_request", "false"),
-					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.min_num_approvals", "3"),
-					resource.TestCheckResourceAttr(resourceName, "approval_settings.0.can_apply_declined_changes", "true"),
+					resource.TestCheckResourceAttr(resourceName, "approval_settings.required", "true"),
+					resource.TestCheckResourceAttr(resourceName, "approval_settings.can_review_own_request", "false"),
+					resource.TestCheckResourceAttr(resourceName, "approval_settings.min_num_approvals", "3"),
+					resource.TestCheckResourceAttr(resourceName, "approval_settings.can_apply_declined_changes", "true"),
 				),
 			},
 			{
-				ResourceName:      resourceName,
-				ImportState:       true,
-				ImportStateVerify: true,
+				ResourceName:            resourceName,
+				ImportState:             true,
+				ImportStateVerify:       true,
+				ImportStateVerifyIgnore: importIgnoreApprovalSettingsKeys,
 			},
 			{
 				Config: withRandomProject(projectKey, testAccEnvironmentCritical),
@@ -556,9 +705,10 @@ func TestAccEnvironment_Critical(t *testing.T) {
 				),
 			},
 			{
-				ResourceName:      resourceName,
-				ImportState:       true,
-				ImportStateVerify: true,
+				ResourceName:            resourceName,
+				ImportState:             true,
+				ImportStateVerify:       true,
+				ImportStateVerifyIgnore: importIgnoreApprovalSettingsKeys,
 			},
 		},
 	})
@@ -578,7 +728,7 @@ func testAccCheckEnvironmentExists(resourceName string) resource.TestCheckFunc {
 		if !ok {
 			return fmt.Errorf("project key not found: %s", resourceName)
 		}
-		client := testAccProvider.Meta().(*Client)
+		client := mustTestAccClient()
 		_, _, err := client.ld.EnvironmentsApi.GetEnvironment(client.ctx, projKey, envKey).Execute()
 		if err != nil {
 			return fmt.Errorf("received an error getting environment. %s", err)

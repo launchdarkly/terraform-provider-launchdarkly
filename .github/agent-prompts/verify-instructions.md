@@ -20,8 +20,8 @@ Environment already prepared for you:
 
 Do this, in order:
 
-1. REVIEW the scaffolded code on this branch. Run `git fetch origin preview-v3`
-   first, then `git diff origin/preview-v3...HEAD` to see only the scaffold, for
+1. REVIEW the scaffolded code on this branch. Run `git fetch origin main`
+   first, then `git diff origin/main...HEAD` to see only the scaffold, for
    correctness against CLAUDE.md and the vendored playbook at
    .claude/skills/terraform-provider-add-resource/ (SKILL.md + references/).
    Note real defects (schema/CRUD/helper/test/docs issues), not style nits.
@@ -42,8 +42,21 @@ Do this, in order:
    Then:
      terraform -chdir="$RUNNER_TEMP/verify" plan  -input=false
      terraform -chdir="$RUNNER_TEMP/verify" apply -input=false -auto-approve
-   A second `plan` afterwards MUST be empty (no perpetual diff). Do NOT commit the
-   scratch config or any terraform.tfstate*.
+   A second `plan` afterwards MUST be empty (no perpetual diff).
+
+   Then exercise the UPDATE path, not just create: mutate the config (change an
+   optional attribute; if the resource has a Map/List/Set nested attribute, ADD
+   an element — for a MapNestedAttribute add an entry with the inner `key`
+   omitted so it defaults from the map key) and apply + re-plan again; the
+   re-plan MUST also be empty. Element-adds to existing resources catch a class
+   of plan-consistency bugs (null inner key filled by Read) that create-only
+   verification provably misses. Do NOT commit the scratch config or any
+   terraform.tfstate*.
+
+   Beta-API caveat: a destroy+recreate at the SAME key can transiently 400
+   (e.g. "could not fetch Agent Graph flag ...") while the backend finishes
+   deleting the old entity. Retry the apply once after ~30s before treating it
+   as a real defect; report it as a flake if the retry succeeds.
 
 3. FIX as needed. If plan/apply or the empty-diff check fails, fix the resource
    implementation/tests/docs on the branch, re-run `go install .` (the dev

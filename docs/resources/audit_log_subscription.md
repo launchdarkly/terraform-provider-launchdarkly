@@ -19,7 +19,7 @@ This resource allows you to create and manage LaunchDarkly audit log subscriptio
 resource "launchdarkly_audit_log_subscription" "example" {
   integration_key = "datadog"
   name            = "Example Datadog Subscription"
-  config {
+  config = {
     api_key  = "yoursecretkey"
     host_url = "https://api.datadoghq.com"
   }
@@ -27,11 +27,11 @@ resource "launchdarkly_audit_log_subscription" "example" {
     "integrations",
     "terraform"
   ]
-  statements {
+  statements = [{
     actions   = ["*"]
     effect    = "allow"
     resources = ["proj/*:env/*:flag/*"]
-  }
+  }]
 }
 ```
 
@@ -40,11 +40,11 @@ resource "launchdarkly_audit_log_subscription" "example" {
 
 ### Required
 
-- `config` (Map of String) The set of configuration fields corresponding to the value defined for `integration_key`. Refer to the `formVariables` field in the corresponding `integrations/<integration_key>/manifest.json` file in [this repo](https://github.com/launchdarkly/integration-framework/tree/master/integrations) for a full list of fields for the integration you wish to configure. **IMPORTANT**: Please note that Terraform will only accept these in snake case, regardless of the case shown in the manifest.
-- `integration_key` (String) The integration key. Supported integration keys are `chronosphere`, `cloudtrail`, `datadog`, `dynatrace`, `dynatrace-v2`, `elastic`, `grafana`, `honeycomb`, `jira`, `kosli`, `last9`, `logdna`, `mattermost`, `msteams`, `new-relic-apm`, `pagerduty`, `signalfx`, `slack`, `splunk`, and `vercel-native`. A change in this field will force the destruction of the existing resource and the creation of a new one.
+- `config` (Map of String) The set of configuration fields corresponding to the value defined for `integration_key`. Refer to the `formVariables` field in the corresponding `integrations/<integration_key>/manifest.json` file in [this repo](https://github.com/launchdarkly/integration-framework/tree/master/integrations) for a full list of fields for the integration you wish to configure. **IMPORTANT**: Terraform accepts these only in snake case, regardless of the case shown in the manifest.
+- `integration_key` (String) The integration key. Supported integration keys are `chronosphere`, `cloudtrail`, `datadog`, `dynatrace`, `dynatrace-v2`, `elastic`, `grafana`, `honeycomb`, `jira`, `kosli`, `last9`, `logdna`, `mattermost`, `msteams`, `new-relic-apm`, `pagerduty`, `signalfx`, `slack`, `splunk`, and `vercel-native`. A change in this field forces the destruction of the existing resource and the creation of a new one.
 - `name` (String) A human-friendly name for your audit log subscription viewable from within the LaunchDarkly Integrations page.
-- `on` (Boolean) Whether or not you want your subscription enabled, i.e. to actively send events.
-- `statements` (Block List, Min: 1) A block representing the resources to which you wish to subscribe. (see [below for nested schema](#nestedblock--statements))
+- `on` (Boolean) Whether your subscription is enabled and actively sending events.
+- `statements` (Attributes List) The resources to which you wish to subscribe. (see [below for nested schema](#nestedatt--statements))
 
 ### Optional
 
@@ -54,7 +54,7 @@ resource "launchdarkly_audit_log_subscription" "example" {
 
 - `id` (String) The ID of this resource.
 
-<a id="nestedblock--statements"></a>
+<a id="nestedatt--statements"></a>
 ### Nested Schema for `statements`
 
 Required:
@@ -64,7 +64,7 @@ Required:
 Optional:
 
 - `actions` (List of String) The list of action specifiers defining the actions to which the statement applies.
-Either `actions` or `not_actions` must be specified. For a list of available actions read [Actions reference](https://docs.launchdarkly.com/home/account-security/custom-roles/actions#actions-reference).
+Either `actions` or `not_actions` must be specified. For a list of available actions read [Actions reference](https://launchdarkly.com/docs/home/account/roles/role-actions#actions-reference).
 - `not_actions` (List of String) The list of action specifiers defining the actions to which the statement does not apply.
 - `not_resources` (List of String) The list of resource specifiers defining the resources to which the statement does not apply.
 - `resources` (List of String) The list of resource specifiers defining the resources to which the statement applies.

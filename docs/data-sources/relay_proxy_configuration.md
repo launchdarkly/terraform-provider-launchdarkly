@@ -3,7 +3,7 @@
 page_title: "launchdarkly_relay_proxy_configuration Data Source - launchdarkly"
 subcategory: ""
 description: |-
-  Provides a LaunchDarkly Relay Proxy configuration data source for use with the Relay Proxy's automatic configuration feature https://docs.launchdarkly.com/home/relay-proxy/automatic-configuration.
+  Provides a LaunchDarkly Relay Proxy configuration data source for use with the Relay Proxy's automatic configuration feature https://launchdarkly.com/docs/sdk/relay-proxy/automatic-configuration.
   -> Note: Relay Proxy automatic configuration is available to customers on an Enterprise LaunchDarkly plan. To learn more, read about our pricing https://launchdarkly.com/pricing/. To upgrade your plan, contact LaunchDarkly Sales https://launchdarkly.com/contact-sales/.
   This data source allows you to retrieve Relay Proxy configuration information from your LaunchDarkly organization.
   -> Note: It is not possible for this data source to retrieve your Relay Proxy configuration's unique key. This is because the unique key is only exposed upon creation. If you need to reference the Relay Proxy configuration's unique key in your terraform config, use the launchdarkly_relay_proxy_configuration resource instead.
@@ -11,7 +11,7 @@ description: |-
 
 # launchdarkly_relay_proxy_configuration (Data Source)
 
-Provides a LaunchDarkly Relay Proxy configuration data source for use with the Relay Proxy's [automatic configuration feature](https://docs.launchdarkly.com/home/relay-proxy/automatic-configuration).
+Provides a LaunchDarkly Relay Proxy configuration data source for use with the Relay Proxy's [automatic configuration feature](https://launchdarkly.com/docs/sdk/relay-proxy/automatic-configuration).
 
 -> **Note:** Relay Proxy automatic configuration is available to customers on an Enterprise LaunchDarkly plan. To learn more, [read about our pricing](https://launchdarkly.com/pricing/). To upgrade your plan, [contact LaunchDarkly Sales](https://launchdarkly.com/contact-sales/).
 
@@ -42,15 +42,15 @@ https://app.launchdarkly.com/settings/relay/THIS_IS_YOUR_RELAY_PROXY_ID/edit
 
 - `display_key` (String) The last 4 characters of the Relay Proxy configuration's unique key.
 - `name` (String) The human-readable name for your Relay Proxy configuration.
-- `policy` (List of Object) The Relay Proxy configuration's rule policy block. This determines what content the Relay Proxy receives. To learn more, read [Understanding policies](https://docs.launchdarkly.com/home/members/role-policies#understanding-policies). (see [below for nested schema](#nestedatt--policy))
+- `policy` (Attributes List) The Relay Proxy configuration's rule policy block. This determines what content the Relay Proxy receives. To learn more, read [Understanding policies](https://launchdarkly.com/docs/home/account/roles/role-policies#understanding-policies). (see [below for nested schema](#nestedatt--policy))
 
 <a id="nestedatt--policy"></a>
 ### Nested Schema for `policy`
 
 Read-Only:
 
-- `actions` (List of String)
-- `effect` (String)
-- `not_actions` (List of String)
-- `not_resources` (List of String)
-- `resources` (List of String)
+- `actions` (List of String) The list of action specifiers defining the actions to which the statement applies.
+- `effect` (String) Either `allow` or `deny`. This argument defines whether the statement allows or denies access to the named resources and actions.
+- `not_actions` (List of String) The list of action specifiers defining the actions to which the statement does not apply.
+- `not_resources` (List of String) The list of resource specifiers defining the resources to which the statement does not apply.
+- `resources` (List of String) The list of resource specifiers defining the resources to which the statement applies.

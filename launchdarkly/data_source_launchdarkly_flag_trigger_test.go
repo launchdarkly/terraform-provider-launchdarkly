@@ -6,9 +6,9 @@ import (
 	"regexp"
 	"testing"
 
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/acctest"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
-	ldapi "github.com/launchdarkly/api-client-go/v22"
+	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
+	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	ldapi "github.com/launchdarkly/api-client-go/v23"
 	"github.com/stretchr/testify/require"
 )
 
@@ -57,7 +57,7 @@ func TestAccDataSourceFlagTrigger_noMatchReturnsError(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config: fmt.Sprintf(testAccDataSourceFlagTrigger, projectKey, flagKey, id),
@@ -94,7 +94,7 @@ func TestAccDataSourceFlagTrigger_exists(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config: fmt.Sprintf(testAccDataSourceFlagTrigger, projectKey, flagKey, *trigger.Id),
@@ -102,7 +102,7 @@ func TestAccDataSourceFlagTrigger_exists(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "id", *trigger.Id),
 					// resource.TestCheckResourceAttrSet(resourceName, "maintainer_id"),
 					resource.TestCheckResourceAttrSet(resourceName, "enabled"),
-					resource.TestCheckResourceAttr(resourceName, "instructions.0.kind", "turnFlagOff"),
+					resource.TestCheckResourceAttr(resourceName, "instructions.kind", "turnFlagOff"),
 					resource.TestCheckResourceAttr(resourceName, "project_key", projectKey),
 					resource.TestCheckResourceAttr(resourceName, "env_key", "production"),
 					resource.TestCheckResourceAttr(resourceName, "flag_key", flagKey),

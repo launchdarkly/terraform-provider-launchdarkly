@@ -6,9 +6,9 @@ import (
 	"regexp"
 	"testing"
 
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/acctest"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
-	ldapi "github.com/launchdarkly/api-client-go/v22"
+	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
+	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	ldapi "github.com/launchdarkly/api-client-go/v23"
 	"github.com/stretchr/testify/require"
 )
 
@@ -32,7 +32,7 @@ func TestAccDataSourceProject_noMatchReturnsError(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config:      fmt.Sprintf(testAccProjectBasic, projectKey),
@@ -95,7 +95,7 @@ func TestAccDataSourceProject_exists(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config: fmt.Sprintf(testAccProjectExists, projectKey),
@@ -106,11 +106,8 @@ func TestAccDataSourceProject_exists(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, NAME, project.Name),
 					resource.TestCheckResourceAttr(resourceName, ID, project.Id),
 					resource.TestCheckResourceAttr(resourceName, "tags.#", "1"),
-					// TODO: remove deprecated client_side_availability attribute tests pending next major release
-					resource.TestCheckResourceAttr(resourceName, "client_side_availability.0.using_environment_id", "false"),
-					resource.TestCheckResourceAttr(resourceName, "client_side_availability.0.using_mobile_key", "false"),
-					resource.TestCheckResourceAttr(resourceName, "default_client_side_availability.0.using_environment_id", "false"),
-					resource.TestCheckResourceAttr(resourceName, "default_client_side_availability.0.using_mobile_key", "false"),
+					resource.TestCheckResourceAttr(resourceName, "default_client_side_availability.using_environment_id", "false"),
+					resource.TestCheckResourceAttr(resourceName, "default_client_side_availability.using_mobile_key", "false"),
 				),
 			},
 		},

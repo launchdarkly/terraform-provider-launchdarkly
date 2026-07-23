@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/acctest"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
+	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
+	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/terraform"
 )
 
 const (
@@ -16,7 +16,7 @@ resource "launchdarkly_flag_trigger" "basic" {
 	env_key = "test"
 	flag_key = launchdarkly_feature_flag.trigger_flag.key
 	integration_key = "generic-trigger"
-	instructions {
+	instructions = {
 		kind = "turnFlagOn"
 	}
 	enabled = false
@@ -29,7 +29,7 @@ resource "launchdarkly_flag_trigger" "basic" {
 	env_key = "test"
 	flag_key = launchdarkly_feature_flag.trigger_flag.key
 	integration_key = "generic-trigger"
-	instructions {
+	instructions = {
 		kind = "turnFlagOff"
 	}
 	enabled = true
@@ -42,7 +42,7 @@ resource "launchdarkly_flag_trigger" "basic" {
 	env_key = "test"
 	flag_key = launchdarkly_feature_flag.trigger_flag.key
 	integration_key = "generic-trigger"
-	instructions {
+	instructions = {
 		kind = "turnFlagOff"
 	}
 	enabled = true
@@ -55,7 +55,7 @@ resource "launchdarkly_flag_trigger" "basic" {
 	env_key = "test"
 	flag_key = launchdarkly_feature_flag.trigger_flag.key
 	integration_key = "generic-trigger"
-	instructions {
+	instructions = {
 		kind = "turnFlagOff"
 	}
 	enabled = false
@@ -70,6 +70,10 @@ func withRandomFlag(randomFlag, resource string) string {
 			key = "%s"
 			name = "Basic feature flag"
 			variation_type = "boolean"
+			variations = [
+				{ value = "true" },
+				{ value = "false" },
+			]
 		}
 	
 	%s`, randomFlag, resource)
@@ -83,7 +87,7 @@ func TestAccFlagTrigger_CreateUpdate(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config: withRandomProject(projectKey, withRandomFlag(flagKey, testAccFlagTriggerCreate)),
@@ -94,7 +98,7 @@ func TestAccFlagTrigger_CreateUpdate(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, ENV_KEY, "test"),
 					resource.TestCheckResourceAttr(resourceName, FLAG_KEY, flagKey),
 					resource.TestCheckResourceAttr(resourceName, INTEGRATION_KEY, "generic-trigger"),
-					resource.TestCheckResourceAttr(resourceName, "instructions.0.kind", "turnFlagOn"),
+					resource.TestCheckResourceAttr(resourceName, "instructions.kind", "turnFlagOn"),
 					resource.TestCheckResourceAttr(resourceName, ENABLED, "false"),
 					resource.TestCheckResourceAttrSet(resourceName, TRIGGER_URL),
 					resource.TestCheckResourceAttrSet(resourceName, MAINTAINER_ID),
@@ -109,7 +113,7 @@ func TestAccFlagTrigger_CreateUpdate(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, ENV_KEY, "test"),
 					resource.TestCheckResourceAttr(resourceName, FLAG_KEY, flagKey),
 					resource.TestCheckResourceAttr(resourceName, INTEGRATION_KEY, "generic-trigger"),
-					resource.TestCheckResourceAttr(resourceName, "instructions.0.kind", "turnFlagOff"),
+					resource.TestCheckResourceAttr(resourceName, "instructions.kind", "turnFlagOff"),
 					resource.TestCheckResourceAttr(resourceName, ENABLED, "true"),
 					resource.TestCheckResourceAttrSet(resourceName, TRIGGER_URL),
 					resource.TestCheckResourceAttrSet(resourceName, MAINTAINER_ID),
@@ -124,7 +128,7 @@ func TestAccFlagTrigger_CreateUpdate(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, ENV_KEY, "test"),
 					resource.TestCheckResourceAttr(resourceName, FLAG_KEY, flagKey),
 					resource.TestCheckResourceAttr(resourceName, INTEGRATION_KEY, "generic-trigger"),
-					resource.TestCheckResourceAttr(resourceName, "instructions.0.kind", "turnFlagOff"),
+					resource.TestCheckResourceAttr(resourceName, "instructions.kind", "turnFlagOff"),
 					resource.TestCheckResourceAttr(resourceName, ENABLED, "false"),
 					resource.TestCheckResourceAttrSet(resourceName, TRIGGER_URL),
 					resource.TestCheckResourceAttrSet(resourceName, MAINTAINER_ID),
@@ -149,7 +153,7 @@ func TestAccFlagTrigger_CreateEnabled(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config: withRandomProject(projectKey, withRandomFlag(flagKey, testAccFlagTriggerCreateEnabled)),
@@ -160,7 +164,7 @@ func TestAccFlagTrigger_CreateEnabled(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, ENV_KEY, "test"),
 					resource.TestCheckResourceAttr(resourceName, FLAG_KEY, flagKey),
 					resource.TestCheckResourceAttr(resourceName, INTEGRATION_KEY, "generic-trigger"),
-					resource.TestCheckResourceAttr(resourceName, "instructions.0.kind", "turnFlagOff"),
+					resource.TestCheckResourceAttr(resourceName, "instructions.kind", "turnFlagOff"),
 					resource.TestCheckResourceAttr(resourceName, ENABLED, "true"),
 					resource.TestCheckResourceAttrSet(resourceName, TRIGGER_URL),
 					resource.TestCheckResourceAttrSet(resourceName, MAINTAINER_ID),
@@ -191,7 +195,7 @@ func testAccCheckFlagExists(projectKey, resourceName string) resource.TestCheckF
 			return fmt.Errorf("flag ID is not set correctly")
 		}
 
-		client := testAccProvider.Meta().(*Client)
+		client := mustTestAccClient()
 		_, _, err = client.ld.FeatureFlagsApi.GetFeatureFlag(client.ctx, projectKey, flagKey).Execute()
 		if err != nil {
 			return fmt.Errorf("received an error getting flag. %s", err)

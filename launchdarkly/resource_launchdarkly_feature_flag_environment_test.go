@@ -6,10 +6,10 @@ import (
 	"regexp"
 	"testing"
 
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/acctest"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
-	ldapi "github.com/launchdarkly/api-client-go/v22"
+	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
+	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/terraform"
+	ldapi "github.com/launchdarkly/api-client-go/v23"
 	"github.com/stretchr/testify/require"
 )
 
@@ -20,29 +20,27 @@ resource "launchdarkly_feature_flag" "basic" {
 	key = "basic-flag"
 	name = "Basic feature flag"
 	variation_type = "number"
-	variations {
+	variations = [{
 		value = 10
-	}
-	variations {
+	}, {
 		value = 20
-	}
-	variations {
+	}, {
 		value = 30
-	}
+	}]
 }
 
 resource "launchdarkly_feature_flag_environment" "basic" {
 	flag_id 		  = launchdarkly_feature_flag.basic.id
 	env_key 		  = "test"
 	on = false
-  	fallthrough {
+  	fallthrough = {
     	variation = 1
   	}
 	off_variation = 2
-	targets {
+	targets = [{
 		values    = ["user1"]
 		variation = 0
-	}
+	}]
 }
 `
 
@@ -52,42 +50,65 @@ resource "launchdarkly_feature_flag" "basic" {
 	key = "basic-flag"
 	name = "Basic feature flag"
 	variation_type = "number"
-	variations {
+	variations = [{
 		value = 10
-	}
-	variations {
+	}, {
 		value = 20
-	}
-	variations {
+	}, {
 		value = 30
-	}
+	}]
 }
 
 resource "launchdarkly_feature_flag_environment" "basic" {
 	flag_id 		  = launchdarkly_feature_flag.basic.id
 	env_key 		  = "test"
-	fallthrough {
+	fallthrough = {
 		variation = 0
 	}
 	off_variation = 2
 }
 `
 
-	testAccFeatureFlagEnvironmentUpdate = `	
+	// off_variation is omitted entirely. LaunchDarkly initialises the env's
+	// offVariation to the flag default (2) on flag creation, so the provider
+	// must actively remove it to model the UI's "Not set" state (issue #482).
+	testAccFeatureFlagEnvironmentNoOffVariation = `
 resource "launchdarkly_feature_flag" "basic" {
 	project_key = launchdarkly_project.test.key
 	key = "basic-flag"
 	name = "Basic feature flag"
 	variation_type = "number"
-	variations {
-		value = 0
-	}
-	variations {
+	variations = [{
 		value = 10
-	}
-	variations {
+	}, {
+		value = 20
+	}, {
 		value = 30
+	}]
+}
+
+resource "launchdarkly_feature_flag_environment" "basic" {
+	flag_id 		  = launchdarkly_feature_flag.basic.id
+	env_key 		  = "test"
+	fallthrough = {
+		variation = 0
 	}
+}
+`
+
+	testAccFeatureFlagEnvironmentUpdate = `
+resource "launchdarkly_feature_flag" "basic" {
+	project_key = launchdarkly_project.test.key
+	key = "basic-flag"
+	name = "Basic feature flag"
+	variation_type = "number"
+	variations = [{
+		value = 0
+	}, {
+		value = 10
+	}, {
+		value = 30
+	}]
 }
 
 resource "launchdarkly_feature_flag_environment" "basic" {
@@ -95,33 +116,32 @@ resource "launchdarkly_feature_flag_environment" "basic" {
 	env_key 		  = "test"
 	on = true
 	track_events = true
-	targets {
+	targets = [{
 		values    = ["user1", "user2"]
 		variation = 1
-	}
-	rules {
-		clauses {
+	}]
+	rules = [{
+		clauses = [{
 			attribute = "country"
 			op        = "startsWith"
 			values    = ["great", "amazing"]
 			negate    = false
-		}
+		}]
 		variation = 0
-	}
-	rules {
+	}, {
 		description = "names that start with 'h'"
-		clauses {
+		clauses = [{
 			attribute = "name"
 			op        = "startsWith"
 			values    = ["h"]
 			negate    = false
-		}
+		}]
 		rollout_weights = [90000, 10000, 0]
 		bucket_by = "email"
 		context_kind = "account"
-	}
+	}]
 
-	fallthrough {
+	fallthrough = {
 		rollout_weights = [60000, 40000, 0]
 		bucket_by = "email"
 		context_kind = "user"
@@ -136,19 +156,18 @@ resource "launchdarkly_feature_flag" "json" {
 	key            = "json-flag"
 	name           = "json flag"
 	variation_type = "json"
-	variations {
+	variations = [{
 		value = jsonencode({ "foo" : "bar" })
-	}
-	variations {
+	}, {
 		value = jsonencode({ "bar" : "foo", "bars" : "foos" })
-	}
+	}]
 }
 
 resource "launchdarkly_feature_flag_environment" "json_variations" {
 	flag_id = launchdarkly_feature_flag.json.id
 	env_key = "test"
 
-	fallthrough {
+	fallthrough = {
 		variation = 1
 	}
 	
@@ -162,6 +181,10 @@ resource "launchdarkly_feature_flag" "bool" {
 	key = "bool-flag"
 	name = "boolean flag"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 }
 
 resource "launchdarkly_feature_flag" "basic" {
@@ -169,26 +192,24 @@ resource "launchdarkly_feature_flag" "basic" {
 	key = "basic-flag"
 	name = "Basic feature flag"
 	variation_type = "number"
-	variations {
+	variations = [{
 		value = 10
-	}
-	variations {
+	}, {
 		value = 20
-	}
-	variations {
+	}, {
 		value = 30
-	}
+	}]
 }
 
 resource "launchdarkly_feature_flag_environment" "prereq" {
 	flag_id 		  = launchdarkly_feature_flag.basic.id
 	env_key 		  = "test"
 	on = true
-	prerequisites {
+	prerequisites = [{
 		flag_key = launchdarkly_feature_flag.bool.key
 		variation = 0
-	}
-	fallthrough {
+	}]
+	fallthrough = {
 		variation = 1
 	}
 	off_variation = 0
@@ -201,6 +222,10 @@ resource "launchdarkly_feature_flag" "bool" {
 	key = "bool-flag"
 	name = "boolean flag"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 }
 
 resource "launchdarkly_feature_flag" "basic" {
@@ -208,21 +233,19 @@ resource "launchdarkly_feature_flag" "basic" {
 	key = "basic-flag"
 	name = "Basic feature flag"
 	variation_type = "number"
-	variations {
+	variations = [{
 		value = 10
-	}
-	variations {
+	}, {
 		value = 20
-	}
-	variations {
+	}, {
 		value = 30
-	}
+	}]
 }
 
 resource "launchdarkly_feature_flag_environment" "prereq" {
 	flag_id 		  = launchdarkly_feature_flag.basic.id
 	env_key 		  = "test"
-	fallthrough {
+	fallthrough = {
 		variation = 1
 	}
 	off_variation = 0
@@ -235,23 +258,27 @@ resource "launchdarkly_feature_flag" "bool_flag" {
 	key = "bool-flag"
 	name = "boolean flag"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 }
 
 resource "launchdarkly_feature_flag_environment" "bool_clause" {
 	flag_id 		  = launchdarkly_feature_flag.bool_flag.id
 	env_key 		  = "test"
 	on = true
-	rules {
-		clauses {
+	rules = [{
+		clauses = [{
 			attribute  = "is_vip"
 			op         = "startsWith"
 			values     = [true]
 			value_type = "boolean"
 			negate     = false
-		}
+		}]
 		variation = 0
-	}
-	fallthrough {
+	}]
+	fallthrough = {
 		variation = 0
 	}
 	off_variation = 1
@@ -264,24 +291,28 @@ resource "launchdarkly_feature_flag" "bool_flag" {
 	key = "bool-flag"
 	name = "boolean flag"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 }
 
 resource "launchdarkly_feature_flag_environment" "bool_clause" {
 	flag_id 		  = launchdarkly_feature_flag.bool_flag.id
 	env_key 		  = "test"
 	on = true
-	rules {
-		clauses {
+	rules = [{
+		clauses = [{
 			attribute  = "is_vip"
 			op         = "startsWith"
 			values     = [true]
 			value_type = "boolean"
 			negate     = false
-		}
+		}]
 		rollout_weights = [60000, 40000]
 		bucket_by = "email"
-	}
-	fallthrough {
+	}]
+	fallthrough = {
 		variation = 0
 	}
 	off_variation = 1
@@ -294,23 +325,27 @@ resource "launchdarkly_feature_flag" "bool_flag" {
 	key = "bool-flag"
 	name = "boolean flag"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 }
 
 resource "launchdarkly_feature_flag_environment" "number_clause" {
 	flag_id 		  = launchdarkly_feature_flag.bool_flag.id
 	env_key 		  = "test"
 	on = true
-	rules {
-		clauses {
+	rules = [{
+		clauses = [{
 			attribute  = "answer"
 			op         = "in"
 			values     = [42,84]
 			value_type = "number"
 			negate     = false
-		}
+		}]
 		variation = 0
-	}
-	fallthrough {
+	}]
+	fallthrough = {
 		variation = 0
 	}
 	off_variation = 1
@@ -323,15 +358,13 @@ resource "launchdarkly_feature_flag" "basic" {
 	key = "basic-flag"
 	name = "Basic feature flag"
 	variation_type = "number"
-	variations {
+	variations = [{
 		value = 10
-	}
-	variations {
+	}, {
 		value = 20
-	}
-	variations {
+	}, {
 		value = 30
-	}
+	}]
 }
 
 resource "launchdarkly_feature_flag_environment" "invalid_bucket_by" {
@@ -339,7 +372,7 @@ resource "launchdarkly_feature_flag_environment" "invalid_bucket_by" {
 	env_key 		  = "test"
 	on = true
 	  
-	fallthrough {
+	fallthrough = {
 		bucket_by = "email"
 	}
 	off_variation = 0
@@ -352,14 +385,13 @@ resource "launchdarkly_feature_flag" "rollout" {
 	key            = "bool-flag"
 	name           = "Basic boolean flag"
 	variation_type = "boolean"
-  variations {
+  variations = [{
     value = true
-  }
-  variations {
+  }, {
     value = false
-  }
+  }]
 
-  defaults {
+  defaults = {
     on_variation  = 1
     off_variation = 0
   }
@@ -369,16 +401,16 @@ resource "launchdarkly_feature_flag_environment" "rollout" {
 	flag_id = launchdarkly_feature_flag.rollout.id
 	env_key = "test"
 	on      = true	  
-	rules {
-		clauses {
+	rules = [{
+		clauses = [{
 			attribute = "country"
 			op        = "startsWith"
 			values    = ["aus", "nz", "united"]
 			negate    = false
-		}
+		}]
 		variation = 0
-	}
-	fallthrough {
+	}]
+	fallthrough = {
 		variation       = 0
 		rollout_weights = [60000, 40000]
 		bucket_by       = "country"
@@ -394,14 +426,13 @@ resource "launchdarkly_feature_flag" "rollout" {
 	key            = "bool-flag"
 	name           = "Basic boolean flag"
 	variation_type = "boolean"
-  variations {
+  variations = [{
     value = true
-  }
-  variations {
+  }, {
     value = false
-  }
+  }]
 
-  defaults {
+  defaults = {
     on_variation  = 1
     off_variation = 0
   }
@@ -411,16 +442,16 @@ resource "launchdarkly_feature_flag_environment" "rollout" {
 	flag_id = launchdarkly_feature_flag.rollout.id
 	env_key = "test"
 	on      = true	  
-	rules {
-		clauses {
+	rules = [{
+		clauses = [{
 			attribute = "country"
 			op        = "startsWith"
 			values    = ["aus", "us", "united"]
 			negate    = false
-		}
+		}]
 		variation = 0
-	}
-	fallthrough {
+	}]
+	fallthrough = {
 		variation       = 0
 		rollout_weights = [60000, 40000]
 		bucket_by       = "country"
@@ -436,32 +467,30 @@ resource "launchdarkly_feature_flag" "basic" {
 	key = "basic-flag"
 	name = "Basic feature flag"
 	variation_type = "number"
-	variations {
+	variations = [{
 		value = 10
-	}
-	variations {
+	}, {
 		value = 20
-	}
-	variations {
+	}, {
 		value = 30
-	}
+	}]
 }
 
 resource "launchdarkly_feature_flag_environment" "invalid_bucket_by" {
 	flag_id 		  = launchdarkly_feature_flag.basic.id
 	env_key 		  = "test"
 	on = true	  
-	rules {
-		clauses {
+	rules = [{
+		clauses = [{
 			attribute = "name"
 			op        = "startsWith"
 			values    = ["h"]
 			negate    = false
-		}
+		}]
 		variation = 0
 		bucket_by = "name"
-	}
-	fallthrough {
+	}]
+	fallthrough = {
 		variation = 0
 	}
 	off_variation = 1
@@ -474,6 +503,10 @@ resource "launchdarkly_feature_flag" "context_test" {
 	key = "test-flag"
 	name = "Context Kind Test Flag"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 }
 
 resource "launchdarkly_feature_flag_environment" "custom_context" {
@@ -481,21 +514,20 @@ resource "launchdarkly_feature_flag_environment" "custom_context" {
 	env_key 		  = "test"
 	on = true
 	off_variation = 0
-	targets {
+	targets = [{
 		values    = ["user1", "user2"]
 		variation = 1
-	}
-	context_targets {
+	}]
+	context_targets = [{
 		values = ["account1", "account2"]
 		variation = 0
 		context_kind = "%s"
-	}
-	context_targets {
+	}, {
 		values = ["other1", "other2"]
 		variation = 1
 		context_kind = "%s"
-	}
-	fallthrough {
+	}]
+	fallthrough = {
 		variation = 0
 	}
 }
@@ -507,6 +539,10 @@ resource "launchdarkly_feature_flag" "context_test" {
 	key = "test-flag"
 	name = "Context Kind Test Flag"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 }
 
 resource "launchdarkly_feature_flag_environment" "custom_context" {
@@ -514,20 +550,19 @@ resource "launchdarkly_feature_flag_environment" "custom_context" {
 	env_key 		  = "test"
 	on = true
 	off_variation = 0
-	targets {
+	targets = [{
 		values    = ["user1"]
 		variation = 0
-	}
-	targets {
+	}, {
 		values    = ["user2"]
 		variation = 1
-	}
-	context_targets {
+	}]
+	context_targets = [{
 		values = ["account1"]
 		variation = 1
 		context_kind = "%s"
-	}
-	fallthrough {
+	}]
+	fallthrough = {
 		variation = 0
 	}
 }
@@ -539,6 +574,10 @@ resource "launchdarkly_feature_flag" "context_test" {
 	key = "test-flag"
 	name = "Context Kind Test Flag"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 }
 
 resource "launchdarkly_feature_flag_environment" "custom_context" {
@@ -546,20 +585,22 @@ resource "launchdarkly_feature_flag_environment" "custom_context" {
 	env_key 		  = "test"
 	on = true
 	off_variation = 0
-	targets {
-		values    = ["user2"]
-		variation = 1
-	}
-	context_targets {
+	targets = [
+		{
+			values    = ["user1"]
+			variation = 0
+		},
+		{
+			values    = ["user2"]
+			variation = 1
+		},
+	]
+	context_targets = [{
 		values = ["account1"]
 		variation = 1
 		context_kind = "%s"
-	}
-	targets {
-		values    = ["user1"]
-		variation = 0
-	}
-	fallthrough {
+	}]
+	fallthrough = {
 		variation = 0
 	}
 }
@@ -571,6 +612,10 @@ resource "launchdarkly_feature_flag" "context_test" {
 	key = "test-flag"
 	name = "Context Kind Test Flag"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 }
 
 resource "launchdarkly_feature_flag_environment" "rules_custom_context" {
@@ -578,23 +623,22 @@ resource "launchdarkly_feature_flag_environment" "rules_custom_context" {
 	env_key 		  = "production"
 	on = false
 	off_variation = 1
-	rules {
-		clauses {
+	rules = [{
+		clauses = [{
 			attribute = "name"
 			op = "startsWith"
 			values = ["X", "O"]
 			negate = true
-		}
-		clauses {
+		}, {
 			attribute = "account_type"
 			op = "matches"
 			values = ["professional", "enterprise"]
 			negate = false
 			context_kind = "%s"
-		}
+		}]
 		variation = 0
-	}
-	fallthrough {
+	}]
+	fallthrough = {
 		rollout_weights = [30000, 70000]
 		bucket_by = "account_id"
 	}
@@ -608,20 +652,18 @@ resource "launchdarkly_feature_flag_environment" "rules_custom_context" {
 		name           = "off variation test"
 		variation_type = "boolean"
 	
-		variations {
+		variations = [{
 			value = false
-		}
-	
-		variations {
+		}, {
 			value = true
-		}
+		}]
 	
-		defaults {
+		defaults = {
 			off_variation = 0
 			on_variation  = 1
 		}
 	
-		client_side_availability {
+		client_side_availability = {
 			using_environment_id = true
 		}
 	}
@@ -634,20 +676,18 @@ resource "launchdarkly_feature_flag" "off_variation_test" {
 	name           = "off variation test"
 	variation_type = "boolean"
 
-	variations {
+	variations = [{
 		value = false
-	}
-
-	variations {
+	}, {
 		value = true
-	}
+	}]
 
-	defaults {
+	defaults = {
 		off_variation = 0
 		on_variation  = 1
 	}
 
-	client_side_availability {
+	client_side_availability = {
 		using_environment_id = true
 	}
 }
@@ -658,12 +698,12 @@ resource "launchdarkly_feature_flag_environment" "off_variation_test_configurati
 	on            = true
 	off_variation = 0
 
-	targets {
+	targets = [{
 		values    = ["context-value"]
 		variation = 1
-	}
+	}]
 
-	fallthrough {
+	fallthrough = {
 		variation = 0
 	}
 }
@@ -677,7 +717,7 @@ func TestAccFeatureFlagEnvironment_Empty(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config: withRandomProject(projectKey, testAccFeatureFlagEnvironmentEmpty),
@@ -685,7 +725,7 @@ func TestAccFeatureFlagEnvironment_Empty(t *testing.T) {
 					testAccCheckFeatureFlagEnvironmentExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, ON, "false"),
 					resource.TestCheckResourceAttr(resourceName, OFF_VARIATION, "2"),
-					resource.TestCheckResourceAttr(resourceName, "fallthrough.0.variation", "0"),
+					resource.TestCheckResourceAttr(resourceName, "fallthrough.variation", "0"),
 					resource.TestCheckResourceAttr(resourceName, TRACK_EVENTS, "false"),
 					resource.TestCheckNoResourceAttr(resourceName, fmt.Sprintf("%s.0", RULES)),
 					resource.TestCheckNoResourceAttr(resourceName, "rules.#"),
@@ -704,6 +744,53 @@ func TestAccFeatureFlagEnvironment_Empty(t *testing.T) {
 	})
 }
 
+// TestAccFeatureFlagEnvironment_OffVariationUnset exercises issue #482:
+// off_variation must be omittable (modelling LD's "Not set" state) and
+// round-trip cleanly through create (remove flag default), set, and
+// remove-again (set->null) without a perpetual diff.
+func TestAccFeatureFlagEnvironment_OffVariationUnset(t *testing.T) {
+	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	resourceName := "launchdarkly_feature_flag_environment.basic"
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck: func() {
+			testAccPreCheck(t)
+		},
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			// Create with off_variation omitted -> "Not set" (null, not 0).
+			{
+				Config: withRandomProject(projectKey, testAccFeatureFlagEnvironmentNoOffVariation),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckFeatureFlagEnvironmentExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, ON, "false"),
+					resource.TestCheckNoResourceAttr(resourceName, OFF_VARIATION),
+				),
+			},
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
+			// Set a concrete value -> patchReplace.
+			{
+				Config: withRandomProject(projectKey, testAccFeatureFlagEnvironmentEmpty),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckFeatureFlagEnvironmentExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, OFF_VARIATION, "2"),
+				),
+			},
+			// Remove again -> patchRemove, back to null.
+			{
+				Config: withRandomProject(projectKey, testAccFeatureFlagEnvironmentNoOffVariation),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckFeatureFlagEnvironmentExists(resourceName),
+					resource.TestCheckNoResourceAttr(resourceName, OFF_VARIATION),
+				),
+			},
+		},
+	})
+}
+
 func TestAccFeatureFlagEnvironment_Update(t *testing.T) {
 	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	resourceName := "launchdarkly_feature_flag_environment.basic"
@@ -711,16 +798,15 @@ func TestAccFeatureFlagEnvironment_Update(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config: withRandomProject(projectKey, testAccFeatureFlagEnvironmentBasic),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckFeatureFlagEnvironmentExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, ON, "false"),
-					resource.TestCheckResourceAttr(resourceName, "fallthrough.#", "1"),
-					resource.TestCheckResourceAttr(resourceName, "fallthrough.0.variation", "1"),
-					resource.TestCheckResourceAttr(resourceName, "fallthrough.0.rollout.#", "0"),
+					resource.TestCheckResourceAttr(resourceName, "fallthrough.variation", "1"),
+					resource.TestCheckResourceAttr(resourceName, "fallthrough.rollout_weights.#", "0"),
 					resource.TestCheckResourceAttr(resourceName, "targets.#", "1"),
 					resource.TestCheckResourceAttr(resourceName, "targets.0.values.0", "user1"),
 					resource.TestCheckResourceAttr(resourceName, "targets.0.variation", "0"),
@@ -739,14 +825,13 @@ func TestAccFeatureFlagEnvironment_Update(t *testing.T) {
 					testAccCheckFeatureFlagEnvironmentExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, ON, "true"),
 					resource.TestCheckResourceAttr(resourceName, TRACK_EVENTS, "true"),
-					resource.TestCheckResourceAttr(resourceName, "fallthrough.#", "1"),
-					resource.TestCheckResourceAttr(resourceName, "fallthrough.0.variation", "0"),
-					resource.TestCheckResourceAttr(resourceName, "fallthrough.0.rollout_weights.#", "3"),
-					resource.TestCheckResourceAttr(resourceName, "fallthrough.0.rollout_weights.0", "60000"),
-					resource.TestCheckResourceAttr(resourceName, "fallthrough.0.rollout_weights.1", "40000"),
-					resource.TestCheckResourceAttr(resourceName, "fallthrough.0.rollout_weights.2", "0"),
-					resource.TestCheckResourceAttr(resourceName, "fallthrough.0.bucket_by", "email"),
-					resource.TestCheckResourceAttr(resourceName, "fallthrough.0.context_kind", "user"),
+					resource.TestCheckResourceAttr(resourceName, "fallthrough.variation", "0"),
+					resource.TestCheckResourceAttr(resourceName, "fallthrough.rollout_weights.#", "3"),
+					resource.TestCheckResourceAttr(resourceName, "fallthrough.rollout_weights.0", "60000"),
+					resource.TestCheckResourceAttr(resourceName, "fallthrough.rollout_weights.1", "40000"),
+					resource.TestCheckResourceAttr(resourceName, "fallthrough.rollout_weights.2", "0"),
+					resource.TestCheckResourceAttr(resourceName, "fallthrough.bucket_by", "email"),
+					resource.TestCheckResourceAttr(resourceName, "fallthrough.context_kind", "user"),
 					resource.TestCheckResourceAttr(resourceName, "targets.#", "1"),
 					resource.TestCheckResourceAttr(resourceName, "targets.0.values.#", "2"),
 					resource.TestCheckResourceAttr(resourceName, "targets.0.values.0", "user1"),
@@ -789,7 +874,7 @@ func TestAccFeatureFlagEnvironment_Update(t *testing.T) {
 					testAccCheckFeatureFlagEnvironmentExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, ON, "false"),
 					resource.TestCheckResourceAttr(resourceName, TRACK_EVENTS, "false"),
-					resource.TestCheckResourceAttr(resourceName, "fallthrough.0.variation", "0"),
+					resource.TestCheckResourceAttr(resourceName, "fallthrough.variation", "0"),
 					resource.TestCheckResourceAttr(resourceName, OFF_VARIATION, "2"),
 					resource.TestCheckNoResourceAttr(resourceName, "targets.#"),
 					resource.TestCheckNoResourceAttr(resourceName, "rules.#"),
@@ -811,15 +896,14 @@ func TestAccFeatureFlagEnvironment_JSON_variations(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config: withRandomProject(projectKey, testAccFeatureFlagEnvironmentJSONVariations),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckFeatureFlagEnvironmentExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, ON, "false"),
-					resource.TestCheckResourceAttr(resourceName, "fallthrough.#", "1"),
-					resource.TestCheckResourceAttr(resourceName, "fallthrough.0.variation", "1"),
+					resource.TestCheckResourceAttr(resourceName, "fallthrough.variation", "1"),
 					resource.TestCheckResourceAttr(resourceName, OFF_VARIATION, "0"),
 				),
 			},
@@ -840,7 +924,7 @@ func TestAccFeatureFlagEnvironment_BoolClauseValue(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config: withRandomProject(projectKey, testAccFeatureFlagEnvironmentBoolClauseValue),
@@ -853,7 +937,7 @@ func TestAccFeatureFlagEnvironment_BoolClauseValue(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "rules.0.clauses.0.values.#", "1"),
 					resource.TestCheckResourceAttr(resourceName, "rules.0.clauses.0.values.0", "true"),
 					resource.TestCheckResourceAttr(resourceName, "rules.0.variation", "0"),
-					resource.TestCheckResourceAttr(resourceName, "fallthrough.0.variation", "0"),
+					resource.TestCheckResourceAttr(resourceName, "fallthrough.variation", "0"),
 					resource.TestCheckResourceAttr(resourceName, OFF_VARIATION, "1"),
 				),
 			},
@@ -877,7 +961,7 @@ func TestAccFeatureFlagEnvironment_BoolClauseValue(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "rules.0.rollout_weights.1", "40000"),
 					resource.TestCheckResourceAttr(resourceName, "rules.0.bucket_by", "email"),
 					resource.TestCheckResourceAttr(resourceName, "rules.0.context_kind", "user"),
-					resource.TestCheckResourceAttr(resourceName, "fallthrough.0.variation", "0"),
+					resource.TestCheckResourceAttr(resourceName, "fallthrough.variation", "0"),
 					resource.TestCheckResourceAttr(resourceName, OFF_VARIATION, "1"),
 				),
 			},
@@ -897,7 +981,7 @@ func TestAccFeatureFlagEnvironment_BoolClauseValue(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "rules.0.clauses.0.values.#", "1"),
 					resource.TestCheckResourceAttr(resourceName, "rules.0.clauses.0.values.0", "true"),
 					resource.TestCheckResourceAttr(resourceName, "rules.0.variation", "0"),
-					resource.TestCheckResourceAttr(resourceName, "fallthrough.0.variation", "0"),
+					resource.TestCheckResourceAttr(resourceName, "fallthrough.variation", "0"),
 					resource.TestCheckResourceAttr(resourceName, OFF_VARIATION, "1"),
 				),
 			},
@@ -917,7 +1001,7 @@ func TestAccFeatureFlagEnvironment_NumberClauseValue(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config: withRandomProject(projectKey, testAccFeatureFlagEnvironmentNumberClauseValue),
@@ -930,7 +1014,7 @@ func TestAccFeatureFlagEnvironment_NumberClauseValue(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "rules.0.clauses.0.values.#", "2"),
 					resource.TestCheckResourceAttr(resourceName, "rules.0.clauses.0.values.0", "42"),
 					resource.TestCheckResourceAttr(resourceName, "rules.0.clauses.0.values.1", "84"),
-					resource.TestCheckResourceAttr(resourceName, "fallthrough.0.variation", "0"),
+					resource.TestCheckResourceAttr(resourceName, "fallthrough.variation", "0"),
 					resource.TestCheckResourceAttr(resourceName, OFF_VARIATION, "1"),
 				),
 			},
@@ -950,7 +1034,7 @@ func TestAccFeatureFlagEnvironment_UpdateClauseWithRollout(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config: withRandomProject(projectKey, testAccPercentageRollout),
@@ -964,12 +1048,12 @@ func TestAccFeatureFlagEnvironment_UpdateClauseWithRollout(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "rules.0.clauses.0.values.0", "aus"),
 					resource.TestCheckResourceAttr(resourceName, "rules.0.clauses.0.values.1", "nz"),
 					resource.TestCheckResourceAttr(resourceName, "rules.0.clauses.0.values.2", "united"),
-					resource.TestCheckResourceAttr(resourceName, "fallthrough.0.variation", "0"),
-					resource.TestCheckResourceAttr(resourceName, "fallthrough.0.rollout_weights.#", "2"),
-					resource.TestCheckResourceAttr(resourceName, "fallthrough.0.rollout_weights.0", "60000"),
-					resource.TestCheckResourceAttr(resourceName, "fallthrough.0.rollout_weights.1", "40000"),
-					resource.TestCheckResourceAttr(resourceName, "fallthrough.0.bucket_by", "country"),
-					resource.TestCheckResourceAttr(resourceName, "fallthrough.0.context_kind", "other"),
+					resource.TestCheckResourceAttr(resourceName, "fallthrough.variation", "0"),
+					resource.TestCheckResourceAttr(resourceName, "fallthrough.rollout_weights.#", "2"),
+					resource.TestCheckResourceAttr(resourceName, "fallthrough.rollout_weights.0", "60000"),
+					resource.TestCheckResourceAttr(resourceName, "fallthrough.rollout_weights.1", "40000"),
+					resource.TestCheckResourceAttr(resourceName, "fallthrough.bucket_by", "country"),
+					resource.TestCheckResourceAttr(resourceName, "fallthrough.context_kind", "other"),
 					resource.TestCheckResourceAttr(resourceName, OFF_VARIATION, "1"),
 				),
 			},
@@ -990,12 +1074,12 @@ func TestAccFeatureFlagEnvironment_UpdateClauseWithRollout(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "rules.0.clauses.0.values.0", "aus"),
 					resource.TestCheckResourceAttr(resourceName, "rules.0.clauses.0.values.1", "us"),
 					resource.TestCheckResourceAttr(resourceName, "rules.0.clauses.0.values.2", "united"),
-					resource.TestCheckResourceAttr(resourceName, "fallthrough.0.variation", "0"),
-					resource.TestCheckResourceAttr(resourceName, "fallthrough.0.rollout_weights.#", "2"),
-					resource.TestCheckResourceAttr(resourceName, "fallthrough.0.rollout_weights.0", "60000"),
-					resource.TestCheckResourceAttr(resourceName, "fallthrough.0.rollout_weights.1", "40000"),
-					resource.TestCheckResourceAttr(resourceName, "fallthrough.0.bucket_by", "country"),
-					resource.TestCheckResourceAttr(resourceName, "fallthrough.0.context_kind", "other"),
+					resource.TestCheckResourceAttr(resourceName, "fallthrough.variation", "0"),
+					resource.TestCheckResourceAttr(resourceName, "fallthrough.rollout_weights.#", "2"),
+					resource.TestCheckResourceAttr(resourceName, "fallthrough.rollout_weights.0", "60000"),
+					resource.TestCheckResourceAttr(resourceName, "fallthrough.rollout_weights.1", "40000"),
+					resource.TestCheckResourceAttr(resourceName, "fallthrough.bucket_by", "country"),
+					resource.TestCheckResourceAttr(resourceName, "fallthrough.context_kind", "other"),
 					resource.TestCheckResourceAttr(resourceName, OFF_VARIATION, "1"),
 				),
 			},
@@ -1015,7 +1099,7 @@ func TestAccFeatureFlagEnvironment_InvalidBucketBy(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config:      withRandomProject(projectKey, testAccInvalidFallthroughBucketBy),
@@ -1036,7 +1120,7 @@ func TestAccFeatureFlagEnvironment_Prereq(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config: withRandomProject(projectKey, testAccFeatureFlagEnvironmentPrereq),
@@ -1045,7 +1129,7 @@ func TestAccFeatureFlagEnvironment_Prereq(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, ON, "true"),
 					resource.TestCheckResourceAttr(resourceName, "prerequisites.#", "1"),
 					resource.TestCheckResourceAttr(resourceName, "prerequisites.0.flag_key", "bool-flag"),
-					resource.TestCheckResourceAttr(resourceName, "fallthrough.0.variation", "1"),
+					resource.TestCheckResourceAttr(resourceName, "fallthrough.variation", "1"),
 					resource.TestCheckResourceAttr(resourceName, OFF_VARIATION, "0"),
 				),
 			},
@@ -1055,9 +1139,16 @@ func TestAccFeatureFlagEnvironment_Prereq(t *testing.T) {
 					testAccCheckFeatureFlagEnvironmentExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, ON, "false"),
 					resource.TestCheckNoResourceAttr(resourceName, "prerequisites.#"),
-					resource.TestCheckResourceAttr(resourceName, "fallthrough.0.variation", "1"),
+					resource.TestCheckResourceAttr(resourceName, "fallthrough.variation", "1"),
 					resource.TestCheckResourceAttr(resourceName, OFF_VARIATION, "0"),
 				),
+			},
+			{
+				// Wait for dependent-flags index to observe prerequisite
+				// removal before framework auto-destroy runs.
+				PreConfig: waitForDependentFlagUnindexed(t, projectKey, "bool-flag"),
+				Config:    withRandomProject(projectKey, testAccFeatureFlagEnvironmentRemovePrereq),
+				PlanOnly:  true,
 			},
 		},
 	})
@@ -1084,7 +1175,7 @@ func TestAccFeatureFlagEnvironment_ContextTargets(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config: fmt.Sprintf(testAccContextKind, projectKey, accountContextKind, otherContextKind),
@@ -1111,7 +1202,7 @@ func TestAccFeatureFlagEnvironment_ContextTargets(t *testing.T) {
 					// have confirmed via UI this is happening
 					resource.TestCheckResourceAttr(resourceName, "context_targets.1.context_kind", otherContextKind),
 					resource.TestCheckResourceAttr(resourceName, OFF_VARIATION, "0"),
-					resource.TestCheckResourceAttr(resourceName, "fallthrough.0.variation", "0"),
+					resource.TestCheckResourceAttr(resourceName, "fallthrough.variation", "0"),
 				),
 			},
 			{
@@ -1137,7 +1228,7 @@ func TestAccFeatureFlagEnvironment_ContextTargets(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "context_targets.0.context_kind", accountContextKind),
 					resource.TestCheckNoResourceAttr(resourceName, "context_targets.1"),
 					resource.TestCheckResourceAttr(resourceName, OFF_VARIATION, "0"),
-					resource.TestCheckResourceAttr(resourceName, "fallthrough.0.variation", "0"),
+					resource.TestCheckResourceAttr(resourceName, "fallthrough.variation", "0"),
 				),
 			},
 			{
@@ -1165,7 +1256,7 @@ func TestAccFeatureFlagEnvironment_ContextTargets(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "context_targets.0.context_kind", accountContextKind),
 					resource.TestCheckNoResourceAttr(resourceName, "context_targets.1"),
 					resource.TestCheckResourceAttr(resourceName, OFF_VARIATION, "0"),
-					resource.TestCheckResourceAttr(resourceName, "fallthrough.0.variation", "0"),
+					resource.TestCheckResourceAttr(resourceName, "fallthrough.variation", "0"),
 				),
 			},
 			{
@@ -1199,10 +1290,10 @@ func TestAccFeatureFlagEnvironment_ContextTargets(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName2, "rules.0.clauses.1.negate", "false"),
 					resource.TestCheckResourceAttr(resourceName2, "rules.0.clauses.1.context_kind", accountContextKind),
 					resource.TestCheckResourceAttr(resourceName2, "rules.0.variation", "0"),
-					resource.TestCheckResourceAttr(resourceName2, "fallthrough.0.rollout_weights.0", "30000"),
-					resource.TestCheckResourceAttr(resourceName2, "fallthrough.0.rollout_weights.1", "70000"),
-					resource.TestCheckResourceAttr(resourceName2, "fallthrough.0.context_kind", "user"), // this should be automatically set by the API
-					resource.TestCheckResourceAttr(resourceName2, "fallthrough.0.bucket_by", "account_id"),
+					resource.TestCheckResourceAttr(resourceName2, "fallthrough.rollout_weights.0", "30000"),
+					resource.TestCheckResourceAttr(resourceName2, "fallthrough.rollout_weights.1", "70000"),
+					resource.TestCheckResourceAttr(resourceName2, "fallthrough.context_kind", "user"), // this should be automatically set by the API
+					resource.TestCheckResourceAttr(resourceName2, "fallthrough.bucket_by", "account_id"),
 				),
 			},
 			{
@@ -1224,7 +1315,7 @@ func TestAccFeatureFlagEnvironment_OffVariationResetsToCorrectDefaultOnDelete(t 
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config: withRandomProject(projectKey, testAccDefaultOffVariationOnDelete),
@@ -1232,10 +1323,10 @@ func TestAccFeatureFlagEnvironment_OffVariationResetsToCorrectDefaultOnDelete(t 
 					testAccCheckFeatureFlagEnvironmentExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, ON, "true"),
 					resource.TestCheckResourceAttr(resourceName, OFF_VARIATION, "0"),
-					resource.TestCheckResourceAttr(resourceName, "fallthrough.0.variation", "0"),
+					resource.TestCheckResourceAttr(resourceName, "fallthrough.variation", "0"),
 					resource.TestCheckResourceAttr(resourceName, TRACK_EVENTS, "false"),
-					resource.TestCheckResourceAttr(globalFlagResourceName, "defaults.0.off_variation", "0"),
-					resource.TestCheckResourceAttr(globalFlagResourceName, "defaults.0.on_variation", "1"),
+					resource.TestCheckResourceAttr(globalFlagResourceName, "defaults.off_variation", "0"),
+					resource.TestCheckResourceAttr(globalFlagResourceName, "defaults.on_variation", "1"),
 				),
 			},
 			{
@@ -1246,15 +1337,16 @@ func TestAccFeatureFlagEnvironment_OffVariationResetsToCorrectDefaultOnDelete(t 
 			{
 				Config: withRandomProject(projectKey, testAccDefaultOffVariation),
 				Check: resource.ComposeTestCheckFunc(
-					resource.TestCheckResourceAttr(globalFlagResourceName, "defaults.0.off_variation", "0"),
-					resource.TestCheckResourceAttr(globalFlagResourceName, "defaults.0.on_variation", "1"),
+					resource.TestCheckResourceAttr(globalFlagResourceName, "defaults.off_variation", "0"),
+					resource.TestCheckResourceAttr(globalFlagResourceName, "defaults.on_variation", "1"),
 					testAccCheckFeatureFlagEnvironmentDefaults(t, projectKey, flagKey),
 				),
 			},
 			{
-				ResourceName:      globalFlagResourceName,
-				ImportState:       true,
-				ImportStateVerify: true,
+				ResourceName:            globalFlagResourceName,
+				ImportState:             true,
+				ImportStateVerify:       true,
+				ImportStateVerifyIgnore: importIgnoreOptionalComputedKeys,
 			},
 		},
 	})
@@ -1278,7 +1370,7 @@ func testAccCheckFeatureFlagEnvironmentExists(resourceName string) resource.Test
 		if !ok {
 			return fmt.Errorf("environent key not found: %s", resourceName)
 		}
-		client := testAccProvider.Meta().(*Client)
+		client := mustTestAccClient()
 		_, _, err = client.ld.FeatureFlagsApi.GetFeatureFlag(client.ctx, projKey, flagKey).Env(envKey).Execute()
 		if err != nil {
 			return fmt.Errorf("received an error getting feature flag environment. %s", err)
