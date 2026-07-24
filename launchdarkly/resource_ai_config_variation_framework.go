@@ -7,9 +7,13 @@ import (
 	"log"
 	"net/http"
 	"reflect"
+	"sort"
+	"strconv"
 	"strings"
 	"time"
 
+	"github.com/hashicorp/terraform-plugin-framework-validators/float64validator"
+	"github.com/hashicorp/terraform-plugin-framework-validators/mapvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
@@ -46,6 +50,7 @@ type AIConfigVariationResourceModel struct {
 	Description    types.String `tfsdk:"description"`
 	Instructions   types.String `tfsdk:"instructions"`
 	ToolKeys       types.Set    `tfsdk:"tool_keys"`
+	Judges         types.Map    `tfsdk:"judges"`
 	State          types.String `tfsdk:"state"`
 	VariationID    types.String `tfsdk:"variation_id"`
 	Version        types.Int64  `tfsdk:"version"`
@@ -129,9 +134,33 @@ func aiConfigVariationSchemaAttributes() map[string]schema.Attribute {
 			Optional:    true,
 			Computed:    true,
 			ElementType: types.StringType,
-			Description: "A set of AI tool keys to associate with this variation. **Note:** The API does not currently return tool associations on read, so Terraform cannot detect drift for this field. Changes made outside of Terraform is not reflected in state.",
+			Description: "A set of AI tool keys to associate with this variation.",
 			PlanModifiers: []planmodifier.Set{
 				setplanmodifier.UseStateForUnknown(),
+			},
+		},
+		JUDGES: schema.MapNestedAttribute{
+			Optional:    true,
+			Description: "The judges attached to this variation, keyed by the key of the judge AI Config (an AI Config with `mode = \"judge\"`). Applying this attribute replaces all judge attachments on the variation; removing it detaches all judges.",
+			Validators: []validator.Map{
+				// Reject `judges = {}`: the Read path reports a variation
+				// with no judge attachments as null, so allowing an explicit
+				// empty map would cause a plan/apply inconsistency. Omit the
+				// attribute to detach all judges.
+				mapvalidator.SizeAtLeast(1),
+				mapvalidator.KeysAre(keyValidator()),
+			},
+			NestedObject: schema.NestedAttributeObject{
+				Attributes: map[string]schema.Attribute{
+					SAMPLING_RATE: schema.Float64Attribute{
+						Required:    true,
+						Description: "The fraction of generations this judge evaluates. Must be between `0.0` and `1.0`. Stored with 32-bit float precision.",
+						Validators:  []validator.Float64{float64validator.Between(0, 1)},
+						PlanModifiers: []planmodifier.Float64{
+							float32PrecisionPlanModifier{},
+						},
+					},
+				},
 			},
 		},
 		STATE: schema.StringAttribute{
@@ -287,6 +316,14 @@ func (r *AIConfigVariationResource) Create(ctx context.Context, req resource.Cre
 		post.ToolKeys = toolKeys
 	}
 
+	judges, d := variationJudgesFromMap(ctx, plan.Judges)
+	resp.Diagnostics.Append(d...)
+	if len(judges) > 0 {
+		jc := ldapi.NewJudgeConfiguration()
+		jc.Judges = judges
+		post.JudgeConfiguration = jc
+	}
+
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -375,6 +412,18 @@ func (r *AIConfigVariationResource) Update(ctx context.Context, req resource.Upd
 		tks, d := stringSliceFromSet(ctx, plan.ToolKeys)
 		resp.Diagnostics.Append(d...)
 		patch.ToolKeys = tks
+	}
+	if !plan.Judges.Equal(state.Judges) {
+		judges, d := variationJudgesFromMap(ctx, plan.Judges)
+		resp.Diagnostics.Append(d...)
+		if judges == nil {
+			// A non-nil empty slice serializes as `"judges": []`, which the
+			// API treats as "remove all judge attachments".
+			judges = []ldapi.JudgeAttachment{}
+		}
+		jc := ldapi.NewJudgeConfiguration()
+		jc.Judges = judges
+		patch.JudgeConfiguration = jc
 	}
 
 	if resp.Diagnostics.HasError() {
@@ -597,6 +646,10 @@ func (r *AIConfigVariationResource) readIntoModel(
 		empty, _ := setFromStringSlice(ctx, []string{})
 		data.ToolKeys = empty
 	}
+
+	judgesMap, d := variationJudgesToMap(variation.JudgeConfiguration)
+	diags.Append(d...)
+	data.Judges = judgesMap
 }
 
 // variationMessagesFromList converts the framework list of message
@@ -620,6 +673,84 @@ func variationMessagesFromList(ctx context.Context, list types.List) ([]ldapi.Me
 		out[i] = *ldapi.NewMessage(m.Content, m.Role)
 	}
 	return out, diags
+}
+
+// variationJudgesFromMap converts the framework judges map (keyed by judge
+// AI Config key) into []ldapi.JudgeAttachment, sorted by key for a stable
+// request body.
+func variationJudgesFromMap(ctx context.Context, m types.Map) ([]ldapi.JudgeAttachment, diag.Diagnostics) {
+	var diags diag.Diagnostics
+	if m.IsNull() || m.IsUnknown() {
+		return nil, diags
+	}
+	type judgeModel struct {
+		SamplingRate float64 `tfsdk:"sampling_rate"`
+	}
+	var raw map[string]judgeModel
+	diags.Append(m.ElementsAs(ctx, &raw, false)...)
+	if diags.HasError() {
+		return nil, diags
+	}
+	out := make([]ldapi.JudgeAttachment, 0, len(raw))
+	for key, j := range raw {
+		out = append(out, *ldapi.NewJudgeAttachment(key, float32(j.SamplingRate)))
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].JudgeConfigKey < out[j].JudgeConfigKey })
+	return out, diags
+}
+
+// variationJudgesToMap converts the API's judge configuration into the
+// framework judges map. A nil configuration or empty judges list maps to
+// null so the attribute round-trips when omitted from config.
+func variationJudgesToMap(jc *ldapi.JudgeConfiguration) (types.Map, diag.Diagnostics) {
+	var diags diag.Diagnostics
+	objType := types.ObjectType{AttrTypes: aiConfigVariationJudgeAttrTypes}
+	if jc == nil || len(jc.Judges) == 0 {
+		return types.MapNull(objType), diags
+	}
+	els := make(map[string]attr.Value, len(jc.Judges))
+	for _, j := range jc.Judges {
+		obj, d := types.ObjectValue(aiConfigVariationJudgeAttrTypes, map[string]attr.Value{
+			SAMPLING_RATE: types.Float64Value(float64ThroughFloat32(float64(j.SamplingRate))),
+		})
+		diags.Append(d...)
+		els[j.JudgeConfigKey] = obj
+	}
+	m, d := types.MapValue(objType, els)
+	diags.Append(d...)
+	return m, diags
+}
+
+// float32PrecisionPlanModifier maps the planned value through a float32
+// round-trip so the plan matches what the API — which stores sampling rates
+// as 32-bit floats — returns on read.
+type float32PrecisionPlanModifier struct{}
+
+func (float32PrecisionPlanModifier) Description(context.Context) string {
+	return "Normalizes the value to 32-bit float precision to match the API's storage."
+}
+
+func (m float32PrecisionPlanModifier) MarkdownDescription(ctx context.Context) string {
+	return m.Description(ctx)
+}
+
+func (float32PrecisionPlanModifier) PlanModifyFloat64(_ context.Context, req planmodifier.Float64Request, resp *planmodifier.Float64Response) {
+	if req.PlanValue.IsNull() || req.PlanValue.IsUnknown() {
+		return
+	}
+	resp.PlanValue = types.Float64Value(float64ThroughFloat32(req.PlanValue.ValueFloat64()))
+}
+
+// float64ThroughFloat32 returns the float64 closest to the shortest decimal
+// representation of v rounded to float32 — i.e. what a user-written literal
+// looks like after an API float32 round-trip (0.1 stays 0.1 instead of
+// becoming 0.10000000149011612).
+func float64ThroughFloat32(v float64) float64 {
+	out, err := strconv.ParseFloat(strconv.FormatFloat(v, 'f', -1, 32), 64)
+	if err != nil {
+		return v
+	}
+	return out
 }
 
 // jsonEqual returns true if two JSON strings parse to the same value.

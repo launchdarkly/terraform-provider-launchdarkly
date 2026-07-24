@@ -205,6 +205,22 @@ var SUBSCRIPTION_CONFIGURATION_FIELDS = map[string]IntegrationConfig{
 		},
 	},
 	"jira": {
+		"issueCreateUrl": {
+			AllowedValues: []string{},
+			DefaultValue:  "",
+			Description:   "Enter your Jira issue-create web trigger URL",
+			IsOptional:    true,
+			IsSecret:      false,
+			Type:          "uri",
+		},
+		"jiraMetaUrl": {
+			AllowedValues: []string{},
+			DefaultValue:  "",
+			Description:   "Enter your Jira meta web trigger URL",
+			IsOptional:    true,
+			IsSecret:      false,
+			Type:          "uri",
+		},
 		"secret": {
 			AllowedValues: []string{},
 			DefaultValue:  nil,

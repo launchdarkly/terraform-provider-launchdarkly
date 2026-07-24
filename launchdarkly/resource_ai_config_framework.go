@@ -246,8 +246,11 @@ func (r *AIConfigResource) Create(ctx context.Context, req resource.CreateReques
 		v := plan.EvaluationMetricKey.ValueString()
 		post.EvaluationMetricKey = &v
 		// is_inverted is meaningful only with an evaluation_metric_key.
-		isInverted := plan.IsInverted.ValueBool()
-		post.IsInverted = &isInverted
+		// Only send it when configured — the API defaults it to false.
+		if !plan.IsInverted.IsNull() && !plan.IsInverted.IsUnknown() {
+			isInverted := plan.IsInverted.ValueBool()
+			post.IsInverted = &isInverted
+		}
 	}
 	tags, d := stringSliceFromSet(ctx, plan.Tags)
 	resp.Diagnostics.Append(d...)
@@ -448,9 +451,13 @@ func (r *AIConfigResource) readIntoModel(
 	data.Mode = types.StringValue(mode)
 
 	data.EvaluationMetricKey = stringValueOrNullFromPointer(cfg.EvaluationMetricKey)
-	if cfg.IsInverted != nil {
+	// The API reports isInverted=false even when it was never set. Preserve
+	// null when the caller-supplied value (plan on writes, state on refresh)
+	// is null and the API reports the default — false is not new information;
+	// surfacing it would make an unset attribute fail plan/apply consistency.
+	if cfg.IsInverted != nil && (*cfg.IsInverted || (!data.IsInverted.IsNull() && !data.IsInverted.IsUnknown())) {
 		data.IsInverted = types.BoolValue(*cfg.IsInverted)
-	} else {
+	} else if cfg.IsInverted == nil {
 		data.IsInverted = types.BoolNull()
 	}
 
