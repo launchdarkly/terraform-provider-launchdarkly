@@ -524,10 +524,33 @@ func (r *FeatureFlagEnvironmentResource) ImportState(ctx context.Context, req re
 		return
 	}
 	parts := strings.SplitN(req.ID, "/", 3)
-	flagID := parts[0] + "/" + parts[2]
+	projectKey, envKey, flagKey := parts[0], parts[1], parts[2]
+
+	// The import ID order changed in v3: v2 used project_key/flag_key/env_key,
+	// v3 uses project_key/env_key/flag_key. A v2-ordered ID still splits into
+	// three parts and parses here, so without this it would fail later with
+	// Terraform's opaque "Cannot import non-existent remote object". If the
+	// v3-order interpretation does not resolve but swapping the last two
+	// segments does, the ID uses the v2 order: auto-correct it so existing
+	// import scripts keep working, and warn so the user can adopt the v3 order.
+	// The v3 order always wins when it resolves, so there is no ambiguity.
+	if r.client != nil {
+		if _, res, err := getFeatureFlagEnvironment(r.client, projectKey, flagKey, envKey); err != nil && isStatusNotFound(res) {
+			if _, swapRes, swapErr := getFeatureFlagEnvironment(r.client, projectKey, envKey, flagKey); swapErr == nil && !isStatusNotFound(swapRes) {
+				envKey, flagKey = flagKey, envKey
+				resp.Diagnostics.AddWarning(
+					"Imported using the v2 import ID order",
+					fmt.Sprintf("The import ID %q uses the v2 order (project_key/flag_key/env_key); it was imported as the v3 order (project_key/env_key/flag_key). Update your import to %q.",
+						req.ID, projectKey+"/"+envKey+"/"+flagKey),
+				)
+			}
+		}
+	}
+
+	flagID := projectKey + "/" + flagKey
 	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root(FLAG_ID), flagID)...)
-	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root(ENV_KEY), parts[1])...)
-	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("id"), req.ID)...)
+	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root(ENV_KEY), envKey)...)
+	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("id"), projectKey+"/"+envKey+"/"+flagKey)...)
 }
 
 func (r *FeatureFlagEnvironmentResource) readIntoModel(ctx context.Context, projectKey, flagKey, envKey string, data *FeatureFlagEnvironmentResourceModel, diags *diag.Diagnostics) {

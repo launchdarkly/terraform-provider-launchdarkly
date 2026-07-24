@@ -938,7 +938,7 @@ func (r *FeatureFlagResource) readIntoModel(ctx context.Context, data *FeatureFl
 	data.Archived = types.BoolValue(flag.Archived)
 	data.Deprecated = types.BoolValue(flag.GetDeprecated())
 
-	tagsSet, d := setFromStringSliceOrNull(ctx, flag.Tags)
+	tagsSet, d := setFromStringSlicePreservingPlan(ctx, flag.Tags, data.Tags)
 	diags.Append(d...)
 	data.Tags = tagsSet
 
