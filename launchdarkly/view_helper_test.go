@@ -52,7 +52,6 @@ func TestViewRequestsIncludeUserAgentHeader(t *testing.T) {
 			"tags":               []string{},
 			"createdAt":          0,
 			"updatedAt":          0,
-			"archived":           false,
 			"deleted":            false,
 		})
 		require.NoError(t, err)
@@ -64,6 +63,10 @@ func TestViewRequestsIncludeUserAgentHeader(t *testing.T) {
 	cfg.Host = strings.TrimPrefix(ts.URL, "https://")
 	cfg.UserAgent = expectedUA
 	cfg.HTTPClient = ts.Client()
+	// Route through the archived-field shim so the test exercises the same
+	// decode path as production, where the views API no longer returns the
+	// `archived` field required by the generated ldapi.View model.
+	cfg.HTTPClient.Transport = &viewArchivedShimTransport{base: cfg.HTTPClient.Transport}
 
 	client := &Client{
 		apiKey:    "test-token",

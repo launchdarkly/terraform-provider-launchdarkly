@@ -16,7 +16,6 @@ type View struct {
 	Name        string          `json:"name"`
 	Description *string         `json:"description,omitempty"`
 	ProjectKey  string          `json:"projectKey"`
-	Archived    *bool           `json:"archived,omitempty"`
 	Tags        []string        `json:"tags,omitempty"`
 	Maintainer  *ViewMaintainer `json:"maintainer,omitempty"`
 }
@@ -41,7 +40,6 @@ func viewFromAPI(apiView *ldapi.View) *View {
 	}
 
 	description := apiView.Description
-	archived := apiView.Archived
 
 	view := &View{
 		Id:          apiView.Id,
@@ -49,7 +47,6 @@ func viewFromAPI(apiView *ldapi.View) *View {
 		Name:        apiView.Name,
 		Description: &description,
 		ProjectKey:  apiView.ProjectKey,
-		Archived:    &archived,
 		Tags:        apiView.Tags,
 	}
 
@@ -158,9 +155,6 @@ func patchView(client *Client, projectKey, viewKey string, patch map[string]inte
 		case []interface{}:
 			viewPatch.SetTags(interfaceSliceToStringSlice(tags))
 		}
-	}
-	if archived, ok := patch["archived"].(bool); ok {
-		viewPatch.SetArchived(archived)
 	}
 
 	return client.withConcurrency(client.ctx, func() error {

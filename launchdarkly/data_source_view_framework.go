@@ -25,7 +25,6 @@ type ViewDataSourceModel struct {
 	MaintainerID      types.String `tfsdk:"maintainer_id"`
 	MaintainerTeamKey types.String `tfsdk:"maintainer_team_key"`
 	Tags              types.Set    `tfsdk:"tags"`
-	Archived          types.Bool   `tfsdk:"archived"`
 	LinkedFlags       types.List   `tfsdk:"linked_flags"`
 	LinkedSegments    types.List   `tfsdk:"linked_segments"`
 }
@@ -57,8 +56,7 @@ func (d *ViewDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, r
 				Computed:    true,
 				Description: "Team key of the maintainer team.",
 			},
-			TAGS:     schema.SetAttribute{Computed: true, ElementType: types.StringType, Description: "Tags."},
-			ARCHIVED: schema.BoolAttribute{Computed: true, Description: "Whether the view is archived."},
+			TAGS: schema.SetAttribute{Computed: true, ElementType: types.StringType, Description: "Tags."},
 			LINKED_FLAGS: schema.ListAttribute{
 				Computed:    true,
 				ElementType: types.StringType,
@@ -119,11 +117,6 @@ func (d *ViewDataSource) Read(ctx context.Context, req datasource.ReadRequest, r
 		data.Description = types.StringValue(*view.Description)
 	} else {
 		data.Description = types.StringValue("")
-	}
-	if view.Archived != nil {
-		data.Archived = types.BoolValue(*view.Archived)
-	} else {
-		data.Archived = types.BoolValue(false)
 	}
 
 	data.MaintainerID = types.StringValue("")
