@@ -355,12 +355,17 @@ func TestViewArchivedShimTransport(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		if strings.Contains(r.URL.Path, "/views") {
+		switch {
+		case strings.Contains(r.URL.Path, "/view-associations"):
+			// GetLinkedViews returns a list of views; mimic the post-REL-14370
+			// API with no `archived` field on the items.
+			_, _ = w.Write([]byte(`{"totalCount":1,"items":[{"key":"v1","projectKey":"proj"}]}`))
+		case strings.Contains(r.URL.Path, "/views"):
 			// Mimic the post-REL-14370 API: no `archived` field.
 			_, _ = w.Write([]byte(`{"key":"v1","projectKey":"proj","name":"View 1"}`))
-			return
+		default:
+			_, _ = w.Write([]byte(`{"key":"other"}`))
 		}
-		_, _ = w.Write([]byte(`{"key":"other"}`))
 	}))
 	t.Cleanup(ts.Close)
 
@@ -376,6 +381,20 @@ func TestViewArchivedShimTransport(t *testing.T) {
 		var decoded map[string]interface{}
 		require.NoError(t, json.Unmarshal(body, &decoded))
 		assert.Equal(t, false, decoded["archived"])
+	})
+
+	t.Run("view-associations list items gain archived", func(t *testing.T) {
+		resp, err := client.Get(ts.URL + "/api/v2/projects/proj/view-associations/segments/seg-1")
+		require.NoError(t, err)
+		body, err := io.ReadAll(resp.Body)
+		require.NoError(t, err)
+		_ = resp.Body.Close()
+
+		var decoded map[string]interface{}
+		require.NoError(t, json.Unmarshal(body, &decoded))
+		items := decoded["items"].([]interface{})
+		require.Len(t, items, 1)
+		assert.Equal(t, false, items[0].(map[string]interface{})["archived"])
 	})
 
 	t.Run("non-view response is untouched", func(t *testing.T) {

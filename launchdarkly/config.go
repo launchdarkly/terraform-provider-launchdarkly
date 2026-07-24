@@ -166,8 +166,10 @@ func (t *viewArchivedShimTransport) RoundTrip(req *http.Request) (*http.Response
 	if err != nil || resp == nil {
 		return resp, err
 	}
-	// Only touch successful JSON view responses.
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 || !strings.Contains(req.URL.Path, "/views") {
+	// Only touch successful JSON responses from endpoints that return View
+	// objects: `/views...` (get/create/update, linked resources) and
+	// `/view-associations/...` (views linked to a flag or segment).
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 || !isViewAPIResponsePath(req.URL.Path) {
 		return resp, nil
 	}
 
@@ -193,6 +195,12 @@ func (t *viewArchivedShimTransport) RoundTrip(req *http.Request) (*http.Response
 	resp.ContentLength = int64(len(rewritten))
 	resp.Header.Set("Content-Length", strconv.Itoa(len(rewritten)))
 	return resp, nil
+}
+
+// isViewAPIResponsePath reports whether a request path targets an endpoint that
+// returns View objects, whose strict generated model requires `archived`.
+func isViewAPIResponsePath(path string) bool {
+	return strings.Contains(path, "/views") || strings.Contains(path, "/view-associations")
 }
 
 // injectArchivedDefault walks a decoded JSON value and sets `archived` to false
