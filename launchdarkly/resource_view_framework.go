@@ -11,7 +11,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
@@ -34,7 +33,6 @@ type ViewResourceModel struct {
 	MaintainerID      types.String `tfsdk:"maintainer_id"`
 	MaintainerTeamKey types.String `tfsdk:"maintainer_team_key"`
 	Tags              types.Set    `tfsdk:"tags"`
-	Archived          types.Bool   `tfsdk:"archived"`
 }
 
 func NewViewResource() resource.Resource {
@@ -100,12 +98,6 @@ func viewSchemaAttributes() map[string]schema.Attribute {
 			Validators: []validator.Set{
 				setvalidator.ValueStringsAre(tagValidator()),
 			},
-		},
-		ARCHIVED: schema.BoolAttribute{
-			Optional:    true,
-			Computed:    true,
-			Default:     booldefault.StaticBool(false),
-			Description: "Whether the view is archived.",
 		},
 	}
 }
@@ -290,9 +282,6 @@ func (r *ViewResource) Update(ctx context.Context, req resource.UpdateRequest, r
 		resp.Diagnostics.Append(diags...)
 		patch["tags"] = tags
 	}
-	if !plan.Archived.Equal(state.Archived) {
-		patch["archived"] = plan.Archived.ValueBool()
-	}
 
 	if len(patch) > 0 {
 		if err := patchView(beta, plan.ProjectKey.ValueString(), plan.Key.ValueString(), patch); err != nil {
@@ -361,11 +350,6 @@ func (r *ViewResource) readIntoModel(
 	data.Name = types.StringValue(view.Name)
 	// Optional-only attr: null-when-empty for plan-apply consistency.
 	data.Description = stringValueOrNullFromPointer(view.Description)
-	if view.Archived != nil {
-		data.Archived = types.BoolValue(*view.Archived)
-	} else {
-		data.Archived = types.BoolValue(false)
-	}
 
 	// Default both to null; set only the active one based on API response.
 	data.MaintainerID = types.StringNull()
