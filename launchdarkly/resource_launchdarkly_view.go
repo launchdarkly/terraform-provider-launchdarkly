@@ -66,12 +66,6 @@ This resource allows you to create and manage views within your LaunchDarkly pro
 				ExactlyOneOf: []string{MAINTAINER_ID, MAINTAINER_TEAM_KEY},
 			},
 			TAGS: tagsSchema(tagsSchemaOptions{isDataSource: false}),
-			ARCHIVED: {
-				Type:        schema.TypeBool,
-				Optional:    true,
-				Default:     false,
-				Description: "Whether the view is archived.",
-			},
 		},
 	}
 }
@@ -159,10 +153,6 @@ func resourceViewUpdate(ctx context.Context, d *schema.ResourceData, metaRaw int
 
 	if d.HasChange(TAGS) {
 		patch["tags"] = stringListFromOptionalSetValue(d.Get(TAGS))
-	}
-
-	if d.HasChange(ARCHIVED) {
-		patch["archived"] = optionalBoolFromResourceData(d, ARCHIVED, false)
 	}
 
 	if len(patch) > 0 {
