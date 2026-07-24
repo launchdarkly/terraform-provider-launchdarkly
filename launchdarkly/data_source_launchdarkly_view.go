@@ -45,11 +45,6 @@ func dataSourceView() *schema.Resource {
 				Description: "The team key of the maintainer team for this view.",
 			},
 			TAGS: tagsSchema(tagsSchemaOptions{isDataSource: true}),
-			ARCHIVED: {
-				Type:        schema.TypeBool,
-				Computed:    true,
-				Description: "Whether the view is archived.",
-			},
 			LINKED_FLAGS: {
 				Type:        schema.TypeList,
 				Computed:    true,

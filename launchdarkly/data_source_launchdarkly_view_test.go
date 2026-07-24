@@ -102,7 +102,6 @@ data "launchdarkly_view" "test" {
 					resource.TestCheckResourceAttr(resourceName, DESCRIPTION, viewDescription),
 					resource.TestCheckResourceAttrSet(resourceName, ID),
 					resource.TestCheckResourceAttr(resourceName, "tags.#", "1"),
-					resource.TestCheckResourceAttr(resourceName, ARCHIVED, "false"),
 				),
 			},
 		},

@@ -67,7 +67,6 @@ output "team_flag_access" {
 
 ### Read-Only
 
-- `archived` (Boolean) Whether the view is archived.
 - `description` (String) The view's description.
 - `id` (String) The ID of this resource.
 - `linked_flags` (List of String) A list of feature flag keys that are linked to this view.
