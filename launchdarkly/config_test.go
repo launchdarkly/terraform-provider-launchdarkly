@@ -1,9 +1,12 @@
 package launchdarkly
 
 import (
+	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strconv"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -306,4 +309,85 @@ func TestSemaphoreConcurrencyLimits(t *testing.T) {
 	maxConcurrent := atomic.LoadInt32(&maxConcurrentRequests)
 	assert.LessOrEqual(t, maxConcurrent, int32(maxConcurrency),
 		"Max concurrent requests (%d) exceeded semaphore limit (%d)", maxConcurrent, maxConcurrency)
+}
+
+func TestInjectArchivedDefault(t *testing.T) {
+	t.Run("single view without archived gets default", func(t *testing.T) {
+		view := map[string]interface{}{"key": "v1", "projectKey": "proj", "name": "View 1"}
+		injectArchivedDefault(view)
+		assert.Equal(t, false, view["archived"])
+	})
+
+	t.Run("existing archived is preserved", func(t *testing.T) {
+		view := map[string]interface{}{"key": "v1", "projectKey": "proj", "archived": true}
+		injectArchivedDefault(view)
+		assert.Equal(t, true, view["archived"])
+	})
+
+	t.Run("list response injects into each view item", func(t *testing.T) {
+		resp := map[string]interface{}{
+			"totalCount": 2,
+			"items": []interface{}{
+				map[string]interface{}{"key": "v1", "projectKey": "proj"},
+				map[string]interface{}{"key": "v2", "projectKey": "proj"},
+			},
+		}
+		injectArchivedDefault(resp)
+		items := resp["items"].([]interface{})
+		for _, item := range items {
+			assert.Equal(t, false, item.(map[string]interface{})["archived"])
+		}
+	})
+
+	t.Run("non-view objects are left untouched", func(t *testing.T) {
+		linked := map[string]interface{}{"resourceKey": "flag-1", "resourceType": "flags"}
+		injectArchivedDefault(linked)
+		_, hasArchived := linked["archived"]
+		assert.False(t, hasArchived, "objects without projectKey must not gain an archived field")
+	})
+}
+
+// TestViewArchivedShimTransport verifies that a view API response missing the
+// `archived` field (as returned by LaunchDarkly after REL-14370) is rewritten
+// to include `archived: false` so the strict generated model can deserialize
+// it, while non-view responses are passed through untouched.
+func TestViewArchivedShimTransport(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		if strings.Contains(r.URL.Path, "/views") {
+			// Mimic the post-REL-14370 API: no `archived` field.
+			_, _ = w.Write([]byte(`{"key":"v1","projectKey":"proj","name":"View 1"}`))
+			return
+		}
+		_, _ = w.Write([]byte(`{"key":"other"}`))
+	}))
+	t.Cleanup(ts.Close)
+
+	client := &http.Client{Transport: &viewArchivedShimTransport{base: http.DefaultTransport}}
+
+	t.Run("view response gains archived", func(t *testing.T) {
+		resp, err := client.Get(ts.URL + "/api/v2/projects/proj/views/v1")
+		require.NoError(t, err)
+		body, err := io.ReadAll(resp.Body)
+		require.NoError(t, err)
+		_ = resp.Body.Close()
+
+		var decoded map[string]interface{}
+		require.NoError(t, json.Unmarshal(body, &decoded))
+		assert.Equal(t, false, decoded["archived"])
+	})
+
+	t.Run("non-view response is untouched", func(t *testing.T) {
+		resp, err := client.Get(ts.URL + "/api/v2/flags/proj/flag-1")
+		require.NoError(t, err)
+		body, err := io.ReadAll(resp.Body)
+		require.NoError(t, err)
+		_ = resp.Body.Close()
+
+		var decoded map[string]interface{}
+		require.NoError(t, json.Unmarshal(body, &decoded))
+		_, hasArchived := decoded["archived"]
+		assert.False(t, hasArchived)
+	})
 }
