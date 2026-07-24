@@ -1,9 +1,12 @@
 package launchdarkly
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"log"
 	"math"
 	"net/http"
@@ -139,7 +142,84 @@ func newRetryableClient(retryPolicy retryablehttp.CheckRetry) *http.Client {
 	retryClient.RetryMax = MAX_RETRIES
 	retryClient.ErrorHandler = retryablehttp.PassthroughErrorHandler
 
-	return retryClient.StandardClient()
+	client := retryClient.StandardClient()
+	client.Transport = &viewArchivedShimTransport{base: client.Transport}
+	return client
+}
+
+// viewArchivedShimTransport works around a mismatch between the LaunchDarkly
+// API and the pinned api-client-go generated models. LaunchDarkly removed view
+// archival (REL-14370), so the API no longer returns the `archived` field on
+// views. The generated ldapi.View model still lists `archived` as a required
+// property, so responses without it fail to deserialize with
+// "no value given for required property archived". Until api-client-go is
+// regenerated from the updated spec, we re-insert a default `archived: false`
+// into `/views` responses so decoding succeeds. The provider itself no longer
+// exposes the field.
+//
+// TODO(REL-14370): remove once api-client-go drops the `archived` requirement.
+type viewArchivedShimTransport struct {
+	base http.RoundTripper
+}
+
+func (t *viewArchivedShimTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	base := t.base
+	if base == nil {
+		base = http.DefaultTransport
+	}
+	resp, err := base.RoundTrip(req)
+	if err != nil || resp == nil {
+		return resp, err
+	}
+	// Only touch successful JSON view responses.
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 || !strings.Contains(req.URL.Path, "/views") {
+		return resp, nil
+	}
+
+	body, readErr := io.ReadAll(resp.Body)
+	_ = resp.Body.Close()
+	if readErr != nil {
+		// Best effort: hand back whatever we managed to read.
+		resp.Body = io.NopCloser(bytes.NewReader(body))
+		return resp, nil
+	}
+
+	var parsed interface{}
+	if json.Unmarshal(body, &parsed) != nil {
+		resp.Body = io.NopCloser(bytes.NewReader(body))
+		return resp, nil
+	}
+	injectArchivedDefault(parsed)
+	rewritten, marshalErr := json.Marshal(parsed)
+	if marshalErr != nil {
+		rewritten = body
+	}
+	resp.Body = io.NopCloser(bytes.NewReader(rewritten))
+	resp.ContentLength = int64(len(rewritten))
+	resp.Header.Set("Content-Length", strconv.Itoa(len(rewritten)))
+	return resp, nil
+}
+
+// injectArchivedDefault walks a decoded JSON value and sets `archived` to false
+// on any object that looks like a view (identified by a `projectKey` field) and
+// does not already carry one. It recurses so that list responses (e.g.
+// `{"items": [ ... ]}`) are handled as well as single-view responses.
+func injectArchivedDefault(v interface{}) {
+	switch val := v.(type) {
+	case map[string]interface{}:
+		if _, isView := val["projectKey"]; isView {
+			if _, hasArchived := val["archived"]; !hasArchived {
+				val["archived"] = false
+			}
+		}
+		for _, child := range val {
+			injectArchivedDefault(child)
+		}
+	case []interface{}:
+		for _, item := range val {
+			injectArchivedDefault(item)
+		}
+	}
 }
 
 func backOff(min, max time.Duration, attemptNum int, resp *http.Response) time.Duration {
