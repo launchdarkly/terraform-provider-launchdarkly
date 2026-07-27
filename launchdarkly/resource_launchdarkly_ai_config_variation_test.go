@@ -2,6 +2,8 @@ package launchdarkly
 
 import (
 	"fmt"
+	"reflect"
+	"sort"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
@@ -278,6 +280,100 @@ resource "launchdarkly_ai_config_variation" "test" {
 	}]
 }
 `
+
+	testAccAIConfigVariationWithToolKeysUpdate = `
+resource "launchdarkly_ai_tool" "test" {
+	project_key = launchdarkly_project.test.key
+	key         = "%[1]s"
+	description = "Test tool"
+	schema_json = jsonencode({
+		type = "object"
+		properties = {
+			query = { type = "string" }
+		}
+	})
+}
+
+resource "launchdarkly_ai_tool" "second" {
+	project_key = launchdarkly_project.test.key
+	key         = "%[2]s"
+	description = "Second test tool"
+	schema_json = jsonencode({
+		type = "object"
+		properties = {
+			id = { type = "string" }
+		}
+	})
+	depends_on = [launchdarkly_ai_tool.test]
+}
+
+resource "launchdarkly_ai_config" "test" {
+	project_key = launchdarkly_project.test.key
+	key         = "%[3]s"
+	name        = "Parent AI Config"
+	description = "Parent for tool keys test"
+	depends_on  = [launchdarkly_ai_tool.second]
+}
+
+resource "launchdarkly_ai_config_variation" "test" {
+	project_key = launchdarkly_project.test.key
+	config_key  = launchdarkly_ai_config.test.key
+	key         = "%[4]s"
+	name        = "Variation with tools"
+	tool_keys   = [launchdarkly_ai_tool.test.key, launchdarkly_ai_tool.second.key]
+	messages = [{
+		role    = "system"
+		content = "You are a helpful assistant."
+	}]
+}
+`
+
+	testAccAIConfigVariationWithToolKeysRemoved = `
+resource "launchdarkly_ai_tool" "test" {
+	project_key = launchdarkly_project.test.key
+	key         = "%[1]s"
+	description = "Test tool"
+	schema_json = jsonencode({
+		type = "object"
+		properties = {
+			query = { type = "string" }
+		}
+	})
+}
+
+resource "launchdarkly_ai_tool" "second" {
+	project_key = launchdarkly_project.test.key
+	key         = "%[2]s"
+	description = "Second test tool"
+	schema_json = jsonencode({
+		type = "object"
+		properties = {
+			id = { type = "string" }
+		}
+	})
+	depends_on = [launchdarkly_ai_tool.test]
+}
+
+resource "launchdarkly_ai_config" "test" {
+	project_key = launchdarkly_project.test.key
+	key         = "%[3]s"
+	name        = "Parent AI Config"
+	description = "Parent for tool keys test"
+	depends_on  = [launchdarkly_ai_tool.second]
+}
+
+resource "launchdarkly_ai_config_variation" "test" {
+	project_key = launchdarkly_project.test.key
+	config_key  = launchdarkly_ai_config.test.key
+	key         = "%[4]s"
+	name        = "Variation with tools"
+	tool_keys   = []
+	messages = [{
+		role    = "system"
+		content = "You are a helpful assistant."
+	}]
+}
+`
 )
 
 func TestAccAIConfigVariation_CreateAndUpdate(t *testing.T) {
@@ -463,12 +559,16 @@ func TestAccAIConfigVariation_WithJudges(t *testing.T) {
 	})
 }
 
-// TestAccAIConfigVariation_WithToolKeys tests creating a variation with tool_keys.
+// TestAccAIConfigVariation_WithToolKeys tests tool attachment end to end:
+// create with one tool, update to two, then remove all with an explicit
+// empty set. Every step asserts attachment through the API — state-only
+// checks are masked by the read's preserve-prior fallback.
 func TestAccAIConfigVariation_WithToolKeys(t *testing.T) {
 	aiTestCooldown()
 	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	configKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	toolKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	secondToolKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	variationKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	resourceName := "launchdarkly_ai_config_variation.test"
 
@@ -483,6 +583,28 @@ func TestAccAIConfigVariation_WithToolKeys(t *testing.T) {
 					testAccCheckAIConfigVariationExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, NAME, "Variation with tools"),
 					resource.TestCheckResourceAttr(resourceName, "tool_keys.#", "1"),
+					testAccCheckAIConfigVariationToolsAttached(resourceName, toolKey),
+				),
+			},
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
+			{
+				Config: withAITestProject(projectKey, fmt.Sprintf(testAccAIConfigVariationWithToolKeysUpdate, toolKey, secondToolKey, configKey, variationKey)),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckAIConfigVariationExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, "tool_keys.#", "2"),
+					testAccCheckAIConfigVariationToolsAttached(resourceName, toolKey, secondToolKey),
+				),
+			},
+			{
+				Config: withAITestProject(projectKey, fmt.Sprintf(testAccAIConfigVariationWithToolKeysRemoved, toolKey, secondToolKey, configKey, variationKey)),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckAIConfigVariationExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, "tool_keys.#", "0"),
+					testAccCheckAIConfigVariationToolsAttached(resourceName),
 				),
 			},
 		},
@@ -516,6 +638,49 @@ func TestAccAIConfigVariation_WithInlineModel(t *testing.T) {
 			},
 		},
 	})
+}
+
+// testAccCheckAIConfigVariationToolsAttached asserts against the API — not
+// Terraform state — that the variation has exactly the expected tools
+// attached. State-only checks (tool_keys.#) are masked by the read's
+// preserve-prior fallback, which echoes the planned tool_keys back into
+// state when the API returns no tools; this check cannot be masked.
+func testAccCheckAIConfigVariationToolsAttached(resourceName string, expected ...string) resource.TestCheckFunc {
+	return func(s *terraform.State) error {
+		rs, ok := s.RootModule().Resources[resourceName]
+		if !ok {
+			return fmt.Errorf("not found: %s", resourceName)
+		}
+		projectKey := rs.Primary.Attributes[PROJECT_KEY]
+		configKey := rs.Primary.Attributes[AI_CONFIG_KEY]
+		variationKey := rs.Primary.Attributes[KEY]
+
+		client := mustTestAccClient()
+		variationsResp, _, err := client.ld.AgentControlApi.GetAIConfigVariation(client.ctx, projectKey, configKey, variationKey).Execute()
+		if err != nil {
+			return fmt.Errorf("received an error getting AI config variation: %s", err)
+		}
+		if variationsResp == nil || len(variationsResp.Items) == 0 {
+			return fmt.Errorf("no variation versions returned for %s/%s/%s", projectKey, configKey, variationKey)
+		}
+		variation := variationsResp.Items[0]
+		for _, v := range variationsResp.Items[1:] {
+			if v.Version > variation.Version {
+				variation = v
+			}
+		}
+		got := make([]string, 0, len(variation.Tools))
+		for _, t := range variation.Tools {
+			got = append(got, t.Key)
+		}
+		sort.Strings(got)
+		want := append([]string{}, expected...)
+		sort.Strings(want)
+		if !reflect.DeepEqual(got, want) {
+			return fmt.Errorf("API reports attached tools %v, want %v — tool_keys accepted on write but not attached or not returned on read", got, want)
+		}
+		return nil
+	}
 }
 
 func testAccCheckAIConfigVariationExists(resourceName string) resource.TestCheckFunc {
