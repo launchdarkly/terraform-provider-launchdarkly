@@ -2,6 +2,13 @@
 
 All notable changes to the LaunchDarkly Terraform Provider will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org).
 
+## [3.1.0](https://github.com/launchdarkly/terraform-provider-launchdarkly/compare/v3.0.2...v3.1.0) (2026-07-27)
+
+
+### Features
+
+* add judge attachments to launchdarkly_ai_config_variation ([#512](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/512)) ([f725c22](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/f725c227d94613f3738eae94abcf1b3b30e3e84f))
+
 ## [3.0.2](https://github.com/launchdarkly/terraform-provider-launchdarkly/compare/v3.0.1...v3.0.2) (2026-07-24)
 
 
