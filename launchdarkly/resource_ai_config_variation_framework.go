@@ -312,9 +312,6 @@ func (r *AIConfigVariationResource) Create(ctx context.Context, req resource.Cre
 
 	toolKeys, d := stringSliceFromSet(ctx, plan.ToolKeys)
 	resp.Diagnostics.Append(d...)
-	if len(toolKeys) > 0 {
-		post.ToolKeys = toolKeys
-	}
 
 	judges, d := variationJudgesFromMap(ctx, plan.Judges)
 	resp.Diagnostics.Append(d...)
@@ -326,6 +323,15 @@ func (r *AIConfigVariationResource) Create(ctx context.Context, req resource.Cre
 
 	if resp.Diagnostics.HasError() {
 		return
+	}
+
+	if len(toolKeys) > 0 {
+		tools, terr := r.resolveVariationTools(projectKey, toolKeys)
+		if terr != nil {
+			addLdapiError(&resp.Diagnostics, fmt.Sprintf("failed to resolve tool versions for AgentControl config variation %q in project %q", variationKey, projectKey), terr)
+			return
+		}
+		post.Tools = tools
 	}
 
 	err := r.client.withConcurrency(r.client.ctx, func() error {
@@ -411,7 +417,19 @@ func (r *AIConfigVariationResource) Update(ctx context.Context, req resource.Upd
 	if !plan.ToolKeys.Equal(state.ToolKeys) {
 		tks, d := stringSliceFromSet(ctx, plan.ToolKeys)
 		resp.Diagnostics.Append(d...)
-		patch.ToolKeys = tks
+		if !d.HasError() {
+			tools, terr := r.resolveVariationTools(projectKey, tks)
+			if terr != nil {
+				addLdapiError(&resp.Diagnostics, fmt.Sprintf("failed to resolve tool versions for AgentControl config variation %q in project %q", variationKey, projectKey), terr)
+				return
+			}
+			if tools == nil {
+				// A non-nil empty slice serializes as `"tools": []` to
+				// remove all tool associations.
+				tools = []ldapi.VariationToolPost{}
+			}
+			patch.Tools = tools
+		}
 	}
 	if !plan.Judges.Equal(state.Judges) {
 		judges, d := variationJudgesFromMap(ctx, plan.Judges)
@@ -673,6 +691,32 @@ func variationMessagesFromList(ctx context.Context, list types.List) ([]ldapi.Me
 		out[i] = *ldapi.NewMessage(m.Content, m.Role)
 	}
 	return out, diags
+}
+
+// resolveVariationTools resolves each tool key to its current version and
+// returns VariationToolPost entries for the request's `tools` field. The
+// spec documents a bare `toolKeys` field ("latest version of the tool will
+// be used"), but the API accepts it without attaching anything (see PR
+// #518); `tools`, which carries an explicit version, is the field that
+// attaches.
+func (r *AIConfigVariationResource) resolveVariationTools(projectKey string, toolKeys []string) ([]ldapi.VariationToolPost, error) {
+	if len(toolKeys) == 0 {
+		return nil, nil
+	}
+	tools := make([]ldapi.VariationToolPost, 0, len(toolKeys))
+	for _, key := range toolKeys {
+		var tool *ldapi.AITool
+		err := r.client.withConcurrency(r.client.ctx, func() error {
+			var e error
+			tool, _, e = r.client.ld.AgentControlApi.GetAITool(r.client.ctx, projectKey, key).Execute()
+			return e
+		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to look up AI tool %q in project %q: %w", key, projectKey, err)
+		}
+		tools = append(tools, *ldapi.NewVariationToolPost(key, tool.Version))
+	}
+	return tools, nil
 }
 
 // variationJudgesFromMap converts the framework judges map (keyed by judge
