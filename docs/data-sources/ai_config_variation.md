@@ -3,15 +3,15 @@
 page_title: "launchdarkly_ai_config_variation Data Source - launchdarkly"
 subcategory: ""
 description: |-
-  Provides a LaunchDarkly AI Config variation data source.
-  This data source allows you to retrieve AI Config variation information from your LaunchDarkly project.
+  Provides a LaunchDarkly AgentControl config variation data source.
+  This data source allows you to retrieve AgentControl config variation information from your LaunchDarkly project.
 ---
 
 # launchdarkly_ai_config_variation (Data Source)
 
-Provides a LaunchDarkly AI Config variation data source.
+Provides a LaunchDarkly AgentControl config variation data source.
 
-This data source allows you to retrieve AI Config variation information from your LaunchDarkly project.
+This data source allows you to retrieve AgentControl config variation information from your LaunchDarkly project.
 
 ## Example Usage
 
@@ -28,7 +28,7 @@ data "launchdarkly_ai_config_variation" "example" {
 
 ### Required
 
-- `config_key` (String) The AI Config key that this variation belongs to.
+- `config_key` (String) The AgentControl config key that this variation belongs to.
 - `key` (String) The variation's unique key.
 - `project_key` (String) The project key.
 
@@ -38,7 +38,7 @@ data "launchdarkly_ai_config_variation" "example" {
 - `description` (String) The variation's description. Used in agent mode.
 - `id` (String) The ID in the format `project_key/config_key/key`.
 - `instructions` (String) The variation's instructions. Used in agent mode.
-- `judges` (Attributes Map) The judges attached to this variation, keyed by the key of the judge AI Config. (see [below for nested schema](#nestedatt--judges))
+- `judges` (Attributes Map) The judges attached to this variation, keyed by the key of the judge AgentControl config. (see [below for nested schema](#nestedatt--judges))
 - `messages` (Attributes List) A list of messages for completion mode. (see [below for nested schema](#nestedatt--messages))
 - `model` (String) A JSON string representing the inline model configuration.
 - `model_config_key` (String) The key of a model config resource used for this variation.

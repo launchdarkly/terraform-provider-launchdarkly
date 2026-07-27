@@ -4,14 +4,14 @@ page_title: "launchdarkly_ai_agent_graph Resource - launchdarkly"
 subcategory: ""
 description: |-
   Provides a LaunchDarkly AI agent graph resource.
-  An agent graph represents a directed graph of AI Configs, connecting them with edges that describe handoffs from one AI Config to another. This resource allows you to create and manage agent graphs within a LaunchDarkly project.
+  An agent graph represents a directed graph of AgentControl configs, connecting them with edges that describe handoffs from one AgentControl config to another. This resource allows you to create and manage agent graphs within a LaunchDarkly project.
 ---
 
 # launchdarkly_ai_agent_graph (Resource)
 
 Provides a LaunchDarkly AI agent graph resource.
 
-An agent graph represents a directed graph of AI Configs, connecting them with edges that describe handoffs from one AI Config to another. This resource allows you to create and manage agent graphs within a LaunchDarkly project.
+An agent graph represents a directed graph of AgentControl configs, connecting them with edges that describe handoffs from one AgentControl config to another. This resource allows you to create and manage agent graphs within a LaunchDarkly project.
 
 ## Example Usage
 
@@ -59,10 +59,10 @@ resource "launchdarkly_ai_agent_graph" "support_workflow" {
 ### Optional
 
 - `description` (String) A description of the agent graph.
-- `edges` (Attributes Map) The edges in the graph, keyed by edge key. Each edge connects a source AI Config to a target AI Config. If `edges` or `root_config_key` is set, both must be set, and `edges` must contain at least one edge. Clearing this (reverting to a metadata-only graph) forces the destruction and recreation of the resource. (see [below for nested schema](#nestedatt--edges))
+- `edges` (Attributes Map) The edges in the graph, keyed by edge key. Each edge connects a source AgentControl config to a target AgentControl config. If `edges` or `root_config_key` is set, both must be set, and `edges` must contain at least one edge. Clearing this (reverting to a metadata-only graph) forces the destruction and recreation of the resource. (see [below for nested schema](#nestedatt--edges))
 - `maintainer_id` (String) The member ID of the maintainer for this agent graph. Defaults to the member associated with the access token. Conflicts with `maintainer_team_key`.
 - `maintainer_team_key` (String) The team key of the maintainer team for this agent graph. Conflicts with `maintainer_id`.
-- `root_config_key` (String) The AI Config key of the root node of the graph. If `root_config_key` or `edges` is set, both must be set. A graph with neither defined is a metadata-only graph. Clearing this (reverting to a metadata-only graph) forces the destruction and recreation of the resource.
+- `root_config_key` (String) The AgentControl config key of the root node of the graph. If `root_config_key` or `edges` is set, both must be set. A graph with neither defined is a metadata-only graph. Clearing this (reverting to a metadata-only graph) forces the destruction and recreation of the resource.
 
 ### Read-Only
 
@@ -75,12 +75,12 @@ resource "launchdarkly_ai_agent_graph" "support_workflow" {
 
 Required:
 
-- `source_config` (String) The AI Config key that is the source of this edge.
-- `target_config` (String) The AI Config key that is the target of this edge.
+- `source_config` (String) The AgentControl config key that is the source of this edge.
+- `target_config` (String) The AgentControl config key that is the target of this edge.
 
 Optional:
 
-- `handoff` (String) A JSON string representing the handoff options from the source AI Config to the target AI Config.
+- `handoff` (String) A JSON string representing the handoff options from the source AgentControl config to the target AgentControl config.
 - `key` (String) The unique key for this edge within the graph. Must equal the map key. It defaults to the map key when omitted.
 
 ## Import

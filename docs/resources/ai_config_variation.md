@@ -3,15 +3,15 @@
 page_title: "launchdarkly_ai_config_variation Resource - launchdarkly"
 subcategory: ""
 description: |-
-  Provides a LaunchDarkly AI Config variation resource.
-  This resource allows you to create and manage AI Config variations within your LaunchDarkly project.
+  Provides a LaunchDarkly AgentControl config variation resource.
+  This resource allows you to create and manage AgentControl config variations within your LaunchDarkly project.
 ---
 
 # launchdarkly_ai_config_variation (Resource)
 
-Provides a LaunchDarkly AI Config variation resource.
+Provides a LaunchDarkly AgentControl config variation resource.
 
-This resource allows you to create and manage AI Config variations within your LaunchDarkly project.
+This resource allows you to create and manage AgentControl config variations within your LaunchDarkly project.
 
 ## Example Usage
 
@@ -55,7 +55,7 @@ resource "launchdarkly_ai_config" "response_quality_judge" {
 
 ### Required
 
-- `config_key` (String) The AI Config key that this variation belongs to. A change in this field forces the destruction of the existing resource and the creation of a new one.
+- `config_key` (String) The AgentControl config key that this variation belongs to. A change in this field forces the destruction of the existing resource and the creation of a new one.
 - `key` (String) The variation's unique key. A change in this field forces the destruction of the existing resource and the creation of a new one.
 - `name` (String) The variation's human-readable name.
 - `project_key` (String) The project key. A change in this field forces the destruction of the existing resource and the creation of a new one.
@@ -64,7 +64,7 @@ resource "launchdarkly_ai_config" "response_quality_judge" {
 
 - `description` (String) The variation's description. Used in agent mode.
 - `instructions` (String) The variation's instructions. Used in agent mode.
-- `judges` (Attributes Map) The judges attached to this variation, keyed by the key of the judge AI Config (an AI Config with `mode = "judge"`). Applying this attribute replaces all judge attachments on the variation; removing it detaches all judges. (see [below for nested schema](#nestedatt--judges))
+- `judges` (Attributes Map) The judges attached to this variation, keyed by the key of the judge AgentControl config (an AgentControl config with `mode = "judge"`). Applying this attribute replaces all judge attachments on the variation; removing it detaches all judges. (see [below for nested schema](#nestedatt--judges))
 - `messages` (Attributes List) A list of messages for completion mode. Each message has a `role` and `content`. (see [below for nested schema](#nestedatt--messages))
 - `model` (String) A JSON string representing the inline model configuration for the variation. Conflicts with `model_config_key`.
 - `model_config_key` (String) The key of a model config resource to use for this variation. Conflicts with `model`.
@@ -99,6 +99,6 @@ Required:
 Import is supported using the following syntax:
 
 ```shell
-# LaunchDarkly AI Config variations can be imported using the format `project_key/config_key/variation_key`
+# LaunchDarkly AgentControl config variations can be imported using the format `project_key/config_key/variation_key`
 terraform import launchdarkly_ai_config_variation.example example-project/customer-assistant/helpful-v1
 ```

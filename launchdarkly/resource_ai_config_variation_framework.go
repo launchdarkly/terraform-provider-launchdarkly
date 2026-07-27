@@ -68,7 +68,7 @@ func (r *AIConfigVariationResource) Metadata(_ context.Context, req resource.Met
 func (r *AIConfigVariationResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		Version:     1,
-		Description: "Provides a LaunchDarkly AI Config variation resource.\n\nThis resource allows you to create and manage AI Config variations within your LaunchDarkly project.",
+		Description: "Provides a LaunchDarkly AgentControl config variation resource.\n\nThis resource allows you to create and manage AgentControl config variations within your LaunchDarkly project.",
 		Attributes:  aiConfigVariationSchemaAttributes(),
 	}
 }
@@ -87,7 +87,7 @@ func aiConfigVariationSchemaAttributes() map[string]schema.Attribute {
 		},
 		AI_CONFIG_KEY: schema.StringAttribute{
 			Required:      true,
-			Description:   addForceNewDescription("The AI Config key that this variation belongs to.", true),
+			Description:   addForceNewDescription("The AgentControl config key that this variation belongs to.", true),
 			Validators:    []validator.String{keyValidator()},
 			PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
 		},
@@ -141,7 +141,7 @@ func aiConfigVariationSchemaAttributes() map[string]schema.Attribute {
 		},
 		JUDGES: schema.MapNestedAttribute{
 			Optional:    true,
-			Description: "The judges attached to this variation, keyed by the key of the judge AI Config (an AI Config with `mode = \"judge\"`). Applying this attribute replaces all judge attachments on the variation; removing it detaches all judges.",
+			Description: "The judges attached to this variation, keyed by the key of the judge AgentControl config (an AgentControl config with `mode = \"judge\"`). Applying this attribute replaces all judge attachments on the variation; removing it detaches all judges.",
 			Validators: []validator.Map{
 				// Reject `judges = {}`: the Read path reports a variation
 				// with no judge attachments as null, so allowing an explicit
@@ -176,7 +176,7 @@ func aiConfigVariationSchemaAttributes() map[string]schema.Attribute {
 			Computed:    true,
 			Description: "The internal ID of the variation.",
 			// Intentionally no UseStateForUnknown: variation_id can
-			// change between PATCHes because the AI Config API
+			// change between PATCHes because the AgentControl config API
 			// versions variations as immutable entities — every
 			// update creates a new variation row with a new ID.
 		},
@@ -333,7 +333,7 @@ func (r *AIConfigVariationResource) Create(ctx context.Context, req resource.Cre
 		return e
 	})
 	if err != nil {
-		addLdapiError(&resp.Diagnostics, fmt.Sprintf("failed to create AI config variation with key %q in config %q project %q", variationKey, configKey, projectKey), err)
+		addLdapiError(&resp.Diagnostics, fmt.Sprintf("failed to create AgentControl config variation with key %q in config %q project %q", variationKey, configKey, projectKey), err)
 		return
 	}
 
@@ -435,7 +435,7 @@ func (r *AIConfigVariationResource) Update(ctx context.Context, req resource.Upd
 		return e
 	})
 	if err != nil {
-		addLdapiError(&resp.Diagnostics, fmt.Sprintf("failed to update AI config variation with key %q in config %q project %q", variationKey, configKey, projectKey), err)
+		addLdapiError(&resp.Diagnostics, fmt.Sprintf("failed to update AgentControl config variation with key %q in config %q project %q", variationKey, configKey, projectKey), err)
 		return
 	}
 
@@ -466,12 +466,12 @@ func (r *AIConfigVariationResource) Delete(ctx context.Context, req resource.Del
 	if err == nil || isStatusNotFound(res) {
 		return
 	}
-	// "Cannot delete the last variation" — parent AI config delete will cascade.
+	// "Cannot delete the last variation" — parent AgentControl config delete will cascade.
 	if strings.Contains(handleLdapiErr(err).Error(), "Cannot delete the last variation") {
-		log.Printf("[WARN] cannot delete last variation %q in config %q project %q — will be removed when parent AI config is deleted", variationKey, configKey, projectKey)
+		log.Printf("[WARN] cannot delete last variation %q in config %q project %q — will be removed when parent AgentControl config is deleted", variationKey, configKey, projectKey)
 		return
 	}
-	addLdapiError(&resp.Diagnostics, fmt.Sprintf("failed to delete AI config variation with key %q in config %q project %q", variationKey, configKey, projectKey), err)
+	addLdapiError(&resp.Diagnostics, fmt.Sprintf("failed to delete AgentControl config variation with key %q in config %q project %q", variationKey, configKey, projectKey), err)
 }
 
 func (r *AIConfigVariationResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
@@ -514,11 +514,11 @@ func (r *AIConfigVariationResource) readIntoModelWithRetry(
 		if time.Now().After(deadline) {
 			diags.AddError(
 				"version did not advance",
-				fmt.Sprintf("AI config variation %q: version did not advance past %d after %d reads (current %d)", variationKey, previousVersion, attempt+1, current),
+				fmt.Sprintf("AgentControl config variation %q: version did not advance past %d after %d reads (current %d)", variationKey, previousVersion, attempt+1, current),
 			)
 			return
 		}
-		log.Printf("[DEBUG] AI config variation %q: version %d has not advanced past %d, retrying read", variationKey, current, previousVersion)
+		log.Printf("[DEBUG] AgentControl config variation %q: version %d has not advanced past %d, retrying read", variationKey, current, previousVersion)
 		time.Sleep(2 * time.Second)
 	}
 }
@@ -541,7 +541,7 @@ func (r *AIConfigVariationResource) readIntoModel(
 			data.ID = types.StringNull()
 			return
 		}
-		diags.AddError(fmt.Sprintf("failed to get AI config variation with key %q in config %q project %q", variationKey, configKey, projectKey), handleLdapiErr(err).Error())
+		diags.AddError(fmt.Sprintf("failed to get AgentControl config variation with key %q in config %q project %q", variationKey, configKey, projectKey), handleLdapiErr(err).Error())
 		return
 	}
 	if variationsResp == nil || len(variationsResp.Items) == 0 {
@@ -594,7 +594,7 @@ func (r *AIConfigVariationResource) readIntoModel(
 	if len(cleaned) > 0 && !isEmptyModelMap(cleaned) {
 		jsonStr, jerr := mapToJsonString(cleaned)
 		if jerr != nil {
-			diags.AddError(fmt.Sprintf("failed to serialize model for AI config variation %q", variationKey), jerr.Error())
+			diags.AddError(fmt.Sprintf("failed to serialize model for AgentControl config variation %q", variationKey), jerr.Error())
 			return
 		}
 		// Preserve prior state value if semantically equivalent (keeps
@@ -676,7 +676,7 @@ func variationMessagesFromList(ctx context.Context, list types.List) ([]ldapi.Me
 }
 
 // variationJudgesFromMap converts the framework judges map (keyed by judge
-// AI Config key) into []ldapi.JudgeAttachment, sorted by key for a stable
+// AgentControl config key) into []ldapi.JudgeAttachment, sorted by key for a stable
 // request body.
 func variationJudgesFromMap(ctx context.Context, m types.Map) ([]ldapi.JudgeAttachment, diag.Diagnostics) {
 	var diags diag.Diagnostics

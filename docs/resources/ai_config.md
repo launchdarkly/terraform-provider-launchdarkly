@@ -3,15 +3,15 @@
 page_title: "launchdarkly_ai_config Resource - launchdarkly"
 subcategory: ""
 description: |-
-  Provides a LaunchDarkly AI Config resource.
-  This resource allows you to create and manage AI Configurations within your LaunchDarkly project.
+  Provides a LaunchDarkly AgentControl config resource.
+  This resource allows you to create and manage AgentControl configurations within your LaunchDarkly project.
 ---
 
 # launchdarkly_ai_config (Resource)
 
-Provides a LaunchDarkly AI Config resource.
+Provides a LaunchDarkly AgentControl config resource.
 
-This resource allows you to create and manage AI Configurations within your LaunchDarkly project.
+This resource allows you to create and manage AgentControl configurations within your LaunchDarkly project.
 
 ## Example Usage
 
@@ -31,26 +31,26 @@ resource "launchdarkly_ai_config" "example" {
 
 ### Required
 
-- `key` (String) The AI Config's unique key. A change in this field forces the destruction of the existing resource and the creation of a new one.
-- `name` (String) The AI Config's human-readable name.
+- `key` (String) The AgentControl config's unique key. A change in this field forces the destruction of the existing resource and the creation of a new one.
+- `name` (String) The AgentControl config's human-readable name.
 - `project_key` (String) The project key. A change in this field forces the destruction of the existing resource and the creation of a new one.
 
 ### Optional
 
-- `description` (String) The AI Config's description.
-- `evaluation_metric_key` (String) The key of the evaluation metric associated with this AI Config.
+- `description` (String) The AgentControl config's description.
+- `evaluation_metric_key` (String) The key of the evaluation metric associated with this AgentControl config.
 - `is_inverted` (Boolean) Whether the evaluation metric is inverted.
-- `maintainer_id` (String) The member ID of the maintainer for this AI Config. Conflicts with `maintainer_team_key`.
-- `maintainer_team_key` (String) The team key of the maintainer team for this AI Config. Conflicts with `maintainer_id`.
-- `mode` (String) The AI Config's mode. Must be `completion`, `agent`, or `judge`. Defaults to `completion`. A change in this field forces the destruction of the existing resource and the creation of a new one.
-- `tags` (Set of String) Tags associated with this AI Config.
+- `maintainer_id` (String) The member ID of the maintainer for this AgentControl config. Conflicts with `maintainer_team_key`.
+- `maintainer_team_key` (String) The team key of the maintainer team for this AgentControl config. Conflicts with `maintainer_id`.
+- `mode` (String) The AgentControl config's mode. Must be `completion`, `agent`, or `judge`. Defaults to `completion`. A change in this field forces the destruction of the existing resource and the creation of a new one.
+- `tags` (Set of String) Tags associated with this AgentControl config.
 
 ### Read-Only
 
-- `creation_date` (Number) A timestamp of when the AI Config was created.
+- `creation_date` (Number) A timestamp of when the AgentControl config was created.
 - `id` (String) The ID of this resource.
-- `variations` (List of Object) A list of variation summaries for this AI Config. (see [below for nested schema](#nestedatt--variations))
-- `version` (Number) The version of the AI Config.
+- `variations` (List of Object) A list of variation summaries for this AgentControl config. (see [below for nested schema](#nestedatt--variations))
+- `version` (Number) The version of the AgentControl config.
 
 <a id="nestedatt--variations"></a>
 ### Nested Schema for `variations`
@@ -66,6 +66,6 @@ Read-Only:
 Import is supported using the following syntax:
 
 ```shell
-# LaunchDarkly AI Configs can be imported using the format `project_key/config_key`
+# LaunchDarkly AgentControl configs can be imported using the format `project_key/config_key`
 terraform import launchdarkly_ai_config.example example-project/customer-assistant
 ```

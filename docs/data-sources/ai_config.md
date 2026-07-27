@@ -3,15 +3,15 @@
 page_title: "launchdarkly_ai_config Data Source - launchdarkly"
 subcategory: ""
 description: |-
-  Provides a LaunchDarkly AI Config data source.
-  This data source allows you to retrieve AI configuration information from your LaunchDarkly project.
+  Provides a LaunchDarkly AgentControl config data source.
+  This data source allows you to retrieve AgentControl configuration information from your LaunchDarkly project.
 ---
 
 # launchdarkly_ai_config (Data Source)
 
-Provides a LaunchDarkly AI Config data source.
+Provides a LaunchDarkly AgentControl config data source.
 
-This data source allows you to retrieve AI configuration information from your LaunchDarkly project.
+This data source allows you to retrieve AgentControl configuration information from your LaunchDarkly project.
 
 ## Example Usage
 
@@ -27,23 +27,23 @@ data "launchdarkly_ai_config" "example" {
 
 ### Required
 
-- `key` (String) The AI Config's unique key.
+- `key` (String) The AgentControl config's unique key.
 - `project_key` (String) The project key.
 
 ### Read-Only
 
-- `creation_date` (Number) A timestamp of when the AI Config was created.
-- `description` (String) The AI Config's description.
-- `evaluation_metric_key` (String) The key of the evaluation metric associated with this AI Config.
+- `creation_date` (Number) A timestamp of when the AgentControl config was created.
+- `description` (String) The AgentControl config's description.
+- `evaluation_metric_key` (String) The key of the evaluation metric associated with this AgentControl config.
 - `id` (String) The ID in the format `project_key/key`.
 - `is_inverted` (Boolean) Whether the evaluation metric is inverted.
-- `maintainer_id` (String) The member ID of the maintainer for this AI Config. Conflicts with `maintainer_team_key`.
-- `maintainer_team_key` (String) The team key of the maintainer team for this AI Config. Conflicts with `maintainer_id`.
-- `mode` (String) The AI Config's mode. Must be `completion`, `agent`, or `judge`.
-- `name` (String) The AI Config's human-readable name.
+- `maintainer_id` (String) The member ID of the maintainer for this AgentControl config. Conflicts with `maintainer_team_key`.
+- `maintainer_team_key` (String) The team key of the maintainer team for this AgentControl config. Conflicts with `maintainer_id`.
+- `mode` (String) The AgentControl config's mode. Must be `completion`, `agent`, or `judge`.
+- `name` (String) The AgentControl config's human-readable name.
 - `tags` (Set of String) Tags associated with your resource.
-- `variations` (Attributes List) A list of variation summaries for this AI Config. (see [below for nested schema](#nestedatt--variations))
-- `version` (Number) The version of the AI Config.
+- `variations` (Attributes List) A list of variation summaries for this AgentControl config. (see [below for nested schema](#nestedatt--variations))
+- `version` (Number) The version of the AgentControl config.
 
 <a id="nestedatt--variations"></a>
 ### Nested Schema for `variations`

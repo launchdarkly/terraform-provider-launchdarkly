@@ -60,7 +60,7 @@ func (r *AIConfigResource) Metadata(_ context.Context, req resource.MetadataRequ
 func (r *AIConfigResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		Version:     1,
-		Description: "Provides a LaunchDarkly AI Config resource.\n\nThis resource allows you to create and manage AI Configurations within your LaunchDarkly project.",
+		Description: "Provides a LaunchDarkly AgentControl config resource.\n\nThis resource allows you to create and manage AgentControl configurations within your LaunchDarkly project.",
 		Attributes:  aiConfigSchemaAttributes(),
 	}
 }
@@ -79,23 +79,23 @@ func aiConfigSchemaAttributes() map[string]schema.Attribute {
 		},
 		KEY: schema.StringAttribute{
 			Required:      true,
-			Description:   addForceNewDescription("The AI Config's unique key.", true),
+			Description:   addForceNewDescription("The AgentControl config's unique key.", true),
 			Validators:    []validator.String{keyValidator()},
 			PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
 		},
 		NAME: schema.StringAttribute{
 			Required:    true,
-			Description: "The AI Config's human-readable name.",
+			Description: "The AgentControl config's human-readable name.",
 		},
 		DESCRIPTION: schema.StringAttribute{
 			Optional:    true,
-			Description: "The AI Config's description.",
+			Description: "The AgentControl config's description.",
 		},
 		MODE: schema.StringAttribute{
 			Optional:      true,
 			Computed:      true,
 			Default:       stringdefault.StaticString("completion"),
-			Description:   addForceNewDescription("The AI Config's mode. Must be `completion`, `agent`, or `judge`. Defaults to `completion`.", true),
+			Description:   addForceNewDescription("The AgentControl config's mode. Must be `completion`, `agent`, or `judge`. Defaults to `completion`.", true),
 			Validators:    []validator.String{oneOfValidator{allowed: []string{"completion", "agent", "judge"}}},
 			PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
 		},
@@ -103,12 +103,12 @@ func aiConfigSchemaAttributes() map[string]schema.Attribute {
 			Optional:    true,
 			Computed:    true,
 			ElementType: types.StringType,
-			Description: "Tags associated with this AI Config.",
+			Description: "Tags associated with this AgentControl config.",
 		},
 		MAINTAINER_ID: schema.StringAttribute{
 			Optional:    true,
 			Computed:    true,
-			Description: "The member ID of the maintainer for this AI Config. Conflicts with `maintainer_team_key`.",
+			Description: "The member ID of the maintainer for this AgentControl config. Conflicts with `maintainer_team_key`.",
 			Validators:  []validator.String{idValidator()},
 			PlanModifiers: []planmodifier.String{
 				stringplanmodifier.UseStateForUnknown(),
@@ -117,14 +117,14 @@ func aiConfigSchemaAttributes() map[string]schema.Attribute {
 		MAINTAINER_TEAM_KEY: schema.StringAttribute{
 			Optional:    true,
 			Computed:    true,
-			Description: "The team key of the maintainer team for this AI Config. Conflicts with `maintainer_id`.",
+			Description: "The team key of the maintainer team for this AgentControl config. Conflicts with `maintainer_id`.",
 			PlanModifiers: []planmodifier.String{
 				stringplanmodifier.UseStateForUnknown(),
 			},
 		},
 		EVALUATION_METRIC_KEY: schema.StringAttribute{
 			Optional:    true,
-			Description: "The key of the evaluation metric associated with this AI Config.",
+			Description: "The key of the evaluation metric associated with this AgentControl config.",
 		},
 		IS_INVERTED: schema.BoolAttribute{
 			Optional:    true,
@@ -132,15 +132,15 @@ func aiConfigSchemaAttributes() map[string]schema.Attribute {
 		},
 		VERSION: schema.Int64Attribute{
 			Computed:    true,
-			Description: "The version of the AI Config.",
+			Description: "The version of the AgentControl config.",
 		},
 		CREATION_DATE: schema.Int64Attribute{
 			Computed:    true,
-			Description: "A timestamp of when the AI Config was created.",
+			Description: "A timestamp of when the AgentControl config was created.",
 		},
 		VARIATIONS: schema.ListAttribute{
 			Computed:    true,
-			Description: "A list of variation summaries for this AI Config.",
+			Description: "A list of variation summaries for this AgentControl config.",
 			ElementType: types.ObjectType{AttrTypes: aiConfigVariationSummaryAttrTypes},
 		},
 	}
@@ -267,7 +267,7 @@ func (r *AIConfigResource) Create(ctx context.Context, req resource.CreateReques
 		return e
 	})
 	if err != nil {
-		addLdapiError(&resp.Diagnostics, fmt.Sprintf("failed to create AI config with key %q in project %q", configKey, projectKey), err)
+		addLdapiError(&resp.Diagnostics, fmt.Sprintf("failed to create AgentControl config with key %q in project %q", configKey, projectKey), err)
 		return
 	}
 
@@ -357,7 +357,7 @@ func (r *AIConfigResource) Update(ctx context.Context, req resource.UpdateReques
 			return e
 		})
 		if err != nil {
-			addLdapiError(&resp.Diagnostics, fmt.Sprintf("failed to update AI config with key %q in project %q", configKey, projectKey), err)
+			addLdapiError(&resp.Diagnostics, fmt.Sprintf("failed to update AgentControl config with key %q in project %q", configKey, projectKey), err)
 			return
 		}
 	}
@@ -369,7 +369,7 @@ func (r *AIConfigResource) Update(ctx context.Context, req resource.UpdateReques
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 }
 
-// Delete retries on a transient 400 "Could not delete AI config" — the
+// Delete retries on a transient 400 "Could not delete AgentControl config" — the
 // LD API needs all variations dereferenced before the config itself
 // can go.
 func (r *AIConfigResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
@@ -397,10 +397,10 @@ func (r *AIConfigResource) Delete(ctx context.Context, req resource.DeleteReques
 		if !shouldRetryAIConfigDelete(res, err) || time.Now().After(deadline) {
 			break
 		}
-		log.Printf("[DEBUG] retrying AI config delete for %q in project %q after transient 400: %s", configKey, projectKey, handleLdapiErr(err))
+		log.Printf("[DEBUG] retrying AgentControl config delete for %q in project %q after transient 400: %s", configKey, projectKey, handleLdapiErr(err))
 		time.Sleep(2 * time.Second)
 	}
-	addLdapiError(&resp.Diagnostics, fmt.Sprintf("failed to delete AI config with key %q in project %q", configKey, projectKey), lastErr)
+	addLdapiError(&resp.Diagnostics, fmt.Sprintf("failed to delete AgentControl config with key %q in project %q", configKey, projectKey), lastErr)
 }
 
 func (r *AIConfigResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
@@ -432,7 +432,7 @@ func (r *AIConfigResource) readIntoModel(
 			data.ID = types.StringNull()
 			return
 		}
-		diags.AddError(fmt.Sprintf("failed to get AI config with key %q in project %q", configKey, projectKey), handleLdapiErr(err).Error())
+		diags.AddError(fmt.Sprintf("failed to get AgentControl config with key %q in project %q", configKey, projectKey), handleLdapiErr(err).Error())
 		return
 	}
 

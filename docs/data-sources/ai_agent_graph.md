@@ -4,14 +4,14 @@ page_title: "launchdarkly_ai_agent_graph Data Source - launchdarkly"
 subcategory: ""
 description: |-
   Provides a LaunchDarkly AI agent graph data source.
-  This data source allows you to retrieve information about an agent graph, a directed graph of AI Configs, in your LaunchDarkly project.
+  This data source allows you to retrieve information about an agent graph, a directed graph of AgentControl configs, in your LaunchDarkly project.
 ---
 
 # launchdarkly_ai_agent_graph (Data Source)
 
 Provides a LaunchDarkly AI agent graph data source.
 
-This data source allows you to retrieve information about an agent graph, a directed graph of AI Configs, in your LaunchDarkly project.
+This data source allows you to retrieve information about an agent graph, a directed graph of AgentControl configs, in your LaunchDarkly project.
 
 ## Example Usage
 
@@ -34,20 +34,20 @@ data "launchdarkly_ai_agent_graph" "support_workflow" {
 
 - `creation_date` (Number) The creation timestamp of the agent graph, in Unix epoch milliseconds.
 - `description` (String) A description of the agent graph.
-- `edges` (Attributes Map) The edges in the graph, keyed by edge key. Each edge connects a source AI Config to a target AI Config. (see [below for nested schema](#nestedatt--edges))
+- `edges` (Attributes Map) The edges in the graph, keyed by edge key. Each edge connects a source AgentControl config to a target AgentControl config. (see [below for nested schema](#nestedatt--edges))
 - `id` (String) The composite ID of the agent graph in the format `project_key/key`.
 - `last_modified` (Number) The timestamp of the agent graph's last update, in Unix epoch milliseconds.
 - `maintainer_id` (String) The member ID of the maintainer for this agent graph.
 - `maintainer_team_key` (String) The team key of the maintainer team for this agent graph.
 - `name` (String) A human-readable name for the agent graph.
-- `root_config_key` (String) The AI Config key of the root node of the graph.
+- `root_config_key` (String) The AgentControl config key of the root node of the graph.
 
 <a id="nestedatt--edges"></a>
 ### Nested Schema for `edges`
 
 Read-Only:
 
-- `handoff` (String) A JSON string representing the handoff options from the source AI Config to the target AI Config.
+- `handoff` (String) A JSON string representing the handoff options from the source AgentControl config to the target AgentControl config.
 - `key` (String) The unique key for this edge within the graph. Always equals the map key.
-- `source_config` (String) The AI Config key that is the source of this edge.
-- `target_config` (String) The AI Config key that is the target of this edge.
+- `source_config` (String) The AgentControl config key that is the source of this edge.
+- `target_config` (String) The AgentControl config key that is the target of this edge.

@@ -50,27 +50,27 @@ func (d *AIConfigDataSource) Metadata(_ context.Context, req datasource.Metadata
 
 func (d *AIConfigDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "Provides a LaunchDarkly AI Config data source.\n\nThis data source allows you to retrieve AI configuration information from your LaunchDarkly project.",
+		Description: "Provides a LaunchDarkly AgentControl config data source.\n\nThis data source allows you to retrieve AgentControl configuration information from your LaunchDarkly project.",
 		Attributes: map[string]schema.Attribute{
 			"id":          schema.StringAttribute{Computed: true, Description: "The ID in the format `project_key/key`."},
 			PROJECT_KEY:   schema.StringAttribute{Required: true, Description: "The project key."},
-			KEY:           schema.StringAttribute{Required: true, Description: "The AI Config's unique key."},
-			NAME:          schema.StringAttribute{Computed: true, Description: "The AI Config's human-readable name."},
-			DESCRIPTION:   schema.StringAttribute{Computed: true, Description: "The AI Config's description."},
-			MODE:          schema.StringAttribute{Computed: true, Description: "The AI Config's mode. Must be `completion`, `agent`, or `judge`."},
+			KEY:           schema.StringAttribute{Required: true, Description: "The AgentControl config's unique key."},
+			NAME:          schema.StringAttribute{Computed: true, Description: "The AgentControl config's human-readable name."},
+			DESCRIPTION:   schema.StringAttribute{Computed: true, Description: "The AgentControl config's description."},
+			MODE:          schema.StringAttribute{Computed: true, Description: "The AgentControl config's mode. Must be `completion`, `agent`, or `judge`."},
 			TAGS:          schema.SetAttribute{Computed: true, ElementType: types.StringType, Description: "Tags associated with your resource."},
-			MAINTAINER_ID: schema.StringAttribute{Computed: true, Description: "The member ID of the maintainer for this AI Config. Conflicts with `maintainer_team_key`."},
+			MAINTAINER_ID: schema.StringAttribute{Computed: true, Description: "The member ID of the maintainer for this AgentControl config. Conflicts with `maintainer_team_key`."},
 			MAINTAINER_TEAM_KEY: schema.StringAttribute{
 				Computed:    true,
-				Description: "The team key of the maintainer team for this AI Config. Conflicts with `maintainer_id`.",
+				Description: "The team key of the maintainer team for this AgentControl config. Conflicts with `maintainer_id`.",
 			},
-			EVALUATION_METRIC_KEY: schema.StringAttribute{Computed: true, Description: "The key of the evaluation metric associated with this AI Config."},
+			EVALUATION_METRIC_KEY: schema.StringAttribute{Computed: true, Description: "The key of the evaluation metric associated with this AgentControl config."},
 			IS_INVERTED:           schema.BoolAttribute{Computed: true, Description: "Whether the evaluation metric is inverted."},
-			VERSION:               schema.Int64Attribute{Computed: true, Description: "The version of the AI Config."},
-			CREATION_DATE:         schema.Int64Attribute{Computed: true, Description: "A timestamp of when the AI Config was created."},
+			VERSION:               schema.Int64Attribute{Computed: true, Description: "The version of the AgentControl config."},
+			CREATION_DATE:         schema.Int64Attribute{Computed: true, Description: "A timestamp of when the AgentControl config was created."},
 			VARIATIONS: schema.ListNestedAttribute{
 				Computed:    true,
-				Description: "A list of variation summaries for this AI Config.",
+				Description: "A list of variation summaries for this AgentControl config.",
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
 						KEY:          schema.StringAttribute{Computed: true, Description: "The variation's key."},
@@ -109,7 +109,7 @@ func (d *AIConfigDataSource) Read(ctx context.Context, req datasource.ReadReques
 	})
 	if err != nil {
 		resp.Diagnostics.AddError(
-			fmt.Sprintf("failed to get AI config with key %q in project %q: %s", key, projectKey, handleLdapiErr(err).Error()),
+			fmt.Sprintf("failed to get AgentControl config with key %q in project %q: %s", key, projectKey, handleLdapiErr(err).Error()),
 			"",
 		)
 		return
