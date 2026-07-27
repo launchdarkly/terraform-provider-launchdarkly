@@ -31,7 +31,7 @@ func TestAccDataSourceAIConfig_noMatchReturnsError(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config:      fmt.Sprintf(testAccDataSourceAIConfigBasic, projectKey, configKey),
-				ExpectError: regexp.MustCompile(`failed to get AI config with key "nonexistent-config-key" in project "nonexistent-project-key"`),
+				ExpectError: regexp.MustCompile(`failed to get AgentControl config with key "nonexistent-config-key" in project "nonexistent-project-key"`),
 			},
 		},
 	})
