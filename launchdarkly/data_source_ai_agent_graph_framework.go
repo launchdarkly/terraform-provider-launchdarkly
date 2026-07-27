@@ -40,7 +40,7 @@ func (d *AIAgentGraphDataSource) Metadata(_ context.Context, req datasource.Meta
 
 func (d *AIAgentGraphDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "Provides a LaunchDarkly AI agent graph data source.\n\nThis data source allows you to retrieve information about an agent graph, a directed graph of AI Configs, in your LaunchDarkly project.",
+		Description: "Provides a LaunchDarkly AI agent graph data source.\n\nThis data source allows you to retrieve information about an agent graph, a directed graph of AgentControl configs, in your LaunchDarkly project.",
 		Attributes: map[string]schema.Attribute{
 			"id":          schema.StringAttribute{Computed: true, Description: "The composite ID of the agent graph in the format `project_key/key`."},
 			PROJECT_KEY:   schema.StringAttribute{Required: true, Description: "The project key."},
@@ -52,16 +52,16 @@ func (d *AIAgentGraphDataSource) Schema(_ context.Context, _ datasource.SchemaRe
 				Computed:    true,
 				Description: "The team key of the maintainer team for this agent graph.",
 			},
-			ROOT_CONFIG_KEY: schema.StringAttribute{Computed: true, Description: "The AI Config key of the root node of the graph."},
+			ROOT_CONFIG_KEY: schema.StringAttribute{Computed: true, Description: "The AgentControl config key of the root node of the graph."},
 			EDGES: schema.MapNestedAttribute{
 				Computed:    true,
-				Description: "The edges in the graph, keyed by edge key. Each edge connects a source AI Config to a target AI Config.",
+				Description: "The edges in the graph, keyed by edge key. Each edge connects a source AgentControl config to a target AgentControl config.",
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
 						KEY:           schema.StringAttribute{Computed: true, Description: "The unique key for this edge within the graph. Always equals the map key."},
-						SOURCE_CONFIG: schema.StringAttribute{Computed: true, Description: "The AI Config key that is the source of this edge."},
-						TARGET_CONFIG: schema.StringAttribute{Computed: true, Description: "The AI Config key that is the target of this edge."},
-						HANDOFF:       schema.StringAttribute{Computed: true, Description: "A JSON string representing the handoff options from the source AI Config to the target AI Config."},
+						SOURCE_CONFIG: schema.StringAttribute{Computed: true, Description: "The AgentControl config key that is the source of this edge."},
+						TARGET_CONFIG: schema.StringAttribute{Computed: true, Description: "The AgentControl config key that is the target of this edge."},
+						HANDOFF:       schema.StringAttribute{Computed: true, Description: "A JSON string representing the handoff options from the source AgentControl config to the target AgentControl config."},
 					},
 				},
 			},

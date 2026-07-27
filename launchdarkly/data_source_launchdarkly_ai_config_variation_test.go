@@ -33,7 +33,7 @@ func TestAccDataSourceAIConfigVariation_noMatchReturnsError(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config:      fmt.Sprintf(testAccDataSourceAIConfigVariationBasic, projectKey, configKey, variationKey),
-				ExpectError: regexp.MustCompile(`failed to get AI config variation with key "nonexistent-variation-key"`),
+				ExpectError: regexp.MustCompile(`failed to get AgentControl config variation with key "nonexistent-variation-key"`),
 			},
 		},
 	})

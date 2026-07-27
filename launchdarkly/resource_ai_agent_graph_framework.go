@@ -54,7 +54,7 @@ func (r *AIAgentGraphResource) Metadata(_ context.Context, req resource.Metadata
 
 func (r *AIAgentGraphResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "Provides a LaunchDarkly AI agent graph resource.\n\nAn agent graph represents a directed graph of AI Configs, connecting them with edges that describe handoffs from one AI Config to another. This resource allows you to create and manage agent graphs within a LaunchDarkly project.",
+		Description: "Provides a LaunchDarkly AI agent graph resource.\n\nAn agent graph represents a directed graph of AgentControl configs, connecting them with edges that describe handoffs from one AgentControl config to another. This resource allows you to create and manage agent graphs within a LaunchDarkly project.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				Computed:    true,
@@ -106,7 +106,7 @@ func (r *AIAgentGraphResource) Schema(_ context.Context, _ resource.SchemaReques
 			},
 			ROOT_CONFIG_KEY: schema.StringAttribute{
 				Optional:    true,
-				Description: "The AI Config key of the root node of the graph. If `root_config_key` or `edges` is set, both must be set. A graph with neither defined is a metadata-only graph. Clearing this (reverting to a metadata-only graph) forces the destruction and recreation of the resource.",
+				Description: "The AgentControl config key of the root node of the graph. If `root_config_key` or `edges` is set, both must be set. A graph with neither defined is a metadata-only graph. Clearing this (reverting to a metadata-only graph) forces the destruction and recreation of the resource.",
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.RequiresReplaceIf(
 						requiresReplaceOnClearString,
@@ -117,7 +117,7 @@ func (r *AIAgentGraphResource) Schema(_ context.Context, _ resource.SchemaReques
 			},
 			EDGES: schema.MapNestedAttribute{
 				Optional:    true,
-				Description: "The edges in the graph, keyed by edge key. Each edge connects a source AI Config to a target AI Config. If `edges` or `root_config_key` is set, both must be set, and `edges` must contain at least one edge. Clearing this (reverting to a metadata-only graph) forces the destruction and recreation of the resource.",
+				Description: "The edges in the graph, keyed by edge key. Each edge connects a source AgentControl config to a target AgentControl config. If `edges` or `root_config_key` is set, both must be set, and `edges` must contain at least one edge. Clearing this (reverting to a metadata-only graph) forces the destruction and recreation of the resource.",
 				Validators: []validator.Map{
 					// edges only makes sense alongside a root (both-or-neither) and
 					// with at least one edge. Reject `edges = {}`: the Read path
@@ -146,17 +146,17 @@ func (r *AIAgentGraphResource) Schema(_ context.Context, _ resource.SchemaReques
 						},
 						SOURCE_CONFIG: schema.StringAttribute{
 							Required:    true,
-							Description: "The AI Config key that is the source of this edge.",
+							Description: "The AgentControl config key that is the source of this edge.",
 							Validators:  []validator.String{keyValidator()},
 						},
 						TARGET_CONFIG: schema.StringAttribute{
 							Required:    true,
-							Description: "The AI Config key that is the target of this edge.",
+							Description: "The AgentControl config key that is the target of this edge.",
 							Validators:  []validator.String{keyValidator()},
 						},
 						HANDOFF: schema.StringAttribute{
 							Optional:    true,
-							Description: "A JSON string representing the handoff options from the source AI Config to the target AI Config.",
+							Description: "A JSON string representing the handoff options from the source AgentControl config to the target AgentControl config.",
 							Validators:  []validator.String{jsonStringValidator{}},
 							PlanModifiers: []planmodifier.String{
 								jsonNormalizePlanModifier{},
