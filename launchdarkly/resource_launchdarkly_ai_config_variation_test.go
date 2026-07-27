@@ -2,6 +2,8 @@ package launchdarkly
 
 import (
 	"fmt"
+	"reflect"
+	"sort"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
@@ -483,6 +485,7 @@ func TestAccAIConfigVariation_WithToolKeys(t *testing.T) {
 					testAccCheckAIConfigVariationExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, NAME, "Variation with tools"),
 					resource.TestCheckResourceAttr(resourceName, "tool_keys.#", "1"),
+					testAccCheckAIConfigVariationToolsAttached(resourceName, toolKey),
 				),
 			},
 		},
@@ -516,6 +519,49 @@ func TestAccAIConfigVariation_WithInlineModel(t *testing.T) {
 			},
 		},
 	})
+}
+
+// testAccCheckAIConfigVariationToolsAttached asserts against the API — not
+// Terraform state — that the variation has exactly the expected tools
+// attached. State-only checks (tool_keys.#) are masked by the read's
+// preserve-prior fallback, which echoes the planned tool_keys back into
+// state when the API returns no tools; this check cannot be masked.
+func testAccCheckAIConfigVariationToolsAttached(resourceName string, expected ...string) resource.TestCheckFunc {
+	return func(s *terraform.State) error {
+		rs, ok := s.RootModule().Resources[resourceName]
+		if !ok {
+			return fmt.Errorf("not found: %s", resourceName)
+		}
+		projectKey := rs.Primary.Attributes[PROJECT_KEY]
+		configKey := rs.Primary.Attributes[AI_CONFIG_KEY]
+		variationKey := rs.Primary.Attributes[KEY]
+
+		client := mustTestAccClient()
+		variationsResp, _, err := client.ld.AgentControlApi.GetAIConfigVariation(client.ctx, projectKey, configKey, variationKey).Execute()
+		if err != nil {
+			return fmt.Errorf("received an error getting AI config variation: %s", err)
+		}
+		if variationsResp == nil || len(variationsResp.Items) == 0 {
+			return fmt.Errorf("no variation versions returned for %s/%s/%s", projectKey, configKey, variationKey)
+		}
+		variation := variationsResp.Items[0]
+		for _, v := range variationsResp.Items[1:] {
+			if v.Version > variation.Version {
+				variation = v
+			}
+		}
+		got := make([]string, 0, len(variation.Tools))
+		for _, t := range variation.Tools {
+			got = append(got, t.Key)
+		}
+		sort.Strings(got)
+		want := append([]string{}, expected...)
+		sort.Strings(want)
+		if !reflect.DeepEqual(got, want) {
+			return fmt.Errorf("API reports attached tools %v, want %v — tool_keys accepted on write but not attached or not returned on read", got, want)
+		}
+		return nil
+	}
 }
 
 func testAccCheckAIConfigVariationExists(resourceName string) resource.TestCheckFunc {
