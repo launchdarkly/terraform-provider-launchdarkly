@@ -84,7 +84,11 @@ func resourceAIConfigVariationCreate(ctx context.Context, d *schema.ResourceData
 
 	if v, ok := d.GetOk(TOOL_KEYS); ok {
 		toolKeys := stringsFromSchemaSet(optionalSchemaSetFromInterface(v))
-		post.ToolKeys = toolKeys
+		tools, err := resolveVariationTools(client, projectKey, toolKeys)
+		if err != nil {
+			return diag.Errorf("failed to resolve tool versions for AI config variation %q in config %q project %q: %s", variationKey, configKey, projectKey, err)
+		}
+		post.Tools = tools
 	}
 
 	var err error
@@ -157,7 +161,16 @@ func resourceAIConfigVariationUpdate(ctx context.Context, d *schema.ResourceData
 
 	if d.HasChange(TOOL_KEYS) {
 		toolKeys := stringsFromSchemaSet(getOptionalSet(d, TOOL_KEYS))
-		patch.ToolKeys = toolKeys
+		tools, err := resolveVariationTools(client, projectKey, toolKeys)
+		if err != nil {
+			return diag.Errorf("failed to resolve tool versions for AI config variation %q in config %q project %q: %s", variationKey, configKey, projectKey, err)
+		}
+		if tools == nil {
+			// A non-nil empty slice serializes as `"tools": []` to remove all
+			// tool associations; a nil slice would be omitted from the request.
+			tools = []ldapi.VariationToolPost{}
+		}
+		patch.Tools = tools
 	}
 
 	var err error
@@ -244,4 +257,29 @@ func resourceAIConfigVariationImport(ctx context.Context, d *schema.ResourceData
 	_ = d.Set(KEY, variationKey)
 
 	return []*schema.ResourceData{d}, nil
+}
+
+// resolveVariationTools resolves each tool key to its current version and
+// returns VariationToolPost entries for the request's `tools` field. The spec
+// documents a bare `toolKeys` field ("latest version of the tool will be
+// used"), but the API accepts it without attaching anything (see PR #518);
+// `tools`, which carries an explicit version, is the field that attaches.
+func resolveVariationTools(client *Client, projectKey string, toolKeys []string) ([]ldapi.VariationToolPost, error) {
+	if len(toolKeys) == 0 {
+		return nil, nil
+	}
+	tools := make([]ldapi.VariationToolPost, 0, len(toolKeys))
+	for _, key := range toolKeys {
+		var tool *ldapi.AITool
+		err := client.withConcurrency(client.ctx, func() error {
+			var e error
+			tool, _, e = client.ld.AIConfigsApi.GetAITool(client.ctx, projectKey, key).Execute()
+			return e
+		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to look up AI tool %q in project %q: %s", key, projectKey, handleLdapiErr(err))
+		}
+		tools = append(tools, *ldapi.NewVariationToolPost(key, tool.Version))
+	}
+	return tools, nil
 }
