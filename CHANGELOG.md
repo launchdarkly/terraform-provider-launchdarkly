@@ -2,6 +2,13 @@
 
 All notable changes to the LaunchDarkly Terraform Provider will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org).
 
+## [3.1.1](https://github.com/launchdarkly/terraform-provider-launchdarkly/compare/v3.1.0...v3.1.1) (2026-07-27)
+
+
+### Bug Fixes
+
+* attach AgentControl variation tools via the tools field ([#518](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/518)) ([68ca20f](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/68ca20f1a46e73e98e589b86455976877cbc096a))
+
 ## [3.1.0](https://github.com/launchdarkly/terraform-provider-launchdarkly/compare/v3.0.2...v3.1.0) (2026-07-27)
 
 
