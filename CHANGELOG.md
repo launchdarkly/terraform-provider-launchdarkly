@@ -2,6 +2,14 @@
 
 All notable changes to the LaunchDarkly Terraform Provider will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org).
 
+## [2.30.3](https://github.com/launchdarkly/terraform-provider-launchdarkly/compare/v2.30.2...v2.30.3) (2026-07-28)
+
+
+### Bug Fixes
+
+* attach AI config variation tools via the tools field (v2 backport of [#518](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/518)) ([#519](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/519)) ([c949c3e](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/c949c3e076ec578debae7ec77d60c7541a01ce8e))
+* attach AI config variation tools via the tools field, not toolKeys ([c949c3e](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/c949c3e076ec578debae7ec77d60c7541a01ce8e))
+
 ## [2.30.2](https://github.com/launchdarkly/terraform-provider-launchdarkly/compare/v2.30.1...v2.30.2) (2026-07-24)
 
 
