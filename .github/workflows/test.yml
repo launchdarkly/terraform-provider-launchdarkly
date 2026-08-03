@@ -121,9 +121,7 @@ jobs:
           - TestAccTeamMember_CreateAndUpdateGeneric
           - TestAccTeamMember_WithCustomRole
           - TestAccTeam_
-          # No TestAccTeamRoleMapping_* entry: launchdarkly_team_role_mapping
-          # ships on this branch with no acceptance test, so an entry here would
-          # be a shard that runs zero tests and reports success.
+          - TestAccTeamRoleMapping_
           - TestAccView
           - TestAccWebhook
     steps:
