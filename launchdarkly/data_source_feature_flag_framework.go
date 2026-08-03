@@ -298,7 +298,7 @@ func (d *FeatureFlagDataSource) Read(ctx context.Context, req datasource.ReadReq
 
 	// view associations (best-effort)
 	viewKeys := []string{}
-	if betaClient, bcErr := newBetaClient(d.client.apiKey, d.client.apiHost, false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY); bcErr == nil {
+	if betaClient, bcErr := d.client.betaClientFromConfig(); bcErr == nil {
 		if vk, vErr := getViewsContainingFlag(betaClient, projectKey, key); vErr == nil {
 			viewKeys = vk
 		}

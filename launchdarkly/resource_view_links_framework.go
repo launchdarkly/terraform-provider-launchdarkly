@@ -108,7 +108,7 @@ func (r *ViewLinksResource) Configure(_ context.Context, req resource.ConfigureR
 	if r.client == nil {
 		return
 	}
-	beta, err := newBetaClient(r.client.apiKey, r.client.apiHost, false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
+	beta, err := r.client.betaClientFromConfig()
 	if err != nil {
 		resp.Diagnostics.AddError("Failed to build LaunchDarkly beta client", err.Error())
 		return
@@ -120,7 +120,7 @@ func (r *ViewLinksResource) betaClient() (*Client, error) {
 	if r.beta != nil {
 		return r.beta, nil
 	}
-	return newBetaClient(r.client.apiKey, r.client.apiHost, false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
+	return r.client.betaClientFromConfig()
 }
 
 func (r *ViewLinksResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
@@ -559,7 +559,7 @@ func (r *ViewFilterLinksResource) Configure(_ context.Context, req resource.Conf
 	if r.client == nil {
 		return
 	}
-	beta, err := newBetaClient(r.client.apiKey, r.client.apiHost, false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
+	beta, err := r.client.betaClientFromConfig()
 	if err != nil {
 		resp.Diagnostics.AddError("Failed to build LaunchDarkly beta client", err.Error())
 		return
@@ -571,7 +571,7 @@ func (r *ViewFilterLinksResource) betaClient() (*Client, error) {
 	if r.beta != nil {
 		return r.beta, nil
 	}
-	return newBetaClient(r.client.apiKey, r.client.apiHost, false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
+	return r.client.betaClientFromConfig()
 }
 
 func (r *ViewFilterLinksResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {

@@ -205,7 +205,7 @@ func (d *SegmentDataSource) Read(ctx context.Context, req datasource.ReadRequest
 
 	// View association: best-effort. Surface empty on failure.
 	viewKeys := []string{}
-	betaClient, bcErr := newBetaClient(d.client.apiKey, d.client.apiHost, false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
+	betaClient, bcErr := d.client.betaClientFromConfig()
 	if bcErr == nil {
 		var env *ldapi.Environment
 		err = d.client.withConcurrency(d.client.ctx, func() error {

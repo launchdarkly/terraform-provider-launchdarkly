@@ -47,10 +47,41 @@ type Client struct {
 
 	semaphore *semaphore.Weighted
 
+	// httpTimeout and maxConcurrency retain the values this client was
+	// constructed with so that derived clients (see betaClientFromConfig)
+	// inherit the operator's provider configuration instead of silently
+	// falling back to the package defaults.
+	httpTimeout    int
+	maxConcurrency int
+
 	// archiveFlagsOnDestroy: when true, launchdarkly_feature_flag Delete
 	// archives the flag instead of deleting it. Configured at the provider
 	// level via the archive_flags_on_destroy attribute. Defaults to false.
 	archiveFlagsOnDestroy bool
+}
+
+// betaClientFromConfig returns a beta-API client that inherits this client's
+// credentials *and* its configured http_timeout / max_concurrency. Call sites
+// must prefer this over calling newBetaClient with the DEFAULT_* constants,
+// which pins every beta endpoint to a 20s timeout and a concurrency of 1
+// regardless of what the operator configured on the provider block.
+//
+// The returned client carries its own semaphore rather than sharing this
+// client's. Sharing would bound total in-flight requests more tightly, but a
+// beta call issued from inside a withConcurrency closure would then deadlock
+// against a semaphore the same goroutine already holds. Separate semaphores
+// means a fully saturated provider can have up to 2x max_concurrency requests
+// in flight; the 429 backoff in standardRetryPolicy absorbs that.
+func (c *Client) betaClientFromConfig() (*Client, error) {
+	timeout := c.httpTimeout
+	if timeout <= 0 {
+		timeout = DEFAULT_HTTP_TIMEOUT_S
+	}
+	concurrency := c.maxConcurrency
+	if concurrency <= 0 {
+		concurrency = DEFAULT_MAX_CONCURRENCY
+	}
+	return newBetaClient(c.apiKey, c.apiHost, false, timeout, concurrency)
 }
 
 func (c *Client) withConcurrency(ctx context.Context, fn func() error) error {
@@ -130,6 +161,8 @@ func baseNewClient(token string, apiHost string, oauth bool, httpTimeoutSeconds 
 		ctx:            ctx,
 		fallbackClient: fallbackClient,
 		semaphore:      semaphore.NewWeighted(int64(maxConcurrent)),
+		httpTimeout:    httpTimeoutSeconds,
+		maxConcurrency: maxConcurrent,
 	}, nil
 }
 
