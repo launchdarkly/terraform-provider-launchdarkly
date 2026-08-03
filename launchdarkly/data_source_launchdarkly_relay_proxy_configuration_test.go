@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
-	ldapi "github.com/launchdarkly/api-client-go/v23"
+	ldapi "github.com/launchdarkly/api-client-go/v24"
 	"github.com/stretchr/testify/require"
 )
 

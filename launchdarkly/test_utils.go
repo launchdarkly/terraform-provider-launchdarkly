@@ -3,7 +3,7 @@ package launchdarkly
 import (
 	"fmt"
 
-	ldapi "github.com/launchdarkly/api-client-go/v23"
+	ldapi "github.com/launchdarkly/api-client-go/v24"
 )
 
 // testAccProjectScaffoldCreate creates a project with the given project parameters

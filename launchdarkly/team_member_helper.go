@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"strings"
 
-	ldapi "github.com/launchdarkly/api-client-go/v23"
+	ldapi "github.com/launchdarkly/api-client-go/v24"
 )
 
 // getTeamMemberByEmail performs a paginated GetMembers search filtered
