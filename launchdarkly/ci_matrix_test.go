@@ -122,6 +122,12 @@ func checkMatrix(t *testing.T, path string, entries, names []string) {
 // test declarations. This deliberately reads source rather than using
 // reflection: test functions are not addressable by name at runtime, and the
 // matrix entries are matched against source-level names anyway.
+//
+// Scanning only this package is deliberate too. Every TestAcc* function in the
+// repo lives here, and a repo-wide walk would also descend into .claude/
+// worktrees and pick up copies of these same files. If acceptance tests ever
+// move into another package, extend this to walk those directories explicitly
+// rather than globbing from the repo root.
 func acceptanceTestNames(t *testing.T) []string {
 	t.Helper()
 
