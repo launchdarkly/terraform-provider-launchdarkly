@@ -72,6 +72,11 @@ jobs:
       TF_ACC: "1"
     strategy:
       matrix:
+        # Keep this list identical to the test_case list in test.yml (that file's
+        # build job runs the check; this workflow has no build job of its own).
+        # TestCIMatrixCoversAcceptanceTests (launchdarkly/ci_matrix_test.go) fails
+        # the build job if the two drift apart, or if either list gains an entry
+        # that matches no test / loses coverage of a TestAcc* function.
         test_case:
           - TestAccAIConfig_
           - TestAccAIConfigVariation
@@ -84,6 +89,9 @@ jobs:
           - TestAccEnvironment
           - TestAccFeatureFlag_
           - TestAccFeatureFlagEnvironment
+          # Not covered by TestAccFeatureFlag_ — the trailing underscore in that
+          # prefix does not match TestAccFeatureFlagViewKeys_*.
+          - TestAccFeatureFlagViewKeys
           - TestAccFlagTemplates
           - TestAccFlagTrigger
           - TestAccIpAllowlistConfig
@@ -93,12 +101,12 @@ jobs:
           - TestAccProject
           - TestAccRelayProxy
           - TestAccSegment
-          - TestAccTeamMember_CreateGeneric
-          - TestAccTeamMember_UpdateGeneric
-          - TestAccTeamMember_CreateWithCustomRole
-          - TestAccTeamMember_UpdateWithCustomRole
+          - TestAccTeamMember_CreateAndUpdateGeneric
+          - TestAccTeamMember_WithCustomRole
           - TestAccTeam_
-          - TestAccTeamRoleMapping_
+          # No TestAccTeamRoleMapping_* entry: launchdarkly_team_role_mapping
+          # ships on this branch with no acceptance test, so an entry here would
+          # be a shard that runs zero tests and reports success.
           - TestAccView
           - TestAccWebhook
     steps:
