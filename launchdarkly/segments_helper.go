@@ -193,7 +193,7 @@ func segmentRead(ctx context.Context, d *schema.ResourceData, raw interface{}, i
 
 	// Fetch and set view associations
 	// Always populate view_keys from the API (Optional+Computed behavior)
-	betaClient, err := newBetaClient(client.apiKey, client.apiHost, false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
+	betaClient, err := client.betaClientFromConfig()
 	if err != nil {
 		// Log warning but don't fail the read for discovery data
 		log.Printf("[WARN] failed to create beta client for segment %q in project %q, environment %q: %v", segmentKey, projectKey, envKey, err)

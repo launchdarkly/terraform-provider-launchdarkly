@@ -232,7 +232,7 @@ func resourceSegmentUpdate(ctx context.Context, d *schema.ResourceData, metaRaw 
 	// Handle view associations if view_keys field is managed
 	if d.HasChange(VIEW_KEYS) {
 		if viewKeysRaw, ok := d.GetOk(VIEW_KEYS); ok {
-			betaClient, err := newBetaClient(client.apiKey, client.apiHost, false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
+			betaClient, err := client.betaClientFromConfig()
 			if err != nil {
 				return diag.Errorf("failed to create beta client for view linking: %v", err)
 			}
@@ -315,7 +315,7 @@ func resourceSegmentUpdate(ctx context.Context, d *schema.ResourceData, metaRaw 
 		} else {
 			// If view_keys was explicitly removed (set to null), unlink from all views
 			// that were previously managed by this resource
-			betaClient, err := newBetaClient(client.apiKey, client.apiHost, false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
+			betaClient, err := client.betaClientFromConfig()
 			if err != nil {
 				return diag.Errorf("failed to create beta client for view unlinking: %v", err)
 			}

@@ -23,7 +23,7 @@ func setViewRequestHeaders(req *http.Request, apiKey string) {
 func viewRead(ctx context.Context, d *schema.ResourceData, meta interface{}, isDataSource bool) diag.Diagnostics {
 	var diags diag.Diagnostics
 	client := meta.(*Client)
-	betaClient, err := newBetaClient(client.apiKey, client.apiHost, false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
+	betaClient, err := client.betaClientFromConfig()
 	if err != nil {
 		return diag.FromErr(err)
 	}

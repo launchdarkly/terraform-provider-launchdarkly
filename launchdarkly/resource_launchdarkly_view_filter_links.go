@@ -103,7 +103,7 @@ This resource allows you to link all flags and/or segments matching a filter exp
 
 func resourceViewFilterLinksCreate(ctx context.Context, d *schema.ResourceData, metaRaw interface{}) diag.Diagnostics {
 	client := metaRaw.(*Client)
-	betaClient, err := newBetaClient(client.apiKey, client.apiHost, false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
+	betaClient, err := client.betaClientFromConfig()
 	if err != nil {
 		return diag.FromErr(err)
 	}
@@ -146,7 +146,7 @@ func resourceViewFilterLinksCreate(ctx context.Context, d *schema.ResourceData, 
 func resourceViewFilterLinksRead(ctx context.Context, d *schema.ResourceData, metaRaw interface{}) diag.Diagnostics {
 	var diags diag.Diagnostics
 	client := metaRaw.(*Client)
-	betaClient, err := newBetaClient(client.apiKey, client.apiHost, false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
+	betaClient, err := client.betaClientFromConfig()
 	if err != nil {
 		return diag.FromErr(err)
 	}
@@ -173,7 +173,7 @@ func resourceViewFilterLinksRead(ctx context.Context, d *schema.ResourceData, me
 
 func resourceViewFilterLinksUpdate(ctx context.Context, d *schema.ResourceData, metaRaw interface{}) diag.Diagnostics {
 	client := metaRaw.(*Client)
-	betaClient, err := newBetaClient(client.apiKey, client.apiHost, false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
+	betaClient, err := client.betaClientFromConfig()
 	if err != nil {
 		return diag.FromErr(err)
 	}
@@ -294,7 +294,7 @@ func resourceViewFilterLinksUpdate(ctx context.Context, d *schema.ResourceData, 
 func resourceViewFilterLinksDelete(ctx context.Context, d *schema.ResourceData, metaRaw interface{}) diag.Diagnostics {
 	var diags diag.Diagnostics
 	client := metaRaw.(*Client)
-	betaClient, err := newBetaClient(client.apiKey, client.apiHost, false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
+	betaClient, err := client.betaClientFromConfig()
 	if err != nil {
 		return diag.FromErr(err)
 	}
@@ -346,7 +346,7 @@ func resourceViewFilterLinksDelete(ctx context.Context, d *schema.ResourceData, 
 
 func resourceViewFilterLinksExists(d *schema.ResourceData, metaRaw interface{}) (bool, error) {
 	client := metaRaw.(*Client)
-	betaClient, err := newBetaClient(client.apiKey, client.apiHost, false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
+	betaClient, err := client.betaClientFromConfig()
 	if err != nil {
 		return false, err
 	}

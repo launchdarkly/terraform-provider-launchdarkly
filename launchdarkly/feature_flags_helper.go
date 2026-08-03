@@ -256,7 +256,7 @@ func featureFlagRead(ctx context.Context, d *schema.ResourceData, raw interface{
 
 	// Fetch and set view associations
 	// Always populate view_keys from the API (Optional+Computed behavior)
-	betaClient, err := newBetaClient(client.apiKey, client.apiHost, false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
+	betaClient, err := client.betaClientFromConfig()
 	if err != nil {
 		log.Printf("[WARN] failed to create beta client for views lookup: %v", err)
 	} else {
