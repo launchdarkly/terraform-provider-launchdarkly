@@ -21,6 +21,11 @@ testacc: fmtcheck
 testacc-with-retry:
 	make testacc || make testacc
 
+# Cross-checks every TestAcc* function name against the test_case matrices in
+# .github/workflows/test.yml and test-fork-pr.yml. Requires no credentials.
+matrixcheck:
+	go test ./$(PKG_NAME)/ -run TestCIMatrixCoversAcceptanceTests -count=1
+
 vet:
 	@echo "go vet ."
 	@go vet $$(go list ./...) ; if [ $$? -eq 1 ]; then \
@@ -55,4 +60,4 @@ test-compile:
 	fi
 	go test -c $(TEST) $(TESTARGS)
 
-.PHONY: build install apply test testacc testacc-with-retry vet fmt fmtcheck errcheck lint test-compile
+.PHONY: build install apply test testacc testacc-with-retry matrixcheck vet fmt fmtcheck errcheck lint test-compile

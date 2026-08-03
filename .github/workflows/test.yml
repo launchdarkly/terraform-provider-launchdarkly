@@ -30,6 +30,12 @@ jobs:
           cache: true
       - run: go mod download
       - run: go build -v .
+      # Cross-checks every TestAcc* function against the acceptance matrices in
+      # this file and test-fork-pr.yml. Needs no LaunchDarkly credentials, so it
+      # runs here rather than in the token-gated test job (and therefore also on
+      # fork PRs). See launchdarkly/ci_matrix_test.go for why this is needed.
+      - name: Check acceptance-test matrix coverage
+        run: make matrixcheck
       - name: Run linters
         uses: golangci/golangci-lint-action@82606bf257cbaff209d206a39f5134f0cfbfd2ee # v9.2.1
         with:
@@ -85,6 +91,10 @@ jobs:
       TF_ACC: "1"
     strategy:
       matrix:
+        # Keep this list identical to the test_case list in test-fork-pr.yml.
+        # TestCIMatrixCoversAcceptanceTests (launchdarkly/ci_matrix_test.go) fails
+        # the build job if the two drift apart, or if either list gains an entry
+        # that matches no test / loses coverage of a TestAcc* function.
         test_case:
           - TestAccAIAgentGraph_
           - TestAccAIConfig_
@@ -94,6 +104,7 @@ jobs:
           - TestAccAccessToken
           - TestAccAnnouncement_
           - TestAccAuditLogSubscription
+          - TestAccBigSegmentStoreIntegration_
           - TestAccContextKind
           - TestAccCustomRole
           - TestAccDestination
@@ -103,6 +114,7 @@ jobs:
           # Not covered by TestAccFeatureFlag_ — the trailing underscore in that
           # prefix does not match TestAccFeatureFlagViewKeys_*.
           - TestAccFeatureFlagViewKeys
+          - TestAccFlagImportConfiguration_
           - TestAccFlagTemplates
           - TestAccFlagTrigger
           - TestAccIpAllowlistConfig
@@ -117,10 +129,8 @@ jobs:
           - TestAccReleasePolicy_
           - TestAccSdkKey_
           - TestAccSegment
-          - TestAccTeamMember_CreateGeneric
-          - TestAccTeamMember_UpdateGeneric
-          - TestAccTeamMember_CreateWithCustomRole
-          - TestAccTeamMember_UpdateWithCustomRole
+          - TestAccTeamMember_CreateAndUpdateGeneric
+          - TestAccTeamMember_WithCustomRole
           - TestAccTeam_
           - TestAccTeamRoleMapping_
           - TestAccView
