@@ -1,7 +1,47 @@
+# Each view these links target must exist before Terraform creates the links.
+# Declare them (or read them with a launchdarkly_view data source when another
+# configuration owns them) and reference view_key rather than repeating the key
+# as a string literal. That reference is what tells Terraform to create the view
+# first, and it rules out typos.
+resource "launchdarkly_view" "frontend_team" {
+  project_key         = "my-project"
+  key                 = "frontend-team"
+  name                = "Frontend Team"
+  maintainer_team_key = "frontend"
+}
+
+resource "launchdarkly_view" "mobile_team" {
+  project_key         = "my-project"
+  key                 = "mobile-team"
+  name                = "Mobile Team"
+  maintainer_team_key = "mobile"
+}
+
+resource "launchdarkly_view" "shared_features" {
+  project_key         = "my-project"
+  key                 = "shared-features"
+  name                = "Shared Features"
+  maintainer_team_key = "platform"
+}
+
+resource "launchdarkly_view" "backend_team" {
+  project_key         = "my-project"
+  key                 = "backend-team"
+  name                = "Backend Team"
+  maintainer_team_key = "backend"
+}
+
+resource "launchdarkly_view" "user_segments" {
+  project_key         = "my-project"
+  key                 = "user-segments-view"
+  name                = "User Segments"
+  maintainer_team_key = "platform"
+}
+
 # Example: Frontend team view with bulk flag and segment assignments
 resource "launchdarkly_view_links" "frontend_team" {
   project_key = "my-project"
-  view_key    = "frontend-team"
+  view_key    = launchdarkly_view.frontend_team.key
 
   # Bulk link multiple flags efficiently - supports 100s of flags
   flags = [
@@ -34,7 +74,7 @@ resource "launchdarkly_view_links" "frontend_team" {
 # Example: Mobile team view with different flags
 resource "launchdarkly_view_links" "mobile_team" {
   project_key = "my-project"
-  view_key    = "mobile-team"
+  view_key    = launchdarkly_view.mobile_team.key
 
   flags = [
     "feature-mobile-login",
@@ -50,7 +90,7 @@ resource "launchdarkly_view_links" "mobile_team" {
 # Example: Shared features across teams
 resource "launchdarkly_view_links" "shared_features" {
   project_key = "my-project"
-  view_key    = "shared-features"
+  view_key    = launchdarkly_view.shared_features.key
 
   flags = [
     "feature-maintenance-mode",
@@ -64,7 +104,7 @@ resource "launchdarkly_view_links" "shared_features" {
 # Demonstrating updates - adding/removing flags and segments from a view
 resource "launchdarkly_view_links" "backend_team" {
   project_key = "my-project"
-  view_key    = "backend-team"
+  view_key    = launchdarkly_view.backend_team.key
 
   flags = [
     "feature-database-migration",
@@ -91,7 +131,7 @@ resource "launchdarkly_view_links" "backend_team" {
 # Example: View with only segments (no flags)
 resource "launchdarkly_view_links" "segments_only" {
   project_key = "my-project"
-  view_key    = "user-segments-view"
+  view_key    = launchdarkly_view.user_segments.key
 
   segments = [
     {

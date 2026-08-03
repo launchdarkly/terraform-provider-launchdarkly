@@ -171,7 +171,7 @@ func featureFlagSchemaAttributes() map[string]schema.Attribute {
 			Optional:      true,
 			Computed:      true,
 			ElementType:   types.StringType,
-			Description:   "A set of view keys to link this flag to. This is an alternative to using the `launchdarkly_view_links` resource for managing view associations. When set, this flag is linked to the specified views. The field is also computed, so Terraform reads back the current view associations from LaunchDarkly to detect drift. To explicitly remove all view associations, set `view_keys = []`. Removing the field from your configuration leaves existing associations unchanged. **Important**: Avoid using both `view_keys` and `launchdarkly_view_links` to manage the same flag. Mixed ownership can cause conflicts. When Terraform detects them, it logs a warning and reconciles to the configured `view_keys`. Choose one approach per resource.",
+			Description:   "A set of view keys to link this flag to. This is an alternative to using the `launchdarkly_view_links` resource for managing view associations. When set, this flag is linked to the specified views. Reference the view rather than repeating its key as a string literal. For example, use `view_keys = [launchdarkly_view.my_view.key]`, or `[data.launchdarkly_view.my_view.key]` when another configuration owns the view. A view must exist before Terraform can link a flag to it, and that reference is what tells Terraform to create the view first. The field is also computed, so Terraform reads back the current view associations from LaunchDarkly to detect drift. To explicitly remove all view associations, set `view_keys = []`. Removing the field from your configuration leaves existing associations unchanged. **Important**: Avoid using both `view_keys` and `launchdarkly_view_links` to manage the same flag. Mixed ownership can cause conflicts. When Terraform detects them, it logs a warning and reconciles to the configured `view_keys`. Choose one approach per resource.",
 			PlanModifiers: []planmodifier.Set{setplanmodifier.UseStateForUnknown()},
 		},
 		VARIATIONS: schema.ListNestedAttribute{
@@ -624,6 +624,18 @@ func (r *FeatureFlagResource) Create(ctx context.Context, req resource.CreateReq
 
 	var err error
 	if len(viewKeys) > 0 {
+		// Validate the view keys before the POST. The create call carries
+		// viewKeys in its body, so an unresolvable key would otherwise come
+		// back as a raw API error with no hint about the cause.
+		betaClient, bcErr := r.client.betaClientFromConfig()
+		if bcErr != nil {
+			resp.Diagnostics.AddError(fmt.Sprintf("failed to create beta client for view validation: %v", bcErr), "")
+			return
+		}
+		if vErr := validateViewKeysExist(betaClient, projectKey, "flag", viewKeys); vErr != nil {
+			resp.Diagnostics.AddError(vErr.Error(), "")
+			return
+		}
 		body := FeatureFlagBodyWithViewKeys{
 			Name:                   plan.Name.ValueString(),
 			Key:                    key,
@@ -855,7 +867,7 @@ func (r *FeatureFlagResource) applyFlagUpdate(ctx context.Context, plan, state F
 	if diags.HasError() {
 		return diags
 	}
-	betaClient, err := newBetaClient(r.client.apiKey, r.client.apiHost, false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
+	betaClient, err := r.client.betaClientFromConfig()
 	if err != nil {
 		diags.AddError(fmt.Sprintf("failed to create beta client for view linking: %v", err), "")
 		return diags
@@ -875,14 +887,11 @@ func (r *FeatureFlagResource) applyFlagUpdate(ctx context.Context, plan, state F
 		return diags
 	}
 
-	for _, vk := range desiredViews {
-		exists, vErr := viewExists(projectKey, vk, betaClient)
-		if vErr != nil {
-			diags.AddError(fmt.Sprintf("failed to check if view %q exists: %v", vk, vErr), "")
-			return diags
-		}
-		if !exists {
-			diags.AddError(fmt.Sprintf("cannot link flag to view %q in project %q: view does not exist", vk, projectKey), "")
+	// On create, Create already validated these keys before the POST that
+	// carried them; re-checking here would just duplicate the GETs.
+	if !isCreate {
+		if vErr := validateViewKeysExist(betaClient, projectKey, "flag", desiredViews); vErr != nil {
+			diags.AddError(vErr.Error(), "")
 			return diags
 		}
 	}
@@ -983,7 +992,7 @@ func (r *FeatureFlagResource) readIntoModel(ctx context.Context, data *FeatureFl
 	data.Defaults = defaultsObj
 
 	// View associations — best-effort.
-	betaClient, bcErr := newBetaClient(r.client.apiKey, r.client.apiHost, false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
+	betaClient, bcErr := r.client.betaClientFromConfig()
 	if bcErr != nil {
 		log.Printf("[WARN] failed to create beta client for views lookup: %v", bcErr)
 		data.ViewKeys = types.SetValueMust(types.StringType, []attr.Value{})

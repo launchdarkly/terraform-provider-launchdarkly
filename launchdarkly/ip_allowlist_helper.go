@@ -26,7 +26,7 @@ var ipAllowlistWriteMu sync.Mutex
 // the `LD-API-Version: beta` header at the transport layer (see
 // betaVersionRoundTripper for why a default header is insufficient).
 func ipAllowlistBetaClient(c *Client) (*Client, error) {
-	beta, err := newBetaClient(c.apiKey, c.apiHost, false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
+	beta, err := c.betaClientFromConfig()
 	if err != nil {
 		return nil, err
 	}

@@ -37,7 +37,7 @@ type metricGroupMetricModel struct {
 // read from the configuration at request-build time, so mutating it here takes
 // effect for every metric-group call made through the returned client.
 func newMetricGroupBetaClient(c *Client) (*Client, error) {
-	beta, err := newBetaClient(c.apiKey, c.apiHost, false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
+	beta, err := c.betaClientFromConfig()
 	if err != nil {
 		return nil, err
 	}

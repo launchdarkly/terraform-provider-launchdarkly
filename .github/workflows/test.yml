@@ -100,6 +100,9 @@ jobs:
           - TestAccEnvironment
           - TestAccFeatureFlag_
           - TestAccFeatureFlagEnvironment
+          # Not covered by TestAccFeatureFlag_ — the trailing underscore in that
+          # prefix does not match TestAccFeatureFlagViewKeys_*.
+          - TestAccFeatureFlagViewKeys
           - TestAccFlagTemplates
           - TestAccFlagTrigger
           - TestAccIpAllowlistConfig

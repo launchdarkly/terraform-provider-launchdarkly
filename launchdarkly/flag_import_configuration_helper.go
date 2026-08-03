@@ -44,7 +44,7 @@ func forceBetaAPIVersion(client *ldapi.APIClient) {
 // betaVersionRoundTripper for why a default header is insufficient). Without the
 // beta header these endpoints return 400/403/404.
 func newFlagImportConfigurationBetaClient(c *Client) (*Client, error) {
-	beta, err := newBetaClient(c.apiKey, c.apiHost, false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
+	beta, err := c.betaClientFromConfig()
 	if err != nil {
 		return nil, err
 	}

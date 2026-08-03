@@ -83,7 +83,7 @@ var progressiveReleaseConfigAttrTypes = map[string]attr.Type{
 // beta-configured client here too so the LD-API-Version default is consistent
 // with the per-request header.
 func newReleasePolicyBetaClient(c *Client) (*Client, error) {
-	return newBetaClient(c.apiKey, c.apiHost, false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
+	return c.betaClientFromConfig()
 }
 
 // releasePolicyIdToKeys splits a composite release policy ID into its project

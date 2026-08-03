@@ -19,6 +19,12 @@ const (
 resource "launchdarkly_project" "test" {
 	name = "%s"
 	key  = "%s"
+	environments = {
+		"test-env" = {
+			name  = "Test Environment"
+			color = "000000"
+		}
+	}
 }
 
 resource "launchdarkly_view" "view1" {
@@ -65,6 +71,12 @@ resource "launchdarkly_feature_flag" "test" {
 resource "launchdarkly_project" "test" {
 	name = "%s"
 	key  = "%s"
+	environments = {
+		"test-env" = {
+			name  = "Test Environment"
+			color = "000000"
+		}
+	}
 }
 
 resource "launchdarkly_view" "view1" {
@@ -111,6 +123,12 @@ resource "launchdarkly_feature_flag" "test" {
 resource "launchdarkly_project" "test" {
 	name = "%s"
 	key  = "%s"
+	environments = {
+		"test-env" = {
+			name  = "Test Environment"
+			color = "000000"
+		}
+	}
 }
 
 resource "launchdarkly_view" "view1" {
@@ -154,6 +172,12 @@ resource "launchdarkly_feature_flag" "test" {
 resource "launchdarkly_project" "test" {
 	name = "%s"
 	key  = "%s"
+	environments = {
+		"test-env" = {
+			name  = "Test Environment"
+			color = "000000"
+		}
+	}
 }
 
 resource "launchdarkly_view" "view1" {
@@ -200,6 +224,12 @@ resource "launchdarkly_feature_flag" "test" {
 resource "launchdarkly_project" "test" {
 	name = "%s"
 	key  = "%s"
+	environments = {
+		"test-env" = {
+			name  = "Test Environment"
+			color = "000000"
+		}
+	}
 }
 
 resource "launchdarkly_view" "view1" {
@@ -215,6 +245,12 @@ resource "launchdarkly_view" "view1" {
 resource "launchdarkly_project" "test" {
 	name = "%s"
 	key  = "%s"
+	environments = {
+		"test-env" = {
+			name  = "Test Environment"
+			color = "000000"
+		}
+	}
 }
 
 resource "launchdarkly_view" "view1" {
