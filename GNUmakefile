@@ -52,6 +52,15 @@ generate: install-codegen
 	go generate ./launchdarkly/...
 	go generate .
 
+# Bump the LaunchDarkly API client to a published release. A major bump moves the
+# module path (api-client-go/vN), so the script rewrites the import path in every
+# file that references it, not just go.mod.
+#  make update-api-client-go API_CLIENT_GO_VERSION=24.0.0
+# Normally run for you by the release automation in ld-openapi-private, which
+# opens the bump PR here after publishing a new client version.
+update-api-client-go:
+	./scripts/update_api_client_go.sh $(API_CLIENT_GO_VERSION)
+
 test-compile:
 	@if [ "$(TEST)" = "./..." ]; then \
 		echo "ERROR: Set TEST to a specific package. For example,"; \
