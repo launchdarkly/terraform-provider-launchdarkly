@@ -83,6 +83,27 @@ resource "launchdarkly_feature_flag" "json_example" {
 
 # Example: Feature flag with view associations
 # This approach is ideal for modular Terraform where each flag is managed in its own file
+#
+# Always reference the view rather than repeating its key as a string literal.
+# A view must exist before Terraform can link a flag to it, and Terraform only
+# knows to create the view first if the flag references it. With a string literal
+# there is no dependency between the two resources, so Terraform can create the
+# flag first and the apply fails with "view does not exist". Referencing the view
+# also rules out a mistyped key.
+resource "launchdarkly_view" "payments_team" {
+  project_key         = "example-project"
+  key                 = "payments-team"
+  name                = "Payments Team"
+  maintainer_team_key = "payments"
+}
+
+resource "launchdarkly_view" "frontend_team" {
+  project_key         = "example-project"
+  key                 = "frontend-team"
+  name                = "Frontend Team"
+  maintainer_team_key = "frontend"
+}
+
 resource "launchdarkly_feature_flag" "checkout_flow" {
   project_key = "example-project"
   key         = "checkout-flow-redesign"
@@ -91,11 +112,11 @@ resource "launchdarkly_feature_flag" "checkout_flow" {
 
   variation_type = "boolean"
 
-  # Link this flag to specific views
-  # The flag will appear in both the "payments-team" and "frontend-team" views
+  # The flag appears in both the "payments-team" and "frontend-team" views.
+  # Terraform creates both views before this flag because of these references.
   view_keys = [
-    "payments-team",
-    "frontend-team"
+    launchdarkly_view.payments_team.key,
+    launchdarkly_view.frontend_team.key,
   ]
 
   tags = ["checkout", "payments", "frontend"]
@@ -104,6 +125,15 @@ resource "launchdarkly_feature_flag" "checkout_flow" {
 # Example: Flag managed in a module that can specify its own views
 # This enables a modular structure where each team/domain can manage their flags
 # without needing to coordinate with a central view_links resource
+#
+# When the view is owned by another configuration or state (for example a
+# platform team's workspace), use the data source. This asserts the view already
+# exists, so a typo or a missing view fails during plan instead of mid-apply.
+data "launchdarkly_view" "mobile_team" {
+  project_key = "example-project"
+  key         = "mobile-team"
+}
+
 resource "launchdarkly_feature_flag" "mobile_app_feature" {
   project_key = "example-project"
   key         = "mobile-push-notifications"
@@ -112,7 +142,7 @@ resource "launchdarkly_feature_flag" "mobile_app_feature" {
   variation_type = "boolean"
 
   # Each flag can independently specify which views it belongs to
-  view_keys = ["mobile-team"]
+  view_keys = [data.launchdarkly_view.mobile_team.key]
 
   tags = ["mobile", "notifications"]
 }
@@ -147,7 +177,7 @@ resource "launchdarkly_feature_flag" "mobile_app_feature" {
 - `tags` (Set of String) Tags associated with your resource.
 - `temporary` (Boolean) Specifies whether the flag is a temporary flag.
 - `variations` (Block List) An array of possible variations for the flag (see [below for nested schema](#nestedblock--variations))
-- `view_keys` (Set of String) A set of view keys to link this flag to. This is an alternative to using the `launchdarkly_view_links` resource for managing view associations. When set, this flag will be linked to the specified views. The field is also computed, meaning Terraform will read back the current view associations from LaunchDarkly to detect drift. To explicitly remove all view associations, set `view_keys = []`. Simply removing the field from your configuration will leave existing associations unchanged. **Important**: Avoid using both `view_keys` and `launchdarkly_view_links` to manage the same flag. Mixed ownership can cause conflicts; when detected, Terraform logs a warning and reconciles to the configured `view_keys`. Choose one approach per resource.
+- `view_keys` (Set of String) A set of view keys to link this flag to. This is an alternative to using the `launchdarkly_view_links` resource for managing view associations. When set, this flag will be linked to the specified views. Reference the view rather than repeating its key as a string literal. For example, use `view_keys = [launchdarkly_view.my_view.key]`, or `[data.launchdarkly_view.my_view.key]` when another configuration owns the view. A view must exist before Terraform can link a flag to it, and that reference is what tells Terraform to create the view first. The field is also computed, meaning Terraform will read back the current view associations from LaunchDarkly to detect drift. To explicitly remove all view associations, set `view_keys = []`. Simply removing the field from your configuration will leave existing associations unchanged. **Important**: Avoid using both `view_keys` and `launchdarkly_view_links` to manage the same flag. Mixed ownership can cause conflicts; when detected, Terraform logs a warning and reconciles to the configured `view_keys`. Choose one approach per resource.
 
 ### Read-Only
 

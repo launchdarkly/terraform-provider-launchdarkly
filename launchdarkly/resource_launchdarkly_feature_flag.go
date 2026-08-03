@@ -147,6 +147,17 @@ func resourceFeatureFlagCreate(ctx context.Context, d *schema.ResourceData, meta
 	}
 
 	if len(viewKeys) > 0 {
+		// Validate the view keys before the POST. The create call carries
+		// viewKeys in its body, so an unresolvable key would otherwise come
+		// back as a raw API error with no hint about the cause.
+		betaClient, bcErr := client.betaClientFromConfig()
+		if bcErr != nil {
+			return diag.Errorf("failed to create beta client for view validation: %v", bcErr)
+		}
+		if vErr := validateViewKeysExist(betaClient, projectKey, "flag", viewKeys); vErr != nil {
+			return diag.FromErr(vErr)
+		}
+
 		// Use raw HTTP call to include viewKeys in the creation request
 		flagBody := FeatureFlagBodyWithViewKeys{
 			Name:                   flagName,
@@ -344,14 +355,12 @@ func featureFlagUpdate(ctx context.Context, d *schema.ResourceData, metaRaw inte
 
 			desiredViewKeys := stringListFromOptionalSetValue(viewKeysRaw)
 
-			// Validate that all specified views exist
-			for _, viewKey := range desiredViewKeys {
-				exists, err := viewExists(projectKey, viewKey, betaClient)
-				if err != nil {
-					return diag.Errorf("failed to check if view %q exists: %v", viewKey, err)
-				}
-				if !exists {
-					return diag.Errorf("cannot link flag to view %q in project %q: view does not exist", viewKey, projectKey)
+			// On create, resourceFeatureFlagCreate already validated these keys
+			// before the POST that carried them; re-checking here would just
+			// duplicate the GETs.
+			if !isCreate {
+				if vErr := validateViewKeysExist(betaClient, projectKey, "flag", desiredViewKeys); vErr != nil {
+					return diag.FromErr(vErr)
 				}
 			}
 

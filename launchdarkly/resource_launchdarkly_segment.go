@@ -132,6 +132,17 @@ func resourceSegmentCreate(ctx context.Context, d *schema.ResourceData, metaRaw 
 
 	var err error
 	if len(viewKeys) > 0 {
+		// Validate the view keys before the POST. The create call carries
+		// viewKeys in its body, so an unresolvable key would otherwise come
+		// back as a raw API error with no hint about the cause.
+		betaClient, bcErr := client.betaClientFromConfig()
+		if bcErr != nil {
+			return diag.Errorf("failed to create beta client for view validation: %v", bcErr)
+		}
+		if vErr := validateViewKeysExist(betaClient, projectKey, "segment", viewKeys); vErr != nil {
+			return diag.FromErr(vErr)
+		}
+
 		// Use raw HTTP call to include viewKeys in the creation request
 		segmentBody := SegmentBodyWithViewKeys{
 			Name:                 segmentName,
@@ -166,7 +177,7 @@ func resourceSegmentCreate(ctx context.Context, d *schema.ResourceData, metaRaw 
 
 	// ld's api does not allow some fields to be passed in during segment creation so we do an update:
 	// https://apidocs.launchdarkly.com/reference#create-segment
-	updateDiags := resourceSegmentUpdate(ctx, d, metaRaw)
+	updateDiags := segmentUpdate(ctx, d, metaRaw, true)
 	if updateDiags.HasError() {
 		// TODO: Figure out if we can get the err out of updateDiag (not looking likely) to use in handleLdapiErr
 		return updateDiags
@@ -183,6 +194,14 @@ func resourceSegmentRead(ctx context.Context, d *schema.ResourceData, metaRaw in
 }
 
 func resourceSegmentUpdate(ctx context.Context, d *schema.ResourceData, metaRaw interface{}) diag.Diagnostics {
+	return segmentUpdate(ctx, d, metaRaw, false)
+}
+
+// segmentUpdate carries isCreate the same way featureFlagUpdate does: create
+// runs this immediately after the POST to set the fields the create endpoint
+// rejects, and the view-key validation must not repeat the lookups create
+// already performed.
+func segmentUpdate(ctx context.Context, d *schema.ResourceData, metaRaw interface{}, isCreate bool) diag.Diagnostics {
 	client := metaRaw.(*Client)
 	key := d.Get(KEY).(string)
 	projectKey := d.Get(PROJECT_KEY).(string)
@@ -249,14 +268,12 @@ func resourceSegmentUpdate(ctx context.Context, d *schema.ResourceData, metaRaw 
 				return diag.Errorf("failed to get environment %q in project %q: %s", envKey, projectKey, handleLdapiErr(err))
 			}
 
-			// Validate that all specified views exist
-			for _, viewKey := range desiredViewKeys {
-				exists, err := viewExists(projectKey, viewKey, betaClient)
-				if err != nil {
-					return diag.Errorf("failed to check if view %q exists: %v", viewKey, err)
-				}
-				if !exists {
-					return diag.Errorf("cannot link segment to view %q in project %q: view does not exist", viewKey, projectKey)
+			// On create, resourceSegmentCreate already validated these keys
+			// before the POST that carried them; re-checking here would just
+			// duplicate the GETs.
+			if !isCreate {
+				if vErr := validateViewKeysExist(betaClient, projectKey, "segment", desiredViewKeys); vErr != nil {
+					return diag.FromErr(vErr)
 				}
 			}
 

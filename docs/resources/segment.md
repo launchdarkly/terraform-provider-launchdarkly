@@ -145,6 +145,27 @@ resource "launchdarkly_segment" "segment_with_all_clause_operators" {
 
 # Example: Segment with view associations
 # This approach is ideal for modular Terraform where each segment is managed in its own file
+#
+# Always reference the view rather than repeating its key as a string literal.
+# A view must exist before Terraform can link a segment to it, and Terraform only
+# knows to create the view first if the segment references it. With a string
+# literal there is no dependency between the two resources, so Terraform can
+# create the segment first and the apply fails with "view does not exist".
+# Referencing the view also rules out a mistyped key.
+resource "launchdarkly_view" "sales_team" {
+  project_key         = "example-project"
+  key                 = "sales-team"
+  name                = "Sales Team"
+  maintainer_team_key = "sales"
+}
+
+resource "launchdarkly_view" "customer_success" {
+  project_key         = "example-project"
+  key                 = "customer-success"
+  name                = "Customer Success"
+  maintainer_team_key = "customer-success"
+}
+
 resource "launchdarkly_segment" "premium_users" {
   key         = "premium-users"
   project_key = "example-project"
@@ -152,11 +173,11 @@ resource "launchdarkly_segment" "premium_users" {
   name        = "Premium Users"
   description = "Users with premium subscriptions"
 
-  # Link this segment to specific views
-  # The segment will appear in both the "sales-team" and "customer-success" views
+  # The segment appears in both the "sales-team" and "customer-success" views.
+  # Terraform creates both views first because of these references.
   view_keys = [
-    "sales-team",
-    "customer-success"
+    launchdarkly_view.sales_team.key,
+    launchdarkly_view.customer_success.key,
   ]
 
   tags = ["premium", "subscription"]
@@ -173,6 +194,15 @@ resource "launchdarkly_segment" "premium_users" {
 # Example: Segment managed in a module that can specify its own views
 # This enables a modular structure where each team/domain can manage their segments
 # without needing to coordinate with a central view_links resource
+#
+# When the view is owned by another configuration or state (for example a
+# platform team's workspace), use the data source. This asserts the view already
+# exists, so a typo or a missing view fails during plan instead of mid-apply.
+data "launchdarkly_view" "product_team" {
+  project_key = "example-project"
+  key         = "product-team"
+}
+
 resource "launchdarkly_segment" "beta_testers" {
   key         = "beta-testers"
   project_key = "example-project"
@@ -180,7 +210,7 @@ resource "launchdarkly_segment" "beta_testers" {
   name        = "Beta Testers"
 
   # Each segment can independently specify which views it belongs to
-  view_keys = ["product-team"]
+  view_keys = [data.launchdarkly_view.product_team.key]
 
   tags = ["beta", "testing"]
 
@@ -214,7 +244,7 @@ resource "launchdarkly_segment" "beta_testers" {
 - `tags` (Set of String) Tags associated with your resource.
 - `unbounded` (Boolean) Whether to create a standard segment (`false`) or a Big Segment (`true`). Standard segments include rule-based and smaller list-based segments. Big Segments include larger list-based segments and synced segments. Only use a Big Segment if you need to add more than 15,000 individual targets. It is not possible to manage the list of targeted contexts for Big Segments with Terraform. A change in this field will force the destruction of the existing resource and the creation of a new one.
 - `unbounded_context_kind` (String) For Big Segments, the targeted context kind. If this attribute is not specified it will default to `user`. A change in this field will force the destruction of the existing resource and the creation of a new one.
-- `view_keys` (Set of String) A set of view keys to link this segment to. This is an alternative to using the `launchdarkly_view_links` resource for managing view associations. When set, this segment will be linked to the specified views. The field is also computed, meaning Terraform will read back the current view associations from LaunchDarkly to detect drift. To explicitly remove all view associations, set `view_keys = []`. Simply removing the field from your configuration will leave existing associations unchanged. **Important**: Avoid using both `view_keys` and `launchdarkly_view_links` to manage the same segment. Mixed ownership can cause conflicts; when detected, Terraform logs a warning and reconciles to the configured `view_keys`. Choose one approach per resource.
+- `view_keys` (Set of String) A set of view keys to link this segment to. This is an alternative to using the `launchdarkly_view_links` resource for managing view associations. When set, this segment will be linked to the specified views. Reference the view rather than repeating its key as a string literal. For example, use `view_keys = [launchdarkly_view.my_view.key]`, or `[data.launchdarkly_view.my_view.key]` when another configuration owns the view. A view must exist before Terraform can link a segment to it, and that reference is what tells Terraform to create the view first. The field is also computed, meaning Terraform will read back the current view associations from LaunchDarkly to detect drift. To explicitly remove all view associations, set `view_keys = []`. Simply removing the field from your configuration will leave existing associations unchanged. **Important**: Avoid using both `view_keys` and `launchdarkly_view_links` to manage the same segment. Mixed ownership can cause conflicts; when detected, Terraform logs a warning and reconciles to the configured `view_keys`. Choose one approach per resource.
 
 ### Read-Only
 

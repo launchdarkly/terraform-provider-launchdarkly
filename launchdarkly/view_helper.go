@@ -661,3 +661,35 @@ func performViewFilterLinkOperation(client *Client, projectKey, viewKey, resourc
 func linkResourcesByFilterToView(client *Client, projectKey, viewKey, resourceType, filter, environmentId string) error {
 	return performViewFilterLinkOperation(client, projectKey, viewKey, resourceType, filter, environmentId, "POST")
 }
+
+// validateViewKeysExist checks that every key in viewKeys resolves to a real
+// view in projectKey, returning an actionable error for the first one that does
+// not.
+//
+// Callers must run this *before* the create call that carries viewKeys in its
+// body, not only on the reconcile path. Otherwise a mistyped key surfaces as a
+// raw API error from the flag/segment POST, which is what made this class of
+// mistake expensive to debug.
+//
+// This is deliberately not a plan-time check. The provider only ever sees a
+// single resource's plan, so it cannot tell a typo apart from a view that a
+// sibling resource is about to create in the same apply — a plan-time lookup
+// would fail every green-field apply of a correct configuration.
+func validateViewKeysExist(client *Client, projectKey, resourceKind string, viewKeys []string) error {
+	for _, vk := range viewKeys {
+		exists, err := viewExists(projectKey, vk, client)
+		if err != nil {
+			return fmt.Errorf("failed to check if view %q exists in project %q: %w", vk, projectKey, err)
+		}
+		if !exists {
+			return fmt.Errorf(
+				"cannot link %s to view %q in project %q: view does not exist. "+
+					"If this view is managed in the same Terraform configuration, reference it instead of a string literal "+
+					"(for example view_keys = [launchdarkly_view.my_view.key]) so Terraform creates the view first. "+
+					"If it is managed elsewhere, add a launchdarkly_view data source or check the key for typos. View keys are case-sensitive",
+				resourceKind, vk, projectKey,
+			)
+		}
+	}
+	return nil
+}
