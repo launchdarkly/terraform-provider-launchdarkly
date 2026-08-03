@@ -2,6 +2,13 @@
 
 All notable changes to the LaunchDarkly Terraform Provider will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org).
 
+## [3.1.2](https://github.com/launchdarkly/terraform-provider-launchdarkly/compare/v3.1.1...v3.1.2) (2026-08-03)
+
+
+### Bug Fixes
+
+* validate view keys before flag/segment create ([#522](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/522)) ([9e4984f](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/9e4984f625324ab062c6e1514d2fe2d670ee0112))
+
 ## [3.1.1](https://github.com/launchdarkly/terraform-provider-launchdarkly/compare/v3.1.0...v3.1.1) (2026-07-27)
 
 
