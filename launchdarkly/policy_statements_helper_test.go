@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	ldapi "github.com/launchdarkly/api-client-go/v23"
+	ldapi "github.com/launchdarkly/api-client-go/v24"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
