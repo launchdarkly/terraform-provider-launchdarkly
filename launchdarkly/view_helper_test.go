@@ -15,8 +15,7 @@ import (
 	"golang.org/x/sync/semaphore"
 )
 
-// newViewTestClient returns a Client pointed at ts that decodes views through
-// the same archived-field shim production uses.
+// newViewTestClient returns a Client pointed at ts.
 func newViewTestClient(t *testing.T, ts *httptest.Server) *Client {
 	t.Helper()
 
@@ -24,7 +23,6 @@ func newViewTestClient(t *testing.T, ts *httptest.Server) *Client {
 	cfg.Scheme = "https"
 	cfg.Host = strings.TrimPrefix(ts.URL, "https://")
 	cfg.HTTPClient = ts.Client()
-	cfg.HTTPClient.Transport = &viewArchivedShimTransport{base: cfg.HTTPClient.Transport}
 
 	return &Client{
 		apiKey:    "test-token",
@@ -160,10 +158,6 @@ func TestViewRequestsIncludeUserAgentHeader(t *testing.T) {
 	cfg.Host = strings.TrimPrefix(ts.URL, "https://")
 	cfg.UserAgent = expectedUA
 	cfg.HTTPClient = ts.Client()
-	// Route through the archived-field shim so the test exercises the same
-	// decode path as production, where the views API no longer returns the
-	// `archived` field required by the generated ldapi.View model.
-	cfg.HTTPClient.Transport = &viewArchivedShimTransport{base: cfg.HTTPClient.Transport}
 
 	client := &Client{
 		apiKey:    "test-token",
