@@ -276,6 +276,32 @@ resource "launchdarkly_feature_flag" "test" {
 	]
 }
 `
+
+	testAccFeatureFlagWithUppercaseViewKey = `
+resource "launchdarkly_project" "test" {
+	name = "%s"
+	key  = "%s"
+	environments = {
+		"test-env" = {
+			name  = "Test Environment"
+			color = "000000"
+		}
+	}
+}
+
+resource "launchdarkly_feature_flag" "test" {
+	project_key = launchdarkly_project.test.key
+	key         = "test-flag-uppercase-view"
+	name        = "Test Flag with Uppercase View Key"
+	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
+
+	view_keys = ["My-View"]
+}
+`
 )
 
 func TestAccFeatureFlagViewKeys_CreateAndUpdate(t *testing.T) {
@@ -370,6 +396,33 @@ func TestAccFeatureFlagViewKeys_NonexistentView(t *testing.T) {
 				},
 				Config:      fmt.Sprintf(testAccFeatureFlagWithViewKeysNonexistentViewStep2, projectName, projectKey, maintainerId),
 				ExpectError: regexp.MustCompile("view does not exist"),
+			},
+		},
+	})
+}
+
+// TestAccFeatureFlagViewKeys_UppercaseRejected exercises the set-element
+// validation path (setvalidator.ValueStringsAre) rather than the plain string
+// attribute covered by TestAccView_UppercaseKeyRejected. The failure must come
+// from validation, so no view needs to exist for this to fail.
+func TestAccFeatureFlagViewKeys_UppercaseRejected(t *testing.T) {
+	accTest := os.Getenv("TF_ACC")
+	if accTest == "" {
+		t.SkipNow()
+	}
+
+	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	projectName := "flag-uppercase-view-test-" + projectKey
+
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck: func() {
+			testAccPreCheck(t)
+		},
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config:      fmt.Sprintf(testAccFeatureFlagWithUppercaseViewKey, projectName, projectKey),
+				ExpectError: regexp.MustCompile("to be lowercase"),
 			},
 		},
 	})

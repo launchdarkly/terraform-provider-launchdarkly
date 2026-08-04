@@ -7,6 +7,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
@@ -46,9 +47,13 @@ func (d *ViewDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, r
 	resp.Schema = schema.Schema{
 		Description: "Provides a LaunchDarkly view data source.\n\nThis data source allows you to retrieve view information from your LaunchDarkly project.",
 		Attributes: map[string]schema.Attribute{
-			"id":          schema.StringAttribute{Computed: true, Description: "View ID."},
-			PROJECT_KEY:   schema.StringAttribute{Required: true, Description: "The project key."},
-			KEY:           schema.StringAttribute{Required: true, Description: "The view's unique key."},
+			"id":        schema.StringAttribute{Computed: true, Description: "View ID."},
+			PROJECT_KEY: schema.StringAttribute{Required: true, Description: "The project key."},
+			KEY: schema.StringAttribute{
+				Required:    true,
+				Description: "The view's unique key. Must be lowercase; LaunchDarkly normalises view keys to lowercase.",
+				Validators:  []validator.String{viewKeyValidator()},
+			},
 			NAME:          schema.StringAttribute{Computed: true, Description: "The view's name."},
 			DESCRIPTION:   schema.StringAttribute{Computed: true, Description: "The view's description."},
 			MAINTAINER_ID: schema.StringAttribute{Computed: true, Description: "Member ID of the maintainer."},

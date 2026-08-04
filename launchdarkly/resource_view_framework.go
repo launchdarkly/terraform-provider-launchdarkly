@@ -71,8 +71,8 @@ func viewSchemaAttributes() map[string]schema.Attribute {
 		},
 		KEY: schema.StringAttribute{
 			Required:      true,
-			Description:   addForceNewDescription("The view's unique key.", true),
-			Validators:    []validator.String{keyValidator()},
+			Description:   addForceNewDescription("The view's unique key. Must be lowercase; LaunchDarkly normalises view keys to lowercase.", true),
+			Validators:    []validator.String{viewKeyValidator()},
 			PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
 		},
 		NAME: schema.StringAttribute{

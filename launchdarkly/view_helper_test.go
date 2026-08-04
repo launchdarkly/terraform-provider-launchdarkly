@@ -77,13 +77,19 @@ func TestValidateViewKeysExist(t *testing.T) {
 		require.Contains(t, err.Error(), "view does not exist")
 		// Points at the fix rather than only reporting the symptom.
 		require.Contains(t, err.Error(), "launchdarkly_view.my_view.key")
-		require.Contains(t, err.Error(), "case-sensitive")
+		require.Contains(t, err.Error(), "lowercase")
 	})
 
-	t.Run("case sensitivity is not normalized away", func(t *testing.T) {
+	// viewKeyValidator rejects uppercase keys at plan time, so this input can
+	// no longer arrive from a plan. The helper still must not lowercase it on
+	// the caller's behalf: it looks up exactly what it was handed, so a key
+	// reaching it by any other path (import, drift reconcile) fails loudly
+	// instead of silently resolving to a different view.
+	t.Run("keys are looked up verbatim, not lowercased", func(t *testing.T) {
 		err := validateViewKeysExist(client, projectKey, "segment", []string{"Payments-Team"})
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "segment")
+		require.Contains(t, err.Error(), `"Payments-Team"`)
 	})
 }
 
