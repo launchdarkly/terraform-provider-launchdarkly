@@ -88,7 +88,7 @@ func baseSegmentSchema(options segmentSchemaOptions) map[string]*schema.Schema {
 				Type:             schema.TypeString,
 				ValidateDiagFunc: validateKey(),
 			},
-			Description: "A set of view keys to link this segment to. This is an alternative to using the `launchdarkly_view_links` resource for managing view associations. When set, this segment will be linked to the specified views. The field is also computed, meaning Terraform will read back the current view associations from LaunchDarkly to detect drift. To explicitly remove all view associations, set `view_keys = []`. Simply removing the field from your configuration will leave existing associations unchanged. **Important**: Avoid using both `view_keys` and `launchdarkly_view_links` to manage the same segment. Mixed ownership can cause conflicts; when detected, Terraform logs a warning and reconciles to the configured `view_keys`. Choose one approach per resource.",
+			Description: "A set of view keys to link this segment to. This is an alternative to using the `launchdarkly_view_links` resource for managing view associations. When set, this segment will be linked to the specified views. Reference the view rather than repeating its key as a string literal. For example, use `view_keys = [launchdarkly_view.my_view.key]`, or `[data.launchdarkly_view.my_view.key]` when another configuration owns the view. A view must exist before Terraform can link a segment to it, and that reference is what tells Terraform to create the view first. The field is also computed, meaning Terraform will read back the current view associations from LaunchDarkly to detect drift. To explicitly remove all view associations, set `view_keys = []`. Simply removing the field from your configuration will leave existing associations unchanged. **Important**: Avoid using both `view_keys` and `launchdarkly_view_links` to manage the same segment. Mixed ownership can cause conflicts; when detected, Terraform logs a warning and reconciles to the configured `view_keys`. Choose one approach per resource.",
 		},
 	}
 }
@@ -193,7 +193,7 @@ func segmentRead(ctx context.Context, d *schema.ResourceData, raw interface{}, i
 
 	// Fetch and set view associations
 	// Always populate view_keys from the API (Optional+Computed behavior)
-	betaClient, err := newBetaClient(client.apiKey, client.apiHost, false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
+	betaClient, err := client.betaClientFromConfig()
 	if err != nil {
 		// Log warning but don't fail the read for discovery data
 		log.Printf("[WARN] failed to create beta client for segment %q in project %q, environment %q: %v", segmentKey, projectKey, envKey, err)

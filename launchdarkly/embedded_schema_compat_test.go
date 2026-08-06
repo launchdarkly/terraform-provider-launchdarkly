@@ -110,7 +110,10 @@ func TestPolicyStatementsFromResourceData_emptyDoesNotPanic(t *testing.T) {
 
 // Access token has multiple optional set/list blocks (custom_roles, policy_statements,
 // inline_roles). With none configured, validation must succeed without panicking.
-func TestAccessTokenValidate_emptyOptionalBlocksNoPanic(t *testing.T) {
+// Named TestValidateAccessToken... rather than TestAccessToken... so it does not
+// collide with the TestAcc* discovery regex in ci_matrix_test.go — this is a unit
+// test, not an acceptance test, and must not need a CI matrix entry.
+func TestValidateAccessTokenResource_emptyOptionalBlocksNoPanic(t *testing.T) {
 	t.Parallel()
 
 	d := schema.TestResourceDataRaw(t, resourceAccessToken().Schema, map[string]interface{}{

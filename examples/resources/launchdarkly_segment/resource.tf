@@ -127,6 +127,27 @@ resource "launchdarkly_segment" "segment_with_all_clause_operators" {
 
 # Example: Segment with view associations
 # This approach is ideal for modular Terraform where each segment is managed in its own file
+#
+# Always reference the view rather than repeating its key as a string literal.
+# A view must exist before Terraform can link a segment to it, and Terraform only
+# knows to create the view first if the segment references it. With a string
+# literal there is no dependency between the two resources, so Terraform can
+# create the segment first and the apply fails with "view does not exist".
+# Referencing the view also rules out a mistyped key.
+resource "launchdarkly_view" "sales_team" {
+  project_key         = "example-project"
+  key                 = "sales-team"
+  name                = "Sales Team"
+  maintainer_team_key = "sales"
+}
+
+resource "launchdarkly_view" "customer_success" {
+  project_key         = "example-project"
+  key                 = "customer-success"
+  name                = "Customer Success"
+  maintainer_team_key = "customer-success"
+}
+
 resource "launchdarkly_segment" "premium_users" {
   key         = "premium-users"
   project_key = "example-project"
@@ -134,11 +155,11 @@ resource "launchdarkly_segment" "premium_users" {
   name        = "Premium Users"
   description = "Users with premium subscriptions"
 
-  # Link this segment to specific views
-  # The segment will appear in both the "sales-team" and "customer-success" views
+  # The segment appears in both the "sales-team" and "customer-success" views.
+  # Terraform creates both views first because of these references.
   view_keys = [
-    "sales-team",
-    "customer-success"
+    launchdarkly_view.sales_team.key,
+    launchdarkly_view.customer_success.key,
   ]
 
   tags = ["premium", "subscription"]
@@ -155,6 +176,15 @@ resource "launchdarkly_segment" "premium_users" {
 # Example: Segment managed in a module that can specify its own views
 # This enables a modular structure where each team/domain can manage their segments
 # without needing to coordinate with a central view_links resource
+#
+# When the view is owned by another configuration or state (for example a
+# platform team's workspace), use the data source. This asserts the view already
+# exists, so a typo or a missing view fails during plan instead of mid-apply.
+data "launchdarkly_view" "product_team" {
+  project_key = "example-project"
+  key         = "product-team"
+}
+
 resource "launchdarkly_segment" "beta_testers" {
   key         = "beta-testers"
   project_key = "example-project"
@@ -162,7 +192,7 @@ resource "launchdarkly_segment" "beta_testers" {
   name        = "Beta Testers"
 
   # Each segment can independently specify which views it belongs to
-  view_keys = ["product-team"]
+  view_keys = [data.launchdarkly_view.product_team.key]
 
   tags = ["beta", "testing"]
 

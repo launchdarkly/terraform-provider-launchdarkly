@@ -47,6 +47,31 @@ func TestNewLDClientConfigSkipsDefaultAPIVersionHeaderForBetaClient(t *testing.T
 	assert.False(t, ok)
 }
 
+func TestBetaClientFromConfigInheritsProviderSettings(t *testing.T) {
+	t.Run("inherits configured values", func(t *testing.T) {
+		client, err := newClient("test-token", "app.launchdarkly.com", false, 37, 5)
+		require.NoError(t, err)
+
+		beta, err := client.betaClientFromConfig()
+		require.NoError(t, err)
+		require.Equal(t, 37, beta.httpTimeout)
+		require.Equal(t, 5, beta.maxConcurrency)
+		require.Equal(t, 37*time.Second, beta.ld.GetConfig().HTTPClient.Timeout)
+		// Beta clients must not send a default LD-API-Version header.
+		require.NotContains(t, beta.ld.GetConfig().DefaultHeader, "LD-API-Version")
+	})
+
+	t.Run("falls back to defaults when unset", func(t *testing.T) {
+		// Simulates a Client built without going through baseNewClient.
+		client := &Client{apiKey: "test-token", apiHost: "app.launchdarkly.com"}
+
+		beta, err := client.betaClientFromConfig()
+		require.NoError(t, err)
+		require.Equal(t, DEFAULT_HTTP_TIMEOUT_S, beta.httpTimeout)
+		require.Equal(t, DEFAULT_MAX_CONCURRENCY, beta.maxConcurrency)
+	})
+}
+
 func TestHandleRateLimits(t *testing.T) {
 	t.Run("no retries needed", func(t *testing.T) {
 		t.Parallel()
