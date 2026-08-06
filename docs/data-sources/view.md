@@ -62,7 +62,7 @@ output "team_flag_access" {
 
 ### Required
 
-- `key` (String) The view's unique key. Must be lowercase; LaunchDarkly normalises view keys to lowercase.
+- `key` (String) The view's unique key. Must be lowercase. LaunchDarkly normalizes view keys to lowercase.
 - `project_key` (String) The project key.
 
 ### Read-Only
