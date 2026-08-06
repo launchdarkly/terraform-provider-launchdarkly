@@ -82,7 +82,7 @@ resource "launchdarkly_view_filter_links" "beta_segments" {
 ### Required
 
 - `project_key` (String) The project key. A change in this field forces the destruction of the existing resource and the creation of a new one.
-- `view_key` (String) The view key to link resources to. Must be lowercase; LaunchDarkly normalises view keys to lowercase. A change in this field forces the destruction of the existing resource and the creation of a new one.
+- `view_key` (String) The view key to link resources to. Must be lowercase. LaunchDarkly normalizes view keys to lowercase. A change in this field forces the destruction of the existing resource and the creation of a new one.
 
 ### Optional
 

@@ -68,7 +68,7 @@ func (r *ViewLinksResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 			},
 			VIEW_KEY: schema.StringAttribute{
 				Required:      true,
-				Description:   addForceNewDescription("The view key to link resources to. Must be lowercase; LaunchDarkly normalises view keys to lowercase.", true),
+				Description:   addForceNewDescription("The view key to link resources to. Must be lowercase. LaunchDarkly normalizes view keys to lowercase.", true),
 				Validators:    []validator.String{viewKeyValidator()},
 				PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
 			},
@@ -460,7 +460,7 @@ func (r *ViewFilterLinksResource) Schema(_ context.Context, _ resource.SchemaReq
 			},
 			VIEW_KEY: schema.StringAttribute{
 				Required:      true,
-				Description:   addForceNewDescription("The view key to link resources to. Must be lowercase; LaunchDarkly normalises view keys to lowercase.", true),
+				Description:   addForceNewDescription("The view key to link resources to. Must be lowercase. LaunchDarkly normalizes view keys to lowercase.", true),
 				Validators:    []validator.String{viewKeyValidator()},
 				PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
 			},

@@ -51,7 +51,7 @@ func (d *ViewDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, r
 			PROJECT_KEY: schema.StringAttribute{Required: true, Description: "The project key."},
 			KEY: schema.StringAttribute{
 				Required:    true,
-				Description: "The view's unique key. Must be lowercase; LaunchDarkly normalises view keys to lowercase.",
+				Description: "The view's unique key. Must be lowercase. LaunchDarkly normalizes view keys to lowercase.",
 				Validators:  []validator.String{viewKeyValidator()},
 			},
 			NAME:          schema.StringAttribute{Computed: true, Description: "The view's name."},
