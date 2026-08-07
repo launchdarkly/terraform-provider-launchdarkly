@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"strings"
 
-	ldapi "github.com/launchdarkly/api-client-go/v23"
+	ldapi "github.com/launchdarkly/api-client-go/v24"
 )
 
 // Big segment (persistent) store integration keys. These select the backing
@@ -41,7 +41,7 @@ func (t betaAPIVersionRoundTripper) RoundTrip(req *http.Request) (*http.Response
 // header enforced via a round tripper (see betaAPIVersionRoundTripper for why a
 // client-default header does not work for this generated client).
 func newBigSegmentStoreIntegrationBetaClient(c *Client) (*Client, error) {
-	beta, err := newBetaClient(c.apiKey, c.apiHost, false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
+	beta, err := c.betaClientFromConfig()
 	if err != nil {
 		return nil, err
 	}

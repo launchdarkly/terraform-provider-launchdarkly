@@ -11,7 +11,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
-	ldapi "github.com/launchdarkly/api-client-go/v23"
+	ldapi "github.com/launchdarkly/api-client-go/v24"
 	"github.com/stretchr/testify/require"
 )
 
@@ -354,8 +354,11 @@ func TestAccSegmentViewKeys_NonexistentView(t *testing.T) {
 					// Wait for view to be fully propagated before attempting segment creation
 					time.Sleep(3 * time.Second)
 				},
-				Config:      fmt.Sprintf(testAccSegmentWithViewKeysNonexistentViewStep2, projectName, projectKey, maintainerId),
-				ExpectError: regexp.MustCompile(`(?i)view.*not found`),
+				Config: fmt.Sprintf(testAccSegmentWithViewKeysNonexistentViewStep2, projectName, projectKey, maintainerId),
+				// Before the view keys were validated ahead of the create call,
+				// this surfaced as the raw "not found" API error from the segment
+				// POST. It is now the provider's own diagnostic.
+				ExpectError: regexp.MustCompile("view does not exist"),
 			},
 		},
 	})

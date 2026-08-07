@@ -33,8 +33,7 @@ resource "launchdarkly_view" "example" {
     "example"
   ]
 
-  generate_sdk_keys = true
-  maintainer_id     = "507f1f77bcf86cd799439011"
+  maintainer_id = "507f1f77bcf86cd799439011"
 }
 
 # Alternative example with team maintainer instead of individual maintainer
@@ -63,7 +62,6 @@ resource "launchdarkly_view" "team_maintained" {
 
 ### Optional
 
-- `archived` (Boolean) Whether the view is archived.
 - `description` (String) The view's description.
 - `maintainer_id` (String) The member ID of the maintainer for this view. Exactly one of `maintainer_id` and `maintainer_team_key` must be set.
 - `maintainer_team_key` (String) The team key of the maintainer team for this view. Exactly one of `maintainer_id` and `maintainer_team_key` must be set.

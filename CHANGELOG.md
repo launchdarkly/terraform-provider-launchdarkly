@@ -2,6 +2,34 @@
 
 All notable changes to the LaunchDarkly Terraform Provider will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org).
 
+## [3.1.2](https://github.com/launchdarkly/terraform-provider-launchdarkly/compare/v3.1.1...v3.1.2) (2026-08-03)
+
+
+### Bug Fixes
+
+* validate view keys before flag/segment create ([#522](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/522)) ([9e4984f](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/9e4984f625324ab062c6e1514d2fe2d670ee0112))
+
+## [3.1.1](https://github.com/launchdarkly/terraform-provider-launchdarkly/compare/v3.1.0...v3.1.1) (2026-07-27)
+
+
+### Bug Fixes
+
+* attach AgentControl variation tools via the tools field ([#518](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/518)) ([68ca20f](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/68ca20f1a46e73e98e589b86455976877cbc096a))
+
+## [3.1.0](https://github.com/launchdarkly/terraform-provider-launchdarkly/compare/v3.0.2...v3.1.0) (2026-07-27)
+
+
+### Features
+
+* add judge attachments to launchdarkly_ai_config_variation ([#512](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/512)) ([f725c22](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/f725c227d94613f3738eae94abcf1b3b30e3e84f))
+
+## [3.0.2](https://github.com/launchdarkly/terraform-provider-launchdarkly/compare/v3.0.1...v3.0.2) (2026-07-24)
+
+
+### Bug Fixes
+
+* remove archived field from launchdarkly_view resource and data source ([#513](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/513)) ([34a4cfa](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/34a4cfa5149a68cfeec29fd0d302b1a6972a5985))
+
 ## [3.0.1](https://github.com/launchdarkly/terraform-provider-launchdarkly/compare/v3.0.0...v3.0.1) (2026-07-22)
 
 

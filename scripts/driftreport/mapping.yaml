@@ -28,6 +28,17 @@
 #     replay, traces/logs). Spec carries only read-only `Insights * (beta)`
 #     tags (all ignored). No config tags yet — a real IaC gap until LD ships them.
 #
+# COVERED-FAMILY BLIND SPOT — drift fires only on NEW families, NEW ops in
+# `partial` families, and stale claims. A `covered` family is a TAG-LEVEL
+# claim: when the spec later adds an operation (or a field) to a family
+# already marked covered, this tool stays silent — coverage rots invisibly.
+# Standing task: promote high-traffic covered families (Feature flags,
+# Segments, Projects, Environments, Teams, Metrics, Webhooks) to `partial`
+# with explicit per-resource operationId lists so new ops surface as
+# unclaimed. The mechanism already exists (drift tool v2); each promotion is
+# pure curation of this file. Schema-PROPERTY-level drift (a new field on an
+# op we already claim) needs a tool extension — tracked separately.
+#
 # PRODUCT-PILLAR → FAMILY MAP (context for future scaffolding agents). The docs
 # home presents three product brands; mapping them to spec tags:
 #   - CodeControl (feature management): Feature flags, Flag triggers, Segments,

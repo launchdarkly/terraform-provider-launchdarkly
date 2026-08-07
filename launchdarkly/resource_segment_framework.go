@@ -22,7 +22,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
-	ldapi "github.com/launchdarkly/api-client-go/v23"
+	ldapi "github.com/launchdarkly/api-client-go/v24"
 )
 
 var (
@@ -149,7 +149,7 @@ func segmentSchemaAttributes() map[string]schema.Attribute {
 			Optional:      true,
 			Computed:      true,
 			ElementType:   types.StringType,
-			Description:   "A set of view keys to link this segment to. This is an alternative to using the `launchdarkly_view_links` resource for managing view associations. When set, this segment is linked to the specified views. The field is also computed, so Terraform reads back the current view associations from LaunchDarkly to detect drift. To explicitly remove all view associations, set `view_keys = []`. Removing the field from your configuration leaves existing associations unchanged. **Important**: Avoid using both `view_keys` and `launchdarkly_view_links` to manage the same segment. Mixed ownership can cause conflicts. When Terraform detects them, it logs a warning and reconciles to the configured `view_keys`. Choose one approach per resource.",
+			Description:   "A set of view keys to link this segment to. This is an alternative to using the `launchdarkly_view_links` resource for managing view associations. When set, this segment is linked to the specified views. Reference the view rather than repeating its key as a string literal. For example, use `view_keys = [launchdarkly_view.my_view.key]`, or `[data.launchdarkly_view.my_view.key]` when another configuration owns the view. A view must exist before Terraform can link a segment to it, and that reference is what tells Terraform to create the view first. The field is also computed, so Terraform reads back the current view associations from LaunchDarkly to detect drift. To explicitly remove all view associations, set `view_keys = []`. Removing the field from your configuration leaves existing associations unchanged. **Important**: Avoid using both `view_keys` and `launchdarkly_view_links` to manage the same segment. Mixed ownership can cause conflicts. When Terraform detects them, it logs a warning and reconciles to the configured `view_keys`. Choose one approach per resource.",
 			Validators:    []validator.Set{},
 			PlanModifiers: []planmodifier.Set{setplanmodifier.UseStateForUnknown()},
 		},
@@ -348,6 +348,18 @@ func (r *SegmentResource) Create(ctx context.Context, req resource.CreateRequest
 
 	var err error
 	if len(viewKeysList) > 0 {
+		// Validate the view keys before the POST. The create call carries
+		// viewKeys in its body, so an unresolvable key would otherwise come
+		// back as a raw API error with no hint about the cause.
+		betaClient, bcErr := r.client.betaClientFromConfig()
+		if bcErr != nil {
+			resp.Diagnostics.AddError(fmt.Sprintf("failed to create beta client for view validation: %v", bcErr), "")
+			return
+		}
+		if vErr := validateViewKeysExist(betaClient, projectKey, "segment", viewKeysList); vErr != nil {
+			resp.Diagnostics.AddError(vErr.Error(), "")
+			return
+		}
 		body := SegmentBodyWithViewKeys{
 			Name:                 plan.Name.ValueString(),
 			Key:                  key,
@@ -542,7 +554,7 @@ func (r *SegmentResource) applySegmentUpdate(ctx context.Context, plan, state Se
 	if diags.HasError() {
 		return diags
 	}
-	betaClient, err := newBetaClient(r.client.apiKey, r.client.apiHost, false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
+	betaClient, err := r.client.betaClientFromConfig()
 	if err != nil {
 		diags.AddError(fmt.Sprintf("failed to create beta client for view linking: %v", err), "")
 		return diags
@@ -569,14 +581,11 @@ func (r *SegmentResource) applySegmentUpdate(ctx context.Context, plan, state Se
 		return diags
 	}
 
-	for _, vk := range desiredViews {
-		exists, vErr := viewExists(projectKey, vk, betaClient)
-		if vErr != nil {
-			diags.AddError(fmt.Sprintf("failed to check if view %q exists: %v", vk, vErr), "")
-			return diags
-		}
-		if !exists {
-			diags.AddError(fmt.Sprintf("cannot link segment to view %q in project %q: view does not exist", vk, projectKey), "")
+	// On create, Create already validated these keys before the POST that
+	// carried them; re-checking here would just duplicate the GETs.
+	if !isCreate {
+		if vErr := validateViewKeysExist(betaClient, projectKey, "segment", desiredViews); vErr != nil {
+			diags.AddError(vErr.Error(), "")
 			return diags
 		}
 	}
@@ -715,7 +724,7 @@ func (r *SegmentResource) readIntoModel(ctx context.Context, data *SegmentResour
 	data.Rules = segmentResourceRulesValue(ctx, segment.Rules, diags)
 
 	// View association reads — best-effort.
-	betaClient, bcErr := newBetaClient(r.client.apiKey, r.client.apiHost, false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
+	betaClient, bcErr := r.client.betaClientFromConfig()
 	if bcErr != nil {
 		log.Printf("[WARN] failed to create beta client for view lookup: %v", bcErr)
 		if data.ViewKeys.IsNull() || data.ViewKeys.IsUnknown() {

@@ -15,7 +15,7 @@ import (
 // (see betaVersionRoundTripper in flag_import_configuration_helper.go for the
 // full rationale). Without the beta header these endpoints return 400/403/404.
 func newIntegrationDeliveryConfigurationBetaClient(c *Client) (*Client, error) {
-	beta, err := newBetaClient(c.apiKey, c.apiHost, false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
+	beta, err := c.betaClientFromConfig()
 	if err != nil {
 		return nil, err
 	}

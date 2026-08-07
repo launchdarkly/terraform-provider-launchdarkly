@@ -8,7 +8,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
-	ldapi "github.com/launchdarkly/api-client-go/v23"
+	ldapi "github.com/launchdarkly/api-client-go/v24"
 )
 
 var _ datasource.DataSource = &SegmentDataSource{}
@@ -205,7 +205,7 @@ func (d *SegmentDataSource) Read(ctx context.Context, req datasource.ReadRequest
 
 	// View association: best-effort. Surface empty on failure.
 	viewKeys := []string{}
-	betaClient, bcErr := newBetaClient(d.client.apiKey, d.client.apiHost, false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
+	betaClient, bcErr := d.client.betaClientFromConfig()
 	if bcErr == nil {
 		var env *ldapi.Environment
 		err = d.client.withConcurrency(d.client.ctx, func() error {

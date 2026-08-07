@@ -79,7 +79,7 @@ func (d *SdkKeyDataSource) Read(ctx context.Context, req datasource.ReadRequest,
 		return
 	}
 
-	beta, err := newBetaClient(d.client.apiKey, d.client.apiHost, false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
+	beta, err := d.client.betaClientFromConfig()
 	if err != nil {
 		resp.Diagnostics.AddError("Failed to construct beta client", err.Error())
 		return

@@ -21,7 +21,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
-	ldapi "github.com/launchdarkly/api-client-go/v23"
+	ldapi "github.com/launchdarkly/api-client-go/v24"
 )
 
 var (
@@ -327,7 +327,7 @@ func (r *ModelConfigResource) Delete(ctx context.Context, req resource.DeleteReq
 		if strings.Contains(errMsg, "model config is still in use") {
 			resp.Diagnostics.AddError(
 				"Failed to delete model config",
-				fmt.Sprintf("model config %q in project %q is still in use by one or more AI config variations. Use a Terraform resource reference for model_config_key (not a literal string) so Terraform can order destruction correctly.", key, projectKey),
+				fmt.Sprintf("model config %q in project %q is still in use by one or more AgentControl config variations. Use a Terraform resource reference for model_config_key (not a literal string) so Terraform can order destruction correctly.", key, projectKey),
 			)
 			return
 		}

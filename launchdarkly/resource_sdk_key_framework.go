@@ -12,7 +12,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
-	ldapi "github.com/launchdarkly/api-client-go/v23"
+	ldapi "github.com/launchdarkly/api-client-go/v24"
 )
 
 var (
@@ -181,7 +181,7 @@ func (r *SdkKeyResource) Configure(_ context.Context, req resource.ConfigureRequ
 	if r.client == nil {
 		return
 	}
-	beta, err := newBetaClient(r.client.apiKey, r.client.apiHost, false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
+	beta, err := r.client.betaClientFromConfig()
 	if err != nil {
 		resp.Diagnostics.AddError("Failed to build LaunchDarkly beta client", err.Error())
 		return
@@ -193,7 +193,7 @@ func (r *SdkKeyResource) betaClient() (*Client, error) {
 	if r.beta != nil {
 		return r.beta, nil
 	}
-	return newBetaClient(r.client.apiKey, r.client.apiHost, false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
+	return r.client.betaClientFromConfig()
 }
 
 func (r *SdkKeyResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {

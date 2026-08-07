@@ -7,7 +7,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
-	ldapi "github.com/launchdarkly/api-client-go/v23"
+	ldapi "github.com/launchdarkly/api-client-go/v24"
 )
 
 var _ datasource.DataSource = &EnvironmentDataSource{}
@@ -137,7 +137,7 @@ func (d *EnvironmentDataSource) Read(ctx context.Context, req datasource.ReadReq
 	// (403/404) on some accounts. Degrade to a warning rather than
 	// failing the whole data-source read in that case.
 	data.SegmentApprovalSettings = types.ObjectNull(frameworkApprovalSettingsObjectAttrTypes)
-	if beta, betaErr := newBetaClient(d.client.apiKey, d.client.apiHost, false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY); betaErr != nil {
+	if beta, betaErr := d.client.betaClientFromConfig(); betaErr != nil {
 		resp.Diagnostics.AddWarning("Could not read segment_approval_settings", betaErr.Error())
 	} else {
 		var segSettings *map[string]ldapi.ApprovalRequestSettingWithEnvs

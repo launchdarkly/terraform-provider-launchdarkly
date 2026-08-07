@@ -13,10 +13,11 @@ Go version pinned in `.go-version`: **1.25.8** (`scripts/codegen/go.mod` and par
 - `make testacc` — full acceptance suite. Sets `TF_ACC=1`. Hits **real** LaunchDarkly via `LAUNCHDARKLY_ACCESS_TOKEN`; requires enterprise account. 120m timeout.
 - `make testacc-with-retry` — runs `testacc` once, retries once on failure. CI uses this.
 - `TESTARGS="-run TestAccProject_Create" make testacc` — single acceptance test. CI matrix entries (e.g. `TestAccFeatureFlag_`) are `go test -run` prefixes, not suite names.
+- `make matrixcheck` — needs no token. Cross-checks every `TestAcc*` function against the `test_case` matrices in `test.yml` **and** `test-fork-pr.yml`, and asserts the two lists are identical. Run it after adding an acceptance test or a matrix row. Because each entry is an *unanchored* regex, both drift directions used to fail silently: an entry matching nothing ran zero tests and went green, and a test matched by nothing never ran at all. See `launchdarkly/ci_matrix_test.go`.
 - `make generate` — installs the `codegen` tool, then runs `go generate ./launchdarkly/... .`. Regenerates `launchdarkly/integration_configs_generated.go` from `https://app.launchdarkly.com/api/v2/integration-manifests` **and** rebuilds `docs/` via `tfplugindocs`. Requires `LAUNCHDARKLY_ACCESS_TOKEN` and a real `terraform` binary on PATH (no wrapper).
 - `make vet` / `make errcheck` — also wired into CI.
 
-CI gate at `.github/workflows/test.yml`: build + lint (`golangci-lint v1.64.8`) + `make generate` diff check + matrix of `TestAcc*` prefixes. The `generate` and `test` jobs are **skipped on fork PRs** — a maintainer must add the `safe-to-test` label to trigger `test-fork-pr.yml`. New pushes strip the label (see `remove-safe-to-test-label.yml`), forcing re-review.
+CI gate at `.github/workflows/test.yml`: build + lint (`golangci-lint v1.64.8`) + `make matrixcheck` + `make generate` diff check + matrix of `TestAcc*` prefixes. `matrixcheck` runs in the `build` job (no credentials), so it gates fork PRs too — and it fails if `test.yml`'s matrix diverges from `test-fork-pr.yml`'s, which is the failure mode that let 27 tests go unrun on the fork path. The `generate` and `test` jobs are **skipped on fork PRs** — a maintainer must add the `safe-to-test` label to trigger `test-fork-pr.yml`. New pushes strip the label (see `remove-safe-to-test-label.yml`), forcing re-review.
 
 ## Local dev override
 

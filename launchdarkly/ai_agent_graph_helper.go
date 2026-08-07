@@ -6,7 +6,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/types"
-	ldapi "github.com/launchdarkly/api-client-go/v23"
+	ldapi "github.com/launchdarkly/api-client-go/v24"
 )
 
 // agentGraphBetaVersion is the LD-API-Version the agent graph endpoints
@@ -21,7 +21,7 @@ const agentGraphBetaVersion = "beta"
 // per-request .LDAPIVersion("beta"); using the standard client would send the
 // header twice ("Too many values for parameter LD-API-Version").
 func newAIAgentGraphBetaClient(c *Client) (*Client, error) {
-	return newBetaClient(c.apiKey, c.apiHost, false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
+	return c.betaClientFromConfig()
 }
 
 // agentGraphEdgeModel is the Terraform representation of a single edge in an

@@ -8,7 +8,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
-	ldapi "github.com/launchdarkly/api-client-go/v23"
+	ldapi "github.com/launchdarkly/api-client-go/v24"
 )
 
 var _ datasource.DataSource = &AIConfigVariationDataSource{}
@@ -29,6 +29,7 @@ type AIConfigVariationDataSourceModel struct {
 	Description    types.String `tfsdk:"description"`
 	Instructions   types.String `tfsdk:"instructions"`
 	ToolKeys       types.Set    `tfsdk:"tool_keys"`
+	Judges         types.Map    `tfsdk:"judges"`
 	State          types.String `tfsdk:"state"`
 	VariationID    types.String `tfsdk:"variation_id"`
 	Version        types.Int64  `tfsdk:"version"`
@@ -38,6 +39,10 @@ type AIConfigVariationDataSourceModel struct {
 var aiConfigVariationMessageAttrTypes = map[string]attr.Type{
 	ROLE:    types.StringType,
 	CONTENT: types.StringType,
+}
+
+var aiConfigVariationJudgeAttrTypes = map[string]attr.Type{
+	SAMPLING_RATE: types.Float64Type,
 }
 
 func NewAIConfigVariationDataSource() datasource.DataSource {
@@ -50,11 +55,11 @@ func (d *AIConfigVariationDataSource) Metadata(_ context.Context, req datasource
 
 func (d *AIConfigVariationDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "Provides a LaunchDarkly AI Config variation data source.\n\nThis data source allows you to retrieve AI Config variation information from your LaunchDarkly project.",
+		Description: "Provides a LaunchDarkly AgentControl config variation data source.\n\nThis data source allows you to retrieve AgentControl config variation information from your LaunchDarkly project.",
 		Attributes: map[string]schema.Attribute{
 			"id":          schema.StringAttribute{Computed: true, Description: "The ID in the format `project_key/config_key/key`."},
 			PROJECT_KEY:   schema.StringAttribute{Required: true, Description: "The project key."},
-			AI_CONFIG_KEY: schema.StringAttribute{Required: true, Description: "The AI Config key that this variation belongs to."},
+			AI_CONFIG_KEY: schema.StringAttribute{Required: true, Description: "The AgentControl config key that this variation belongs to."},
 			KEY:           schema.StringAttribute{Required: true, Description: "The variation's unique key."},
 			NAME:          schema.StringAttribute{Computed: true, Description: "The variation's human-readable name."},
 			MODEL:         schema.StringAttribute{Computed: true, Description: "A JSON string representing the inline model configuration."},
@@ -67,7 +72,16 @@ func (d *AIConfigVariationDataSource) Schema(_ context.Context, _ datasource.Sch
 			TOOL_KEYS: schema.SetAttribute{
 				Computed:    true,
 				ElementType: types.StringType,
-				Description: "A set of AI tool keys to associate with this variation. **Note:** The API does not currently return tool associations on read, so Terraform cannot detect drift for this field. Changes made outside of Terraform is not reflected in state.",
+				Description: "A set of AI tool keys associated with this variation.",
+			},
+			JUDGES: schema.MapNestedAttribute{
+				Computed:    true,
+				Description: "The judges attached to this variation, keyed by the key of the judge AgentControl config.",
+				NestedObject: schema.NestedAttributeObject{
+					Attributes: map[string]schema.Attribute{
+						SAMPLING_RATE: schema.Float64Attribute{Computed: true, Description: "The fraction of generations this judge evaluates."},
+					},
+				},
 			},
 			STATE:         schema.StringAttribute{Computed: true, Description: "The state of the variation. Must be `archived` or `published`."},
 			VARIATION_ID:  schema.StringAttribute{Computed: true, Description: "The internal ID of the variation."},
@@ -114,7 +128,7 @@ func (d *AIConfigVariationDataSource) Read(ctx context.Context, req datasource.R
 	})
 	if err != nil {
 		resp.Diagnostics.AddError(
-			fmt.Sprintf("failed to get AI config variation with key %q in config %q project %q: %s", variationKey, configKey, projectKey, handleLdapiErr(err).Error()),
+			fmt.Sprintf("failed to get AgentControl config variation with key %q in config %q project %q: %s", variationKey, configKey, projectKey, handleLdapiErr(err).Error()),
 			"",
 		)
 		return
@@ -122,13 +136,13 @@ func (d *AIConfigVariationDataSource) Read(ctx context.Context, req datasource.R
 
 	if variationsResp == nil || len(variationsResp.Items) == 0 {
 		resp.Diagnostics.AddError(
-			fmt.Sprintf("failed to get AI config variation with key %q in config %q project %q: no versions found", variationKey, configKey, projectKey),
+			fmt.Sprintf("failed to get AgentControl config variation with key %q in config %q project %q: no versions found", variationKey, configKey, projectKey),
 			"",
 		)
 		return
 	}
 
-	// Pick the highest-version item. AI Config variations are versioned;
+	// Pick the highest-version item. AgentControl config variations are versioned;
 	// see memory/ai-config-variations.md.
 	variation := variationsResp.Items[0]
 	for _, v := range variationsResp.Items[1:] {
@@ -200,6 +214,10 @@ func (d *AIConfigVariationDataSource) Read(ctx context.Context, req datasource.R
 	toolSet, diags := setFromStringSlice(ctx, toolKeys)
 	resp.Diagnostics.Append(diags...)
 	data.ToolKeys = toolSet
+
+	judgesMap, diags := variationJudgesToMap(variation.JudgeConfiguration)
+	resp.Diagnostics.Append(diags...)
+	data.Judges = judgesMap
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }

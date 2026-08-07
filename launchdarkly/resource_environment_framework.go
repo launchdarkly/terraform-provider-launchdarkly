@@ -17,7 +17,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
-	ldapi "github.com/launchdarkly/api-client-go/v23"
+	ldapi "github.com/launchdarkly/api-client-go/v24"
 )
 
 var (
@@ -411,7 +411,7 @@ func (r *EnvironmentResource) applySegmentApprovalSettings(ctx context.Context, 
 	if diags.HasError() {
 		return diags
 	}
-	beta, err := newBetaClient(r.client.apiKey, r.client.apiHost, false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
+	beta, err := r.client.betaClientFromConfig()
 	if err != nil {
 		diags.AddError("Failed to create beta client for segment_approval_settings", err.Error())
 		return diags
@@ -446,7 +446,7 @@ func (r *EnvironmentResource) readSegmentApprovalSettings(ctx context.Context, p
 		return types.ObjectNull(frameworkApprovalSettingsObjectAttrTypes), diags
 	}
 
-	beta, err := newBetaClient(r.client.apiKey, r.client.apiHost, false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
+	beta, err := r.client.betaClientFromConfig()
 	if err != nil {
 		diags.AddError("Failed to create beta client for segment_approval_settings", err.Error())
 		return types.ObjectNull(frameworkApprovalSettingsObjectAttrTypes), diags

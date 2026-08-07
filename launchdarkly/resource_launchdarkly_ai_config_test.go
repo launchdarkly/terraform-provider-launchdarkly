@@ -255,6 +255,11 @@ func TestAccAIConfig_WithEvaluationMetric(t *testing.T) {
 				ResourceName:      resourceName,
 				ImportState:       true,
 				ImportStateVerify: true,
+				// The API reports isInverted=false for both "explicitly
+				// false" and "never set", so an import cannot recover an
+				// explicit false — the read preserves null instead. The
+				// import after the is_inverted=true step verifies fully.
+				ImportStateVerifyIgnore: []string{IS_INVERTED},
 			},
 			{
 				Config: withAITestProject(projectKey, fmt.Sprintf(testAccAIConfigWithEvaluationMetric, configKey, metricSuffix, true)),
