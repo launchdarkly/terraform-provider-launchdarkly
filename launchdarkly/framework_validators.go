@@ -9,6 +9,7 @@ import (
 	"context"
 	"fmt"
 	"regexp"
+	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 )
@@ -48,6 +49,38 @@ func keyValidator() validator.String {
 		pattern: keyPattern,
 		desc:    "Must contain only letters, numbers, '.', '-', or '_' and must start with an alphanumeric",
 	}
+}
+
+// viewKeyValidator returns a String validator for view keys. LaunchDarkly
+// normalises view keys to lowercase server-side, so an uppercase key in
+// configuration can never round-trip: the API stores the lowercased form,
+// Read pulls that back, and the resulting permanent diff forces a replace on
+// every plan. Rejecting it up front turns that into a plan-time error that
+// names the fix.
+//
+// Applies to every attribute a user can type a view key into, not just
+// launchdarkly_view.key — a reference site (view_links.view_key,
+// feature_flag.view_keys, ...) that names an uppercase key would otherwise
+// fail later as an opaque 404.
+func viewKeyValidator() validator.String {
+	return compositeStringValidator{
+		validators: []validator.String{
+			keyValidator(),
+			lowercaseValidator("LaunchDarkly normalises view keys to lowercase"),
+		},
+	}
+}
+
+// lowercaseValidator rejects any string containing uppercase characters. Kept
+// separate from the key regex so the diagnostic can name the real problem and
+// suggest the normalised value, rather than emitting the generic
+// "letters, numbers, '.', '-', or '_'" message for a value that already
+// satisfies those rules.
+//
+// reason is folded into the diagnostic to explain why this particular
+// attribute must be lowercase; pass "" to omit it.
+func lowercaseValidator(reason string) validator.String {
+	return caseValidator{reason: reason}
 }
 
 // keyAndLengthValidator combines the key regex with a min/max length check.
@@ -140,6 +173,36 @@ func (v lengthValidator) ValidateString(_ context.Context, req validator.StringR
 			fmt.Sprintf("expected length of %s to be in the range (%d - %d), got %d", req.Path, v.minLength, v.maxLength, len(s)),
 		)
 	}
+}
+
+// caseValidator enforces that a string contains no uppercase characters.
+type caseValidator struct {
+	reason string
+}
+
+func (v caseValidator) Description(context.Context) string {
+	return "Must be lowercase"
+}
+
+func (v caseValidator) MarkdownDescription(ctx context.Context) string {
+	return v.Description(ctx)
+}
+
+func (v caseValidator) ValidateString(_ context.Context, req validator.StringRequest, resp *validator.StringResponse) {
+	if req.ConfigValue.IsNull() || req.ConfigValue.IsUnknown() {
+		return
+	}
+	got := req.ConfigValue.ValueString()
+	lowered := strings.ToLower(got)
+	if got == lowered {
+		return
+	}
+	detail := fmt.Sprintf("expected %s to be lowercase, got %q", req.Path, got)
+	if v.reason != "" {
+		detail += ". " + v.reason
+	}
+	detail += fmt.Sprintf(". Use %q instead", lowered)
+	resp.Diagnostics.AddAttributeError(req.Path, "Invalid value", detail)
 }
 
 // oneOfValidator restricts a string attribute to a fixed enum.

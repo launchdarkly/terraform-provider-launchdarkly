@@ -47,6 +47,81 @@ func TestKeyValidator_NullUnknownSkip(t *testing.T) {
 	}
 }
 
+func TestViewKeyValidator(t *testing.T) {
+	v := viewKeyValidator()
+	good := []string{"a", "abc", "my-view", "my_view", "0abc", "my.dotted.view", "view-123"}
+	for _, s := range good {
+		resp := runStringValidator(t, v, types.StringValue(s))
+		if resp.Diagnostics.HasError() {
+			t.Fatalf("expected %q to pass, got %v", s, resp.Diagnostics)
+		}
+	}
+	// Uppercase is the case this validator exists for: it satisfies the key
+	// regex but cannot round-trip through LD's lowercase normalisation.
+	uppercase := []string{"MyView", "ABC", "my-View", "Z.dot.path"}
+	for _, s := range uppercase {
+		resp := runStringValidator(t, v, types.StringValue(s))
+		if !resp.Diagnostics.HasError() {
+			t.Fatalf("expected uppercase key %q to fail view key validation", s)
+		}
+		if got := resp.Diagnostics.Errors()[0].Detail(); !strings.Contains(got, strings.ToLower(s)) {
+			t.Fatalf("expected diagnostic for %q to suggest the lowercased key, got %q", s, got)
+		}
+	}
+	// Key-pattern failures must still surface through the composite.
+	bad := []string{"-leading-dash", ".dot-first", "has space", "has/slash", ""}
+	for _, s := range bad {
+		resp := runStringValidator(t, v, types.StringValue(s))
+		if !resp.Diagnostics.HasError() {
+			t.Fatalf("expected %q to fail view key validation", s)
+		}
+	}
+}
+
+func TestViewKeyValidator_NullUnknownSkip(t *testing.T) {
+	for _, v := range []types.String{types.StringNull(), types.StringUnknown()} {
+		resp := runStringValidator(t, viewKeyValidator(), v)
+		if resp.Diagnostics.HasError() {
+			t.Fatalf("null/unknown values must not error, got %v", resp.Diagnostics)
+		}
+	}
+}
+
+func TestLowercaseValidator(t *testing.T) {
+	v := lowercaseValidator("because reasons")
+	// Non-letter characters have no case and must not trip the check.
+	for _, s := range []string{"", "abc", "a-b_c.1", "123"} {
+		resp := runStringValidator(t, v, types.StringValue(s))
+		if resp.Diagnostics.HasError() {
+			t.Fatalf("expected %q to pass, got %v", s, resp.Diagnostics)
+		}
+	}
+	for _, s := range []string{"A", "aB", "ABC"} {
+		resp := runStringValidator(t, v, types.StringValue(s))
+		if !resp.Diagnostics.HasError() {
+			t.Fatalf("expected %q to fail lowercase validation", s)
+		}
+		if got := resp.Diagnostics.Errors()[0].Detail(); !strings.Contains(got, "because reasons") {
+			t.Fatalf("expected diagnostic for %q to carry the reason, got %q", s, got)
+		}
+	}
+}
+
+func TestLowercaseValidator_EmptyReason(t *testing.T) {
+	resp := runStringValidator(t, lowercaseValidator(""), types.StringValue("Abc"))
+	if !resp.Diagnostics.HasError() {
+		t.Fatal("expected uppercase value to fail")
+	}
+	got := resp.Diagnostics.Errors()[0].Detail()
+	// An empty reason must not leave a doubled or dangling separator.
+	if strings.Contains(got, "..") {
+		t.Fatalf("empty reason produced malformed detail: %q", got)
+	}
+	if !strings.Contains(got, `Use "abc" instead`) {
+		t.Fatalf("expected normalised suggestion, got %q", got)
+	}
+}
+
 func TestKeyAndLengthValidator(t *testing.T) {
 	v := keyAndLengthValidator(3, 10)
 	resp := runStringValidator(t, v, types.StringValue("abc"))

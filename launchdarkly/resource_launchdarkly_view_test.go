@@ -283,6 +283,37 @@ func TestAccView_InvalidKey(t *testing.T) {
 	})
 }
 
+// TestAccView_UppercaseKeyRejected pins the REL-15205 guard: LaunchDarkly
+// normalises view keys to lowercase, so an uppercase key in configuration must
+// fail during validation rather than being accepted and then reading back
+// lowercased (a permanent diff that forces a replace on every plan).
+func TestAccView_UppercaseKeyRejected(t *testing.T) {
+	accTest := os.Getenv("TF_ACC")
+	if accTest == "" {
+		t.SkipNow()
+	}
+
+	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	uppercaseViewKey := "Test-View"
+	viewName := "Test View"
+	viewDescription := "Test view description"
+
+	maintainerId := firstMemberIDForTest(t)
+
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck: func() {
+			testAccPreCheck(t)
+		},
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config:      fmt.Sprintf(testAccViewCreate, projectKey, uppercaseViewKey, viewName, viewDescription, maintainerId),
+				ExpectError: regexp.MustCompile("to be lowercase"),
+			},
+		},
+	})
+}
+
 func testAccCheckViewExists(resourceName string) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
 		rs, ok := s.RootModule().Resources[resourceName]
