@@ -227,7 +227,7 @@ func validateViewKeysExist(client *Client, projectKey, resourceKind string, view
 				"cannot link %s to view %q in project %q: view does not exist. "+
 					"If this view is managed in the same Terraform configuration, reference it instead of a string literal "+
 					"(for example view_keys = [launchdarkly_view.my_view.key]) so Terraform creates the view first. "+
-					"If it is managed elsewhere, add a launchdarkly_view data source or check the key for typos. View keys are case-sensitive",
+					"If it is managed elsewhere, add a launchdarkly_view data source or check the key for typos. View keys are lowercase",
 				resourceKind, vk, projectKey,
 			)
 		}

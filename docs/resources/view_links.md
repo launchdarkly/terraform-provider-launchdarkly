@@ -186,7 +186,7 @@ resource "launchdarkly_view_links" "segments_only" {
 ### Required
 
 - `project_key` (String) The project key. A change in this field forces the destruction of the existing resource and the creation of a new one.
-- `view_key` (String) The view key to link resources to. A change in this field forces the destruction of the existing resource and the creation of a new one.
+- `view_key` (String) The view key to link resources to. Must be lowercase. LaunchDarkly normalizes view keys to lowercase. A change in this field forces the destruction of the existing resource and the creation of a new one.
 
 ### Optional
 
