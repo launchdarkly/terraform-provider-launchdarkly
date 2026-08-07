@@ -2,6 +2,13 @@
 
 All notable changes to the LaunchDarkly Terraform Provider will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org).
 
+## [3.1.3](https://github.com/launchdarkly/terraform-provider-launchdarkly/compare/v3.1.2...v3.1.3) (2026-08-07)
+
+
+### Bug Fixes
+
+* enforce lowercase view keys (REL-15205) ([#530](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/530)) ([6aa68e8](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/6aa68e851fd04e0438ef961e5b0521b38138c0f9))
+
 ## [3.1.2](https://github.com/launchdarkly/terraform-provider-launchdarkly/compare/v3.1.1...v3.1.2) (2026-08-03)
 
 
