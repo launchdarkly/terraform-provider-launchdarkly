@@ -296,6 +296,44 @@ func TestAccView_InvalidKey(t *testing.T) {
 	})
 }
 
+// TestAccView_UppercaseKeyRejected pins the REL-15205 guard: LaunchDarkly
+// normalizes view keys to lowercase, so an uppercase key in configuration must
+// fail during validation rather than being accepted and then reading back
+// lowercased (a permanent diff that forces a replace on every plan).
+func TestAccView_UppercaseKeyRejected(t *testing.T) {
+	accTest := os.Getenv("TF_ACC")
+	if accTest == "" {
+		t.SkipNow()
+	}
+
+	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	uppercaseViewKey := "Test-View"
+	viewName := "Test View"
+	viewDescription := "Test view description"
+
+	client, err := newClient(os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN), os.Getenv(LAUNCHDARKLY_API_HOST), false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
+	require.NoError(t, err)
+
+	members, _, err := client.ld.AccountMembersApi.GetMembers(client.ctx).Execute()
+	require.NoError(t, err)
+	require.True(t, len(members.Items) > 0, "This test requires at least one member in the account")
+
+	maintainerId := members.Items[0].Id
+
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck: func() {
+			testAccPreCheck(t)
+		},
+		Providers: testAccProviders,
+		Steps: []resource.TestStep{
+			{
+				Config:      fmt.Sprintf(testAccViewCreate, projectKey, uppercaseViewKey, viewName, viewDescription, maintainerId),
+				ExpectError: regexp.MustCompile("to be lowercase"),
+			},
+		},
+	})
+}
+
 func testAccCheckViewExists(resourceName string) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
 		rs, ok := s.RootModule().Resources[resourceName]

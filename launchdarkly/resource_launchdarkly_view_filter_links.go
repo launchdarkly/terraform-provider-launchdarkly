@@ -63,8 +63,8 @@ This resource allows you to link all flags and/or segments matching a filter exp
 				Type:             schema.TypeString,
 				Required:         true,
 				ForceNew:         true,
-				Description:      addForceNewDescription("The view key to link resources to.", true),
-				ValidateDiagFunc: validateKey(),
+				Description:      addForceNewDescription("The view key to link resources to. Must be lowercase. LaunchDarkly normalizes view keys to lowercase.", true),
+				ValidateDiagFunc: validateViewKey(),
 			},
 			FLAG_FILTER: {
 				Type:         schema.TypeString,
