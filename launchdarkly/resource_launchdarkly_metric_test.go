@@ -652,14 +652,12 @@ func testAccCheckMetricExists(resourceName string) resource.TestCheckFunc {
 	}
 }
 
-const archiveRequiredMessage = "You must archive the metric before you can delete it."
-
 const metricInUseMessage = "Metric is still in use in the following experiments: checkout-test"
 
-func writeConflict(w http.ResponseWriter, message string) {
+func writeConflict(w http.ResponseWriter, code, message string) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusConflict)
-	mustWrite(w, []byte(fmt.Sprintf(`{"code":"conflict","message":%q}`, message)))
+	mustWrite(w, []byte(fmt.Sprintf(`{"code":%q,"message":%q}`, code, message)))
 }
 
 func writeMetric(w http.ResponseWriter, archived bool) {
@@ -678,81 +676,21 @@ func writeMetric(w http.ResponseWriter, archived bool) {
 	})
 }
 
-func decodePatchValue(t *testing.T, r *http.Request, path string) interface{} {
+func decodePatchOps(t *testing.T, r *http.Request) []map[string]interface{} {
 	t.Helper()
-	var ops []struct {
-		Op    string      `json:"op"`
-		Path  string      `json:"path"`
-		Value interface{} `json:"value"`
-	}
+	var ops []map[string]interface{}
 	require.NoError(t, json.NewDecoder(r.Body).Decode(&ops))
-	for _, op := range ops {
-		if op.Path == path {
-			return op.Value
-		}
-	}
-	t.Fatalf("no patch operation for %q in %+v", path, ops)
-	return nil
+	return ops
 }
 
 func TestArchiveAndDeleteMetric(t *testing.T) {
-	t.Run("archives before deleting", func(t *testing.T) {
+	t.Run("archives and deletes an unarchived metric in two requests", func(t *testing.T) {
 		var requests []string
-		var patched []interface{}
+		var ops []map[string]interface{}
 		client, ts := createTestClientWithServer(t, func(w http.ResponseWriter, r *http.Request) {
 			requests = append(requests, r.Method+" "+r.URL.Path)
-			switch r.Method {
-			case http.MethodGet:
-				writeMetric(w, false)
-			case http.MethodPatch:
-				patched = append(patched, decodePatchValue(t, r, "/archived"))
-				writeMetric(w, true)
-			default:
-				w.WriteHeader(http.StatusNoContent)
-			}
-		})
-		defer ts.Close()
-
-		err := (&MetricResource{client: client}).archiveAndDeleteMetric("my-project", "my-metric")
-
-		require.NoError(t, err)
-		assert.Equal(t, []string{
-			"GET /api/v2/metrics/my-project/my-metric",
-			"PATCH /api/v2/metrics/my-project/my-metric",
-			"DELETE /api/v2/metrics/my-project/my-metric",
-		}, requests)
-		assert.Equal(t, []interface{}{true}, patched)
-	})
-
-	t.Run("satisfies an API that refuses to delete an unarchived metric", func(t *testing.T) {
-		archived := false
-		client, ts := createTestClientWithServer(t, func(w http.ResponseWriter, r *http.Request) {
-			switch r.Method {
-			case http.MethodGet:
-				writeMetric(w, archived)
-			case http.MethodPatch:
-				archived = decodePatchValue(t, r, "/archived") == true
-				writeMetric(w, archived)
-			case http.MethodDelete:
-				if !archived {
-					writeConflict(w, archiveRequiredMessage)
-					return
-				}
-				w.WriteHeader(http.StatusNoContent)
-			}
-		})
-		defer ts.Close()
-
-		err := (&MetricResource{client: client}).archiveAndDeleteMetric("my-project", "my-metric")
-
-		require.NoError(t, err)
-	})
-
-	t.Run("does not re-archive a metric that is already archived", func(t *testing.T) {
-		var requests []string
-		client, ts := createTestClientWithServer(t, func(w http.ResponseWriter, r *http.Request) {
-			requests = append(requests, r.Method)
-			if r.Method == http.MethodGet {
+			if r.Method == http.MethodPatch {
+				ops = decodePatchOps(t, r)
 				writeMetric(w, true)
 				return
 			}
@@ -763,20 +701,62 @@ func TestArchiveAndDeleteMetric(t *testing.T) {
 		err := (&MetricResource{client: client}).archiveAndDeleteMetric("my-project", "my-metric")
 
 		require.NoError(t, err)
-		assert.Equal(t, []string{http.MethodGet, http.MethodDelete}, requests)
+		assert.Equal(t, []string{
+			"PATCH /api/v2/metrics/my-project/my-metric",
+			"DELETE /api/v2/metrics/my-project/my-metric",
+		}, requests)
+		assert.Equal(t, []map[string]interface{}{
+			{"op": "test", "path": "/archived", "value": false},
+			{"op": "replace", "path": "/archived", "value": true},
+		}, ops, "the test op is what tells us whether the archive is ours to roll back")
+	})
+
+	t.Run("deletes an already-archived metric without re-archiving it", func(t *testing.T) {
+		var requests []string
+		client, ts := createTestClientWithServer(t, func(w http.ResponseWriter, r *http.Request) {
+			requests = append(requests, r.Method)
+			if r.Method == http.MethodPatch {
+				writeConflict(w, optimisticLockingErrorCode, "testing value /archived failed")
+				return
+			}
+			w.WriteHeader(http.StatusNoContent)
+		})
+		defer ts.Close()
+
+		err := (&MetricResource{client: client}).archiveAndDeleteMetric("my-project", "my-metric")
+
+		require.NoError(t, err)
+		assert.Equal(t, []string{http.MethodPatch, http.MethodDelete}, requests)
+	})
+
+	t.Run("skips the delete when archiving is refused by a dependency", func(t *testing.T) {
+		var requests []string
+		client, ts := createTestClientWithServer(t, func(w http.ResponseWriter, r *http.Request) {
+			requests = append(requests, r.Method)
+			writeConflict(w, "conflict", metricInUseMessage)
+		})
+		defer ts.Close()
+
+		err := (&MetricResource{client: client}).archiveAndDeleteMetric("my-project", "my-metric")
+
+		require.Error(t, err)
+		assert.Equal(t, []string{http.MethodPatch}, requests, "a metric that cannot be archived cannot be deleted either")
+		assert.Contains(t, handleLdapiErr(err).Error(), metricInUseMessage)
 	})
 
 	t.Run("restores the archive when the delete fails", func(t *testing.T) {
 		var patched []interface{}
 		client, ts := createTestClientWithServer(t, func(w http.ResponseWriter, r *http.Request) {
 			switch r.Method {
-			case http.MethodGet:
-				writeMetric(w, false)
 			case http.MethodPatch:
-				patched = append(patched, decodePatchValue(t, r, "/archived"))
+				for _, op := range decodePatchOps(t, r) {
+					if op["op"] == "replace" {
+						patched = append(patched, op["value"])
+					}
+				}
 				writeMetric(w, true)
 			case http.MethodDelete:
-				writeConflict(w, metricInUseMessage)
+				writeConflict(w, "conflict", metricInUseMessage)
 			}
 		})
 		defer ts.Close()
@@ -792,72 +772,51 @@ func TestArchiveAndDeleteMetric(t *testing.T) {
 		var requests []string
 		client, ts := createTestClientWithServer(t, func(w http.ResponseWriter, r *http.Request) {
 			requests = append(requests, r.Method)
-			if r.Method == http.MethodGet {
-				writeMetric(w, true)
+			if r.Method == http.MethodPatch {
+				writeConflict(w, optimisticLockingErrorCode, "testing value /archived failed")
 				return
 			}
-			writeConflict(w, metricInUseMessage)
+			writeConflict(w, "conflict", metricInUseMessage)
 		})
 		defer ts.Close()
 
 		err := (&MetricResource{client: client}).archiveAndDeleteMetric("my-project", "my-metric")
 
 		require.Error(t, err)
-		assert.Equal(t, []string{http.MethodGet, http.MethodDelete}, requests)
+		assert.Equal(t, []string{http.MethodPatch, http.MethodDelete}, requests, "an archive we did not create is not ours to roll back")
 		assert.Contains(t, handleLdapiErr(err).Error(), metricInUseMessage)
 	})
 
-	t.Run("reports the blocking dependency when archiving is refused", func(t *testing.T) {
-		var requests []string
-		client, ts := createTestClientWithServer(t, func(w http.ResponseWriter, r *http.Request) {
-			requests = append(requests, r.Method)
-			if r.Method == http.MethodGet {
-				writeMetric(w, false)
-				return
-			}
-			writeConflict(w, metricInUseMessage)
-		})
-		defer ts.Close()
-
-		err := (&MetricResource{client: client}).archiveAndDeleteMetric("my-project", "my-metric")
-
-		require.Error(t, err)
-		assert.Equal(t, []string{http.MethodGet, http.MethodPatch}, requests)
-		assert.Contains(t, handleLdapiErr(err).Error(), metricInUseMessage)
-	})
-
-	t.Run("reports that the archived state could not be read", func(t *testing.T) {
+	t.Run("surfaces a non-conflict archive failure without attempting the delete", func(t *testing.T) {
 		var requests []string
 		client, ts := createTestClientWithServer(t, func(w http.ResponseWriter, r *http.Request) {
 			requests = append(requests, r.Method)
 			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusInternalServerError)
-			mustWrite(w, []byte(`{"code":"internal_error","message":"metric read unavailable"}`))
+			w.WriteHeader(http.StatusForbidden)
+			mustWrite(w, []byte(`{"code":"forbidden","message":"insufficient permissions"}`))
 		})
 		defer ts.Close()
 
 		err := (&MetricResource{client: client}).archiveAndDeleteMetric("my-project", "my-metric")
 
 		require.Error(t, err)
-		assert.Equal(t, []string{http.MethodGet}, requests)
-		assert.Contains(t, handleLdapiErr(err).Error(), "metric read unavailable")
+		assert.Equal(t, []string{http.MethodPatch}, requests)
+		assert.Contains(t, handleLdapiErr(err).Error(), "insufficient permissions")
 	})
 
 	t.Run("reports both failures when restoring the archive also fails", func(t *testing.T) {
-		deletes := 0
 		client, ts := createTestClientWithServer(t, func(w http.ResponseWriter, r *http.Request) {
 			switch r.Method {
-			case http.MethodGet:
-				writeMetric(w, false)
 			case http.MethodPatch:
-				if decodePatchValue(t, r, "/archived") == false {
-					writeConflict(w, "cannot unarchive metric")
-					return
+				for _, op := range decodePatchOps(t, r) {
+					if op["op"] == "replace" && op["value"] == false {
+						writeConflict(w, "conflict", "cannot unarchive metric")
+						return
+					}
 				}
 				writeMetric(w, true)
 			case http.MethodDelete:
-				deletes++
-				writeConflict(w, metricInUseMessage)
+				writeConflict(w, "conflict", metricInUseMessage)
 			}
 		})
 		defer ts.Close()
@@ -865,7 +824,6 @@ func TestArchiveAndDeleteMetric(t *testing.T) {
 		err := (&MetricResource{client: client}).archiveAndDeleteMetric("my-project", "my-metric")
 
 		require.Error(t, err)
-		assert.Equal(t, 1, deletes)
 		assert.Contains(t, err.Error(), metricInUseMessage)
 		assert.Contains(t, err.Error(), "metric left archived, restoring it failed")
 	})

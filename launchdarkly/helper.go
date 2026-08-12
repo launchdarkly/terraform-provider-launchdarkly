@@ -46,6 +46,26 @@ func patchRemove(path string) ldapi.PatchOperation {
 	}
 }
 
+func patchTest(path string, value interface{}) ldapi.PatchOperation {
+	return ldapi.PatchOperation{
+		Op:    "test",
+		Path:  path,
+		Value: &value,
+	}
+}
+
+func ldapiConflictCode(err error) string {
+	swaggerErr, ok := err.(*ldapi.GenericOpenAPIError)
+	if !ok {
+		return ""
+	}
+	conflict, ok := swaggerErr.Model().(ldapi.StatusConflictErrorRep)
+	if !ok {
+		return ""
+	}
+	return conflict.Code
+}
+
 // handleLdapiErr extracts the error message and body from a ldapi.GenericSwaggerError or simply returns the
 // error  if it is not a ldapi.GenericSwaggerError
 func handleLdapiErr(err error) error {
