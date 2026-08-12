@@ -615,8 +615,6 @@ func (r *MetricResource) Delete(ctx context.Context, req resource.DeleteRequest,
 	}
 }
 
-const optimisticLockingErrorCode = "optimistic_locking_error"
-
 func (r *MetricResource) archiveAndDeleteMetric(projectKey, key string) error {
 	return r.client.withConcurrency(r.client.ctx, func() error {
 		archive := []ldapi.PatchOperation{
@@ -624,14 +622,10 @@ func (r *MetricResource) archiveAndDeleteMetric(projectKey, key string) error {
 			patchReplace("/archived", true),
 		}
 		_, _, archiveErr := r.client.ld.MetricsApi.PatchMetric(r.client.ctx, projectKey, key).PatchOperation(archive).Execute()
-
-		alreadyArchived := ldapiConflictCode(archiveErr) == optimisticLockingErrorCode
-		if archiveErr != nil && !alreadyArchived {
-			return archiveErr
-		}
+		archivedByUs := archiveErr == nil
 
 		if _, err := r.client.ld.MetricsApi.DeleteMetric(r.client.ctx, projectKey, key).Execute(); err != nil {
-			if alreadyArchived {
+			if !archivedByUs {
 				return err
 			}
 			if restoreErr := r.setMetricArchived(projectKey, key, false); restoreErr != nil {
