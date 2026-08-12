@@ -555,10 +555,7 @@ func (r *MetricResource) Create(ctx context.Context, req resource.CreateRequest,
 		if err := r.applyMetricUpdate(ctx, &plan, false); err != nil {
 			addLdapiError(&resp.Diagnostics, "Error setting maintainer on new metric", err)
 			// Best-effort cleanup
-			_ = r.client.withConcurrency(r.client.ctx, func() error {
-				_, e := r.client.ld.MetricsApi.DeleteMetric(r.client.ctx, projectKey, key).Execute()
-				return e
-			})
+			_ = r.archiveAndDeleteMetric(projectKey, key)
 			return
 		}
 	}
@@ -613,13 +610,43 @@ func (r *MetricResource) Delete(ctx context.Context, req resource.DeleteRequest,
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	err := r.client.withConcurrency(r.client.ctx, func() error {
-		_, e := r.client.ld.MetricsApi.DeleteMetric(r.client.ctx, data.ProjectKey.ValueString(), data.Key.ValueString()).Execute()
-		return e
-	})
-	if err != nil {
+	if err := r.archiveAndDeleteMetric(data.ProjectKey.ValueString(), data.Key.ValueString()); err != nil {
 		addLdapiError(&resp.Diagnostics, fmt.Sprintf("Error deleting metric resource %q", data.Key.ValueString()), err)
 	}
+}
+
+func (r *MetricResource) archiveAndDeleteMetric(projectKey, key string) error {
+	return r.client.withConcurrency(r.client.ctx, func() error {
+		metric, _, err := r.client.ld.MetricsApi.GetMetric(r.client.ctx, projectKey, key).Execute()
+		if err != nil {
+			return err
+		}
+		archivedBeforeDelete := metric.GetArchived()
+
+		if !archivedBeforeDelete {
+			if err := r.setMetricArchived(projectKey, key, true); err != nil {
+				return err
+			}
+		}
+
+		if _, err := r.client.ld.MetricsApi.DeleteMetric(r.client.ctx, projectKey, key).Execute(); err != nil {
+			if archivedBeforeDelete {
+				return err
+			}
+			if restoreErr := r.setMetricArchived(projectKey, key, false); restoreErr != nil {
+				return fmt.Errorf("%s (metric left archived, restoring it failed: %s)",
+					handleLdapiErr(err), handleLdapiErr(restoreErr))
+			}
+			return err
+		}
+		return nil
+	})
+}
+
+func (r *MetricResource) setMetricArchived(projectKey, key string, archived bool) error {
+	patch := []ldapi.PatchOperation{patchReplace("/archived", archived)}
+	_, _, err := r.client.ld.MetricsApi.PatchMetric(r.client.ctx, projectKey, key).PatchOperation(patch).Execute()
+	return err
 }
 
 func (r *MetricResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
