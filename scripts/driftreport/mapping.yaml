@@ -222,8 +222,26 @@ families:
       - launchdarkly_environment
 
   - tag: Experiments
-    status: triage
-    notes: Experimentation-as-code is a plausible future surface; needs product alignment.
+    status: partial
+    resources:
+      - name: launchdarkly_experimentation_settings
+        operations:
+          - getExperimentationSettings
+          - putExperimentationSettings
+    triage_operations:
+      - getExperiments
+      - getExperimentsAnyEnv
+      - createExperiment
+      - getExperiment
+      - patchExperiment
+      - createIteration
+    notes: |
+      launchdarkly_experimentation_settings (resource + data source) covers the
+      per-project randomization-unit configuration (get/putExperimentationSettings).
+      The experiment entity itself (create/get/patch/iterations) is not yet modeled:
+      it requires flag variation IDs that the provider does not currently expose in
+      HCL, a semantic-patch update path, and archive-not-delete lifecycle semantics.
+      It warrants its own dedicated, human-reviewed resource — tracked as a follow-up.
 
   - tag: Feature flags
     status: covered
