@@ -1121,7 +1121,10 @@ func variationPatchesFromLists(ctx context.Context, oldList, newList types.List,
 	if diags.HasError() {
 		return nil, diags
 	}
-	for idx := len(newVariations); idx < len(oldVariations); idx++ {
+	// Removes must be emitted highest-index-first. JSON Patch applies ops
+	// sequentially against a shrinking array, so removing trailing variations
+	// in ascending order shifts every later index out of range (SWITCH-1412).
+	for idx := len(oldVariations) - 1; idx >= len(newVariations); idx-- {
 		patches = append(patches, patchRemove(fmt.Sprintf("/variations/%d", idx)))
 	}
 	for idx, v := range newVariations {
