@@ -109,8 +109,11 @@ func variationPatchesFromResourceData(d *schema.ResourceData) ([]ldapi.PatchOper
 		return patches, err
 	}
 
-	// remove any unnecessary variations from the end of the variation slice
-	for idx := len(newVariations); idx < len(oldVariations); idx++ {
+	// Remove any unnecessary variations from the end of the variation slice,
+	// highest-index-first. JSON Patch applies ops sequentially against a
+	// shrinking array, so removing trailing variations in ascending order
+	// shifts every later index out of range (SWITCH-1412).
+	for idx := len(oldVariations) - 1; idx >= len(newVariations); idx-- {
 		patches = append(patches, patchRemove(fmt.Sprintf("/variations/%d", idx)))
 	}
 

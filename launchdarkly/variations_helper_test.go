@@ -1,13 +1,71 @@
 package launchdarkly
 
 import (
+	"context"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 	ldapi "github.com/launchdarkly/api-client-go/v22"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+// stringVariationsRaw builds the raw config shape for a string-typed variations block, one element per value.
+func stringVariationsRaw(values []string) map[string]interface{} {
+	vars := make([]interface{}, 0, len(values))
+	for _, value := range values {
+		vars = append(vars, map[string]interface{}{
+			NAME:        "",
+			DESCRIPTION: "",
+			VALUE:       value,
+		})
+	}
+	return map[string]interface{}{
+		VARIATION_TYPE: "string",
+		VARIATIONS:     vars,
+	}
+}
+
+// TestVariationPatchesRemoveTrailingInDescendingOrder guards SWITCH-1412: when 2+ trailing variations are
+// removed in a single apply, the remove ops must be emitted highest-index-first. JSON Patch applies ops
+// sequentially against a shrinking array, so ascending removes (/variations/3 then /variations/4) reference
+// an out-of-range index after the first op and fail with 400 invalid_patch.
+func TestVariationPatchesRemoveTrailingInDescendingOrder(t *testing.T) {
+	sm := map[string]*schema.Schema{
+		VARIATION_TYPE: variationTypeSchema(),
+		VARIATIONS:     variationsSchema(false),
+	}
+	r := &schema.Resource{Schema: sm}
+
+	oldData := schema.TestResourceDataRaw(t, sm, stringVariationsRaw([]string{"a", "b", "c", "d", "e"}))
+	oldData.SetId("example-flag")
+	oldState := oldData.State()
+	cfg := terraform.NewResourceConfigRaw(stringVariationsRaw([]string{"a", "b", "c"}))
+
+	diff, err := r.Diff(context.Background(), oldState, cfg, nil)
+	require.NoError(t, err)
+
+	d, err := schema.InternalMap(sm).Data(oldState, diff)
+	require.NoError(t, err)
+
+	patches, err := variationPatchesFromResourceData(d)
+	require.NoError(t, err)
+
+	idx4 := -1
+	idx3 := -1
+	for i, p := range patches {
+		switch p.Path {
+		case "/variations/4":
+			idx4 = i
+		case "/variations/3":
+			idx3 = i
+		}
+	}
+	require.NotEqual(t, -1, idx4, "expected a remove op for /variations/4")
+	require.NotEqual(t, -1, idx3, "expected a remove op for /variations/3")
+	assert.Less(t, idx4, idx3, "remove /variations/4 must precede remove /variations/3")
+}
 
 func TestVariationsFromResourceData(t *testing.T) {
 	testCases := []struct {
