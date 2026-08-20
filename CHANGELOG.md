@@ -2,6 +2,15 @@
 
 All notable changes to the LaunchDarkly Terraform Provider will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org).
 
+## [2.30.4](https://github.com/launchdarkly/terraform-provider-launchdarkly/compare/v2.30.3...v2.30.4) (2026-08-20)
+
+
+### Bug Fixes
+
+* backport lowercase view keys, security dep bumps, and API-client tooling to v2 ([#525](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/525), [#530](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/530), [#531](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/531)) ([#533](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/533)) ([f5df5db](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/f5df5dbccfcab80b21ce5eb18d2df817c220189b))
+* backport view-key validation and beta-client config to v2 ([#522](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/522), [#523](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/523)) ([#526](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/526)) ([345982a](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/345982ab2c741b8382addb70b1004024447aa002))
+* remove trailing flag variations in descending index order ([#537](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/537)) ([273f962](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/273f9622298abb79ce2ea666236c2d9555363a64))
+
 ## [2.30.3](https://github.com/launchdarkly/terraform-provider-launchdarkly/compare/v2.30.2...v2.30.3) (2026-07-28)
 
 
