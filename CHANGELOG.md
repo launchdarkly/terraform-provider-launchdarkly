@@ -2,6 +2,13 @@
 
 All notable changes to the LaunchDarkly Terraform Provider will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org).
 
+## [3.1.4](https://github.com/launchdarkly/terraform-provider-launchdarkly/compare/v3.1.3...v3.1.4) (2026-08-20)
+
+
+### Bug Fixes
+
+* remove trailing flag variations in descending index order ([#536](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/536)) ([cf4a82a](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/cf4a82a2cbc891919933c9c8c3e3bd7e90a0b20a))
+
 ## [3.1.3](https://github.com/launchdarkly/terraform-provider-launchdarkly/compare/v3.1.2...v3.1.3) (2026-08-07)
 
 
