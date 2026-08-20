@@ -39,9 +39,9 @@ This resource allows you to create and manage views within your LaunchDarkly pro
 			KEY: {
 				Type:             schema.TypeString,
 				Required:         true,
-				Description:      addForceNewDescription("The view's unique key.", true),
+				Description:      addForceNewDescription("The view's unique key. Must be lowercase. LaunchDarkly normalizes view keys to lowercase.", true),
 				ForceNew:         true,
-				ValidateDiagFunc: validateKey(),
+				ValidateDiagFunc: validateViewKey(),
 			},
 			NAME: {
 				Type:        schema.TypeString,

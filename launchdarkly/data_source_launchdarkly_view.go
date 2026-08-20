@@ -20,9 +20,10 @@ func dataSourceView() *schema.Resource {
 				Description: "The project key.",
 			},
 			KEY: {
-				Type:        schema.TypeString,
-				Required:    true,
-				Description: "The view's unique key.",
+				Type:             schema.TypeString,
+				Required:         true,
+				Description:      "The view's unique key. Must be lowercase. LaunchDarkly normalizes view keys to lowercase.",
+				ValidateDiagFunc: validateViewKey(),
 			},
 			NAME: {
 				Type:        schema.TypeString,
