@@ -6,7 +6,8 @@ description: |-
   Provides a LaunchDarkly custom role resource.
   -> Note: Custom roles are available to customers on an Enterprise LaunchDarkly plan. To learn more, read about our pricing https://launchdarkly.com/pricing/. To upgrade your plan, contact LaunchDarkly Sales https://launchdarkly.com/contact-sales/.
   This resource allows you to create and manage custom roles within your LaunchDarkly organization.
-  -> Note: A custom role cannot be deleted while it is still assigned to any team, member, or access token. Terraform only orders operations by references in the current configuration, so an apply that both deletes this role and removes its assignments (for example, from a launchdarkly_team's custom_role_keys or a launchdarkly_team_member's custom_roles) does not guarantee the assignments are removed first. To handle this, the provider retries the deletion for up to a minute while conflicting assignments are removed by the same apply. If the role is still assigned after that, the deletion fails with a conflict error — remove the remaining assignments and re-apply.
+  -> Note: A custom role cannot be deleted while it is still assigned to any team, member, or access token. Terraform only orders operations by references in the current configuration, so an apply that both deletes this role and removes its assignments (for example, from a launchdarkly_team's custom_role_keys or a launchdarkly_team_member's custom_roles) does not guarantee the assignments are removed first. To handle this, the provider retries the deletion (for one minute by default, configurable via a timeouts { delete = ... } block) while conflicting assignments are removed by the same apply. If the role is still assigned after that, the deletion fails with a conflict error — remove the remaining assignments and re-apply.
+  -> Note: When a role is assigned to teams via a launchdarkly_team_role_mapping https://registry.terraform.io/providers/launchdarkly/launchdarkly/latest/docs/resources/team_role_mapping resource instead of the team's inline custom_role_keys, Terraform destroys the mapping before the role (destroy operations follow recorded dependencies in reverse), so deleting both in one apply is ordered correctly without relying on the retry.
 ---
 
 # launchdarkly_custom_role (Resource)
@@ -17,7 +18,9 @@ Provides a LaunchDarkly custom role resource.
 
 This resource allows you to create and manage custom roles within your LaunchDarkly organization.
 
--> **Note:** A custom role cannot be deleted while it is still assigned to any team, member, or access token. Terraform only orders operations by references in the *current* configuration, so an apply that both deletes this role and removes its assignments (for example, from a `launchdarkly_team`'s `custom_role_keys` or a `launchdarkly_team_member`'s `custom_roles`) does not guarantee the assignments are removed first. To handle this, the provider retries the deletion for up to a minute while conflicting assignments are removed by the same apply. If the role is still assigned after that, the deletion fails with a conflict error — remove the remaining assignments and re-apply.
+-> **Note:** A custom role cannot be deleted while it is still assigned to any team, member, or access token. Terraform only orders operations by references in the *current* configuration, so an apply that both deletes this role and removes its assignments (for example, from a `launchdarkly_team`'s `custom_role_keys` or a `launchdarkly_team_member`'s `custom_roles`) does not guarantee the assignments are removed first. To handle this, the provider retries the deletion (for one minute by default, configurable via a `timeouts { delete = ... }` block) while conflicting assignments are removed by the same apply. If the role is still assigned after that, the deletion fails with a conflict error — remove the remaining assignments and re-apply.
+
+-> **Note:** When a role is assigned to teams via a [`launchdarkly_team_role_mapping`](https://registry.terraform.io/providers/launchdarkly/launchdarkly/latest/docs/resources/team_role_mapping) resource instead of the team's inline `custom_role_keys`, Terraform destroys the mapping before the role (destroy operations follow recorded dependencies in reverse), so deleting both in one apply is ordered correctly without relying on the retry.
 
 ## Example Usage
 
@@ -54,6 +57,7 @@ resource "launchdarkly_custom_role" "example" {
 - `description` (String) Description of the custom role.
 - `policy` (Block Set, Deprecated) (see [below for nested schema](#nestedblock--policy))
 - `policy_statements` (Block List) An array of the policy statements that define the permissions for the custom role. This field accepts [role attributes](https://docs.launchdarkly.com/home/getting-started/vocabulary#role-attribute). To use role attributes, use the syntax `$${roleAttribute/<YOUR_ROLE_ATTRIBUTE>}` in lieu of your usual resource keys. (see [below for nested schema](#nestedblock--policy_statements))
+- `timeouts` (Block, Optional) (see [below for nested schema](#nestedblock--timeouts))
 
 ### Read-Only
 
@@ -83,6 +87,14 @@ Either `actions` or `not_actions` must be specified. For a list of available act
 - `not_actions` (List of String) The list of action specifiers defining the actions to which the statement does not apply.
 - `not_resources` (List of String) The list of resource specifiers defining the resources to which the statement does not apply.
 - `resources` (List of String) The list of resource specifiers defining the resources to which the statement applies.
+
+
+<a id="nestedblock--timeouts"></a>
+### Nested Schema for `timeouts`
+
+Optional:
+
+- `delete` (String)
 
 ## Import
 
