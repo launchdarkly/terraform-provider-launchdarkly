@@ -107,6 +107,15 @@ resource "launchdarkly_custom_role" "delete_test" {
 	timeouts = {
 		delete = "2m"
 	}
+	# Terraform destroys removed resources BEFORE updating resources that
+	# referenced them, so without this the role DELETE fires while the team
+	# still holds the role and LaunchDarkly rejects it with a 409 for the
+	# whole retry window (observed in CI). create_before_destroy is stored
+	# in state and reverses that edge: the team update runs first. This is
+	# the pattern the resource docs prescribe for same-apply unassign+delete.
+	lifecycle {
+		create_before_destroy = true
+	}
 }
 
 resource "launchdarkly_team" "delete_test" {

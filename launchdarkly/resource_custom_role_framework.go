@@ -74,7 +74,7 @@ func (r *CustomRoleResource) Schema(ctx context.Context, _ resource.SchemaReques
 	})
 	resp.Schema = schema.Schema{
 		Version:     1,
-		Description: "Provides a LaunchDarkly custom role resource.\n\n-> **Note:** Custom roles are available to customers on an Enterprise LaunchDarkly plan. To learn more, [read about our pricing](https://launchdarkly.com/pricing/). To upgrade your plan, [contact LaunchDarkly Sales](https://launchdarkly.com/contact-sales/).\n\nThis resource allows you to create and manage custom roles within your LaunchDarkly organization.\n\n-> **Note:** A custom role cannot be deleted while it is still assigned to any team, member, or access token. Terraform only orders operations by references in the *current* configuration, so an apply that both deletes this role and removes its assignments (for example, from a `launchdarkly_team`'s `custom_role_keys` or a `launchdarkly_team_member`'s `custom_roles`) does not guarantee the assignments are removed first. To handle this, the provider retries the deletion (for one minute by default, configurable via `timeouts = { delete = ... }`) while conflicting assignments are removed by the same apply. If the role is still assigned after that, the deletion fails with a conflict error — remove the remaining assignments and re-apply.\n\n-> **Note:** When a role is assigned to teams via a [`launchdarkly_team_role_mapping`](https://registry.terraform.io/providers/launchdarkly/launchdarkly/latest/docs/resources/team_role_mapping) resource instead of the team's inline `custom_role_keys`, Terraform destroys the mapping before the role (destroy operations follow recorded dependencies in reverse), so deleting both in one apply is ordered correctly without relying on the retry.",
+		Description: "Provides a LaunchDarkly custom role resource.\n\n-> **Note:** Custom roles are available to customers on an Enterprise LaunchDarkly plan. To learn more, [read about our pricing](https://launchdarkly.com/pricing/). To upgrade your plan, [contact LaunchDarkly Sales](https://launchdarkly.com/contact-sales/).\n\nThis resource allows you to create and manage custom roles within your LaunchDarkly organization.\n\n-> **Note:** A custom role cannot be deleted while it is still assigned to any team, member, or access token. By default Terraform destroys a removed resource *before* updating the resources that referenced it, so a single apply that deletes this role and removes its assignments (for example, from a `launchdarkly_team`'s `custom_role_keys` or a `launchdarkly_team_member`'s `custom_roles`) attempts the deletion while the assignments still exist and fails with a conflict. To delete a role and remove its assignments in one apply, set `lifecycle { create_before_destroy = true }` on this resource — Terraform then updates the referencing resources first — or manage the assignment with a [`launchdarkly_team_role_mapping`](https://registry.terraform.io/providers/launchdarkly/launchdarkly/latest/docs/resources/team_role_mapping) resource, which is destroyed before the role. The provider retries a conflicting deletion (for one minute by default, configurable via `timeouts = { delete = ... }`) to absorb propagation delays; if the role is still assigned when the window closes, the deletion fails with a conflict error.",
 		Attributes:  attrs,
 	}
 }
@@ -296,13 +296,13 @@ func (r *CustomRoleResource) ModifyPlan(ctx context.Context, req resource.Modify
 		return
 	}
 	// Advisory only. At plan time nothing has been applied yet, so a plan
-	// that removes both this role AND its assignments (e.g. a team's
-	// custom_role_keys update or a whole-stack destroy) is legitimate; the
-	// apply-time delete retries while those operations land. Warn so the
-	// user sees the dependency early without blocking valid destroys.
+	// that removes both this role AND its assignments (e.g. a whole-stack
+	// destroy, or an unassignment ordered first via create_before_destroy
+	// or a team_role_mapping destroy) is legitimate. Warn so the user sees
+	// the dependency early without blocking valid destroys.
 	resp.Diagnostics.AddWarning(
 		fmt.Sprintf("custom role %q is still assigned to %d member(s) and %d team(s)", key, membersCount, teamsCount),
-		"LaunchDarkly rejects deleting a custom role while it is assigned. If this apply also removes the assignments (for example via a launchdarkly_team's custom_role_keys, a launchdarkly_team_member's custom_roles, or a launchdarkly_team_role_mapping), the provider will retry the deletion while they are removed and the destroy will succeed. Otherwise the apply will fail with a 409 conflict — remove the assignments first.",
+		"LaunchDarkly rejects deleting a custom role while it is assigned. If this apply also removes the assignments, note that Terraform updates referencing resources AFTER destroying this role unless the role has `lifecycle { create_before_destroy = true }` set or the assignment is managed by a launchdarkly_team_role_mapping (destroyed before the role). Without one of those, the apply will fail with a 409 conflict — remove the assignments first or add create_before_destroy to this role.",
 	)
 }
 
@@ -481,7 +481,7 @@ func (r *CustomRoleResource) Delete(ctx context.Context, req resource.DeleteRequ
 	if isStatusConflict(deleteResp) {
 		resp.Diagnostics.AddError(
 			fmt.Sprintf("Failed to delete custom role %q: still assigned to teams or members", key),
-			handleLdapiErr(err).Error()+"\n\nLaunchDarkly rejects deleting a custom role while it is assigned. Remove the role from every launchdarkly_team (custom_role_keys), launchdarkly_team_member (custom_roles), launchdarkly_team_role_mapping, and access token that references it, then re-apply. If this apply was already removing those assignments, they did not complete within the retry window — re-running the apply should succeed, or raise `timeouts = { delete = ... }` on this resource for large applies.",
+			handleLdapiErr(err).Error()+"\n\nLaunchDarkly rejects deleting a custom role while it is assigned. Remove the role from every launchdarkly_team (custom_role_keys), launchdarkly_team_member (custom_roles), launchdarkly_team_role_mapping, and access token that references it, then re-apply. If this apply was meant to remove those assignments too: Terraform updates referencing resources only AFTER this destroy, so set `lifecycle { create_before_destroy = true }` on this launchdarkly_custom_role (orders the unassignments first) or manage the assignment via launchdarkly_team_role_mapping, then re-apply.",
 		)
 		return
 	}
