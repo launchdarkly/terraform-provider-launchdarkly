@@ -6,6 +6,7 @@ description: |-
   Provides a LaunchDarkly custom role resource.
   -> Note: Custom roles are available to customers on an Enterprise LaunchDarkly plan. To learn more, read about our pricing https://launchdarkly.com/pricing/. To upgrade your plan, contact LaunchDarkly Sales https://launchdarkly.com/contact-sales/.
   This resource allows you to create and manage custom roles within your LaunchDarkly organization.
+  -> Note: A custom role cannot be deleted while it is still assigned to any team, member, or access token. Terraform only orders operations by references in the current configuration, so an apply that both deletes this role and removes its assignments (for example, from a launchdarkly_team's custom_role_keys or a launchdarkly_team_member's custom_roles) does not guarantee the assignments are removed first. To handle this, the provider retries the deletion for up to a minute while conflicting assignments are removed by the same apply. If the role is still assigned after that, the deletion fails with a conflict error — remove the remaining assignments and re-apply.
 ---
 
 # launchdarkly_custom_role (Resource)
@@ -15,6 +16,8 @@ Provides a LaunchDarkly custom role resource.
 -> **Note:** Custom roles are available to customers on an Enterprise LaunchDarkly plan. To learn more, [read about our pricing](https://launchdarkly.com/pricing/). To upgrade your plan, [contact LaunchDarkly Sales](https://launchdarkly.com/contact-sales/).
 
 This resource allows you to create and manage custom roles within your LaunchDarkly organization.
+
+-> **Note:** A custom role cannot be deleted while it is still assigned to any team, member, or access token. Terraform only orders operations by references in the *current* configuration, so an apply that both deletes this role and removes its assignments (for example, from a `launchdarkly_team`'s `custom_role_keys` or a `launchdarkly_team_member`'s `custom_roles`) does not guarantee the assignments are removed first. To handle this, the provider retries the deletion for up to a minute while conflicting assignments are removed by the same apply. If the role is still assigned after that, the deletion fails with a conflict error — remove the remaining assignments and re-apply.
 
 ## Example Usage
 
