@@ -6,12 +6,25 @@ import (
 	"log"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 
 	ldapi "github.com/launchdarkly/api-client-go/v22"
+)
+
+// Retry window for role DELETEs rejected with a 409 because the role is
+// still assigned to teams or members. The default is sized so that
+// unassignment operations scheduled in the same apply (which Terraform does
+// not order relative to this destroy) have time to land; users with larger
+// applies can raise it via a `timeouts { delete = ... }` block. Individual
+// waits grow exponentially from the initial value up to the cap.
+const (
+	customRoleDeleteTimeoutDefault      = time.Minute
+	customRoleDeleteConflictInitialWait = 500 * time.Millisecond
+	customRoleDeleteConflictMaxWait     = 15 * time.Second
 )
 
 func resourceCustomRole() *schema.Resource {
@@ -26,10 +39,16 @@ func resourceCustomRole() *schema.Resource {
 
 -> **Note:** Custom roles are available to customers on an Enterprise LaunchDarkly plan. To learn more, [read about our pricing](https://launchdarkly.com/pricing/). To upgrade your plan, [contact LaunchDarkly Sales](https://launchdarkly.com/contact-sales/).
 
-This resource allows you to create and manage custom roles within your LaunchDarkly organization.`,
+This resource allows you to create and manage custom roles within your LaunchDarkly organization.
+
+-> **Note:** You cannot delete a custom role while it is still assigned to any team, member, or access token. By default, Terraform destroys a removed resource before it updates the resources that referenced it, so a single apply that deletes this role and removes its assignments, for example from a ` + "`launchdarkly_team`'s `custom_role_keys` or a `launchdarkly_team_member`'s `custom_roles`" + `, attempts the deletion while the assignments still exist and fails with a conflict. To delete a role and remove its assignments in one apply, set ` + "`lifecycle { create_before_destroy = true }`" + ` on this resource so that Terraform updates the referencing resources first. Alternatively, manage the assignment with a [` + "`launchdarkly_team_role_mapping`" + `](https://registry.terraform.io/providers/launchdarkly/launchdarkly/latest/docs/resources/team_role_mapping) resource, which Terraform destroys before the role and which does not require the lifecycle setting. With ` + "`create_before_destroy`" + `, a change that forces replacement, such as a new ` + "`key`" + `, creates the replacement role before it destroys the original, and role names must be unique: change ` + "`name`" + ` in the same apply to avoid a conflict. The provider retries a conflicting deletion for one minute by default, configurable with a ` + "`timeouts { delete = ... }`" + ` block, to absorb propagation delays. If the role is still assigned when the retry window closes, the deletion fails with a conflict error.`,
 
 		Importer: &schema.ResourceImporter{
 			State: resourceCustomRoleImport,
+		},
+
+		Timeouts: &schema.ResourceTimeout{
+			Delete: schema.DefaultTimeout(customRoleDeleteTimeoutDefault),
 		},
 
 		Schema: map[string]*schema.Schema{
@@ -223,17 +242,62 @@ func resourceCustomRoleDelete(ctx context.Context, d *schema.ResourceData, metaR
 	client := metaRaw.(*Client)
 	customRoleKey := d.Id()
 
-	var err error
-	err = client.withConcurrency(client.ctx, func() error {
-		_, err = client.ld.CustomRolesApi.DeleteCustomRole(client.ctx, customRoleKey).Execute()
-		return err
-	})
-
-	if err != nil {
-		return diag.Errorf("failed to delete custom role with key %q: %s", customRoleKey, handleLdapiErr(err))
+	deleteResp, err := deleteCustomRole(client, customRoleKey)
+	if err == nil {
+		return diags
 	}
+	// 409: the role is still assigned to teams and/or members. Terraform
+	// only builds dependency edges from the new configuration, so an apply
+	// that deletes this role and also unassigns it (a team's
+	// custom_role_keys update, a member's custom_roles update, a
+	// team_role_mapping destroy) runs both operations unordered and the
+	// DELETE can fire before the unassignment lands (REL-12313). Retry
+	// with backoff, releasing the concurrency slot between attempts so
+	// those other operations can proceed in the meantime.
+	deadline := time.Now().Add(d.Timeout(schema.TimeoutDelete))
+	// The SDK enforces the delete timeout as a context deadline on ctx.
+	// Stop retrying just inside it so the detailed still-assigned
+	// diagnostic below is returned instead of a bare "context deadline
+	// exceeded" from the ctx.Done branch.
+	if ctxDeadline, ok := ctx.Deadline(); ok && ctxDeadline.Before(deadline) {
+		deadline = ctxDeadline.Add(-2 * time.Second)
+	}
+	wait := customRoleDeleteConflictInitialWait
+	for isStatusConflict(deleteResp) && time.Now().Before(deadline) {
+		select {
+		case <-ctx.Done():
+			if isStatusConflict(deleteResp) {
+				return customRoleStillAssignedDiag(customRoleKey, err)
+			}
+			return diag.Errorf("failed to delete custom role with key %q: %s", customRoleKey, ctx.Err())
+		case <-time.After(wait):
+		}
+		if wait *= 2; wait > customRoleDeleteConflictMaxWait {
+			wait = customRoleDeleteConflictMaxWait
+		}
+		deleteResp, err = deleteCustomRole(client, customRoleKey)
+		if err == nil {
+			return diags
+		}
+	}
+	if isStatusConflict(deleteResp) {
+		return customRoleStillAssignedDiag(customRoleKey, err)
+	}
+	return diag.Errorf("failed to delete custom role with key %q: %s", customRoleKey, handleLdapiErr(err))
+}
 
-	return diags
+func customRoleStillAssignedDiag(customRoleKey string, err error) diag.Diagnostics {
+	return diag.Errorf("failed to delete custom role with key %q: still assigned to teams or members: %s\n\nLaunchDarkly rejects deleting a custom role while it is assigned. Remove the role from every launchdarkly_team (custom_role_keys), launchdarkly_team_member (custom_roles), launchdarkly_team_role_mapping, and access token that references it, then re-apply. To remove the assignments and delete the role in the same apply: Terraform updates referencing resources only after this destroy, so set `lifecycle { create_before_destroy = true }` on this launchdarkly_custom_role to order the unassignments first, or manage the assignment with launchdarkly_team_role_mapping, then re-apply.", customRoleKey, handleLdapiErr(err))
+}
+
+func deleteCustomRole(client *Client, customRoleKey string) (*http.Response, error) {
+	var deleteResp *http.Response
+	err := client.withConcurrency(client.ctx, func() error {
+		var e error
+		deleteResp, e = client.ld.CustomRolesApi.DeleteCustomRole(client.ctx, customRoleKey).Execute()
+		return e
+	})
+	return deleteResp, err
 }
 
 func resourceCustomRoleExists(d *schema.ResourceData, metaRaw interface{}) (bool, error) {

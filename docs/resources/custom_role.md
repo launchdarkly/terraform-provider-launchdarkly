@@ -6,6 +6,7 @@ description: |-
   Provides a LaunchDarkly custom role resource.
   -> Note: Custom roles are available to customers on an Enterprise LaunchDarkly plan. To learn more, read about our pricing https://launchdarkly.com/pricing/. To upgrade your plan, contact LaunchDarkly Sales https://launchdarkly.com/contact-sales/.
   This resource allows you to create and manage custom roles within your LaunchDarkly organization.
+  -> Note: You cannot delete a custom role while it is still assigned to any team, member, or access token. By default, Terraform destroys a removed resource before it updates the resources that referenced it, so a single apply that deletes this role and removes its assignments, for example from a launchdarkly_team's custom_role_keys or a launchdarkly_team_member's custom_roles, attempts the deletion while the assignments still exist and fails with a conflict. To delete a role and remove its assignments in one apply, set lifecycle { create_before_destroy = true } on this resource so that Terraform updates the referencing resources first. Alternatively, manage the assignment with a launchdarkly_team_role_mapping https://registry.terraform.io/providers/launchdarkly/launchdarkly/latest/docs/resources/team_role_mapping resource, which Terraform destroys before the role and which does not require the lifecycle setting. With create_before_destroy, a change that forces replacement, such as a new key, creates the replacement role before it destroys the original, and role names must be unique: change name in the same apply to avoid a conflict. The provider retries a conflicting deletion for one minute by default, configurable with a timeouts { delete = ... } block, to absorb propagation delays. If the role is still assigned when the retry window closes, the deletion fails with a conflict error.
 ---
 
 # launchdarkly_custom_role (Resource)
@@ -15,6 +16,8 @@ Provides a LaunchDarkly custom role resource.
 -> **Note:** Custom roles are available to customers on an Enterprise LaunchDarkly plan. To learn more, [read about our pricing](https://launchdarkly.com/pricing/). To upgrade your plan, [contact LaunchDarkly Sales](https://launchdarkly.com/contact-sales/).
 
 This resource allows you to create and manage custom roles within your LaunchDarkly organization.
+
+-> **Note:** You cannot delete a custom role while it is still assigned to any team, member, or access token. By default, Terraform destroys a removed resource before it updates the resources that referenced it, so a single apply that deletes this role and removes its assignments, for example from a `launchdarkly_team`'s `custom_role_keys` or a `launchdarkly_team_member`'s `custom_roles`, attempts the deletion while the assignments still exist and fails with a conflict. To delete a role and remove its assignments in one apply, set `lifecycle { create_before_destroy = true }` on this resource so that Terraform updates the referencing resources first. Alternatively, manage the assignment with a [`launchdarkly_team_role_mapping`](https://registry.terraform.io/providers/launchdarkly/launchdarkly/latest/docs/resources/team_role_mapping) resource, which Terraform destroys before the role and which does not require the lifecycle setting. With `create_before_destroy`, a change that forces replacement, such as a new `key`, creates the replacement role before it destroys the original, and role names must be unique: change `name` in the same apply to avoid a conflict. The provider retries a conflicting deletion for one minute by default, configurable with a `timeouts { delete = ... }` block, to absorb propagation delays. If the role is still assigned when the retry window closes, the deletion fails with a conflict error.
 
 ## Example Usage
 
@@ -51,6 +54,7 @@ resource "launchdarkly_custom_role" "example" {
 - `description` (String) Description of the custom role.
 - `policy` (Block Set, Deprecated) (see [below for nested schema](#nestedblock--policy))
 - `policy_statements` (Block List) An array of the policy statements that define the permissions for the custom role. This field accepts [role attributes](https://docs.launchdarkly.com/home/getting-started/vocabulary#role-attribute). To use role attributes, use the syntax `$${roleAttribute/<YOUR_ROLE_ATTRIBUTE>}` in lieu of your usual resource keys. (see [below for nested schema](#nestedblock--policy_statements))
+- `timeouts` (Block, Optional) (see [below for nested schema](#nestedblock--timeouts))
 
 ### Read-Only
 
@@ -80,6 +84,14 @@ Either `actions` or `not_actions` must be specified. For a list of available act
 - `not_actions` (List of String) The list of action specifiers defining the actions to which the statement does not apply.
 - `not_resources` (List of String) The list of resource specifiers defining the resources to which the statement does not apply.
 - `resources` (List of String) The list of resource specifiers defining the resources to which the statement applies.
+
+
+<a id="nestedblock--timeouts"></a>
+### Nested Schema for `timeouts`
+
+Optional:
+
+- `delete` (String)
 
 ## Import
 
