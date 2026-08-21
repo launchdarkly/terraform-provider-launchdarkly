@@ -104,6 +104,9 @@ resource "launchdarkly_custom_role" "delete_test" {
 		effect = "allow"
 		resources = ["proj/*:env/staging"]
 	}]
+	timeouts = {
+		delete = "2m"
+	}
 }
 
 resource "launchdarkly_team" "delete_test" {
