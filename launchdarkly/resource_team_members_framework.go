@@ -497,25 +497,27 @@ func (r *TeamMembersResource) ImportState(ctx context.Context, req resource.Impo
 	roles := newCustomRoleKeyResolver(r.client)
 	members := make(map[string]teamMembersEntryModel, len(live))
 	for email, member := range live {
+		// Import records only what this resource reconciles: identity, role,
+		// custom roles, and role attributes.
+		//
+		// first_name and last_name are left null because they are used only
+		// when a member is created and are never read back, so importing them
+		// would produce a diff against any configuration that omits them.
+		//
+		// team_keys is left null because this resource manages only the team
+		// associations a configuration declares. Recording a member's full
+		// current membership would mean the first apply after an import
+		// silently removed them from every team the configuration did not
+		// happen to mention.
 		entry := teamMembersEntryModel{
 			ID:             types.StringValue(member.Id),
 			Email:          types.StringValue(email),
-			FirstName:      stringValueOrNullFromPointer(member.FirstName),
-			LastName:       stringValueOrNullFromPointer(member.LastName),
+			FirstName:      types.StringNull(),
+			LastName:       types.StringNull(),
 			CustomRoles:    types.SetNull(types.StringType),
 			TeamKeys:       types.SetNull(types.StringType),
 			RoleAttributes: types.MapNull(types.ListType{ElemType: types.StringType}),
 		}
-		// On import there is no prior configuration to scope team keys to, so
-		// record the member's full current membership.
-		liveTeams := make([]string, 0, len(member.Teams))
-		for _, t := range member.Teams {
-			liveTeams = append(liveTeams, t.Key)
-		}
-		teamsSet, d := setFromStringSlicePreservingPlan(ctx, liveTeams, entry.TeamKeys)
-		resp.Diagnostics.Append(d...)
-		entry.TeamKeys = teamsSet
-
 		refreshEntryFromMember(ctx, &entry, &member, roles, &resp.Diagnostics)
 		if resp.Diagnostics.HasError() {
 			return
