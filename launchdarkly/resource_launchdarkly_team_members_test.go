@@ -8,7 +8,6 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
-	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 	ldapi "github.com/launchdarkly/api-client-go/v24"
 )
@@ -214,13 +213,10 @@ func TestAccTeamMembers_CreateUpdate(t *testing.T) {
 				),
 			},
 			{
-				// A create that leaves computed values unresolved would show up
-				// here as a non-empty plan.
+				// A create that left computed values unresolved would show up
+				// here: PlanOnly fails the test if the re-plan is not empty.
 				Config:   fmt.Sprintf(testAccTeamMembersCreate, teamKey, name, name, name),
 				PlanOnly: true,
-				ConfigPlanChecks: resource.ConfigPlanChecks{
-					PreApply: []plancheck.PlanCheck{plancheck.ExpectEmptyPlan()},
-				},
 			},
 			{
 				Config: fmt.Sprintf(testAccTeamMembersUpdate, teamKey, name, name, name),
@@ -341,14 +337,56 @@ func TestAccTeamMembers_Import(t *testing.T) {
 			{
 				ResourceName:      resourceName,
 				ImportState:       true,
-				ImportStateVerify: true,
-				// The batch ID is generated, so it legitimately differs from the
-				// imported copy; everything else must match.
-				ImportStateVerifyIgnore: []string{"id", "deletion_protection"},
-				ImportStateIdFunc:       testAccTeamMembersImportIDs(resourceName),
+				ImportStateIdFunc: testAccTeamMembersImportIDs(resourceName),
+				// ImportStateVerify matches resources by ID, but this resource's
+				// batch ID is generated, so an imported batch legitimately has a
+				// different one from the batch that created the members. Assert
+				// the import contract directly instead.
+				ImportStateCheck: testAccCheckTeamMembersImportedState(
+					fmt.Sprintf("%s+imp1@launchdarkly.com", name),
+					fmt.Sprintf("%s+imp2@launchdarkly.com", name),
+				),
 			},
 		},
 	})
+}
+
+// testAccCheckTeamMembersImportedState asserts what an import records. Import
+// deliberately captures only the attributes this resource reconciles, so names
+// and team keys must come back null even when the members have them.
+func testAccCheckTeamMembersImportedState(emails ...string) resource.ImportStateCheckFunc {
+	return func(states []*terraform.InstanceState) error {
+		if len(states) != 1 {
+			return fmt.Errorf("expected 1 imported instance, got %d", len(states))
+		}
+		attrs := states[0].Attributes
+		if got := attrs["members.%"]; got != fmt.Sprintf("%d", len(emails)) {
+			return fmt.Errorf("expected %d imported members, got %q", len(emails), got)
+		}
+		if got := attrs["deletion_protection"]; got != "true" {
+			return fmt.Errorf("imported batch should be protected, got deletion_protection=%q", got)
+		}
+		if got := attrs["adopt_existing"]; got != "false" {
+			return fmt.Errorf("imported batch should not adopt, got adopt_existing=%q", got)
+		}
+		for _, email := range emails {
+			if got := attrs[fmt.Sprintf("members.%s.email", email)]; got != email {
+				return fmt.Errorf("member %s: email recorded as %q", email, got)
+			}
+			if got := attrs[fmt.Sprintf("members.%s.id", email)]; got == "" {
+				return fmt.Errorf("member %s: no member ID recorded", email)
+			}
+			if got := attrs[fmt.Sprintf("members.%s.role", email)]; got != "reader" {
+				return fmt.Errorf("member %s: role recorded as %q, want reader", email, got)
+			}
+			for _, unreconciled := range []string{"first_name", "last_name", "team_keys.#"} {
+				if got, present := attrs[fmt.Sprintf("members.%s.%s", email, unreconciled)]; present && got != "" && got != "0" {
+					return fmt.Errorf("member %s: %s should not be imported, got %q", email, unreconciled, got)
+				}
+			}
+		}
+		return nil
+	}
 }
 
 // testAccTeamMembersImportIDs builds the comma-separated member ID list that

@@ -11,6 +11,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	ldapi "github.com/launchdarkly/api-client-go/v24"
@@ -802,4 +803,57 @@ func seatLimitDiagnostics(diags diag.Diagnostics) bool {
 		}
 	}
 	return false
+}
+
+// markNewEntriesIDUnknown sets the computed id of planned map entries that have
+// no prior state to Unknown.
+//
+// The framework plans a brand-new map element's Computed attributes as null,
+// because UseStateForUnknown has no prior state to carry forward, and apply
+// then filling in a real member ID trips Terraform's plan-versus-apply
+// consistency check. Only the update path reaches this: on create the whole
+// resource is new, so its attributes are already unknown.
+func markNewEntriesIDUnknown(
+	objType types.ObjectType,
+	planned types.Map,
+	priorState map[string]teamMembersEntryModel,
+) (types.Map, diag.Diagnostics) {
+	var diags diag.Diagnostics
+	if planned.IsNull() || planned.IsUnknown() {
+		return planned, diags
+	}
+	els := planned.Elements()
+	if len(els) == 0 {
+		return planned, diags
+	}
+	out := make(map[string]attr.Value, len(els))
+	changed := false
+	for key, el := range els {
+		obj, ok := el.(types.Object)
+		if !ok || obj.IsNull() || obj.IsUnknown() {
+			out[key] = el
+			continue
+		}
+		prior, existed := priorState[key]
+		hadID := existed && !prior.ID.IsNull() && prior.ID.ValueString() != ""
+		attrs := obj.Attributes()
+		idVal, hasID := attrs[ID]
+		if !hadID && hasID {
+			if sv, isStr := idVal.(types.String); isStr && sv.IsNull() {
+				attrs[ID] = types.StringUnknown()
+				newObj, d := types.ObjectValue(objType.AttrTypes, attrs)
+				diags.Append(d...)
+				out[key] = newObj
+				changed = true
+				continue
+			}
+		}
+		out[key] = el
+	}
+	if !changed || diags.HasError() {
+		return planned, diags
+	}
+	newMap, d := types.MapValue(objType, out)
+	diags.Append(d...)
+	return newMap, diags
 }

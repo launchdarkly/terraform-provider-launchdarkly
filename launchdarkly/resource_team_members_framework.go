@@ -570,6 +570,24 @@ func (r *TeamMembersResource) ModifyPlan(ctx context.Context, req resource.Modif
 	if resp.Diagnostics.HasError() {
 		return
 	}
+
+	// On an update, entries the prior state does not know about need their
+	// computed id planned as unknown rather than null.
+	var priorMembers map[string]teamMembersEntryModel
+	if !req.State.Raw.IsNull() {
+		var state teamMembersResourceModel
+		resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+		priorMembers = state.Members
+		pinned, d = markNewEntriesIDUnknown(teamMembersEntryObjectType(), pinned, priorMembers)
+		resp.Diagnostics.Append(d...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+	}
+
 	if !pinned.Equal(planned) {
 		resp.Diagnostics.Append(resp.Plan.SetAttribute(ctx, path.Root(MEMBERS), pinned)...)
 		if resp.Diagnostics.HasError() {
@@ -577,8 +595,8 @@ func (r *TeamMembersResource) ModifyPlan(ctx context.Context, req resource.Modif
 		}
 	}
 
-	// Update: warn about a whole-batch replacement at plan time.
-	if req.State.Raw.IsNull() {
+	// Update: refuse a whole-batch replacement while protection is on.
+	if priorMembers == nil {
 		return
 	}
 	var state teamMembersResourceModel
