@@ -110,3 +110,38 @@ func TestValidateMemberBatch(t *testing.T) {
 		assert.Contains(t, err.Error(), fmt.Sprintf("%d", teamMembersMaxBatchSize))
 	})
 }
+
+func TestParseMembersConflict(t *testing.T) {
+	t.Run("in-account duplicates are recoverable and normalized", func(t *testing.T) {
+		body := []byte(`{"code":"email_already_exists_in_account","message":"...","invalid_emails":["a@x.com","B@X.com"]}`)
+		emails, ok := parseMembersConflict(body)
+		require.True(t, ok)
+		assert.Equal(t, []string{"a@x.com", "b@x.com"}, emails)
+	})
+
+	t.Run("cross-account conflicts are not recoverable", func(t *testing.T) {
+		// Multi-account membership is allowed today, so this error is a
+		// legacy/race path. Treating it as recoverable would silently skip
+		// members, so it must surface to the operator instead.
+		body := []byte(`{"code":"email_taken_in_different_account","invalid_emails":["a@x.com"]}`)
+		_, ok := parseMembersConflict(body)
+		assert.False(t, ok)
+	})
+
+	t.Run("other error codes are not conflicts", func(t *testing.T) {
+		_, ok := parseMembersConflict([]byte(`{"code":"seat_limit_reached"}`))
+		assert.False(t, ok)
+	})
+
+	t.Run("malformed bodies are not conflicts", func(t *testing.T) {
+		_, ok := parseMembersConflict([]byte(`not json`))
+		assert.False(t, ok)
+		_, ok = parseMembersConflict(nil)
+		assert.False(t, ok)
+	})
+
+	t.Run("conflict code with no emails is not actionable", func(t *testing.T) {
+		_, ok := parseMembersConflict([]byte(`{"code":"email_already_exists_in_account","invalid_emails":[]}`))
+		assert.False(t, ok, "no emails means nothing to adopt or remove")
+	})
+}

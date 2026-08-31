@@ -268,11 +268,80 @@ func isPlausibleEmail(s string) bool {
 }
 
 func (r *TeamMembersResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
-	resp.Diagnostics.AddError("not implemented", "Create is implemented in a later change")
+	var plan teamMembersResourceModel
+	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	if err := validateMemberBatch(plan.Members); err != nil {
+		resp.Diagnostics.AddError("Invalid members batch", err.Error())
+		return
+	}
+
+	resolved, adopted, diags := r.createMemberBatch(ctx, plan.Members, plan.AdoptExisting.ValueBool())
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	applyResolvedIDs(plan.Members, resolved)
+
+	if len(adopted) > 0 {
+		resp.Diagnostics.AddWarning(
+			"Adopted existing team members",
+			fmt.Sprintf(
+				"These members already existed and are now managed by this resource, which means they will be "+
+					"deleted if you remove them from the batch or destroy the resource: %s",
+				strings.Join(adopted, ", "),
+			),
+		)
+		// Bring adopted members in line with the configuration in this same
+		// apply, so adoption does not leave their roles or teams stale.
+		resp.Diagnostics.Append(r.reconcileAdoptedMembers(ctx, plan.Members, adopted)...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+	}
+
+	resp.Diagnostics.Append(r.hydrateMembers(ctx, &plan)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	plan.ID = types.StringValue(newTeamMembersBatchID())
+	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 }
 
 func (r *TeamMembersResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
-	resp.Diagnostics.AddError("not implemented", "Read is implemented in a later change")
+	var state teamMembersResourceModel
+	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	live, err := r.fetchMembersByID(memberIDsFromModel(state.Members))
+	if err != nil {
+		resp.Diagnostics.AddError("Failed to read team members", err.Error())
+		return
+	}
+	roles := newCustomRoleKeyResolver(r.client)
+	for email, entry := range state.Members {
+		member, found := live[email]
+		if !found {
+			// Deleted outside Terraform: drop it so the next plan recreates it.
+			delete(state.Members, email)
+			continue
+		}
+		refreshEntryFromMember(ctx, &entry, &member, roles, &resp.Diagnostics)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+		state.Members[email] = entry
+	}
+	if len(state.Members) == 0 {
+		// Every managed member is gone; drop the resource so it is recreated.
+		resp.State.RemoveResource(ctx)
+		return
+	}
+	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
 
 func (r *TeamMembersResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
