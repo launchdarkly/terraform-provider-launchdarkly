@@ -653,3 +653,153 @@ func (r *TeamMembersResource) reconcileAdoptedMembers(
 	diags.Append(r.applyTeamMembershipDeltas(deltas)...)
 	return diags
 }
+
+// memberBatchDiff is the work needed to move the batch from state to plan.
+type memberBatchDiff struct {
+	// toCreate holds entries present in the plan but not in state.
+	toCreate map[string]teamMembersEntryModel
+	// toPatch holds entries whose updatable attributes changed, each carrying
+	// its existing member ID.
+	toPatch map[string]teamMembersEntryModel
+	// toDeleteIDs holds the member IDs of entries dropped from the plan.
+	toDeleteIDs []string
+	// retained maps unchanged entries to their existing member IDs.
+	retained map[string]string
+}
+
+// diffMemberBatches compares state and plan. Both are keyed by email, so
+// membership changes are a direct key comparison rather than an inference from
+// attribute values.
+func diffMemberBatches(state, plan map[string]teamMembersEntryModel) memberBatchDiff {
+	d := memberBatchDiff{
+		toCreate: map[string]teamMembersEntryModel{},
+		toPatch:  map[string]teamMembersEntryModel{},
+		retained: map[string]string{},
+	}
+	for email, planned := range plan {
+		prior, exists := state[email]
+		if !exists {
+			d.toCreate[email] = planned
+			continue
+		}
+		if memberAttrsDiffer(prior, planned) {
+			planned.ID = prior.ID
+			d.toPatch[email] = planned
+			continue
+		}
+		if !prior.ID.IsNull() && prior.ID.ValueString() != "" {
+			d.retained[email] = prior.ID.ValueString()
+		}
+	}
+	for email, prior := range state {
+		if _, stillPresent := plan[email]; stillPresent {
+			continue
+		}
+		if !prior.ID.IsNull() && prior.ID.ValueString() != "" {
+			d.toDeleteIDs = append(d.toDeleteIDs, prior.ID.ValueString())
+		}
+	}
+	sort.Strings(d.toDeleteIDs)
+	return d
+}
+
+// isFullReplacement reports whether applying the diff would delete every
+// member this resource currently manages. Entries without an ID were never
+// created, so they do not count toward the total.
+func isFullReplacement(state map[string]teamMembersEntryModel, d memberBatchDiff) bool {
+	managed := 0
+	for _, m := range state {
+		if !m.ID.IsNull() && m.ID.ValueString() != "" {
+			managed++
+		}
+	}
+	return managed > 0 && len(d.toDeleteIDs) == managed
+}
+
+// patchChangedMembers applies attribute and team-membership changes for every
+// entry whose configuration moved.
+func (r *TeamMembersResource) patchChangedMembers(
+	ctx context.Context,
+	changed map[string]teamMembersEntryModel,
+	state map[string]teamMembersEntryModel,
+) diag.Diagnostics {
+	var diags diag.Diagnostics
+	if len(changed) == 0 {
+		return diags
+	}
+
+	emails := sortedMemberEmails(changed)
+	deltas := map[string]*teamMembershipDelta{}
+	for _, email := range emails {
+		desired := changed[email]
+		prior := state[email]
+		memberID := desired.ID.ValueString()
+		if memberID == "" {
+			diags.AddError(
+				"Cannot update team member",
+				fmt.Sprintf("no member ID recorded for %s", email),
+			)
+			return diags
+		}
+		if !desired.Role.Equal(prior.Role) ||
+			!desired.CustomRoles.Equal(prior.CustomRoles) ||
+			!desired.RoleAttributes.Equal(prior.RoleAttributes) {
+			diags.Append(r.patchMemberAttributes(ctx, memberID, desired, prior)...)
+			if diags.HasError() {
+				return diags
+			}
+		}
+		if !desired.TeamKeys.Equal(prior.TeamKeys) {
+			collectTeamDeltas(ctx, deltas, memberID, desired, prior, &diags)
+			if diags.HasError() {
+				return diags
+			}
+		}
+	}
+	diags.Append(r.applyTeamMembershipDeltas(deltas)...)
+	return diags
+}
+
+// sortedMemberEmails gives a stable iteration order over a members map.
+func sortedMemberEmails(members map[string]teamMembersEntryModel) []string {
+	out := make([]string, 0, len(members))
+	for email := range members {
+		out = append(out, email)
+	}
+	sort.Strings(out)
+	return out
+}
+
+// deleteMembersByID removes members one at a time, since the API has no bulk
+// delete. Members already gone are treated as success.
+func (r *TeamMembersResource) deleteMembersByID(ids []string) diag.Diagnostics {
+	var diags diag.Diagnostics
+	for _, id := range ids {
+		var res *http.Response
+		err := r.client.withConcurrency(r.client.ctx, func() error {
+			var e error
+			res, e = r.client.ld.AccountMembersApi.DeleteMember(r.client.ctx, id).Execute()
+			return e
+		})
+		if err != nil && !isStatusNotFound(res) {
+			addLdapiError(&diags, fmt.Sprintf("Failed to delete team member %q", id), err)
+			return diags
+		}
+	}
+	return diags
+}
+
+// seatLimitDiagnostics reports whether a failure looks like a seat or invite
+// limit, which is worth explaining because this resource adds members before
+// removing them.
+func seatLimitDiagnostics(diags diag.Diagnostics) bool {
+	for _, d := range diags.Errors() {
+		text := strings.ToLower(d.Summary() + " " + d.Detail())
+		if strings.Contains(text, "seat_limit_reached") ||
+			strings.Contains(text, "invite_limit_reached") ||
+			strings.Contains(text, "seat limit") {
+			return true
+		}
+	}
+	return false
+}

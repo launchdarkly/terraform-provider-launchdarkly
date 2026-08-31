@@ -2,6 +2,7 @@ package launchdarkly
 
 import (
 	"fmt"
+	"sort"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
@@ -11,13 +12,18 @@ import (
 )
 
 // entry builds a members-map entry with a role set, which satisfies the
-// "at least one of role or custom_roles" rule.
+// "at least one of role or custom_roles" rule. Every attribute is given a
+// concrete type, matching how the framework decodes real configuration.
 func entry(role string) teamMembersEntryModel {
 	return teamMembersEntryModel{
-		Email:       types.StringNull(),
-		Role:        types.StringValue(role),
-		CustomRoles: types.SetNull(types.StringType),
-		TeamKeys:    types.SetNull(types.StringType),
+		ID:             types.StringNull(),
+		Email:          types.StringNull(),
+		FirstName:      types.StringNull(),
+		LastName:       types.StringNull(),
+		Role:           types.StringValue(role),
+		CustomRoles:    types.SetNull(types.StringType),
+		TeamKeys:       types.SetNull(types.StringType),
+		RoleAttributes: types.MapNull(types.ListType{ElemType: types.StringType}),
 	}
 }
 
@@ -65,34 +71,25 @@ func TestValidateMemberBatch(t *testing.T) {
 	})
 
 	t.Run("entry with neither role nor custom_roles rejected", func(t *testing.T) {
-		bare := teamMembersEntryModel{
-			Email:       types.StringNull(),
-			Role:        types.StringNull(),
-			CustomRoles: types.SetNull(types.StringType),
-			TeamKeys:    types.SetNull(types.StringType),
-		}
+		bare := entry("")
+		bare.Role = types.StringNull()
 		err := validateMemberBatch(map[string]teamMembersEntryModel{"a@example.com": bare})
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "at least one of")
 	})
 
 	t.Run("custom_roles alone is sufficient", func(t *testing.T) {
-		e := teamMembersEntryModel{
-			Email:       types.StringNull(),
-			Role:        types.StringNull(),
-			CustomRoles: types.SetValueMust(types.StringType, []attr.Value{types.StringValue("some-role")}),
-			TeamKeys:    types.SetNull(types.StringType),
-		}
+		e := entry("")
+		e.Role = types.StringNull()
+		e.CustomRoles = types.SetValueMust(types.StringType, []attr.Value{types.StringValue("some-role")})
 		require.NoError(t, validateMemberBatch(map[string]teamMembersEntryModel{"a@example.com": e}))
 	})
 
 	t.Run("unknown values defer to apply", func(t *testing.T) {
-		e := teamMembersEntryModel{
-			Email:       types.StringUnknown(),
-			Role:        types.StringUnknown(),
-			CustomRoles: types.SetUnknown(types.StringType),
-			TeamKeys:    types.SetNull(types.StringType),
-		}
+		e := entry("")
+		e.Email = types.StringUnknown()
+		e.Role = types.StringUnknown()
+		e.CustomRoles = types.SetUnknown(types.StringType)
 		require.NoError(t, validateMemberBatch(map[string]teamMembersEntryModel{"a@example.com": e}),
 			"unknown role/custom_roles must not fail validation")
 	})
@@ -143,5 +140,107 @@ func TestParseMembersConflict(t *testing.T) {
 	t.Run("conflict code with no emails is not actionable", func(t *testing.T) {
 		_, ok := parseMembersConflict([]byte(`{"code":"email_already_exists_in_account","invalid_emails":[]}`))
 		assert.False(t, ok, "no emails means nothing to adopt or remove")
+	})
+}
+
+func sortedKeys[V any](m map[string]V) []string {
+	out := make([]string, 0, len(m))
+	for k := range m {
+		out = append(out, k)
+	}
+	sort.Strings(out)
+	return out
+}
+
+func TestDiffMemberBatches(t *testing.T) {
+	t.Run("classifies added, removed, changed, and retained", func(t *testing.T) {
+		state := map[string]teamMembersEntryModel{
+			"keep@x.com":   entryWithID("reader", "id-keep"),
+			"gone@x.com":   entryWithID("reader", "id-gone"),
+			"change@x.com": entryWithID("reader", "id-change"),
+		}
+		plan := map[string]teamMembersEntryModel{
+			"keep@x.com":   entry("reader"),
+			"new@x.com":    entry("writer"),
+			"change@x.com": entry("admin"),
+		}
+
+		d := diffMemberBatches(state, plan)
+		assert.Equal(t, []string{"new@x.com"}, sortedKeys(d.toCreate))
+		assert.Equal(t, []string{"id-gone"}, d.toDeleteIDs)
+		assert.Equal(t, []string{"change@x.com"}, sortedKeys(d.toPatch))
+		assert.Equal(t, map[string]string{"keep@x.com": "id-keep"}, d.retained)
+	})
+
+	t.Run("changed entries carry the prior member ID forward", func(t *testing.T) {
+		state := map[string]teamMembersEntryModel{"change@x.com": entryWithID("reader", "id-change")}
+		plan := map[string]teamMembersEntryModel{"change@x.com": entry("admin")}
+
+		d := diffMemberBatches(state, plan)
+		require.Contains(t, d.toPatch, "change@x.com")
+		assert.Equal(t, "id-change", d.toPatch["change@x.com"].ID.ValueString(),
+			"a patched entry must keep its ID or the update would lose track of the member")
+	})
+
+	t.Run("name-only differences are not changes", func(t *testing.T) {
+		// LaunchDarkly does not let the provider update names, so treating a
+		// name difference as a change would produce a patch that can never
+		// converge.
+		prior := entryWithID("reader", "id-1")
+		prior.FirstName = types.StringValue("Old")
+		desired := entry("reader")
+		desired.FirstName = types.StringValue("New")
+
+		d := diffMemberBatches(
+			map[string]teamMembersEntryModel{"a@x.com": prior},
+			map[string]teamMembersEntryModel{"a@x.com": desired},
+		)
+		assert.Empty(t, d.toPatch)
+		assert.Equal(t, map[string]string{"a@x.com": "id-1"}, d.retained)
+	})
+
+	t.Run("entries without an ID are not queued for deletion", func(t *testing.T) {
+		state := map[string]teamMembersEntryModel{"pending@x.com": entry("reader")}
+		d := diffMemberBatches(state, map[string]teamMembersEntryModel{"other@x.com": entry("reader")})
+		assert.Empty(t, d.toDeleteIDs, "there is nothing to delete without a member ID")
+	})
+}
+
+func TestIsFullReplacement(t *testing.T) {
+	state := map[string]teamMembersEntryModel{
+		"a@x.com": entryWithID("reader", "id-a"),
+		"b@x.com": entryWithID("reader", "id-b"),
+	}
+
+	t.Run("replacing every managed member is a full replacement", func(t *testing.T) {
+		d := diffMemberBatches(state, map[string]teamMembersEntryModel{
+			"new1@x.com": entry("reader"),
+			"new2@x.com": entry("reader"),
+		})
+		assert.True(t, isFullReplacement(state, d))
+	})
+
+	t.Run("retaining one member is not a full replacement", func(t *testing.T) {
+		d := diffMemberBatches(state, map[string]teamMembersEntryModel{
+			"a@x.com":    entry("reader"),
+			"new1@x.com": entry("reader"),
+		})
+		assert.False(t, isFullReplacement(state, d))
+	})
+
+	t.Run("empty prior state has nothing to protect", func(t *testing.T) {
+		empty := map[string]teamMembersEntryModel{}
+		d := diffMemberBatches(empty, map[string]teamMembersEntryModel{"new@x.com": entry("reader")})
+		assert.False(t, isFullReplacement(empty, d))
+	})
+
+	t.Run("unmanaged entries do not count toward the total", func(t *testing.T) {
+		mixed := map[string]teamMembersEntryModel{
+			"managed@x.com":   entryWithID("reader", "id-1"),
+			"unmanaged@x.com": entry("reader"),
+		}
+		d := diffMemberBatches(mixed, map[string]teamMembersEntryModel{"new@x.com": entry("reader")})
+		assert.True(t, isFullReplacement(mixed, d),
+			"the one member with an ID is being removed, so this replaces everything managed")
 	})
 }

@@ -345,7 +345,95 @@ func (r *TeamMembersResource) Read(ctx context.Context, req resource.ReadRequest
 }
 
 func (r *TeamMembersResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
-	resp.Diagnostics.AddError("not implemented", "Update is implemented in a later change")
+	var plan, state teamMembersResourceModel
+	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
+	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	if err := validateMemberBatch(plan.Members); err != nil {
+		resp.Diagnostics.AddError("Invalid members batch", err.Error())
+		return
+	}
+
+	diff := diffMemberBatches(state.Members, plan.Members)
+
+	// Protection is read from prior state, not the plan, so that disabling it
+	// and performing the destructive change cannot happen in a single apply.
+	if state.DeletionProtection.ValueBool() && isFullReplacement(state.Members, diff) {
+		resp.Diagnostics.AddError(
+			"Refusing to replace every member in the batch",
+			"This update removes every member this resource manages, which deletes those members from your "+
+				"LaunchDarkly account.\n\nIf that is intentional, set deletion_protection = false and apply that "+
+				"change on its own, then apply this replacement.",
+		)
+		return
+	}
+
+	// Members are created before removed ones are deleted: a failure part-way
+	// through then leaves people with access rather than without it. The
+	// tradeoff is that swapping a full batch needs a spare seat.
+	if len(diff.toCreate) > 0 {
+		resolved, adopted, diags := r.createMemberBatch(ctx, diff.toCreate, plan.AdoptExisting.ValueBool())
+		resp.Diagnostics.Append(diags...)
+		if resp.Diagnostics.HasError() {
+			if seatLimitDiagnostics(diags) {
+				resp.Diagnostics.AddWarning(
+					"Seat limit reached while adding members",
+					"New members are invited before removed ones are deleted, so replacing members at exactly "+
+						"your seat limit fails here. Remove the departing members in one apply and add the new "+
+						"ones in the next, or add seats.",
+				)
+			}
+			return
+		}
+		applyResolvedIDs(plan.Members, resolved)
+		if len(adopted) > 0 {
+			resp.Diagnostics.AddWarning(
+				"Adopted existing team members",
+				fmt.Sprintf(
+					"These members already existed and are now managed by this resource, which means they will "+
+						"be deleted if you remove them from the batch or destroy the resource: %s",
+					strings.Join(adopted, ", "),
+				),
+			)
+			resp.Diagnostics.Append(r.reconcileAdoptedMembers(ctx, plan.Members, adopted)...)
+			if resp.Diagnostics.HasError() {
+				return
+			}
+		}
+	}
+
+	// Unchanged and changed entries keep the IDs they already had.
+	for email, id := range diff.retained {
+		if entry, found := plan.Members[email]; found {
+			entry.ID = types.StringValue(id)
+			plan.Members[email] = entry
+		}
+	}
+	for email, patched := range diff.toPatch {
+		if entry, found := plan.Members[email]; found {
+			entry.ID = patched.ID
+			plan.Members[email] = entry
+		}
+	}
+
+	resp.Diagnostics.Append(r.patchChangedMembers(ctx, diff.toPatch, state.Members)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	resp.Diagnostics.Append(r.deleteMembersByID(diff.toDeleteIDs)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	resp.Diagnostics.Append(r.hydrateMembers(ctx, &plan)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	plan.ID = state.ID
+	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 }
 
 func (r *TeamMembersResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
