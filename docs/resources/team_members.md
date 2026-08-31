@@ -8,6 +8,7 @@ description: |-
   -> Note: Manage any given member with either this resource or launchdarkly_team_member, never both. Likewise, if you assign teams here with team_keys, do not also manage those teams' membership with launchdarkly_team.member_ids — the two fight over the same association.
   -> Note: first_name and last_name are only used when a member is created. LaunchDarkly does not allow the provider to change a member's name afterwards; the member does that themselves.
   -> Note: Updates create new members before deleting removed ones, so swapping a full batch at exactly your seat limit fails on the create. Remove members in one apply and add in the next, or add seats.
+  -> Note: A large batch, especially one that also assigns teams, can take longer than the provider's default 20 second http_timeout. Raise it on the provider when inviting tens of members at once: a 50 member batch with team assignments has been observed to need well over a minute. If the request does time out, LaunchDarkly may still have created the members even though Terraform recorded nothing; re-apply with adopt_existing = true to take ownership of them and finish the work.
   ~> Warning: Removing an entry from members deletes that member from your LaunchDarkly account, and destroying this resource deletes every member in the batch. deletion_protection (enabled by default) blocks destroys and whole-batch replacements until you disable it in a separate apply.
 ---
 
@@ -23,11 +24,21 @@ This resource batches member creation into one `POST /api/v2/members` request in
 
 -> **Note:** Updates create new members before deleting removed ones, so swapping a full batch at exactly your seat limit fails on the create. Remove members in one apply and add in the next, or add seats.
 
+-> **Note:** A large batch, especially one that also assigns teams, can take longer than the provider's default 20 second `http_timeout`. Raise it on the provider when inviting tens of members at once: a 50 member batch with team assignments has been observed to need well over a minute. If the request does time out, LaunchDarkly may still have created the members even though Terraform recorded nothing; re-apply with `adopt_existing = true` to take ownership of them and finish the work.
+
 ~> **Warning:** Removing an entry from `members` deletes that member from your LaunchDarkly account, and destroying this resource deletes every member in the batch. `deletion_protection` (enabled by default) blocks destroys and whole-batch replacements until you disable it in a separate apply.
 
 ## Example Usage
 
 ```terraform
+# A large batch can outrun the provider's default 20 second http_timeout,
+# especially when it also assigns teams. Raise it when inviting tens of members
+# at once; if a request does time out, the members may already exist, and
+# re-applying with adopt_existing = true takes ownership of them.
+provider "launchdarkly" {
+  http_timeout = 180
+}
+
 # Any team referenced in team_keys must exist before the members are invited.
 # Referencing the team resource rather than repeating its key as a string is
 # what tells Terraform to create the team first.

@@ -1,3 +1,11 @@
+# A large batch can outrun the provider's default 20 second http_timeout,
+# especially when it also assigns teams. Raise it when inviting tens of members
+# at once; if a request does time out, the members may already exist, and
+# re-applying with adopt_existing = true takes ownership of them.
+provider "launchdarkly" {
+  http_timeout = 180
+}
+
 # Any team referenced in team_keys must exist before the members are invited.
 # Referencing the team resource rather than repeating its key as a string is
 # what tells Terraform to create the team first.
