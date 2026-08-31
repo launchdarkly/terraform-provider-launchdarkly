@@ -27,6 +27,18 @@ const (
 	teamMembersMaxTeamsPerMember = 50
 )
 
+// Destroy-guard text, shared by ModifyPlan and Delete so the plan-time and
+// apply-time messages cannot drift apart.
+const (
+	teamMembersDestroyBlockedSummary = "Cannot destroy: deletion protection is enabled"
+	teamMembersDestroyBlockedDetail  = "Destroying this resource deletes every member in the batch from your " +
+		"LaunchDarkly account.\n\nTo proceed:\n\n" +
+		"  1. Set deletion_protection = false on this resource and run terraform apply\n" +
+		"  2. Run the destroy again\n\n" +
+		"If you have already removed the resource block from your configuration, restore it, apply with " +
+		"deletion_protection = false, then remove it again."
+)
+
 var (
 	_ resource.Resource                     = &TeamMembersResource{}
 	_ resource.ResourceWithImportState      = &TeamMembersResource{}
@@ -437,26 +449,115 @@ func (r *TeamMembersResource) Update(ctx context.Context, req resource.UpdateReq
 }
 
 func (r *TeamMembersResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
-	resp.Diagnostics.AddError("not implemented", "Delete is implemented in a later change")
+	var state teamMembersResourceModel
+	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	if state.DeletionProtection.ValueBool() {
+		resp.Diagnostics.AddError(teamMembersDestroyBlockedSummary, teamMembersDestroyBlockedDetail)
+		return
+	}
+	resp.Diagnostics.Append(r.deleteMembersByID(memberIDsFromModel(state.Members))...)
 }
 
 func (r *TeamMembersResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
-	resp.Diagnostics.AddError("not implemented", "ImportState is implemented in a later change")
-}
-
-// ModifyPlan pins each entry's Optional+Computed email to its map key. A new
-// map entry that omits email plans it as null, and Read then fills it from
-// the key, which trips Terraform's plan-vs-apply consistency check. Pinning
-// at plan time makes the planned and applied values identical.
-func (r *TeamMembersResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
-	if req.Plan.Raw.IsNull() {
+	rawIDs := strings.Split(req.ID, ",")
+	ids := make([]string, 0, len(rawIDs))
+	for _, id := range rawIDs {
+		if trimmed := strings.TrimSpace(id); trimmed != "" {
+			ids = append(ids, trimmed)
+		}
+	}
+	if len(ids) == 0 || len(ids) > teamMembersMaxBatchSize {
+		resp.Diagnostics.AddError(
+			"Invalid import ID",
+			fmt.Sprintf(
+				"Expected between 1 and %d comma-separated member IDs, for example "+
+					"'5f0cd446a77cba0b4c5644a7,5f0cd446a77cba0b4c5644a8'.",
+				teamMembersMaxBatchSize,
+			),
+		)
 		return
 	}
+
+	live, err := r.fetchMembersByID(ids)
+	if err != nil {
+		resp.Diagnostics.AddError("Failed to import team members", err.Error())
+		return
+	}
+	if len(live) != len(ids) {
+		resp.Diagnostics.AddError(
+			"Failed to import team members",
+			fmt.Sprintf("Asked for %d member IDs but LaunchDarkly returned %d. Check that every ID exists.", len(ids), len(live)),
+		)
+		return
+	}
+
+	roles := newCustomRoleKeyResolver(r.client)
+	members := make(map[string]teamMembersEntryModel, len(live))
+	for email, member := range live {
+		entry := teamMembersEntryModel{
+			ID:             types.StringValue(member.Id),
+			Email:          types.StringValue(email),
+			FirstName:      stringValueOrNullFromPointer(member.FirstName),
+			LastName:       stringValueOrNullFromPointer(member.LastName),
+			CustomRoles:    types.SetNull(types.StringType),
+			TeamKeys:       types.SetNull(types.StringType),
+			RoleAttributes: types.MapNull(types.ListType{ElemType: types.StringType}),
+		}
+		// On import there is no prior configuration to scope team keys to, so
+		// record the member's full current membership.
+		liveTeams := make([]string, 0, len(member.Teams))
+		for _, t := range member.Teams {
+			liveTeams = append(liveTeams, t.Key)
+		}
+		teamsSet, d := setFromStringSlicePreservingPlan(ctx, liveTeams, entry.TeamKeys)
+		resp.Diagnostics.Append(d...)
+		entry.TeamKeys = teamsSet
+
+		refreshEntryFromMember(ctx, &entry, &member, roles, &resp.Diagnostics)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+		members[email] = entry
+	}
+
+	state := teamMembersResourceModel{
+		ID:                 types.StringValue(newTeamMembersBatchID()),
+		AdoptExisting:      types.BoolValue(false),
+		DeletionProtection: types.BoolValue(true),
+		Members:            members,
+	}
+	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
+}
+
+// ModifyPlan pins each entry's email to its map key and surfaces the deletion
+// guards while planning, so a destructive change is reported before anyone
+// approves an apply that could not succeed.
+func (r *TeamMembersResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
+	// Destroy: the plan is null and only prior state is available.
+	if req.Plan.Raw.IsNull() {
+		if req.State.Raw.IsNull() {
+			return
+		}
+		var state teamMembersResourceModel
+		resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+		if state.DeletionProtection.ValueBool() {
+			resp.Diagnostics.AddError(teamMembersDestroyBlockedSummary, teamMembersDestroyBlockedDetail)
+		}
+		return
+	}
+
 	var plan teamMembersResourceModel
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
+
 	var planned types.Map
 	resp.Diagnostics.Append(req.Plan.GetAttribute(ctx, path.Root(MEMBERS), &planned)...)
 	if resp.Diagnostics.HasError() {
@@ -464,7 +565,34 @@ func (r *TeamMembersResource) ModifyPlan(ctx context.Context, req resource.Modif
 	}
 	pinned, d := pinMapKeysToAttr(teamMembersEntryObjectType(), planned, EMAIL)
 	resp.Diagnostics.Append(d...)
-	if !resp.Diagnostics.HasError() && !pinned.Equal(planned) {
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	if !pinned.Equal(planned) {
 		resp.Diagnostics.Append(resp.Plan.SetAttribute(ctx, path.Root(MEMBERS), pinned)...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+	}
+
+	// Update: warn about a whole-batch replacement at plan time.
+	if req.State.Raw.IsNull() {
+		return
+	}
+	var state teamMembersResourceModel
+	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	if !state.DeletionProtection.ValueBool() || plan.Members == nil {
+		return
+	}
+	if isFullReplacement(state.Members, diffMemberBatches(state.Members, plan.Members)) {
+		resp.Diagnostics.AddError(
+			"Refusing to replace every member in the batch",
+			"This change removes every member this resource manages, which deletes those members from your "+
+				"LaunchDarkly account.\n\nIf that is intentional, set deletion_protection = false and apply that "+
+				"change on its own, then apply this replacement.",
+		)
 	}
 }
