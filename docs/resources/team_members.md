@@ -9,6 +9,17 @@ description: |-
   -> Note: first_name and last_name are only used when a member is created. LaunchDarkly does not allow the provider to change a member's name afterwards; the member does that themselves.
   -> Note: Updates create new members before deleting removed ones, so swapping a full batch at exactly your seat limit fails on the create. Remove members in one apply and add in the next, or add seats.
   -> Note: A large batch, especially one that also assigns teams, can take longer than the provider's default 20 second http_timeout. Raise it on the provider when inviting tens of members at once: a 50 member batch with team assignments has been observed to need well over a minute. If the request does time out, LaunchDarkly may still have created the members even though Terraform recorded nothing; re-apply with adopt_existing = true to take ownership of them and finish the work.
+  Requests per operation
+  LaunchDarkly rate limits per route, so it is worth knowing what each operation costs. Inviting members is a single request no matter how many are in the batch, which is the point of this resource. Removing members and changing their roles still cost one request each, because the API has no bulk delete and its bulk member-patch endpoint is Enterprise-only.
+  | Operation | Requests |
+  | --- | --- |
+  | Invite any number of members, with their teams | 1 |
+  | Refresh the batch | 1 |
+  | Assign teams | 1 per team, not per member |
+  | Take over existing members (`adopt_existing`) | 3, regardless of batch size |
+  | Change roles, custom roles, or role attributes | 1 per changed member |
+  | Remove members, or destroy the resource | 1 per member |
+  If a request is rate limited the provider waits for the window the API reports and retries, so a large removal is slowed rather than failed. To keep a single apply small, split very large changes across applies.
   ~> Warning: Removing an entry from members deletes that member from your LaunchDarkly account, and destroying this resource deletes every member in the batch. deletion_protection (enabled by default) blocks destroys and whole-batch replacements until you disable it in a separate apply.
 ---
 
@@ -25,6 +36,21 @@ This resource batches member creation into one `POST /api/v2/members` request in
 -> **Note:** Updates create new members before deleting removed ones, so swapping a full batch at exactly your seat limit fails on the create. Remove members in one apply and add in the next, or add seats.
 
 -> **Note:** A large batch, especially one that also assigns teams, can take longer than the provider's default 20 second `http_timeout`. Raise it on the provider when inviting tens of members at once: a 50 member batch with team assignments has been observed to need well over a minute. If the request does time out, LaunchDarkly may still have created the members even though Terraform recorded nothing; re-apply with `adopt_existing = true` to take ownership of them and finish the work.
+
+### Requests per operation
+
+LaunchDarkly rate limits per route, so it is worth knowing what each operation costs. Inviting members is a single request no matter how many are in the batch, which is the point of this resource. Removing members and changing their roles still cost one request each, because the API has no bulk delete and its bulk member-patch endpoint is Enterprise-only.
+
+| Operation | Requests |
+| --- | --- |
+| Invite any number of members, with their teams | 1 |
+| Refresh the batch | 1 |
+| Assign teams | 1 per team, not per member |
+| Take over existing members (`adopt_existing`) | 3, regardless of batch size |
+| Change roles, custom roles, or role attributes | 1 per changed member |
+| Remove members, or destroy the resource | 1 per member |
+
+If a request is rate limited the provider waits for the window the API reports and retries, so a large removal is slowed rather than failed. To keep a single apply small, split very large changes across applies.
 
 ~> **Warning:** Removing an entry from `members` deletes that member from your LaunchDarkly account, and destroying this resource deletes every member in the batch. `deletion_protection` (enabled by default) blocks destroys and whole-batch replacements until you disable it in a separate apply.
 
