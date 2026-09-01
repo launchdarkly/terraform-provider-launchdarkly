@@ -1,9 +1,10 @@
-# A large batch can outrun the provider's default 20 second http_timeout,
-# especially when it also assigns teams. Raise it when inviting tens of members
-# at once; if a request does time out, the members may already exist, and
-# re-applying with adopt_existing = true takes ownership of them.
+# Creating a batch is one members request plus one request per declared team.
+# 60 seconds gives large batches headroom over the default 20, and is long
+# enough that a slow request reports the service's real response rather than a
+# client-side timeout. If an apply fails part-way, the members may already
+# exist; re-applying with adopt_existing = true takes ownership of them.
 provider "launchdarkly" {
-  http_timeout = 180
+  http_timeout = 60
 }
 
 # Any team referenced in team_keys must exist before the members are invited.
@@ -14,8 +15,8 @@ resource "launchdarkly_team" "payments" {
   name = "Payments"
 }
 
-# Invites up to 50 members, with their team assignments, in a single API call.
-# The members map is keyed by lowercase email address.
+# Invites up to 50 members in a single API call, then assigns their teams with
+# one request per team. The members map is keyed by lowercase email address.
 resource "launchdarkly_team_members" "payments_team" {
   members = {
     "alice@example.com" = {

@@ -244,3 +244,31 @@ func TestIsFullReplacement(t *testing.T) {
 			"the one member with an ID is being removed, so this replaces everything managed")
 	})
 }
+
+func TestPatchableAttrsDiffer(t *testing.T) {
+	withTeams := func(role string, teams ...string) teamMembersEntryModel {
+		e := entry(role)
+		set, _ := types.SetValueFrom(ctxBackground(), types.StringType, teams)
+		e.TeamKeys = set
+		return e
+	}
+
+	t.Run("team-only difference is not patchable", func(t *testing.T) {
+		// Team membership is reconciled with grouped per-team requests. If a
+		// team-only difference triggered a member PATCH, adopting a 50-member
+		// batch whose teams are missing would cost 50 wasted requests.
+		a := withTeams("reader", "team-a", "team-b")
+		b := withTeams("reader")
+		assert.False(t, patchableAttrsDiffer(a, b))
+		assert.True(t, memberAttrsDiffer(a, b), "diff classification must still see the team change")
+	})
+
+	t.Run("role difference is patchable", func(t *testing.T) {
+		assert.True(t, patchableAttrsDiffer(entry("reader"), entry("writer")))
+	})
+
+	t.Run("identical entries differ in neither", func(t *testing.T) {
+		assert.False(t, patchableAttrsDiffer(entry("reader"), entry("reader")))
+		assert.False(t, memberAttrsDiffer(entry("reader"), entry("reader")))
+	})
+}

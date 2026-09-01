@@ -113,18 +113,18 @@ This resource batches member creation into one ` + "`POST /api/v2/members`" + ` 
 
 -> **Note:** Updates create new members before deleting removed ones, so swapping a full batch at exactly your seat limit fails on the create. Remove members in one apply and add in the next, or add seats.
 
--> **Note:** A large batch, especially one that also assigns teams, can take longer than the provider's default 20 second ` + "`http_timeout`" + `. Raise it on the provider when inviting tens of members at once: a 50 member batch with team assignments has been observed to need well over a minute. If the request does time out, LaunchDarkly may still have created the members even though Terraform recorded nothing; re-apply with ` + "`adopt_existing = true`" + ` to take ownership of them and finish the work.
+-> **Note:** Creating a batch costs one members request plus one request per declared team; team assignment is intentionally separate from the member invite so that no single request approaches the LaunchDarkly service's request deadline. Setting the provider's ` + "`http_timeout`" + ` to 60 is recommended for large batches: it gives headroom while staying long enough that a slow request surfaces the service's real response instead of a client-side timeout. If an apply fails part-way, LaunchDarkly may already have created the members even though Terraform recorded nothing; re-apply with ` + "`adopt_existing = true`" + ` to take ownership of them and finish the work.
 
 ### Requests per operation
 
-LaunchDarkly rate limits per route, so it is worth knowing what each operation costs. Inviting members is a single request no matter how many are in the batch, which is the point of this resource. Removing members and changing their roles still cost one request each, because the API has no bulk delete and its bulk member-patch endpoint is Enterprise-only.
+LaunchDarkly rate limits per route, so it is worth knowing what each operation costs. Inviting members is a single request no matter how many are in the batch, plus one request per declared team, which is the point of this resource. Removing members and changing their roles still cost one request each, because the API has no bulk delete and its bulk member-patch endpoint is Enterprise-only.
 
 | Operation | Requests |
 | --- | --- |
-| Invite any number of members, with their teams | 1 |
+| Invite any number of members | 1, plus 1 per declared team |
 | Refresh the batch | 1 |
 | Assign teams | 1 per team, not per member |
-| Take over existing members (` + "`adopt_existing`" + `) | 3, regardless of batch size |
+| Take over existing members (` + "`adopt_existing`" + `) | 3 plus team requests, regardless of batch size |
 | Change roles, custom roles, or role attributes | 1 per changed member |
 | Remove members, or destroy the resource | 1 per member |
 
@@ -314,6 +314,15 @@ func (r *TeamMembersResource) Create(ctx context.Context, req resource.CreateReq
 	}
 	applyResolvedIDs(plan.Members, resolved)
 
+	// Teams are assigned after the create POST, one grouped PATCH per team, so
+	// no single request approaches the service's request deadline. A failure
+	// here fails the apply before state is saved; re-applying with
+	// adopt_existing = true recovers the created members and their teams.
+	resp.Diagnostics.Append(r.assignDeclaredTeams(ctx, plan.Members, createdEmails(resolved))...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
 	if len(adopted) > 0 {
 		resp.Diagnostics.AddWarning(
 			"Adopted existing team members",
@@ -417,6 +426,10 @@ func (r *TeamMembersResource) Update(ctx context.Context, req resource.UpdateReq
 			return
 		}
 		applyResolvedIDs(plan.Members, resolved)
+		resp.Diagnostics.Append(r.assignDeclaredTeams(ctx, plan.Members, createdEmails(resolved))...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
 		if len(adopted) > 0 {
 			resp.Diagnostics.AddWarning(
 				"Adopted existing team members",

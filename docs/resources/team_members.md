@@ -8,15 +8,15 @@ description: |-
   -> Note: Manage any given member with either this resource or launchdarkly_team_member, never both. Likewise, if you assign teams here with team_keys, do not also manage those teams' membership with launchdarkly_team.member_ids — the two fight over the same association.
   -> Note: first_name and last_name are only used when a member is created. LaunchDarkly does not allow the provider to change a member's name afterwards; the member does that themselves.
   -> Note: Updates create new members before deleting removed ones, so swapping a full batch at exactly your seat limit fails on the create. Remove members in one apply and add in the next, or add seats.
-  -> Note: A large batch, especially one that also assigns teams, can take longer than the provider's default 20 second http_timeout. Raise it on the provider when inviting tens of members at once: a 50 member batch with team assignments has been observed to need well over a minute. If the request does time out, LaunchDarkly may still have created the members even though Terraform recorded nothing; re-apply with adopt_existing = true to take ownership of them and finish the work.
+  -> Note: Creating a batch costs one members request plus one request per declared team; team assignment is intentionally separate from the member invite so that no single request approaches the LaunchDarkly service's request deadline. Setting the provider's http_timeout to 60 is recommended for large batches: it gives headroom while staying long enough that a slow request surfaces the service's real response instead of a client-side timeout. If an apply fails part-way, LaunchDarkly may already have created the members even though Terraform recorded nothing; re-apply with adopt_existing = true to take ownership of them and finish the work.
   Requests per operation
-  LaunchDarkly rate limits per route, so it is worth knowing what each operation costs. Inviting members is a single request no matter how many are in the batch, which is the point of this resource. Removing members and changing their roles still cost one request each, because the API has no bulk delete and its bulk member-patch endpoint is Enterprise-only.
+  LaunchDarkly rate limits per route, so it is worth knowing what each operation costs. Inviting members is a single request no matter how many are in the batch, plus one request per declared team, which is the point of this resource. Removing members and changing their roles still cost one request each, because the API has no bulk delete and its bulk member-patch endpoint is Enterprise-only.
   | Operation | Requests |
   | --- | --- |
-  | Invite any number of members, with their teams | 1 |
+  | Invite any number of members | 1, plus 1 per declared team |
   | Refresh the batch | 1 |
   | Assign teams | 1 per team, not per member |
-  | Take over existing members (`adopt_existing`) | 3, regardless of batch size |
+  | Take over existing members (`adopt_existing`) | 3 plus team requests, regardless of batch size |
   | Change roles, custom roles, or role attributes | 1 per changed member |
   | Remove members, or destroy the resource | 1 per member |
   If a request is rate limited the provider waits for the window the API reports and retries, so a large removal is slowed rather than failed. To keep a single apply small, split very large changes across applies.
@@ -35,18 +35,18 @@ This resource batches member creation into one `POST /api/v2/members` request in
 
 -> **Note:** Updates create new members before deleting removed ones, so swapping a full batch at exactly your seat limit fails on the create. Remove members in one apply and add in the next, or add seats.
 
--> **Note:** A large batch, especially one that also assigns teams, can take longer than the provider's default 20 second `http_timeout`. Raise it on the provider when inviting tens of members at once: a 50 member batch with team assignments has been observed to need well over a minute. If the request does time out, LaunchDarkly may still have created the members even though Terraform recorded nothing; re-apply with `adopt_existing = true` to take ownership of them and finish the work.
+-> **Note:** Creating a batch costs one members request plus one request per declared team; team assignment is intentionally separate from the member invite so that no single request approaches the LaunchDarkly service's request deadline. Setting the provider's `http_timeout` to 60 is recommended for large batches: it gives headroom while staying long enough that a slow request surfaces the service's real response instead of a client-side timeout. If an apply fails part-way, LaunchDarkly may already have created the members even though Terraform recorded nothing; re-apply with `adopt_existing = true` to take ownership of them and finish the work.
 
 ### Requests per operation
 
-LaunchDarkly rate limits per route, so it is worth knowing what each operation costs. Inviting members is a single request no matter how many are in the batch, which is the point of this resource. Removing members and changing their roles still cost one request each, because the API has no bulk delete and its bulk member-patch endpoint is Enterprise-only.
+LaunchDarkly rate limits per route, so it is worth knowing what each operation costs. Inviting members is a single request no matter how many are in the batch, plus one request per declared team, which is the point of this resource. Removing members and changing their roles still cost one request each, because the API has no bulk delete and its bulk member-patch endpoint is Enterprise-only.
 
 | Operation | Requests |
 | --- | --- |
-| Invite any number of members, with their teams | 1 |
+| Invite any number of members | 1, plus 1 per declared team |
 | Refresh the batch | 1 |
 | Assign teams | 1 per team, not per member |
-| Take over existing members (`adopt_existing`) | 3, regardless of batch size |
+| Take over existing members (`adopt_existing`) | 3 plus team requests, regardless of batch size |
 | Change roles, custom roles, or role attributes | 1 per changed member |
 | Remove members, or destroy the resource | 1 per member |
 
@@ -57,12 +57,13 @@ If a request is rate limited the provider waits for the window the API reports a
 ## Example Usage
 
 ```terraform
-# A large batch can outrun the provider's default 20 second http_timeout,
-# especially when it also assigns teams. Raise it when inviting tens of members
-# at once; if a request does time out, the members may already exist, and
-# re-applying with adopt_existing = true takes ownership of them.
+# Creating a batch is one members request plus one request per declared team.
+# 60 seconds gives large batches headroom over the default 20, and is long
+# enough that a slow request reports the service's real response rather than a
+# client-side timeout. If an apply fails part-way, the members may already
+# exist; re-applying with adopt_existing = true takes ownership of them.
 provider "launchdarkly" {
-  http_timeout = 180
+  http_timeout = 60
 }
 
 # Any team referenced in team_keys must exist before the members are invited.
@@ -73,8 +74,8 @@ resource "launchdarkly_team" "payments" {
   name = "Payments"
 }
 
-# Invites up to 50 members, with their team assignments, in a single API call.
-# The members map is keyed by lowercase email address.
+# Invites up to 50 members in a single API call, then assigns their teams with
+# one request per team. The members map is keyed by lowercase email address.
 resource "launchdarkly_team_members" "payments_team" {
   members = {
     "alice@example.com" = {

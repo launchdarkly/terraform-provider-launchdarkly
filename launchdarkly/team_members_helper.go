@@ -74,9 +74,14 @@ type resolvedMember struct {
 	Adopted bool
 }
 
-// newMemberFormFromEntry builds the create payload for one batch entry. It
-// mirrors launchdarkly_team_member's form construction and adds team keys,
-// which is what lets member creation and team assignment share one request.
+// newMemberFormFromEntry builds the create payload for one batch entry,
+// mirroring launchdarkly_team_member's form construction.
+//
+// Team keys are deliberately NOT sent on the form. Inline teamKeys makes the
+// API assign teams one member at a time inside the create request, and a large
+// batch exceeds the service's request deadline (~24 seconds), killing the
+// request after members were already persisted. Teams are assigned afterwards
+// with one bounded PATCH per team instead (assignDeclaredTeams).
 func newMemberFormFromEntry(ctx context.Context, email string, m teamMembersEntryModel) (ldapi.NewMemberForm, diag.Diagnostics) {
 	var diags diag.Diagnostics
 	form := ldapi.NewMemberForm{Email: email}
@@ -97,10 +102,6 @@ func newMemberFormFromEntry(ctx context.Context, email string, m teamMembersEntr
 	customRoles, d := stringSliceFromSet(ctx, m.CustomRoles)
 	diags.Append(d...)
 	form.CustomRoles = customRoles
-
-	teamKeys, d := stringSliceFromSet(ctx, m.TeamKeys)
-	diags.Append(d...)
-	form.TeamKeys = teamKeys
 
 	roleAttrs, d := frameworkRoleAttributesFromMap(ctx, m.RoleAttributes)
 	diags.Append(d...)
@@ -453,14 +454,25 @@ func newTeamMembersBatchID() string {
 	return uuid.New().String()
 }
 
-// memberAttrsDiffer reports whether the attributes this resource can actually
-// change differ between two entries. First and last name are excluded because
-// LaunchDarkly does not allow the provider to update them after creation.
-func memberAttrsDiffer(a, b teamMembersEntryModel) bool {
+// patchableAttrsDiffer reports whether the attributes a per-member PATCH can
+// change differ between two entries. Team keys are deliberately excluded:
+// team membership is reconciled with grouped per-team requests, so a team-only
+// difference must never trigger a member PATCH — at batch scale that turns
+// into one wasted request per member.
+func patchableAttrsDiffer(a, b teamMembersEntryModel) bool {
 	return !a.Role.Equal(b.Role) ||
 		!a.CustomRoles.Equal(b.CustomRoles) ||
-		!a.TeamKeys.Equal(b.TeamKeys) ||
 		!a.RoleAttributes.Equal(b.RoleAttributes)
+}
+
+// memberAttrsDiffer reports whether the attributes this resource can actually
+// change differ between two entries, including team membership. First and last
+// name are excluded because LaunchDarkly does not allow the provider to update
+// them after creation. Used to classify entries during diffing; the narrower
+// patchableAttrsDiffer decides whether a member PATCH is actually sent.
+func memberAttrsDiffer(a, b teamMembersEntryModel) bool {
+	return patchableAttrsDiffer(a, b) ||
+		!a.TeamKeys.Equal(b.TeamKeys)
 }
 
 // patchMemberAttributes brings one member's role, custom roles, and role
@@ -543,6 +555,54 @@ func (r *TeamMembersResource) applyTeamMembershipDeltas(deltas map[string]*teamM
 			return diags
 		}
 	}
+	return diags
+}
+
+// createdEmails lists the emails that were created (not adopted) in a resolved
+// batch, sorted for deterministic request ordering.
+func createdEmails(resolved map[string]resolvedMember) []string {
+	out := make([]string, 0, len(resolved))
+	for email, rm := range resolved {
+		if !rm.Adopted {
+			out = append(out, email)
+		}
+	}
+	sort.Strings(out)
+	return out
+}
+
+// assignDeclaredTeams adds newly created members to their declared teams with
+// one grouped PATCH per team. This is the second half of Create: the POST
+// carries no teamKeys (see newMemberFormFromEntry), so every request stays
+// small enough to finish well under the service's ~24s request deadline, and a
+// failure is scoped to one team rather than part-way through a per-member loop
+// inside the create request. Adopted members are handled separately by
+// reconcileAdoptedMembers, which diffs against their live team membership.
+func (r *TeamMembersResource) assignDeclaredTeams(
+	ctx context.Context,
+	members map[string]teamMembersEntryModel,
+	emails []string,
+) diag.Diagnostics {
+	var diags diag.Diagnostics
+	deltas := map[string]*teamMembershipDelta{}
+	for _, email := range emails {
+		entry, found := members[email]
+		if !found || entry.ID.IsNull() || entry.ID.IsUnknown() || entry.ID.ValueString() == "" {
+			continue
+		}
+		keys, d := stringSliceFromSet(ctx, entry.TeamKeys)
+		diags.Append(d...)
+		if diags.HasError() {
+			return diags
+		}
+		for _, key := range keys {
+			if deltas[key] == nil {
+				deltas[key] = &teamMembershipDelta{}
+			}
+			deltas[key].add = append(deltas[key].add, entry.ID.ValueString())
+		}
+	}
+	diags.Append(r.applyTeamMembershipDeltas(deltas)...)
 	return diags
 }
 
@@ -634,7 +694,7 @@ func (r *TeamMembersResource) reconcileAdoptedMembers(
 		priorForTeams := current
 		priorForTeams.TeamKeys = liveTeamSet
 
-		if memberAttrsDiffer(current, desired) {
+		if patchableAttrsDiffer(current, desired) {
 			diags.Append(r.patchMemberAttributes(ctx, member.Id, desired, current)...)
 			if diags.HasError() {
 				return diags
@@ -742,9 +802,7 @@ func (r *TeamMembersResource) patchChangedMembers(
 			)
 			return diags
 		}
-		if !desired.Role.Equal(prior.Role) ||
-			!desired.CustomRoles.Equal(prior.CustomRoles) ||
-			!desired.RoleAttributes.Equal(prior.RoleAttributes) {
+		if patchableAttrsDiffer(desired, prior) {
 			diags.Append(r.patchMemberAttributes(ctx, memberID, desired, prior)...)
 			if diags.HasError() {
 				return diags

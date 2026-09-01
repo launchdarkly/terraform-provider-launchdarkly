@@ -120,6 +120,12 @@ func newFakeLD(t *testing.T) (*apiCallRecorder, *Client) {
 			_ = json.NewDecoder(r.Body).Decode(&forms)
 			items := make([]map[string]interface{}, 0, len(forms))
 			for _, f := range forms {
+				if _, hasTeams := f["teamKeys"]; hasTeams {
+					// Inline teamKeys triggers a per-member team-assignment
+					// loop inside the request, which large batches cannot
+					// finish before the service's ~24s request deadline.
+					rec.record("POSTED-TEAMKEYS", "/api/v2/members")
+				}
 				nextID++
 				items = append(items, fakeMember(fmt.Sprintf("id%04d", nextID), fmt.Sprint(f["email"])))
 			}
@@ -202,6 +208,42 @@ func TestAPICallCount_CreateIsOneRequest(t *testing.T) {
 			posts := rec.countMatching("POST /api/v2/members")
 			assert.Equal(t, 1, posts,
 				"a batch of %d must be one POST, not one per member; calls=%v", size, rec.all())
+			assert.Zero(t, rec.countMatching("POSTED-TEAMKEYS"),
+				"the create POST must never carry teamKeys; calls=%v", rec.all())
+		})
+	}
+}
+
+func TestAPICallCount_CreateWithTeamsIsOnePlusOnePerTeam(t *testing.T) {
+	// The full create contract: 1 POST (no teamKeys) + 1 grouped PATCH per
+	// declared team. Team assignment is decoupled from the POST because inline
+	// teamKeys runs a per-member assignment loop inside the request, which a
+	// large batch cannot finish before the service's ~24s request deadline.
+	for _, tc := range []struct {
+		size  int
+		teams []string
+	}{
+		{size: 10, teams: []string{"team-a"}},
+		{size: 50, teams: []string{"team-a", "team-b", "team-c"}},
+	} {
+		t.Run(fmt.Sprintf("%d_members_%d_teams", tc.size, len(tc.teams)), func(t *testing.T) {
+			rec, client := newFakeLD(t)
+			r := &TeamMembersResource{client: client}
+
+			members := batchOf(tc.size, "reader", tc.teams...)
+			resolved, adopted, diags := r.createMemberBatch(ctxBackground(), members, false)
+			require.False(t, diags.HasError(), "diags: %v", diags)
+			require.Empty(t, adopted)
+			applyResolvedIDs(members, resolved)
+			diags = r.assignDeclaredTeams(ctxBackground(), members, createdEmails(resolved))
+			require.False(t, diags.HasError(), "diags: %v", diags)
+
+			assert.Equal(t, 1, rec.countMatching("POST /api/v2/members"),
+				"create must be exactly one POST; calls=%v", rec.all())
+			assert.Zero(t, rec.countMatching("POSTED-TEAMKEYS"),
+				"the create POST must never carry teamKeys; calls=%v", rec.all())
+			assert.Equal(t, len(tc.teams), rec.countMatching("PATCH /api/v2/teams/{key}"),
+				"team assignment must be one grouped PATCH per team; calls=%v", rec.all())
 		})
 	}
 }
