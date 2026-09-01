@@ -214,6 +214,15 @@ func TestAPICallCount_CreateIsOneRequest(t *testing.T) {
 	}
 }
 
+// manyTeamKeys builds n distinct team keys for fan-out cases.
+func manyTeamKeys(n int) []string {
+	out := make([]string, 0, n)
+	for i := 0; i < n; i++ {
+		out = append(out, fmt.Sprintf("team-%02d", i))
+	}
+	return out
+}
+
 func TestAPICallCount_CreateWithTeamsIsOnePlusOnePerTeam(t *testing.T) {
 	// The full create contract: 1 POST (no teamKeys) + 1 grouped PATCH per
 	// declared team. Team assignment is decoupled from the POST because inline
@@ -225,6 +234,9 @@ func TestAPICallCount_CreateWithTeamsIsOnePlusOnePerTeam(t *testing.T) {
 	}{
 		{size: 10, teams: []string{"team-a"}},
 		{size: 50, teams: []string{"team-a", "team-b", "team-c"}},
+		// Dozens of teams per member: heavy team fan-out must stay one
+		// grouped request per team, never per member-team pair.
+		{size: 50, teams: manyTeamKeys(35)},
 	} {
 		t.Run(fmt.Sprintf("%d_members_%d_teams", tc.size, len(tc.teams)), func(t *testing.T) {
 			rec, client := newFakeLD(t)

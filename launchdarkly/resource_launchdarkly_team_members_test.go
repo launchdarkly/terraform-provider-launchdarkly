@@ -500,3 +500,64 @@ func testAccCheckTeamMembersDestroy(s *terraform.State) error {
 	}
 	return nil
 }
+
+// TestAccTeamMembers_ManyTeamsPerMember covers heavy team fan-out: members
+// carrying a dozen team assignments each, the shape large enterprise accounts
+// use (app x tier teams, each granting a role bundle). Team assignment must
+// stay one grouped request per team and converge to a stable plan.
+func TestAccTeamMembers_ManyTeamsPerMember(t *testing.T) {
+	name := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	teamPrefix := strings.ToLower(acctest.RandStringFromCharSet(10, acctest.CharSetAlpha))
+	resourceName := "launchdarkly_team_members.fanout"
+
+	const teamCount = 12
+	teamBlocks := make([]string, 0, teamCount)
+	teamRefs := make([]string, 0, teamCount)
+	for i := 0; i < teamCount; i++ {
+		teamBlocks = append(teamBlocks, fmt.Sprintf(`
+resource "launchdarkly_team" "fanout_%d" {
+	key  = "%s-%d"
+	name = "Fanout %d"
+}`, i, teamPrefix, i, i))
+		teamRefs = append(teamRefs, fmt.Sprintf("launchdarkly_team.fanout_%d.key", i))
+	}
+	allTeams := strings.Join(teamRefs, ", ")
+
+	memberOne := fmt.Sprintf("%s+fanone@launchdarkly.com", name)
+	memberTwo := fmt.Sprintf("%s+fantwo@launchdarkly.com", name)
+	memberThree := fmt.Sprintf("%s+fanthree@launchdarkly.com", name)
+
+	config := fmt.Sprintf(`
+%s
+
+resource "launchdarkly_team_members" "fanout" {
+	members = {
+		"%s" = { role = "reader", team_keys = [%s] }
+		"%s" = { role = "reader", team_keys = [%s] }
+		"%s" = { role = "writer", team_keys = [%s] }
+	}
+	deletion_protection = false
+}`, strings.Join(teamBlocks, "\n"), memberOne, allTeams, memberTwo, allTeams, memberThree, allTeams)
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckTeamMembersDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config: config,
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(resourceName, "members.%", "3"),
+					resource.TestCheckResourceAttr(resourceName, fmt.Sprintf("members.%s.team_keys.#", memberOne), fmt.Sprint(teamCount)),
+					resource.TestCheckResourceAttr(resourceName, fmt.Sprintf("members.%s.team_keys.#", memberThree), fmt.Sprint(teamCount)),
+					resource.TestCheckResourceAttrSet(resourceName, fmt.Sprintf("members.%s.id", memberTwo)),
+				),
+			},
+			{
+				// The fan-out must be stable: a second plan sees no changes.
+				Config:   config,
+				PlanOnly: true,
+			},
+		},
+	})
+}
