@@ -172,6 +172,16 @@ func newFakeLD(t *testing.T) (*apiCallRecorder, *Client) {
 		})
 	})
 
+	// GET /api/v2/roles/{keyOrID} — custom role lookups (ID<->key resolution).
+	mux.HandleFunc("/api/v2/roles/", func(w http.ResponseWriter, r *http.Request) {
+		rec.record(r.Method, "/api/v2/roles/{key}")
+		param := strings.TrimPrefix(r.URL.Path, "/api/v2/roles/")
+		writeJSON(w, http.StatusOK, map[string]interface{}{
+			"_id": "aaaaaaaaaaaaaaaaaaaaaaaa", "_links": map[string]interface{}{},
+			"key": param, "name": param, "policy": []interface{}{},
+		})
+	})
+
 	rec.server = httptest.NewServer(mux)
 	t.Cleanup(rec.server.Close)
 
@@ -434,4 +444,33 @@ func TestAPICallCount_AttributeChangesArePerMember(t *testing.T) {
 		"role changes cost one request per member; calls=%v", rec.all())
 	assert.Zero(t, rec.countMatching("PATCH /api/v2/teams/{key}"),
 		"an attribute-only change must not touch teams")
+}
+
+func TestAPICallCount_CustomRoleLookupsAreCachedPerOperation(t *testing.T) {
+	// The API reports role IDs while configuration uses keys, so writes need
+	// key->ID resolution. A batch usually shares a handful of roles: promoting
+	// 10 members to the same custom role must cost ONE role lookup, not ten.
+	rec, client := newFakeLD(t)
+	r := &TeamMembersResource{client: client}
+
+	withRole := func(id string) teamMembersEntryModel {
+		e := entryWithID("reader", id)
+		set, _ := types.SetValueFrom(ctxBackground(), types.StringType, []string{"shared-role"})
+		e.CustomRoles = set
+		return e
+	}
+	state := map[string]teamMembersEntryModel{}
+	changed := map[string]teamMembersEntryModel{}
+	for i := 0; i < 10; i++ {
+		email := fmt.Sprintf("u%02d@example.com", i)
+		state[email] = entryWithID("reader", fmt.Sprintf("id%04d", i+1))
+		changed[email] = withRole(fmt.Sprintf("id%04d", i+1))
+	}
+
+	diags := r.patchChangedMembers(ctxBackground(), changed, state)
+	require.False(t, diags.HasError(), "diags: %v", diags)
+
+	assert.Equal(t, 1, rec.countMatching("GET /api/v2/roles/{key}"),
+		"10 members sharing one custom role must cost one role lookup; calls=%v", rec.all())
+	assert.Equal(t, 10, rec.countMatching("PATCH /api/v2/members/{id}"))
 }

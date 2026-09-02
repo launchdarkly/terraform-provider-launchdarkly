@@ -320,10 +320,17 @@ func (r *TeamMembersResource) Create(ctx context.Context, req resource.CreateReq
 
 	// Teams are assigned after the create POST, one grouped PATCH per team, so
 	// no single request approaches the service's request deadline. A failure
-	// here fails the apply before state is saved; re-applying with
-	// adopt_existing = true recovers the created members and their teams.
+	// here fails the apply before state is saved; partial state is deliberately
+	// NOT written — the framework would taint the resource, and a tainted
+	// batch plans destroy-and-recreate of real member accounts. The re-apply
+	// path below converges without deleting anyone.
 	resp.Diagnostics.Append(r.assignDeclaredTeams(ctx, plan.Members, createdEmails(resolved))...)
 	if resp.Diagnostics.HasError() {
+		resp.Diagnostics.AddWarning(
+			"Members were invited but the apply failed before Terraform could record them",
+			"The members in this batch may already exist in LaunchDarkly without their team assignments. "+
+				"Re-apply with adopt_existing = true to take ownership of them and finish the team assignments.",
+		)
 		return
 	}
 
@@ -364,7 +371,7 @@ func (r *TeamMembersResource) Read(ctx context.Context, req resource.ReadRequest
 		resp.Diagnostics.AddError("Failed to read team members", err.Error())
 		return
 	}
-	roles := newCustomRoleKeyResolver(r.client)
+	roles := newCustomRoleResolver(r.client)
 	for email, entry := range state.Members {
 		member, found := live[email]
 		if !found {
@@ -432,6 +439,11 @@ func (r *TeamMembersResource) Update(ctx context.Context, req resource.UpdateReq
 		applyResolvedIDs(plan.Members, resolved)
 		resp.Diagnostics.Append(r.assignDeclaredTeams(ctx, plan.Members, createdEmails(resolved))...)
 		if resp.Diagnostics.HasError() {
+			resp.Diagnostics.AddWarning(
+				"Members were invited but the apply failed before Terraform could record them",
+				"The added members may already exist in LaunchDarkly without their team assignments. "+
+					"Re-apply with adopt_existing = true to take ownership of them and finish the team assignments.",
+			)
 			return
 		}
 		if len(adopted) > 0 {
@@ -496,22 +508,9 @@ func (r *TeamMembersResource) Delete(ctx context.Context, req resource.DeleteReq
 }
 
 func (r *TeamMembersResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
-	rawIDs := strings.Split(req.ID, ",")
-	ids := make([]string, 0, len(rawIDs))
-	for _, id := range rawIDs {
-		if trimmed := strings.TrimSpace(id); trimmed != "" {
-			ids = append(ids, trimmed)
-		}
-	}
-	if len(ids) == 0 || len(ids) > teamMembersMaxBatchSize {
-		resp.Diagnostics.AddError(
-			"Invalid import ID",
-			fmt.Sprintf(
-				"Expected between 1 and %d comma-separated member IDs, for example "+
-					"'5f0cd446a77cba0b4c5644a7,5f0cd446a77cba0b4c5644a8'.",
-				teamMembersMaxBatchSize,
-			),
-		)
+	ids, err := parseImportMemberIDs(req.ID)
+	if err != nil {
+		resp.Diagnostics.AddError("Invalid import ID", err.Error())
 		return
 	}
 
@@ -528,7 +527,7 @@ func (r *TeamMembersResource) ImportState(ctx context.Context, req resource.Impo
 		return
 	}
 
-	roles := newCustomRoleKeyResolver(r.client)
+	roles := newCustomRoleResolver(r.client)
 	members := make(map[string]teamMembersEntryModel, len(live))
 	for email, member := range live {
 		// Import records only what this resource reconciles: identity, role,
@@ -606,16 +605,17 @@ func (r *TeamMembersResource) ModifyPlan(ctx context.Context, req resource.Modif
 	}
 
 	// On an update, entries the prior state does not know about need their
-	// computed id planned as unknown rather than null.
-	var priorMembers map[string]teamMembersEntryModel
+	// computed id planned as unknown rather than null. The decoded prior
+	// state is reused by the full-replacement guard below.
+	var prior *teamMembersResourceModel
 	if !req.State.Raw.IsNull() {
 		var state teamMembersResourceModel
 		resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
 		if resp.Diagnostics.HasError() {
 			return
 		}
-		priorMembers = state.Members
-		pinned, d = markNewEntriesIDUnknown(teamMembersEntryObjectType(), pinned, priorMembers)
+		prior = &state
+		pinned, d = markNewEntriesIDUnknown(teamMembersEntryObjectType(), pinned, state.Members)
 		resp.Diagnostics.Append(d...)
 		if resp.Diagnostics.HasError() {
 			return
@@ -630,18 +630,13 @@ func (r *TeamMembersResource) ModifyPlan(ctx context.Context, req resource.Modif
 	}
 
 	// Update: refuse a whole-batch replacement while protection is on.
-	if priorMembers == nil {
+	if prior == nil {
 		return
 	}
-	var state teamMembersResourceModel
-	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
-	if resp.Diagnostics.HasError() {
+	if !prior.DeletionProtection.ValueBool() || plan.Members == nil {
 		return
 	}
-	if !state.DeletionProtection.ValueBool() || plan.Members == nil {
-		return
-	}
-	if isFullReplacement(state.Members, diffMemberBatches(state.Members, plan.Members)) {
+	if isFullReplacement(prior.Members, diffMemberBatches(prior.Members, plan.Members)) {
 		resp.Diagnostics.AddError(
 			"Refusing to replace every member in the batch",
 			"This change removes every member this resource manages, which deletes those members from your "+

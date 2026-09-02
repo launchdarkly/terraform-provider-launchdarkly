@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"regexp"
 	"sort"
 	"strings"
 
@@ -137,6 +138,35 @@ func formEmails(forms []ldapi.NewMemberForm) []string {
 	}
 	sort.Strings(out)
 	return out
+}
+
+// memberIDPattern matches a LaunchDarkly member ID (a 24-character hex
+// object ID). Validating import IDs up front turns a pasted email or team key
+// into an immediate, named error instead of a confusing count-mismatch from
+// the filtered lookup.
+var memberIDPattern = regexp.MustCompile(`^[a-f0-9]{24}$`)
+
+// parseImportMemberIDs splits and validates a comma-separated import ID.
+func parseImportMemberIDs(raw string) ([]string, error) {
+	ids := make([]string, 0)
+	for _, id := range strings.Split(raw, ",") {
+		trimmed := strings.TrimSpace(id)
+		if trimmed == "" {
+			continue
+		}
+		if !memberIDPattern.MatchString(trimmed) {
+			return nil, fmt.Errorf(
+				"%q is not a member ID (expected a 24-character hex ID such as 5f0cd446a77cba0b4c5644a7); "+
+					"the import ID is a comma-separated list of member IDs", trimmed)
+		}
+		ids = append(ids, trimmed)
+	}
+	if len(ids) == 0 || len(ids) > teamMembersMaxBatchSize {
+		return nil, fmt.Errorf(
+			"expected between 1 and %d comma-separated member IDs, for example "+
+				"'5f0cd446a77cba0b4c5644a7,5f0cd446a77cba0b4c5644a8'", teamMembersMaxBatchSize)
+	}
+	return ids, nil
 }
 
 // lookupMemberIDsByEmail resolves emails to member IDs with a single filtered
@@ -308,6 +338,10 @@ func memberIDsFromModel(members map[string]teamMembersEntryModel) []string {
 // request rather than one request per member: a 50-member batch refreshing 50
 // times would recreate the very rate-limit problem this resource exists to
 // avoid. Members that no longer exist are simply absent from the result.
+//
+// Note the returned map is keyed by LOWERCASE EMAIL, not by the IDs queried:
+// email is this resource's natural key, and every caller joins the result
+// back onto the email-keyed members map.
 func (r *TeamMembersResource) fetchMembersByID(ids []string) (map[string]ldapi.Member, error) {
 	if len(ids) == 0 {
 		return map[string]ldapi.Member{}, nil
@@ -325,37 +359,76 @@ func (r *TeamMembersResource) fetchMembersByID(ids []string) (map[string]ldapi.M
 	return byEmail, nil
 }
 
-// customRoleKeyResolver caches custom-role ID/key lookups for the lifetime of
+// customRoleResolver caches custom-role ID<->key lookups for the lifetime of
 // one CRUD call. The API reports role IDs while configuration uses keys, and a
-// batch usually reuses the same handful of roles, so resolving each distinct
-// ID once keeps a 50-member refresh to a few role requests.
-type customRoleKeyResolver struct {
-	client *Client
-	cache  map[string]string
+// batch usually reuses the same handful of roles, so each distinct role is
+// resolved at most once per operation in either direction. Uncached values are
+// collected and resolved in one helper call per direction, so a future bulk
+// endpoint adoption is a single-site change.
+type customRoleResolver struct {
+	client  *Client
+	idToKey map[string]string
+	keyToID map[string]string
 }
 
-func newCustomRoleKeyResolver(client *Client) *customRoleKeyResolver {
-	return &customRoleKeyResolver{client: client, cache: map[string]string{}}
+func newCustomRoleResolver(client *Client) *customRoleResolver {
+	return &customRoleResolver{client: client, idToKey: map[string]string{}, keyToID: map[string]string{}}
 }
 
-func (c *customRoleKeyResolver) keysFor(ids []string) ([]string, error) {
-	keys := make([]string, 0, len(ids))
+// keysFor resolves role IDs to keys, preserving input order.
+func (c *customRoleResolver) keysFor(ids []string) ([]string, error) {
+	uncached := make([]string, 0, len(ids))
 	for _, id := range ids {
-		if key, found := c.cache[id]; found {
-			keys = append(keys, key)
-			continue
+		if _, found := c.idToKey[id]; !found {
+			uncached = append(uncached, id)
 		}
-		resolved, err := customRoleIDsToKeys(c.client, []string{id})
+	}
+	if len(uncached) > 0 {
+		resolved, err := customRoleIDsToKeys(c.client, uncached)
 		if err != nil {
 			return nil, err
 		}
-		if len(resolved) != 1 {
-			return nil, fmt.Errorf("failed to resolve custom role key for ID %q", id)
+		if len(resolved) != len(uncached) {
+			return nil, fmt.Errorf("expected %d custom role keys, got %d", len(uncached), len(resolved))
 		}
-		c.cache[id] = resolved[0]
-		keys = append(keys, resolved[0])
+		for i, id := range uncached {
+			c.idToKey[id] = resolved[i]
+			c.keyToID[resolved[i]] = id
+		}
+	}
+	keys := make([]string, 0, len(ids))
+	for _, id := range ids {
+		keys = append(keys, c.idToKey[id])
 	}
 	return keys, nil
+}
+
+// idsFor resolves role keys to IDs, preserving input order.
+func (c *customRoleResolver) idsFor(keys []string) ([]string, error) {
+	uncached := make([]string, 0, len(keys))
+	for _, key := range keys {
+		if _, found := c.keyToID[key]; !found {
+			uncached = append(uncached, key)
+		}
+	}
+	if len(uncached) > 0 {
+		resolved, err := customRoleKeysToIDs(c.client, uncached)
+		if err != nil {
+			return nil, err
+		}
+		if len(resolved) != len(uncached) {
+			return nil, fmt.Errorf("expected %d custom role IDs, got %d", len(uncached), len(resolved))
+		}
+		for i, key := range uncached {
+			c.keyToID[key] = resolved[i]
+			c.idToKey[resolved[i]] = key
+		}
+	}
+	ids := make([]string, 0, len(keys))
+	for _, key := range keys {
+		ids = append(ids, c.keyToID[key])
+	}
+	return ids, nil
 }
 
 // refreshEntryFromMember maps live API state onto one batch entry.
@@ -369,7 +442,7 @@ func refreshEntryFromMember(
 	ctx context.Context,
 	entry *teamMembersEntryModel,
 	member *ldapi.Member,
-	roles *customRoleKeyResolver,
+	roles *customRoleResolver,
 	diags *diag.Diagnostics,
 ) {
 	entry.ID = types.StringValue(member.Id)
@@ -423,7 +496,7 @@ func (r *TeamMembersResource) hydrateMembers(ctx context.Context, model *teamMem
 		diags.AddError("Failed to read back team members", err.Error())
 		return diags
 	}
-	roles := newCustomRoleKeyResolver(r.client)
+	roles := newCustomRoleResolver(r.client)
 	missing := make([]string, 0)
 	for email, entry := range model.Members {
 		member, found := live[email]
@@ -477,12 +550,15 @@ func memberAttrsDiffer(a, b teamMembersEntryModel) bool {
 
 // patchMemberAttributes brings one member's role, custom roles, and role
 // attributes in line with the configuration, mirroring how
-// launchdarkly_team_member builds its patch.
+// launchdarkly_team_member builds its patch. Custom-role key->ID lookups go
+// through the shared per-operation resolver so a batch of members sharing a
+// role costs one lookup, not one per member.
 func (r *TeamMembersResource) patchMemberAttributes(
 	ctx context.Context,
 	memberID string,
 	desired teamMembersEntryModel,
 	prior teamMembersEntryModel,
+	roles *customRoleResolver,
 ) diag.Diagnostics {
 	var diags diag.Diagnostics
 
@@ -492,7 +568,7 @@ func (r *TeamMembersResource) patchMemberAttributes(
 	if diags.HasError() {
 		return diags
 	}
-	customRoleIDs, err := customRoleKeysToIDs(r.client, customRoleKeys)
+	customRoleIDs, err := roles.idsFor(customRoleKeys)
 	if err != nil {
 		diags.AddError("Failed to look up custom role IDs", err.Error())
 		return diags
@@ -662,7 +738,7 @@ func (r *TeamMembersResource) reconcileAdoptedMembers(
 		return diags
 	}
 
-	roles := newCustomRoleKeyResolver(r.client)
+	roles := newCustomRoleResolver(r.client)
 	deltas := map[string]*teamMembershipDelta{}
 	for _, email := range adopted {
 		desired, found := members[email]
@@ -695,7 +771,7 @@ func (r *TeamMembersResource) reconcileAdoptedMembers(
 		priorForTeams.TeamKeys = liveTeamSet
 
 		if patchableAttrsDiffer(current, desired) {
-			diags.Append(r.patchMemberAttributes(ctx, member.Id, desired, current)...)
+			diags.Append(r.patchMemberAttributes(ctx, member.Id, desired, current, roles)...)
 			if diags.HasError() {
 				return diags
 			}
@@ -791,6 +867,7 @@ func (r *TeamMembersResource) patchChangedMembers(
 
 	emails := sortedMemberEmails(changed)
 	deltas := map[string]*teamMembershipDelta{}
+	roles := newCustomRoleResolver(r.client)
 	for _, email := range emails {
 		desired := changed[email]
 		prior := state[email]
@@ -803,7 +880,7 @@ func (r *TeamMembersResource) patchChangedMembers(
 			return diags
 		}
 		if patchableAttrsDiffer(desired, prior) {
-			diags.Append(r.patchMemberAttributes(ctx, memberID, desired, prior)...)
+			diags.Append(r.patchMemberAttributes(ctx, memberID, desired, prior, roles)...)
 			if diags.HasError() {
 				return diags
 			}
