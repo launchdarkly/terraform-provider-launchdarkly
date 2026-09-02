@@ -5,6 +5,7 @@ subcategory: ""
 description: |-
   Provides a LaunchDarkly team members resource for inviting up to 50 members, with their team assignments, in a single API call.
   This resource batches member creation into one POST /api/v2/members request instead of one request per member, which avoids the member-write rate limits that per-member resources hit on large onboardings. The members map is keyed by lowercase email.
+  -> Note: You can only manage members with "admin" level access tokens: a Writer token is denied createMember and team management (403). Use an Admin token, or a custom role granting member creation and updateTeamMembers on the declared teams. To learn more, read Managing Teams https://launchdarkly.com/docs/home/account/manage-teams.
   -> Note: Manage any given member with either this resource or launchdarkly_team_member, never both. Likewise, if you assign teams here with team_keys, do not also manage those teams' membership with launchdarkly_team.member_ids — the two fight over the same association.
   -> Note: first_name and last_name are only used when a member is created. LaunchDarkly does not allow the provider to change a member's name afterwards; the member does that themselves.
   -> Note: Updates create new members before deleting removed ones, so swapping a full batch at exactly your seat limit fails on the create. Remove members in one apply and add in the next, or add seats.
@@ -29,6 +30,8 @@ description: |-
 Provides a LaunchDarkly team members resource for inviting up to 50 members, with their team assignments, in a single API call.
 
 This resource batches member creation into one `POST /api/v2/members` request instead of one request per member, which avoids the member-write rate limits that per-member resources hit on large onboardings. The `members` map is keyed by lowercase email.
+
+-> **Note:** You can only manage members with "admin" level access tokens: a Writer token is denied `createMember` and team management (403). Use an Admin token, or a custom role granting member creation and `updateTeamMembers` on the declared teams. To learn more, read [Managing Teams](https://launchdarkly.com/docs/home/account/manage-teams).
 
 -> **Note:** Manage any given member with **either** this resource or [`launchdarkly_team_member`](/docs/providers/launchdarkly/r/team_member.html), never both. Likewise, if you assign teams here with `team_keys`, do not also manage those teams' membership with `launchdarkly_team.member_ids` — the two fight over the same association.
 
