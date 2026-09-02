@@ -268,8 +268,12 @@ func validateMemberBatch(members map[string]teamMembersEntryModel) error {
 			return fmt.Errorf("members key %q must be an email address", email)
 		}
 		if !m.Email.IsNull() && !m.Email.IsUnknown() {
-			if got := m.Email.ValueString(); strings.ToLower(got) != email {
-				return fmt.Errorf("member %q sets email %q: email must equal its map key or be omitted", email, got)
+			// Exact match, not case-insensitive: the API reports emails
+			// lowercased and Read writes them back that way, so a
+			// differently-cased configured value would plan one casing and
+			// apply another, failing plan-versus-apply consistency.
+			if got := m.Email.ValueString(); got != email {
+				return fmt.Errorf("member %q sets email %q: email must equal its map key exactly (lowercase) or be omitted", email, got)
 			}
 		}
 		roleKnown := !m.Role.IsUnknown()
@@ -615,7 +619,7 @@ func (r *TeamMembersResource) ModifyPlan(ctx context.Context, req resource.Modif
 			return
 		}
 		prior = &state
-		pinned, d = markNewEntriesIDUnknown(teamMembersEntryObjectType(), pinned, state.Members)
+		pinned, d = markNewEntriesComputedUnknown(teamMembersEntryObjectType(), pinned, state.Members)
 		resp.Diagnostics.Append(d...)
 		if resp.Diagnostics.HasError() {
 			return

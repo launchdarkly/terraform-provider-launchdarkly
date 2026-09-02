@@ -48,6 +48,19 @@ resource "launchdarkly_team" "batch_test" {
 	name = "Bulk members acceptance test"
 }
 
+resource "launchdarkly_custom_role" "batch_test" {
+	key              = "%s-role"
+	name             = "Bulk members acceptance role %s"
+	base_permissions = "no_access"
+	policy_statements = [
+		{
+			effect    = "allow"
+			resources = ["proj/*"]
+			actions   = ["viewProject"]
+		}
+	]
+}
+
 resource "launchdarkly_team_members" "test" {
 	members = {
 		"%s+one@launchdarkly.com" = {
@@ -62,6 +75,12 @@ resource "launchdarkly_team_members" "test" {
 		}
 		"%s+four@launchdarkly.com" = {
 			role = "reader"
+		}
+		// role omitted on purpose: a custom-roles-only member added on update
+		// plans role as null; the plan modifier must mark it unknown so the
+		// API-defaulted role survives the consistency check.
+		"%s+seven@launchdarkly.com" = {
+			custom_roles = [launchdarkly_custom_role.batch_test.key]
 		}
 	}
 }
@@ -92,6 +111,23 @@ resource "launchdarkly_team_members" "test" {
 resource "launchdarkly_team" "batch_test" {
 	key  = "%s"
 	name = "Bulk members acceptance test"
+}
+
+// The custom role stays in config while the member holding it is removed:
+// dropping both in one apply can order the role delete before the member
+// delete, and the API refuses to delete a role a member still holds. The
+// role is destroyed cleanly at final teardown, after the batch.
+resource "launchdarkly_custom_role" "batch_test" {
+	key              = "%s-role"
+	name             = "Bulk members acceptance role %s"
+	base_permissions = "no_access"
+	policy_statements = [
+		{
+			effect    = "allow"
+			resources = ["proj/*"]
+			actions   = ["viewProject"]
+		}
+	]
 }
 
 resource "launchdarkly_team_members" "test" {
@@ -190,6 +226,7 @@ func TestAccTeamMembers_CreateUpdate(t *testing.T) {
 	memberTwo := fmt.Sprintf("%s+two@launchdarkly.com", name)
 	memberThree := fmt.Sprintf("%s+three@launchdarkly.com", name)
 	memberFour := fmt.Sprintf("%s+four@launchdarkly.com", name)
+	memberSeven := fmt.Sprintf("%s+seven@launchdarkly.com", name)
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
@@ -219,12 +256,17 @@ func TestAccTeamMembers_CreateUpdate(t *testing.T) {
 				PlanOnly: true,
 			},
 			{
-				Config: fmt.Sprintf(testAccTeamMembersUpdate, teamKey, name, name, name),
+				Config: fmt.Sprintf(testAccTeamMembersUpdate, teamKey, teamKey, teamKey, name, name, name, name),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckTeamMembersExist(resourceName),
-					resource.TestCheckResourceAttr(resourceName, "members.%", "3"),
+					resource.TestCheckResourceAttr(resourceName, "members.%", "4"),
 					resource.TestCheckResourceAttr(resourceName, fmt.Sprintf("members.%s.role", memberTwo), "admin"),
 					resource.TestCheckResourceAttrSet(resourceName, fmt.Sprintf("members.%s.id", memberFour)),
+					// Custom-roles-only member added on update: the API defaults
+					// the role, and the plan modifier must have planned it
+					// unknown for the apply to pass the consistency check.
+					resource.TestCheckResourceAttr(resourceName, fmt.Sprintf("members.%s.role", memberSeven), "reader"),
+					resource.TestCheckResourceAttr(resourceName, fmt.Sprintf("members.%s.custom_roles.#", memberSeven), "1"),
 					testAccCheckTeamMemberEmailAbsent(memberThree),
 				),
 			},
@@ -236,7 +278,7 @@ func TestAccTeamMembers_CreateUpdate(t *testing.T) {
 				ExpectError: regexp.MustCompile("Refusing to replace every member"),
 			},
 			{
-				Config: fmt.Sprintf(testAccTeamMembersUnprotected, teamKey, name, name, name),
+				Config: fmt.Sprintf(testAccTeamMembersUnprotected, teamKey, teamKey, teamKey, name, name, name),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr(resourceName, "deletion_protection", "false"),
 				),

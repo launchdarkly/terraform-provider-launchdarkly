@@ -64,6 +64,16 @@ func TestValidateMemberBatch(t *testing.T) {
 		assert.Contains(t, err.Error(), "must equal its map key")
 	})
 
+	t.Run("inner email must match map key case exactly", func(t *testing.T) {
+		// The API reports emails lowercased, so a differently-cased configured
+		// email would plan one casing and apply another.
+		e := entry("writer")
+		e.Email = types.StringValue("A@example.com")
+		err := validateMemberBatch(map[string]teamMembersEntryModel{"a@example.com": e})
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "exactly")
+	})
+
 	t.Run("inner email matching map key is fine", func(t *testing.T) {
 		e := entry("writer")
 		e.Email = types.StringValue("a@example.com")
@@ -270,5 +280,56 @@ func TestPatchableAttrsDiffer(t *testing.T) {
 	t.Run("identical entries differ in neither", func(t *testing.T) {
 		assert.False(t, patchableAttrsDiffer(entry("reader"), entry("reader")))
 		assert.False(t, memberAttrsDiffer(entry("reader"), entry("reader")))
+	})
+}
+
+func TestMarkNewEntriesComputedUnknown(t *testing.T) {
+	objType := teamMembersEntryObjectType()
+	toObj := func(t *testing.T, e teamMembersEntryModel) attr.Value {
+		v, d := types.ObjectValueFrom(ctxBackground(), objType.AttrTypes, e)
+		require.False(t, d.HasError(), "diags: %v", d)
+		return v
+	}
+
+	t.Run("new entry with null role and id gets both planned unknown", func(t *testing.T) {
+		// A member declared with only custom_roles plans role as null; the API
+		// then defaults it (reader) and hydration writing that back would fail
+		// plan-versus-apply consistency, exactly like the minted id.
+		e := entry("")
+		e.Role = types.StringNull()
+		set, _ := types.SetValueFrom(ctxBackground(), types.StringType, []string{"some-role"})
+		e.CustomRoles = set
+		planned, d := types.MapValue(objType, map[string]attr.Value{"new@example.com": toObj(t, e)})
+		require.False(t, d.HasError())
+
+		out, d := markNewEntriesComputedUnknown(objType, planned, map[string]teamMembersEntryModel{})
+		require.False(t, d.HasError(), "diags: %v", d)
+		attrs := out.Elements()["new@example.com"].(types.Object).Attributes()
+		assert.True(t, attrs[ID].IsUnknown(), "id must be planned unknown")
+		assert.True(t, attrs[ROLE].IsUnknown(), "null role on a new entry must be planned unknown")
+	})
+
+	t.Run("explicit role on a new entry is left alone", func(t *testing.T) {
+		planned, d := types.MapValue(objType, map[string]attr.Value{"new@example.com": toObj(t, entry("writer"))})
+		require.False(t, d.HasError())
+
+		out, d := markNewEntriesComputedUnknown(objType, planned, map[string]teamMembersEntryModel{})
+		require.False(t, d.HasError())
+		attrs := out.Elements()["new@example.com"].(types.Object).Attributes()
+		assert.True(t, attrs[ID].IsUnknown())
+		assert.Equal(t, types.StringValue("writer"), attrs[ROLE])
+	})
+
+	t.Run("existing entries untouched", func(t *testing.T) {
+		e := entry("")
+		e.Role = types.StringNull()
+		planned, d := types.MapValue(objType, map[string]attr.Value{"old@example.com": toObj(t, e)})
+		require.False(t, d.HasError())
+
+		prior := map[string]teamMembersEntryModel{"old@example.com": entryWithID("reader", "5f0cd446a77cba0b4c5644a7")}
+		out, d := markNewEntriesComputedUnknown(objType, planned, prior)
+		require.False(t, d.HasError())
+		attrs := out.Elements()["old@example.com"].(types.Object).Attributes()
+		assert.True(t, attrs[ROLE].IsNull(), "existing entries keep UseStateForUnknown semantics")
 	})
 }

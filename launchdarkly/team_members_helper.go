@@ -6,7 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"regexp"
+
 	"sort"
 	"strings"
 
@@ -140,13 +140,11 @@ func formEmails(forms []ldapi.NewMemberForm) []string {
 	return out
 }
 
-// memberIDPattern matches a LaunchDarkly member ID (a 24-character hex
-// object ID). Validating import IDs up front turns a pasted email or team key
-// into an immediate, named error instead of a confusing count-mismatch from
-// the filtered lookup.
-var memberIDPattern = regexp.MustCompile(`^[a-f0-9]{24}$`)
-
 // parseImportMemberIDs splits and validates a comma-separated import ID.
+// Validating up front turns a pasted email or team key into an immediate,
+// named error instead of a confusing count-mismatch from the filtered lookup.
+// IDs are matched case-insensitively (the provider-wide idPattern) and
+// normalized to lowercase, the casing LaunchDarkly reports.
 func parseImportMemberIDs(raw string) ([]string, error) {
 	ids := make([]string, 0)
 	for _, id := range strings.Split(raw, ",") {
@@ -154,12 +152,12 @@ func parseImportMemberIDs(raw string) ([]string, error) {
 		if trimmed == "" {
 			continue
 		}
-		if !memberIDPattern.MatchString(trimmed) {
+		if !idPattern.MatchString(trimmed) {
 			return nil, fmt.Errorf(
 				"%q is not a member ID (expected a 24-character hex ID such as 5f0cd446a77cba0b4c5644a7); "+
 					"the import ID is a comma-separated list of member IDs", trimmed)
 		}
-		ids = append(ids, trimmed)
+		ids = append(ids, strings.ToLower(trimmed))
 	}
 	if len(ids) == 0 || len(ids) > teamMembersMaxBatchSize {
 		return nil, fmt.Errorf(
@@ -940,15 +938,17 @@ func seatLimitDiagnostics(diags diag.Diagnostics) bool {
 	return false
 }
 
-// markNewEntriesIDUnknown sets the computed id of planned map entries that have
-// no prior state to Unknown.
+// markNewEntriesComputedUnknown sets the computed attributes of planned map
+// entries that have no prior state to Unknown: id always (the API mints it),
+// and role when the configuration leaves it null (the API then defaults it —
+// a member declared with only custom_roles is created as reader).
 //
 // The framework plans a brand-new map element's Computed attributes as null,
 // because UseStateForUnknown has no prior state to carry forward, and apply
-// then filling in a real member ID trips Terraform's plan-versus-apply
-// consistency check. Only the update path reaches this: on create the whole
-// resource is new, so its attributes are already unknown.
-func markNewEntriesIDUnknown(
+// then filling in real values trips Terraform's plan-versus-apply consistency
+// check. Only the update path reaches this: on create the whole resource is
+// new, so its attributes are already unknown.
+func markNewEntriesComputedUnknown(
 	objType types.ObjectType,
 	planned types.Map,
 	priorState map[string]teamMembersEntryModel,
@@ -971,17 +971,28 @@ func markNewEntriesIDUnknown(
 		}
 		prior, existed := priorState[key]
 		hadID := existed && !prior.ID.IsNull() && prior.ID.ValueString() != ""
+		if hadID {
+			out[key] = el
+			continue
+		}
 		attrs := obj.Attributes()
-		idVal, hasID := attrs[ID]
-		if !hadID && hasID {
-			if sv, isStr := idVal.(types.String); isStr && sv.IsNull() {
-				attrs[ID] = types.StringUnknown()
-				newObj, d := types.ObjectValue(objType.AttrTypes, attrs)
-				diags.Append(d...)
-				out[key] = newObj
-				changed = true
+		entryChanged := false
+		for _, name := range []string{ID, ROLE} {
+			val, has := attrs[name]
+			if !has {
 				continue
 			}
+			if sv, isStr := val.(types.String); isStr && sv.IsNull() {
+				attrs[name] = types.StringUnknown()
+				entryChanged = true
+			}
+		}
+		if entryChanged {
+			newObj, d := types.ObjectValue(objType.AttrTypes, attrs)
+			diags.Append(d...)
+			out[key] = newObj
+			changed = true
+			continue
 		}
 		out[key] = el
 	}
