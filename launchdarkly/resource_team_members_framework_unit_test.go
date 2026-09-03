@@ -6,10 +6,12 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
+	ldapi "github.com/launchdarkly/api-client-go/v24"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -364,4 +366,81 @@ func TestBatchValidatorDefersUnknownMembersMap(t *testing.T) {
 	teamMembersBatchValidator{}.ValidateResource(ctx, req, &resp)
 	assert.False(t, resp.Diagnostics.HasError(),
 		"unknown members map must defer validation, got: %v", resp.Diagnostics)
+}
+
+func TestExcludePlannedIDs(t *testing.T) {
+	t.Run("rename keeps the adopted member alive", func(t *testing.T) {
+		// A member changed email; the operator renamed the map key and the new
+		// key adopted the SAME member ID. The old key's deletion must be
+		// skipped or the just-adopted person is deleted.
+		members := map[string]teamMembersEntryModel{
+			"new@example.com":   entryWithID("reader", "5f0cd446a77cba0b4c5644a7"),
+			"other@example.com": entryWithID("reader", "5f0cd446a77cba0b4c5644a8"),
+		}
+		out := excludePlannedIDs([]string{"5f0cd446a77cba0b4c5644a7"}, members)
+		assert.Empty(t, out)
+	})
+
+	t.Run("genuine removals still delete", func(t *testing.T) {
+		members := map[string]teamMembersEntryModel{
+			"keep@example.com": entryWithID("reader", "5f0cd446a77cba0b4c5644a7"),
+		}
+		out := excludePlannedIDs([]string{"5f0cd446a77cba0b4c5644b1", "5f0cd446a77cba0b4c5644b2"}, members)
+		assert.Equal(t, []string{"5f0cd446a77cba0b4c5644b1", "5f0cd446a77cba0b4c5644b2"}, out)
+	})
+}
+
+func TestModifyPlanDefersUnknownMembersMap(t *testing.T) {
+	// Mirrors TestBatchValidatorDefersUnknownMembersMap: a wholly unknown
+	// members map must not fail planning in ModifyPlan either.
+	ctx := ctxBackground()
+	var schemaResp resource.SchemaResponse
+	(&TeamMembersResource{}).Schema(ctx, resource.SchemaRequest{}, &schemaResp)
+	require.False(t, schemaResp.Diagnostics.HasError())
+
+	objType := schemaResp.Schema.Type().TerraformType(ctx).(tftypes.Object)
+	vals := make(map[string]tftypes.Value, len(objType.AttributeTypes))
+	for name, at := range objType.AttributeTypes {
+		if name == MEMBERS {
+			vals[name] = tftypes.NewValue(at, tftypes.UnknownValue)
+			continue
+		}
+		vals[name] = tftypes.NewValue(at, nil)
+	}
+	raw := tftypes.NewValue(objType, vals)
+
+	req := resource.ModifyPlanRequest{
+		Plan:  tfsdk.Plan{Raw: raw, Schema: schemaResp.Schema},
+		State: tfsdk.State{Raw: tftypes.NewValue(objType, nil), Schema: schemaResp.Schema},
+	}
+	resp := resource.ModifyPlanResponse{Plan: req.Plan}
+	(&TeamMembersResource{}).ModifyPlan(ctx, req, &resp)
+	assert.False(t, resp.Diagnostics.HasError(),
+		"unknown members map must defer planning, got: %v", resp.Diagnostics)
+}
+
+func TestRefreshPreservesEmptyRoleAttributes(t *testing.T) {
+	// An explicitly configured role_attributes = {} must stay an empty map
+	// after hydration, not become null — that mismatch fails plan-versus-apply
+	// consistency after the write already succeeded.
+	ctx := ctxBackground()
+	member := ldapi.Member{Id: "5f0cd446a77cba0b4c5644a7", Email: "a@example.com", Role: "reader"}
+
+	t.Run("configured empty map stays empty", func(t *testing.T) {
+		entry := entry("reader")
+		entry.RoleAttributes = types.MapValueMust(types.ListType{ElemType: types.StringType}, map[string]attr.Value{})
+		var diags diag.Diagnostics
+		refreshEntryFromMember(ctx, "a@example.com", &entry, &member, newCustomRoleResolver(nil), &diags)
+		require.False(t, diags.HasError(), "diags: %v", diags)
+		assert.False(t, entry.RoleAttributes.IsNull())
+		assert.Len(t, entry.RoleAttributes.Elements(), 0)
+	})
+
+	t.Run("omitted role attributes stay null", func(t *testing.T) {
+		entry := entry("reader")
+		var diags diag.Diagnostics
+		refreshEntryFromMember(ctx, "a@example.com", &entry, &member, newCustomRoleResolver(nil), &diags)
+		require.False(t, diags.HasError(), "diags: %v", diags)
+		assert.True(t, entry.RoleAttributes.IsNull())
+	})
 }

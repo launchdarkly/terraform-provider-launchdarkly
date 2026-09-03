@@ -507,7 +507,13 @@ func (r *TeamMembersResource) Update(ctx context.Context, req resource.UpdateReq
 		return
 	}
 
-	resp.Diagnostics.Append(r.deleteMembersByID(diff.toDeleteIDs)...)
+	// A removed map key whose member ID is now held by another planned entry
+	// is a rename, not a removal. This happens when a member changed their
+	// email in LaunchDarkly and the operator followed the drift warning:
+	// renaming the key diffs as remove-old + create-new, adoption resolves the
+	// new key to the SAME member, and deleting the old key's ID would delete
+	// the person that was just adopted.
+	resp.Diagnostics.Append(r.deleteMembersByID(excludePlannedIDs(diff.toDeleteIDs, plan.Members))...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -615,17 +621,26 @@ func (r *TeamMembersResource) ModifyPlan(ctx context.Context, req resource.Modif
 		return
 	}
 
+	// Read members as a types.Map before decoding the full model: a wholly
+	// unknown members map (built from apply-time output) cannot decode into
+	// the native map field, and the plan must defer rather than fail. Key
+	// pinning and the full-replacement guard need concrete entries; the
+	// apply-time guards still run once values are known.
+	var planned types.Map
+	resp.Diagnostics.Append(req.Plan.GetAttribute(ctx, path.Root(MEMBERS), &planned)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	if planned.IsNull() || planned.IsUnknown() {
+		return
+	}
+
 	var plan teamMembersResourceModel
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	var planned types.Map
-	resp.Diagnostics.Append(req.Plan.GetAttribute(ctx, path.Root(MEMBERS), &planned)...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
 	pinned, d := pinMapKeysToAttr(teamMembersEntryObjectType(), planned, EMAIL)
 	resp.Diagnostics.Append(d...)
 	if resp.Diagnostics.HasError() {

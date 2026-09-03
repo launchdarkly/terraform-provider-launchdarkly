@@ -487,6 +487,12 @@ func refreshEntryFromMember(
 
 	attrs, d := frameworkRoleAttributesValue(ctx, member.RoleAttributes)
 	diags.Append(d...)
+	// Preserve null-versus-empty intent: an explicitly configured
+	// role_attributes = {} must stay an empty map, not become null, or the
+	// apply fails plan-versus-apply consistency after the write succeeded.
+	if attrs.IsNull() && !entry.RoleAttributes.IsNull() && !entry.RoleAttributes.IsUnknown() {
+		attrs = types.MapValueMust(types.ListType{ElemType: types.StringType}, map[string]attr.Value{})
+	}
 	entry.RoleAttributes = attrs
 }
 
@@ -856,6 +862,31 @@ func diffMemberBatches(state, plan map[string]teamMembersEntryModel) memberBatch
 	}
 	sort.Strings(d.toDeleteIDs)
 	return d
+}
+
+// excludePlannedIDs drops any deletion candidate whose member ID is now held
+// by an entry in the planned members map. A map-key rename (the remediation
+// for a member who changed their email) diffs as remove-plus-create, and once
+// adoption resolves the new key to the same member, deleting the old key's ID
+// would delete the person that was just adopted.
+func excludePlannedIDs(ids []string, members map[string]teamMembersEntryModel) []string {
+	if len(ids) == 0 {
+		return ids
+	}
+	planned := make(map[string]struct{}, len(members))
+	for _, m := range members {
+		if !m.ID.IsNull() && !m.ID.IsUnknown() && m.ID.ValueString() != "" {
+			planned[m.ID.ValueString()] = struct{}{}
+		}
+	}
+	out := make([]string, 0, len(ids))
+	for _, id := range ids {
+		if _, held := planned[id]; held {
+			continue
+		}
+		out = append(out, id)
+	}
+	return out
 }
 
 // isFullReplacement reports whether applying the diff would delete every
