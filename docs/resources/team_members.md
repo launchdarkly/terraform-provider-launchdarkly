@@ -5,14 +5,14 @@ subcategory: ""
 description: |-
   Provides a LaunchDarkly team members resource for inviting up to 50 members, with their team assignments, in a single API call.
   This resource batches member creation into one POST /api/v2/members request instead of one request per member, which avoids the member-write rate limits that per-member resources hit on large onboardings. The members map is keyed by lowercase email.
-  -> Note: You can only manage members with "admin" level access tokens: a Writer token is denied createMember and team management (403). Use an Admin token, or a custom role granting member creation and updateTeamMembers on the declared teams. To learn more, read Managing Teams https://launchdarkly.com/docs/home/account/manage-teams.
-  -> Note: Manage any given member with either this resource or launchdarkly_team_member, never both. Likewise, if you assign teams here with team_keys, do not also manage those teams' membership with launchdarkly_team.member_ids — the two fight over the same association.
-  -> Note: first_name and last_name are only used when a member is created. LaunchDarkly does not allow the provider to change a member's name afterwards; the member does that themselves.
-  -> Note: Updates create new members before deleting removed ones, so swapping a full batch at exactly your seat limit fails on the create. Remove members in one apply and add in the next, or add seats.
-  -> Note: Creating a batch costs one members request plus one request per declared team; team assignment is intentionally separate from the member invite so that no single request approaches the LaunchDarkly service's request deadline. Setting the provider's http_timeout to 60 is recommended for large batches: it gives headroom while staying long enough that a slow request surfaces the service's real response instead of a client-side timeout. If an apply fails part-way, LaunchDarkly may already have created the members even though Terraform recorded nothing; re-apply with adopt_existing = true to take ownership of them and finish the work.
-  -> Note: Batch size and feature availability are enforced by the LaunchDarkly API, not by this provider: an account whose plan does not allow bulk member creation receives a 403 for any batch larger than one member (nothing is created), and team_keys requires the Teams feature — team requests return 403 on plans without it. Each invited member receives an invite email plus one added-to-team notification per team they are assigned to.
+  -> Note: You can only manage members with "admin" level access tokens. A Writer token is denied createMember and team management (403). Use an Admin token or a custom role granting member creation and updateTeamMembers on the declared teams. To learn more, read Managing Teams https://launchdarkly.com/docs/home/account/manage-teams.
+  -> Note: Manage any given member with either this resource or launchdarkly_team_member, never both. Likewise, if you assign teams here with team_keys, do not also manage those teams' membership with launchdarkly_team.member_ids. This results in a conflict over the same association.
+  -> Note: first_name and last_name are only used when a member is created. LaunchDarkly does not allow the provider to change a member's name afterward. The member can change their name themselves.
+  -> Note: Updates create new members before deleting removed ones, so swapping a full batch at your seat limit fails on the create. Remove members in one apply and add in the next, or add seats.
+  -> Note: Creating a batch costs one members request plus one request per declared team. Team assignment is intentionally separate from the member invite so that no single request approaches the LaunchDarkly service's request deadline. We recommend setting the provider's http_timeout to 60 for large batches. This lets a slow request surface the service's response instead of a client-side timeout. If an apply fails partway, LaunchDarkly may have already created the members even though Terraform did not record anything. Re-apply with adopt_existing = true.
+  -> Note: Batch size and feature availability are enforced by the LaunchDarkly API, not by this provider. An account whose plan does not allow bulk member creation receives a 403 for any batch larger than one member (no members are created), and team_keys requires the Teams feature. Team requests return 403 on plans without it. Each invited member receives an invitation email plus one added-to-team notification for each team they are assigned to.
   Requests per operation
-  LaunchDarkly rate limits per route, so it is worth knowing what each operation costs. Inviting members is a single request no matter how many are in the batch, plus one request per declared team, which is the point of this resource. Removing members and changing their roles still cost one request each, because the API has no bulk delete and its bulk member-patch endpoint is Enterprise-only.
+  LaunchDarkly rate limits per route. Inviting members is a single request no matter how many are in the batch, plus one request per declared team. Removing members and changing their roles still cost one request each, because the API has no bulk delete and its bulk member-patch endpoint is Enterprise-only.
   | Operation | Requests |
   | --- | --- |
   | Invite any number of members | 1, plus 1 per declared team |
@@ -31,21 +31,21 @@ Provides a LaunchDarkly team members resource for inviting up to 50 members, wit
 
 This resource batches member creation into one `POST /api/v2/members` request instead of one request per member, which avoids the member-write rate limits that per-member resources hit on large onboardings. The `members` map is keyed by lowercase email.
 
--> **Note:** You can only manage members with "admin" level access tokens: a Writer token is denied `createMember` and team management (403). Use an Admin token, or a custom role granting member creation and `updateTeamMembers` on the declared teams. To learn more, read [Managing Teams](https://launchdarkly.com/docs/home/account/manage-teams).
+-> **Note:** You can only manage members with "admin" level access tokens. A Writer token is denied `createMember` and team management (403). Use an Admin token or a custom role granting member creation and `updateTeamMembers` on the declared teams. To learn more, read [Managing Teams](https://launchdarkly.com/docs/home/account/manage-teams).
 
--> **Note:** Manage any given member with **either** this resource or [`launchdarkly_team_member`](/docs/providers/launchdarkly/r/team_member.html), never both. Likewise, if you assign teams here with `team_keys`, do not also manage those teams' membership with `launchdarkly_team.member_ids` — the two fight over the same association.
+-> **Note:** Manage any given member with **either** this resource or [`launchdarkly_team_member`](/docs/providers/launchdarkly/r/team_member.html), never both. Likewise, if you assign teams here with `team_keys`, do not also manage those teams' membership with `launchdarkly_team.member_ids`. This results in a conflict over the same association.
 
--> **Note:** `first_name` and `last_name` are only used when a member is created. LaunchDarkly does not allow the provider to change a member's name afterwards; the member does that themselves.
+-> **Note:** `first_name` and `last_name` are only used when a member is created. LaunchDarkly does not allow the provider to change a member's name afterward. The member can change their name themselves.
 
--> **Note:** Updates create new members before deleting removed ones, so swapping a full batch at exactly your seat limit fails on the create. Remove members in one apply and add in the next, or add seats.
+-> **Note:** Updates create new members before deleting removed ones, so swapping a full batch at your seat limit fails on the create. Remove members in one apply and add in the next, or add seats.
 
--> **Note:** Creating a batch costs one members request plus one request per declared team; team assignment is intentionally separate from the member invite so that no single request approaches the LaunchDarkly service's request deadline. Setting the provider's `http_timeout` to 60 is recommended for large batches: it gives headroom while staying long enough that a slow request surfaces the service's real response instead of a client-side timeout. If an apply fails part-way, LaunchDarkly may already have created the members even though Terraform recorded nothing; re-apply with `adopt_existing = true` to take ownership of them and finish the work.
+-> **Note:** Creating a batch costs one members request plus one request per declared team. Team assignment is intentionally separate from the member invite so that no single request approaches the LaunchDarkly service's request deadline. We recommend setting the provider's `http_timeout` to 60 for large batches. This lets a slow request surface the service's response instead of a client-side timeout. If an apply fails partway, LaunchDarkly may have already created the members even though Terraform did not record anything. Re-apply with `adopt_existing = true`.
 
--> **Note:** Batch size and feature availability are enforced by the LaunchDarkly API, not by this provider: an account whose plan does not allow bulk member creation receives a 403 for any batch larger than one member (nothing is created), and `team_keys` requires the Teams feature — team requests return 403 on plans without it. Each invited member receives an invite email plus one added-to-team notification per team they are assigned to.
+-> **Note:** Batch size and feature availability are enforced by the LaunchDarkly API, not by this provider. An account whose plan does not allow bulk member creation receives a 403 for any batch larger than one member (no members are created), and `team_keys` requires the Teams feature. Team requests return 403 on plans without it. Each invited member receives an invitation email plus one added-to-team notification for each team they are assigned to.
 
 ### Requests per operation
 
-LaunchDarkly rate limits per route, so it is worth knowing what each operation costs. Inviting members is a single request no matter how many are in the batch, plus one request per declared team, which is the point of this resource. Removing members and changing their roles still cost one request each, because the API has no bulk delete and its bulk member-patch endpoint is Enterprise-only.
+LaunchDarkly rate limits per route. Inviting members is a single request no matter how many are in the batch, plus one request per declared team. Removing members and changing their roles still cost one request each, because the API has no bulk delete and its bulk member-patch endpoint is Enterprise-only.
 
 | Operation | Requests |
 | --- | --- |
@@ -123,11 +123,11 @@ resource "launchdarkly_team_members" "payments_team" {
 
 ### Required
 
-- `members` (Attributes Map) The members to invite, keyed by lowercase email address. At most 50 entries; for larger teams, split them across multiple `launchdarkly_team_members` resources. This is the authoritative set: removing an entry deletes that member. (see [below for nested schema](#nestedatt--members))
+- `members` (Attributes Map) The members to invite, keyed by lowercase email address. At most 50 entries. For larger teams, split them across multiple `launchdarkly_team_members` resources. This is the authoritative set: removing an entry deletes that member. (see [below for nested schema](#nestedatt--members))
 
 ### Optional
 
-- `adopt_existing` (Boolean) Whether to take over members who already exist in your account. When `false`, the default, applying a batch that contains an existing member's email fails and tells you which emails conflict. When `true`, those members are brought under this resource's management: their roles and team assignments are reconciled to this configuration, and they are deleted when you remove them from the batch or destroy the resource.
+- `adopt_existing` (Boolean) Whether to take over members who already exist in your account. When `false`, the default, applying a batch that contains an existing member's email fails and tells you which emails conflict. When `true`, those members are brought under this resource's management. Their roles and team assignments are reconciled to this configuration, and they are deleted when you remove them from the batch or destroy the resource.
 - `deletion_protection` (Boolean) Whether to block operations that would delete every member in the batch. When `true`, the default, destroying this resource fails, and so does any single update that removes all of the members it manages. Set it to `false` and apply that change first, then perform the destroy or replacement.
 
 ### Read-Only
@@ -142,12 +142,12 @@ Optional:
 - `custom_roles` (Set of String) The list of custom role keys associated with the member. Custom roles are only available to customers on an Enterprise plan. To learn more, [read about our pricing](https://launchdarkly.com/pricing/). To upgrade your plan, [contact LaunchDarkly Sales](https://launchdarkly.com/contact-sales/).
 
 -> **Note:** each member must have either a `role` or `custom_roles` argument.
-- `email` (String) The member's email address. Must equal the map key; it defaults to the map key when omitted.
+- `email` (String) The member's email address. Must equal the map key. It defaults to the map key when omitted.
 - `first_name` (String) The member's given name. Used only when the member is created; afterwards only the member can change it.
 - `last_name` (String) The member's family name. Used only when the member is created; afterwards only the member can change it.
 - `role` (String) The role associated with the member. Supported roles are `reader`, `writer`, `no_access`, or `admin`. If you don't specify a role, `reader` is assigned by default.
 - `role_attributes` (Map of List of String) A map of role attributes, keyed by the role attribute key with a string array of resource keys as each value. For example, if your policy statement defines the resource `"proj/$${roleAttribute/testAttribute}"`, the key would be `testAttribute` and the values the keys of the projects you wanted to assign access to.
-- `team_keys` (Set of String) The keys of the teams to add the member to. The teams must already exist. This resource manages only the associations you declare here: teams the member belongs to for other reasons are left alone, but removing a key you previously declared removes the member from that team.
+- `team_keys` (Set of String) The keys of the teams to add the member to. The teams must already exist. This resource manages only the associations you declare here. Teams the member belongs to for other reasons are left alone, but removing a key you previously declared removes the member from that team.
 
 Read-Only:
 

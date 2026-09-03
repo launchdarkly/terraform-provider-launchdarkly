@@ -6,7 +6,10 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
+	"github.com/hashicorp/terraform-plugin-framework/resource"
+	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-go/tftypes"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -332,4 +335,33 @@ func TestMarkNewEntriesComputedUnknown(t *testing.T) {
 		attrs := out.Elements()["old@example.com"].(types.Object).Attributes()
 		assert.True(t, attrs[ROLE].IsNull(), "existing entries keep UseStateForUnknown semantics")
 	})
+}
+
+func TestBatchValidatorDefersUnknownMembersMap(t *testing.T) {
+	// A members map built from another resource's apply-time output is wholly
+	// unknown at plan time. Validation must defer to apply, not fail the plan
+	// with a decode error.
+	ctx := ctxBackground()
+	var schemaResp resource.SchemaResponse
+	(&TeamMembersResource{}).Schema(ctx, resource.SchemaRequest{}, &schemaResp)
+	require.False(t, schemaResp.Diagnostics.HasError())
+
+	objType := schemaResp.Schema.Type().TerraformType(ctx).(tftypes.Object)
+	vals := make(map[string]tftypes.Value, len(objType.AttributeTypes))
+	for name, at := range objType.AttributeTypes {
+		if name == MEMBERS {
+			vals[name] = tftypes.NewValue(at, tftypes.UnknownValue)
+			continue
+		}
+		vals[name] = tftypes.NewValue(at, nil)
+	}
+
+	req := resource.ValidateConfigRequest{Config: tfsdk.Config{
+		Raw:    tftypes.NewValue(objType, vals),
+		Schema: schemaResp.Schema,
+	}}
+	var resp resource.ValidateConfigResponse
+	teamMembersBatchValidator{}.ValidateResource(ctx, req, &resp)
+	assert.False(t, resp.Diagnostics.HasError(),
+		"unknown members map must defer validation, got: %v", resp.Diagnostics)
 }

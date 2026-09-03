@@ -160,6 +160,13 @@ func newFakeLD(t *testing.T) (*apiCallRecorder, *Client) {
 			w.WriteHeader(http.StatusNoContent)
 			return
 		}
+		var ops []map[string]interface{}
+		_ = json.NewDecoder(r.Body).Decode(&ops)
+		for _, op := range ops {
+			if op["path"] == "/role" {
+				rec.record("PATCHED-ROLE", fmt.Sprint(op["value"]))
+			}
+		}
 		id := strings.TrimPrefix(r.URL.Path, "/api/v2/members/")
 		writeJSON(w, http.StatusOK, fakeMember(id, "m@example.com"))
 	})
@@ -473,4 +480,27 @@ func TestAPICallCount_CustomRoleLookupsAreCachedPerOperation(t *testing.T) {
 	assert.Equal(t, 1, rec.countMatching("GET /api/v2/roles/{key}"),
 		"10 members sharing one custom role must cost one role lookup; calls=%v", rec.all())
 	assert.Equal(t, 10, rec.countMatching("PATCH /api/v2/members/{id}"))
+}
+
+func TestAPICallCount_CustomRoleOnlyPatchKeepsCurrentRole(t *testing.T) {
+	// A custom-roles-only entry leaves role null. The member PATCH must carry
+	// the member's current base role, not an empty string (rejected by the
+	// API) and not a hardcoded reader (which would demote an adopted admin).
+	rec, client := newFakeLD(t)
+	r := &TeamMembersResource{client: client}
+
+	desired := entryWithID("", "id0001")
+	desired.Role = types.StringNull()
+	set, _ := types.SetValueFrom(ctxBackground(), types.StringType, []string{"shared-role"})
+	desired.CustomRoles = set
+	prior := entryWithID("admin", "id0001")
+
+	diags := r.patchChangedMembers(ctxBackground(),
+		map[string]teamMembersEntryModel{"a@example.com": desired},
+		map[string]teamMembersEntryModel{"a@example.com": prior})
+	require.False(t, diags.HasError(), "diags: %v", diags)
+
+	assert.Equal(t, 1, rec.countMatching("PATCHED-ROLE admin"),
+		"the patch must preserve the member's current role; calls=%v", rec.all())
+	assert.Zero(t, rec.countMatching("PATCHED-ROLE \x00"), "sanity")
 }

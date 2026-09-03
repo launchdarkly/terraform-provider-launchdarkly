@@ -107,21 +107,21 @@ func (r *TeamMembersResource) Schema(_ context.Context, _ resource.SchemaRequest
 
 This resource batches member creation into one ` + "`POST /api/v2/members`" + ` request instead of one request per member, which avoids the member-write rate limits that per-member resources hit on large onboardings. The ` + "`members`" + ` map is keyed by lowercase email.
 
--> **Note:** You can only manage members with "admin" level access tokens: a Writer token is denied ` + "`createMember`" + ` and team management (403). Use an Admin token, or a custom role granting member creation and ` + "`updateTeamMembers`" + ` on the declared teams. To learn more, read [Managing Teams](https://launchdarkly.com/docs/home/account/manage-teams).
+-> **Note:** You can only manage members with "admin" level access tokens. A Writer token is denied ` + "`createMember`" + ` and team management (403). Use an Admin token or a custom role granting member creation and ` + "`updateTeamMembers`" + ` on the declared teams. To learn more, read [Managing Teams](https://launchdarkly.com/docs/home/account/manage-teams).
 
--> **Note:** Manage any given member with **either** this resource or ` + "[`launchdarkly_team_member`](/docs/providers/launchdarkly/r/team_member.html)" + `, never both. Likewise, if you assign teams here with ` + "`team_keys`" + `, do not also manage those teams' membership with ` + "`launchdarkly_team.member_ids`" + ` — the two fight over the same association.
+-> **Note:** Manage any given member with **either** this resource or ` + "[`launchdarkly_team_member`](/docs/providers/launchdarkly/r/team_member.html)" + `, never both. Likewise, if you assign teams here with ` + "`team_keys`" + `, do not also manage those teams' membership with ` + "`launchdarkly_team.member_ids`" + `. This results in a conflict over the same association.
 
--> **Note:** ` + "`first_name`" + ` and ` + "`last_name`" + ` are only used when a member is created. LaunchDarkly does not allow the provider to change a member's name afterwards; the member does that themselves.
+-> **Note:** ` + "`first_name`" + ` and ` + "`last_name`" + ` are only used when a member is created. LaunchDarkly does not allow the provider to change a member's name afterward. The member can change their name themselves.
 
--> **Note:** Updates create new members before deleting removed ones, so swapping a full batch at exactly your seat limit fails on the create. Remove members in one apply and add in the next, or add seats.
+-> **Note:** Updates create new members before deleting removed ones, so swapping a full batch at your seat limit fails on the create. Remove members in one apply and add in the next, or add seats.
 
--> **Note:** Creating a batch costs one members request plus one request per declared team; team assignment is intentionally separate from the member invite so that no single request approaches the LaunchDarkly service's request deadline. Setting the provider's ` + "`http_timeout`" + ` to 60 is recommended for large batches: it gives headroom while staying long enough that a slow request surfaces the service's real response instead of a client-side timeout. If an apply fails part-way, LaunchDarkly may already have created the members even though Terraform recorded nothing; re-apply with ` + "`adopt_existing = true`" + ` to take ownership of them and finish the work.
+-> **Note:** Creating a batch costs one members request plus one request per declared team. Team assignment is intentionally separate from the member invite so that no single request approaches the LaunchDarkly service's request deadline. We recommend setting the provider's ` + "`http_timeout`" + ` to 60 for large batches. This lets a slow request surface the service's response instead of a client-side timeout. If an apply fails partway, LaunchDarkly may have already created the members even though Terraform did not record anything. Re-apply with ` + "`adopt_existing = true`" + `.
 
--> **Note:** Batch size and feature availability are enforced by the LaunchDarkly API, not by this provider: an account whose plan does not allow bulk member creation receives a 403 for any batch larger than one member (nothing is created), and ` + "`team_keys`" + ` requires the Teams feature — team requests return 403 on plans without it. Each invited member receives an invite email plus one added-to-team notification per team they are assigned to.
+-> **Note:** Batch size and feature availability are enforced by the LaunchDarkly API, not by this provider. An account whose plan does not allow bulk member creation receives a 403 for any batch larger than one member (no members are created), and ` + "`team_keys`" + ` requires the Teams feature. Team requests return 403 on plans without it. Each invited member receives an invitation email plus one added-to-team notification for each team they are assigned to.
 
 ### Requests per operation
 
-LaunchDarkly rate limits per route, so it is worth knowing what each operation costs. Inviting members is a single request no matter how many are in the batch, plus one request per declared team, which is the point of this resource. Removing members and changing their roles still cost one request each, because the API has no bulk delete and its bulk member-patch endpoint is Enterprise-only.
+LaunchDarkly rate limits per route. Inviting members is a single request no matter how many are in the batch, plus one request per declared team. Removing members and changing their roles still cost one request each, because the API has no bulk delete and its bulk member-patch endpoint is Enterprise-only.
 
 | Operation | Requests |
 | --- | --- |
@@ -145,7 +145,7 @@ If a request is rate limited the provider waits for the window the API reports a
 				Optional:    true,
 				Computed:    true,
 				Default:     booldefault.StaticBool(false),
-				Description: "Whether to take over members who already exist in your account. When `false`, the default, applying a batch that contains an existing member's email fails and tells you which emails conflict. When `true`, those members are brought under this resource's management: their roles and team assignments are reconciled to this configuration, and they are deleted when you remove them from the batch or destroy the resource.",
+				Description: "Whether to take over members who already exist in your account. When `false`, the default, applying a batch that contains an existing member's email fails and tells you which emails conflict. When `true`, those members are brought under this resource's management. Their roles and team assignments are reconciled to this configuration, and they are deleted when you remove them from the batch or destroy the resource.",
 			},
 			DELETION_PROTECTION: schema.BoolAttribute{
 				Optional:    true,
@@ -155,7 +155,7 @@ If a request is rate limited the provider waits for the window the API reports a
 			},
 			MEMBERS: schema.MapNestedAttribute{
 				Required:    true,
-				Description: "The members to invite, keyed by lowercase email address. At most 50 entries; for larger teams, split them across multiple `launchdarkly_team_members` resources. This is the authoritative set: removing an entry deletes that member.",
+				Description: "The members to invite, keyed by lowercase email address. At most 50 entries. For larger teams, split them across multiple `launchdarkly_team_members` resources. This is the authoritative set: removing an entry deletes that member.",
 				Validators: []validator.Map{
 					mapvalidator.SizeBetween(1, teamMembersMaxBatchSize),
 				},
@@ -169,7 +169,7 @@ If a request is rate limited the provider waits for the window the API reports a
 						EMAIL: schema.StringAttribute{
 							Optional:      true,
 							Computed:      true,
-							Description:   "The member's email address. Must equal the map key; it defaults to the map key when omitted.",
+							Description:   "The member's email address. Must equal the map key. It defaults to the map key when omitted.",
 							PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 						},
 						FIRST_NAME: schema.StringAttribute{
@@ -199,7 +199,7 @@ If a request is rate limited the provider waits for the window the API reports a
 						TEAM_KEYS: schema.SetAttribute{
 							Optional:    true,
 							ElementType: types.StringType,
-							Description: "The keys of the teams to add the member to. The teams must already exist. This resource manages only the associations you declare here: teams the member belongs to for other reasons are left alone, but removing a key you previously declared removes the member from that team.",
+							Description: "The keys of the teams to add the member to. The teams must already exist. This resource manages only the associations you declare here. Teams the member belongs to for other reasons are left alone, but removing a key you previously declared removes the member from that team.",
 							Validators: []validator.Set{
 								setvalidator.SizeAtMost(teamMembersMaxTeamsPerMember),
 								setvalidator.ValueStringsAre(keyValidator()),
@@ -232,17 +232,24 @@ func (teamMembersBatchValidator) MarkdownDescription(ctx context.Context) string
 }
 
 func (teamMembersBatchValidator) ValidateResource(ctx context.Context, req resource.ValidateConfigRequest, resp *resource.ValidateConfigResponse) {
-	var cfg teamMembersResourceModel
-	resp.Diagnostics.Append(req.Config.Get(ctx, &cfg)...)
+	// Read the attribute as a types.Map first: a wholly unknown members map
+	// (for example built from another resource's apply-time output) cannot be
+	// decoded into a native Go map, and must defer validation to apply rather
+	// than fail the plan.
+	var planned types.Map
+	resp.Diagnostics.Append(req.Config.GetAttribute(ctx, path.Root(MEMBERS), &planned)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	// An unknown members map (for example built from another resource's
-	// output) cannot be checked until apply.
-	if cfg.Members == nil {
+	if planned.IsNull() || planned.IsUnknown() {
 		return
 	}
-	if err := validateMemberBatch(cfg.Members); err != nil {
+	var members map[string]teamMembersEntryModel
+	resp.Diagnostics.Append(planned.ElementsAs(ctx, &members, false)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	if err := validateMemberBatch(members); err != nil {
 		resp.Diagnostics.AddError("Invalid members batch", err.Error())
 	}
 }
@@ -377,13 +384,28 @@ func (r *TeamMembersResource) Read(ctx context.Context, req resource.ReadRequest
 	}
 	roles := newCustomRoleResolver(r.client)
 	for email, entry := range state.Members {
-		member, found := live[email]
+		member, found := live[entry.ID.ValueString()]
 		if !found {
 			// Deleted outside Terraform: drop it so the next plan recreates it.
 			delete(state.Members, email)
 			continue
 		}
-		refreshEntryFromMember(ctx, &entry, &member, roles, &resp.Diagnostics)
+		if memberEmailDrifted(email, member) {
+			// The member changed their email in LaunchDarkly. Keep managing
+			// them under the declared key rather than dropping the entry —
+			// dropping would re-invite the stale address on the next apply
+			// while the real person silently left management.
+			resp.Diagnostics.AddWarning(
+				"Team member email changed outside Terraform",
+				fmt.Sprintf(
+					"The member declared as %q now has the email %q in LaunchDarkly. Update the members map "+
+						"key to the new email and re-apply with adopt_existing = true to keep managing them "+
+						"under their current address.",
+					email, strings.ToLower(member.Email),
+				),
+			)
+		}
+		refreshEntryFromMember(ctx, email, &entry, &member, roles, &resp.Diagnostics)
 		if resp.Diagnostics.HasError() {
 			return
 		}
@@ -533,9 +555,10 @@ func (r *TeamMembersResource) ImportState(ctx context.Context, req resource.Impo
 
 	roles := newCustomRoleResolver(r.client)
 	members := make(map[string]teamMembersEntryModel, len(live))
-	for email, member := range live {
-		// Import records only what this resource reconciles: identity, role,
-		// custom roles, and role attributes.
+	for _, member := range live {
+		// Import keys each entry by the member's current lowercase email — the
+		// resource's natural key — and records only what this resource
+		// reconciles: identity, role, custom roles, and role attributes.
 		//
 		// first_name and last_name are left null because they are used only
 		// when a member is created and are never read back, so importing them
@@ -546,6 +569,7 @@ func (r *TeamMembersResource) ImportState(ctx context.Context, req resource.Impo
 		// current membership would mean the first apply after an import
 		// silently removed them from every team the configuration did not
 		// happen to mention.
+		email := strings.ToLower(member.Email)
 		entry := teamMembersEntryModel{
 			ID:             types.StringValue(member.Id),
 			Email:          types.StringValue(email),
@@ -555,7 +579,7 @@ func (r *TeamMembersResource) ImportState(ctx context.Context, req resource.Impo
 			TeamKeys:       types.SetNull(types.StringType),
 			RoleAttributes: types.MapNull(types.ListType{ElemType: types.StringType}),
 		}
-		refreshEntryFromMember(ctx, &entry, &member, roles, &resp.Diagnostics)
+		refreshEntryFromMember(ctx, email, &entry, &member, roles, &resp.Diagnostics)
 		if resp.Diagnostics.HasError() {
 			return
 		}

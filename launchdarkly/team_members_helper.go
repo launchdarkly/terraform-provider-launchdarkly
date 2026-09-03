@@ -337,9 +337,10 @@ func memberIDsFromModel(members map[string]teamMembersEntryModel) []string {
 // times would recreate the very rate-limit problem this resource exists to
 // avoid. Members that no longer exist are simply absent from the result.
 //
-// Note the returned map is keyed by LOWERCASE EMAIL, not by the IDs queried:
-// email is this resource's natural key, and every caller joins the result
-// back onto the email-keyed members map.
+// The returned map is keyed by member ID — the stable identifier — not by
+// email: members can change their own email address, and joining API results
+// back onto the email-keyed members map by email would silently drop (and
+// later re-invite) anyone whose live email drifted from the declared key.
 func (r *TeamMembersResource) fetchMembersByID(ids []string) (map[string]ldapi.Member, error) {
 	if len(ids) == 0 {
 		return map[string]ldapi.Member{}, nil
@@ -350,11 +351,17 @@ func (r *TeamMembersResource) fetchMembersByID(ids []string) (map[string]ldapi.M
 	if err != nil {
 		return nil, fmt.Errorf("failed to get team members by ID: %v", handleLdapiErr(err))
 	}
-	byEmail := make(map[string]ldapi.Member, len(members))
+	byID := make(map[string]ldapi.Member, len(members))
 	for _, m := range members {
-		byEmail[strings.ToLower(m.Email)] = m
+		byID[m.Id] = m
 	}
-	return byEmail, nil
+	return byID, nil
+}
+
+// memberEmailDrifted reports whether a member's live email no longer matches
+// the entry's declared map key.
+func memberEmailDrifted(key string, member ldapi.Member) bool {
+	return strings.ToLower(member.Email) != key
 }
 
 // customRoleResolver caches custom-role ID<->key lookups for the lifetime of
@@ -438,13 +445,17 @@ func (c *customRoleResolver) idsFor(keys []string) ([]string, error) {
 // not pulled in as drift.
 func refreshEntryFromMember(
 	ctx context.Context,
+	key string,
 	entry *teamMembersEntryModel,
 	member *ldapi.Member,
 	roles *customRoleResolver,
 	diags *diag.Diagnostics,
 ) {
 	entry.ID = types.StringValue(member.Id)
-	entry.Email = types.StringValue(strings.ToLower(member.Email))
+	// Email is written as the declared map key, not the live value: the schema
+	// requires email == key, and a member who changed their own email is
+	// surfaced as a drift warning by Read rather than a consistency break.
+	entry.Email = types.StringValue(key)
 	entry.Role = types.StringValue(member.Role)
 
 	customRoleKeys, err := roles.keysFor(member.CustomRoles)
@@ -497,12 +508,12 @@ func (r *TeamMembersResource) hydrateMembers(ctx context.Context, model *teamMem
 	roles := newCustomRoleResolver(r.client)
 	missing := make([]string, 0)
 	for email, entry := range model.Members {
-		member, found := live[email]
+		member, found := live[entry.ID.ValueString()]
 		if !found {
 			missing = append(missing, email)
 			continue
 		}
-		refreshEntryFromMember(ctx, &entry, &member, roles, &diags)
+		refreshEntryFromMember(ctx, email, &entry, &member, roles, &diags)
 		if diags.HasError() {
 			return diags
 		}
@@ -561,6 +572,15 @@ func (r *TeamMembersResource) patchMemberAttributes(
 	var diags diag.Diagnostics
 
 	role := desired.Role.ValueString()
+	if desired.Role.IsNull() || desired.Role.IsUnknown() || role == "" {
+		// A custom-roles-only entry leaves role to the API. Patching an empty
+		// base role is rejected, and hardcoding reader could demote an adopted
+		// admin — keep whatever role the member currently holds.
+		role = prior.Role.ValueString()
+		if role == "" {
+			role = "reader"
+		}
+	}
 	customRoleKeys, d := stringSliceFromSet(ctx, desired.CustomRoles)
 	diags.Append(d...)
 	if diags.HasError() {
@@ -743,14 +763,14 @@ func (r *TeamMembersResource) reconcileAdoptedMembers(
 		if !found {
 			continue
 		}
-		member, found := live[email]
+		member, found := live[desired.ID.ValueString()]
 		if !found {
 			diags.AddError("Failed to read adopted member", fmt.Sprintf("no member returned for %s", email))
 			return diags
 		}
 		// Build the member's current state so the patch only sends real changes.
 		current := desired
-		refreshEntryFromMember(ctx, &current, &member, roles, &diags)
+		refreshEntryFromMember(ctx, email, &current, &member, roles, &diags)
 		if diags.HasError() {
 			return diags
 		}
