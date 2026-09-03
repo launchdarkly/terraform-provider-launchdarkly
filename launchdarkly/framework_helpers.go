@@ -211,6 +211,14 @@ func mapStringFromAttr(ctx context.Context, m types.Map) (map[string]string, dia
 // applied values identical. Elements whose key is already known are
 // passed through untouched.
 func pinMapKeysToMapKey(objType types.ObjectType, m types.Map) (types.Map, diag.Diagnostics) {
+	return pinMapKeysToAttr(objType, m, KEY)
+}
+
+// pinMapKeysToAttr is pinMapKeysToMapKey generalized to any identity
+// attribute name, for MapNestedAttributes whose natural key is not
+// literally `key` (for example `launchdarkly_team_members`, keyed by
+// `email`). Prefer pinMapKeysToMapKey when the attribute is `key`.
+func pinMapKeysToAttr(objType types.ObjectType, m types.Map, attrName string) (types.Map, diag.Diagnostics) {
 	var diags diag.Diagnostics
 	if m.IsNull() || m.IsUnknown() {
 		return m, diags
@@ -228,9 +236,9 @@ func pinMapKeysToMapKey(objType types.ObjectType, m types.Map) (types.Map, diag.
 			continue
 		}
 		attrs := obj.Attributes()
-		if kv, ok := attrs[KEY]; ok {
+		if kv, ok := attrs[attrName]; ok {
 			if sv, isStr := kv.(types.String); isStr && (sv.IsNull() || sv.IsUnknown()) {
-				attrs[KEY] = types.StringValue(key)
+				attrs[attrName] = types.StringValue(key)
 				newObj, d := types.ObjectValue(objType.AttrTypes, attrs)
 				diags.Append(d...)
 				out[key] = newObj

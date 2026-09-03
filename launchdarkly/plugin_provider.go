@@ -207,6 +207,7 @@ func (p *launchdarklyProvider) Resources(_ context.Context) []func() resource.Re
 		NewReleasePolicyResource,
 		NewSdkKeyResource,
 		NewTeamMemberResource,
+		NewTeamMembersResource,
 		NewTeamResource,
 		NewViewFilterLinksResource,
 		NewViewLinksResource,
