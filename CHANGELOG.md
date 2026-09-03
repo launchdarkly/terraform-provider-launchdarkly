@@ -2,6 +2,13 @@
 
 All notable changes to the LaunchDarkly Terraform Provider will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org).
 
+## [3.2.0](https://github.com/launchdarkly/terraform-provider-launchdarkly/compare/v3.1.4...v3.2.0) (2026-09-03)
+
+
+### Features
+
+* add launchdarkly_team_members batch resource (BIS-3201) ([#546](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/546)) ([42b23e3](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/42b23e30f7e844dd51d7b88a3cbab9f44aa9f2eb))
+
 ## [3.1.4](https://github.com/launchdarkly/terraform-provider-launchdarkly/compare/v3.1.3...v3.1.4) (2026-08-20)
 
 
