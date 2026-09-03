@@ -128,7 +128,7 @@ resource "launchdarkly_team_members" "payments_team" {
 ### Optional
 
 - `adopt_existing` (Boolean) Whether to take over members who already exist in your account. When `false`, the default, applying a batch that contains an existing member's email fails and tells you which emails conflict. When `true`, those members are brought under this resource's management. Their roles and team assignments are reconciled to this configuration, and they are deleted when you remove them from the batch or destroy the resource.
-- `deletion_protection` (Boolean) Whether to block operations that would delete every member in the batch. When `true`, the default, destroying this resource fails, and so does any single update that removes all of the members it manages. Set it to `false` and apply that change first, then perform the destroy or replacement.
+- `deletion_protection` (Boolean) Whether to block operations that would delete every member in the batch. When `true`, the default, destroying this resource fails, and so does any single update that removes all of the members it manages. Set it to `false` and apply that change first, then perform the destroy or replacement. Renaming every map key in one apply (for example after a company-wide email domain change) looks identical to a full replacement at plan time and requires the same two-step, even though adopted members are never deleted.
 
 ### Read-Only
 

@@ -151,7 +151,7 @@ If a request is rate limited the provider waits for the window the API reports a
 				Optional:    true,
 				Computed:    true,
 				Default:     booldefault.StaticBool(true),
-				Description: "Whether to block operations that would delete every member in the batch. When `true`, the default, destroying this resource fails, and so does any single update that removes all of the members it manages. Set it to `false` and apply that change first, then perform the destroy or replacement.",
+				Description: "Whether to block operations that would delete every member in the batch. When `true`, the default, destroying this resource fails, and so does any single update that removes all of the members it manages. Set it to `false` and apply that change first, then perform the destroy or replacement. Renaming every map key in one apply (for example after a company-wide email domain change) looks identical to a full replacement at plan time and requires the same two-step, even though adopted members are never deleted.",
 			},
 			MEMBERS: schema.MapNestedAttribute{
 				Required:    true,
@@ -400,7 +400,9 @@ func (r *TeamMembersResource) Read(ctx context.Context, req resource.ReadRequest
 				fmt.Sprintf(
 					"The member declared as %q now has the email %q in LaunchDarkly. Update the members map "+
 						"key to the new email and re-apply with adopt_existing = true to keep managing them "+
-						"under their current address.",
+						"under their current address. Renaming every key in the batch at once additionally "+
+						"trips the whole-batch replacement guard: disable deletion_protection in its own "+
+						"apply first, rename, then re-enable it.",
 					email, strings.ToLower(member.Email),
 				),
 			)
