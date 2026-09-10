@@ -457,6 +457,9 @@ func (r *ProjectResource) Create(ctx context.Context, req resource.CreateRequest
 
 	if d := r.applyProjectUpdates(ctx, projectKey, plan, ProjectResourceModel{}, true); d.HasError() {
 		resp.Diagnostics.Append(d...)
+		r.readIntoModel(ctx, projectKey, &plan, &resp.Diagnostics)
+		plan.ID = types.StringValue(projectKey)
+		resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 		return
 	}
 	r.readIntoModel(ctx, projectKey, &plan, &resp.Diagnostics)
@@ -525,6 +528,13 @@ func (r *ProjectResource) ImportState(ctx context.Context, req resource.ImportSt
 	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("id"), req.ID)...)
 }
 
+func viewAssociationSettingNeedsPatch(plan, state types.Bool, isCreate bool) bool {
+	if isCreate {
+		return plan.ValueBool()
+	}
+	return !plan.Equal(state)
+}
+
 // applyProjectUpdates issues all the patch + nested-environment +
 // view-association calls that follow PostProject. Used by both Create
 // (state empty) and Update paths.
@@ -564,14 +574,22 @@ func (r *ProjectResource) applyProjectUpdates(ctx context.Context, projectKey st
 	}
 
 	// View association settings — handled separately via raw HTTP since not in the official API client.
-	flagsChanged := isCreate || !plan.RequireViewAssociationForNewFlags.Equal(state.RequireViewAssociationForNewFlags)
-	segmentsChanged := isCreate || !plan.RequireViewAssociationForNewSegments.Equal(state.RequireViewAssociationForNewSegments)
+	// Create skips the API-default false values; those paths 400 on accounts without Views.
+	flagsChanged := viewAssociationSettingNeedsPatch(plan.RequireViewAssociationForNewFlags, state.RequireViewAssociationForNewFlags, isCreate)
+	segmentsChanged := viewAssociationSettingNeedsPatch(plan.RequireViewAssociationForNewSegments, state.RequireViewAssociationForNewSegments, isCreate)
 	if flagsChanged || segmentsChanged {
 		if err := patchProjectViewSettings(ctx, r.client, projectKey,
 			plan.RequireViewAssociationForNewFlags.ValueBool(),
 			plan.RequireViewAssociationForNewSegments.ValueBool(),
 			flagsChanged, segmentsChanged); err != nil {
-			diags.AddError(fmt.Sprintf("failed to update view association settings for project %q: %s", projectKey, err.Error()), "")
+			detail := ""
+			if isCreate {
+				detail = fmt.Sprintf("The project %q was created and has been written to state (Terraform marks it tainted). "+
+					"A 400 naming a non-existent /requireViewAssociationForNew* path means this account does not have the Views entitlement. "+
+					"Remove require_view_association_for_new_flags / require_view_association_for_new_segments from the configuration, "+
+					"then run `terraform untaint` on the resource to keep the project (or let the next apply replace it).", projectKey)
+			}
+			diags.AddError(fmt.Sprintf("failed to update view association settings for project %q: %s", projectKey, err.Error()), detail)
 			return diags
 		}
 	}

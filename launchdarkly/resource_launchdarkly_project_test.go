@@ -821,3 +821,75 @@ func testAccCheckProjectDestroy(s *terraform.State) error {
 	}
 	return nil
 }
+
+// TestAccProject_ViewAssociationRequirement_CreateEnabled covers the create-time
+// branch of viewAssociationSettingNeedsPatch: a project created with the view
+// association requirements set to true from the start must patch them during
+// Create (#545 made create skip the default-false patch; true must still land).
+func TestAccProject_ViewAssociationRequirement_CreateEnabled(t *testing.T) {
+	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	resourceName := "launchdarkly_project.view_req_create"
+
+	testAccProjectViewReqCreateEnabled := fmt.Sprintf(`
+resource "launchdarkly_project" "view_req_create" {
+	key  = "%s"
+	name = "View Requirement Create Test"
+	require_view_association_for_new_flags    = true
+	require_view_association_for_new_segments = true
+	environments = {
+	  "test-env" = {
+	    name  = "Test Environment"
+	    color = "010101"
+	  }
+	}
+}
+`, projectKey)
+
+	testAccProjectViewReqCreateDisabled := fmt.Sprintf(`
+resource "launchdarkly_project" "view_req_create" {
+	key  = "%s"
+	name = "View Requirement Create Test"
+	environments = {
+	  "test-env" = {
+	    name  = "Test Environment"
+	    color = "010101"
+	  }
+	}
+}
+`, projectKey)
+
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck: func() {
+			testAccPreCheck(t)
+		},
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckProjectDestroy,
+		Steps: []resource.TestStep{
+			{
+				// Create with both requirements enabled from scratch
+				Config: testAccProjectViewReqCreateEnabled,
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckProjectExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, KEY, projectKey),
+					resource.TestCheckResourceAttr(resourceName, REQUIRE_VIEW_ASSOCIATION_FOR_NEW_FLAGS, "true"),
+					resource.TestCheckResourceAttr(resourceName, REQUIRE_VIEW_ASSOCIATION_FOR_NEW_SEGMENTS, "true"),
+				),
+			},
+			{
+				// Import verifies the API actually holds true/true, not just state
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
+			{
+				// Dropping the attributes falls back to the default false and patches them off
+				Config: testAccProjectViewReqCreateDisabled,
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckProjectExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, REQUIRE_VIEW_ASSOCIATION_FOR_NEW_FLAGS, "false"),
+					resource.TestCheckResourceAttr(resourceName, REQUIRE_VIEW_ASSOCIATION_FOR_NEW_SEGMENTS, "false"),
+				),
+			},
+		},
+	})
+}
