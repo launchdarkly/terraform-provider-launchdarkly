@@ -582,7 +582,14 @@ func (r *ProjectResource) applyProjectUpdates(ctx context.Context, projectKey st
 			plan.RequireViewAssociationForNewFlags.ValueBool(),
 			plan.RequireViewAssociationForNewSegments.ValueBool(),
 			flagsChanged, segmentsChanged); err != nil {
-			diags.AddError(fmt.Sprintf("failed to update view association settings for project %q: %s", projectKey, err.Error()), "")
+			detail := ""
+			if isCreate {
+				detail = fmt.Sprintf("The project %q was created and has been written to state (Terraform marks it tainted). "+
+					"A 400 naming a non-existent /requireViewAssociationForNew* path means this account does not have the Views entitlement. "+
+					"Remove require_view_association_for_new_flags / require_view_association_for_new_segments from the configuration, "+
+					"then run `terraform untaint` on the resource to keep the project (or let the next apply replace it).", projectKey)
+			}
+			diags.AddError(fmt.Sprintf("failed to update view association settings for project %q: %s", projectKey, err.Error()), detail)
 			return diags
 		}
 	}
