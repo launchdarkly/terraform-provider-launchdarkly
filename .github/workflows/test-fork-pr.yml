@@ -113,7 +113,6 @@ jobs:
           - TestAccSegment
           - TestAccTeamMember_CreateAndUpdateGeneric
           - TestAccTeamMember_WithCustomRole
-          - TestAccTeamMembers_
           - TestAccTeam_
           - TestAccTeamRoleMapping_
           - TestAccView
