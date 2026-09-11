@@ -95,6 +95,44 @@ resource "launchdarkly_custom_role" "test" {
 	])
 }
 `
+	testAccCustomRoleAssignedToTeam = `
+resource "launchdarkly_custom_role" "delete_test" {
+	key = "%s"
+	name = "Delete ordering role - %s"
+	policy_statements = [{
+		actions = ["*"]
+		effect = "allow"
+		resources = ["proj/*:env/staging"]
+	}]
+	timeouts = {
+		delete = "2m"
+	}
+	# Terraform destroys removed resources BEFORE updating resources that
+	# referenced them, so without this the role DELETE fires while the team
+	# still holds the role and LaunchDarkly rejects it with a 409 for the
+	# whole retry window (observed in CI). create_before_destroy is stored
+	# in state and reverses that edge: the team update runs first. This is
+	# the pattern the resource docs prescribe for same-apply unassign+delete.
+	lifecycle {
+		create_before_destroy = true
+	}
+}
+
+resource "launchdarkly_team" "delete_test" {
+	key = "%s"
+	name = "delete ordering team"
+	description = "REL-12313 role deletion interdependency test"
+	custom_role_keys = [launchdarkly_custom_role.delete_test.key]
+}
+`
+	testAccCustomRoleUnassignedFromTeam = `
+resource "launchdarkly_team" "delete_test" {
+	key = "%s"
+	name = "delete ordering team"
+	description = "REL-12313 role deletion interdependency test"
+	custom_role_keys = []
+}
+`
 	testAccCustomRoleConflictingForms = `
 resource "launchdarkly_custom_role" "test" {
 	key  = "%s"
@@ -380,6 +418,57 @@ func testAccCheckCustomRoleExists(resourceName string) resource.TestCheckFunc {
 		}
 		return nil
 	}
+}
+
+// TestAccCustomRole_DeleteWhileAssignedToTeam covers REL-12313: an apply
+// that deletes a custom role and, in the same apply, removes it from a
+// team's custom_role_keys. Terraform only orders operations by references
+// in the new configuration, so the role DELETE can fire before the team
+// update lands and LaunchDarkly rejects it with a 409. The provider must
+// retry the deletion until the unassignment completes.
+func TestAccCustomRole_DeleteWhileAssignedToTeam(t *testing.T) {
+	roleKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	roleName := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	teamKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	resourceName := "launchdarkly_custom_role.delete_test"
+	teamResourceName := "launchdarkly_team.delete_test"
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck: func() {
+			testAccPreCheck(t)
+		},
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckCustomRoleDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config: fmt.Sprintf(testAccCustomRoleAssignedToTeam, roleKey, roleName, teamKey),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckCustomRoleExists(resourceName),
+					resource.TestCheckResourceAttr(teamResourceName, "custom_role_keys.#", "1"),
+					resource.TestCheckResourceAttr(teamResourceName, "custom_role_keys.0", roleKey),
+				),
+			},
+			{
+				Config: fmt.Sprintf(testAccCustomRoleUnassignedFromTeam, teamKey),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(teamResourceName, "custom_role_keys.#", "0"),
+					// The role is out of state after this step, so
+					// testAccCheckCustomRoleDestroy would pass vacuously;
+					// assert server-side deletion by key instead.
+					func(_ *terraform.State) error {
+						client := mustTestAccClient()
+						_, res, err := client.ld.CustomRolesApi.GetCustomRole(client.ctx, roleKey).Execute()
+						if isStatusNotFound(res) {
+							return nil
+						}
+						if err != nil {
+							return err
+						}
+						return fmt.Errorf("custom role %s still exists after delete-while-assigned apply", roleKey)
+					},
+				),
+			},
+		},
+	})
 }
 
 // testAccCheckCustomRoleDestroy verifies the custom role has been destroyed

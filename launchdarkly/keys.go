@@ -196,6 +196,7 @@ const (
 	TARGET_CONFIG                             = "target_config"
 	TEAM_MEMBERS                              = "team_members"
 	TEMPORARY                                 = "temporary"
+	TIMEOUTS                                  = "timeouts"
 	TITLE                                     = "title"
 	TOKEN                                     = "token"
 	TOOL_KEYS                                 = "tool_keys"
