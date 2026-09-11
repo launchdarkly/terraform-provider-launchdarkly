@@ -2,6 +2,13 @@
 
 All notable changes to the LaunchDarkly Terraform Provider will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org).
 
+## [3.1.5](https://github.com/launchdarkly/terraform-provider-launchdarkly/compare/v3.1.4...v3.1.5) (2026-09-11)
+
+
+### Bug Fixes
+
+* skip default view-association patch on project create ([#548](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/548)) ([d0e2ac8](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/d0e2ac8b03c3ce7ffe1da70a05aed09b9f8dfe40))
+
 ## [3.1.4](https://github.com/launchdarkly/terraform-provider-launchdarkly/compare/v3.1.3...v3.1.4) (2026-08-20)
 
 
