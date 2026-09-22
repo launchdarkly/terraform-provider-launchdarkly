@@ -136,6 +136,7 @@ resource "launchdarkly_ai_config" "quality_judge" {
 	name                  = "Quality Judge"
 	mode                  = "judge"
 	evaluation_metric_key = "$ld:ai:judge:%[1]s"
+	is_inverted           = false
 }
 
 resource "launchdarkly_ai_config" "test" {
@@ -170,6 +171,7 @@ resource "launchdarkly_ai_config" "quality_judge" {
 	name                  = "Quality Judge"
 	mode                  = "judge"
 	evaluation_metric_key = "$ld:ai:judge:%[1]s"
+	is_inverted           = false
 }
 
 resource "launchdarkly_ai_config" "accuracy_judge" {
@@ -178,6 +180,7 @@ resource "launchdarkly_ai_config" "accuracy_judge" {
 	name                  = "Accuracy Judge"
 	mode                  = "judge"
 	evaluation_metric_key = "$ld:ai:judge:%[2]s"
+	is_inverted           = false
 	depends_on            = [launchdarkly_ai_config.quality_judge]
 }
 
@@ -216,6 +219,7 @@ resource "launchdarkly_ai_config" "quality_judge" {
 	name                  = "Quality Judge"
 	mode                  = "judge"
 	evaluation_metric_key = "$ld:ai:judge:%[1]s"
+	is_inverted           = false
 }
 
 resource "launchdarkly_ai_config" "accuracy_judge" {
@@ -224,6 +228,7 @@ resource "launchdarkly_ai_config" "accuracy_judge" {
 	name                  = "Accuracy Judge"
 	mode                  = "judge"
 	evaluation_metric_key = "$ld:ai:judge:%[2]s"
+	is_inverted           = false
 	depends_on            = [launchdarkly_ai_config.quality_judge]
 }
 

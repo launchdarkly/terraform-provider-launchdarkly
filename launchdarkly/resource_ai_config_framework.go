@@ -245,12 +245,14 @@ func (r *AIConfigResource) Create(ctx context.Context, req resource.CreateReques
 	if !plan.EvaluationMetricKey.IsNull() && !plan.EvaluationMetricKey.IsUnknown() && plan.EvaluationMetricKey.ValueString() != "" {
 		v := plan.EvaluationMetricKey.ValueString()
 		post.EvaluationMetricKey = &v
-		// is_inverted is meaningful only with an evaluation_metric_key.
-		// Only send it when configured — the API defaults it to false.
+	}
+	isJudge := !plan.Mode.IsNull() && !plan.Mode.IsUnknown() && plan.Mode.ValueString() == "judge"
+	if post.EvaluationMetricKey != nil || isJudge {
+		isInverted := false
 		if !plan.IsInverted.IsNull() && !plan.IsInverted.IsUnknown() {
-			isInverted := plan.IsInverted.ValueBool()
-			post.IsInverted = &isInverted
+			isInverted = plan.IsInverted.ValueBool()
 		}
+		post.IsInverted = &isInverted
 	}
 	tags, d := stringSliceFromSet(ctx, plan.Tags)
 	resp.Diagnostics.Append(d...)
