@@ -136,7 +136,6 @@ resource "launchdarkly_ai_config" "quality_judge" {
 	name                  = "Quality Judge"
 	mode                  = "judge"
 	evaluation_metric_key = "$ld:ai:judge:%[1]s"
-	is_inverted           = false
 }
 
 resource "launchdarkly_ai_config" "test" {
@@ -171,7 +170,6 @@ resource "launchdarkly_ai_config" "quality_judge" {
 	name                  = "Quality Judge"
 	mode                  = "judge"
 	evaluation_metric_key = "$ld:ai:judge:%[1]s"
-	is_inverted           = false
 }
 
 resource "launchdarkly_ai_config" "accuracy_judge" {
@@ -180,7 +178,6 @@ resource "launchdarkly_ai_config" "accuracy_judge" {
 	name                  = "Accuracy Judge"
 	mode                  = "judge"
 	evaluation_metric_key = "$ld:ai:judge:%[2]s"
-	is_inverted           = false
 	depends_on            = [launchdarkly_ai_config.quality_judge]
 }
 
@@ -219,7 +216,6 @@ resource "launchdarkly_ai_config" "quality_judge" {
 	name                  = "Quality Judge"
 	mode                  = "judge"
 	evaluation_metric_key = "$ld:ai:judge:%[1]s"
-	is_inverted           = false
 }
 
 resource "launchdarkly_ai_config" "accuracy_judge" {
@@ -228,7 +224,6 @@ resource "launchdarkly_ai_config" "accuracy_judge" {
 	name                  = "Accuracy Judge"
 	mode                  = "judge"
 	evaluation_metric_key = "$ld:ai:judge:%[2]s"
-	is_inverted           = false
 	depends_on            = [launchdarkly_ai_config.quality_judge]
 }
 
@@ -535,6 +530,7 @@ func TestAccAIConfigVariation_WithJudges(t *testing.T) {
 				Config: withAITestProject(projectKey, fmt.Sprintf(testAccAIConfigVariationWithJudges, qualityJudgeKey, configKey, variationKey)),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckAIConfigVariationExists(resourceName),
+					resource.TestCheckNoResourceAttr("launchdarkly_ai_config.quality_judge", IS_INVERTED),
 					resource.TestCheckResourceAttr(resourceName, "judges.%", "1"),
 					resource.TestCheckResourceAttr(resourceName, fmt.Sprintf("judges.%s.sampling_rate", qualityJudgeKey), "0.1"),
 				),
