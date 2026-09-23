@@ -2,6 +2,13 @@
 
 All notable changes to the LaunchDarkly Terraform Provider will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org).
 
+## [3.1.6](https://github.com/launchdarkly/terraform-provider-launchdarkly/compare/v3.1.5...v3.1.6) (2026-09-23)
+
+
+### Bug Fixes
+
+* [Cursor] send flag maintainer on create POST ([#551](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/551)) ([ca81d2d](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/ca81d2d486d0fec215417d368364860e565d1ad2))
+
 ## [3.1.5](https://github.com/launchdarkly/terraform-provider-launchdarkly/compare/v3.1.4...v3.1.5) (2026-09-11)
 
 
