@@ -2,10 +2,13 @@ package launchdarkly
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"sort"
 	"strings"
+	"time"
 
+	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
@@ -23,6 +26,19 @@ var (
 	_ resource.Resource                 = &CustomRoleResource{}
 	_ resource.ResourceWithImportState  = &CustomRoleResource{}
 	_ resource.ResourceWithUpgradeState = &CustomRoleResource{}
+	_ resource.ResourceWithModifyPlan   = &CustomRoleResource{}
+)
+
+// Retry window for role DELETEs rejected with a 409 because the role is
+// still assigned to teams or members. The default is sized so that
+// unassignment operations scheduled in the same apply (which Terraform does
+// not order relative to this destroy) have time to land; users with larger
+// applies can raise it via `timeouts = { delete = ... }`. Individual waits
+// grow exponentially from the initial value up to the cap.
+const (
+	customRoleDeleteTimeoutDefault      = time.Minute
+	customRoleDeleteConflictInitialWait = 500 * time.Millisecond
+	customRoleDeleteConflictMaxWait     = 15 * time.Second
 )
 
 type CustomRoleResource struct {
@@ -30,13 +46,14 @@ type CustomRoleResource struct {
 }
 
 type CustomRoleResourceModel struct {
-	ID                   types.String `tfsdk:"id"`
-	Key                  types.String `tfsdk:"key"`
-	Name                 types.String `tfsdk:"name"`
-	Description          types.String `tfsdk:"description"`
-	BasePermissions      types.String `tfsdk:"base_permissions"`
-	PolicyStatements     types.List   `tfsdk:"policy_statements"`
-	PolicyStatementsJSON types.String `tfsdk:"policy_statements_json"`
+	ID                   types.String   `tfsdk:"id"`
+	Key                  types.String   `tfsdk:"key"`
+	Name                 types.String   `tfsdk:"name"`
+	Description          types.String   `tfsdk:"description"`
+	BasePermissions      types.String   `tfsdk:"base_permissions"`
+	PolicyStatements     types.List     `tfsdk:"policy_statements"`
+	PolicyStatementsJSON types.String   `tfsdk:"policy_statements_json"`
+	Timeouts             timeouts.Value `tfsdk:"timeouts"`
 }
 
 func NewCustomRoleResource() resource.Resource {
@@ -47,11 +64,18 @@ func (r *CustomRoleResource) Metadata(_ context.Context, req resource.MetadataRe
 	resp.TypeName = req.ProviderTypeName + "_custom_role"
 }
 
-func (r *CustomRoleResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
+func (r *CustomRoleResource) Schema(ctx context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
+	attrs := customRoleSchemaAttributes()
+	// Not part of customRoleSchemaAttributes: that function is reused as the
+	// base of the frozen V0 (pre-v3) prior schema, which had no timeouts.
+	attrs[TIMEOUTS] = timeouts.Attributes(ctx, timeouts.Opts{
+		Delete:            true,
+		DeleteDescription: "How long to keep retrying a deletion rejected because the role is still assigned to teams or members, while the same apply removes those assignments. Accepts a duration string such as `\"5m\"` or `\"90s\"`. Defaults to `\"1m\"`.",
+	})
 	resp.Schema = schema.Schema{
 		Version:     1,
-		Description: "Provides a LaunchDarkly custom role resource.\n\n-> **Note:** Custom roles are available to customers on an Enterprise LaunchDarkly plan. To learn more, [read about our pricing](https://launchdarkly.com/pricing/). To upgrade your plan, [contact LaunchDarkly Sales](https://launchdarkly.com/contact-sales/).\n\nThis resource allows you to create and manage custom roles within your LaunchDarkly organization.",
-		Attributes:  customRoleSchemaAttributes(),
+		Description: "Provides a LaunchDarkly custom role resource.\n\n-> **Note:** Custom roles are available to customers on an Enterprise LaunchDarkly plan. To learn more, [read about our pricing](https://launchdarkly.com/pricing/). To upgrade your plan, [contact LaunchDarkly Sales](https://launchdarkly.com/contact-sales/).\n\nThis resource allows you to create and manage custom roles within your LaunchDarkly organization.\n\n-> **Note:** You cannot delete a custom role while it is still assigned to any team, member, or access token. By default, Terraform destroys a removed resource before it updates the resources that referenced it, so a single apply that deletes this role and removes its assignments, for example from a `launchdarkly_team`'s `custom_role_keys` or a `launchdarkly_team_member`'s `custom_roles`, attempts the deletion while the assignments still exist and fails with a conflict. To delete a role and remove its assignments in one apply, set `lifecycle { create_before_destroy = true }` on this resource so that Terraform updates the referencing resources first. Alternatively, manage the assignment with a [`launchdarkly_team_role_mapping`](https://registry.terraform.io/providers/launchdarkly/launchdarkly/latest/docs/resources/team_role_mapping) resource, which Terraform destroys before the role and which does not require the lifecycle setting. With `create_before_destroy`, a change that forces replacement, such as a new `key`, creates the replacement role before it destroys the original, and role names must be unique: change `name` in the same apply to avoid a conflict. The provider retries a conflicting deletion for one minute by default, configurable with `timeouts = { delete = ... }`, to absorb propagation delays. If the role is still assigned when the retry window closes, the deletion fails with a conflict error.",
+		Attributes:  attrs,
 	}
 }
 
@@ -117,6 +141,13 @@ func (r *CustomRoleResource) UpgradeState(_ context.Context) map[int64]resource.
 					BasePermissions:      prior.BasePermissions,
 					PolicyStatements:     nullIfEmptyList(ctx, prior.PolicyStatements),
 					PolicyStatementsJSON: prior.PolicyStatementsJSON,
+					// V0 (SDKv2) state had no timeouts attribute. A zero
+					// timeouts.Value carries no type information and fails
+					// State.Set reflection, so write a typed null matching
+					// the delete-only timeouts schema.
+					Timeouts: timeouts.Value{
+						Object: types.ObjectNull(map[string]attr.Type{"delete": types.StringType}),
+					},
 				}
 				// policy -> policy_statements migration: when prior state had
 				// policy set and policy_statements empty, convert each policy
@@ -216,6 +247,63 @@ func (customRolePolicyConflictValidator) ValidateResource(ctx context.Context, r
 
 func (r *CustomRoleResource) Configure(_ context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
 	r.client = configureResourceClient(req, resp)
+}
+
+// ModifyPlan pre-flights role deletion: LaunchDarkly rejects deleting a
+// custom role that is still assigned to teams or members with a 409, so
+// surface the interdependency at plan time (REL-12313).
+func (r *CustomRoleResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
+	if r.client == nil {
+		return
+	}
+	// Destroy plan: plan is null, state is not.
+	if !req.Plan.Raw.IsNull() || req.State.Raw.IsNull() {
+		return
+	}
+	var state CustomRoleResourceModel
+	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	key := state.ID.ValueString()
+	if key == "" {
+		return
+	}
+	var role *ldapi.CustomRole
+	var res *http.Response
+	err := r.client.withConcurrency(r.client.ctx, func() error {
+		var e error
+		role, res, e = r.client.ld.CustomRolesApi.GetCustomRole(r.client.ctx, key).Execute()
+		return e
+	})
+	if err != nil {
+		if isStatusNotFound(res) {
+			// Role already gone; the destroy is a no-op.
+			return
+		}
+		resp.Diagnostics.AddWarning(
+			fmt.Sprintf("could not check assignments for custom role %q during plan", key),
+			handleLdapiErr(err).Error()+"\n\nApply may still fail with a 409 conflict if this role is still assigned to teams or members.",
+		)
+		return
+	}
+	var membersCount, teamsCount int32
+	if role != nil && role.AssignedTo != nil {
+		membersCount = role.AssignedTo.GetMembersCount()
+		teamsCount = role.AssignedTo.GetTeamsCount()
+	}
+	if membersCount == 0 && teamsCount == 0 {
+		return
+	}
+	// Advisory only. At plan time nothing has been applied yet, so a plan
+	// that removes both this role AND its assignments (e.g. a whole-stack
+	// destroy, or an unassignment ordered first via create_before_destroy
+	// or a team_role_mapping destroy) is legitimate. Warn so the user sees
+	// the dependency early without blocking valid destroys.
+	resp.Diagnostics.AddWarning(
+		fmt.Sprintf("custom role %q is still assigned to %d member(s) and %d team(s)", key, membersCount, teamsCount),
+		"LaunchDarkly rejects deleting a custom role while it is assigned. Terraform updates referencing resources only after it destroys this role, unless the role sets `lifecycle { create_before_destroy = true }` or a launchdarkly_team_role_mapping manages the assignment (Terraform destroys the mapping before the role). Without one of those, the apply fails with a 409 conflict. Remove the assignments first, or add create_before_destroy to this role.",
+	)
 }
 
 func (r *CustomRoleResource) policiesFromModel(ctx context.Context, data *CustomRoleResourceModel, diags *diag.Diagnostics) []ldapi.StatementPost {
@@ -352,13 +440,62 @@ func (r *CustomRoleResource) Delete(ctx context.Context, req resource.DeleteRequ
 	if resp.Diagnostics.HasError() {
 		return
 	}
+	key := data.ID.ValueString()
+
+	deleteTimeout, d := data.Timeouts.Delete(ctx, customRoleDeleteTimeoutDefault)
+	resp.Diagnostics.Append(d...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	deleteResp, err := r.deleteCustomRole(key)
+	if err == nil {
+		return
+	}
+	// 409: the role is still assigned to teams and/or members. Terraform
+	// only builds dependency edges from the new configuration, so an apply
+	// that deletes this role and also unassigns it (a team's
+	// custom_role_keys update, a member's custom_roles update, a
+	// team_role_mapping destroy) runs both operations unordered and the
+	// DELETE can fire before the unassignment lands (REL-12313). Retry
+	// with backoff until the delete timeout, releasing the concurrency
+	// slot between attempts so those other operations can proceed in the
+	// meantime.
+	deadline := time.Now().Add(deleteTimeout)
+	wait := customRoleDeleteConflictInitialWait
+	for isStatusConflict(deleteResp) && time.Now().Before(deadline) {
+		select {
+		case <-ctx.Done():
+			resp.Diagnostics.AddError("Failed to delete custom role", ctx.Err().Error())
+			return
+		case <-time.After(wait):
+		}
+		if wait *= 2; wait > customRoleDeleteConflictMaxWait {
+			wait = customRoleDeleteConflictMaxWait
+		}
+		deleteResp, err = r.deleteCustomRole(key)
+		if err == nil {
+			return
+		}
+	}
+	if isStatusConflict(deleteResp) {
+		resp.Diagnostics.AddError(
+			fmt.Sprintf("Failed to delete custom role %q: still assigned to teams or members", key),
+			handleLdapiErr(err).Error()+"\n\nLaunchDarkly rejects deleting a custom role while it is assigned. Remove the role from every launchdarkly_team (custom_role_keys), launchdarkly_team_member (custom_roles), launchdarkly_team_role_mapping, and access token that references it, then re-apply. To remove the assignments and delete the role in the same apply: Terraform updates referencing resources only after this destroy, so set `lifecycle { create_before_destroy = true }` on this launchdarkly_custom_role to order the unassignments first, or manage the assignment with launchdarkly_team_role_mapping, then re-apply.",
+		)
+		return
+	}
+	addLdapiError(&resp.Diagnostics, "Failed to delete custom role", err)
+}
+
+func (r *CustomRoleResource) deleteCustomRole(key string) (*http.Response, error) {
+	var deleteResp *http.Response
 	err := r.client.withConcurrency(r.client.ctx, func() error {
-		_, e := r.client.ld.CustomRolesApi.DeleteCustomRole(r.client.ctx, data.ID.ValueString()).Execute()
+		var e error
+		deleteResp, e = r.client.ld.CustomRolesApi.DeleteCustomRole(r.client.ctx, key).Execute()
 		return e
 	})
-	if err != nil {
-		addLdapiError(&resp.Diagnostics, "Failed to delete custom role", err)
-	}
+	return deleteResp, err
 }
 
 func (r *CustomRoleResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
