@@ -530,6 +530,7 @@ func TestAccAIConfigVariation_WithJudges(t *testing.T) {
 				Config: withAITestProject(projectKey, fmt.Sprintf(testAccAIConfigVariationWithJudges, qualityJudgeKey, configKey, variationKey)),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckAIConfigVariationExists(resourceName),
+					resource.TestCheckNoResourceAttr("launchdarkly_ai_config.quality_judge", IS_INVERTED),
 					resource.TestCheckResourceAttr(resourceName, "judges.%", "1"),
 					resource.TestCheckResourceAttr(resourceName, fmt.Sprintf("judges.%s.sampling_rate", qualityJudgeKey), "0.1"),
 				),

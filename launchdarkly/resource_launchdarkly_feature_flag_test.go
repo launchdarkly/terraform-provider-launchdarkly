@@ -986,8 +986,8 @@ func TestAccFeatureFlag_WithMaintainer(t *testing.T) {
 	})
 }
 
-// TestAccFeatureFlag_WithInvalidMaintainer tests that flags that fail during the update portion of the create clean up
-// after themselves and do not leave dangling flags.
+// TestAccFeatureFlag_WithInvalidMaintainer tests that flags that fail during
+// create (invalid maintainer on POST) do not leave dangling flags.
 func TestAccFeatureFlag_InvalidMaintainer(t *testing.T) {
 	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	randomName := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
@@ -1000,7 +1000,7 @@ func TestAccFeatureFlag_InvalidMaintainer(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config:      withRandomProject(projectKey, testAccFeatureFlagWithInvalidMaintainer),
-				ExpectError: regexp.MustCompile(fmt.Sprintf(`failed to update flag "maintained-flag" in project "%s": 400 Bad Request`, projectKey)),
+				ExpectError: regexp.MustCompile(fmt.Sprintf(`failed to create flag "maintained-flag" in project "%s": 400 Bad Request`, projectKey)),
 			},
 			{
 				Config: withRandomProject(projectKey, fmt.Sprintf(testAccFeatureFlagWithMaintainer, randomName)),

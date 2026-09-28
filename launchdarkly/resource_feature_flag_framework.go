@@ -647,6 +647,8 @@ func (r *FeatureFlagResource) Create(ctx context.Context, req resource.CreateReq
 			Defaults:               defaults,
 			ClientSideAvailability: finalCSA,
 			ViewKeys:               viewKeys,
+			MaintainerId:           optionalNonEmptyString(plan.MaintainerID),
+			MaintainerTeamKey:      optionalNonEmptyString(plan.MaintainerTeamKey),
 		}
 		err = r.client.withConcurrency(ctx, func() error {
 			return createFeatureFlagWithViewKeys(ctx, r.client, projectKey, body)
@@ -661,6 +663,8 @@ func (r *FeatureFlagResource) Create(ctx context.Context, req resource.CreateReq
 			Tags:                   tags,
 			Defaults:               defaults,
 			ClientSideAvailability: finalCSA,
+			MaintainerId:           optionalNonEmptyString(plan.MaintainerID),
+			MaintainerTeamKey:      optionalNonEmptyString(plan.MaintainerTeamKey),
 		}
 		err = r.client.withConcurrency(ctx, func() error {
 			_, _, e := r.client.ld.FeatureFlagsApi.PostFeatureFlag(r.client.ctx, projectKey).FeatureFlagBody(body).Execute()
@@ -1428,6 +1432,14 @@ func defaultsObjectFromAPI(_ context.Context, defaults *ldapi.Defaults, variatio
 // absent.
 func priorMaintainerSet(v types.String) bool {
 	return !v.IsNull() && !v.IsUnknown() && v.ValueString() != ""
+}
+
+func optionalNonEmptyString(v types.String) *string {
+	if !priorMaintainerSet(v) {
+		return nil
+	}
+	s := v.ValueString()
+	return &s
 }
 
 // stringValueOrEmpty returns the API value as types.String, emitting

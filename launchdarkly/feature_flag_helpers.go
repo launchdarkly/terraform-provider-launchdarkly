@@ -69,6 +69,8 @@ type FeatureFlagBodyWithViewKeys struct {
 	Defaults               *ldapi.Defaults                   `json:"defaults,omitempty"`
 	ClientSideAvailability *ldapi.ClientSideAvailabilityPost `json:"clientSideAvailability,omitempty"`
 	ViewKeys               []string                          `json:"viewKeys,omitempty"`
+	MaintainerId           *string                           `json:"maintainerId,omitempty"`
+	MaintainerTeamKey      *string                           `json:"maintainerTeamKey,omitempty"`
 }
 
 func createFeatureFlagWithViewKeys(ctx context.Context, client *Client, projectKey string, body FeatureFlagBodyWithViewKeys) error {

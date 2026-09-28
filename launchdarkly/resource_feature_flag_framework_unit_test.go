@@ -109,3 +109,19 @@ func TestVariationPatchesPreserveUnsetNameDescription(t *testing.T) {
 		t.Error("a configured variation name must be patched")
 	}
 }
+
+func TestOptionalNonEmptyString(t *testing.T) {
+	if got := optionalNonEmptyString(types.StringNull()); got != nil {
+		t.Errorf("null: got %v, want nil", got)
+	}
+	if got := optionalNonEmptyString(types.StringUnknown()); got != nil {
+		t.Errorf("unknown: got %v, want nil", got)
+	}
+	if got := optionalNonEmptyString(types.StringValue("")); got != nil {
+		t.Errorf("empty: got %v, want nil", got)
+	}
+	got := optionalNonEmptyString(types.StringValue("payments"))
+	if got == nil || *got != "payments" {
+		t.Errorf("set: got %v, want payments", got)
+	}
+}

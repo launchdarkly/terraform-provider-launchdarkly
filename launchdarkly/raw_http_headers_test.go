@@ -2,6 +2,7 @@ package launchdarkly
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -10,6 +11,39 @@ import (
 
 	"github.com/stretchr/testify/require"
 )
+
+func TestCreateFeatureFlagWithViewKeysIncludesMaintainer(t *testing.T) {
+	t.Parallel()
+
+	var gotBody []byte
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var err error
+		gotBody, err = io.ReadAll(r.Body)
+		require.NoError(t, err)
+		_ = r.Body.Close()
+		w.WriteHeader(http.StatusCreated)
+	}))
+	defer server.Close()
+
+	client, err := newClient("token", server.URL, false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
+	require.NoError(t, err)
+
+	teamKey := "payments"
+	err = createFeatureFlagWithViewKeys(context.Background(), client, "test-project", FeatureFlagBodyWithViewKeys{
+		Name:              "test-flag",
+		Key:               "test-flag",
+		ViewKeys:          []string{"eng"},
+		MaintainerTeamKey: &teamKey,
+	})
+	require.NoError(t, err)
+
+	var payload map[string]any
+	require.NoError(t, json.Unmarshal(gotBody, &payload))
+	require.Equal(t, "payments", payload["maintainerTeamKey"])
+	require.Equal(t, []any{"eng"}, payload["viewKeys"])
+	_, hasMaintainerID := payload["maintainerId"]
+	require.False(t, hasMaintainerID)
+}
 
 func TestCreateFeatureFlagWithViewKeysSetsUserAgentHeader(t *testing.T) {
 	t.Parallel()

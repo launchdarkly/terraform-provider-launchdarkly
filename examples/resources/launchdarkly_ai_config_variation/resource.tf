@@ -29,4 +29,5 @@ resource "launchdarkly_ai_config" "response_quality_judge" {
   name                  = "Response Quality Judge"
   mode                  = "judge"
   evaluation_metric_key = "$ld:ai:judge:response-quality"
+  is_inverted           = false
 }
