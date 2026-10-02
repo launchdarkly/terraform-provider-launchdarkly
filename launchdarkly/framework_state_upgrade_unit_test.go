@@ -108,6 +108,8 @@ func TestEnvironmentsMapFromV0List(t *testing.T) {
 		v0Attr[k] = v
 	}
 	v0Attr[APPROVAL_SETTINGS] = types.ListType{ElemType: approvalObjType}
+	// exclude_keys_from_state was added after v0.
+	delete(v0Attr, EXCLUDE_KEYS_FROM_STATE)
 	v0ObjType := types.ObjectType{AttrTypes: v0Attr}
 
 	approval := func(required bool, min int64) basetypes.ListValue {

@@ -55,23 +55,27 @@ type environmentModel struct {
 	ConfirmChanges     types.Bool   `tfsdk:"confirm_changes"`
 	Tags               types.Set    `tfsdk:"tags"`
 	ApprovalSettings   types.Object `tfsdk:"approval_settings"`
+	// ExcludeKeysFromState is config-only (never read from the API). See
+	// exclude_keys_from_state.go.
+	ExcludeKeysFromState types.Bool `tfsdk:"exclude_keys_from_state"`
 }
 
 var environmentAttrTypes = map[string]attr.Type{
-	KEY:                  types.StringType,
-	NAME:                 types.StringType,
-	COLOR:                types.StringType,
-	CRITICAL:             types.BoolType,
-	API_KEY:              types.StringType,
-	MOBILE_KEY:           types.StringType,
-	CLIENT_SIDE_ID:       types.StringType,
-	DEFAULT_TTL:          types.Int64Type,
-	SECURE_MODE:          types.BoolType,
-	DEFAULT_TRACK_EVENTS: types.BoolType,
-	REQUIRE_COMMENTS:     types.BoolType,
-	CONFIRM_CHANGES:      types.BoolType,
-	TAGS:                 types.SetType{ElemType: types.StringType},
-	APPROVAL_SETTINGS:    types.ObjectType{AttrTypes: frameworkApprovalSettingsObjectAttrTypes},
+	KEY:                     types.StringType,
+	NAME:                    types.StringType,
+	COLOR:                   types.StringType,
+	CRITICAL:                types.BoolType,
+	API_KEY:                 types.StringType,
+	MOBILE_KEY:              types.StringType,
+	CLIENT_SIDE_ID:          types.StringType,
+	DEFAULT_TTL:             types.Int64Type,
+	SECURE_MODE:             types.BoolType,
+	DEFAULT_TRACK_EVENTS:    types.BoolType,
+	REQUIRE_COMMENTS:        types.BoolType,
+	CONFIRM_CHANGES:         types.BoolType,
+	TAGS:                    types.SetType{ElemType: types.StringType},
+	APPROVAL_SETTINGS:       types.ObjectType{AttrTypes: frameworkApprovalSettingsObjectAttrTypes},
+	EXCLUDE_KEYS_FROM_STATE: types.BoolType,
 }
 
 // environmentObjectType is the element type of the environments map.
@@ -112,14 +116,14 @@ func projectEnvironmentsAttribute() schema.MapNestedAttribute {
 				API_KEY: schema.StringAttribute{
 					Computed:      true,
 					Sensitive:     true,
-					Description:   "The environment's SDK key.",
-					PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+					Description:   "The environment's SDK key. This is `null` when `exclude_keys_from_state` is `true`.",
+					PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown(), nullWhenKeysExcludedFromState()},
 				},
 				MOBILE_KEY: schema.StringAttribute{
 					Computed:      true,
 					Sensitive:     true,
-					Description:   "The environment's mobile key.",
-					PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+					Description:   "The environment's mobile key. This is `null` when `exclude_keys_from_state` is `true`.",
+					PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown(), nullWhenKeysExcludedFromState()},
 				},
 				CLIENT_SIDE_ID: schema.StringAttribute{
 					Computed:      true,
@@ -165,6 +169,10 @@ func projectEnvironmentsAttribute() schema.MapNestedAttribute {
 					Description: "Tags associated with your resource.",
 				},
 				APPROVAL_SETTINGS: frameworkApprovalSettingsResourceAttribute(),
+				EXCLUDE_KEYS_FROM_STATE: schema.BoolAttribute{
+					Optional:    true,
+					Description: excludeKeysFromStateDescription,
+				},
 			},
 		},
 	}
@@ -293,6 +301,9 @@ func environmentObjectFromAPI(ctx context.Context, e ldapi.Environment, prior *e
 	var (
 		tags      types.Set
 		approvals basetypes.ObjectValue
+		// Import / envs adopted from outside config have no prior, so
+		// exclude_keys_from_state stays null and the keys are stored.
+		exclude = types.BoolNull()
 	)
 	if prior == nil {
 		// No prior state for this env (Import context or new env added
@@ -309,6 +320,7 @@ func environmentObjectFromAPI(ctx context.Context, e ldapi.Environment, prior *e
 			approvals = obj
 		}
 	} else {
+		exclude = prior.ExcludeKeysFromState
 		tagsSet, d := setFromStringSlicePreservingPlan(ctx, e.Tags, prior.Tags)
 		diags.Append(d...)
 		tags = tagsSet
@@ -317,20 +329,21 @@ func environmentObjectFromAPI(ctx context.Context, e ldapi.Environment, prior *e
 		approvals = obj
 	}
 	obj, d := types.ObjectValue(environmentAttrTypes, map[string]attr.Value{
-		KEY:                  types.StringValue(e.Key),
-		NAME:                 types.StringValue(e.Name),
-		COLOR:                types.StringValue(e.Color),
-		CRITICAL:             types.BoolValue(e.Critical),
-		API_KEY:              types.StringValue(e.ApiKey),
-		MOBILE_KEY:           types.StringValue(e.MobileKey),
-		CLIENT_SIDE_ID:       types.StringValue(e.Id),
-		DEFAULT_TTL:          types.Int64Value(int64(e.DefaultTtl)),
-		SECURE_MODE:          types.BoolValue(e.SecureMode),
-		DEFAULT_TRACK_EVENTS: types.BoolValue(e.DefaultTrackEvents),
-		REQUIRE_COMMENTS:     types.BoolValue(e.RequireComments),
-		CONFIRM_CHANGES:      types.BoolValue(e.ConfirmChanges),
-		TAGS:                 tags,
-		APPROVAL_SETTINGS:    approvals,
+		KEY:                     types.StringValue(e.Key),
+		NAME:                    types.StringValue(e.Name),
+		COLOR:                   types.StringValue(e.Color),
+		CRITICAL:                types.BoolValue(e.Critical),
+		API_KEY:                 excludedKeyValue(exclude, e.ApiKey),
+		MOBILE_KEY:              excludedKeyValue(exclude, e.MobileKey),
+		CLIENT_SIDE_ID:          types.StringValue(e.Id),
+		DEFAULT_TTL:             types.Int64Value(int64(e.DefaultTtl)),
+		SECURE_MODE:             types.BoolValue(e.SecureMode),
+		DEFAULT_TRACK_EVENTS:    types.BoolValue(e.DefaultTrackEvents),
+		REQUIRE_COMMENTS:        types.BoolValue(e.RequireComments),
+		CONFIRM_CHANGES:         types.BoolValue(e.ConfirmChanges),
+		TAGS:                    tags,
+		APPROVAL_SETTINGS:       approvals,
+		EXCLUDE_KEYS_FROM_STATE: exclude,
 	})
 	diags.Append(d...)
 	return obj, diags
