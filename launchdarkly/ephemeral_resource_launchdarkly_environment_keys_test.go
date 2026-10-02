@@ -8,7 +8,6 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/providerserver"
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
-	"github.com/hashicorp/terraform-plugin-testing/echoprovider"
 	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"github.com/hashicorp/terraform-plugin-testing/tfversion"
@@ -16,13 +15,13 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// testAccProtoV6ProviderFactoriesWithEcho adds the terraform-plugin-testing
-// echo provider, which copies its `data` configuration into the `data`
-// attribute of an `echo` resource. Ephemeral values can't be read from state
-// directly, so echoing them is how acceptance tests assert on them.
+// testAccProtoV6ProviderFactoriesWithEcho adds the test-only echo provider
+// (echo_provider_test.go), which copies its `data` configuration into the
+// `data` attribute of an `echo` resource. Ephemeral values can't be read from
+// state directly, so echoing them is how acceptance tests assert on them.
 var testAccProtoV6ProviderFactoriesWithEcho = map[string]func() (tfprotov6.ProviderServer, error){
 	"launchdarkly": providerserver.NewProtocol6WithError(NewPluginProvider("test")()),
-	"echo":         echoprovider.NewProviderServer(),
+	"echo":         providerserver.NewProtocol6WithError(newTestEchoProvider()),
 }
 
 const testAccEphemeralEnvironmentKeys = `
