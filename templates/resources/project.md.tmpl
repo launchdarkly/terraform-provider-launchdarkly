@@ -15,6 +15,38 @@ description: |-
 
 {{ .SchemaMarkdown | trimspace }}
 
+## Keeping environment keys out of state
+
+By default, each environment's SDK key (`api_key`) and mobile key (`mobile_key`) are stored in plaintext in Terraform state. Marking them `sensitive` only redacts them from CLI output. To keep an environment's keys out of state, set `exclude_keys_from_state = true` on that environment. Changing this setting updates the project in place. It never replaces the environment or rotates its keys.
+
+To use the keys elsewhere in your configuration without storing them, read them with the [`launchdarkly_environment_keys`](https://registry.terraform.io/providers/launchdarkly/launchdarkly/latest/docs/ephemeral-resources/environment_keys) ephemeral resource and pass them to a write-only argument, such as `value_wo` on `aws_ssm_parameter`. Ephemeral resources require Terraform 1.10 or later, and write-only arguments require Terraform 1.11 or later.
+
+```terraform
+resource "launchdarkly_project" "example" {
+  key  = "example-project"
+  name = "Example project"
+  environments = {
+    "production" = {
+      name                    = "Production"
+      color                   = "EEEEEE"
+      exclude_keys_from_state = true
+    }
+  }
+}
+
+ephemeral "launchdarkly_environment_keys" "production" {
+  project_key = launchdarkly_project.example.key
+  env_key     = "production"
+}
+
+resource "aws_ssm_parameter" "launchdarkly_sdk_key" {
+  name             = "/example-app/production/launchdarkly-sdk-key"
+  type             = "SecureString"
+  value_wo         = ephemeral.launchdarkly_environment_keys.production.api_key
+  value_wo_version = 1
+}
+```
+
 ## Import
 
 Import is supported using the following syntax:

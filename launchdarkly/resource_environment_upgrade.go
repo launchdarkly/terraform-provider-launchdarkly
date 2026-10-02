@@ -103,6 +103,9 @@ func (r *EnvironmentResource) UpgradeState(_ context.Context) map[int64]resource
 					Tags:                    prior.Tags,
 					ApprovalSettings:        approvalsObj,
 					SegmentApprovalSettings: segmentApprovalsObj,
+					// v0 had no exclude_keys_from_state; null preserves
+					// the historical store-the-keys behavior.
+					ExcludeKeysFromState: types.BoolNull(),
 				}
 				resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 			},

@@ -14,6 +14,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
+	"github.com/hashicorp/terraform-plugin-framework/ephemeral"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
@@ -49,6 +50,21 @@ func configureDataSourceClient(req datasource.ConfigureRequest, resp *datasource
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected Data Source Configure Type",
+			fmt.Sprintf("Expected *launchdarkly.Client, got: %T. Please report this issue to the provider developers.", req.ProviderData),
+		)
+		return nil
+	}
+	return client
+}
+
+func configureEphemeralResourceClient(req ephemeral.ConfigureRequest, resp *ephemeral.ConfigureResponse) *Client {
+	if req.ProviderData == nil {
+		return nil
+	}
+	client, ok := req.ProviderData.(*Client)
+	if !ok {
+		resp.Diagnostics.AddError(
+			"Unexpected Ephemeral Resource Configure Type",
 			fmt.Sprintf("Expected *launchdarkly.Client, got: %T. Please report this issue to the provider developers.", req.ProviderData),
 		)
 		return nil
