@@ -211,43 +211,74 @@ func environmentPostsFromPlan(ctx context.Context, m types.Map) ([]ldapi.Environ
 	return posts, diags
 }
 
-// environmentPostFromModel builds an EnvironmentPost. The key is the map
-// key (authoritative), not m.Key — they are validated to be equal.
-func environmentPostFromModel(_ context.Context, key string, m environmentModel) (ldapi.EnvironmentPost, diag.Diagnostics) {
+// environmentPostFromModel builds an EnvironmentPost carrying every
+// attribute the API accepts at create time, mirroring the standalone
+// launchdarkly_environment resource, so the environment is created in
+// its intended shape rather than created bare and patched afterwards.
+// approval_settings has no POST counterpart and is applied via PATCH.
+// The key is the map key (authoritative), not m.Key — they are validated
+// to be equal.
+func environmentPostFromModel(ctx context.Context, key string, m environmentModel) (ldapi.EnvironmentPost, diag.Diagnostics) {
 	post := ldapi.EnvironmentPost{
-		Name:  m.Name.ValueString(),
-		Key:   key,
-		Color: m.Color.ValueString(),
+		Name:               m.Name.ValueString(),
+		Key:                key,
+		Color:              m.Color.ValueString(),
+		SecureMode:         boolPointerFromAttr(m.SecureMode),
+		DefaultTrackEvents: boolPointerFromAttr(m.DefaultTrackEvents),
+		RequireComments:    boolPointerFromAttr(m.RequireComments),
+		ConfirmChanges:     boolPointerFromAttr(m.ConfirmChanges),
+		Critical:           boolPointerFromAttr(m.Critical),
 	}
 	if !m.DefaultTTL.IsNull() && !m.DefaultTTL.IsUnknown() {
 		ttl := int32(m.DefaultTTL.ValueInt64())
 		post.DefaultTtl = &ttl
 	}
-	return post, nil
+	tags, diags := stringSliceFromSet(ctx, m.Tags)
+	if diags.HasError() {
+		return post, diags
+	}
+	if len(tags) > 0 {
+		post.Tags = tags
+	}
+	return post, diags
 }
 
-// environmentPatchFromModels builds the PATCH document applied when an
-// env's nested attributes change on an existing project.
-func environmentPatchFromModels(ctx context.Context, old environmentModel, hadOld bool, env environmentModel) ([]ldapi.PatchOperation, diag.Diagnostics) {
+// environmentPatchFromModels builds the PATCH document that reconciles an
+// environment on an existing project.
+//
+// When the environment was freshly POSTed in this apply (with the project
+// on Create, or on its own during Update) the POST already carried its
+// full configurable shape, so only approval_settings — which has no POST
+// counterpart — is patched, and the result may be empty. Otherwise every
+// attribute is patched, so an environment that exists in LaunchDarkly but
+// not in state is reconciled to the plan when it is adopted.
+func environmentPatchFromModels(ctx context.Context, old environmentModel, hadOld bool, env environmentModel, freshlyPosted bool) ([]ldapi.PatchOperation, diag.Diagnostics) {
 	var diags diag.Diagnostics
-	patches := []ldapi.PatchOperation{
-		patchReplace("/name", env.Name.ValueString()),
-		patchReplace("/color", env.Color.ValueString()),
-		patchReplace("/defaultTtl", env.DefaultTTL.ValueInt64()),
-		patchReplace("/secureMode", env.SecureMode.ValueBool()),
-		patchReplace("/defaultTrackEvents", env.DefaultTrackEvents.ValueBool()),
-		patchReplace("/requireComments", env.RequireComments.ValueBool()),
-		patchReplace("/confirmChanges", env.ConfirmChanges.ValueBool()),
-		patchReplace("/critical", env.Critical.ValueBool()),
+	var patches []ldapi.PatchOperation
+	if !freshlyPosted {
+		patches = []ldapi.PatchOperation{
+			patchReplace("/name", env.Name.ValueString()),
+			patchReplace("/color", env.Color.ValueString()),
+			patchReplace("/defaultTtl", env.DefaultTTL.ValueInt64()),
+			patchReplace("/secureMode", env.SecureMode.ValueBool()),
+			patchReplace("/defaultTrackEvents", env.DefaultTrackEvents.ValueBool()),
+			patchReplace("/requireComments", env.RequireComments.ValueBool()),
+			patchReplace("/confirmChanges", env.ConfirmChanges.ValueBool()),
+			patchReplace("/critical", env.Critical.ValueBool()),
+		}
+		tags, d := stringSliceFromSet(ctx, env.Tags)
+		diags.Append(d...)
+		if diags.HasError() {
+			return nil, diags
+		}
+		patches = append(patches, patchReplace("/tags", &tags))
 	}
-	tags, d := stringSliceFromSet(ctx, env.Tags)
-	diags.Append(d...)
-	if diags.HasError() {
-		return nil, diags
-	}
-	patches = append(patches, patchReplace("/tags", &tags))
 
-	approvalPatches, d := approvalPatchesFromModels(ctx, env.ApprovalSettings, planOrNullObject(hadOld, old.ApprovalSettings))
+	// A freshly posted environment has no prior approval state, whatever
+	// Terraform state says (it may hold an environment that was deleted out
+	// of band and has just been recreated).
+	priorApprovals := planOrNullObject(hadOld && !freshlyPosted, old.ApprovalSettings)
+	approvalPatches, d := approvalPatchesFromModels(ctx, env.ApprovalSettings, priorApprovals)
 	diags.Append(d...)
 	if diags.HasError() {
 		return nil, diags

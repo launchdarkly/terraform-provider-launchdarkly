@@ -11,6 +11,11 @@ import (
 )
 
 const (
+	// The API rejects a Kinesis destination whose exact (region, roleArn,
+	// streamName) tuple is already attached to another account with
+	// 400 "Invalid destination configuration", so the stream name is
+	// generated per run (second %s). The role ARN and region can stay
+	// placeholders: the create path does not contact AWS.
 	testAccDestinationCreateKinesis = `
 resource "launchdarkly_destination" "test" {
 	project_key = launchdarkly_project.test.key
@@ -20,7 +25,7 @@ resource "launchdarkly_destination" "test" {
 	config = {
 		region      = "us-east-1"
 		role_arn    = "arn:aws:iam::123456789012:role/marketingadmin"
-		stream_name = "cat-stream"
+		stream_name = "%s"
 	}
 	on = true
 	tags = [ "terraform" ]
@@ -147,7 +152,7 @@ resource "launchdarkly_destination" "test" {
 	config = {
 		region = "us-west-1",
 		role_arn = "arn:aws:iam::123456789012:role/marketingadmin",
-		stream_name = "cat-stream"
+		stream_name = "%s"
 	}
 	on = false
 	tags = [ "terraform", "updated" ]
@@ -292,6 +297,7 @@ func TestAccDestination_CreateMalformedMparticle(t *testing.T) {
 func TestAccDestination_CreateAndUpdateKinesis(t *testing.T) {
 	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	envKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	streamName := "tf-acc-" + acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	resourceName := "launchdarkly_destination.test"
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
@@ -300,7 +306,7 @@ func TestAccDestination_CreateAndUpdateKinesis(t *testing.T) {
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			{
-				Config: withRandomProjectAndEnv(projectKey, envKey, fmt.Sprintf(testAccDestinationCreateKinesis, envKey)),
+				Config: withRandomProjectAndEnv(projectKey, envKey, fmt.Sprintf(testAccDestinationCreateKinesis, envKey, streamName)),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckProjectExists("launchdarkly_project.test"),
 					testAccCheckDestinationExists(resourceName),
@@ -310,7 +316,7 @@ func TestAccDestination_CreateAndUpdateKinesis(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, ON, "true"),
 					resource.TestCheckResourceAttr(resourceName, "config.role_arn", "arn:aws:iam::123456789012:role/marketingadmin"),
 					resource.TestCheckResourceAttr(resourceName, "config.region", "us-east-1"),
-					resource.TestCheckResourceAttr(resourceName, "config.stream_name", "cat-stream"),
+					resource.TestCheckResourceAttr(resourceName, "config.stream_name", streamName),
 					resource.TestCheckResourceAttr(resourceName, "tags.#", "1"),
 					resource.TestCheckResourceAttr(resourceName, "tags.0", "terraform")),
 			},
@@ -321,7 +327,7 @@ func TestAccDestination_CreateAndUpdateKinesis(t *testing.T) {
 				ImportStateVerifyIgnore: []string{"tags"},
 			},
 			{
-				Config: withRandomProjectAndEnv(projectKey, envKey, fmt.Sprintf(testAccDestinationUpdateKinesis, envKey)),
+				Config: withRandomProjectAndEnv(projectKey, envKey, fmt.Sprintf(testAccDestinationUpdateKinesis, envKey, streamName)),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckDestinationExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, ENV_KEY, envKey),
@@ -330,7 +336,7 @@ func TestAccDestination_CreateAndUpdateKinesis(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, ON, "false"),
 					resource.TestCheckResourceAttr(resourceName, "config.role_arn", "arn:aws:iam::123456789012:role/marketingadmin"),
 					resource.TestCheckResourceAttr(resourceName, "config.region", "us-west-1"),
-					resource.TestCheckResourceAttr(resourceName, "config.stream_name", "cat-stream"),
+					resource.TestCheckResourceAttr(resourceName, "config.stream_name", streamName),
 					resource.TestCheckResourceAttr(resourceName, "tags.#", "2"),
 					resource.TestCheckResourceAttr(resourceName, "tags.1", "updated"),
 					resource.TestCheckResourceAttr(resourceName, "tags.0", "terraform"),

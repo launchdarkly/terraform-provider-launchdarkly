@@ -8,7 +8,6 @@ import (
 	"strings"
 	"sync"
 	"testing"
-	"time"
 
 	"github.com/hashicorp/terraform-plugin-framework/providerserver"
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
@@ -92,7 +91,12 @@ func firstMemberIDForTest(t *testing.T) string {
 		}
 		req.Header.Set("Authorization", token)
 		req.Header.Set("LD-API-Version", APIVersion)
-		client := &http.Client{Timeout: 30 * time.Second}
+		// Use the provider's retrying HTTP client (same as the raw-HTTP
+		// paths in project_helper.go) rather than a bare http.Client: the
+		// acceptance matrix runs ~40 legs against one account, so a plain
+		// GET regularly hits a 429, and because this result is memoised a
+		// single 429 would fail every test in the package that needs it.
+		client := mustTestAccClient().ld.GetConfig().HTTPClient
 		resp, err := client.Do(req)
 		if err != nil {
 			firstMemberIDErr = fmt.Errorf("GET /members: %s", err)
