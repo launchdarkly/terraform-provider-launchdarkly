@@ -90,6 +90,10 @@ jobs:
     env:
       TF_ACC: "1"
     strategy:
+      # Let every leg run even when one fails: with the default fail-fast a
+      # single red leg cancels the others before their tests execute, which
+      # hides their real status (and blocks re-running them individually).
+      fail-fast: false
       matrix:
         # Keep this list identical to the test_case list in test-fork-pr.yml.
         # TestCIMatrixCoversAcceptanceTests (launchdarkly/ci_matrix_test.go) fails
