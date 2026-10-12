@@ -339,6 +339,11 @@ func (r *ProjectResource) ValidateConfig(ctx context.Context, req resource.Valid
 // Because environments is now a map keyed by env key, matching is by map
 // key directly: for each plan env, if state has the same key reuse its
 // sensitive values; otherwise mark them Unknown so Apply can fill them in.
+//
+// When an env sets exclude_keys_from_state = true, api_key and mobile_key
+// are planned as null because Apply always stores null for them. When the
+// opt-in is turned back off, the state holds null for those keys, so they
+// are marked Unknown rather than reused.
 func markEnvSecretsUnknown(_ context.Context, planMap, stateMap types.Map) (types.Map, diag.Diagnostics) {
 	var diags diag.Diagnostics
 	if planMap.IsNull() || planMap.IsUnknown() {
@@ -366,6 +371,15 @@ func markEnvSecretsUnknown(_ context.Context, planMap, stateMap types.Map) (type
 		}
 	}
 
+	// secretOrUnknown reuses a known, non-null state value, and otherwise
+	// defers to Apply.
+	secretOrUnknown := func(v attr.Value, ok bool) attr.Value {
+		if !ok || v == nil || v.IsNull() || v.IsUnknown() {
+			return types.StringUnknown()
+		}
+		return v
+	}
+
 	out := make(map[string]attr.Value, len(planEls))
 	for key, el := range planEls {
 		obj, ok := el.(basetypes.ObjectValue)
@@ -379,15 +393,16 @@ func markEnvSecretsUnknown(_ context.Context, planMap, stateMap types.Map) (type
 		// the real key — an inconsistency the framework reports as "sensitive"
 		// because the env object contains sensitive members.
 		attrs[KEY] = types.StringValue(key)
-		if secrets, ok := stateByKey[key]; ok {
-			attrs[API_KEY] = secrets.api
-			attrs[MOBILE_KEY] = secrets.mobile
-			attrs[CLIENT_SIDE_ID] = secrets.csid
+		secrets, inState := stateByKey[key]
+		exclude, _ := attrs[EXCLUDE_KEYS_FROM_STATE].(basetypes.BoolValue)
+		if excludeKeysFromStateEnabled(exclude) {
+			attrs[API_KEY] = types.StringNull()
+			attrs[MOBILE_KEY] = types.StringNull()
 		} else {
-			attrs[API_KEY] = types.StringUnknown()
-			attrs[MOBILE_KEY] = types.StringUnknown()
-			attrs[CLIENT_SIDE_ID] = types.StringUnknown()
+			attrs[API_KEY] = secretOrUnknown(secrets.api, inState)
+			attrs[MOBILE_KEY] = secretOrUnknown(secrets.mobile, inState)
 		}
+		attrs[CLIENT_SIDE_ID] = secretOrUnknown(secrets.csid, inState)
 		newObj, d := types.ObjectValue(environmentAttrTypes, attrs)
 		diags.Append(d...)
 		out[key] = newObj
