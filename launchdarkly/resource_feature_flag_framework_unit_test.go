@@ -6,6 +6,9 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
+	"github.com/hashicorp/terraform-plugin-framework/path"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
@@ -123,5 +126,38 @@ func TestOptionalNonEmptyString(t *testing.T) {
 	got := optionalNonEmptyString(types.StringValue("payments"))
 	if got == nil || *got != "payments" {
 		t.Errorf("set: got %v, want payments", got)
+	}
+}
+
+func TestFeatureFlagDescriptionLengthValidation(t *testing.T) {
+	descAttr, ok := featureFlagSchemaAttributes()[DESCRIPTION].(schema.StringAttribute)
+	if !ok {
+		t.Fatal("description must be a schema.StringAttribute")
+	}
+	isValid := func(s string) bool {
+		resp := &validator.StringResponse{}
+		for _, v := range descAttr.Validators {
+			v.ValidateString(context.Background(), validator.StringRequest{
+				Path:        path.Root(DESCRIPTION),
+				ConfigValue: types.StringValue(s),
+			}, resp)
+		}
+		return !resp.Diagnostics.HasError()
+	}
+
+	cases := map[string]struct {
+		value string
+		valid bool
+	}{
+		"empty":                {"", true},
+		"at limit":             {strings.Repeat("a", 1024), true},
+		"over limit":           {strings.Repeat("a", 1025), false},
+		"multibyte at limit":   {strings.Repeat("é", 1024), true},
+		"multibyte over limit": {strings.Repeat("é", 1025), false},
+	}
+	for name, tc := range cases {
+		if got := isValid(tc.value); got != tc.valid {
+			t.Errorf("%s: valid = %v, want %v", name, got, tc.valid)
+		}
 	}
 }

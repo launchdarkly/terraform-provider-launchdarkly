@@ -175,7 +175,7 @@ resource "launchdarkly_feature_flag" "mobile_app_feature" {
 - `custom_properties` (Attributes Map) The feature flag's [custom properties](https://launchdarkly.com/docs/home/infrastructure/custom-properties), keyed by the custom property key. Adding or removing one custom property does not affect the others. (see [below for nested schema](#nestedatt--custom_properties))
 - `defaults` (Attributes) The indices of the variations to use as the default on and off variations in all new environments. The provider does not change flag configurations in existing environments if you remove this field. (see [below for nested schema](#nestedatt--defaults))
 - `deprecated` (Boolean) Specifies whether the flag is deprecated or not. Note that you cannot create a new flag that is deprecated, but can update a flag to be deprecated.
-- `description` (String) The feature flag's description.
+- `description` (String) The feature flag's description. Must be 1024 characters or fewer.
 - `maintainer_id` (String) The feature flag maintainer's 24 character alphanumeric team member ID. `maintainer_team_key` cannot be set if `maintainer_id` is set. If neither is set, it is automatically set to the member ID associated with the API key used by your LaunchDarkly Terraform provider or the most recently-set maintainer.
 - `maintainer_team_key` (String) The key of the associated team that maintains this feature flag. `maintainer_id` cannot be set if `maintainer_team_key` is set
 - `tags` (Set of String) Tags associated with your resource.

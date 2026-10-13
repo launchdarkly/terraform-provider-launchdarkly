@@ -16,6 +16,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework-validators/mapvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/resourcevalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/setvalidator"
+	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
@@ -63,6 +64,10 @@ type FeatureFlagResourceModel struct {
 	Deprecated             types.Bool   `tfsdk:"deprecated"`
 	ViewKeys               types.Set    `tfsdk:"view_keys"`
 }
+
+// featureFlagDescriptionMaxLength mirrors the API's limit so an oversized
+// description fails at plan rather than at apply.
+const featureFlagDescriptionMaxLength = 1024
 
 var (
 	featureFlagCSAAttrTypes = map[string]attr.Type{
@@ -115,7 +120,8 @@ func featureFlagSchemaAttributes() map[string]schema.Attribute {
 		},
 		DESCRIPTION: schema.StringAttribute{
 			Optional:    true,
-			Description: "The feature flag's description.",
+			Description: "The feature flag's description. Must be 1024 characters or fewer.",
+			Validators:  []validator.String{stringvalidator.UTF8LengthAtMost(featureFlagDescriptionMaxLength)},
 		},
 		MAINTAINER_ID: schema.StringAttribute{
 			Optional:    true,
