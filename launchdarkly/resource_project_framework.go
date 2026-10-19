@@ -429,18 +429,10 @@ func (r *ProjectResource) Create(ctx context.Context, req resource.CreateRequest
 	}
 	projectKey := plan.Key.ValueString()
 
-	envPosts, diags := environmentPostsFromPlan(ctx, plan.Environments)
+	body, diags := projectPostFromPlan(ctx, plan)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
-	}
-
-	body := ldapi.ProjectPost{
-		Name: plan.Name.ValueString(),
-		Key:  projectKey,
-	}
-	if len(envPosts) > 0 {
-		body.Environments = envPosts
 	}
 
 	err := r.client.withConcurrency(r.client.ctx, func() error {
@@ -535,42 +527,23 @@ func viewAssociationSettingNeedsPatch(plan, state types.Bool, isCreate bool) boo
 	return !plan.Equal(state)
 }
 
-// applyProjectUpdates issues all the patch + nested-environment +
-// view-association calls that follow PostProject. Used by both Create
-// (state empty) and Update paths.
+// applyProjectUpdates issues the project-attribute patch (Update only),
+// the view-association patch and the nested-environment reconciliation
+// that follow PostProject. Used by both Create (state empty) and Update
+// paths.
 func (r *ProjectResource) applyProjectUpdates(ctx context.Context, projectKey string, plan, state ProjectResourceModel, isCreate bool) diag.Diagnostics {
 	var diags diag.Diagnostics
 
-	tags, d := stringSliceFromSet(ctx, plan.Tags)
-	diags.Append(d...)
-	if diags.HasError() {
-		return diags
-	}
-
-	patches := []ldapi.PatchOperation{
-		patchReplace("/name", plan.Name.ValueString()),
-		patchReplace("/tags", &tags),
-	}
-
-	csaPlanned := !plan.DefaultClientSideAvailability.IsNull() && !plan.DefaultClientSideAvailability.IsUnknown()
-	csaChanged := isCreate || !plan.DefaultClientSideAvailability.Equal(state.DefaultClientSideAvailability)
-
-	if csaPlanned && csaChanged {
-		csa, d := csaPostFromObject(ctx, plan.DefaultClientSideAvailability)
-		diags.Append(d...)
+	// name, tags and default_client_side_availability ride on the POST body
+	// at create time (see projectPostFromPlan), so they are only PATCHed on
+	// Update. A PATCH is authorized against the project as it currently is,
+	// so patching tags onto a project that was created without them is
+	// denied by any policy that scopes project access by tag.
+	if !isCreate {
+		diags.Append(r.patchProjectAttributes(ctx, projectKey, plan, state)...)
 		if diags.HasError() {
 			return diags
 		}
-		patches = append(patches, patchReplace("/defaultClientSideAvailability", csa))
-	}
-
-	err := r.client.withConcurrency(r.client.ctx, func() error {
-		_, _, e := r.client.ld.ProjectsApi.PatchProject(r.client.ctx, projectKey).PatchOperation(patches).Execute()
-		return e
-	})
-	if err != nil {
-		diags.AddError(fmt.Sprintf("failed to update project with key %q: %s", projectKey, handleLdapiErr(err).Error()), "")
-		return diags
 	}
 
 	// View association settings — handled separately via raw HTTP since not in the official API client.
@@ -637,6 +610,11 @@ func (r *ProjectResource) applyProjectUpdates(ctx context.Context, projectKey st
 	for _, envKey := range sortedEnvKeys(planEnvs) {
 		env := planEnvs[envKey]
 		desired[envKey] = true
+		// On Create every planned environment rode on the project POST; on
+		// Update a missing one is POSTed here. Either POST body carries the
+		// environment's full configurable shape, so a freshly posted
+		// environment only needs approval_settings applied via PATCH.
+		freshlyPosted := isCreate
 		if !environmentExistsInProject(*project, envKey) {
 			envPost, d := environmentPostFromModel(ctx, envKey, env)
 			diags.Append(d...)
@@ -651,12 +629,16 @@ func (r *ProjectResource) applyProjectUpdates(ctx context.Context, projectKey st
 				diags.AddError(fmt.Sprintf("failed to create environment %q in project %q: %s", envKey, projectKey, handleLdapiErr(err).Error()), "")
 				return diags
 			}
+			freshlyPosted = true
 		}
 		oldEnv, hadOld := stateEnvs[envKey]
-		envPatch, d := environmentPatchFromModels(ctx, oldEnv, hadOld, env)
+		envPatch, d := environmentPatchFromModels(ctx, oldEnv, hadOld, env, freshlyPosted)
 		diags.Append(d...)
 		if diags.HasError() {
 			return diags
+		}
+		if len(envPatch) == 0 {
+			continue
 		}
 		err := r.client.withConcurrency(r.client.ctx, func() error {
 			_, _, e := r.client.ld.EnvironmentsApi.PatchEnvironment(r.client.ctx, projectKey, envKey).PatchOperation(envPatch).Execute()
@@ -732,6 +714,94 @@ func (r *ProjectResource) readIntoModel(ctx context.Context, projectKey string, 
 	}
 	data.RequireViewAssociationForNewFlags = types.BoolValue(settings.RequireViewAssociationForNewFlags)
 	data.RequireViewAssociationForNewSegments = types.BoolValue(settings.RequireViewAssociationForNewSegments)
+}
+
+// patchProjectAttributes issues the PATCH /projects/{key} carrying the
+// project-level attributes that change in place on Update: name, tags and,
+// when configured and changed, default_client_side_availability.
+func (r *ProjectResource) patchProjectAttributes(ctx context.Context, projectKey string, plan, state ProjectResourceModel) diag.Diagnostics {
+	var diags diag.Diagnostics
+
+	tags, d := stringSliceFromSet(ctx, plan.Tags)
+	diags.Append(d...)
+	if diags.HasError() {
+		return diags
+	}
+
+	patches := []ldapi.PatchOperation{
+		patchReplace("/name", plan.Name.ValueString()),
+		patchReplace("/tags", &tags),
+	}
+
+	csaPlanned := !plan.DefaultClientSideAvailability.IsNull() && !plan.DefaultClientSideAvailability.IsUnknown()
+	csaChanged := !plan.DefaultClientSideAvailability.Equal(state.DefaultClientSideAvailability)
+	if csaPlanned && csaChanged {
+		csa, d := csaPostFromObject(ctx, plan.DefaultClientSideAvailability)
+		diags.Append(d...)
+		if diags.HasError() {
+			return diags
+		}
+		patches = append(patches, patchReplace("/defaultClientSideAvailability", csa))
+	}
+
+	err := r.client.withConcurrency(r.client.ctx, func() error {
+		_, _, e := r.client.ld.ProjectsApi.PatchProject(r.client.ctx, projectKey).PatchOperation(patches).Execute()
+		return e
+	})
+	if err != nil {
+		diags.AddError(fmt.Sprintf("failed to update project with key %q: %s", projectKey, handleLdapiErr(err).Error()), "")
+	}
+	return diags
+}
+
+// projectPostFromPlan builds the POST /projects body from the plan. Every
+// attribute the API accepts at create time rides on the POST: name, key,
+// tags, default_client_side_availability and the nested environments.
+//
+// This matters for authorization, not just for saving a round-trip.
+// LaunchDarkly evaluates POST /projects against the key and tags in the
+// request body, and custom-role policies routinely scope project access by
+// tag (e.g. `proj/team-*;team-tag`). A POST that omits the tags is checked
+// against an untagged project and denied, and a follow-up PATCH /tags is
+// checked against the project's current (still empty) tags and denied too,
+// so a tag-scoped role could never create a project through Terraform.
+func projectPostFromPlan(ctx context.Context, plan ProjectResourceModel) (ldapi.ProjectPost, diag.Diagnostics) {
+	var diags diag.Diagnostics
+	post := ldapi.ProjectPost{
+		Name: plan.Name.ValueString(),
+		Key:  plan.Key.ValueString(),
+	}
+
+	tags, d := stringSliceFromSet(ctx, plan.Tags)
+	diags.Append(d...)
+	if diags.HasError() {
+		return post, diags
+	}
+	if len(tags) > 0 {
+		post.Tags = tags
+	}
+
+	csa, d := csaPostFromObject(ctx, plan.DefaultClientSideAvailability)
+	diags.Append(d...)
+	if diags.HasError() {
+		return post, diags
+	}
+	if csa != nil {
+		post.DefaultClientSideAvailability = &ldapi.DefaultClientSideAvailabilityPost{
+			UsingEnvironmentId: csa.UsingEnvironmentId,
+			UsingMobileKey:     csa.UsingMobileKey,
+		}
+	}
+
+	envPosts, d := environmentPostsFromPlan(ctx, plan.Environments)
+	diags.Append(d...)
+	if diags.HasError() {
+		return post, diags
+	}
+	if len(envPosts) > 0 {
+		post.Environments = envPosts
+	}
+	return post, diags
 }
 
 // csaPostFromObject extracts UsingEnvironmentId / UsingMobileKey from a
