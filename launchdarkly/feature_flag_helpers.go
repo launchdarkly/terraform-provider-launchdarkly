@@ -15,7 +15,7 @@ import (
 	"strconv"
 	"strings"
 
-	ldapi "github.com/launchdarkly/api-client-go/v24"
+	ldapi "github.com/launchdarkly/api-client-go/v25"
 )
 
 // Variation type identifiers.

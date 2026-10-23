@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"strings"
 
-	ldapi "github.com/launchdarkly/api-client-go/v24"
+	ldapi "github.com/launchdarkly/api-client-go/v25"
 )
 
 // betaVersionRoundTripper forces every request through it to carry exactly

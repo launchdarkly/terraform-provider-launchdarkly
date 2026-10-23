@@ -31,7 +31,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
-	ldapi "github.com/launchdarkly/api-client-go/v24"
+	ldapi "github.com/launchdarkly/api-client-go/v25"
 )
 
 // tokenProvider wraps the real provider and overrides Configure so the client

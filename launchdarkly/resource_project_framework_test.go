@@ -8,7 +8,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
-	ldapi "github.com/launchdarkly/api-client-go/v24"
+	ldapi "github.com/launchdarkly/api-client-go/v25"
 	"github.com/stretchr/testify/require"
 )
 
