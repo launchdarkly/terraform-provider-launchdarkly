@@ -7,6 +7,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	ldapi "github.com/launchdarkly/api-client-go/v24"
 )
 
 var _ datasource.DataSource = &SdkKeyDataSource{}
@@ -98,7 +99,17 @@ func (d *SdkKeyDataSource) Read(ctx context.Context, req datasource.ReadRequest,
 		return
 	}
 
-	data.ID = types.StringValue(sdkKeyID(projectKey, environmentKey, sdkKeyKey))
+	sdkKeyDataSourceModelFromAPI(projectKey, environmentKey, sdkKey, &data)
+
+	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+}
+
+// sdkKeyDataSourceModelFromAPI populates the read-only SDK key model shared by
+// the launchdarkly_sdk_key data source and ephemeral resource.
+func sdkKeyDataSourceModelFromAPI(projectKey, environmentKey string, sdkKey *ldapi.SdkKey, data *SdkKeyDataSourceModel) {
+	// data.Key still holds the configured lookup key here, matching the ID
+	// format used before this helper was extracted.
+	data.ID = types.StringValue(sdkKeyID(projectKey, environmentKey, data.Key.ValueString()))
 	data.ProjectKey = types.StringValue(projectKey)
 	data.EnvironmentKey = types.StringValue(environmentKey)
 	data.Key = types.StringValue(sdkKey.Key)
@@ -117,6 +128,4 @@ func (d *SdkKeyDataSource) Read(ctx context.Context, req datasource.ReadRequest,
 	data.Value = types.StringValue(sdkKey.Value)
 	data.IsDefault = types.BoolValue(sdkKey.IsDefault)
 	data.Version = types.Int64Value(int64(sdkKey.Version))
-
-	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }

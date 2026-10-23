@@ -137,6 +137,8 @@ func environmentsMapFromV0List(ctx context.Context, l types.List) (types.Map, di
 			CONFIRM_CHANGES:      e.ConfirmChanges,
 			TAGS:                 e.Tags,
 			APPROVAL_SETTINGS:    approvals,
+			// v0 had no exclude_keys_from_state; null keeps storing keys.
+			EXCLUDE_KEYS_FROM_STATE: types.BoolNull(),
 		})
 		diags.Append(d...)
 		elements[e.Key.ValueString()] = obj
