@@ -3,7 +3,7 @@ package launchdarkly
 import (
 	"fmt"
 
-	ldapi "github.com/launchdarkly/api-client-go/v24"
+	ldapi "github.com/launchdarkly/api-client-go/v25"
 )
 
 const (

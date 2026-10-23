@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"testing"
 
-	ldapi "github.com/launchdarkly/api-client-go/v24"
+	ldapi "github.com/launchdarkly/api-client-go/v25"
 )
 
 func TestIsApprovalRequiredErr(t *testing.T) {

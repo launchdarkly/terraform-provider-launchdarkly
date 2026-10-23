@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"strings"
 
-	ldapi "github.com/launchdarkly/api-client-go/v24"
+	ldapi "github.com/launchdarkly/api-client-go/v25"
 )
 
 const viewAssociationsPageLimit = int32(100)
@@ -82,8 +82,7 @@ func getViewRaw(client *Client, projectKey, viewKey string) (*View, *http.Respon
 	)
 
 	err = client.withConcurrency(client.ctx, func() error {
-		apiView, resp, err = client.ld.ViewsBetaApi.GetView(client.ctx, projectKey, viewKey).
-			LDAPIVersion("beta").
+		apiView, resp, err = client.ld.ViewsApi.GetView(client.ctx, projectKey, viewKey).
 			Execute()
 		return err
 	})
@@ -120,8 +119,7 @@ func createView(client *Client, projectKey string, viewPost map[string]interface
 		err     error
 	)
 	err = client.withConcurrency(client.ctx, func() error {
-		apiView, _, err = client.ld.ViewsBetaApi.CreateView(client.ctx, projectKey).
-			LDAPIVersion("beta").
+		apiView, _, err = client.ld.ViewsApi.CreateView(client.ctx, projectKey).
 			ViewPost(*viewRequest).
 			Execute()
 		return err
@@ -158,8 +156,7 @@ func patchView(client *Client, projectKey, viewKey string, patch map[string]inte
 	}
 
 	return client.withConcurrency(client.ctx, func() error {
-		_, _, err := client.ld.ViewsBetaApi.UpdateView(client.ctx, projectKey, viewKey).
-			LDAPIVersion("beta").
+		_, _, err := client.ld.ViewsApi.UpdateView(client.ctx, projectKey, viewKey).
 			ViewPatch(*viewPatch).
 			Execute()
 		return err
@@ -168,8 +165,7 @@ func patchView(client *Client, projectKey, viewKey string, patch map[string]inte
 
 func deleteView(client *Client, projectKey, viewKey string) error {
 	return client.withConcurrency(client.ctx, func() error {
-		_, err := client.ld.ViewsBetaApi.DeleteView(client.ctx, projectKey, viewKey).
-			LDAPIVersion("beta").
+		_, err := client.ld.ViewsApi.DeleteView(client.ctx, projectKey, viewKey).
 			Execute()
 		return err
 	})
@@ -330,14 +326,12 @@ func performViewLinkOperation(client *Client, projectKey, viewKey, resourceType 
 	return client.withConcurrency(client.ctx, func() error {
 		switch method {
 		case http.MethodPost:
-			_, _, err := client.ld.ViewsBetaApi.LinkResource(client.ctx, projectKey, viewKey, resourceType).
-				LDAPIVersion("beta").
+			_, _, err := client.ld.ViewsApi.LinkResource(client.ctx, projectKey, viewKey, resourceType).
 				ViewLinkRequest(requestPayload).
 				Execute()
 			return err
 		case http.MethodDelete:
-			_, _, err := client.ld.ViewsBetaApi.UnlinkResource(client.ctx, projectKey, viewKey, resourceType).
-				LDAPIVersion("beta").
+			_, _, err := client.ld.ViewsApi.UnlinkResource(client.ctx, projectKey, viewKey, resourceType).
 				ViewLinkRequest(requestPayload).
 				Execute()
 			return err
@@ -360,14 +354,12 @@ func performViewSegmentLinkOperation(client *Client, projectKey, viewKey string,
 	return client.withConcurrency(client.ctx, func() error {
 		switch method {
 		case http.MethodPost:
-			_, _, err := client.ld.ViewsBetaApi.LinkResource(client.ctx, projectKey, viewKey, SEGMENTS).
-				LDAPIVersion("beta").
+			_, _, err := client.ld.ViewsApi.LinkResource(client.ctx, projectKey, viewKey, SEGMENTS).
 				ViewLinkRequest(requestPayload).
 				Execute()
 			return err
 		case http.MethodDelete:
-			_, _, err := client.ld.ViewsBetaApi.UnlinkResource(client.ctx, projectKey, viewKey, SEGMENTS).
-				LDAPIVersion("beta").
+			_, _, err := client.ld.ViewsApi.UnlinkResource(client.ctx, projectKey, viewKey, SEGMENTS).
 				ViewLinkRequest(requestPayload).
 				Execute()
 			return err
@@ -490,8 +482,7 @@ func getLinkedResources(client *Client, projectKey, viewKey, resourceType string
 			err                error
 		)
 		err = client.withConcurrency(client.ctx, func() error {
-			apiLinkedResources, _, err = client.ld.ViewsBetaApi.GetLinkedResources(client.ctx, projectKey, viewKey, resourceType).
-				LDAPIVersion("beta").
+			apiLinkedResources, _, err = client.ld.ViewsApi.GetLinkedResources(client.ctx, projectKey, viewKey, resourceType).
 				Limit(int32(limit)).
 				Offset(int32(offset)).
 				Execute()
@@ -540,8 +531,7 @@ func getAllLinkedViews(client *Client, projectKey, resourceType, resourceKey, en
 			err           error
 		)
 		err = client.withConcurrency(client.ctx, func() error {
-			request := client.ld.ViewsBetaApi.GetLinkedViews(client.ctx, projectKey, resourceType, resourceKey).
-				LDAPIVersion("beta").
+			request := client.ld.ViewsApi.GetLinkedViews(client.ctx, projectKey, resourceType, resourceKey).
 				Limit(int32(limit)).
 				Offset(int32(offset))
 			if environmentId != "" {
@@ -612,14 +602,12 @@ func performViewFilterLinkOperation(client *Client, projectKey, viewKey, resourc
 	return client.withConcurrency(client.ctx, func() error {
 		switch method {
 		case http.MethodPost:
-			_, _, err := client.ld.ViewsBetaApi.LinkResource(client.ctx, projectKey, viewKey, resourceType).
-				LDAPIVersion("beta").
+			_, _, err := client.ld.ViewsApi.LinkResource(client.ctx, projectKey, viewKey, resourceType).
 				ViewLinkRequest(requestPayload).
 				Execute()
 			return err
 		case http.MethodDelete:
-			_, _, err := client.ld.ViewsBetaApi.UnlinkResource(client.ctx, projectKey, viewKey, resourceType).
-				LDAPIVersion("beta").
+			_, _, err := client.ld.ViewsApi.UnlinkResource(client.ctx, projectKey, viewKey, resourceType).
 				ViewLinkRequest(requestPayload).
 				Execute()
 			return err

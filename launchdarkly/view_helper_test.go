@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	ldapi "github.com/launchdarkly/api-client-go/v24"
+	ldapi "github.com/launchdarkly/api-client-go/v25"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/sync/semaphore"
 )
@@ -186,7 +186,7 @@ func TestViewRequestsIncludeUserAgentHeader(t *testing.T) {
 	}
 	select {
 	case apiVersionValues := <-apiVersionValuesCh:
-		require.Equal(t, []string{"beta"}, apiVersionValues)
+		require.Equal(t, []string{APIVersion}, apiVersionValues)
 	case <-time.After(2 * time.Second):
 		t.Fatal("timed out waiting for LD-API-Version header")
 	}

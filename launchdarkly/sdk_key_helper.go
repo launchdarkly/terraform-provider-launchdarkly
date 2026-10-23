@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"strings"
 
-	ldapi "github.com/launchdarkly/api-client-go/v24"
+	ldapi "github.com/launchdarkly/api-client-go/v25"
 )
 
 // sdkKeyID builds the composite Terraform ID for an SDK key.

@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"strings"
 
-	ldapi "github.com/launchdarkly/api-client-go/v24"
+	ldapi "github.com/launchdarkly/api-client-go/v25"
 )
 
 // The relay proxy config api requires a statementRep in the POST body

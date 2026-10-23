@@ -15,7 +15,7 @@ import (
 	"golang.org/x/sync/semaphore"
 
 	retryablehttp "github.com/hashicorp/go-retryablehttp"
-	ldapi "github.com/launchdarkly/api-client-go/v24"
+	ldapi "github.com/launchdarkly/api-client-go/v25"
 )
 
 //nolint:staticcheck // The version string gets updated at build time using -ldflags

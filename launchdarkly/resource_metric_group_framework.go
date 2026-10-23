@@ -16,7 +16,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
-	ldapi "github.com/launchdarkly/api-client-go/v24"
+	ldapi "github.com/launchdarkly/api-client-go/v25"
 )
 
 var (
@@ -267,7 +267,7 @@ func (r *MetricGroupResource) Create(ctx context.Context, req resource.CreateReq
 	}
 
 	post := ldapi.MetricGroupPost{
-		Key:          &key,
+		Key:          key,
 		Name:         name,
 		Kind:         kind,
 		MaintainerId: maintainerID,

@@ -8,7 +8,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
-	ldapi "github.com/launchdarkly/api-client-go/v24"
+	ldapi "github.com/launchdarkly/api-client-go/v25"
 	"github.com/stretchr/testify/require"
 )
 
@@ -52,7 +52,7 @@ func testAccDataSourceMetricGroupScaffold(client *Client, beta *Client, projectK
 
 	groupKey := "mg-ds-group"
 	post := ldapi.MetricGroupPost{
-		Key:          &groupKey,
+		Key:          groupKey,
 		Name:         "MG DS Group",
 		Kind:         "standard",
 		MaintainerId: maintainerID,
