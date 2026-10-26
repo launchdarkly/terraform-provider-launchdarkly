@@ -2,6 +2,8 @@ module github.com/launchdarkly/terraform-provider-launchdarkly/scripts/migrate-t
 
 go 1.25.8
 
+toolchain go1.26.10
+
 require github.com/hashicorp/hcl/v2 v2.24.0
 
 require (

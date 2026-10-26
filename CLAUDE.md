@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Common commands
 
-Go version pinned in `.go-version`: **1.25.8** (`scripts/codegen/go.mod` and parent `go.mod` are aligned at `go 1.25.8`). Provider package: `launchdarkly` (PKG_NAME in the makefile).
+Go version pinned in `.go-version`: **1.26.10** (all three `go.mod` files keep `go 1.25.8` and add `toolchain go1.26.10`, which CI and release builds pick up via setup-go `go-version-file`; Go >= 1.26.10 is required for the eMudhra intermediate distrust, INC-289). Provider package: `launchdarkly` (PKG_NAME in the makefile).
 
 - `make build` — `fmtcheck` then `go install` with `-ldflags` injecting the short git rev as `version`. Binary lands in `$GOPATH/bin`.
 - `make fmt` — runs `gofmts -w` (the constant-sorting linter from `github.com/ashanbrown/gofmts`, *not* `gofumpt`) **then** `gofmt -w`. Order matters: `gofmts` rewrites `//gofmts:sort` blocks (see `launchdarkly/keys.go`) and the second pass normalizes the result.
@@ -17,7 +17,7 @@ Go version pinned in `.go-version`: **1.25.8** (`scripts/codegen/go.mod` and par
 - `make generate` — installs the `codegen` tool, then runs `go generate ./launchdarkly/... .`. Regenerates `launchdarkly/integration_configs_generated.go` from `https://app.launchdarkly.com/api/v2/integration-manifests` **and** rebuilds `docs/` via `tfplugindocs`. Requires `LAUNCHDARKLY_ACCESS_TOKEN` and a real `terraform` binary on PATH (no wrapper).
 - `make vet` / `make errcheck` — also wired into CI.
 
-CI gate at `.github/workflows/test.yml`: build + lint (`golangci-lint v1.64.8`) + `make matrixcheck` + `make generate` diff check + matrix of `TestAcc*` prefixes. `matrixcheck` runs in the `build` job (no credentials), so it gates fork PRs too — and it fails if `test.yml`'s matrix diverges from `test-fork-pr.yml`'s, which is the failure mode that let 27 tests go unrun on the fork path. The `generate` and `test` jobs are **skipped on fork PRs** — a maintainer must add the `safe-to-test` label to trigger `test-fork-pr.yml`. New pushes strip the label (see `remove-safe-to-test-label.yml`), forcing re-review.
+CI gate at `.github/workflows/test.yml`: build + lint (`golangci-lint v2.12.2`) + `make matrixcheck` + `make generate` diff check + matrix of `TestAcc*` prefixes. `matrixcheck` runs in the `build` job (no credentials), so it gates fork PRs too — and it fails if `test.yml`'s matrix diverges from `test-fork-pr.yml`'s, which is the failure mode that let 27 tests go unrun on the fork path. The `generate` and `test` jobs are **skipped on fork PRs** — a maintainer must add the `safe-to-test` label to trigger `test-fork-pr.yml`. New pushes strip the label (see `remove-safe-to-test-label.yml`), forcing re-review.
 
 ## Local dev override
 

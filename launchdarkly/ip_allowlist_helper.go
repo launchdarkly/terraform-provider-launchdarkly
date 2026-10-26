@@ -3,7 +3,7 @@ package launchdarkly
 import (
 	"sync"
 
-	ldapi "github.com/launchdarkly/api-client-go/v24"
+	ldapi "github.com/launchdarkly/api-client-go/v25"
 )
 
 // LD's IP allowlist API persists the whole allowlist as a single account

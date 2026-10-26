@@ -2,6 +2,13 @@
 
 All notable changes to the LaunchDarkly Terraform Provider will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org).
 
+## [3.1.8](https://github.com/launchdarkly/terraform-provider-launchdarkly/compare/v3.1.7...v3.1.8) (2026-10-21)
+
+
+### Bug Fixes
+
+* **security:** build with Go 1.26.10 for eMudhra intermediate distrust ([#560](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/560)) ([86b17a9](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/86b17a9977f42fc5c23d07ca04f31bfe27780309))
+
 ## [3.1.7](https://github.com/launchdarkly/terraform-provider-launchdarkly/compare/v3.1.6...v3.1.7) (2026-10-12)
 
 

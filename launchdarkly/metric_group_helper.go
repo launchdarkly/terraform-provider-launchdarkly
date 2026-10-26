@@ -6,7 +6,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/types"
-	ldapi "github.com/launchdarkly/api-client-go/v24"
+	ldapi "github.com/launchdarkly/api-client-go/v25"
 )
 
 // Metric group kinds. A funnel metric group orders its metrics into a
@@ -31,7 +31,7 @@ type metricGroupMetricModel struct {
 }
 
 // newMetricGroupBetaClient returns a beta-configured client suitable for the
-// metric-groups endpoints. Unlike ViewsBetaApi, the generated MetricsBetaApi
+// metric-groups endpoints. Unlike ViewsApi, the generated MetricsBetaApi
 // request builders do not expose a per-request .LDAPIVersion("beta") setter, so
 // we set the LD-API-Version header as a client default instead. The header is
 // read from the configuration at request-build time, so mutating it here takes
