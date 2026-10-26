@@ -58,13 +58,13 @@ func newNoViewsProxy(t *testing.T) *httptest.Server {
 		t.Fatalf("invalid upstream host %q: %v", upstreamHost, err)
 	}
 
-	rp := httputil.NewSingleHostReverseProxy(upstream)
-	director := rp.Director
-	rp.Director = func(r *http.Request) {
-		director(r)
-		r.Host = upstream.Host
-		// Plain bodies so ModifyResponse can rewrite JSON.
-		r.Header.Set("Accept-Encoding", "identity")
+	rp := &httputil.ReverseProxy{
+		Rewrite: func(pr *httputil.ProxyRequest) {
+			pr.SetURL(upstream)
+			pr.Out.Host = upstream.Host
+			// Plain bodies so ModifyResponse can rewrite JSON.
+			pr.Out.Header.Set("Accept-Encoding", "identity")
+		},
 	}
 	rp.ModifyResponse = func(resp *http.Response) error {
 		if !strings.HasPrefix(resp.Request.URL.Path, "/api/v2/projects") ||
