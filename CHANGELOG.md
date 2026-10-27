@@ -2,6 +2,18 @@
 
 All notable changes to the LaunchDarkly Terraform Provider will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org).
 
+## [3.2.0](https://github.com/launchdarkly/terraform-provider-launchdarkly/compare/v3.1.8...v3.2.0) (2026-10-27)
+
+
+### Features
+
+* Add deprecation message to release policy resource ([#565](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/565)) ([8da07a5](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/8da07a59489927671faae880c7c8e4c68bccada1))
+
+
+### Bug Fixes
+
+* validate feature flag description length at plan time ([#556](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/556)) ([880bf49](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/880bf490d7210d6c9a598a26fe3935bf87748557))
+
 ## [3.1.8](https://github.com/launchdarkly/terraform-provider-launchdarkly/compare/v3.1.7...v3.1.8) (2026-10-21)
 
 
