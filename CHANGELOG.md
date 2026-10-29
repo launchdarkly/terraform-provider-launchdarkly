@@ -2,6 +2,13 @@
 
 All notable changes to the LaunchDarkly Terraform Provider will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org).
 
+## [3.3.0](https://github.com/launchdarkly/terraform-provider-launchdarkly/compare/v3.2.0...v3.3.0) (2026-10-29)
+
+
+### Features
+
+* support new-relic-v2 integration for flag triggers and audit log subscriptions ([#569](https://github.com/launchdarkly/terraform-provider-launchdarkly/issues/569)) ([e84cef8](https://github.com/launchdarkly/terraform-provider-launchdarkly/commit/e84cef84605885473b0e2c781dcdc9240c816195))
+
 ## [3.2.0](https://github.com/launchdarkly/terraform-provider-launchdarkly/compare/v3.1.8...v3.2.0) (2026-10-27)
 
 
