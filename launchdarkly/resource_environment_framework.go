@@ -48,6 +48,7 @@ type EnvironmentResourceModel struct {
 	Tags                    types.Set    `tfsdk:"tags"`
 	ApprovalSettings        types.Object `tfsdk:"approval_settings"`
 	SegmentApprovalSettings types.Object `tfsdk:"segment_approval_settings"`
+	ExcludeKeysFromState    types.Bool   `tfsdk:"exclude_keys_from_state"`
 }
 
 func NewEnvironmentResource() resource.Resource {
@@ -60,8 +61,9 @@ func (r *EnvironmentResource) Metadata(_ context.Context, req resource.MetadataR
 
 func (r *EnvironmentResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "Provides a LaunchDarkly environment resource.",
-		Version:     1,
+		Description: "Provides a LaunchDarkly environment resource.\n\n" +
+			"-> **Note:** By default, the environment's SDK key (`api_key`) and mobile key (`mobile_key`) are stored in plaintext in Terraform state. Marking them `sensitive` only redacts them from CLI output. To keep them out of state, set `exclude_keys_from_state = true` and read the keys with the [`launchdarkly_environment_keys`](https://registry.terraform.io/providers/launchdarkly/launchdarkly/latest/docs/ephemeral-resources/environment_keys) ephemeral resource wherever you need them, for example to pass them to a write-only argument such as `value_wo` on `aws_ssm_parameter`. Ephemeral resources require Terraform 1.10 or later, and write-only arguments require Terraform 1.11 or later.",
+		Version: 1,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				Computed:      true,
@@ -87,9 +89,23 @@ func (r *EnvironmentResource) Schema(_ context.Context, _ resource.SchemaRequest
 				Required:    true,
 				Description: "RGB hex color (no leading #).",
 			},
-			API_KEY:        schema.StringAttribute{Computed: true, Sensitive: true},
-			MOBILE_KEY:     schema.StringAttribute{Computed: true, Sensitive: true},
+			API_KEY: schema.StringAttribute{
+				Computed:      true,
+				Sensitive:     true,
+				Description:   "The environment's SDK key. This is `null` when `exclude_keys_from_state` is `true`.",
+				PlanModifiers: []planmodifier.String{nullWhenKeysExcludedFromState()},
+			},
+			MOBILE_KEY: schema.StringAttribute{
+				Computed:      true,
+				Sensitive:     true,
+				Description:   "The environment's mobile key. This is `null` when `exclude_keys_from_state` is `true`.",
+				PlanModifiers: []planmodifier.String{nullWhenKeysExcludedFromState()},
+			},
 			CLIENT_SIDE_ID: schema.StringAttribute{Computed: true, Sensitive: true},
+			EXCLUDE_KEYS_FROM_STATE: schema.BoolAttribute{
+				Optional:    true,
+				Description: excludeKeysFromStateDescription,
+			},
 			DEFAULT_TTL: schema.Int64Attribute{
 				Optional: true, Computed: true,
 				Default:     int64default.StaticInt64(0),
@@ -511,8 +527,11 @@ func (r *EnvironmentResource) readIntoModel(
 	data.Key = types.StringValue(env.Key)
 	data.Name = types.StringValue(env.Name)
 	data.Color = types.StringValue(env.Color)
-	data.APIKey = types.StringValue(env.ApiKey)
-	data.MobileKey = types.StringValue(env.MobileKey)
+	// exclude_keys_from_state is config-only: it is never read from the API,
+	// so the value from the plan (Create/Update) or prior state (Read) is
+	// preserved. Import leaves it null, which stores the keys.
+	data.APIKey = excludedKeyValue(data.ExcludeKeysFromState, env.ApiKey)
+	data.MobileKey = excludedKeyValue(data.ExcludeKeysFromState, env.MobileKey)
 	data.ClientSideID = types.StringValue(env.Id)
 	data.DefaultTTL = types.Int64Value(int64(env.DefaultTtl))
 	data.SecureMode = types.BoolValue(env.SecureMode)

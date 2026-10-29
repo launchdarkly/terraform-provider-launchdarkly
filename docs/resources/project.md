@@ -96,6 +96,7 @@ Optional:
 - `critical` (Boolean) Denotes whether the environment is critical.
 - `default_track_events` (Boolean) Set to `true` to enable data export for every flag created in this environment after you configure this argument. This field defaults to `false` when not set. To learn more, read [Data Export](https://launchdarkly.com/docs/integrations/data-export).
 - `default_ttl` (Number) The TTL for the environment. This must be between 0 and 60 minutes. The TTL setting only applies to environments using the PHP SDK. This field defaults to `0` when not set. To learn more, read [TTL settings](https://launchdarkly.com/docs/home/account/environment#ttl-settings).
+- `exclude_keys_from_state` (Boolean) Set to `true` to keep this environment's secret keys (`api_key` and `mobile_key`) out of Terraform state. When `true`, the provider stores `null` for these attributes instead of their values. `client_side_id` is not secret and is always stored. To use the keys elsewhere in your configuration without storing them, read them with the [`launchdarkly_environment_keys`](https://registry.terraform.io/providers/launchdarkly/launchdarkly/latest/docs/ephemeral-resources/environment_keys) ephemeral resource and pass them to write-only arguments. Changing this value updates the resource in place. It never replaces the environment or rotates its keys. Import cannot read your configuration, so an imported environment's keys are stored until the next apply with `exclude_keys_from_state = true` removes them. This field defaults to `false` when not set.
 - `key` (String) The project-unique key for the environment. Must equal the map key. It defaults to the map key when omitted. Changing it (or the map key) replaces the environment.
 - `require_comments` (Boolean) Set to `true` if this environment requires comments for flag and segment changes. This field defaults to `false` when not set.
 - `secure_mode` (Boolean) Set to `true` to ensure a user of the client-side SDK cannot impersonate another user. This field defaults to `false` when not set.
@@ -103,9 +104,9 @@ Optional:
 
 Read-Only:
 
-- `api_key` (String, Sensitive) The environment's SDK key.
+- `api_key` (String, Sensitive) The environment's SDK key. This is `null` when `exclude_keys_from_state` is `true`.
 - `client_side_id` (String, Sensitive) The environment's client-side ID.
-- `mobile_key` (String, Sensitive) The environment's mobile key.
+- `mobile_key` (String, Sensitive) The environment's mobile key. This is `null` when `exclude_keys_from_state` is `true`.
 
 <a id="nestedatt--environments--approval_settings"></a>
 ### Nested Schema for `environments.approval_settings`
@@ -133,6 +134,38 @@ Required:
 
 - `using_environment_id` (Boolean)
 - `using_mobile_key` (Boolean)
+
+## Keeping environment keys out of state
+
+By default, each environment's SDK key (`api_key`) and mobile key (`mobile_key`) are stored in plaintext in Terraform state. Marking them `sensitive` only redacts them from CLI output. To keep an environment's keys out of state, set `exclude_keys_from_state = true` on that environment. Changing this setting updates the project in place. It never replaces the environment or rotates its keys.
+
+To use the keys elsewhere in your configuration without storing them, read them with the [`launchdarkly_environment_keys`](https://registry.terraform.io/providers/launchdarkly/launchdarkly/latest/docs/ephemeral-resources/environment_keys) ephemeral resource and pass them to a write-only argument, such as `value_wo` on `aws_ssm_parameter`. Ephemeral resources require Terraform 1.10 or later, and write-only arguments require Terraform 1.11 or later.
+
+```terraform
+resource "launchdarkly_project" "example" {
+  key  = "example-project"
+  name = "Example project"
+  environments = {
+    "production" = {
+      name                    = "Production"
+      color                   = "EEEEEE"
+      exclude_keys_from_state = true
+    }
+  }
+}
+
+ephemeral "launchdarkly_environment_keys" "production" {
+  project_key = launchdarkly_project.example.key
+  env_key     = "production"
+}
+
+resource "aws_ssm_parameter" "launchdarkly_sdk_key" {
+  name             = "/example-app/production/launchdarkly-sdk-key"
+  type             = "SecureString"
+  value_wo         = ephemeral.launchdarkly_environment_keys.production.api_key
+  value_wo_version = 1
+}
+```
 
 ## Import
 
