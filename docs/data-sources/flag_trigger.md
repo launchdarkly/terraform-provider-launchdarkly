@@ -47,7 +47,7 @@ If you did not save this when you created the resource, you must reset it to get
 
 - `enabled` (Boolean) Whether the trigger is currently active or not.
 - `instructions` (Attributes) The instruction containing the action to perform when invoking the trigger. Currently supported flag actions are `turnFlagOn` and `turnFlagOff`. (see [below for nested schema](#nestedatt--instructions))
-- `integration_key` (String) The unique identifier of the integration you intend to set your trigger up with. Currently supported are `generic-trigger`, `datadog`, `dynatrace`, `dynatrace-cloud-automation`, `honeycomb`, `new-relic-apm`, and `signalfx`. `generic-trigger` should be used for integrations not explicitly supported.
+- `integration_key` (String) The unique identifier of the integration you intend to set your trigger up with. Currently supported are `generic-trigger`, `datadog`, `dynatrace`, `dynatrace-cloud-automation`, `honeycomb`, `new-relic-apm`, `new-relic-v2`, and `signalfx`. `generic-trigger` should be used for integrations not explicitly supported.
 - `maintainer_id` (String) The ID of the member responsible for maintaining the flag trigger.
 - `trigger_url` (String, Sensitive) The unique URL used to invoke the trigger.
 
