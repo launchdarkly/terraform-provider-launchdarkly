@@ -342,6 +342,32 @@ var SUBSCRIPTION_CONFIGURATION_FIELDS = map[string]IntegrationConfig{
 			Type:          "enum",
 		},
 	},
+	"new-relic-v2": {
+		"apiKey": {
+			AllowedValues: []string{},
+			DefaultValue:  nil,
+			Description:   "Enter your [New Relic user API key](https://docs.newrelic.com/docs/apis/intro-apis/new-relic-api-keys/#user-key). User API keys start with `NRAK-`. REST API keys are not supported.",
+			IsOptional:    false,
+			IsSecret:      true,
+			Type:          "string",
+		},
+		"domain": {
+			AllowedValues: []string{"api.newrelic.com", "api.eu.newrelic.com"},
+			DefaultValue:  "api.newrelic.com",
+			Description:   "Your New Relic data center. This sets the NerdGraph API host. The default (US) is \"api.newrelic.com\". Use \"api.eu.newrelic.com\" if you are using the EU data center.",
+			IsOptional:    true,
+			IsSecret:      false,
+			Type:          "enum",
+		},
+		"entityGuid": {
+			AllowedValues: []string{},
+			DefaultValue:  nil,
+			Description:   "Enter the [entity GUID](https://docs.newrelic.com/docs/new-relic-solutions/new-relic-one/core-concepts/what-entity-new-relic/). Open the entity and select See metadata and tags. Do not use the numeric application ID.",
+			IsOptional:    false,
+			IsSecret:      false,
+			Type:          "string",
+		},
+	},
 	"pagerduty": {"integrationKey": {
 		AllowedValues: []string{},
 		DefaultValue:  nil,
@@ -423,4 +449,4 @@ var SUBSCRIPTION_CONFIGURATION_FIELDS = map[string]IntegrationConfig{
 }
 
 // VALID_TRIGGER_INTEGRATIONS is a list of valid trigger integrations. This list is generated from the LaunchDarkly integration manifest API.
-var VALID_TRIGGER_INTEGRATIONS = []string{"generic-trigger", "datadog", "dynatrace", "dynatrace-cloud-automation", "honeycomb", "new-relic-apm", "signalfx"}
+var VALID_TRIGGER_INTEGRATIONS = []string{"generic-trigger", "datadog", "dynatrace", "dynatrace-cloud-automation", "honeycomb", "new-relic-apm", "new-relic-v2", "signalfx"}
