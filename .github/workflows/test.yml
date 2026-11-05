@@ -128,6 +128,7 @@ jobs:
           - TestAccMetric_
           - TestAccModelConfig
           - TestAccOAuthClient_
+          - TestAccObservabilityFilter_
           - TestAccProject
           - TestAccRelayProxy
           - TestAccReleasePolicy_
