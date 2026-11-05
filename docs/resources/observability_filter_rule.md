@@ -5,6 +5,7 @@ subcategory: ""
 description: |-
   Provides a LaunchDarkly observability ingestion filter rule resource.
   ~> Beta: This resource uses a beta API. Beta resources may change or be removed in future versions.
+  -> Note: Observability filter settings require a personal API access token, or an OAuth token with the observability scope. Service tokens are not supported.
   This resource allows you to create and manage a filter rule that includes or excludes sessions, errors, logs, traces, or metrics at ingestion for a LaunchDarkly project. LaunchDarkly adds a new rule to the end of its product's rule order. To control the order, or to make Terraform the authority on which rules of a product run, use launchdarkly_observability_filter_settings.
 ---
 
@@ -13,6 +14,8 @@ description: |-
 Provides a LaunchDarkly observability ingestion filter rule resource.
 
 ~> **Beta:** This resource uses a beta API. Beta resources may change or be removed in future versions.
+
+-> **Note:** Observability filter settings require a personal API access token, or an OAuth token with the `observability` scope. Service tokens are not supported.
 
 This resource allows you to create and manage a filter rule that includes or excludes sessions, errors, logs, traces, or metrics at ingestion for a LaunchDarkly project. LaunchDarkly adds a new rule to the end of its product's rule order. To control the order, or to make Terraform the authority on which rules of a product run, use `launchdarkly_observability_filter_settings`.
 

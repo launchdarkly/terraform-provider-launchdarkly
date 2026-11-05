@@ -31,8 +31,8 @@ type obsFakeRule struct {
 	Rate        float64  `json:"rate"`
 	Attributes  []string `json:"attributes"`
 	Version     int64    `json:"version"`
-	CreatedAt   int64    `json:"createdAt"`
-	UpdatedAt   int64    `json:"updatedAt"`
+	CreatedAt   string   `json:"createdAt"` // RFC 3339
+	UpdatedAt   string   `json:"updatedAt"`
 }
 
 type obsFakeProject struct {
@@ -73,7 +73,7 @@ func (f *obsFake) uiCreateRule(projectKey string, r obsFakeRule) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	p := f.project(projectKey)
-	now := time.Now().UnixMilli()
+	now := time.Now().UTC().Format(time.RFC3339)
 	r.Version, r.CreatedAt, r.UpdatedAt = 1, now, now
 	if r.Attributes == nil {
 		r.Attributes = []string{}
@@ -199,7 +199,8 @@ func (f *obsFake) serve(w http.ResponseWriter, r *http.Request, body []byte) {
 		return
 	}
 	if r.Header.Get("LD-API-Version") != "beta" {
-		obsFakeError(w, http.StatusBadRequest, "invalid_request", "this endpoint requires LD-API-Version: beta")
+		// gonfalon's beta gate answers 403, not 400.
+		obsFakeError(w, http.StatusForbidden, "forbidden", "this endpoint requires LD-API-Version: beta")
 		return
 	}
 	// /api/v2/projects/{projectKey}/observability/{filter-settings|filter-rules}[/{ruleKey}]
@@ -243,7 +244,7 @@ func (f *obsFake) serveSettings(w http.ResponseWriter, r *http.Request, body []b
 			return
 		}
 		if in.Version != nil && *in.Version != p.version {
-			obsFakeError(w, http.StatusConflict, "VERSION_CONFLICT", fmt.Sprintf("settings version is %d, request has %d", p.version, *in.Version))
+			obsFakeError(w, http.StatusConflict, "optimistic_locking_error", fmt.Sprintf("settings version is %d, request has %d", p.version, *in.Version))
 			return
 		}
 		for prod, v := range in.MinuteRateLimits {
@@ -306,7 +307,18 @@ func (f *obsFake) serveRules(w http.ResponseWriter, r *http.Request, body []byte
 				keys = append(keys, k)
 			}
 		}
-		sort.Strings(keys)
+		// Grouped by product (sessions, errors, logs, traces, metrics), then by key.
+		rank := map[string]int{}
+		for i, prod := range obsFakeProducts {
+			rank[prod] = i
+		}
+		sort.Slice(keys, func(i, j int) bool {
+			ri, rj := rank[p.rules[keys[i]].ProductType], rank[p.rules[keys[j]].ProductType]
+			if ri != rj {
+				return ri < rj
+			}
+			return keys[i] < keys[j]
+		})
 		items := make([]*obsFakeRule, 0, len(keys))
 		for _, k := range keys {
 			items = append(items, p.rules[k])
@@ -330,7 +342,7 @@ func (f *obsFake) serveRules(w http.ResponseWriter, r *http.Request, body []byte
 			obsFakeError(w, http.StatusConflict, "conflict", fmt.Sprintf("a filter rule with key %q already exists", in.Key))
 			return
 		}
-		now := time.Now().UnixMilli()
+		now := time.Now().UTC().Format(time.RFC3339)
 		in.Version, in.CreatedAt, in.UpdatedAt = 1, now, now
 		if in.Attributes == nil {
 			in.Attributes = []string{}
@@ -379,7 +391,7 @@ func (f *obsFake) serveRule(w http.ResponseWriter, r *http.Request, body []byte,
 			return
 		}
 		if in.Version != nil && *in.Version != rule.Version {
-			obsFakeError(w, http.StatusConflict, "VERSION_CONFLICT", fmt.Sprintf("rule %q is at version %d, request has %d", key, rule.Version, *in.Version))
+			obsFakeError(w, http.StatusConflict, "optimistic_locking_error", fmt.Sprintf("rule %q is at version %d, request has %d", key, rule.Version, *in.Version))
 			return
 		}
 		if msg := obsFakeValidateRule(rule.ProductType, in.Name, in.Operation, in.Rate); msg != "" {
@@ -391,7 +403,7 @@ func (f *obsFake) serveRule(w http.ResponseWriter, r *http.Request, body []byte,
 		}
 		rule.Name, rule.Enabled, rule.Query, rule.Operation, rule.Rate, rule.Attributes = in.Name, in.Enabled, in.Query, in.Operation, in.Rate, in.Attributes
 		rule.Version++
-		rule.UpdatedAt = time.Now().UnixMilli()
+		rule.UpdatedAt = time.Now().UTC().Format(time.RFC3339)
 		obsFakeJSON(w, http.StatusOK, rule)
 	case http.MethodDelete:
 		p.order[rule.ProductType] = obsFakeRemove(p.order[rule.ProductType], key)

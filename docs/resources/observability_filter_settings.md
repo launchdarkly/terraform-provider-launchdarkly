@@ -5,6 +5,7 @@ subcategory: ""
 description: |-
   Provides a LaunchDarkly observability filter settings resource.
   ~> Beta: This resource uses a beta API. Beta resources may change or be removed in future versions.
+  -> Note: Observability filter settings require a personal API access token, or an OAuth token with the observability scope. Service tokens are not supported.
   This resource manages the observability ingestion settings of a LaunchDarkly project: per-product rate limits and the order in which launchdarkly_observability_filter_rule rules run.
   Each project has exactly one filter settings object. Destroying this resource removes all rate limits and leaves rule orders unchanged; rules leave the order when they are deleted.
   -> Note: A product listed in rule_order is managed authoritatively. A rule of that product that is not in the list does not run, and a rule created outside Terraform (for example in the LaunchDarkly UI) appears as drift in terraform plan and is removed from the order on the next apply. Reference rules by their resource (launchdarkly_observability_filter_rule.example.key) so that Terraform creates them before it sets the order.
@@ -15,6 +16,8 @@ description: |-
 Provides a LaunchDarkly observability filter settings resource.
 
 ~> **Beta:** This resource uses a beta API. Beta resources may change or be removed in future versions.
+
+-> **Note:** Observability filter settings require a personal API access token, or an OAuth token with the `observability` scope. Service tokens are not supported.
 
 This resource manages the observability ingestion settings of a LaunchDarkly project: per-product rate limits and the order in which `launchdarkly_observability_filter_rule` rules run.
 

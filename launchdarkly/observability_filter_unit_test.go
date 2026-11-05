@@ -205,7 +205,7 @@ func TestObservabilityFilterRule_versionConflict(t *testing.T) {
 					fake.mu.Unlock()
 				},
 				Config:      obsRuleHCL("drop_healthz", "drop-healthz", "logs", "  rate = 0.5"),
-				ExpectError: regexp.MustCompile(`changed outside of Terraform[\s\S]*VERSION_CONFLICT`),
+				ExpectError: regexp.MustCompile(`changed outside of Terraform[\s\S]*version conflict[\s\S]*409 Conflict \(optimistic_locking_error\)`),
 			},
 		},
 	})
@@ -432,16 +432,37 @@ func TestObservabilityRequestHeadersAndURL(t *testing.T) {
 
 func TestObservabilityErrorDiagnostics(t *testing.T) {
 	var diags diag.Diagnostics
-	addObservabilityError(&diags, "Failed", &observabilityAPIError{StatusCode: 409, Code: "VERSION_CONFLICT", Message: "stale"}, "key hint")
-	require.Contains(t, diags[0].Detail(), "VERSION_CONFLICT")
+	addObservabilityError(&diags, "Failed", &observabilityAPIError{StatusCode: 409, Code: observabilityCodeVersionConflict, Message: "stale"}, "key hint")
+	require.Contains(t, diags[0].Detail(), "version conflict")
 	require.Contains(t, diags[0].Detail(), "terraform plan")
+	require.Contains(t, diags[0].Detail(), "409 Conflict (optimistic_locking_error): stale")
 	require.NotContains(t, diags[0].Detail(), "key hint")
 
 	diags = nil
-	addObservabilityError(&diags, "Failed", &observabilityAPIError{StatusCode: 409, Code: "conflict", Message: "key taken"}, "key hint")
+	addObservabilityError(&diags, "Failed", &observabilityAPIError{StatusCode: 409, Code: observabilityCodeKeyTaken, Message: "key taken"}, "key hint")
 	require.True(t, strings.HasPrefix(diags[0].Detail(), "key hint"))
+
+	diags = nil
+	addObservabilityError(&diags, "Failed", &observabilityAPIError{StatusCode: 403, Code: "forbidden", Message: "observability filter settings require a member API access token"}, "")
+	require.Contains(t, diags[0].Detail(), "Service tokens are not supported")
+	require.Contains(t, diags[0].Detail(), "require a member API access token")
 
 	diags = nil
 	addObservabilityError(&diags, "Failed", &observabilityAPIError{StatusCode: 400, Code: "invalid_request", Message: "bad query"}, "key hint")
 	require.Equal(t, "400 Bad Request (invalid_request): bad query", diags[0].Detail())
+}
+
+// The fake must treat a missing beta header the way gonfalon does (403), and
+// the provider must surface it with the credential hint.
+func TestObservabilityMissingBetaHeaderIs403(t *testing.T) {
+	fake := newObsFake()
+	server := httptest.NewServer(fake)
+	defer server.Close()
+	req, err := http.NewRequest(http.MethodGet, server.URL+"/api/v2/projects/web/observability/filter-settings", nil)
+	require.NoError(t, err)
+	req.Header.Set("Authorization", "api-x")
+	resp, err := http.DefaultClient.Do(req)
+	require.NoError(t, err)
+	_ = resp.Body.Close()
+	require.Equal(t, http.StatusForbidden, resp.StatusCode)
 }

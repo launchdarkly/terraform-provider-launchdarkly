@@ -109,9 +109,17 @@ func (e *observabilityAPIError) Error() string {
 	return fmt.Sprintf("%d %s: %s", e.StatusCode, http.StatusText(e.StatusCode), msg)
 }
 
+// REST error codes (gonfalon's {"code", "message"} body) for these endpoints.
+const (
+	// observabilityCodeVersionConflict: 409, the object's version moved on
+	// since the caller read it.
+	observabilityCodeVersionConflict = "optimistic_locking_error"
+	// observabilityCodeKeyTaken: 409 on create, the rule key is in use.
+	observabilityCodeKeyTaken = "conflict"
+)
+
 func (e *observabilityAPIError) isVersionConflict() bool {
-	return e.StatusCode == http.StatusConflict &&
-		(strings.EqualFold(e.Code, "VERSION_CONFLICT") || strings.Contains(e.Message, "VERSION_CONFLICT"))
+	return e.StatusCode == http.StatusConflict && e.Code == observabilityCodeVersionConflict
 }
 
 func asObservabilityAPIError(err error) (*observabilityAPIError, bool) {
@@ -127,28 +135,33 @@ func isObservabilityNotFound(err error) bool {
 	return ok && apiErr.StatusCode == http.StatusNotFound
 }
 
-// addObservabilityError adds a diagnostic for err. Conflicts get an actionable
-// detail: a VERSION_CONFLICT means someone else changed the object since
-// Terraform last read it; any other 409 on a rule create means the key is
-// taken (conflictHint says how to resolve that).
+// addObservabilityError adds a diagnostic for err, with an actionable detail
+// for the errors a Terraform user can do something about:
+//   - 409 optimistic_locking_error: someone else changed the object after
+//     Terraform last read it.
+//   - any other 409 (code "conflict"): on create, the rule key is taken;
+//     conflictHint says how to resolve that.
+//   - 401/403: the credential cannot manage observability settings.
 func addObservabilityError(diags diagnosticsSink, summary string, err error, conflictHint string) {
 	apiErr, ok := asObservabilityAPIError(err)
-	if !ok || apiErr.StatusCode != http.StatusConflict {
+	if !ok {
 		diags.AddError(summary, err.Error())
 		return
 	}
-	if apiErr.isVersionConflict() {
+	switch {
+	case apiErr.isVersionConflict():
 		diags.AddError(summary, fmt.Sprintf(
 			"The object was changed outside of Terraform (for example in the LaunchDarkly UI) after Terraform last read it, "+
-				"so LaunchDarkly rejected the write with VERSION_CONFLICT. Run `terraform plan` to refresh and review the changes, then apply again.\n\n%s",
+				"so LaunchDarkly rejected the write as a version conflict. Run `terraform plan` to refresh and review the changes, then apply again.\n\n%s",
 			err.Error()))
-		return
+	case apiErr.StatusCode == http.StatusConflict && conflictHint != "":
+		diags.AddError(summary, conflictHint+"\n\n"+err.Error())
+	case apiErr.StatusCode == http.StatusUnauthorized || apiErr.StatusCode == http.StatusForbidden:
+		diags.AddError(summary, "LaunchDarkly rejected the credential for observability filter settings. These beta endpoints accept a personal API access token "+
+			"whose member can manage the project's observability settings, or an OAuth token with the `observability` scope. Service tokens are not supported.\n\n"+err.Error())
+	default:
+		diags.AddError(summary, err.Error())
 	}
-	detail := err.Error()
-	if conflictHint != "" {
-		detail = conflictHint + "\n\n" + detail
-	}
-	diags.AddError(summary, detail)
 }
 
 // observabilityWriteMu serialises writes per project. Creating or deleting a

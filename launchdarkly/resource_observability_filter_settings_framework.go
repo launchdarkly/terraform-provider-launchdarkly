@@ -84,6 +84,8 @@ func (r *ObservabilityFilterSettingsResource) Schema(_ context.Context, _ resour
 
 ` + observabilityBetaNote + `
 
+` + observabilityCredentialNote + `
+
 This resource manages the observability ingestion settings of a LaunchDarkly project: per-product rate limits and the order in which ` + "`launchdarkly_observability_filter_rule`" + ` rules run.
 
 Each project has exactly one filter settings object. Destroying this resource removes all rate limits and leaves rule orders unchanged; rules leave the order when they are deleted.

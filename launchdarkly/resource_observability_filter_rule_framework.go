@@ -28,6 +28,9 @@ var (
 
 const observabilityBetaNote = "~> **Beta:** This resource uses a beta API. Beta resources may change or be removed in future versions."
 
+// observabilityCredentialNote: the endpoints forward the caller's own credential to the observability backend.
+const observabilityCredentialNote = "-> **Note:** Observability filter settings require a personal API access token, or an OAuth token with the `observability` scope. Service tokens are not supported."
+
 type ObservabilityFilterRuleResource struct {
 	client *Client
 }
@@ -60,6 +63,8 @@ func (r *ObservabilityFilterRuleResource) Schema(_ context.Context, _ resource.S
 		Description: `Provides a LaunchDarkly observability ingestion filter rule resource.
 
 ` + observabilityBetaNote + `
+
+` + observabilityCredentialNote + `
 
 This resource allows you to create and manage a filter rule that includes or excludes sessions, errors, logs, traces, or metrics at ingestion for a LaunchDarkly project. LaunchDarkly adds a new rule to the end of its product's rule order. To control the order, or to make Terraform the authority on which rules of a product run, use ` + "`launchdarkly_observability_filter_settings`" + `.`,
 		Attributes: map[string]schema.Attribute{

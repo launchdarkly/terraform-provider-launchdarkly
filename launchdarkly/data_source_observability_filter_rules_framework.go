@@ -51,6 +51,8 @@ func (d *ObservabilityFilterRulesDataSource) Schema(_ context.Context, _ datasou
 
 ~> **Beta:** This data source uses a beta API. Beta data sources may change or be removed in future versions.
 
+` + observabilityCredentialNote + `
+
 This data source allows you to list the observability ingestion filter rules of a LaunchDarkly project, optionally for one product.`,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{

@@ -5,6 +5,7 @@ subcategory: ""
 description: |-
   Provides a LaunchDarkly observability filter rules data source.
   ~> Beta: This data source uses a beta API. Beta data sources may change or be removed in future versions.
+  -> Note: Observability filter settings require a personal API access token, or an OAuth token with the observability scope. Service tokens are not supported.
   This data source allows you to list the observability ingestion filter rules of a LaunchDarkly project, optionally for one product.
 ---
 
@@ -13,6 +14,8 @@ description: |-
 Provides a LaunchDarkly observability filter rules data source.
 
 ~> **Beta:** This data source uses a beta API. Beta data sources may change or be removed in future versions.
+
+-> **Note:** Observability filter settings require a personal API access token, or an OAuth token with the `observability` scope. Service tokens are not supported.
 
 This data source allows you to list the observability ingestion filter rules of a LaunchDarkly project, optionally for one product.
 
