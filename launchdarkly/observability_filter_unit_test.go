@@ -9,9 +9,11 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/provider"
 	"github.com/hashicorp/terraform-plugin-framework/providerserver"
+	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"github.com/hashicorp/terraform-plugin-testing/plancheck"
@@ -470,4 +472,55 @@ func TestObservabilityMissingBetaHeaderIs403(t *testing.T) {
 	require.NoError(t, err)
 	_ = resp.Body.Close()
 	require.Equal(t, http.StatusForbidden, resp.StatusCode)
+}
+
+// An unknown value must never reach the API: an unknown rule order would be
+// sent as an authoritative empty list, and an unknown limit as unlimited.
+func TestObservabilitySettingsPayloadRejectsUnknown(t *testing.T) {
+	ctx := context.Background()
+	r := &ObservabilityFilterSettingsResource{}
+	nullLimits := map[string]attr.Value{}
+	nullOrders := map[string]attr.Value{}
+	for _, p := range observabilityProductTypes {
+		nullLimits[p] = types.Int64Null()
+		nullOrders[p] = types.ListNull(types.StringType)
+	}
+	with := func(m map[string]attr.Value, k string, v attr.Value) map[string]attr.Value {
+		out := map[string]attr.Value{}
+		for kk, vv := range m {
+			out[kk] = vv
+		}
+		out[k] = v
+		return out
+	}
+	model := func(limits, orders map[string]attr.Value) ObservabilityFilterSettingsResourceModel {
+		return ObservabilityFilterSettingsResourceModel{
+			ProjectKey:       types.StringValue("web"),
+			MinuteRateLimits: types.ObjectValueMust(observabilityRateLimitAttrTypes, limits),
+			RuleOrder:        types.ObjectValueMust(observabilityRuleOrderAttrTypes, orders),
+		}
+	}
+	cases := map[string]ObservabilityFilterSettingsResourceModel{
+		"unknown order list":    model(nullLimits, with(nullOrders, LOGS, types.ListUnknown(types.StringType))),
+		"unknown order element": model(nullLimits, with(nullOrders, LOGS, types.ListValueMust(types.StringType, []attr.Value{types.StringValue("a"), types.StringUnknown()}))),
+		"unknown limit":         model(with(nullLimits, LOGS, types.Int64Unknown()), nullOrders),
+		"unknown objects": {
+			ProjectKey:       types.StringValue("web"),
+			MinuteRateLimits: types.ObjectUnknown(observabilityRateLimitAttrTypes),
+			RuleOrder:        types.ObjectUnknown(observabilityRuleOrderAttrTypes),
+		},
+	}
+	for name, m := range cases {
+		var diags diag.Diagnostics
+		r.settingsPayload(ctx, m, &diags)
+		require.True(t, diags.HasError(), name)
+		require.Contains(t, diags[0].Summary(), "unknown", name)
+	}
+
+	var diags diag.Diagnostics
+	payload := r.settingsPayload(ctx, model(with(nullLimits, LOGS, types.Int64Value(5)), with(nullOrders, LOGS, types.ListValueMust(types.StringType, []attr.Value{}))), &diags)
+	require.False(t, diags.HasError())
+	require.Equal(t, int64(5), *payload.MinuteRateLimits[LOGS])
+	require.Nil(t, payload.MinuteRateLimits[TRACES])
+	require.Equal(t, map[string][]string{LOGS: {}}, payload.RuleOrder)
 }

@@ -124,10 +124,25 @@ func (r *ObservabilityFilterSettingsResource) Configure(_ context.Context, req r
 // settingsPayload builds the PUT body. Every rate limit is sent (null means
 // unlimited); only the products present in rule_order are sent, so the rest
 // keep their server-side order.
+//
+// Terraform resolves every value before apply, so an unknown here is a bug.
+// It is reported as an error rather than sent: an unknown order would go out
+// as an authoritative empty list (stopping that product's rules), and an
+// unknown limit as null (unlimited).
 func (r *ObservabilityFilterSettingsResource) settingsPayload(ctx context.Context, plan ObservabilityFilterSettingsResourceModel, diags *diag.Diagnostics) observabilityFilterSettings {
 	payload := observabilityFilterSettings{
 		MinuteRateLimits: map[string]*int64{},
 		RuleOrder:        map[string][]string{},
+	}
+	unknown := func(p path.Path) {
+		diags.AddAttributeError(p, "Value unknown at apply time",
+			"The provider refuses to write observability filter settings while this value is unknown, because sending it would change rate limits or rule order unintentionally. Please report this as a provider bug.")
+	}
+	if plan.MinuteRateLimits.IsUnknown() {
+		unknown(path.Root(MINUTE_RATE_LIMITS))
+	}
+	if plan.RuleOrder.IsUnknown() {
+		unknown(path.Root(RULE_ORDER))
 	}
 	limits := map[string]attr.Value{}
 	if !plan.MinuteRateLimits.IsNull() && !plan.MinuteRateLimits.IsUnknown() {
@@ -135,7 +150,12 @@ func (r *ObservabilityFilterSettingsResource) settingsPayload(ctx context.Contex
 	}
 	for _, p := range observabilityProductTypes {
 		payload.MinuteRateLimits[p] = nil
-		if v, ok := limits[p].(types.Int64); ok && !v.IsNull() && !v.IsUnknown() {
+		v, ok := limits[p].(types.Int64)
+		switch {
+		case !ok || v.IsNull():
+		case v.IsUnknown():
+			unknown(path.Root(MINUTE_RATE_LIMITS).AtName(p))
+		default:
 			n := v.ValueInt64()
 			payload.MinuteRateLimits[p] = &n
 		}
@@ -144,6 +164,10 @@ func (r *ObservabilityFilterSettingsResource) settingsPayload(ctx context.Contex
 		for p, v := range plan.RuleOrder.Attributes() {
 			l, ok := v.(types.List)
 			if !ok || l.IsNull() {
+				continue
+			}
+			if l.IsUnknown() || containsUnknown(l.Elements()) {
+				unknown(path.Root(RULE_ORDER).AtName(p))
 				continue
 			}
 			keys, d := stringSliceFromList(ctx, l)
@@ -155,6 +179,15 @@ func (r *ObservabilityFilterSettingsResource) settingsPayload(ctx context.Contex
 		}
 	}
 	return payload
+}
+
+func containsUnknown(vals []attr.Value) bool {
+	for _, v := range vals {
+		if v.IsUnknown() {
+			return true
+		}
+	}
+	return false
 }
 
 func (r *ObservabilityFilterSettingsResource) apply(ctx context.Context, plan *ObservabilityFilterSettingsResourceModel, diags *diag.Diagnostics, verb string) {
