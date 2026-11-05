@@ -432,14 +432,19 @@ func TestObservabilityRequestHeadersAndURL(t *testing.T) {
 
 func TestObservabilityErrorDiagnostics(t *testing.T) {
 	var diags diag.Diagnostics
-	addObservabilityError(&diags, "Failed", &observabilityAPIError{StatusCode: 409, Code: observabilityCodeVersionConflict, Message: "stale"}, "key hint")
+	addObservabilityError(&diags, "Failed", &observabilityAPIError{StatusCode: 409, Code: observabilityCodeVersionConflict, Message: "stale"}, "")
 	require.Contains(t, diags[0].Detail(), "version conflict")
 	require.Contains(t, diags[0].Detail(), "terraform plan")
 	require.Contains(t, diags[0].Detail(), "409 Conflict (optimistic_locking_error): stale")
-	require.NotContains(t, diags[0].Detail(), "key hint")
 
 	diags = nil
 	addObservabilityError(&diags, "Failed", &observabilityAPIError{StatusCode: 409, Code: observabilityCodeKeyTaken, Message: "key taken"}, "key hint")
+	require.True(t, strings.HasPrefix(diags[0].Detail(), "key hint"))
+
+	// A create can't conflict on version, so its 409 is "key taken" even if
+	// the server labels it optimistic_locking_error.
+	diags = nil
+	addObservabilityError(&diags, "Failed", &observabilityAPIError{StatusCode: 409, Code: observabilityCodeVersionConflict, Message: "key taken"}, "key hint")
 	require.True(t, strings.HasPrefix(diags[0].Detail(), "key hint"))
 
 	diags = nil

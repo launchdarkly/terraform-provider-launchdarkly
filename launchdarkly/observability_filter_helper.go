@@ -139,7 +139,7 @@ func isObservabilityNotFound(err error) bool {
 // for the errors a Terraform user can do something about:
 //   - 409 optimistic_locking_error: someone else changed the object after
 //     Terraform last read it.
-//   - any other 409 (code "conflict"): on create, the rule key is taken;
+//   - any 409 on a rule create (code "conflict"): the rule key is taken;
 //     conflictHint says how to resolve that.
 //   - 401/403: the credential cannot manage observability settings.
 func addObservabilityError(diags diagnosticsSink, summary string, err error, conflictHint string) {
@@ -149,13 +149,15 @@ func addObservabilityError(diags diagnosticsSink, summary string, err error, con
 		return
 	}
 	switch {
+	case apiErr.StatusCode == http.StatusConflict && conflictHint != "":
+		// Only rule creates pass a hint. A create sends no version, so any
+		// 409 there means the key is taken, whatever the code says.
+		diags.AddError(summary, conflictHint+"\n\n"+err.Error())
 	case apiErr.isVersionConflict():
 		diags.AddError(summary, fmt.Sprintf(
 			"The object was changed outside of Terraform (for example in the LaunchDarkly UI) after Terraform last read it, "+
 				"so LaunchDarkly rejected the write as a version conflict. Run `terraform plan` to refresh and review the changes, then apply again.\n\n%s",
 			err.Error()))
-	case apiErr.StatusCode == http.StatusConflict && conflictHint != "":
-		diags.AddError(summary, conflictHint+"\n\n"+err.Error())
 	case apiErr.StatusCode == http.StatusUnauthorized || apiErr.StatusCode == http.StatusForbidden:
 		diags.AddError(summary, "LaunchDarkly rejected the credential for observability filter settings. These beta endpoints accept a personal API access token "+
 			"whose member can manage the project's observability settings, or an OAuth token with the `observability` scope. Service tokens are not supported.\n\n"+err.Error())
