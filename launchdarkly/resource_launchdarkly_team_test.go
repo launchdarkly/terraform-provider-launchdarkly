@@ -24,12 +24,12 @@ resource "launchdarkly_custom_role" "terraform_team_test" {
 }
 
 resource "launchdarkly_team_member" "test_member_one" {
-  email = "%s+wbteste2e@launchdarkly.com"
+  email = "%s@ck0uyqdg.mailosaur.net"
   role = "reader"
 }
 
 resource "launchdarkly_team_member" "test_member_two" {
-  email = "%s+wbteste2e@launchdarkly.com"
+  email = "%s@ck0uyqdg.mailosaur.net"
   role = "reader"
   depends_on = [launchdarkly_team_member.test_member_one]
 }
@@ -61,12 +61,12 @@ resource "launchdarkly_custom_role" "terraform_team_test" {
 }
 
 resource "launchdarkly_team_member" "test_member_one" {
-  email = "%s+wbteste2e@launchdarkly.com"
+  email = "%s@ck0uyqdg.mailosaur.net"
   role = "reader"
 }
 
 resource "launchdarkly_team_member" "test_member_two" {
-  email = "%s+wbteste2e@launchdarkly.com"
+  email = "%s@ck0uyqdg.mailosaur.net"
   role = "reader"
   depends_on = [launchdarkly_team_member.test_member_one]
 }
@@ -108,12 +108,12 @@ resource "launchdarkly_custom_role" "other_team_test" {
 }
 
 resource "launchdarkly_team_member" "test_member_one" {
-  email = "%s+wbteste2e@launchdarkly.com"
+  email = "%s@ck0uyqdg.mailosaur.net"
   role = "reader"
 }
 
 resource "launchdarkly_team_member" "test_member_two" {
-  email = "%s+wbteste2e@launchdarkly.com"
+  email = "%s@ck0uyqdg.mailosaur.net"
   role = "reader"
   depends_on = [launchdarkly_team_member.test_member_one]
 }
@@ -140,18 +140,18 @@ resource "launchdarkly_custom_role" "other_team_test" {
 }
 
 resource "launchdarkly_team_member" "test_member_one" {
-  email = "%s+wbteste2e@launchdarkly.com"
+  email = "%s@ck0uyqdg.mailosaur.net"
   role = "reader"
 }
 
 resource "launchdarkly_team_member" "test_member_two" {
-  email = "%s+wbteste2e@launchdarkly.com"
+  email = "%s@ck0uyqdg.mailosaur.net"
   role = "reader"
   depends_on = [launchdarkly_team_member.test_member_one]
 }
 
 resource "launchdarkly_team_member" "test_member_three" {
-  email = "%s+wbteste2e@launchdarkly.com"
+  email = "%s@ck0uyqdg.mailosaur.net"
   role = "reader"
   depends_on = [launchdarkly_team_member.test_member_two]
 }
