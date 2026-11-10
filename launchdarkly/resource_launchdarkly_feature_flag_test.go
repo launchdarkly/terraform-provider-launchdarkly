@@ -181,7 +181,7 @@ resource "launchdarkly_feature_flag" "json" {
 
 	testAccFeatureFlagWithTeamMaintainer = `
 	resource "launchdarkly_team_member" "test" {
-		email = "%s+wbteste2e@launchdarkly.com"
+		email = "%s@ck0uyqdg.mailosaur.net"
 		first_name = "first"
 		last_name = "last"
 		role = "admin"
@@ -213,7 +213,7 @@ resource "launchdarkly_feature_flag" "json" {
 	// not support creating members with the same email address more than once.
 	testAccFeatureFlagWithMaintainer = `
 resource "launchdarkly_team_member" "test" {
-	email = "%s+wbteste2e@launchdarkly.com"
+	email = "%s@ck0uyqdg.mailosaur.net"
 	first_name = "first"
 	last_name = "last"
 	role = "admin"
@@ -237,7 +237,7 @@ resource "launchdarkly_feature_flag" "maintained" {
 	// the previous maintainer if that maintainer still exists
 	testAccFeatureFlagMaintainerComputed = `
 resource "launchdarkly_team_member" "test" {
-	email = "%s+wbteste2e@launchdarkly.com"
+	email = "%s@ck0uyqdg.mailosaur.net"
 	first_name = "first"
 	last_name = "last"
 	role = "admin"
