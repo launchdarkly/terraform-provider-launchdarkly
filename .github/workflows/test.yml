@@ -80,10 +80,7 @@ jobs:
 
   # Run acceptance tests in a matrix with Terraform CLI versions
   test:
-    # Temporarily disabled: test team members trigger real invitation emails
-    # that hard-bounce. Re-enable by dropping "false && (...)" once test member
-    # addresses are undeliverable. A skipped job still lets Check Success pass.
-    if: false && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     name: Acceptance Tests
     runs-on: ubuntu-latest
     timeout-minutes: 10
