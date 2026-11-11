@@ -17,7 +17,7 @@ require (
 
 require (
 	github.com/hashicorp/terraform-plugin-framework-validators v0.19.0
-	github.com/launchdarkly/api-client-go/v25 v25.0.1
+	github.com/launchdarkly/api-client-go/v25 v25.1.1
 	github.com/xeipuuv/gojsonschema v1.2.0
 	golang.org/x/sync v0.20.0
 )
@@ -38,7 +38,6 @@ require (
 	github.com/yuin/goldmark-meta v1.1.0 // indirect
 	go.abhg.dev/goldmark/frontmatter v0.2.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260414002931-afd174a4e478 // indirect
-	gopkg.in/validator.v2 v2.0.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 )
 
