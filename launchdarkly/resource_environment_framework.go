@@ -203,7 +203,7 @@ func (r *EnvironmentResource) Create(ctx context.Context, req resource.CreateReq
 	// Approval settings, if any, applied via patch.
 	if !plan.ApprovalSettings.IsNull() && !plan.ApprovalSettings.IsUnknown() {
 		if d := r.applyApprovalPatch(ctx, projectKey, key, plan.ApprovalSettings, types.ObjectNull(frameworkApprovalSettingsObjectAttrTypes)); d != nil {
-			resp.Diagnostics.AddError("Failed to apply approval_settings", d.Error())
+			addLdapiError(&resp.Diagnostics, "Failed to apply approval_settings", d)
 			return
 		}
 	}
@@ -283,7 +283,7 @@ func (r *EnvironmentResource) Update(ctx context.Context, req resource.UpdateReq
 
 	if !plan.ApprovalSettings.Equal(state.ApprovalSettings) {
 		if d := r.applyApprovalPatch(ctx, projectKey, envKey, plan.ApprovalSettings, state.ApprovalSettings); d != nil {
-			resp.Diagnostics.AddError("Failed to update approval_settings", d.Error())
+			addLdapiError(&resp.Diagnostics, "Failed to update approval_settings", d)
 		}
 	}
 
