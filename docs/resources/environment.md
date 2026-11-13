@@ -4,11 +4,14 @@ page_title: "launchdarkly_environment Resource - launchdarkly"
 subcategory: ""
 description: |-
   Provides a LaunchDarkly environment resource.
+  -> Note: By default, the environment's SDK key (api_key) and mobile key (mobile_key) are stored in plaintext in Terraform state. Marking them sensitive only redacts them from CLI output. To keep them out of state, set exclude_keys_from_state = true and read the keys with the launchdarkly_environment_keys https://registry.terraform.io/providers/launchdarkly/launchdarkly/latest/docs/ephemeral-resources/environment_keys ephemeral resource wherever you need them, for example to pass them to a write-only argument such as value_wo on aws_ssm_parameter. Ephemeral resources require Terraform 1.10 or later, and write-only arguments require Terraform 1.11 or later.
 ---
 
 # launchdarkly_environment (Resource)
 
 Provides a LaunchDarkly environment resource.
+
+-> **Note:** By default, the environment's SDK key (`api_key`) and mobile key (`mobile_key`) are stored in plaintext in Terraform state. Marking them `sensitive` only redacts them from CLI output. To keep them out of state, set `exclude_keys_from_state = true` and read the keys with the [`launchdarkly_environment_keys`](https://registry.terraform.io/providers/launchdarkly/launchdarkly/latest/docs/ephemeral-resources/environment_keys) ephemeral resource wherever you need them, for example to pass them to a write-only argument such as `value_wo` on `aws_ssm_parameter`. Ephemeral resources require Terraform 1.10 or later, and write-only arguments require Terraform 1.11 or later.
 
 ## Example Usage
 
@@ -77,6 +80,7 @@ resource "launchdarkly_environment" "segment_approvals_example" {
 - `critical` (Boolean)
 - `default_track_events` (Boolean)
 - `default_ttl` (Number) TTL (0-60 minutes).
+- `exclude_keys_from_state` (Boolean) Set to `true` to keep this environment's secret keys (`api_key` and `mobile_key`) out of Terraform state. When `true`, the provider stores `null` for these attributes instead of their values. `client_side_id` is not secret and is always stored. To use the keys elsewhere in your configuration without storing them, read them with the [`launchdarkly_environment_keys`](https://registry.terraform.io/providers/launchdarkly/launchdarkly/latest/docs/ephemeral-resources/environment_keys) ephemeral resource and pass them to write-only arguments. Changing this value updates the resource in place. It never replaces the environment or rotates its keys. Import cannot read your configuration, so an imported environment's keys are stored until the next apply with `exclude_keys_from_state = true` removes them. This field defaults to `false` when not set.
 - `require_comments` (Boolean)
 - `secure_mode` (Boolean)
 - `segment_approval_settings` (Attributes) Configure approval settings for segment changes in this environment. This is configured via LaunchDarkly's beta approvals API, separate from flag `approval_settings`.
@@ -86,10 +90,10 @@ resource "launchdarkly_environment" "segment_approvals_example" {
 
 ### Read-Only
 
-- `api_key` (String, Sensitive)
+- `api_key` (String, Sensitive) The environment's SDK key. This is `null` when `exclude_keys_from_state` is `true`.
 - `client_side_id` (String, Sensitive)
 - `id` (String) The ID of this resource.
-- `mobile_key` (String, Sensitive)
+- `mobile_key` (String, Sensitive) The environment's mobile key. This is `null` when `exclude_keys_from_state` is `true`.
 
 <a id="nestedatt--approval_settings"></a>
 ### Nested Schema for `approval_settings`

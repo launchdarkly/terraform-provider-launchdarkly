@@ -66,6 +66,7 @@ const (
 	EVENT_KEY                                 = "event_key"
 	EXCLUDED                                  = "excluded"
 	EXCLUDED_CONTEXTS                         = "excluded_contexts"
+	EXCLUDE_KEYS_FROM_STATE                   = "exclude_keys_from_state"
 	EXPIRE                                    = "expire"
 	EXPIRY                                    = "expiry"
 	FALLTHROUGH                               = "fallthrough"
