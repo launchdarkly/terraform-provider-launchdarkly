@@ -112,7 +112,10 @@ jobs:
           - TestAccContextKind
           - TestAccCustomRole
           - TestAccDestination
-          - TestAccEnvironment
+          # Anchored with a trailing underscore so it does not also match
+          # TestAccEnvironmentReleasePlan_*.
+          - TestAccEnvironment_
+          - TestAccEnvironmentReleasePlan_
           - TestAccFeatureFlag_
           - TestAccFeatureFlagEnvironment
           # Not covered by TestAccFeatureFlag_ — the trailing underscore in that
