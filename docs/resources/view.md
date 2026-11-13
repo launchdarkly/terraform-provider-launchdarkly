@@ -4,12 +4,18 @@ page_title: "launchdarkly_view Resource - launchdarkly"
 subcategory: ""
 description: |-
   Provides a LaunchDarkly view resource.
+  -> Note: Views are available to customers on an Enterprise LaunchDarkly plan. To learn more, read about our pricing https://launchdarkly.com/pricing/. To upgrade your plan, contact LaunchDarkly Sales https://launchdarkly.com/contact-sales/.
+  ~> Beta: This resource uses a beta API. Beta resources may change or be removed in future versions.
   This resource allows you to create and manage views within your LaunchDarkly project.
 ---
 
 # launchdarkly_view (Resource)
 
 Provides a LaunchDarkly view resource.
+
+-> **Note:** Views are available to customers on an Enterprise LaunchDarkly plan. To learn more, [read about our pricing](https://launchdarkly.com/pricing/). To upgrade your plan, [contact LaunchDarkly Sales](https://launchdarkly.com/contact-sales/).
+
+~> **Beta:** This resource uses a beta API. Beta resources may change or be removed in future versions.
 
 This resource allows you to create and manage views within your LaunchDarkly project.
 
@@ -27,8 +33,7 @@ resource "launchdarkly_view" "example" {
     "example"
   ]
 
-  generate_sdk_keys = true
-  maintainer_id     = "507f1f77bcf86cd799439011"
+  maintainer_id = "507f1f77bcf86cd799439011"
 }
 
 # Alternative example with team maintainer instead of individual maintainer
@@ -51,15 +56,13 @@ resource "launchdarkly_view" "team_maintained" {
 
 ### Required
 
-- `key` (String) The view's unique key. A change in this field will force the destruction of the existing resource and the creation of a new one.
+- `key` (String) The view's unique key. Must be lowercase. LaunchDarkly normalizes view keys to lowercase. A change in this field forces the destruction of the existing resource and the creation of a new one.
 - `name` (String) The view's name.
-- `project_key` (String) The project key. A change in this field will force the destruction of the existing resource and the creation of a new one.
+- `project_key` (String) The project key. A change in this field forces the destruction of the existing resource and the creation of a new one.
 
 ### Optional
 
-- `archived` (Boolean) Whether the view is archived.
 - `description` (String) The view's description.
-- `generate_sdk_keys` (Boolean) Whether to generate SDK keys for this view.
 - `maintainer_id` (String) The member ID of the maintainer for this view. Exactly one of `maintainer_id` and `maintainer_team_key` must be set.
 - `maintainer_team_key` (String) The team key of the maintainer team for this view. Exactly one of `maintainer_id` and `maintainer_team_key` must be set.
 - `tags` (Set of String) Tags associated with your resource.
@@ -67,3 +70,12 @@ resource "launchdarkly_view" "team_maintained" {
 ### Read-Only
 
 - `id` (String) The ID of this resource.
+
+## Import
+
+Import is supported using the following syntax:
+
+```shell
+# LaunchDarkly views are imported using the resource's ID in the form `project_key/view_key`
+terraform import launchdarkly_view.example example-project/example-view-key
+```

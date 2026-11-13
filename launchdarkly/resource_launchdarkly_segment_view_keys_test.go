@@ -8,10 +8,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/acctest"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
-	ldapi "github.com/launchdarkly/api-client-go/v17"
+	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
+	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/terraform"
+	ldapi "github.com/launchdarkly/api-client-go/v25"
 	"github.com/stretchr/testify/require"
 )
 
@@ -20,10 +20,11 @@ const (
 resource "launchdarkly_project" "test" {
 	name = "%s"
 	key  = "%s"
-	environments {
-		name  = "Test Environment"
-		key   = "test-env"
-		color = "000000"
+	environments = {
+		"test-env" = {
+			name  = "Test Environment"
+			color = "000000"
+		}
 	}
 }
 
@@ -38,6 +39,13 @@ resource "launchdarkly_view" "view2" {
 	project_key = launchdarkly_project.test.key
 	key         = "test-view-2"
 	name        = "Test View 2"
+	maintainer_id = "%s"
+}
+
+resource "launchdarkly_view" "view3" {
+	project_key = launchdarkly_project.test.key
+	key         = "test-view-3"
+	name        = "Test View 3"
 	maintainer_id = "%s"
 }
 
@@ -61,10 +69,11 @@ resource "launchdarkly_segment" "test" {
 resource "launchdarkly_project" "test" {
 	name = "%s"
 	key  = "%s"
-	environments {
-		name  = "Test Environment"
-		key   = "test-env"
-		color = "000000"
+	environments = {
+		"test-env" = {
+			name  = "Test Environment"
+			color = "000000"
+		}
 	}
 }
 
@@ -109,10 +118,11 @@ resource "launchdarkly_segment" "test" {
 resource "launchdarkly_project" "test" {
 	name = "%s"
 	key  = "%s"
-	environments {
-		name  = "Test Environment"
-		key   = "test-env"
-		color = "000000"
+	environments = {
+		"test-env" = {
+			name  = "Test Environment"
+			color = "000000"
+		}
 	}
 }
 
@@ -150,15 +160,64 @@ resource "launchdarkly_segment" "test" {
 }
 `
 
+	testAccSegmentWithViewKeysUnexpectedAssociationReconcile = `
+resource "launchdarkly_project" "test" {
+	name = "%s"
+	key  = "%s"
+	environments = {
+		"test-env" = {
+			name  = "Test Environment"
+			color = "000000"
+		}
+	}
+}
+
+resource "launchdarkly_view" "view1" {
+	project_key = launchdarkly_project.test.key
+	key         = "test-view-1"
+	name        = "Test View 1"
+	maintainer_id = "%s"
+}
+
+resource "launchdarkly_view" "view2" {
+	project_key = launchdarkly_project.test.key
+	key         = "test-view-2"
+	name        = "Test View 2"
+	maintainer_id = "%s"
+}
+
+resource "launchdarkly_view" "view3" {
+	project_key = launchdarkly_project.test.key
+	key         = "test-view-3"
+	name        = "Test View 3"
+	maintainer_id = "%s"
+}
+
+resource "launchdarkly_segment" "test" {
+	project_key = launchdarkly_project.test.key
+	env_key     = "test-env"
+	key         = "test-segment-with-views"
+	name        = "Test Segment with Views"
+	description = "Test segment"
+
+	view_keys = [
+		launchdarkly_view.view1.key
+	]
+
+	tags = ["test"]
+}
+`
+
 	// Step 1: Create project and view first
 	testAccSegmentWithViewKeysNonexistentViewStep1 = `
 resource "launchdarkly_project" "test" {
 	name = "%s"
 	key  = "%s"
-	environments {
-		name  = "Test Environment"
-		key   = "test-env"
-		color = "000000"
+	environments = {
+		"test-env" = {
+			name  = "Test Environment"
+			color = "000000"
+		}
 	}
 }
 
@@ -175,10 +234,11 @@ resource "launchdarkly_view" "view1" {
 resource "launchdarkly_project" "test" {
 	name = "%s"
 	key  = "%s"
-	environments {
-		name  = "Test Environment"
-		key   = "test-env"
-		color = "000000"
+	environments = {
+		"test-env" = {
+			name  = "Test Environment"
+			color = "000000"
+		}
 	}
 }
 
@@ -214,24 +274,17 @@ func TestAccSegmentViewKeys_CreateAndUpdate(t *testing.T) {
 	projectName := "segment-view-keys-test-" + projectKey
 	resourceName := "launchdarkly_segment.test"
 
-	client, err := newClient(os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN), os.Getenv(LAUNCHDARKLY_API_HOST), false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
-	require.NoError(t, err)
-
-	members, _, err := client.ld.AccountMembersApi.GetMembers(client.ctx).Execute()
-	require.NoError(t, err)
-	require.True(t, len(members.Items) > 0, "This test requires at least one member in the account")
-
-	maintainerId := members.Items[0].Id
+	maintainerId := firstMemberIDForTest(t)
 
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers:    testAccProviders,
-		CheckDestroy: testAccCheckSegmentDestroy,
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckSegmentDestroy,
 		Steps: []resource.TestStep{
 			{
-				Config: fmt.Sprintf(testAccSegmentWithViewKeysCreate, projectName, projectKey, maintainerId, maintainerId),
+				Config: fmt.Sprintf(testAccSegmentWithViewKeysCreate, projectName, projectKey, maintainerId, maintainerId, maintainerId),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckSegmentExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, "view_keys.#", "2"),
@@ -279,21 +332,14 @@ func TestAccSegmentViewKeys_NonexistentView(t *testing.T) {
 	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	projectName := "segment-bad-view-test-" + projectKey
 
-	client, err := newClient(os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN), os.Getenv(LAUNCHDARKLY_API_HOST), false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
-	require.NoError(t, err)
-
-	members, _, err := client.ld.AccountMembersApi.GetMembers(client.ctx).Execute()
-	require.NoError(t, err)
-	require.True(t, len(members.Items) > 0, "This test requires at least one member in the account")
-
-	maintainerId := members.Items[0].Id
+	maintainerId := firstMemberIDForTest(t)
 
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers:    testAccProviders,
-		CheckDestroy: testAccCheckSegmentDestroy,
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckSegmentDestroy,
 		Steps: []resource.TestStep{
 			// Step 1: Create project and view first
 			{
@@ -308,8 +354,88 @@ func TestAccSegmentViewKeys_NonexistentView(t *testing.T) {
 					// Wait for view to be fully propagated before attempting segment creation
 					time.Sleep(3 * time.Second)
 				},
-				Config:      fmt.Sprintf(testAccSegmentWithViewKeysNonexistentViewStep2, projectName, projectKey, maintainerId),
-				ExpectError: regexp.MustCompile(`(?i)view.*not found`),
+				Config: fmt.Sprintf(testAccSegmentWithViewKeysNonexistentViewStep2, projectName, projectKey, maintainerId),
+				// Before the view keys were validated ahead of the create call,
+				// this surfaced as the raw "not found" API error from the segment
+				// POST. It is now the provider's own diagnostic.
+				ExpectError: regexp.MustCompile("view does not exist"),
+			},
+		},
+	})
+}
+
+func TestAccSegmentViewKeys_ReconcileUnexpectedViewAssociation(t *testing.T) {
+	accTest := os.Getenv("TF_ACC")
+	if accTest == "" {
+		t.SkipNow()
+	}
+
+	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	projectName := "segment-view-keys-reconcile-test-" + projectKey
+	resourceName := "launchdarkly_segment.test"
+
+	maintainerId := firstMemberIDForTest(t)
+
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck: func() {
+			testAccPreCheck(t)
+		},
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckSegmentDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config: fmt.Sprintf(testAccSegmentWithViewKeysCreate, projectName, projectKey, maintainerId, maintainerId, maintainerId),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckSegmentExists(resourceName),
+					testAccCheckSegmentLinkedToViews(projectKey, "test-env", "test-segment-with-views", []string{"test-view-1", "test-view-2"}),
+				),
+			},
+			{
+				PreConfig: func() {
+					client, err := newClient(
+						os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN),
+						os.Getenv(LAUNCHDARKLY_API_HOST),
+						false,
+						DEFAULT_HTTP_TIMEOUT_S,
+						DEFAULT_MAX_CONCURRENCY,
+					)
+					require.NoError(t, err)
+
+					betaClient, err := newBetaClient(
+						os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN),
+						os.Getenv(LAUNCHDARKLY_API_HOST),
+						false,
+						DEFAULT_HTTP_TIMEOUT_S,
+						DEFAULT_MAX_CONCURRENCY,
+					)
+					require.NoError(t, err)
+
+					env, _, err := client.ld.EnvironmentsApi.GetEnvironment(client.ctx, projectKey, "test-env").Execute()
+					require.NoError(t, err)
+
+					err = linkSegmentsToView(betaClient, projectKey, "test-view-3", []ViewSegmentIdentifier{
+						{
+							EnvironmentId: env.Id,
+							SegmentKey:    "test-segment-with-views",
+						},
+					})
+					require.NoError(t, err)
+				},
+				Config: fmt.Sprintf(
+					testAccSegmentWithViewKeysUnexpectedAssociationReconcile,
+					projectName,
+					projectKey,
+					maintainerId,
+					maintainerId,
+					maintainerId,
+				),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckSegmentExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, "view_keys.#", "1"),
+					resource.TestCheckTypeSetElemAttr(resourceName, "view_keys.*", "test-view-1"),
+					// Ensure unexpected view links are removed and desired association remains.
+					testAccCheckSegmentLinkedToViews(projectKey, "test-env", "test-segment-with-views", []string{"test-view-1"}),
+				),
 			},
 		},
 	})
@@ -318,7 +444,7 @@ func TestAccSegmentViewKeys_NonexistentView(t *testing.T) {
 // testAccCheckSegmentLinkedToViews verifies that a segment is linked to specific views via API
 func testAccCheckSegmentLinkedToViews(projectKey, envKey, segmentKey string, expectedViewKeys []string) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
-		client := testAccProvider.Meta().(*Client)
+		client := mustTestAccClient()
 		betaClient, err := newBetaClient(client.apiKey, client.apiHost, false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
 		if err != nil {
 			return fmt.Errorf("failed to create beta client: %v", err)
@@ -365,7 +491,7 @@ func testAccCheckSegmentLinkedToViews(projectKey, envKey, segmentKey string, exp
 
 // testAccCheckSegmentDestroy verifies the segment has been destroyed
 func testAccCheckSegmentDestroy(s *terraform.State) error {
-	client := testAccProvider.Meta().(*Client)
+	client := mustTestAccClient()
 	for _, rs := range s.RootModule().Resources {
 		if rs.Type != "launchdarkly_segment" {
 			continue

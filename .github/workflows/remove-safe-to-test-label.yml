@@ -1,0 +1,24 @@
+# Removes the "safe-to-test" label when new commits are pushed to a fork PR.
+# This forces maintainers to re-review the changes before re-labeling, preventing
+# a bait-and-switch attack where clean code is reviewed but malicious code is pushed after.
+name: "Remove safe-to-test label"
+
+on:
+  pull_request_target:
+    types: [synchronize]
+
+permissions:
+  pull-requests: write
+
+jobs:
+  remove-label:
+    if: >-
+      github.event.pull_request.head.repo.full_name != github.repository
+      && contains(github.event.pull_request.labels.*.name, 'safe-to-test')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Remove safe-to-test label
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: gh pr edit "$PR_NUMBER" --repo "${{ github.repository }}" --remove-label "safe-to-test"

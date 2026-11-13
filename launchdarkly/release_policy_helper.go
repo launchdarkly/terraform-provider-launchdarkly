@@ -1,316 +1,310 @@
 package launchdarkly
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
-	"io"
-	"log"
-	"net/http"
+	"strings"
 
-	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/hashicorp/terraform-plugin-framework/attr"
+	"github.com/hashicorp/terraform-plugin-framework/diag"
+	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
+	ldapi "github.com/launchdarkly/api-client-go/v25"
 )
 
-func releasePolicyRead(ctx context.Context, d *schema.ResourceData, meta interface{}, isDataSource bool) diag.Diagnostics {
+// Release methods supported by a release policy. A guarded release rolls out
+// while watching metrics and can roll back automatically; a progressive
+// release advances through a fixed schedule of allocation stages.
+const (
+	RELEASE_METHOD_GUARDED      = "guarded-release"
+	RELEASE_METHOD_PROGRESSIVE  = "progressive-release"
+	RELEASE_POLICY_BETA_VERSION = "beta"
+)
+
+// releasePolicyScopeModel mirrors the `scope` single-nested attribute.
+type releasePolicyScopeModel struct {
+	EnvironmentKeys types.Set `tfsdk:"environment_keys"`
+	FlagTagKeys     types.Set `tfsdk:"flag_tag_keys"`
+}
+
+// releasePolicyStageModel mirrors one element of a config's `stages` list.
+type releasePolicyStageModel struct {
+	Allocation     types.Int64 `tfsdk:"allocation"`
+	DurationMillis types.Int64 `tfsdk:"duration_millis"`
+}
+
+// guardedReleaseConfigModel mirrors the `guarded_release_config` single-nested
+// attribute.
+type guardedReleaseConfigModel struct {
+	RolloutContextKind   types.String `tfsdk:"rollout_context_kind"`
+	MinSampleSize        types.Int64  `tfsdk:"min_sample_size"`
+	RollbackOnRegression types.Bool   `tfsdk:"rollback_on_regression"`
+	MetricKeys           types.Set    `tfsdk:"metric_keys"`
+	MetricGroupKeys      types.Set    `tfsdk:"metric_group_keys"`
+	Stages               types.List   `tfsdk:"stages"`
+}
+
+// progressiveReleaseConfigModel mirrors the `progressive_release_config`
+// single-nested attribute.
+type progressiveReleaseConfigModel struct {
+	RolloutContextKind types.String `tfsdk:"rollout_context_kind"`
+	Stages             types.List   `tfsdk:"stages"`
+}
+
+var releasePolicyScopeAttrTypes = map[string]attr.Type{
+	SCOPE_ENVIRONMENT_KEYS: types.SetType{ElemType: types.StringType},
+	FLAG_TAG_KEYS:          types.SetType{ElemType: types.StringType},
+}
+
+var releasePolicyStageAttrTypes = map[string]attr.Type{
+	ALLOCATION:      types.Int64Type,
+	DURATION_MILLIS: types.Int64Type,
+}
+
+var releasePolicyStageObjectType = types.ObjectType{AttrTypes: releasePolicyStageAttrTypes}
+
+var guardedReleaseConfigAttrTypes = map[string]attr.Type{
+	ROLLOUT_CONTEXT_KIND:   types.StringType,
+	MIN_SAMPLE_SIZE:        types.Int64Type,
+	ROLLBACK_ON_REGRESSION: types.BoolType,
+	METRIC_KEYS:            types.SetType{ElemType: types.StringType},
+	METRIC_GROUP_KEYS:      types.SetType{ElemType: types.StringType},
+	STAGES:                 types.ListType{ElemType: releasePolicyStageObjectType},
+}
+
+var progressiveReleaseConfigAttrTypes = map[string]attr.Type{
+	ROLLOUT_CONTEXT_KIND: types.StringType,
+	STAGES:               types.ListType{ElemType: releasePolicyStageObjectType},
+}
+
+// newReleasePolicyBetaClient returns a beta-configured client for the
+// release-policies endpoints. The generated ReleasePoliciesBetaApi request
+// builders require an explicit per-request .LDAPIVersion("beta"); we use a
+// beta-configured client here too so the LD-API-Version default is consistent
+// with the per-request header.
+func newReleasePolicyBetaClient(c *Client) (*Client, error) {
+	return c.betaClientFromConfig()
+}
+
+// releasePolicyIdToKeys splits a composite release policy ID into its project
+// key and policy key. The expected format is `project_key/policy_key`.
+func releasePolicyIdToKeys(id string) (projectKey string, policyKey string, err error) {
+	if strings.Count(id, "/") != 1 {
+		return "", "", fmt.Errorf("found unexpected release policy id format: %q expected format: 'project_key/policy_key'", id)
+	}
+	parts := strings.SplitN(id, "/", 2)
+	if parts[0] == "" || parts[1] == "" {
+		return "", "", fmt.Errorf("found unexpected release policy id format: %q expected format: 'project_key/policy_key'", id)
+	}
+	return parts[0], parts[1], nil
+}
+
+// int64ValueFromInt32Pointer maps an optional API int32 into a framework
+// Int64, returning null when the pointer is nil.
+func int64ValueFromInt32Pointer(p *int32) types.Int64 {
+	if p == nil {
+		return types.Int64Null()
+	}
+	return types.Int64Value(int64(*p))
+}
+
+// boolValueOrNullFromPointer maps an optional API bool into a framework Bool,
+// returning null when the pointer is nil.
+func boolValueOrNullFromPointer(p *bool) types.Bool {
+	if p == nil {
+		return types.BoolNull()
+	}
+	return types.BoolValue(*p)
+}
+
+// ── scope ──────────────────────────────────────────────────────────────────
+
+func releasePolicyScopeToAPI(ctx context.Context, obj types.Object) (*ldapi.ReleasePolicyScope, diag.Diagnostics) {
 	var diags diag.Diagnostics
-	client := meta.(*Client)
+	if obj.IsNull() || obj.IsUnknown() {
+		return nil, diags
+	}
+	var m releasePolicyScopeModel
+	diags.Append(obj.As(ctx, &m, basetypes.ObjectAsOptions{})...)
+	if diags.HasError() {
+		return nil, diags
+	}
+	scope := &ldapi.ReleasePolicyScope{}
+	envs, d := stringSliceFromSet(ctx, m.EnvironmentKeys)
+	diags.Append(d...)
+	scope.EnvironmentKeys = envs
+	tags, d := stringSliceFromSet(ctx, m.FlagTagKeys)
+	diags.Append(d...)
+	scope.FlagTagKeys = tags
+	return scope, diags
+}
 
-	projectKey := d.Get(PROJECT_KEY).(string)
-	policyKey := d.Get(KEY).(string)
+func releasePolicyScopeToObject(ctx context.Context, scope *ldapi.ReleasePolicyScope, existing types.Object) (types.Object, diag.Diagnostics) {
+	var diags diag.Diagnostics
+	if scope == nil {
+		return types.ObjectNull(releasePolicyScopeAttrTypes), diags
+	}
+	var existingEnvs, existingTags types.Set
+	if !existing.IsNull() && !existing.IsUnknown() {
+		var em releasePolicyScopeModel
+		diags.Append(existing.As(ctx, &em, basetypes.ObjectAsOptions{})...)
+		existingEnvs = em.EnvironmentKeys
+		existingTags = em.FlagTagKeys
+	}
+	envs, d := setFromStringSlicePreservingPlan(ctx, scope.EnvironmentKeys, existingEnvs)
+	diags.Append(d...)
+	tags, d := setFromStringSlicePreservingPlan(ctx, scope.FlagTagKeys, existingTags)
+	diags.Append(d...)
+	m := releasePolicyScopeModel{EnvironmentKeys: envs, FlagTagKeys: tags}
+	obj, d := types.ObjectValueFrom(ctx, releasePolicyScopeAttrTypes, m)
+	diags.Append(d...)
+	return obj, diags
+}
 
-	policy, res, err := getReleasePolicy(client, projectKey, policyKey)
+// ── stages ─────────────────────────────────────────────────────────────────
 
-	if isStatusNotFound(res) && !isDataSource {
-		log.Printf("[WARN] failed to find release policy with key %q in project %q, removing from state if present", policyKey, projectKey)
-		diags = append(diags, diag.Diagnostic{
-			Severity: diag.Warning,
-			Summary:  fmt.Sprintf("[WARN] failed to find release policy with key %q in project %q, removing from state if present", policyKey, projectKey),
+func releasePolicyStagesToAPI(ctx context.Context, list types.List) ([]ldapi.ReleasePolicyStage, diag.Diagnostics) {
+	var diags diag.Diagnostics
+	if list.IsNull() || list.IsUnknown() {
+		return nil, diags
+	}
+	var models []releasePolicyStageModel
+	diags.Append(list.ElementsAs(ctx, &models, false)...)
+	if diags.HasError() {
+		return nil, diags
+	}
+	out := make([]ldapi.ReleasePolicyStage, len(models))
+	for i, s := range models {
+		out[i] = ldapi.ReleasePolicyStage{
+			Allocation:     int32(s.Allocation.ValueInt64()),
+			DurationMillis: s.DurationMillis.ValueInt64(),
+		}
+	}
+	return out, diags
+}
+
+func releasePolicyStagesToList(stages []ldapi.ReleasePolicyStage) (types.List, diag.Diagnostics) {
+	var diags diag.Diagnostics
+	if len(stages) == 0 {
+		return types.ListNull(releasePolicyStageObjectType), diags
+	}
+	elems := make([]attr.Value, 0, len(stages))
+	for _, s := range stages {
+		obj, d := types.ObjectValue(releasePolicyStageAttrTypes, map[string]attr.Value{
+			ALLOCATION:      types.Int64Value(int64(s.Allocation)),
+			DURATION_MILLIS: types.Int64Value(s.DurationMillis),
 		})
-		d.SetId("")
-		return diags
+		diags.Append(d...)
+		elems = append(elems, obj)
 	}
-	if err != nil {
-		return diag.Errorf("failed to get release policy with key %q in project %q: %v", policyKey, projectKey, err)
-	}
-
-	_ = d.Set(PROJECT_KEY, policy.ProjectKey)
-	_ = d.Set(KEY, policy.Key)
-	_ = d.Set(NAME, policy.Name)
-	_ = d.Set(RELEASE_METHOD, policy.ReleaseMethod)
-	d.SetId(policy.Id)
-
-	// Set scope if it exists
-	if policy.Scope != nil {
-		scopeMap := map[string]interface{}{}
-		if len(policy.Scope.EnvironmentKeys) > 0 {
-			scopeMap[SCOPE_ENVIRONMENT_KEYS] = policy.Scope.EnvironmentKeys
-		}
-		if len(policy.Scope.FlagTagKeys) > 0 {
-			scopeMap[SCOPE_FLAG_TAG_KEYS] = policy.Scope.FlagTagKeys
-		}
-		scopeList := []map[string]interface{}{scopeMap}
-		err = d.Set(SCOPE, scopeList)
-		if err != nil {
-			return diag.Errorf("could not set scope on release policy with key %q: %v", policy.Key, err)
-		}
-	}
-
-	// Set guarded release config if it exists
-	if policy.GuardedReleaseConfig != nil && policy.ReleaseMethod == "guarded-release" {
-		configList := []map[string]interface{}{
-			{
-				ROLLBACK_ON_REGRESSION: policy.GuardedReleaseConfig.RollbackOnRegression,
-			},
-		}
-		// This will always be a list of one
-		if policy.GuardedReleaseConfig.MinSampleSize != nil && *policy.GuardedReleaseConfig.MinSampleSize > 0 {
-			configList[0][MIN_SAMPLE_SIZE] = policy.GuardedReleaseConfig.MinSampleSize
-		}
-		if len(policy.GuardedReleaseConfig.MetricKeys) > 0 {
-			configList[0][METRIC_KEYS] = policy.GuardedReleaseConfig.MetricKeys
-		}
-		if len(policy.GuardedReleaseConfig.MetricGroupKeys) > 0 {
-			configList[0][METRIC_GROUP_KEYS] = policy.GuardedReleaseConfig.MetricGroupKeys
-		}
-		if policy.GuardedReleaseConfig.RolloutContextKindKey != "" {
-			configList[0][ROLLOUT_CONTEXT_KIND] = policy.GuardedReleaseConfig.RolloutContextKindKey
-		}
-		if len(policy.GuardedReleaseConfig.Stages) > 0 {
-			configList[0][STAGES] = flattenStages(policy.GuardedReleaseConfig.Stages)
-		}
-
-		err = d.Set(GUARDED_RELEASE_CONFIG, configList)
-		if err != nil {
-			return diag.Errorf("could not set guarded_release_config on release policy with key %q: %v", policy.Key, err)
-		}
-	}
-
-	// Set progressive release config if it exists
-	if policy.ProgressiveReleaseConfig != nil && policy.ReleaseMethod == "progressive-release" {
-		configList := []map[string]interface{}{{}}
-		if policy.ProgressiveReleaseConfig.RolloutContextKindKey != "" {
-			configList[0][ROLLOUT_CONTEXT_KIND] = policy.ProgressiveReleaseConfig.RolloutContextKindKey
-		}
-		if len(policy.ProgressiveReleaseConfig.Stages) > 0 {
-			configList[0][STAGES] = flattenStages(policy.ProgressiveReleaseConfig.Stages)
-		}
-		err = d.Set(PROGRESSIVE_RELEASE_CONFIG, configList)
-		if err != nil {
-			return diag.Errorf("could not set progressive_release_config on release policy with key %q: %v", policy.Key, err)
-		}
-	}
-
-	return diags
+	list, d := types.ListValue(releasePolicyStageObjectType, elems)
+	diags.Append(d...)
+	return list, diags
 }
 
-// flattenStages converts API stage data to Terraform state format
-func flattenStages(stages []ReleasePolicyStage) []map[string]interface{} {
-	result := make([]map[string]interface{}, len(stages))
-	for i, stage := range stages {
-		result[i] = map[string]interface{}{
-			STAGE_ALLOCATION:      stage.Allocation,
-			STAGE_DURATION_MILLIS: stage.DurationMillis,
-		}
+// ── guarded release config ──────────────────────────────────────────────────
+
+func guardedReleaseConfigToAPI(ctx context.Context, obj types.Object) (*ldapi.GuardedReleaseConfig, diag.Diagnostics) {
+	var diags diag.Diagnostics
+	if obj.IsNull() || obj.IsUnknown() {
+		return nil, diags
 	}
-	return result
+	var m guardedReleaseConfigModel
+	diags.Append(obj.As(ctx, &m, basetypes.ObjectAsOptions{})...)
+	if diags.HasError() {
+		return nil, diags
+	}
+	cfg := &ldapi.GuardedReleaseConfig{}
+	if !m.RolloutContextKind.IsNull() && !m.RolloutContextKind.IsUnknown() && m.RolloutContextKind.ValueString() != "" {
+		v := m.RolloutContextKind.ValueString()
+		cfg.RolloutContextKindKey = &v
+	}
+	if !m.MinSampleSize.IsNull() && !m.MinSampleSize.IsUnknown() {
+		v := int32(m.MinSampleSize.ValueInt64())
+		cfg.MinSampleSize = &v
+	}
+	if !m.RollbackOnRegression.IsNull() && !m.RollbackOnRegression.IsUnknown() {
+		v := m.RollbackOnRegression.ValueBool()
+		cfg.RollbackOnRegression = &v
+	}
+	metricKeys, d := stringSliceFromSet(ctx, m.MetricKeys)
+	diags.Append(d...)
+	cfg.MetricKeys = metricKeys
+	metricGroupKeys, d := stringSliceFromSet(ctx, m.MetricGroupKeys)
+	diags.Append(d...)
+	cfg.MetricGroupKeys = metricGroupKeys
+	stages, d := releasePolicyStagesToAPI(ctx, m.Stages)
+	diags.Append(d...)
+	cfg.Stages = stages
+	return cfg, diags
 }
 
-// ReleasePolicy represents a release policy
-type ReleasePolicy struct {
-	Id                       string                    `json:"id"`
-	Key                      string                    `json:"key"`
-	Name                     string                    `json:"name"`
-	ProjectKey               string                    `json:"projectKey"`
-	ReleaseMethod            string                    `json:"releaseMethod"`
-	Scope                    *ReleasePolicyScope       `json:"scope,omitempty"`
-	GuardedReleaseConfig     *GuardedReleaseConfig     `json:"guardedReleaseConfig,omitempty"`
-	ProgressiveReleaseConfig *ProgressiveReleaseConfig `json:"progressiveReleaseConfig,omitempty"`
+func guardedReleaseConfigToObject(ctx context.Context, cfg *ldapi.GuardedReleaseConfig, existing types.Object) (types.Object, diag.Diagnostics) {
+	var diags diag.Diagnostics
+	if cfg == nil {
+		return types.ObjectNull(guardedReleaseConfigAttrTypes), diags
+	}
+	var existingMetricKeys, existingMetricGroupKeys types.Set
+	if !existing.IsNull() && !existing.IsUnknown() {
+		var em guardedReleaseConfigModel
+		diags.Append(existing.As(ctx, &em, basetypes.ObjectAsOptions{})...)
+		existingMetricKeys = em.MetricKeys
+		existingMetricGroupKeys = em.MetricGroupKeys
+	}
+	metricKeys, d := setFromStringSlicePreservingPlan(ctx, cfg.MetricKeys, existingMetricKeys)
+	diags.Append(d...)
+	metricGroupKeys, d := setFromStringSlicePreservingPlan(ctx, cfg.MetricGroupKeys, existingMetricGroupKeys)
+	diags.Append(d...)
+	stages, d := releasePolicyStagesToList(cfg.Stages)
+	diags.Append(d...)
+	m := guardedReleaseConfigModel{
+		RolloutContextKind:   stringValueOrNullFromPointer(cfg.RolloutContextKindKey),
+		MinSampleSize:        int64ValueFromInt32Pointer(cfg.MinSampleSize),
+		RollbackOnRegression: boolValueOrNullFromPointer(cfg.RollbackOnRegression),
+		MetricKeys:           metricKeys,
+		MetricGroupKeys:      metricGroupKeys,
+		Stages:               stages,
+	}
+	obj, d := types.ObjectValueFrom(ctx, guardedReleaseConfigAttrTypes, m)
+	diags.Append(d...)
+	return obj, diags
 }
 
-// ReleasePolicyScope represents the scope configuration for a release policy
-type ReleasePolicyScope struct {
-	EnvironmentKeys []string `json:"environmentKeys"`
-	FlagTagKeys     []string `json:"flagTagKeys"`
+// ── progressive release config ──────────────────────────────────────────────
+
+func progressiveReleaseConfigToAPI(ctx context.Context, obj types.Object) (*ldapi.ProgressiveReleaseConfig, diag.Diagnostics) {
+	var diags diag.Diagnostics
+	if obj.IsNull() || obj.IsUnknown() {
+		return nil, diags
+	}
+	var m progressiveReleaseConfigModel
+	diags.Append(obj.As(ctx, &m, basetypes.ObjectAsOptions{})...)
+	if diags.HasError() {
+		return nil, diags
+	}
+	cfg := &ldapi.ProgressiveReleaseConfig{}
+	if !m.RolloutContextKind.IsNull() && !m.RolloutContextKind.IsUnknown() && m.RolloutContextKind.ValueString() != "" {
+		v := m.RolloutContextKind.ValueString()
+		cfg.RolloutContextKindKey = &v
+	}
+	stages, d := releasePolicyStagesToAPI(ctx, m.Stages)
+	diags.Append(d...)
+	cfg.Stages = stages
+	return cfg, diags
 }
 
-// GuardedReleaseConfig represents the configuration for guarded release
-type GuardedReleaseConfig struct {
-	RollbackOnRegression  bool                 `json:"rollbackOnRegression"`
-	MinSampleSize         *int                 `json:"minSampleSize,omitempty"`
-	MetricKeys            []string             `json:"metricKeys,omitempty"`
-	MetricGroupKeys       []string             `json:"metricGroupKeys,omitempty"`
-	RolloutContextKindKey string               `json:"rolloutContextKindKey,omitempty"`
-	Stages                []ReleasePolicyStage `json:"stages,omitempty"`
-}
-
-// ProgressiveReleaseConfig represents the configuration for progressive release
-type ProgressiveReleaseConfig struct {
-	RolloutContextKindKey string               `json:"rolloutContextKindKey,omitempty"`
-	Stages                []ReleasePolicyStage `json:"stages,omitempty"`
-}
-
-// ReleasePolicyStage represents a stage in a release policy
-type ReleasePolicyStage struct {
-	Allocation     int   `json:"allocation"`
-	DurationMillis int64 `json:"durationMillis"`
-}
-
-func getReleasePolicy(client *Client, projectKey, policyKey string) (*ReleasePolicy, *http.Response, error) {
-	return getReleasePolicyRaw(client, projectKey, policyKey)
-}
-
-func buildReleasePolicyURL(client *Client, projectKey, policyKey string) string {
-	host := client.apiHost
-	if host == "" {
-		host = "app.launchdarkly.com"
+func progressiveReleaseConfigToObject(ctx context.Context, cfg *ldapi.ProgressiveReleaseConfig) (types.Object, diag.Diagnostics) {
+	var diags diag.Diagnostics
+	if cfg == nil {
+		return types.ObjectNull(progressiveReleaseConfigAttrTypes), diags
 	}
-	var url string
-	if policyKey == "" {
-		url = fmt.Sprintf("https://%s/api/v2/projects/%s/release-policies", host, projectKey)
-	} else {
-		url = fmt.Sprintf("https://%s/api/v2/projects/%s/release-policies/%s", host, projectKey, policyKey)
+	stages, d := releasePolicyStagesToList(cfg.Stages)
+	diags.Append(d...)
+	m := progressiveReleaseConfigModel{
+		RolloutContextKind: stringValueOrNullFromPointer(cfg.RolloutContextKindKey),
+		Stages:             stages,
 	}
-	return url
-}
-
-func getReleasePolicyRaw(client *Client, projectKey, policyKey string) (*ReleasePolicy, *http.Response, error) {
-	url := buildReleasePolicyURL(client, projectKey, policyKey)
-
-	req, err := http.NewRequestWithContext(client.ctx, "GET", url, nil)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	req.Header.Set("Authorization", client.apiKey)
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("LD-API-Version", "beta")
-
-	resp, err := client.ld.GetConfig().HTTPClient.Do(req)
-	if err != nil {
-		return nil, resp, err
-	}
-	defer resp.Body.Close()
-
-	body, readErr := io.ReadAll(resp.Body)
-	if readErr != nil {
-		return nil, resp, readErr
-	}
-
-	if resp.StatusCode >= 400 {
-		return nil, resp, fmt.Errorf("LaunchDarkly API error - Status: %d, Response: %s", resp.StatusCode, string(body))
-	}
-
-	var policy ReleasePolicy
-	if err := json.Unmarshal(body, &policy); err != nil {
-		return nil, resp, err
-	}
-	policy.Id = fmt.Sprintf("%s/%s", projectKey, policyKey)
-	policy.ProjectKey = projectKey
-
-	return &policy, resp, nil
-}
-
-func createReleasePolicy(client *Client, projectKey string, policyPost map[string]interface{}) (*ReleasePolicy, error) {
-	url := buildReleasePolicyURL(client, projectKey, "")
-	jsonData, err := json.Marshal(policyPost)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequestWithContext(client.ctx, "POST", url, bytes.NewBuffer(jsonData))
-	if err != nil {
-		return nil, err
-	}
-
-	req.Header.Set("Authorization", client.apiKey)
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("LD-API-Version", "beta")
-
-	resp, err := client.ld.GetConfig().HTTPClient.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	body, readErr := io.ReadAll(resp.Body)
-	if readErr != nil {
-		return nil, readErr
-	}
-
-	if resp.StatusCode >= 400 {
-		return nil, fmt.Errorf("LaunchDarkly API error - Status: %d, Response: %s", resp.StatusCode, string(body))
-	}
-
-	var policy ReleasePolicy
-	if err := json.Unmarshal(body, &policy); err != nil {
-		return nil, err
-	}
-
-	return &policy, nil
-}
-
-func putReleasePolicy(client *Client, projectKey, policyKey string, updatedPolicy map[string]interface{}) error {
-	url := buildReleasePolicyURL(client, projectKey, policyKey)
-	jsonData, err := json.Marshal(updatedPolicy)
-	if err != nil {
-		return err
-	}
-
-	req, err := http.NewRequestWithContext(client.ctx, "PUT", url, bytes.NewBuffer(jsonData))
-	if err != nil {
-		return err
-	}
-
-	req.Header.Set("Authorization", client.apiKey)
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("LD-API-Version", "beta")
-
-	resp, err := client.ld.GetConfig().HTTPClient.Do(req)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-
-	body, readErr := io.ReadAll(resp.Body)
-	if readErr != nil {
-		return readErr
-	}
-
-	if resp.StatusCode >= 400 {
-		return fmt.Errorf("LaunchDarkly API error - Status: %d, Response: %s", resp.StatusCode, string(body))
-	}
-
-	return nil
-}
-
-func deleteReleasePolicy(client *Client, projectKey, policyKey string) error {
-	url := buildReleasePolicyURL(client, projectKey, policyKey)
-
-	req, err := http.NewRequestWithContext(client.ctx, "DELETE", url, nil)
-	if err != nil {
-		return err
-	}
-
-	req.Header.Set("Authorization", client.apiKey)
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("LD-API-Version", "beta")
-
-	resp, err := client.ld.GetConfig().HTTPClient.Do(req)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-
-	body, readErr := io.ReadAll(resp.Body)
-	if readErr != nil {
-		return readErr
-	}
-
-	if resp.StatusCode >= 400 {
-		return fmt.Errorf("LaunchDarkly API error - Status: %d, Response: %s", resp.StatusCode, string(body))
-	}
-
-	return nil
+	obj, d := types.ObjectValueFrom(ctx, progressiveReleaseConfigAttrTypes, m)
+	diags.Append(d...)
+	return obj, diags
 }

@@ -6,9 +6,9 @@ import (
 	"regexp"
 	"testing"
 
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/acctest"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
-	ldapi "github.com/launchdarkly/api-client-go/v17"
+	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
+	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	ldapi "github.com/launchdarkly/api-client-go/v25"
 	"github.com/stretchr/testify/require"
 )
 
@@ -45,16 +45,16 @@ func testAccDataSourceTeamMemberDelete(client *Client, id string) error {
 }
 
 func TestAccDataSourceTeamMember_noMatchReturnsError(t *testing.T) {
-	email := "does-not-exist+wbteste2e@launchdarkly.com"
+	email := "does-not-exist@ck0uyqdg.mailosaur.net"
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config:      testAccDataSourceTeamMemberConfig(email),
-				ExpectError: regexp.MustCompile(`failed to find team member`),
+				ExpectError: regexp.MustCompile(`(?i)failed to find team member`),
 			},
 		},
 	})
@@ -73,7 +73,7 @@ func TestAccDataSourceTeamMember_exists(t *testing.T) {
 
 	teamMembers := make([]ldapi.Member, 0, teamMemberCount)
 	for i := 0; i < teamMemberCount; i++ {
-		randomEmail := fmt.Sprintf("%s+wbteste2e@launchdarkly.com", acctest.RandStringFromCharSet(10, "abcdefghijklmnopqrstuvwxyz012346789+"))
+		randomEmail := fmt.Sprintf("%s@ck0uyqdg.mailosaur.net", acctest.RandStringFromCharSet(10, "abcdefghijklmnopqrstuvwxyz012346789+"))
 		member, err := testAccDataSourceTeamMemberCreate(client, randomEmail)
 		require.NoError(t, err)
 		teamMembers = append(teamMembers, *member)
@@ -85,7 +85,7 @@ func TestAccDataSourceTeamMember_exists(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config: testAccDataSourceTeamMemberConfig(testMember.Email),
@@ -95,7 +95,7 @@ func TestAccDataSourceTeamMember_exists(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, FIRST_NAME, *testMember.FirstName),
 					resource.TestCheckResourceAttr(resourceName, LAST_NAME, *testMember.LastName),
 					resource.TestCheckResourceAttr(resourceName, ID, testMember.Id),
-					resource.TestCheckResourceAttr(resourceName, "role_attributes.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "role_attributes.%", "1"),
 				),
 			},
 		},

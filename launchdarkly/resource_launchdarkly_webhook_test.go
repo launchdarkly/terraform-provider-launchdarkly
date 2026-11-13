@@ -5,8 +5,8 @@ import (
 	"regexp"
 	"testing"
 
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
+	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/terraform"
 )
 
 const (
@@ -43,11 +43,11 @@ resource "launchdarkly_webhook" "with_statements" {
 	name    = "Webhook with policy statements"
 	url     = "http://webhooks.com"
 	on      = true
-	statements {
+	statements = [{
 		actions   = ["*"]	
 		effect    = "allow"
 		resources = ["proj/*:env/production:flag/*"]
-	}
+	}]
 }
 `
 
@@ -64,11 +64,11 @@ resource "launchdarkly_webhook" "with_statements" {
 	name    = "Webhook with policy statements"
 	url     = "http://webhooks.com"
 	on      = true
-	statements {
+	statements = [{
 		actions   = ["*"]	
 		effect    = "allow"
 		resources = ["proj/*:env/production:flag/*"]
-	}
+	}]
 }
 `
 
@@ -77,16 +77,15 @@ resource "launchdarkly_webhook" "with_statements" {
 	name    = "Webhook with policy statements"
 	url     = "http://webhooks.com"
 	on      = true
-	statements {
+	statements = [{
 		actions   = ["*"]
 		effect    = "allow"
 		resources = ["proj/test:env/production:flag/*"]
-	}
-	statements {
+	}, {
 		actions   = ["*"]
 		effect    = "allow"
 		resources = ["proj/test:env/production:segment/*"]
-	}
+	}]
 } 
 `
 
@@ -95,12 +94,12 @@ resource "launchdarkly_webhook" "with_statements" {
 	name    = "Webhook with policy statements"
 	url     = "http://webhooks.com"
 	on      = true
-	statements {
+	statements = [{
 		actions   = ["*"]
 		not_actions = ["*"]
 		effect    = "allow"
 		resources = ["proj/*:env/production:flag/*"]
-	}
+	}]
 }
 `
 )
@@ -111,7 +110,7 @@ func TestAccWebhook_Create(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config: testAccWebhookCreate,
@@ -140,7 +139,7 @@ func TestAccWebhook_CreateWithEnabled(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config: testAccWebhookCreateWithEnabled,
@@ -168,7 +167,7 @@ func TestAccWebhook_Update(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config: testAccWebhookCreateWithEnabled,
@@ -222,7 +221,7 @@ func TestAccWebhook_CreateWithStatements(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config: testAccWebhookWithStatements,
@@ -254,7 +253,7 @@ func TestAccWebhook_CreateWithPolicyStatements(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config: testAccWebhookWithPolicyStatements,
@@ -281,7 +280,7 @@ func TestAccWebhook_UpdateWithStatements(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config: testAccWebhookWithStatements,
@@ -342,7 +341,7 @@ func TestAccWebhook_InvalidStatements(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config:      testAccWebhookInvalidStatements,
@@ -361,7 +360,7 @@ func testAccCheckWebhookExists(resourceName string) resource.TestCheckFunc {
 		if rs.Primary.ID == "" {
 			return fmt.Errorf("webhook ID is not set")
 		}
-		client := testAccProvider.Meta().(*Client)
+		client := mustTestAccClient()
 		_, _, err := client.ld.WebhooksApi.GetWebhook(client.ctx, rs.Primary.ID).Execute()
 		if err != nil {
 			return fmt.Errorf("received an error getting webhook. %s", err)

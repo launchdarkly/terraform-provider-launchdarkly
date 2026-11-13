@@ -5,7 +5,7 @@ subcategory: ""
 description: |-
   Provides a LaunchDarkly team member resource.
   This resource allows you to create and manage team members within your LaunchDarkly organization.
-  -> Note: You can only manage team members with "admin" level personal access tokens. To learn more, read Managing Teams https://docs.launchdarkly.com/home/teams/managing.
+  -> Note: You can only manage team members with "admin" level personal access tokens. To learn more, read Managing Teams https://launchdarkly.com/docs/home/account/manage-teams.
 ---
 
 # launchdarkly_team_member (Resource)
@@ -14,7 +14,7 @@ Provides a LaunchDarkly team member resource.
 
 This resource allows you to create and manage team members within your LaunchDarkly organization.
 
--> **Note:** You can only manage team members with "admin" level personal access tokens. To learn more, read [Managing Teams](https://docs.launchdarkly.com/home/teams/managing).
+-> **Note:** You can only manage team members with "admin" level personal access tokens. To learn more, read [Managing Teams](https://launchdarkly.com/docs/home/account/manage-teams).
 
 ## Example Usage
 
@@ -32,7 +32,7 @@ resource "launchdarkly_team_member" "example" {
 
 ### Required
 
-- `email` (String) The unique email address associated with the team member. A change in this field will force the destruction of the existing resource and the creation of a new one.
+- `email` (String) The unique email address associated with the team member. A change in this field forces the destruction of the existing resource and the creation of a new one.
 
 ### Optional
 
@@ -42,19 +42,11 @@ resource "launchdarkly_team_member" "example" {
 - `first_name` (String) The team member's given name. Once created, this cannot be updated except by the team member.
 - `last_name` (String) TThe team member's family name. Once created, this cannot be updated except by the team member.
 - `role` (String) The role associated with team member. Supported roles are `reader`, `writer`, `no_access`, or `admin`. If you don't specify a role, `reader` is assigned by default.
-- `role_attributes` (Block Set) A role attributes block. One block must be defined per role attribute. The key is the role attribute key and the value is a string array of resource keys that apply. (see [below for nested schema](#nestedblock--role_attributes))
+- `role_attributes` (Map of List of String) A map of role attributes, keyed by the role attribute key with a string array of resource keys as each value. For example, if your policy statement defines the resource `"proj/$${roleAttribute/testAttribute}"`, the key would be `testAttribute` and the values the keys of the projects you wanted to assign access to.
 
 ### Read-Only
 
 - `id` (String) The 24 character alphanumeric ID of the team member.
-
-<a id="nestedblock--role_attributes"></a>
-### Nested Schema for `role_attributes`
-
-Required:
-
-- `key` (String) The key / name of your role attribute. In the example `$${roleAttribute/testAttribute}`, the key is `testAttribute`.
-- `values` (List of String) A list of values for your role attribute. For example, if your policy statement defines the resource `"proj/$${roleAttribute/testAttribute}"`, the values would be the keys of the projects you wanted to assign access to.
 
 ## Import
 

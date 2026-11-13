@@ -29,7 +29,7 @@ resource "launchdarkly_feature_flag_environment" "prod_config" {
   flag_id = data.launchdarkly_feature_flag.example.id
   env_key = "production"
   on      = true
-  fallthrough {
+  fallthrough = {
     variation = 0
   }
   off_variation = 1

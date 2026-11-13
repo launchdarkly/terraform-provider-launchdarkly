@@ -1,0 +1,47 @@
+# Stage 3 of the autogen pipeline (see .claude/plans/AUTOGEN_PIPELINE.md):
+# MANUAL re-verify entry point. A thin workflow_dispatch wrapper that calls the
+# reusable verify workflow (verify-reusable.yml, where all the logic lives). Use
+# this to re-verify an EXISTING scaffold/* draft PR without re-scaffolding it.
+#
+# The auto-chain path (a fresh scaffold auto-verifying in the same run) lives in
+# scaffold-resource.yml, which calls the same reusable workflow as a downstream
+# `needs: scaffold` job. Both entry points share one verify definition.
+#
+# This file lives on `main` only so GitHub registers the workflow_dispatch
+# trigger. Kill switch: the tf-provider-verifier AI Config itself — the reusable
+# workflow aborts when that flag's production-served variation has
+# value._ldMeta.enabled=false (point its fallthrough at the 'disabled' variation
+# to stop the agent). No repo variable.
+name: Verify scaffolded resource against LaunchDarkly
+
+on:
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: "Number of the stage-2 draft PR to verify (branch must be scaffold/*)"
+        required: true
+        type: string
+      notes:
+        description: "Optional extra instructions for the verification agent"
+        required: false
+        type: string
+
+# A reusable workflow runs with the CALLER's GITHUB_TOKEN permissions, so grant
+# here what verify-reusable.yml needs.
+permissions:
+  contents: write # agent pushes fixes to the PR branch
+  pull-requests: write # agent posts a review comment
+  id-token: write # AWS OIDC to read the LD token from SSM
+
+jobs:
+  verify:
+    permissions:
+      contents: write
+      pull-requests: write
+      id-token: write
+    uses: ./.github/workflows/verify-reusable.yml
+    with:
+      pr_number: ${{ inputs.pr_number }}
+      notes: ${{ inputs.notes }}
+    # ANTHROPIC_API_KEY + SLACK_DRIFT_WEBHOOK_URL (GITHUB_TOKEN is automatic).
+    secrets: inherit

@@ -1,131 +1,23 @@
 package launchdarkly
 
 import (
-	"bytes"
-	"context"
-	"encoding/json"
 	"fmt"
-	"io"
-	"log"
 	"net/http"
 	"strings"
 
-	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	ldapi "github.com/launchdarkly/api-client-go/v25"
 )
 
-// setViewRequestHeaders sets the common headers for View API requests
-func setViewRequestHeaders(req *http.Request, apiKey string) {
-	req.Header.Set("Authorization", apiKey)
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("LD-API-Version", "beta")
-	req.Header.Set("User-Agent", fmt.Sprintf("launchdarkly-terraform-provider/%s", version))
-}
-
-func viewRead(ctx context.Context, d *schema.ResourceData, meta interface{}, isDataSource bool) diag.Diagnostics {
-	var diags diag.Diagnostics
-	client := meta.(*Client)
-	betaClient, err := newBetaClient(client.apiKey, client.apiHost, false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
-	if err != nil {
-		return diag.FromErr(err)
-	}
-
-	projectKey := d.Get(PROJECT_KEY).(string)
-	viewKey := d.Get(KEY).(string)
-
-	view, res, err := getView(betaClient, projectKey, viewKey)
-
-	if isStatusNotFound(res) && !isDataSource {
-		log.Printf("[WARN] failed to find view with key %q in project %q, removing from state if present", viewKey, projectKey)
-		diags = append(diags, diag.Diagnostic{
-			Severity: diag.Warning,
-			Summary:  fmt.Sprintf("[WARN] failed to find view with key %q in project %q, removing from state if present", viewKey, projectKey),
-		})
-		d.SetId("")
-		return diags
-	}
-	if err != nil {
-		return diag.Errorf("failed to get view with key %q in project %q: %v", viewKey, projectKey, err)
-	}
-
-	if isDataSource {
-		d.SetId(view.Id)
-	}
-	_ = d.Set(PROJECT_KEY, view.ProjectKey)
-	_ = d.Set(KEY, view.Key)
-	_ = d.Set(NAME, view.Name)
-	_ = d.Set(DESCRIPTION, view.Description)
-	_ = d.Set(GENERATE_SDK_KEYS, view.GenerateSdkKeys)
-	_ = d.Set(ARCHIVED, view.Archived)
-
-	// Set maintainer fields in state based on API response
-	// Since ExactlyOneOf validation ensures one maintainer field is always set,
-	// we can safely set the appropriate field and clear the other
-	if view.Maintainer != nil {
-		if view.Maintainer.Kind == "member" && view.Maintainer.MaintainerMember != nil {
-			_ = d.Set(MAINTAINER_ID, view.Maintainer.MaintainerMember.Id)
-			_ = d.Set(MAINTAINER_TEAM_KEY, "")
-		} else if view.Maintainer.Kind == "team" && view.Maintainer.MaintainerTeam != nil {
-			_ = d.Set(MAINTAINER_TEAM_KEY, view.Maintainer.MaintainerTeam.Key)
-			_ = d.Set(MAINTAINER_ID, "")
-		}
-	}
-
-	err = d.Set(TAGS, view.Tags)
-	if err != nil {
-		return diag.Errorf("could not set tags on view with key %q: %v", view.Key, err)
-	}
-
-	// For data sources, also fetch and set linked flags for discovery
-	if isDataSource {
-		linkedFlags, err := getLinkedResources(betaClient, projectKey, viewKey, FLAGS)
-		if err != nil {
-			// Log warning but don't fail the read for discovery data
-			log.Printf("[WARN] failed to get linked flags for view %q in project %q: %v", viewKey, projectKey, err)
-		} else {
-			flagKeys := make([]string, len(linkedFlags))
-			for i, flag := range linkedFlags {
-				flagKeys[i] = flag.ResourceKey
-			}
-			err = d.Set(LINKED_FLAGS, flagKeys)
-			if err != nil {
-				return diag.Errorf("could not set linked_flags on view with key %q: %v", view.Key, err)
-			}
-		}
-
-		// Also fetch and set linked segments for discovery
-		linkedSegments, err := getLinkedResources(betaClient, projectKey, viewKey, SEGMENTS)
-		if err != nil {
-			// Log warning but don't fail the read for discovery data
-			log.Printf("[WARN] failed to get linked segments for view %q in project %q: %v", viewKey, projectKey, err)
-		} else {
-			segments := make([]map[string]interface{}, len(linkedSegments))
-			for i, segment := range linkedSegments {
-				segments[i] = map[string]interface{}{
-					SEGMENT_ENVIRONMENT_ID: segment.EnvironmentId,
-					SEGMENT_KEY:            segment.ResourceKey,
-				}
-			}
-			err = d.Set(LINKED_SEGMENTS, segments)
-			if err != nil {
-				return diag.Errorf("could not set linked_segments on view with key %q: %v", view.Key, err)
-			}
-		}
-	}
-
-	return diags
-}
+const viewAssociationsPageLimit = int32(100)
 
 type View struct {
-	Id              string          `json:"id"`
-	Key             string          `json:"key"`
-	Name            string          `json:"name"`
-	Description     *string         `json:"description,omitempty"`
-	ProjectKey      string          `json:"projectKey"`
-	GenerateSdkKeys *bool           `json:"generateSdkKeys,omitempty"`
-	Archived        *bool           `json:"archived,omitempty"`
-	Tags            []string        `json:"tags,omitempty"`
-	Maintainer      *ViewMaintainer `json:"maintainer,omitempty"`
+	Id          string          `json:"id"`
+	Key         string          `json:"key"`
+	Name        string          `json:"name"`
+	Description *string         `json:"description,omitempty"`
+	ProjectKey  string          `json:"projectKey"`
+	Tags        []string        `json:"tags,omitempty"`
+	Maintainer  *ViewMaintainer `json:"maintainer,omitempty"`
 }
 
 type ViewMaintainer struct {
@@ -142,152 +34,141 @@ type ViewMaintainerTeam struct {
 	Key string `json:"key"`
 }
 
+func viewFromAPI(apiView *ldapi.View) *View {
+	if apiView == nil {
+		return nil
+	}
+
+	description := apiView.Description
+
+	view := &View{
+		Id:          apiView.Id,
+		Key:         apiView.Key,
+		Name:        apiView.Name,
+		Description: &description,
+		ProjectKey:  apiView.ProjectKey,
+		Tags:        apiView.Tags,
+	}
+
+	if apiView.Maintainer != nil {
+		maintainer := &ViewMaintainer{
+			Kind: apiView.Maintainer.Kind,
+		}
+		if apiView.Maintainer.MaintainerMember != nil {
+			maintainer.MaintainerMember = &ViewMaintainerMember{
+				Id: apiView.Maintainer.MaintainerMember.Id,
+			}
+		}
+		if apiView.Maintainer.MaintainerTeam != nil {
+			maintainer.MaintainerTeam = &ViewMaintainerTeam{
+				Key: apiView.Maintainer.MaintainerTeam.Key,
+			}
+		}
+		view.Maintainer = maintainer
+	}
+
+	return view
+}
+
 func getView(client *Client, projectKey, viewKey string) (*View, *http.Response, error) {
 	return getViewRaw(client, projectKey, viewKey)
 }
 
-func buildViewURL(client *Client, projectKey, viewKey string) string {
-	host := client.apiHost
-	if host == "" {
-		host = "app.launchdarkly.com"
-	}
-	var url string
-	if viewKey == "" {
-		url = fmt.Sprintf("https://%s/api/v2/projects/%s/views", host, projectKey)
-	} else {
-		url = fmt.Sprintf("https://%s/api/v2/projects/%s/views/%s", host, projectKey, viewKey)
-	}
-	return url
-}
-
 func getViewRaw(client *Client, projectKey, viewKey string) (*View, *http.Response, error) {
-	url := buildViewURL(client, projectKey, viewKey)
+	var (
+		apiView *ldapi.View
+		resp    *http.Response
+		err     error
+	)
 
-	req, err := http.NewRequestWithContext(client.ctx, "GET", url, nil)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	setViewRequestHeaders(req, client.apiKey)
-
-	resp, err := client.ld.GetConfig().HTTPClient.Do(req)
+	err = client.withConcurrency(client.ctx, func() error {
+		apiView, resp, err = client.ld.ViewsApi.GetView(client.ctx, projectKey, viewKey).
+			Execute()
+		return err
+	})
 	if err != nil {
 		return nil, resp, err
 	}
-	defer resp.Body.Close()
 
-	body, readErr := io.ReadAll(resp.Body)
-	if readErr != nil {
-		return nil, resp, readErr
-	}
-
-	if resp.StatusCode >= 400 {
-		return nil, resp, fmt.Errorf("LaunchDarkly API error - Status: %d, Response: %s", resp.StatusCode, string(body))
-	}
-
-	var view View
-	if err := json.Unmarshal(body, &view); err != nil {
-		return nil, resp, err
-	}
-
-	return &view, resp, nil
+	return viewFromAPI(apiView), resp, nil
 }
 
 func createView(client *Client, projectKey string, viewPost map[string]interface{}) (*View, error) {
-	url := buildViewURL(client, projectKey, "")
-	jsonData, err := json.Marshal(viewPost)
+	viewRequest := ldapi.NewViewPost(viewPost["key"].(string), viewPost["name"].(string))
+
+	if description, ok := viewPost["description"].(string); ok {
+		viewRequest.SetDescription(description)
+	}
+	if maintainerID, ok := viewPost["maintainerId"].(string); ok {
+		viewRequest.SetMaintainerId(maintainerID)
+	}
+	if maintainerTeamKey, ok := viewPost["maintainerTeamKey"].(string); ok {
+		viewRequest.SetMaintainerTeamKey(maintainerTeamKey)
+	}
+	if tagsRaw, ok := viewPost["tags"]; ok {
+		switch tags := tagsRaw.(type) {
+		case []string:
+			viewRequest.SetTags(tags)
+		case []interface{}:
+			viewRequest.SetTags(interfaceSliceToStringSlice(tags))
+		}
+	}
+
+	var (
+		apiView *ldapi.View
+		err     error
+	)
+	err = client.withConcurrency(client.ctx, func() error {
+		apiView, _, err = client.ld.ViewsApi.CreateView(client.ctx, projectKey).
+			ViewPost(*viewRequest).
+			Execute()
+		return err
+	})
 	if err != nil {
 		return nil, err
 	}
 
-	req, err := http.NewRequestWithContext(client.ctx, "POST", url, bytes.NewBuffer(jsonData))
-	if err != nil {
-		return nil, err
-	}
-
-	setViewRequestHeaders(req, client.apiKey)
-
-	resp, err := client.ld.GetConfig().HTTPClient.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	body, readErr := io.ReadAll(resp.Body)
-	if readErr != nil {
-		return nil, readErr
-	}
-
-	if resp.StatusCode >= 400 {
-		return nil, fmt.Errorf("LaunchDarkly API error - Status: %d, Response: %s", resp.StatusCode, string(body))
-	}
-
-	var view View
-	if err := json.Unmarshal(body, &view); err != nil {
-		return nil, err
-	}
-
-	return &view, nil
+	return viewFromAPI(apiView), nil
 }
 
 func patchView(client *Client, projectKey, viewKey string, patch map[string]interface{}) error {
-	url := buildViewURL(client, projectKey, viewKey)
-	jsonData, err := json.Marshal(patch)
-	if err != nil {
+	viewPatch := ldapi.NewViewPatch()
+
+	if name, ok := patch["name"].(string); ok {
+		viewPatch.SetName(name)
+	}
+	if description, ok := patch["description"].(string); ok {
+		viewPatch.SetDescription(description)
+	}
+	if maintainerID, ok := patch["maintainerId"].(string); ok {
+		viewPatch.SetMaintainerId(maintainerID)
+	}
+	if maintainerTeamKey, ok := patch["maintainerTeamKey"].(string); ok {
+		viewPatch.SetMaintainerTeamKey(maintainerTeamKey)
+	}
+	if tagsRaw, ok := patch["tags"]; ok {
+		switch tags := tagsRaw.(type) {
+		case []string:
+			viewPatch.SetTags(tags)
+		case []interface{}:
+			viewPatch.SetTags(interfaceSliceToStringSlice(tags))
+		}
+	}
+
+	return client.withConcurrency(client.ctx, func() error {
+		_, _, err := client.ld.ViewsApi.UpdateView(client.ctx, projectKey, viewKey).
+			ViewPatch(*viewPatch).
+			Execute()
 		return err
-	}
-
-	req, err := http.NewRequestWithContext(client.ctx, "PATCH", url, bytes.NewBuffer(jsonData))
-	if err != nil {
-		return err
-	}
-
-	setViewRequestHeaders(req, client.apiKey)
-
-	resp, err := client.ld.GetConfig().HTTPClient.Do(req)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-
-	body, readErr := io.ReadAll(resp.Body)
-	if readErr != nil {
-		return readErr
-	}
-
-	if resp.StatusCode >= 400 {
-		return fmt.Errorf("LaunchDarkly API error - Status: %d, Response: %s", resp.StatusCode, string(body))
-	}
-
-	return nil
+	})
 }
 
 func deleteView(client *Client, projectKey, viewKey string) error {
-	url := buildViewURL(client, projectKey, viewKey)
-
-	req, err := http.NewRequestWithContext(client.ctx, "DELETE", url, nil)
-	if err != nil {
+	return client.withConcurrency(client.ctx, func() error {
+		_, err := client.ld.ViewsApi.DeleteView(client.ctx, projectKey, viewKey).
+			Execute()
 		return err
-	}
-
-	setViewRequestHeaders(req, client.apiKey)
-
-	resp, err := client.ld.GetConfig().HTTPClient.Do(req)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-
-	body, readErr := io.ReadAll(resp.Body)
-	if readErr != nil {
-		return readErr
-	}
-
-	if resp.StatusCode >= 400 {
-		return fmt.Errorf("LaunchDarkly API error - Status: %d, Response: %s", resp.StatusCode, string(body))
-	}
-
-	return nil
+	})
 }
 
 // ViewLinkedResource represents a linked resource in a view
@@ -316,6 +197,70 @@ type ViewLinkRequest struct {
 type ViewSegmentIdentifier struct {
 	EnvironmentId string `json:"environmentId"`
 	SegmentKey    string `json:"segmentKey"`
+}
+
+// validateViewKeysExist checks that every key in viewKeys resolves to a real
+// view in projectKey, returning an actionable error for the first one that does
+// not.
+//
+// Callers must run this *before* the create call that carries viewKeys in its
+// body, not only on the reconcile path. Otherwise a mistyped key surfaces as a
+// raw API error from the flag/segment POST, which is what made this class of
+// mistake expensive to debug.
+//
+// This is deliberately not a plan-time check. The provider only ever sees a
+// single resource's plan, so it cannot tell a typo apart from a view that a
+// sibling resource is about to create in the same apply — a plan-time lookup
+// would fail every green-field apply of a correct configuration.
+func validateViewKeysExist(client *Client, projectKey, resourceKind string, viewKeys []string) error {
+	for _, vk := range viewKeys {
+		exists, err := viewExists(projectKey, vk, client)
+		if err != nil {
+			return fmt.Errorf("failed to check if view %q exists in project %q: %w", vk, projectKey, err)
+		}
+		if !exists {
+			return fmt.Errorf(
+				"cannot link %s to view %q in project %q: view does not exist. "+
+					"If this view is managed in the same Terraform configuration, reference it instead of a string literal "+
+					"(for example view_keys = [launchdarkly_view.my_view.key]) so Terraform creates the view first. "+
+					"If it is managed elsewhere, add a launchdarkly_view data source or check the key for typos. View keys are lowercase",
+				resourceKind, vk, projectKey,
+			)
+		}
+	}
+	return nil
+}
+
+// difference returns the elements in slice1 that are not in slice2.
+func difference(slice1, slice2 []string) []string {
+	set2 := make(map[string]bool, len(slice2))
+	for _, item := range slice2 {
+		set2[item] = true
+	}
+	var diff []string
+	for _, item := range slice1 {
+		if !set2[item] {
+			diff = append(diff, item)
+		}
+	}
+	return diff
+}
+
+// differenceSegmentIdentifiers returns the ViewSegmentIdentifier values
+// in slice1 that are not in slice2 (compared by environment_id/segment_key).
+func differenceSegmentIdentifiers(slice1, slice2 []ViewSegmentIdentifier) []ViewSegmentIdentifier {
+	set2 := make(map[string]bool, len(slice2))
+	for _, item := range slice2 {
+		set2[item.EnvironmentId+":"+item.SegmentKey] = true
+	}
+	var diff []ViewSegmentIdentifier
+	for _, item := range slice1 {
+		key := item.EnvironmentId + ":" + item.SegmentKey
+		if !set2[key] {
+			diff = append(diff, item)
+		}
+	}
+	return diff
 }
 
 // chunkStringSlice splits a string slice into chunks of the specified size
@@ -374,72 +319,54 @@ func linkResourcesToView(client *Client, projectKey, viewKey, resourceType strin
 	return nil
 }
 
-// performViewLinkOperation performs the actual HTTP request for linking/unlinking resources
+// performViewLinkOperation performs the typed API request for linking/unlinking resources.
 func performViewLinkOperation(client *Client, projectKey, viewKey, resourceType string, resourceKeys []string, method string) error {
-	url := buildViewLinkURL(client, projectKey, viewKey, resourceType)
+	requestPayload := ldapi.ViewLinkRequestKeysAsViewLinkRequest(ldapi.NewViewLinkRequestKeys(resourceKeys))
 
-	linkRequest := ViewLinkRequest{
-		Keys: resourceKeys,
-	}
-
-	jsonData, err := json.Marshal(linkRequest)
-	if err != nil {
-		return err
-	}
-
-	req, err := http.NewRequestWithContext(client.ctx, method, url, bytes.NewBuffer(jsonData))
-	if err != nil {
-		return err
-	}
-
-	setViewRequestHeaders(req, client.apiKey)
-
-	resp, err := client.ld.GetConfig().HTTPClient.Do(req)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode >= 400 {
-		body, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("HTTP %d: %s", resp.StatusCode, string(body))
-	}
-
-	return nil
+	return client.withConcurrency(client.ctx, func() error {
+		switch method {
+		case http.MethodPost:
+			_, _, err := client.ld.ViewsApi.LinkResource(client.ctx, projectKey, viewKey, resourceType).
+				ViewLinkRequest(requestPayload).
+				Execute()
+			return err
+		case http.MethodDelete:
+			_, _, err := client.ld.ViewsApi.UnlinkResource(client.ctx, projectKey, viewKey, resourceType).
+				ViewLinkRequest(requestPayload).
+				Execute()
+			return err
+		default:
+			return fmt.Errorf("unsupported view link method %q", method)
+		}
+	})
 }
 
-// performViewSegmentLinkOperation performs the actual HTTP request for linking/unlinking segments
+// performViewSegmentLinkOperation performs the typed API request for linking/unlinking segments.
 func performViewSegmentLinkOperation(client *Client, projectKey, viewKey string, segmentIdentifiers []ViewSegmentIdentifier, method string) error {
-	url := buildViewLinkURL(client, projectKey, viewKey, SEGMENTS)
-
-	linkRequest := ViewLinkRequest{
-		SegmentIdentifiers: segmentIdentifiers,
+	apiSegmentIdentifiers := make([]ldapi.ViewLinkRequestSegmentIdentifier, len(segmentIdentifiers))
+	for i, segmentIdentifier := range segmentIdentifiers {
+		apiSegmentIdentifiers[i] = *ldapi.NewViewLinkRequestSegmentIdentifier(segmentIdentifier.EnvironmentId, segmentIdentifier.SegmentKey)
 	}
+	requestPayload := ldapi.ViewLinkRequestSegmentIdentifiersAsViewLinkRequest(
+		ldapi.NewViewLinkRequestSegmentIdentifiers(apiSegmentIdentifiers),
+	)
 
-	jsonData, err := json.Marshal(linkRequest)
-	if err != nil {
-		return err
-	}
-
-	req, err := http.NewRequestWithContext(client.ctx, method, url, bytes.NewBuffer(jsonData))
-	if err != nil {
-		return err
-	}
-
-	setViewRequestHeaders(req, client.apiKey)
-
-	resp, err := client.ld.GetConfig().HTTPClient.Do(req)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode >= 400 {
-		body, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("HTTP %d: %s", resp.StatusCode, string(body))
-	}
-
-	return nil
+	return client.withConcurrency(client.ctx, func() error {
+		switch method {
+		case http.MethodPost:
+			_, _, err := client.ld.ViewsApi.LinkResource(client.ctx, projectKey, viewKey, SEGMENTS).
+				ViewLinkRequest(requestPayload).
+				Execute()
+			return err
+		case http.MethodDelete:
+			_, _, err := client.ld.ViewsApi.UnlinkResource(client.ctx, projectKey, viewKey, SEGMENTS).
+				ViewLinkRequest(requestPayload).
+				Execute()
+			return err
+		default:
+			return fmt.Errorf("unsupported view segment link method %q", method)
+		}
+	})
 }
 
 // linkResourceChunkToView links a single chunk of resources to a view
@@ -549,51 +476,43 @@ func unlinkSegmentChunkFromView(client *Client, projectKey, viewKey string, segm
 
 // getLinkedResources gets all linked resources of a specific type for a view
 func getLinkedResources(client *Client, projectKey, viewKey, resourceType string) ([]ViewLinkedResource, error) {
-	url := buildViewLinkedResourcesURL(client, projectKey, viewKey, resourceType)
+	allItems, err := fetchAllOffsetPagesWithInt32Total[ldapi.ViewLinkedResource](int64(viewAssociationsPageLimit), 0, func(offset, limit int64) ([]ldapi.ViewLinkedResource, int32, error) {
+		var (
+			apiLinkedResources *ldapi.ViewLinkedResources
+			err                error
+		)
+		err = client.withConcurrency(client.ctx, func() error {
+			apiLinkedResources, _, err = client.ld.ViewsApi.GetLinkedResources(client.ctx, projectKey, viewKey, resourceType).
+				Limit(int32(limit)).
+				Offset(int32(offset)).
+				Execute()
+			return err
+		})
+		if err != nil {
+			return nil, 0, err
+		}
 
-	req, err := http.NewRequestWithContext(client.ctx, "GET", url, nil)
+		return apiLinkedResources.Items, apiLinkedResources.TotalCount, nil
+	})
 	if err != nil {
 		return nil, err
 	}
 
-	setViewRequestHeaders(req, client.apiKey)
-
-	resp, err := client.ld.GetConfig().HTTPClient.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode >= 400 {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("HTTP %d: %s", resp.StatusCode, string(body))
-	}
-
-	var linkedResources ViewLinkedResources
-	err = json.NewDecoder(resp.Body).Decode(&linkedResources)
-	if err != nil {
-		return nil, err
+	linkedResources := make([]ViewLinkedResource, len(allItems))
+	for i, resource := range allItems {
+		environmentID := ""
+		if resource.EnvironmentId != nil {
+			environmentID = *resource.EnvironmentId
+		}
+		linkedResources[i] = ViewLinkedResource{
+			ResourceKey:   resource.ResourceKey,
+			ResourceType:  resource.ResourceType,
+			LinkedAt:      resource.LinkedAt,
+			EnvironmentId: environmentID,
+		}
 	}
 
-	return linkedResources.Items, nil
-}
-
-// buildViewLinkURL builds the URL for linking/unlinking resources to/from a view
-func buildViewLinkURL(client *Client, projectKey, viewKey, resourceType string) string {
-	host := client.apiHost
-	if host == "" {
-		host = "app.launchdarkly.com"
-	}
-	return fmt.Sprintf("https://%s/api/v2/projects/%s/views/%s/link/%s", host, projectKey, viewKey, resourceType)
-}
-
-// buildViewLinkedResourcesURL builds the URL for getting linked resources from a view
-func buildViewLinkedResourcesURL(client *Client, projectKey, viewKey, resourceType string) string {
-	host := client.apiHost
-	if host == "" {
-		host = "app.launchdarkly.com"
-	}
-	return fmt.Sprintf("https://%s/api/v2/projects/%s/views/%s/linked/%s", host, projectKey, viewKey, resourceType)
+	return linkedResources, nil
 }
 
 // viewIdToKeys splits a view ID into project key and view key
@@ -605,6 +524,35 @@ func viewIdToKeys(id string) (projectKey string, viewKey string, err error) {
 	return parts[0], parts[1], nil
 }
 
+func getAllLinkedViews(client *Client, projectKey, resourceType, resourceKey, environmentId string) ([]ldapi.View, error) {
+	allItems, err := fetchAllOffsetPagesWithInt32Total[ldapi.View](int64(viewAssociationsPageLimit), 0, func(offset, limit int64) ([]ldapi.View, int32, error) {
+		var (
+			viewsResponse *ldapi.Views
+			err           error
+		)
+		err = client.withConcurrency(client.ctx, func() error {
+			request := client.ld.ViewsApi.GetLinkedViews(client.ctx, projectKey, resourceType, resourceKey).
+				Limit(int32(limit)).
+				Offset(int32(offset))
+			if environmentId != "" {
+				request = request.EnvironmentId(environmentId)
+			}
+			viewsResponse, _, err = request.Execute()
+			return err
+		})
+		if err != nil {
+			return nil, 0, err
+		}
+
+		return viewsResponse.Items, viewsResponse.TotalCount, nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return allItems, nil
+}
+
 // ViewsResponse represents the response from getting all views
 type ViewsResponse struct {
 	Items []View `json:"items"`
@@ -612,34 +560,14 @@ type ViewsResponse struct {
 
 // getViewsContainingFlag finds all views that contain a specific flag using the view-associations endpoint
 func getViewsContainingFlag(client *Client, projectKey, flagKey string) ([]string, error) {
-	url := buildViewAssociationsURL(client, projectKey, FLAGS, flagKey)
-	req, err := http.NewRequestWithContext(client.ctx, "GET", url, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	setViewRequestHeaders(req, client.apiKey)
-
-	resp, err := client.ld.GetConfig().HTTPClient.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode >= 400 {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("HTTP %d: %s", resp.StatusCode, string(body))
-	}
-
-	var viewsResponse ViewsResponse
-	err = json.NewDecoder(resp.Body).Decode(&viewsResponse)
+	views, err := getAllLinkedViews(client, projectKey, FLAGS, flagKey, "")
 	if err != nil {
 		return nil, err
 	}
 
 	// Extract view keys from the response
-	viewKeys := make([]string, len(viewsResponse.Items))
-	for i, view := range viewsResponse.Items {
+	viewKeys := make([]string, len(views))
+	for i, view := range views {
 		viewKeys[i] = view.Key
 	}
 
@@ -648,96 +576,45 @@ func getViewsContainingFlag(client *Client, projectKey, flagKey string) ([]strin
 
 // getViewsContainingSegment finds all views that contain a specific segment using the view-associations endpoint
 func getViewsContainingSegment(client *Client, projectKey, environmentId, segmentKey string) ([]string, error) {
-	url := buildViewAssociationsURLWithEnv(client, projectKey, SEGMENTS, segmentKey, environmentId)
-	req, err := http.NewRequestWithContext(client.ctx, "GET", url, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	setViewRequestHeaders(req, client.apiKey)
-
-	resp, err := client.ld.GetConfig().HTTPClient.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode >= 400 {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("HTTP %d: %s", resp.StatusCode, string(body))
-	}
-
-	var viewsResponse ViewsResponse
-	err = json.NewDecoder(resp.Body).Decode(&viewsResponse)
+	views, err := getAllLinkedViews(client, projectKey, SEGMENTS, segmentKey, environmentId)
 	if err != nil {
 		return nil, err
 	}
 
 	// Extract view keys from the response
-	viewKeys := make([]string, len(viewsResponse.Items))
-	for i, view := range viewsResponse.Items {
+	viewKeys := make([]string, len(views))
+	for i, view := range views {
 		viewKeys[i] = view.Key
 	}
 
 	return viewKeys, nil
 }
 
-// buildViewAssociationsURL builds the URL for getting views associated with a specific resource
-func buildViewAssociationsURL(client *Client, projectKey, resourceType, resourceKey string) string {
-	host := client.apiHost
-	if host == "" {
-		host = "app.launchdarkly.com"
-	}
-	return fmt.Sprintf("https://%s/api/v2/projects/%s/view-associations/%s/%s", host, projectKey, resourceType, resourceKey)
-}
-
-// buildViewAssociationsURLWithEnv builds the URL for getting views associated with a specific resource (with environment ID for segments)
-func buildViewAssociationsURLWithEnv(client *Client, projectKey, resourceType, resourceKey, environmentId string) string {
-	host := client.apiHost
-	if host == "" {
-		host = "app.launchdarkly.com"
-	}
-	url := fmt.Sprintf("https://%s/api/v2/projects/%s/view-associations/%s/%s", host, projectKey, resourceType, resourceKey)
-	if environmentId != "" {
-		url = fmt.Sprintf("%s?environmentId=%s", url, environmentId)
-	}
-	return url
-}
-
 // performViewFilterLinkOperation performs an HTTP request for linking/unlinking resources using a filter string.
 // environmentId is optional — only required for segment filter operations.
 func performViewFilterLinkOperation(client *Client, projectKey, viewKey, resourceType, filter, environmentId, method string) error {
-	url := buildViewLinkURL(client, projectKey, viewKey, resourceType)
-
-	linkRequest := ViewLinkRequest{
-		Filter:        filter,
-		EnvironmentId: environmentId,
+	filterRequest := ldapi.NewViewLinkRequestFilter(filter)
+	if environmentId != "" {
+		filterRequest.SetEnvironmentId(environmentId)
 	}
+	requestPayload := ldapi.ViewLinkRequestFilterAsViewLinkRequest(filterRequest)
 
-	jsonData, err := json.Marshal(linkRequest)
-	if err != nil {
-		return err
-	}
-
-	req, err := http.NewRequestWithContext(client.ctx, method, url, bytes.NewBuffer(jsonData))
-	if err != nil {
-		return err
-	}
-
-	setViewRequestHeaders(req, client.apiKey)
-
-	resp, err := client.ld.GetConfig().HTTPClient.Do(req)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode >= 400 {
-		body, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("HTTP %d: %s", resp.StatusCode, string(body))
-	}
-
-	return nil
+	return client.withConcurrency(client.ctx, func() error {
+		switch method {
+		case http.MethodPost:
+			_, _, err := client.ld.ViewsApi.LinkResource(client.ctx, projectKey, viewKey, resourceType).
+				ViewLinkRequest(requestPayload).
+				Execute()
+			return err
+		case http.MethodDelete:
+			_, _, err := client.ld.ViewsApi.UnlinkResource(client.ctx, projectKey, viewKey, resourceType).
+				ViewLinkRequest(requestPayload).
+				Execute()
+			return err
+		default:
+			return fmt.Errorf("unsupported view filter link method %q", method)
+		}
+	})
 }
 
 // linkResourcesByFilterToView links resources matching a filter to a view.

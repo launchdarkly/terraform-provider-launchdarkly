@@ -5,10 +5,9 @@ import (
 	"os"
 	"testing"
 
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/acctest"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
-	"github.com/stretchr/testify/require"
+	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
+	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/terraform"
 )
 
 const (
@@ -16,10 +15,11 @@ const (
 resource "launchdarkly_project" "test" {
 	name = "%s"
 	key  = "%s"
-	environments {
-		name  = "Test Environment"
-		key   = "test-env"
-		color = "000000"
+	environments = {
+		"test-env" = {
+			name  = "Test Environment"
+			color = "000000"
+		}
 	}
 }
 
@@ -36,6 +36,10 @@ resource "launchdarkly_feature_flag" "test1" {
 	key         = "test-flag-1"
 	name        = "Test Flag 1"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 }
 
 resource "launchdarkly_feature_flag" "test2" {
@@ -43,6 +47,10 @@ resource "launchdarkly_feature_flag" "test2" {
 	key         = "test-flag-2"
 	name        = "Test Flag 2"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 }
 
 resource "launchdarkly_view_links" "test" {
@@ -60,10 +68,11 @@ resource "launchdarkly_view_links" "test" {
 resource "launchdarkly_project" "test" {
 	name = "%s"
 	key  = "%s"
-	environments {
-		name  = "Test Environment"
-		key   = "test-env"
-		color = "000000"
+	environments = {
+		"test-env" = {
+			name  = "Test Environment"
+			color = "000000"
+		}
 	}
 }
 
@@ -80,6 +89,10 @@ resource "launchdarkly_feature_flag" "test1" {
 	key         = "test-flag-1"
 	name        = "Test Flag 1"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 }
 
 resource "launchdarkly_feature_flag" "test2" {
@@ -87,6 +100,10 @@ resource "launchdarkly_feature_flag" "test2" {
 	key         = "test-flag-2"
 	name        = "Test Flag 2"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 }
 
 resource "launchdarkly_feature_flag" "test3" {
@@ -94,6 +111,10 @@ resource "launchdarkly_feature_flag" "test3" {
 	key         = "test-flag-3"
 	name        = "Test Flag 3"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 }
 
 resource "launchdarkly_view_links" "test" {
@@ -111,10 +132,11 @@ resource "launchdarkly_view_links" "test" {
 resource "launchdarkly_project" "test" {
 	name = "%s"
 	key  = "%s"
-	environments {
-		name  = "Test Environment"
-		key   = "test-env"
-		color = "000000"
+	environments = {
+		"test-env" = {
+			name  = "Test Environment"
+			color = "000000"
+		}
 	}
 }
 
@@ -131,6 +153,10 @@ resource "launchdarkly_feature_flag" "test1" {
 	key         = "test-flag-1"
 	name        = "Test Flag 1"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 }
 
 resource "launchdarkly_feature_flag" "test2" {
@@ -138,6 +164,10 @@ resource "launchdarkly_feature_flag" "test2" {
 	key         = "test-flag-2"
 	name        = "Test Flag 2"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 }
 
 resource "launchdarkly_feature_flag" "test3" {
@@ -145,6 +175,10 @@ resource "launchdarkly_feature_flag" "test3" {
 	key         = "test-flag-3"
 	name        = "Test Flag 3"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 }
 
 // Note: No launchdarkly_view_links resource - this should unlink all flags
@@ -154,15 +188,15 @@ resource "launchdarkly_feature_flag" "test3" {
 resource "launchdarkly_project" "test" {
 	name = "%s"
 	key  = "%s"
-	environments {
-		name  = "Test Environment"
-		key   = "test-env"
-		color = "000000"
-	}
-	environments {
-		name  = "Production"
-		key   = "production"
-		color = "AAAAAA"
+	environments = {
+		"test-env" = {
+			name  = "Test Environment"
+			color = "000000"
+		}
+		"production" = {
+			name  = "Production"
+			color = "AAAAAA"
+		}
 	}
 }
 
@@ -179,6 +213,10 @@ resource "launchdarkly_feature_flag" "flag1" {
 	key            = "test-flag-1"
 	name           = "Test Flag 1"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 }
 
 resource "launchdarkly_feature_flag" "flag2" {
@@ -186,6 +224,10 @@ resource "launchdarkly_feature_flag" "flag2" {
 	key            = "test-flag-2"
 	name           = "Test Flag 2"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 }
 
 resource "launchdarkly_feature_flag" "flag3" {
@@ -193,6 +235,10 @@ resource "launchdarkly_feature_flag" "flag3" {
 	key            = "test-flag-3"
 	name           = "Test Flag 3"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 }
 
 resource "launchdarkly_segment" "segment1" {
@@ -228,15 +274,13 @@ resource "launchdarkly_view_links" "test" {
 		launchdarkly_feature_flag.flag2.key
 	]
 
-	segments {
-		environment_id = launchdarkly_project.test.environments[0].client_side_id
+	segments = [{
+		environment_id = launchdarkly_project.test.environments["test-env"].client_side_id
 		segment_key    = launchdarkly_segment.segment1.key
-	}
-
-	segments {
-		environment_id = launchdarkly_project.test.environments[0].client_side_id
+	}, {
+		environment_id = launchdarkly_project.test.environments["test-env"].client_side_id
 		segment_key    = launchdarkly_segment.segment2.key
-	}
+	}]
 }
 `
 
@@ -244,15 +288,15 @@ resource "launchdarkly_view_links" "test" {
 resource "launchdarkly_project" "test" {
 	name = "%s"
 	key  = "%s"
-	environments {
-		name  = "Test Environment"
-		key   = "test-env"
-		color = "000000"
-	}
-	environments {
-		name  = "Production"
-		key   = "production"
-		color = "AAAAAA"
+	environments = {
+		"test-env" = {
+			name  = "Test Environment"
+			color = "000000"
+		}
+		"production" = {
+			name  = "Production"
+			color = "AAAAAA"
+		}
 	}
 }
 
@@ -269,6 +313,10 @@ resource "launchdarkly_feature_flag" "flag1" {
 	key            = "test-flag-1"
 	name           = "Test Flag 1"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 }
 
 resource "launchdarkly_feature_flag" "flag2" {
@@ -276,6 +324,10 @@ resource "launchdarkly_feature_flag" "flag2" {
 	key            = "test-flag-2"
 	name           = "Test Flag 2"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 }
 
 resource "launchdarkly_feature_flag" "flag3" {
@@ -283,6 +335,10 @@ resource "launchdarkly_feature_flag" "flag3" {
 	key            = "test-flag-3"
 	name           = "Test Flag 3"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 }
 
 resource "launchdarkly_segment" "segment1" {
@@ -318,15 +374,13 @@ resource "launchdarkly_view_links" "test" {
 		launchdarkly_feature_flag.flag3.key
 	]
 
-	segments {
-		environment_id = launchdarkly_project.test.environments[0].client_side_id
+	segments = [{
+		environment_id = launchdarkly_project.test.environments["test-env"].client_side_id
 		segment_key    = launchdarkly_segment.segment1.key
-	}
-
-	segments {
-		environment_id = launchdarkly_project.test.environments[1].client_side_id
+	}, {
+		environment_id = launchdarkly_project.test.environments["production"].client_side_id
 		segment_key    = launchdarkly_segment.segment3.key
-	}
+	}]
 }
 `
 
@@ -334,15 +388,15 @@ resource "launchdarkly_view_links" "test" {
 resource "launchdarkly_project" "test" {
 	name = "%s"
 	key  = "%s"
-	environments {
-		name  = "Test Environment"
-		key   = "test-env"
-		color = "000000"
-	}
-	environments {
-		name  = "Production"
-		key   = "production"
-		color = "AAAAAA"
+	environments = {
+		"test-env" = {
+			name  = "Test Environment"
+			color = "000000"
+		}
+		"production" = {
+			name  = "Production"
+			color = "AAAAAA"
+		}
 	}
 }
 
@@ -359,6 +413,10 @@ resource "launchdarkly_feature_flag" "flag1" {
 	key            = "test-flag-1"
 	name           = "Test Flag 1"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 }
 
 resource "launchdarkly_feature_flag" "flag2" {
@@ -366,6 +424,10 @@ resource "launchdarkly_feature_flag" "flag2" {
 	key            = "test-flag-2"
 	name           = "Test Flag 2"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 }
 
 resource "launchdarkly_feature_flag" "flag3" {
@@ -373,6 +435,10 @@ resource "launchdarkly_feature_flag" "flag3" {
 	key            = "test-flag-3"
 	name           = "Test Flag 3"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 }
 
 resource "launchdarkly_segment" "segment1" {
@@ -408,20 +474,16 @@ resource "launchdarkly_view_links" "test" {
 		launchdarkly_feature_flag.flag3.key
 	]
 
-	segments {
-		environment_id = launchdarkly_project.test.environments[0].client_side_id
+	segments = [{
+		environment_id = launchdarkly_project.test.environments["test-env"].client_side_id
 		segment_key    = launchdarkly_segment.segment2.key
-	}
-
-	segments {
-		environment_id = launchdarkly_project.test.environments[1].client_side_id
+	}, {
+		environment_id = launchdarkly_project.test.environments["production"].client_side_id
 		segment_key    = launchdarkly_segment.segment3.key
-	}
-
-	segments {
-		environment_id = launchdarkly_project.test.environments[0].client_side_id
+	}, {
+		environment_id = launchdarkly_project.test.environments["test-env"].client_side_id
 		segment_key    = launchdarkly_segment.segment1.key
-	}
+	}]
 }
 `
 )
@@ -436,20 +498,13 @@ func TestAccViewLinks_Update(t *testing.T) {
 	projectName := "view-links-test-" + projectKey
 	resourceName := "launchdarkly_view_links.test"
 
-	client, err := newClient(os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN), os.Getenv(LAUNCHDARKLY_API_HOST), false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
-	require.NoError(t, err)
-
-	members, _, err := client.ld.AccountMembersApi.GetMembers(client.ctx).Execute()
-	require.NoError(t, err)
-	require.True(t, len(members.Items) > 0, "This test requires at least one member in the account")
-
-	maintainerId := members.Items[0].Id
+	maintainerId := firstMemberIDForTest(t)
 
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config: fmt.Sprintf(testAccViewLinksCreate, projectName, projectKey, maintainerId),
@@ -503,20 +558,13 @@ func TestAccViewLinks_Import(t *testing.T) {
 	projectName := "view-links-test-" + projectKey
 	resourceName := "launchdarkly_view_links.test"
 
-	client, err := newClient(os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN), os.Getenv(LAUNCHDARKLY_API_HOST), false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
-	require.NoError(t, err)
-
-	members, _, err := client.ld.AccountMembersApi.GetMembers(client.ctx).Execute()
-	require.NoError(t, err)
-	require.True(t, len(members.Items) > 0, "This test requires at least one member in the account")
-
-	maintainerId := members.Items[0].Id
+	maintainerId := firstMemberIDForTest(t)
 
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config: fmt.Sprintf(testAccViewLinksCreate, projectName, projectKey, maintainerId),
@@ -540,20 +588,13 @@ func TestAccViewLinks_WithFlagsAndSegments(t *testing.T) {
 	projectName := "view-links-mixed-test-" + projectKey
 	resourceName := "launchdarkly_view_links.test"
 
-	client, err := newClient(os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN), os.Getenv(LAUNCHDARKLY_API_HOST), false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
-	require.NoError(t, err)
-
-	members, _, err := client.ld.AccountMembersApi.GetMembers(client.ctx).Execute()
-	require.NoError(t, err)
-	require.True(t, len(members.Items) > 0, "This test requires at least one member in the account")
-
-	maintainerId := members.Items[0].Id
+	maintainerId := firstMemberIDForTest(t)
 
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config: fmt.Sprintf(testAccViewLinksWithSegmentsCreate, projectName, projectKey, maintainerId),
@@ -620,7 +661,7 @@ func testAccCheckViewForLinksExists(resourceName string) resource.TestCheckFunc 
 			return fmt.Errorf("view links ID is not set")
 		}
 
-		client := testAccProvider.Meta().(*Client)
+		client := mustTestAccClient()
 		betaClient, err := newBetaClient(client.apiKey, client.apiHost, false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
 		if err != nil {
 			return err
@@ -644,7 +685,7 @@ func testAccCheckViewForLinksExists(resourceName string) resource.TestCheckFunc 
 // testAccCheckViewExistsViaAPI verifies that a view exists via direct API call
 func testAccCheckViewExistsViaAPI(projectKey, viewKey string) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
-		client := testAccProvider.Meta().(*Client)
+		client := mustTestAccClient()
 		betaClient, err := newBetaClient(client.apiKey, client.apiHost, false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
 		if err != nil {
 			return fmt.Errorf("failed to create beta client: %v", err)
@@ -665,7 +706,7 @@ func testAccCheckViewExistsViaAPI(projectKey, viewKey string) resource.TestCheck
 // testAccCheckViewLinksAPIState verifies the actual linked flags via API call
 func testAccCheckViewLinksAPIState(projectKey, viewKey string, expectedFlags []string) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
-		client := testAccProvider.Meta().(*Client)
+		client := mustTestAccClient()
 		betaClient, err := newBetaClient(client.apiKey, client.apiHost, false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
 		if err != nil {
 			return fmt.Errorf("failed to create beta client: %v", err)
@@ -722,7 +763,7 @@ func testAccCheckViewLinksAPIState(projectKey, viewKey string, expectedFlags []s
 // testAccCheckViewLinksSegmentsAPIState verifies the actual linked segments via API call
 func testAccCheckViewLinksSegmentsAPIState(projectKey, viewKey string, expectedSegments []string) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
-		client := testAccProvider.Meta().(*Client)
+		client := mustTestAccClient()
 		betaClient, err := newBetaClient(client.apiKey, client.apiHost, false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
 		if err != nil {
 			return fmt.Errorf("failed to create beta client: %v", err)

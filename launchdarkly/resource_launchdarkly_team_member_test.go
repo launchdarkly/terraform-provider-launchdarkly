@@ -4,15 +4,15 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/acctest"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
+	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
+	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/terraform"
 )
 
 const (
 	testAccTeamMemberCreate = `
 resource "launchdarkly_team_member" "test" {
-	email = "%s+wbteste2e@launchdarkly.com"
+	email = "%s@ck0uyqdg.mailosaur.net"
 	first_name = "first"
 	last_name = "last"
 	role = "admin"
@@ -21,7 +21,7 @@ resource "launchdarkly_team_member" "test" {
 `
 	testAccTeamMemberUpdate = `
 resource "launchdarkly_team_member" "test" {
-	email = "%s+wbteste2e@launchdarkly.com"
+	email = "%s@ck0uyqdg.mailosaur.net"
 	first_name = "first"
 	last_name = "last"
 	role = "no_access"
@@ -34,15 +34,15 @@ resource "launchdarkly_custom_role" "test" {
 	key = "%s"
 	name = "Updated - %s"
 	description= "Allow all actions on staging environments"
-	policy_statements {
+	policy_statements = [{
 		actions = ["*"]	
 		effect = "allow"
 		resources = ["proj/*:env/staging"]
-	}
+	}]
 }
 
 resource "launchdarkly_team_member" "custom_role_test" {
-	email = "%s+wbteste2e@launchdarkly.com"
+	email = "%s@ck0uyqdg.mailosaur.net"
 	first_name = "first"
 	last_name = "last"
 	custom_roles = [launchdarkly_custom_role.test.key]
@@ -53,26 +53,26 @@ resource "launchdarkly_custom_role" "test" {
 	key = "%s"
 	name = "Updated - %s"
 	description= "Allow all actions on staging environments"
-	policy_statements {
+	policy_statements = [{
 		actions = ["*"]	
 		effect = "allow"
 		resources = ["proj/*:env/staging"]
-	}
+	}]
 }
 
 resource "launchdarkly_custom_role" "test_2" {
 	key = "%s"
 	name = "Updated - %s"
 	description= "Allow all actions on production environments"
-	policy_statements {
+	policy_statements = [{
 		actions = ["*"]	
 		effect = "allow"
 		resources = ["proj/*:env/production"]
-	}
+	}]
 }
 
 resource "launchdarkly_team_member" "custom_role_test" {
-	email = "%s+wbteste2e@launchdarkly.com"
+	email = "%s@ck0uyqdg.mailosaur.net"
 	first_name = "first"
 	last_name = "last"
 	custom_roles = [launchdarkly_custom_role.test.key]
@@ -83,25 +83,21 @@ resource "launchdarkly_custom_role" "test" {
 	key = "%s"
 	name = "Updated - %s"
 	description= "Allow all actions on testAttribute environments"
-	policy_statements {
+	policy_statements = [{
 		actions = ["*"]	
 		effect = "allow"
 		resources = ["proj/*:env/$${roleAttribute/testAttribute}"]
-	}
+	}]
 }
 
 resource "launchdarkly_team_member" "custom_role_test" {
-	email = "%s+wbteste2e@launchdarkly.com"
+	email = "%s@ck0uyqdg.mailosaur.net"
 	first_name = "first"
 	last_name = "last"
 	custom_roles = [launchdarkly_custom_role.test.key]
-	role_attributes {
-		key = "testAttribute"
-		values = ["staging", "production"]
-	}
-	role_attributes {
-		key = "nonexistentAttribute"
-		values = ["someValue"]
+	role_attributes = {
+		testAttribute       = ["staging", "production"]
+		nonexistentAttribute = ["someValue"]
 	}
 }
 `
@@ -110,25 +106,21 @@ resource "launchdarkly_custom_role" "test" {
 	key = "%s"
 	name = "Updated - %s"
 	description= "Allow all actions on testAttribute environments"
-	policy_statements {
+	policy_statements = [{
 		actions = ["*"]	
 		effect = "allow"
 		resources = ["proj/*:env/$${roleAttribute/testAttribute}"]
-	}
+	}]
 }
 
 resource "launchdarkly_team_member" "custom_role_test" {
-	email = "%s+wbteste2e@launchdarkly.com"
+	email = "%s@ck0uyqdg.mailosaur.net"
 	first_name = "first"
 	last_name = "last"
 	custom_roles = [launchdarkly_custom_role.test.key]
-	role_attributes {
-		key = "newAttribute"
-		values = ["value1", "value2"]
-	}
-	role_attributes {
-		key = "testAttribute"
-		values = ["staging"]
+	role_attributes = {
+		newAttribute  = ["value1", "value2"]
+		testAttribute = ["staging"]
 	}
 }
 `
@@ -137,15 +129,15 @@ resource "launchdarkly_custom_role" "test" {
 	key = "%s"
 	name = "Updated - %s"
 	description= "Allow all actions on testAttribute environments"
-	policy_statements {
+	policy_statements = [{
 		actions = ["*"]	
 		effect = "allow"
 		resources = ["proj/*:env/$${roleAttribute/testAttribute}"]
-	}
+	}]
 }
 
 resource "launchdarkly_team_member" "custom_role_test" {
-	email = "%s+wbteste2e@launchdarkly.com"
+	email = "%s@ck0uyqdg.mailosaur.net"
 	first_name = "first"
 	last_name = "last"
 	custom_roles = [launchdarkly_custom_role.test.key]
@@ -160,14 +152,14 @@ func TestAccTeamMember_CreateAndUpdateGeneric(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers:    testAccProviders,
-		CheckDestroy: testAccCheckTeamMemberDestroy,
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckTeamMemberDestroy,
 		Steps: []resource.TestStep{
 			{
 				Config: fmt.Sprintf(testAccTeamMemberCreate, randomName),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckMemberExists(resourceName),
-					resource.TestCheckResourceAttr(resourceName, EMAIL, fmt.Sprintf("%s+wbteste2e@launchdarkly.com", randomName)),
+					resource.TestCheckResourceAttr(resourceName, EMAIL, fmt.Sprintf("%s@ck0uyqdg.mailosaur.net", randomName)),
 					resource.TestCheckResourceAttr(resourceName, FIRST_NAME, "first"),
 					resource.TestCheckResourceAttr(resourceName, LAST_NAME, "last"),
 					resource.TestCheckResourceAttr(resourceName, ROLE, "admin"),
@@ -183,7 +175,7 @@ func TestAccTeamMember_CreateAndUpdateGeneric(t *testing.T) {
 				Config: fmt.Sprintf(testAccTeamMemberUpdate, randomName),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckMemberExists(resourceName),
-					resource.TestCheckResourceAttr(resourceName, EMAIL, fmt.Sprintf("%s+wbteste2e@launchdarkly.com", randomName)),
+					resource.TestCheckResourceAttr(resourceName, EMAIL, fmt.Sprintf("%s@ck0uyqdg.mailosaur.net", randomName)),
 					resource.TestCheckResourceAttr(resourceName, FIRST_NAME, "first"),
 					resource.TestCheckResourceAttr(resourceName, LAST_NAME, "last"),
 					resource.TestCheckResourceAttr(resourceName, ROLE, "no_access"),
@@ -210,15 +202,15 @@ func TestAccTeamMember_WithCustomRole(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers:    testAccProviders,
-		CheckDestroy: testAccCheckTeamMemberDestroy,
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckTeamMemberDestroy,
 		Steps: []resource.TestStep{
 			{
 				Config: fmt.Sprintf(testAccTeamMemberCustomRoleCreate, roleKey1, roleKey1, randomName),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckCustomRoleExists(roleResourceName1),
 					testAccCheckMemberExists(resourceName),
-					resource.TestCheckResourceAttr(resourceName, EMAIL, fmt.Sprintf("%s+wbteste2e@launchdarkly.com", randomName)),
+					resource.TestCheckResourceAttr(resourceName, EMAIL, fmt.Sprintf("%s@ck0uyqdg.mailosaur.net", randomName)),
 					resource.TestCheckResourceAttr(resourceName, FIRST_NAME, "first"),
 					resource.TestCheckResourceAttr(resourceName, LAST_NAME, "last"),
 					resource.TestCheckResourceAttr(resourceName, "custom_roles.#", "1"),
@@ -235,7 +227,7 @@ func TestAccTeamMember_WithCustomRole(t *testing.T) {
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckCustomRoleExists(roleResourceName2),
 					testAccCheckMemberExists(resourceName),
-					resource.TestCheckResourceAttr(resourceName, EMAIL, fmt.Sprintf("%s+wbteste2e@launchdarkly.com", randomName)),
+					resource.TestCheckResourceAttr(resourceName, EMAIL, fmt.Sprintf("%s@ck0uyqdg.mailosaur.net", randomName)),
 					resource.TestCheckResourceAttr(resourceName, FIRST_NAME, "first"),
 					resource.TestCheckResourceAttr(resourceName, LAST_NAME, "last"),
 					resource.TestCheckResourceAttr(resourceName, "custom_roles.#", "1"),
@@ -254,22 +246,20 @@ func TestAccTeamMember_WithCustomRole(t *testing.T) {
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckCustomRoleExists(roleResourceName1),
 					testAccCheckMemberExists(resourceName),
-					resource.TestCheckResourceAttr(resourceName, EMAIL, fmt.Sprintf("%s+wbteste2e@launchdarkly.com", randomName)),
+					resource.TestCheckResourceAttr(resourceName, EMAIL, fmt.Sprintf("%s@ck0uyqdg.mailosaur.net", randomName)),
 					resource.TestCheckResourceAttr(resourceName, FIRST_NAME, "first"),
 					resource.TestCheckResourceAttr(resourceName, LAST_NAME, "last"),
 					resource.TestCheckResourceAttr(resourceName, "custom_roles.#", "1"),
 					resource.TestCheckResourceAttr(resourceName, "custom_roles.0", roleKey1),
 
-					resource.TestCheckResourceAttr(resourceName, "role_attributes.#", "2"),
-					resource.TestCheckResourceAttr(resourceName, "role_attributes.1.key", "testAttribute"),
-					resource.TestCheckResourceAttr(resourceName, "role_attributes.1.values.#", "2"),
-					resource.TestCheckResourceAttr(resourceName, "role_attributes.1.values.0", "staging"),
-					resource.TestCheckResourceAttr(resourceName, "role_attributes.1.values.1", "production"),
+					resource.TestCheckResourceAttr(resourceName, "role_attributes.%", "2"),
+					resource.TestCheckResourceAttr(resourceName, "role_attributes.testAttribute.#", "2"),
+					resource.TestCheckResourceAttr(resourceName, "role_attributes.testAttribute.0", "staging"),
+					resource.TestCheckResourceAttr(resourceName, "role_attributes.testAttribute.1", "production"),
 					// we allow the setting of role attributes to be set even if they do not otherwise exist
 					// on a custom role
-					resource.TestCheckResourceAttr(resourceName, "role_attributes.0.key", "nonexistentAttribute"),
-					resource.TestCheckResourceAttr(resourceName, "role_attributes.0.values.#", "1"),
-					resource.TestCheckResourceAttr(resourceName, "role_attributes.0.values.0", "someValue"),
+					resource.TestCheckResourceAttr(resourceName, "role_attributes.nonexistentAttribute.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "role_attributes.nonexistentAttribute.0", "someValue"),
 				),
 			},
 			{
@@ -284,20 +274,18 @@ func TestAccTeamMember_WithCustomRole(t *testing.T) {
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckCustomRoleExists(roleResourceName1),
 					testAccCheckMemberExists(resourceName),
-					resource.TestCheckResourceAttr(resourceName, EMAIL, fmt.Sprintf("%s+wbteste2e@launchdarkly.com", randomName)),
+					resource.TestCheckResourceAttr(resourceName, EMAIL, fmt.Sprintf("%s@ck0uyqdg.mailosaur.net", randomName)),
 					resource.TestCheckResourceAttr(resourceName, FIRST_NAME, "first"),
 					resource.TestCheckResourceAttr(resourceName, LAST_NAME, "last"),
 					resource.TestCheckResourceAttr(resourceName, "custom_roles.#", "1"),
 					resource.TestCheckResourceAttr(resourceName, "custom_roles.0", roleKey1),
 
-					resource.TestCheckResourceAttr(resourceName, "role_attributes.#", "2"),
-					resource.TestCheckResourceAttr(resourceName, "role_attributes.1.key", "testAttribute"),
-					resource.TestCheckResourceAttr(resourceName, "role_attributes.1.values.#", "1"),
-					resource.TestCheckResourceAttr(resourceName, "role_attributes.1.values.0", "staging"),
-					resource.TestCheckResourceAttr(resourceName, "role_attributes.0.key", "newAttribute"),
-					resource.TestCheckResourceAttr(resourceName, "role_attributes.0.values.#", "2"),
-					resource.TestCheckResourceAttr(resourceName, "role_attributes.0.values.0", "value1"),
-					resource.TestCheckResourceAttr(resourceName, "role_attributes.0.values.1", "value2"),
+					resource.TestCheckResourceAttr(resourceName, "role_attributes.%", "2"),
+					resource.TestCheckResourceAttr(resourceName, "role_attributes.testAttribute.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "role_attributes.testAttribute.0", "staging"),
+					resource.TestCheckResourceAttr(resourceName, "role_attributes.newAttribute.#", "2"),
+					resource.TestCheckResourceAttr(resourceName, "role_attributes.newAttribute.0", "value1"),
+					resource.TestCheckResourceAttr(resourceName, "role_attributes.newAttribute.1", "value2"),
 				),
 			},
 			{
@@ -311,12 +299,12 @@ func TestAccTeamMember_WithCustomRole(t *testing.T) {
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckCustomRoleExists(roleResourceName1),
 					testAccCheckMemberExists(resourceName),
-					resource.TestCheckResourceAttr(resourceName, EMAIL, fmt.Sprintf("%s+wbteste2e@launchdarkly.com", randomName)),
+					resource.TestCheckResourceAttr(resourceName, EMAIL, fmt.Sprintf("%s@ck0uyqdg.mailosaur.net", randomName)),
 					resource.TestCheckResourceAttr(resourceName, FIRST_NAME, "first"),
 					resource.TestCheckResourceAttr(resourceName, LAST_NAME, "last"),
 					resource.TestCheckResourceAttr(resourceName, "custom_roles.#", "1"),
 					resource.TestCheckResourceAttr(resourceName, "custom_roles.0", roleKey1),
-					resource.TestCheckResourceAttr(resourceName, "role_attributes.#", "0"),
+					resource.TestCheckNoResourceAttr(resourceName, "role_attributes.%"),
 				),
 			},
 			{
@@ -337,7 +325,7 @@ func testAccCheckMemberExists(resourceName string) resource.TestCheckFunc {
 		if rs.Primary.ID == "" {
 			return fmt.Errorf("team member ID is not set")
 		}
-		client := testAccProvider.Meta().(*Client)
+		client := mustTestAccClient()
 		_, _, err := client.ld.AccountMembersApi.GetMember(client.ctx, rs.Primary.ID).Execute()
 		if err != nil {
 			return fmt.Errorf("received an error getting team member. %s", err)
@@ -348,7 +336,7 @@ func testAccCheckMemberExists(resourceName string) resource.TestCheckFunc {
 
 // testAccCheckTeamMemberDestroy verifies the team member has been destroyed
 func testAccCheckTeamMemberDestroy(s *terraform.State) error {
-	client := testAccProvider.Meta().(*Client)
+	client := mustTestAccClient()
 	for _, rs := range s.RootModule().Resources {
 		if rs.Type != "launchdarkly_team_member" {
 			continue

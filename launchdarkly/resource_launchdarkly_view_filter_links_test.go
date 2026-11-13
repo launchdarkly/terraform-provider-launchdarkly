@@ -5,10 +5,9 @@ import (
 	"os"
 	"testing"
 
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/acctest"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
-	"github.com/stretchr/testify/require"
+	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
+	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/terraform"
 )
 
 const (
@@ -16,10 +15,11 @@ const (
 resource "launchdarkly_project" "test" {
 	name = "%s"
 	key  = "%s"
-	environments {
-		name  = "Test Environment"
-		key   = "test-env"
-		color = "000000"
+	environments = {
+		"test-env" = {
+			name  = "Test Environment"
+			color = "000000"
+		}
 	}
 }
 
@@ -36,6 +36,10 @@ resource "launchdarkly_feature_flag" "test1" {
 	key            = "filter-test-flag-1"
 	name           = "Filter Test Flag 1"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 	tags           = ["filter-test"]
 }
 
@@ -44,6 +48,10 @@ resource "launchdarkly_feature_flag" "test2" {
 	key            = "filter-test-flag-2"
 	name           = "Filter Test Flag 2"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 	tags           = ["filter-test"]
 }
 
@@ -63,10 +71,11 @@ resource "launchdarkly_view_filter_links" "test" {
 resource "launchdarkly_project" "test" {
 	name = "%s"
 	key  = "%s"
-	environments {
-		name  = "Test Environment"
-		key   = "test-env"
-		color = "000000"
+	environments = {
+		"test-env" = {
+			name  = "Test Environment"
+			color = "000000"
+		}
 	}
 }
 
@@ -83,6 +92,10 @@ resource "launchdarkly_feature_flag" "test1" {
 	key            = "filter-test-flag-1"
 	name           = "Filter Test Flag 1"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 	tags           = ["filter-test"]
 }
 
@@ -91,6 +104,10 @@ resource "launchdarkly_feature_flag" "test2" {
 	key            = "filter-test-flag-2"
 	name           = "Filter Test Flag 2"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 	tags           = ["filter-test"]
 }
 
@@ -99,6 +116,10 @@ resource "launchdarkly_feature_flag" "test3" {
 	key            = "filter-test-flag-3"
 	name           = "Filter Test Flag 3"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 	tags           = ["filter-test-v2"]
 }
 
@@ -119,10 +140,11 @@ resource "launchdarkly_view_filter_links" "test" {
 resource "launchdarkly_project" "test" {
 	name = "%s"
 	key  = "%s"
-	environments {
-		name  = "Test Environment"
-		key   = "test-env"
-		color = "000000"
+	environments = {
+		"test-env" = {
+			name  = "Test Environment"
+			color = "000000"
+		}
 	}
 }
 
@@ -139,6 +161,10 @@ resource "launchdarkly_feature_flag" "test1" {
 	key            = "filter-test-flag-1"
 	name           = "Filter Test Flag 1"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 	tags           = ["filter-test"]
 }
 
@@ -147,6 +173,10 @@ resource "launchdarkly_feature_flag" "test2" {
 	key            = "filter-test-flag-2"
 	name           = "Filter Test Flag 2"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 	tags           = ["other-tag"]
 }
 
@@ -155,6 +185,10 @@ resource "launchdarkly_feature_flag" "test3" {
 	key            = "filter-test-flag-3"
 	name           = "Filter Test Flag 3"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 	tags           = ["filter-test-v2"]
 }
 
@@ -175,10 +209,11 @@ resource "launchdarkly_view_filter_links" "test" {
 resource "launchdarkly_project" "test" {
 	name = "%s"
 	key  = "%s"
-	environments {
-		name  = "Test Environment"
-		key   = "test-env"
-		color = "000000"
+	environments = {
+		"test-env" = {
+			name  = "Test Environment"
+			color = "000000"
+		}
 	}
 }
 
@@ -202,7 +237,7 @@ resource "launchdarkly_view_filter_links" "test" {
 	project_key                   = launchdarkly_project.test.key
 	view_key                      = launchdarkly_view.test.key
 	segment_filter                = "tags anyOf [\"segment-filter-test\"]"
-	segment_filter_environment_id = launchdarkly_project.test.environments[0].client_side_id
+	segment_filter_environment_id = launchdarkly_project.test.environments["test-env"].client_side_id
 
 	depends_on = [
 		launchdarkly_segment.test1
@@ -214,10 +249,11 @@ resource "launchdarkly_view_filter_links" "test" {
 resource "launchdarkly_project" "test" {
 	name = "%s"
 	key  = "%s"
-	environments {
-		name  = "Test Environment"
-		key   = "test-env"
-		color = "000000"
+	environments = {
+		"test-env" = {
+			name  = "Test Environment"
+			color = "000000"
+		}
 	}
 }
 
@@ -234,6 +270,10 @@ resource "launchdarkly_feature_flag" "test1" {
 	key            = "both-filter-flag-1"
 	name           = "Both Filter Flag 1"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 	tags           = ["both-filter-test"]
 }
 
@@ -250,7 +290,7 @@ resource "launchdarkly_view_filter_links" "test" {
 	view_key                      = launchdarkly_view.test.key
 	flag_filter                   = "tags:both-filter-test"
 	segment_filter                = "tags anyOf [\"both-filter-test\"]"
-	segment_filter_environment_id = launchdarkly_project.test.environments[0].client_side_id
+	segment_filter_environment_id = launchdarkly_project.test.environments["test-env"].client_side_id
 
 	depends_on = [
 		launchdarkly_feature_flag.test1,
@@ -263,10 +303,11 @@ resource "launchdarkly_view_filter_links" "test" {
 resource "launchdarkly_project" "test" {
 	name = "%s"
 	key  = "%s"
-	environments {
-		name  = "Test Environment"
-		key   = "test-env"
-		color = "000000"
+	environments = {
+		"test-env" = {
+			name  = "Test Environment"
+			color = "000000"
+		}
 	}
 }
 
@@ -283,6 +324,10 @@ resource "launchdarkly_feature_flag" "trigger1" {
 	key            = "trigger-flag-1"
 	name           = "Trigger Flag 1"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 	tags           = ["trigger-test"]
 }
 
@@ -291,6 +336,10 @@ resource "launchdarkly_feature_flag" "trigger2" {
 	key            = "trigger-flag-2"
 	name           = "Trigger Flag 2"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 	tags           = ["trigger-test"]
 }
 
@@ -311,10 +360,11 @@ resource "launchdarkly_view_filter_links" "test" {
 resource "launchdarkly_project" "test" {
 	name = "%s"
 	key  = "%s"
-	environments {
-		name  = "Test Environment"
-		key   = "test-env"
-		color = "000000"
+	environments = {
+		"test-env" = {
+			name  = "Test Environment"
+			color = "000000"
+		}
 	}
 }
 
@@ -331,6 +381,10 @@ resource "launchdarkly_feature_flag" "trigger1" {
 	key            = "trigger-flag-1"
 	name           = "Trigger Flag 1"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 	tags           = ["trigger-test"]
 }
 
@@ -339,6 +393,10 @@ resource "launchdarkly_feature_flag" "trigger2" {
 	key            = "trigger-flag-2"
 	name           = "Trigger Flag 2"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 	tags           = ["other-tag"]
 }
 
@@ -359,10 +417,11 @@ resource "launchdarkly_view_filter_links" "test" {
 resource "launchdarkly_project" "test" {
 	name = "%s"
 	key  = "%s"
-	environments {
-		name  = "Test Environment"
-		key   = "test-env"
-		color = "000000"
+	environments = {
+		"test-env" = {
+			name  = "Test Environment"
+			color = "000000"
+		}
 	}
 }
 
@@ -379,6 +438,10 @@ resource "launchdarkly_feature_flag" "toggle1" {
 	key            = "toggle-flag-1"
 	name           = "Toggle Flag 1"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 	tags           = ["toggle-test"]
 }
 
@@ -387,6 +450,10 @@ resource "launchdarkly_feature_flag" "toggle2" {
 	key            = "toggle-flag-2"
 	name           = "Toggle Flag 2"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 	tags           = ["toggle-test"]
 }
 
@@ -407,10 +474,11 @@ resource "launchdarkly_view_filter_links" "test" {
 resource "launchdarkly_project" "test" {
 	name = "%s"
 	key  = "%s"
-	environments {
-		name  = "Test Environment"
-		key   = "test-env"
-		color = "000000"
+	environments = {
+		"test-env" = {
+			name  = "Test Environment"
+			color = "000000"
+		}
 	}
 }
 
@@ -427,6 +495,10 @@ resource "launchdarkly_feature_flag" "toggle1" {
 	key            = "toggle-flag-1"
 	name           = "Toggle Flag 1"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 	tags           = ["toggle-test"]
 }
 
@@ -435,6 +507,10 @@ resource "launchdarkly_feature_flag" "toggle2" {
 	key            = "toggle-flag-2"
 	name           = "Toggle Flag 2"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 	tags           = ["toggle-test"]
 }
 
@@ -455,10 +531,11 @@ resource "launchdarkly_view_filter_links" "test" {
 resource "launchdarkly_project" "test" {
 	name = "%s"
 	key  = "%s"
-	environments {
-		name  = "Test Environment"
-		key   = "test-env"
-		color = "000000"
+	environments = {
+		"test-env" = {
+			name  = "Test Environment"
+			color = "000000"
+		}
 	}
 }
 
@@ -490,7 +567,7 @@ resource "launchdarkly_view_filter_links" "test" {
 	project_key                   = launchdarkly_project.test.key
 	view_key                      = launchdarkly_view.test.key
 	segment_filter                = "tags anyOf [\"segment-trigger-test\"]"
-	segment_filter_environment_id = launchdarkly_project.test.environments[0].client_side_id
+	segment_filter_environment_id = launchdarkly_project.test.environments["test-env"].client_side_id
 	reconcile_on_apply            = true
 
 	depends_on = [
@@ -504,10 +581,11 @@ resource "launchdarkly_view_filter_links" "test" {
 resource "launchdarkly_project" "test" {
 	name = "%s"
 	key  = "%s"
-	environments {
-		name  = "Test Environment"
-		key   = "test-env"
-		color = "000000"
+	environments = {
+		"test-env" = {
+			name  = "Test Environment"
+			color = "000000"
+		}
 	}
 }
 
@@ -539,7 +617,7 @@ resource "launchdarkly_view_filter_links" "test" {
 	project_key                   = launchdarkly_project.test.key
 	view_key                      = launchdarkly_view.test.key
 	segment_filter                = "tags anyOf [\"segment-trigger-test\"]"
-	segment_filter_environment_id = launchdarkly_project.test.environments[0].client_side_id
+	segment_filter_environment_id = launchdarkly_project.test.environments["test-env"].client_side_id
 	reconcile_on_apply            = true
 
 	depends_on = [
@@ -553,10 +631,11 @@ resource "launchdarkly_view_filter_links" "test" {
 resource "launchdarkly_project" "test" {
 	name = "%s"
 	key  = "%s"
-	environments {
-		name  = "Test Environment"
-		key   = "test-env"
-		color = "000000"
+	environments = {
+		"test-env" = {
+			name  = "Test Environment"
+			color = "000000"
+		}
 	}
 }
 
@@ -573,6 +652,10 @@ resource "launchdarkly_feature_flag" "test1" {
 	key            = "both-filter-flag-1"
 	name           = "Both Filter Flag 1"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 	tags           = ["both-filter-test"]
 }
 
@@ -607,20 +690,13 @@ func TestAccViewFilterLinks_FlagFilter(t *testing.T) {
 	projectName := "view-filter-links-test-" + projectKey
 	resourceName := "launchdarkly_view_filter_links.test"
 
-	client, err := newClient(os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN), os.Getenv(LAUNCHDARKLY_API_HOST), false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
-	require.NoError(t, err)
-
-	members, _, err := client.ld.AccountMembersApi.GetMembers(client.ctx).Execute()
-	require.NoError(t, err)
-	require.True(t, len(members.Items) > 0, "This test requires at least one member in the account")
-
-	maintainerID := members.Items[0].Id
+	maintainerID := firstMemberIDForTest(t)
 
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config: fmt.Sprintf(testAccViewFilterLinksCreateFlagFilter, projectName, projectKey, maintainerID),
@@ -684,20 +760,13 @@ func TestAccViewFilterLinks_SegmentFilter(t *testing.T) {
 	projectName := "view-filter-links-seg-test-" + projectKey
 	resourceName := "launchdarkly_view_filter_links.test"
 
-	client, err := newClient(os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN), os.Getenv(LAUNCHDARKLY_API_HOST), false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
-	require.NoError(t, err)
-
-	members, _, err := client.ld.AccountMembersApi.GetMembers(client.ctx).Execute()
-	require.NoError(t, err)
-	require.True(t, len(members.Items) > 0, "This test requires at least one member in the account")
-
-	maintainerID := members.Items[0].Id
+	maintainerID := firstMemberIDForTest(t)
 
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config: fmt.Sprintf(testAccViewFilterLinksCreateSegmentFilter, projectName, projectKey, maintainerID),
@@ -728,20 +797,13 @@ func TestAccViewFilterLinks_BothFilters(t *testing.T) {
 	projectName := "view-filter-links-both-test-" + projectKey
 	resourceName := "launchdarkly_view_filter_links.test"
 
-	client, err := newClient(os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN), os.Getenv(LAUNCHDARKLY_API_HOST), false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
-	require.NoError(t, err)
-
-	members, _, err := client.ld.AccountMembersApi.GetMembers(client.ctx).Execute()
-	require.NoError(t, err)
-	require.True(t, len(members.Items) > 0, "This test requires at least one member in the account")
-
-	maintainerID := members.Items[0].Id
+	maintainerID := firstMemberIDForTest(t)
 
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config: fmt.Sprintf(testAccViewFilterLinksCreateBothFilters, projectName, projectKey, maintainerID),
@@ -791,20 +853,13 @@ func TestAccViewFilterLinks_Triggers(t *testing.T) {
 	projectName := "view-filter-links-trigger-test-" + projectKey
 	resourceName := "launchdarkly_view_filter_links.test"
 
-	client, err := newClient(os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN), os.Getenv(LAUNCHDARKLY_API_HOST), false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
-	require.NoError(t, err)
-
-	members, _, err := client.ld.AccountMembersApi.GetMembers(client.ctx).Execute()
-	require.NoError(t, err)
-	require.True(t, len(members.Items) > 0, "This test requires at least one member in the account")
-
-	maintainerID := members.Items[0].Id
+	maintainerID := firstMemberIDForTest(t)
 
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				// Step 1: Both flags tagged "trigger-test" → both should be linked
@@ -842,20 +897,13 @@ func TestAccViewFilterLinks_ReconcileOnApplyToggle(t *testing.T) {
 	projectName := "view-filter-links-toggle-test-" + projectKey
 	resourceName := "launchdarkly_view_filter_links.test"
 
-	client, err := newClient(os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN), os.Getenv(LAUNCHDARKLY_API_HOST), false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
-	require.NoError(t, err)
-
-	members, _, err := client.ld.AccountMembersApi.GetMembers(client.ctx).Execute()
-	require.NoError(t, err)
-	require.True(t, len(members.Items) > 0, "This test requires at least one member in the account")
-
-	maintainerID := members.Items[0].Id
+	maintainerID := firstMemberIDForTest(t)
 
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				// Step 1: baseline (default behavior) should converge to an empty plan.
@@ -902,20 +950,13 @@ func TestAccViewFilterLinks_SegmentTriggers(t *testing.T) {
 	projectName := "view-filter-links-segment-trigger-test-" + projectKey
 	resourceName := "launchdarkly_view_filter_links.test"
 
-	client, err := newClient(os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN), os.Getenv(LAUNCHDARKLY_API_HOST), false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
-	require.NoError(t, err)
-
-	members, _, err := client.ld.AccountMembersApi.GetMembers(client.ctx).Execute()
-	require.NoError(t, err)
-	require.True(t, len(members.Items) > 0, "This test requires at least one member in the account")
-
-	maintainerID := members.Items[0].Id
+	maintainerID := firstMemberIDForTest(t)
 
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				// Step 1: both segments match the filter and should be linked.
@@ -954,7 +995,7 @@ func testAccCheckViewForFilterLinksExists(resourceName string) resource.TestChec
 			return fmt.Errorf("view filter links ID is not set")
 		}
 
-		client := testAccProvider.Meta().(*Client)
+		client := mustTestAccClient()
 		betaClient, err := newBetaClient(client.apiKey, client.apiHost, false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
 		if err != nil {
 			return err

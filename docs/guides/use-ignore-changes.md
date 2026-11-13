@@ -12,7 +12,9 @@ This guide explains when and how to use the [ignore_changes lifecycle meta-argum
 
 ### Use Terraform to create a resource in LaunchDarkly, and manage the resource through the UI
 
-For example, you might provision teams in LaunchDarkly using Terraform, then allow team members to add new members to the team in the UI without needing to update Terraform. This is a case where you simply want to _create_ the team using Terraform, but then manage the team for the rest of it's lifecycle through the UI. In order to continue managing the team using Terraform you would need to manually update your manifest to reflect the current state of the team, and then apply.
+For example, you might provision teams in LaunchDarkly using Terraform, then allow team members to add new members to the team in the UI without needing to update Terraform. This is a case where you want to _create_ the team using Terraform, but then manage the team for the rest of its lifecycle through the UI. In order to continue managing the team using Terraform you would need to manually update your manifest to reflect the current state of the team, and then apply.
+
+Here is an example:
 
 ```terraform
 data "launchdarkly_team_member" "spongebob" {
@@ -31,9 +33,11 @@ resource "launchdarkly_team" "krusty_krab_staff" {
 }
 ```
 
-### When a resource is modified as a side-effect of other actions in LaunchDarkly
+### When another action in LaunchDarkly modifies a resource
 
-Sometimes resources in LaunchDarkly are modified as a side-effect of other actions in LaunchDarkly. For example, if you create an experiment using a flag, and then try to apply a Terraform manifest that manages that flag, it will fail. As a workaround for this you can use `ignore_changes` to tell Terraform to not try to update the modified resources.
+Sometimes another action in LaunchDarkly modifies a resource as a side effect. For example, if you create an experiment using a flag, and then try to apply a Terraform manifest that manages that flag, it will fail. As a workaround for this you can use `ignore_changes` to tell Terraform to not try to update the modified resources.
+
+Here is an example:
 
 ```terraform
 resource "launchdarkly_feature_flag" "example" {
@@ -43,16 +47,18 @@ resource "launchdarkly_feature_flag" "example" {
   description = "This demonstrates using ignore_changes"
 
   variation_type = "boolean"
-  variations {
-    value = "true"
-    name  = "True"
-  }
-  variations {
-    value = "false"
-    name  = "False"
-  }
+  variations = [
+    {
+      value = "true"
+      name  = "True"
+    },
+    {
+      value = "false"
+      name  = "False"
+    },
+  ]
 
-  defaults {
+  defaults = {
     on_variation  = 1
     off_variation = 0
   }

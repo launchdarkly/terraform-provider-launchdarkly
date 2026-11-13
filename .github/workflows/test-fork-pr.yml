@@ -1,0 +1,166 @@
+# Runs generate and acceptance tests on fork PRs after a maintainer adds the "safe-to-test" label.
+# This uses pull_request_target so OIDC tokens are available (fork PRs cannot get OIDC tokens
+# via the regular pull_request trigger). The label gate ensures untrusted code is reviewed
+# before it runs with access to secrets.
+#
+# Security: Only the "labeled" event triggers this workflow. New pushes to the fork do NOT
+# re-trigger tests — see remove-safe-to-test-label.yml which strips the label on new commits,
+# forcing a maintainer to re-review and re-label.
+#
+# Cache safety: Go module/build caching is explicitly disabled (cache: false) in this workflow.
+# pull_request_target runs share the base repo's cache scope — a fork's code could poison cache
+# entries that subsequent pushes to main would restore. See:
+# https://adnanthekhan.com/2024/05/06/the-monsters-in-your-build-cache-github-actions-cache-poisoning/
+name: "Test (Fork PRs)"
+
+on:
+  pull_request_target:
+    types: [labeled]
+
+permissions:
+  contents: read
+
+jobs:
+  generate:
+    if: >-
+      github.event.label.name == 'safe-to-test'
+      && github.event.pull_request.head.repo.full_name != github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - uses: aws-actions/configure-aws-credentials@e7f100cf4c008499ea8adda475de1042d6975c7b # v6.2.0
+        with:
+          audience: https://github.com/launchdarkly
+          aws-region: us-east-1
+          role-to-assume: arn:aws:iam::061661829416:role/github-actions-terraform-provider-launchdarkly
+          role-session-name: GitHubActionsGenerate_run-${{ github.run_id }}
+      - id: get-launchdarkly-access-token
+        uses: dkershner6/aws-ssm-getparameters-action@4fcb4872421f387a6c43058473acc1b22443fe13 # v2.0.3
+        with:
+          parameterPairs: |
+            /global/services/github/terraform-provider/launchdarkly-access-token = LAUNCHDARKLY_ACCESS_TOKEN
+      - uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
+        with:
+          go-version-file: "go.mod"
+          cache: false
+      - uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
+        with:
+          terraform_wrapper: false
+      - run: make generate
+      - name: git diff
+        run: |
+          git diff --compact-summary --exit-code || \
+            (echo; echo "Unexpected difference in directories after code generation. Run 'make generate' command and commit."; exit 1)
+
+  test:
+    if: >-
+      github.event.label.name == 'safe-to-test'
+      && github.event.pull_request.head.repo.full_name != github.repository
+    name: Acceptance Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      id-token: write
+      contents: read
+    env:
+      TF_ACC: "1"
+    strategy:
+      # Let every leg run even when one fails: with the default fail-fast a
+      # single red leg cancels the others before their tests execute, which
+      # hides their real status (and blocks re-running them individually).
+      fail-fast: false
+      matrix:
+        # Keep this list identical to the test_case list in test.yml (that file's
+        # build job runs the check; this workflow has no build job of its own).
+        # TestCIMatrixCoversAcceptanceTests (launchdarkly/ci_matrix_test.go) fails
+        # the build job if the two drift apart, or if either list gains an entry
+        # that matches no test / loses coverage of a TestAcc* function.
+        test_case:
+          - TestAccAIAgentGraph_
+          - TestAccAIConfig_
+          - TestAccAIConfigVariation
+          - TestAccAITool
+          - TestAccDataSource
+          - TestAccAccessToken
+          - TestAccAnnouncement_
+          - TestAccAuditLogSubscription
+          - TestAccBigSegmentStoreIntegration_
+          - TestAccContextKind
+          - TestAccCustomRole
+          - TestAccDestination
+          - TestAccEnvironment
+          - TestAccFeatureFlag_
+          - TestAccFeatureFlagEnvironment
+          # Not covered by TestAccFeatureFlag_ — the trailing underscore in that
+          # prefix does not match TestAccFeatureFlagViewKeys_*.
+          - TestAccFeatureFlagViewKeys
+          - TestAccFlagImportConfiguration_
+          - TestAccFlagTemplates
+          - TestAccFlagTrigger
+          - TestAccIpAllowlistConfig
+          - TestAccIpAllowlistEntry
+          - TestAccIntegrationDeliveryConfiguration_
+          - TestAccMetricGroup_
+          - TestAccMetric_
+          - TestAccModelConfig
+          - TestAccOAuthClient_
+          - TestAccProject
+          - TestAccRelayProxy
+          - TestAccSdkKey_
+          - TestAccSegment
+          - TestAccTeamMember_CreateAndUpdateGeneric
+          - TestAccTeamMember_WithCustomRole
+          - TestAccTeam_
+          - TestAccTeamRoleMapping_
+          - TestAccView
+          - TestAccWebhook
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - uses: aws-actions/configure-aws-credentials@e7f100cf4c008499ea8adda475de1042d6975c7b # v6.2.0
+        with:
+          audience: https://github.com/launchdarkly
+          aws-region: us-east-1
+          role-to-assume: arn:aws:iam::061661829416:role/github-actions-terraform-provider-launchdarkly
+          role-session-name: GitHubActionsTest_run-${{ github.run_id }}
+      - id: get-launchdarkly-access-token
+        uses: dkershner6/aws-ssm-getparameters-action@4fcb4872421f387a6c43058473acc1b22443fe13 # v2.0.3
+        with:
+          parameterPairs: |
+            /global/services/github/terraform-provider/launchdarkly-access-token = LAUNCHDARKLY_ACCESS_TOKEN
+      - uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
+        with:
+          go-version-file: "go.mod"
+          cache: false
+      - run: go mod download
+      - uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
+        with:
+          terraform_wrapper: false
+      - name: Set Terraform path for acceptance tests
+        run: echo "TF_ACC_TERRAFORM_PATH=$(command -v terraform)" >> "$GITHUB_ENV"
+      - name: Run Test
+        run: |
+          echo "Running test case: ${{ matrix.test_case }}"
+          TESTARGS="-run ${{ matrix.test_case }}" make testacc-with-retry
+
+  check-success:
+    name: "Check Success (Fork)"
+    needs:
+      - generate
+      - test
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Evaluate results
+        run: |
+          if printf '${{ toJSON(needs) }}' | grep --quiet --extended-regexp --ignore-case '"result": "(failure|cancelled)"'; then
+            printf "Tests failed or workflow cancelled:\n\n${{ toJSON(needs) }}"
+            exit 1
+          fi
