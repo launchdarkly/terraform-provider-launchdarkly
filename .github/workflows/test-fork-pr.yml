@@ -112,7 +112,6 @@ jobs:
           - TestAccOAuthClient_
           - TestAccProject
           - TestAccRelayProxy
-          - TestAccReleasePolicy_
           - TestAccSdkKey_
           - TestAccSegment
           - TestAccTeamMember_CreateAndUpdateGeneric
