@@ -155,6 +155,7 @@ const (
 	RECONCILE_ON_APPLY                        = "reconcile_on_apply"
 	REDIRECT_URI                              = "redirect_uri"
 	RELEASE_METHOD                            = "release_method"
+	RELEASE_PLAN_KEY                          = "release_plan_key"
 	RELEASE_POLICY_KEYS                       = "release_policy_keys"
 	REQUIRED                                  = "required"
 	REQUIRED_APPROVAL_TAGS                    = "required_approval_tags"
