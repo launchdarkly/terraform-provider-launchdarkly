@@ -1,0 +1,55 @@
+# Cuts beta prereleases (e.g. v3.4.0-beta.1) from the preview branch. Mirrors
+# release.yml but uses the canary release-please config and goreleaser config.
+on:
+  push:
+    branches: [ preview ]
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    permissions: 
+      contents: write
+      pull-requests: write
+    outputs:
+      release-created: ${{ steps.release.outputs.release_created }}
+      upload-tag-name: ${{ steps.release.outputs.tag_name }}
+    steps:
+      - uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
+        id: release
+        with:
+          config-file: release-please-config-canary.json
+          manifest-file: .release-please-manifest-canary.json
+          target-branch: preview
+
+  goreleaser:
+    runs-on: ubuntu-latest
+    needs: [ release-please ]
+    permissions:
+      contents: write
+    if: ${{ needs.release-please.outputs.upload-tag-name != ''}}
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          # Allow goreleaser to access older tag information.
+          fetch-depth: 0
+      - name: Create tag
+        run: | 
+          git tag ${{ needs.release-please.outputs.upload-tag-name }} 
+          git push origin ${{ needs.release-please.outputs.upload-tag-name }}
+      - uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
+        with:
+          go-version-file: 'go.mod'
+          cache: true
+      - uses: crazy-max/ghaction-import-gpg@2dc316deee8e90f13e1a351ab510b4d5bc0c82cd # v7.0.0
+        name: Import GPG key
+        id: import_gpg
+        with:
+          gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
+          passphrase: ${{ secrets.PASSPHRASE }}
+      - uses: goreleaser/goreleaser-action@5daf1e915a5f0af01ddbcd89a43b8061ff4f1a89 # v7.2.2
+        name: Run GoReleaser
+        with:
+          args: release --clean --config .goreleaser-canary.yml
+        env:
+          # GitHub sets the GITHUB_TOKEN secret automatically.
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GPG_FINGERPRINT: ${{ steps.import_gpg.outputs.fingerprint }}
