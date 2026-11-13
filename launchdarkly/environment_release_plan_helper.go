@@ -145,18 +145,28 @@ func getEnvironmentReleasePlan(ctx context.Context, client *Client, projectKey, 
 	return plan, res, err
 }
 
-func createEnvironmentReleasePlan(ctx context.Context, client *Client, projectKey, envKey string, body environmentReleasePlanRequest) (environmentReleasePlanRep, error) {
+func createEnvironmentReleasePlan(ctx context.Context, client *Client, projectKey, envKey string, body environmentReleasePlanRequest) (environmentReleasePlanRep, *http.Response, error) {
 	var plan environmentReleasePlanRep
 	endpoint := environmentReleasePlanEndpoint(client.apiHost, projectKey, envKey, "")
-	_, err := doEnvironmentReleasePlanRequest(ctx, client, http.MethodPost, endpoint, body, &plan)
-	return plan, err
+	res, err := doEnvironmentReleasePlanRequest(ctx, client, http.MethodPost, endpoint, body, &plan)
+	return plan, res, err
 }
 
-func updateEnvironmentReleasePlan(ctx context.Context, client *Client, projectKey, envKey, key string, body environmentReleasePlanRequest) (environmentReleasePlanRep, error) {
+func updateEnvironmentReleasePlan(ctx context.Context, client *Client, projectKey, envKey, key string, body environmentReleasePlanRequest) (environmentReleasePlanRep, *http.Response, error) {
 	var plan environmentReleasePlanRep
 	endpoint := environmentReleasePlanEndpoint(client.apiHost, projectKey, envKey, key)
-	_, err := doEnvironmentReleasePlanRequest(ctx, client, http.MethodPut, endpoint, body, &plan)
-	return plan, err
+	res, err := doEnvironmentReleasePlanRequest(ctx, client, http.MethodPut, endpoint, body, &plan)
+	return plan, res, err
+}
+
+// The API returns 403 both when the account is not enabled for release plans
+// and when the token's role lacks the release plan actions.
+func environmentReleasePlanAccessError(res *http.Response, err error) error {
+	if err != nil && res != nil && res.StatusCode == http.StatusForbidden {
+		return fmt.Errorf("%w. Environment release plans are currently available to selected accounts only; "+
+			"check that this account is enabled for them and that the token's role allows release plan actions", err)
+	}
+	return err
 }
 
 func deleteEnvironmentReleasePlan(ctx context.Context, client *Client, projectKey, envKey, key string) (*http.Response, error) {

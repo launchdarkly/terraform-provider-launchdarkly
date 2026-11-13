@@ -23,7 +23,7 @@ func (d *EnvironmentReleasePlanDataSource) Metadata(_ context.Context, req datas
 
 func (d *EnvironmentReleasePlanDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "Provides a LaunchDarkly environment release plan data source.\n\n~> **Beta:** This data source wraps a beta LaunchDarkly API (the `release-plans` endpoints, accessed with the `LD-API-Version: beta` header). Beta resources may change or be removed in future versions.\n\nThis data source allows you to retrieve release plan information from a LaunchDarkly environment.",
+		Description: "Provides a LaunchDarkly environment release plan data source.\n\n~> **Beta:** This data source wraps a beta LaunchDarkly API (the `release-plans` endpoints, accessed with the `LD-API-Version: beta` header). Beta resources may change or be removed in future versions.\n\n~> **Limited availability:** Environment release plans are currently enabled for selected accounts only. On other accounts the LaunchDarkly API rejects these requests with a 403.\n\nThis data source allows you to retrieve release plan information from a LaunchDarkly environment.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				Computed:    true,
@@ -147,9 +147,9 @@ func (d *EnvironmentReleasePlanDataSource) Read(ctx context.Context, req datasou
 	envKey := data.EnvironmentKey.ValueString()
 	key := data.Key.ValueString()
 
-	plan, _, err := getEnvironmentReleasePlan(ctx, d.client, projectKey, envKey, key)
+	plan, res, err := getEnvironmentReleasePlan(ctx, d.client, projectKey, envKey, key)
 	if err != nil {
-		resp.Diagnostics.AddError(handleLdapiErr(err).Error(), "")
+		resp.Diagnostics.AddError(handleLdapiErr(environmentReleasePlanAccessError(res, err)).Error(), "")
 		return
 	}
 

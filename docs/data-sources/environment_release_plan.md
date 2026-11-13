@@ -5,6 +5,7 @@ subcategory: ""
 description: |-
   Provides a LaunchDarkly environment release plan data source.
   ~> Beta: This data source wraps a beta LaunchDarkly API (the release-plans endpoints, accessed with the LD-API-Version: beta header). Beta resources may change or be removed in future versions.
+  ~> Limited availability: Environment release plans are currently enabled for selected accounts only. On other accounts the LaunchDarkly API rejects these requests with a 403.
   This data source allows you to retrieve release plan information from a LaunchDarkly environment.
 ---
 
@@ -13,6 +14,8 @@ description: |-
 Provides a LaunchDarkly environment release plan data source.
 
 ~> **Beta:** This data source wraps a beta LaunchDarkly API (the `release-plans` endpoints, accessed with the `LD-API-Version: beta` header). Beta resources may change or be removed in future versions.
+
+~> **Limited availability:** Environment release plans are currently enabled for selected accounts only. On other accounts the LaunchDarkly API rejects these requests with a 403.
 
 This data source allows you to retrieve release plan information from a LaunchDarkly environment.
 

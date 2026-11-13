@@ -53,7 +53,8 @@ func testAccDataSourceEnvironmentReleasePlanScaffold(client *Client, projectKey 
 			},
 		},
 	}
-	return createEnvironmentReleasePlan(context.Background(), client, project.Key, "test", post)
+	plan, _, err := createEnvironmentReleasePlan(context.Background(), client, project.Key, "test", post)
+	return plan, err
 }
 
 func TestAccDataSourceEnvironmentReleasePlan_noMatchReturnsError(t *testing.T) {
@@ -63,6 +64,7 @@ func TestAccDataSourceEnvironmentReleasePlan_noMatchReturnsError(t *testing.T) {
 	}
 	client, err := newClient(os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN), os.Getenv(LAUNCHDARKLY_API_HOST), false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
 	require.NoError(t, err)
+	skipIfEnvironmentReleasePlansUnavailable(t, client)
 	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	projectBody := ldapi.ProjectPost{
 		Name: "Terraform Environment Release Plan Test Project",
@@ -96,6 +98,7 @@ func TestAccDataSourceEnvironmentReleasePlan_exists(t *testing.T) {
 	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	client, err := newClient(os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN), os.Getenv(LAUNCHDARKLY_API_HOST), false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
 	require.NoError(t, err)
+	skipIfEnvironmentReleasePlansUnavailable(t, client)
 
 	plan, err := testAccDataSourceEnvironmentReleasePlanScaffold(client, projectKey)
 	require.NoError(t, err)

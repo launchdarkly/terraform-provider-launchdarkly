@@ -54,6 +54,8 @@ func (r *EnvironmentReleasePlanResource) Schema(_ context.Context, _ resource.Sc
 
 ~> **Beta:** This resource wraps a beta LaunchDarkly API (the ` + "`release-plans`" + ` endpoints, accessed with the ` + "`LD-API-Version: beta`" + ` header). Beta resources may change or be removed in future versions.
 
+~> **Limited availability:** Environment release plans are currently enabled for selected accounts only. On other accounts the LaunchDarkly API rejects these requests with a 403.
+
 This resource lets you create and manage [release plans](https://launchdarkly.com/docs/home/releases) within a LaunchDarkly environment. A release plan defines how a flag release progresses through ordered phases and steps, which contexts each phase reaches, and which metrics are monitored along the way. Environment release plans replace release policies.`,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
@@ -239,9 +241,9 @@ func (r *EnvironmentReleasePlanResource) Create(ctx context.Context, req resourc
 		ProgressiveRelease: progressive,
 	}
 
-	created, err := createEnvironmentReleasePlan(ctx, r.client, projectKey, envKey, post)
+	created, res, err := createEnvironmentReleasePlan(ctx, r.client, projectKey, envKey, post)
 	if err != nil {
-		addLdapiError(&resp.Diagnostics, fmt.Sprintf("Error creating environment release plan %q in environment %q of project %q", key, envKey, projectKey), err)
+		addLdapiError(&resp.Diagnostics, fmt.Sprintf("Error creating environment release plan %q in environment %q of project %q", key, envKey, projectKey), environmentReleasePlanAccessError(res, err))
 		return
 	}
 
@@ -269,7 +271,7 @@ func (r *EnvironmentReleasePlanResource) Read(ctx context.Context, req resource.
 			resp.State.RemoveResource(ctx)
 			return
 		}
-		addLdapiError(&resp.Diagnostics, fmt.Sprintf("Failed to get environment release plan %q in environment %q of project %q", key, envKey, projectKey), err)
+		addLdapiError(&resp.Diagnostics, fmt.Sprintf("Failed to get environment release plan %q in environment %q of project %q", key, envKey, projectKey), environmentReleasePlanAccessError(res, err))
 		return
 	}
 
@@ -303,9 +305,9 @@ func (r *EnvironmentReleasePlanResource) Update(ctx context.Context, req resourc
 		ProgressiveRelease: progressive,
 	}
 
-	updated, err := updateEnvironmentReleasePlan(ctx, r.client, projectKey, envKey, key, put)
+	updated, res, err := updateEnvironmentReleasePlan(ctx, r.client, projectKey, envKey, key, put)
 	if err != nil {
-		addLdapiError(&resp.Diagnostics, fmt.Sprintf("Error updating environment release plan %q in environment %q of project %q", key, envKey, projectKey), err)
+		addLdapiError(&resp.Diagnostics, fmt.Sprintf("Error updating environment release plan %q in environment %q of project %q", key, envKey, projectKey), environmentReleasePlanAccessError(res, err))
 		return
 	}
 
@@ -329,7 +331,7 @@ func (r *EnvironmentReleasePlanResource) Delete(ctx context.Context, req resourc
 		if isStatusNotFound(res) {
 			return
 		}
-		addLdapiError(&resp.Diagnostics, fmt.Sprintf("Error deleting environment release plan %q", key), err)
+		addLdapiError(&resp.Diagnostics, fmt.Sprintf("Error deleting environment release plan %q", key), environmentReleasePlanAccessError(res, err))
 	}
 }
 

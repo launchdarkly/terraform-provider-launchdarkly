@@ -5,6 +5,7 @@ subcategory: ""
 description: |-
   Provides a LaunchDarkly environment release plan resource.
   ~> Beta: This resource wraps a beta LaunchDarkly API (the release-plans endpoints, accessed with the LD-API-Version: beta header). Beta resources may change or be removed in future versions.
+  ~> Limited availability: Environment release plans are currently enabled for selected accounts only. On other accounts the LaunchDarkly API rejects these requests with a 403.
   This resource lets you create and manage release plans https://launchdarkly.com/docs/home/releases within a LaunchDarkly environment. A release plan defines how a flag release progresses through ordered phases and steps, which contexts each phase reaches, and which metrics are monitored along the way. Environment release plans replace release policies.
 ---
 
@@ -13,6 +14,8 @@ description: |-
 Provides a LaunchDarkly environment release plan resource.
 
 ~> **Beta:** This resource wraps a beta LaunchDarkly API (the `release-plans` endpoints, accessed with the `LD-API-Version: beta` header). Beta resources may change or be removed in future versions.
+
+~> **Limited availability:** Environment release plans are currently enabled for selected accounts only. On other accounts the LaunchDarkly API rejects these requests with a 403.
 
 This resource lets you create and manage [release plans](https://launchdarkly.com/docs/home/releases) within a LaunchDarkly environment. A release plan defines how a flag release progresses through ordered phases and steps, which contexts each phase reaches, and which metrics are monitored along the way. Environment release plans replace release policies.
 

@@ -3,6 +3,7 @@ package launchdarkly
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
@@ -140,7 +141,10 @@ func TestAccEnvironmentReleasePlan_CreateUpdate(t *testing.T) {
 	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	resourceName := "launchdarkly_environment_release_plan.test"
 	resource.Test(t, resource.TestCase{
-		PreCheck:                 func() { testAccPreCheck(t) },
+		PreCheck: func() {
+			testAccPreCheck(t)
+			skipIfEnvironmentReleasePlansUnavailable(t, mustTestAccClient())
+		},
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		CheckDestroy:             testAccCheckEnvironmentReleasePlanDestroy,
 		Steps: []resource.TestStep{
@@ -206,6 +210,21 @@ func TestAccEnvironmentReleasePlan_CreateUpdate(t *testing.T) {
 			},
 		},
 	})
+}
+
+// Environment release plans are enabled per account. The probe reads a plan
+// that cannot exist: an entitled account answers 404, an unentitled one 403.
+func skipIfEnvironmentReleasePlansUnavailable(t *testing.T, client *Client) {
+	t.Helper()
+	projects, _, err := client.ld.ProjectsApi.GetProjects(client.ctx).Limit(1).Expand("environments").Execute()
+	if err != nil || len(projects.Items) == 0 || projects.Items[0].Environments == nil || len(projects.Items[0].Environments.Items) == 0 {
+		return
+	}
+	project := projects.Items[0]
+	_, res, err := getEnvironmentReleasePlan(context.Background(), client, project.Key, project.Environments.Items[0].Key, "entitlement-probe")
+	if err != nil && res != nil && res.StatusCode == http.StatusForbidden {
+		t.Skipf("environment release plans are not enabled for this account: %s", err)
+	}
 }
 
 func testAccCheckEnvironmentReleasePlanExists(resourceName string) resource.TestCheckFunc {
