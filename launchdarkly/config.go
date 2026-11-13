@@ -23,6 +23,7 @@ var version = "unreleased"
 
 const (
 	APIVersion              = "20240415"
+	BetaAPIVersion          = "beta"
 	MAX_RETRIES             = 12
 	RETRY_WAIT_MIN          = 200 * time.Millisecond
 	RETRY_WAIT_MAX          = 10000 * time.Millisecond
@@ -97,7 +98,7 @@ func newClient(token string, apiHost string, oauth bool, httpTimeoutSeconds, max
 }
 
 func newBetaClient(token string, apiHost string, oauth bool, httpTimeoutSeconds, maxConcurrent int) (*Client, error) {
-	return baseNewClient(token, apiHost, oauth, httpTimeoutSeconds, "beta", maxConcurrent)
+	return baseNewClient(token, apiHost, oauth, httpTimeoutSeconds, BetaAPIVersion, maxConcurrent)
 }
 
 func newLDClientConfig(apiHost string, httpTimeoutSeconds int, apiVersion string, retryPolicy retryablehttp.CheckRetry) *ldapi.Configuration {
@@ -119,7 +120,7 @@ func newLDClientConfig(apiHost string, httpTimeoutSeconds int, apiVersion string
 	cfg.HTTPClient.Timeout = time.Duration(httpTimeoutSeconds) * time.Second
 	// Views beta endpoints pass LDAPIVersion explicitly per request in the generated client.
 	// Setting a default beta API version header here would duplicate LD-API-Version.
-	if apiVersion != "" && apiVersion != "beta" {
+	if apiVersion != "" && apiVersion != BetaAPIVersion {
 		cfg.AddDefaultHeader("LD-API-Version", apiVersion)
 	}
 	return cfg

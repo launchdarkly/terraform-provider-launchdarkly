@@ -21,6 +21,15 @@ import (
 	ldapi "github.com/launchdarkly/api-client-go/v25"
 )
 
+type frameworkClauseModel struct {
+	Attribute   types.String `tfsdk:"attribute"`
+	Op          types.String `tfsdk:"op"`
+	Values      types.List   `tfsdk:"values"`
+	ValueType   types.String `tfsdk:"value_type"`
+	Negate      types.Bool   `tfsdk:"negate"`
+	ContextKind types.String `tfsdk:"context_kind"`
+}
+
 var frameworkClauseAttrTypes = map[string]attr.Type{
 	ATTRIBUTE:    types.StringType,
 	OP:           types.StringType,
@@ -109,15 +118,7 @@ func frameworkClausesFromList(ctx context.Context, list types.List) ([]ldapi.Cla
 	if list.IsNull() || list.IsUnknown() {
 		return []ldapi.Clause{}, diags
 	}
-	type clauseModel struct {
-		Attribute   types.String `tfsdk:"attribute"`
-		Op          types.String `tfsdk:"op"`
-		Values      types.List   `tfsdk:"values"`
-		ValueType   types.String `tfsdk:"value_type"`
-		Negate      types.Bool   `tfsdk:"negate"`
-		ContextKind types.String `tfsdk:"context_kind"`
-	}
-	var models []clauseModel
+	var models []frameworkClauseModel
 	d := list.ElementsAs(ctx, &models, false)
 	diags.Append(d...)
 	if diags.HasError() {
