@@ -34,8 +34,8 @@ data "launchdarkly_team_members" "example" {
 
 ### Read-Only
 
-- `id` (String) The ID of this resource.
-- `team_members` (List of Object) The members that were found. The following attributes are available for each member:
+- `id` (String) A hash of the returned member IDs.
+- `team_members` (Attributes List) The members that were found. The following attributes are available for each member:
 
 - `id` - The 24 character alphanumeric ID of the team member.
 
@@ -52,18 +52,10 @@ data "launchdarkly_team_members" "example" {
 
 Read-Only:
 
-- `custom_roles` (Set of String)
-- `email` (String)
-- `first_name` (String)
-- `id` (String)
-- `last_name` (String)
-- `role` (String)
-- `role_attributes` (Set of Object) (see [below for nested schema](#nestedobjatt--team_members--role_attributes))
-
-<a id="nestedobjatt--team_members--role_attributes"></a>
-### Nested Schema for `team_members.role_attributes`
-
-Read-Only:
-
-- `key` (String)
-- `values` (List of String)
+- `custom_roles` (Set of String) The list of custom roles keys associated with the team member. Custom roles are only available to customers on an Enterprise plan. To learn more, [read about our pricing](https://launchdarkly.com/pricing/). To upgrade your plan, [contact LaunchDarkly Sales](https://launchdarkly.com/contact-sales/).
+- `email` (String) The unique email address associated with the team member.
+- `first_name` (String) The team member's given name.
+- `id` (String) The 24 character alphanumeric ID of the team member.
+- `last_name` (String) The team member's family name.
+- `role` (String) The role associated with team member. Possible roles are `owner`, `reader`, `writer`, or `admin`.
+- `role_attributes` (Map of List of String) A map of role attributes, keyed by the role attribute key with a string array of resource keys as each value. For example, if your policy statement defines the resource `"proj/$${roleAttribute/testAttribute}"`, the key would be `testAttribute` and the values the keys of the projects you wanted to assign access to.

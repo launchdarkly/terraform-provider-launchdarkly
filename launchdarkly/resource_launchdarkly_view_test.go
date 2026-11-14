@@ -6,10 +6,9 @@ import (
 	"regexp"
 	"testing"
 
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/acctest"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
-	"github.com/stretchr/testify/require"
+	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
+	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/terraform"
 )
 
 const (
@@ -17,10 +16,11 @@ const (
 resource "launchdarkly_project" "test" {
 	key  = "%s"
 	name = "Test project"
-	environments {
-		name  = "Test Environment"
-		key   = "test-env"
-		color = "000000"
+	environments = {
+		"test-env" = {
+			name  = "Test Environment"
+			color = "000000"
+		}
 	}
 }
 
@@ -38,10 +38,11 @@ resource "launchdarkly_view" "test" {
 resource "launchdarkly_project" "test" {
 	key  = "%s"
 	name = "Test project"
-	environments {
-		name  = "Test Environment"
-		key   = "test-env"
-		color = "000000"
+	environments = {
+		"test-env" = {
+			name  = "Test Environment"
+			color = "000000"
+		}
 	}
 }
 
@@ -50,7 +51,6 @@ resource "launchdarkly_view" "test" {
 	key               = "%s"
 	name              = "%s"
 	description       = "%s"
-	generate_sdk_keys = true
 	tags              = ["test", "updated"]
 	maintainer_id     = "%s"
 }
@@ -60,10 +60,11 @@ resource "launchdarkly_view" "test" {
 resource "launchdarkly_project" "test" {
 	key  = "%s"
 	name = "Test project"
-	environments {
-		name  = "Test Environment"
-		key   = "test-env"
-		color = "000000"
+	environments = {
+		"test-env" = {
+			name  = "Test Environment"
+			color = "000000"
+		}
 	}
 }
 
@@ -88,10 +89,11 @@ resource "launchdarkly_view" "test" {
 resource "launchdarkly_project" "test" {
 	key  = "%s"
 	name = "Test project"
-	environments {
-		name  = "Test Environment"
-		key   = "test-env"
-		color = "000000"
+	environments = {
+		"test-env" = {
+			name  = "Test Environment"
+			color = "000000"
+		}
 	}
 }
 
@@ -122,21 +124,14 @@ func TestAccView_Update(t *testing.T) {
 	updatedViewDescription := "Updated test view description"
 	resourceName := "launchdarkly_view.test"
 
-	client, err := newClient(os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN), os.Getenv(LAUNCHDARKLY_API_HOST), false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
-	require.NoError(t, err)
-
-	members, _, err := client.ld.AccountMembersApi.GetMembers(client.ctx).Execute()
-	require.NoError(t, err)
-	require.True(t, len(members.Items) > 0, "This test requires at least one member in the account")
-
-	maintainerId := members.Items[0].Id
+	maintainerId := firstMemberIDForTest(t)
 
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers:    testAccProviders,
-		CheckDestroy: testAccCheckViewDestroy,
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckViewDestroy,
 		Steps: []resource.TestStep{
 			{
 				Config: fmt.Sprintf(testAccViewCreate, projectKey, viewKey, viewName, viewDescription, maintainerId),
@@ -146,8 +141,6 @@ func TestAccView_Update(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, KEY, viewKey),
 					resource.TestCheckResourceAttr(resourceName, NAME, viewName),
 					resource.TestCheckResourceAttr(resourceName, DESCRIPTION, viewDescription),
-					resource.TestCheckResourceAttr(resourceName, GENERATE_SDK_KEYS, "false"),
-					resource.TestCheckResourceAttr(resourceName, ARCHIVED, "false"),
 					resource.TestCheckResourceAttr(resourceName, "tags.#", "1"),
 				),
 			},
@@ -162,7 +155,6 @@ func TestAccView_Update(t *testing.T) {
 					testAccCheckViewExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, NAME, updatedViewName),
 					resource.TestCheckResourceAttr(resourceName, DESCRIPTION, updatedViewDescription),
-					resource.TestCheckResourceAttr(resourceName, GENERATE_SDK_KEYS, "true"),
 					resource.TestCheckResourceAttr(resourceName, "tags.#", "2"),
 				),
 			},
@@ -179,8 +171,6 @@ func TestAccView_Update(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, KEY, viewKey),
 					resource.TestCheckResourceAttr(resourceName, NAME, viewName),
 					resource.TestCheckResourceAttr(resourceName, DESCRIPTION, viewDescription),
-					resource.TestCheckResourceAttr(resourceName, GENERATE_SDK_KEYS, "false"),
-					resource.TestCheckResourceAttr(resourceName, ARCHIVED, "false"),
 					resource.TestCheckResourceAttr(resourceName, "tags.#", "1"),
 				),
 			},
@@ -206,21 +196,14 @@ func TestAccView_WithMaintainer(t *testing.T) {
 	viewDescription := "Test view description"
 	resourceName := "launchdarkly_view.test"
 
-	client, err := newClient(os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN), os.Getenv(LAUNCHDARKLY_API_HOST), false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
-	require.NoError(t, err)
-
-	members, _, err := client.ld.AccountMembersApi.GetMembers(client.ctx).Execute()
-	require.NoError(t, err)
-	require.True(t, len(members.Items) > 0, "This test requires at least one member in the account")
-
-	maintainerId := members.Items[0].Id
+	maintainerId := firstMemberIDForTest(t)
 
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers:    testAccProviders,
-		CheckDestroy: testAccCheckViewDestroy,
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckViewDestroy,
 		Steps: []resource.TestStep{
 			// Set the view to be maintained by a team
 			{
@@ -228,7 +211,12 @@ func TestAccView_WithMaintainer(t *testing.T) {
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckViewExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, MAINTAINER_TEAM_KEY, teamKey),
-					resource.TestCheckResourceAttr(resourceName, MAINTAINER_ID, ""),
+					// Framework-served resource: the unused maintainer side is
+					// null (absent), not "". The view Read picks one side per
+					// API response; the other stays unset. See
+					// resource_view_framework.go (default both to null, then
+					// switch on Maintainer.Kind).
+					resource.TestCheckNoResourceAttr(resourceName, MAINTAINER_ID),
 				),
 			},
 			{
@@ -242,7 +230,7 @@ func TestAccView_WithMaintainer(t *testing.T) {
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckViewExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, MAINTAINER_ID, maintainerId),
-					resource.TestCheckResourceAttr(resourceName, MAINTAINER_TEAM_KEY, ""),
+					resource.TestCheckNoResourceAttr(resourceName, MAINTAINER_TEAM_KEY),
 				),
 			},
 			{
@@ -256,7 +244,7 @@ func TestAccView_WithMaintainer(t *testing.T) {
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckViewExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, MAINTAINER_TEAM_KEY, teamKey),
-					resource.TestCheckResourceAttr(resourceName, MAINTAINER_ID, ""),
+					resource.TestCheckNoResourceAttr(resourceName, MAINTAINER_ID),
 				),
 			},
 			{
@@ -279,24 +267,48 @@ func TestAccView_InvalidKey(t *testing.T) {
 	viewName := "Test View"
 	viewDescription := "Test view description"
 
-	client, err := newClient(os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN), os.Getenv(LAUNCHDARKLY_API_HOST), false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
-	require.NoError(t, err)
-
-	members, _, err := client.ld.AccountMembersApi.GetMembers(client.ctx).Execute()
-	require.NoError(t, err)
-	require.True(t, len(members.Items) > 0, "This test requires at least one member in the account")
-
-	maintainerId := members.Items[0].Id
+	maintainerId := firstMemberIDForTest(t)
 
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config:      fmt.Sprintf(testAccViewCreate, projectKey, invalidViewKey, viewName, viewDescription, maintainerId),
 				ExpectError: regexp.MustCompile("invalid value for key"),
+			},
+		},
+	})
+}
+
+// TestAccView_UppercaseKeyRejected pins the REL-15205 guard: LaunchDarkly
+// normalises view keys to lowercase, so an uppercase key in configuration must
+// fail during validation rather than being accepted and then reading back
+// lowercased (a permanent diff that forces a replace on every plan).
+func TestAccView_UppercaseKeyRejected(t *testing.T) {
+	accTest := os.Getenv("TF_ACC")
+	if accTest == "" {
+		t.SkipNow()
+	}
+
+	projectKey := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	uppercaseViewKey := "Test-View"
+	viewName := "Test View"
+	viewDescription := "Test view description"
+
+	maintainerId := firstMemberIDForTest(t)
+
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck: func() {
+			testAccPreCheck(t)
+		},
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config:      fmt.Sprintf(testAccViewCreate, projectKey, uppercaseViewKey, viewName, viewDescription, maintainerId),
+				ExpectError: regexp.MustCompile("to be lowercase"),
 			},
 		},
 	})
@@ -314,8 +326,13 @@ func testAccCheckViewExists(resourceName string) resource.TestCheckFunc {
 		projectKey := rs.Primary.Attributes[PROJECT_KEY]
 		viewKey := rs.Primary.Attributes[KEY]
 
-		client := testAccProvider.Meta().(*Client)
-		_, _, err := getView(client, projectKey, viewKey)
+		client := mustTestAccClient()
+		betaClient, err := newBetaClient(client.apiKey, client.apiHost, false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
+		if err != nil {
+			return fmt.Errorf("failed to create beta client: %v", err)
+		}
+
+		_, _, err = getView(betaClient, projectKey, viewKey)
 		if err != nil {
 			return fmt.Errorf("received an error getting view. %s", err)
 		}
@@ -324,7 +341,12 @@ func testAccCheckViewExists(resourceName string) resource.TestCheckFunc {
 }
 
 func testAccCheckViewDestroy(s *terraform.State) error {
-	client := testAccProvider.Meta().(*Client)
+	client := mustTestAccClient()
+	betaClient, err := newBetaClient(client.apiKey, client.apiHost, false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
+	if err != nil {
+		return fmt.Errorf("failed to create beta client: %v", err)
+	}
+
 	for _, rs := range s.RootModule().Resources {
 		if rs.Type != "launchdarkly_view" {
 			continue
@@ -332,7 +354,7 @@ func testAccCheckViewDestroy(s *terraform.State) error {
 		projectKey := rs.Primary.Attributes[PROJECT_KEY]
 		viewKey := rs.Primary.Attributes[KEY]
 
-		_, res, err := getView(client, projectKey, viewKey)
+		_, res, err := getView(betaClient, projectKey, viewKey)
 		if isStatusNotFound(res) {
 			continue
 		}

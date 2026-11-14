@@ -6,9 +6,8 @@ import (
 	"regexp"
 	"testing"
 
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/acctest"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
-	"github.com/stretchr/testify/require"
+	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
+	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 )
 
 const (
@@ -27,11 +26,11 @@ func TestAccDataSourceView_noMatchReturnsError(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config:      fmt.Sprintf(testAccDataSourceViewBasic, projectKey, viewKey),
-				ExpectError: regexp.MustCompile(`Project not found`),
+				ExpectError: regexp.MustCompile(`failed to get view with key "nonexistent-view-key" in project "nonexistent-project-key"`),
 			},
 		},
 	})
@@ -50,31 +49,25 @@ func TestAccDataSourceView_exists(t *testing.T) {
 	viewDescription := "Test view description"
 	tag := "test-tag"
 
-	client, err := newClient(os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN), os.Getenv(LAUNCHDARKLY_API_HOST), false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
-	require.NoError(t, err)
-
-	members, _, err := client.ld.AccountMembersApi.GetMembers(client.ctx).Execute()
-	require.NoError(t, err)
-	require.True(t, len(members.Items) > 0, "This test requires at least one member in the account")
-
-	maintainerId := members.Items[0].Id
+	maintainerId := firstMemberIDForTest(t)
 
 	resourceName := "data.launchdarkly_view.test"
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config: fmt.Sprintf(`
 resource "launchdarkly_project" "test" {
 	name = "%s"
 	key  = "%s"
-	environments {
-		name  = "Test Environment"
-		key   = "test-env"
-		color = "000000"
+	environments = {
+		"test-env" = {
+			name  = "Test Environment"
+			color = "000000"
+		}
 	}
 }
 
@@ -102,8 +95,6 @@ data "launchdarkly_view" "test" {
 					resource.TestCheckResourceAttr(resourceName, DESCRIPTION, viewDescription),
 					resource.TestCheckResourceAttrSet(resourceName, ID),
 					resource.TestCheckResourceAttr(resourceName, "tags.#", "1"),
-					resource.TestCheckResourceAttr(resourceName, GENERATE_SDK_KEYS, "false"),
-					resource.TestCheckResourceAttr(resourceName, ARCHIVED, "false"),
 				),
 			},
 		},
@@ -120,30 +111,24 @@ func TestAccDataSourceView_withLinkedFlags(t *testing.T) {
 	projectName := "view-discovery-test-" + projectKey
 	resourceName := "data.launchdarkly_view.test"
 
-	client, err := newClient(os.Getenv(LAUNCHDARKLY_ACCESS_TOKEN), os.Getenv(LAUNCHDARKLY_API_HOST), false, DEFAULT_HTTP_TIMEOUT_S, DEFAULT_MAX_CONCURRENCY)
-	require.NoError(t, err)
-
-	members, _, err := client.ld.AccountMembersApi.GetMembers(client.ctx).Execute()
-	require.NoError(t, err)
-	require.True(t, len(members.Items) > 0, "This test requires at least one member in the account")
-
-	maintainerId := members.Items[0].Id
+	maintainerId := firstMemberIDForTest(t)
 
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config: fmt.Sprintf(`
 resource "launchdarkly_project" "test" {
 	name = "%s"
 	key  = "%s"
-	environments {
-		name  = "Test Environment"
-		key   = "test-env"
-		color = "000000"
+	environments = {
+		"test-env" = {
+			name  = "Test Environment"
+			color = "000000"
+		}
 	}
 }
 
@@ -160,6 +145,10 @@ resource "launchdarkly_feature_flag" "test1" {
 	key         = "test-flag-1"
 	name        = "Test Flag 1"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 }
 
 resource "launchdarkly_feature_flag" "test2" {
@@ -167,6 +156,10 @@ resource "launchdarkly_feature_flag" "test2" {
 	key         = "test-flag-2"
 	name        = "Test Flag 2"
 	variation_type = "boolean"
+	variations = [
+		{ value = "true" },
+		{ value = "false" },
+	]
 }
 
 resource "launchdarkly_view_links" "test" {

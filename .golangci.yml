@@ -1,0 +1,20 @@
+# golangci-lint v2 configuration.
+#
+# Added alongside the golangci-lint-action v6 -> v9 bump (REL-14074, Node 24
+# migration). golangci-lint-action only ships a Node 24 runtime from v9.0.0,
+# which requires the golangci-lint v2 binary.
+#
+# golangci-lint v1 implicitly applied a set of default issue exclusions
+# (the old `issues.exclude-use-default: true`, which hid e.g. unchecked
+# `resp.Body.Close()` errcheck findings). v2 no longer applies those unless a
+# config opts in. The exclusion presets below reproduce the v1 defaults so the
+# lint job's behavior is unchanged by the version bump.
+version: "2"
+
+linters:
+  exclusions:
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling

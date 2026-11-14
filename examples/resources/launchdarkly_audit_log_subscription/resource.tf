@@ -1,7 +1,7 @@
 resource "launchdarkly_audit_log_subscription" "example" {
   integration_key = "datadog"
   name            = "Example Datadog Subscription"
-  config {
+  config = {
     api_key  = "yoursecretkey"
     host_url = "https://api.datadoghq.com"
   }
@@ -9,9 +9,9 @@ resource "launchdarkly_audit_log_subscription" "example" {
     "integrations",
     "terraform"
   ]
-  statements {
+  statements = [{
     actions   = ["*"]
     effect    = "allow"
     resources = ["proj/*:env/*:flag/*"]
-  }
+  }]
 }

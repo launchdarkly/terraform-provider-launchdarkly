@@ -6,9 +6,9 @@ import (
 	"regexp"
 	"testing"
 
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/acctest"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
-	ldapi "github.com/launchdarkly/api-client-go/v17"
+	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
+	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	ldapi "github.com/launchdarkly/api-client-go/v25"
 	"github.com/stretchr/testify/require"
 )
 
@@ -31,28 +31,28 @@ data "launchdarkly_team_members" "test" {
 }
 
 func TestAccDataSourceTeamMembers_noMatchReturnsError(t *testing.T) {
-	emails := `["does-not-exist+wbteste2e@launchdarkly.com"]`
+	emails := `["does-not-exist@ck0uyqdg.mailosaur.net"]`
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config:      testAccDataSourceTeamMembersConfig(emails),
-				ExpectError: regexp.MustCompile(`Error: No team member found for email: does-not-exist\+wbteste2e@launchdarkly.com`),
+				ExpectError: regexp.MustCompile(`Error: No team member found for email: does-not-exist@ck0uyqdg\.mailosaur\.net`),
 			},
 		},
 	})
 }
 
 func TestAccDataSourceTeamMembers_noMatchReturnsNoErrorIfIgnoreMissing(t *testing.T) {
-	emails := `["does-not-exist+wbteste2e@launchdarkly.com"]`
+	emails := `["does-not-exist@ck0uyqdg.mailosaur.net"]`
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config: testAccDataSourceTeamMembersConfigIgnoreMissing(emails),
@@ -74,7 +74,7 @@ func TestAccDataSourceTeamMembers_exists(t *testing.T) {
 
 	teamMembers := make([]ldapi.Member, 0, teamMemberCount)
 	for i := 0; i < teamMemberCount; i++ {
-		randomEmail := fmt.Sprintf("%s+wbteste2e@launchdarkly.com", acctest.RandStringFromCharSet(10, "abcdefghijklmnopqrstuvwxyz012346789+"))
+		randomEmail := fmt.Sprintf("%s@ck0uyqdg.mailosaur.net", acctest.RandStringFromCharSet(10, "abcdefghijklmnopqrstuvwxyz012346789+"))
 		member, err := testAccDataSourceTeamMemberCreate(client, randomEmail)
 		require.NoError(t, err)
 		teamMembers = append(teamMembers, *member)
@@ -88,7 +88,7 @@ func TestAccDataSourceTeamMembers_exists(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config: testAccDataSourceTeamMembersConfig(fmt.Sprintf(`["%s","%s","%s"]`, testMember.Email, testMember2.Email, testMember3.Email)),

@@ -1,8 +1,8 @@
 resource "launchdarkly_relay_proxy_configuration" "example" {
   name = "example-config"
-  policy {
+  policy = [{
     actions   = ["*"]
     effect    = "allow"
     resources = ["proj/*:env/*"]
-  }
+  }]
 }

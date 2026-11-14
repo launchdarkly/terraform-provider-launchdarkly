@@ -3,55 +3,25 @@
 page_title: "launchdarkly_release_policy Data Source - launchdarkly"
 subcategory: ""
 description: |-
-  Provides a LaunchDarkly release policy data source. This data source is still in beta.
-  This data source allows you to retrieve release policy information from your LaunchDarkly organization.
-  Learn more about release policies here https://launchdarkly.com/docs/home/releases/release-policies, and read our API docs here https://launchdarkly.com/docs/api/release-policies-beta/.
+  Provides a LaunchDarkly release policy data source.
+  ~> Beta: This data source wraps a beta LaunchDarkly API (the release-policies endpoints, accessed with the LD-API-Version: beta header). Beta resources may change or be removed in future versions.
+  This data source allows you to retrieve release policy information from your LaunchDarkly project.
 ---
 
 # launchdarkly_release_policy (Data Source)
 
-Provides a LaunchDarkly release policy data source. This data source is still in beta.
+Provides a LaunchDarkly release policy data source.
 
-This data source allows you to retrieve release policy information from your LaunchDarkly organization.
+~> **Beta:** This data source wraps a beta LaunchDarkly API (the `release-policies` endpoints, accessed with the `LD-API-Version: beta` header). Beta resources may change or be removed in future versions.
 
-Learn more about [release policies here](https://launchdarkly.com/docs/home/releases/release-policies), and read our [API docs here](https://launchdarkly.com/docs/api/release-policies-beta/).
+This data source allows you to retrieve release policy information from your LaunchDarkly project.
 
 ## Example Usage
 
 ```terraform
-# Example: Get release policy information
-data "launchdarkly_release_policy" "example" {
+data "launchdarkly_release_policy" "guarded_checkout" {
   project_key = "example-project"
-  key         = "example-policy"
-}
-
-# Use the release policy information
-output "policy_details" {
-  value = {
-    name           = data.launchdarkly_release_policy.example.name
-    release_method = data.launchdarkly_release_policy.example.release_method
-    environments   = data.launchdarkly_release_policy.example.scope[0].environment_keys
-  }
-}
-
-# Example: Check if policy is guarded release
-locals {
-  is_guarded_release = data.launchdarkly_release_policy.example.release_method == "guarded-release"
-  has_rollback       = length(data.launchdarkly_release_policy.example.guarded_release_config) > 0 ? data.launchdarkly_release_policy.example.guarded_release_config[0].rollback_on_regression : false
-}
-
-# Example: Conditional logic based on release policy
-resource "launchdarkly_feature_flag" "conditional_flag" {
-  project_key    = data.launchdarkly_release_policy.example.project_key
-  key            = "my-feature-flag"
-  name           = "My Feature Flag"
-  variation_type = "boolean"
-
-  # Use release policy configuration to set defaults
-  defaults {
-    on_variation  = local.is_guarded_release ? 0 : 1
-    off_variation = 0
-  }
+  key         = "guarded-checkout"
 }
 ```
 
@@ -60,37 +30,38 @@ resource "launchdarkly_feature_flag" "conditional_flag" {
 
 ### Required
 
-- `key` (String) The release policy's unique key.
-- `project_key` (String) The project key.
+- `key` (String) The unique human-readable key that references the release policy.
+- `project_key` (String) The release policy's project key.
 
 ### Read-Only
 
-- `guarded_release_config` (List of Object) Configuration for guarded release. (see [below for nested schema](#nestedatt--guarded_release_config))
-- `id` (String) The ID of this resource.
-- `name` (String) The release policy's name.
-- `progressive_release_config` (List of Object) Configuration for progressive release. (see [below for nested schema](#nestedatt--progressive_release_config))
-- `release_method` (String) The release method for the release policy.
-- `scope` (List of Object) The scope configuration for the release policy. (see [below for nested schema](#nestedatt--scope))
+- `guarded_release_config` (Attributes) Configuration for a `guarded-release`. (see [below for nested schema](#nestedatt--guarded_release_config))
+- `id` (String) The ID in the format `project_key/key`.
+- `name` (String) The human-friendly name for the release policy.
+- `progressive_release_config` (Attributes) Configuration for a `progressive-release`. (see [below for nested schema](#nestedatt--progressive_release_config))
+- `rank` (Number) The rank (priority) of the release policy within the project.
+- `release_method` (String) The release method this policy uses. One of `guarded-release` or `progressive-release`.
+- `scope` (Attributes) The scope that determines which environments and flags this release policy applies to. (see [below for nested schema](#nestedatt--scope))
 
 <a id="nestedatt--guarded_release_config"></a>
 ### Nested Schema for `guarded_release_config`
 
 Read-Only:
 
-- `metric_group_keys` (Set of String)
-- `metric_keys` (Set of String)
-- `min_sample_size` (Number)
-- `rollback_on_regression` (Boolean)
-- `rollout_context_kind` (String)
-- `stages` (List of Object) (see [below for nested schema](#nestedobjatt--guarded_release_config--stages))
+- `metric_group_keys` (Set of String) The set of metric group keys monitored during the guarded release.
+- `metric_keys` (Set of String) The set of metric keys monitored during the guarded release.
+- `min_sample_size` (Number) The minimum number of samples required before the policy makes a release decision.
+- `rollback_on_regression` (Boolean) Whether to automatically roll back the release when a monitored metric regresses.
+- `rollout_context_kind` (String) The context kind key used as the randomization unit for the rollout.
+- `stages` (Attributes List) An ordered list of rollout stages. (see [below for nested schema](#nestedatt--guarded_release_config--stages))
 
-<a id="nestedobjatt--guarded_release_config--stages"></a>
+<a id="nestedatt--guarded_release_config--stages"></a>
 ### Nested Schema for `guarded_release_config.stages`
 
 Read-Only:
 
-- `allocation` (Number)
-- `duration_millis` (Number)
+- `allocation` (Number) The percentage of traffic (0-100) allocated to the new variation during this stage.
+- `duration_millis` (Number) The duration of this stage, in milliseconds.
 
 
 
@@ -99,16 +70,16 @@ Read-Only:
 
 Read-Only:
 
-- `rollout_context_kind` (String)
-- `stages` (List of Object) (see [below for nested schema](#nestedobjatt--progressive_release_config--stages))
+- `rollout_context_kind` (String) The context kind key used as the randomization unit for the rollout.
+- `stages` (Attributes List) An ordered list of rollout stages. (see [below for nested schema](#nestedatt--progressive_release_config--stages))
 
-<a id="nestedobjatt--progressive_release_config--stages"></a>
+<a id="nestedatt--progressive_release_config--stages"></a>
 ### Nested Schema for `progressive_release_config.stages`
 
 Read-Only:
 
-- `allocation` (Number)
-- `duration_millis` (Number)
+- `allocation` (Number) The percentage of traffic (0-100) allocated to the new variation during this stage.
+- `duration_millis` (Number) The duration of this stage, in milliseconds.
 
 
 
@@ -117,5 +88,5 @@ Read-Only:
 
 Read-Only:
 
-- `environment_keys` (Set of String)
-- `flag_tag_keys` (Set of String)
+- `environment_keys` (Set of String) The set of environment keys this policy applies to.
+- `flag_tag_keys` (Set of String) The set of flag tags this policy applies to.

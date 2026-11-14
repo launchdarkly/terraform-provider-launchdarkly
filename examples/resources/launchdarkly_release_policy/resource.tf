@@ -1,49 +1,55 @@
-resource "launchdarkly_release_policy" "guarded_example" {
-  project_key    = "example-project"
-  key            = "production-guarded"
-  name           = "Production Guarded Release"
+resource "launchdarkly_release_policy" "guarded_checkout" {
+  project_key    = launchdarkly_project.example.key
+  key            = "guarded-checkout"
+  name           = "Guarded checkout rollout"
   release_method = "guarded-release"
 
-  scope {
-    environment_keys = ["production", "staging"]
+  scope = {
+    environment_keys = ["production"]
+    flag_tag_keys    = ["checkout"]
   }
 
-  guarded_release_config {
+  guarded_release_config = {
+    rollout_context_kind   = "user"
+    min_sample_size        = 1000
     rollback_on_regression = true
-    min_sample_size        = 100
+    metric_keys            = [launchdarkly_metric.completed_purchase.key]
 
-    stages {
-      allocation      = 25000
-      duration_millis = 60000
-    }
-    stages {
-      allocation      = 50000
-      duration_millis = 0
-    }
+    stages = [
+      {
+        allocation      = 10
+        duration_millis = 3600000
+      },
+      {
+        allocation      = 50
+        duration_millis = 3600000
+      },
+    ]
   }
 }
 
-resource "launchdarkly_release_policy" "progressive_example" {
-  project_key    = "example-project"
-  key            = "staging-progressive"
-  name           = "Staging Progressive Release"
+resource "launchdarkly_release_policy" "progressive_rollout" {
+  project_key    = launchdarkly_project.example.key
+  key            = "progressive-rollout"
+  name           = "Progressive rollout"
   release_method = "progressive-release"
 
-  progressive_release_config {
-    stages {
-      allocation      = 25000
-      duration_millis = 60000
-    }
-    stages {
-      allocation      = 50000
-      duration_millis = 120000
-    }
-    stages {
-      allocation      = 100000
-      duration_millis = 0
-    }
+  scope = {
+    environment_keys = ["production"]
+  }
+
+  progressive_release_config = {
+    rollout_context_kind = "user"
+
+    stages = [
+      {
+        allocation      = 20
+        duration_millis = 3600000
+      },
+      {
+        allocation      = 60
+        duration_millis = 3600000
+      },
+    ]
   }
 }
-
-# To import an existing release policy, use:
-# terraform import launchdarkly_release_policy.guarded_example example-project/production-guarded

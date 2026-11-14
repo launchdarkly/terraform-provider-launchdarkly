@@ -7,13 +7,15 @@ import (
 	"log"
 	"math"
 	"net/http"
+	"net/url"
 	"strconv"
+	"strings"
 	"time"
 
 	"golang.org/x/sync/semaphore"
 
 	retryablehttp "github.com/hashicorp/go-retryablehttp"
-	ldapi "github.com/launchdarkly/api-client-go/v17"
+	ldapi "github.com/launchdarkly/api-client-go/v25"
 )
 
 //nolint:staticcheck // The version string gets updated at build time using -ldflags
@@ -21,6 +23,7 @@ var version = "unreleased"
 
 const (
 	APIVersion              = "20240415"
+	BetaAPIVersion          = "beta"
 	MAX_RETRIES             = 12
 	RETRY_WAIT_MIN          = 200 * time.Millisecond
 	RETRY_WAIT_MAX          = 10000 * time.Millisecond
@@ -41,6 +44,42 @@ type Client struct {
 	fallbackClient *http.Client
 
 	semaphore *semaphore.Weighted
+
+	// httpTimeout and maxConcurrency retain the values this client was
+	// constructed with so that derived clients (see betaClientFromConfig)
+	// inherit the operator's provider configuration instead of silently
+	// falling back to the package defaults.
+	httpTimeout    int
+	maxConcurrency int
+
+	// archiveFlagsOnDestroy: when true, launchdarkly_feature_flag Delete
+	// archives the flag instead of deleting it. Configured at the provider
+	// level via the archive_flags_on_destroy attribute. Defaults to false.
+	archiveFlagsOnDestroy bool
+}
+
+// betaClientFromConfig returns a beta-API client that inherits this client's
+// credentials *and* its configured http_timeout / max_concurrency. Call sites
+// must prefer this over calling newBetaClient with the DEFAULT_* constants,
+// which pins every beta endpoint to a 20s timeout and a concurrency of 1
+// regardless of what the operator configured on the provider block.
+//
+// The returned client carries its own semaphore rather than sharing this
+// client's. Sharing would bound total in-flight requests more tightly, but a
+// beta call issued from inside a withConcurrency closure would then deadlock
+// against a semaphore the same goroutine already holds. Separate semaphores
+// means a fully saturated provider can have up to 2x max_concurrency requests
+// in flight; the 429 backoff in standardRetryPolicy absorbs that.
+func (c *Client) betaClientFromConfig() (*Client, error) {
+	timeout := c.httpTimeout
+	if timeout <= 0 {
+		timeout = DEFAULT_HTTP_TIMEOUT_S
+	}
+	concurrency := c.maxConcurrency
+	if concurrency <= 0 {
+		concurrency = DEFAULT_MAX_CONCURRENCY
+	}
+	return newBetaClient(c.apiKey, c.apiHost, false, timeout, concurrency)
 }
 
 func (c *Client) withConcurrency(ctx context.Context, fn func() error) error {
@@ -59,17 +98,31 @@ func newClient(token string, apiHost string, oauth bool, httpTimeoutSeconds, max
 }
 
 func newBetaClient(token string, apiHost string, oauth bool, httpTimeoutSeconds, maxConcurrent int) (*Client, error) {
-	return baseNewClient(token, apiHost, oauth, httpTimeoutSeconds, "beta", maxConcurrent)
+	return baseNewClient(token, apiHost, oauth, httpTimeoutSeconds, BetaAPIVersion, maxConcurrent)
 }
 
 func newLDClientConfig(apiHost string, httpTimeoutSeconds int, apiVersion string, retryPolicy retryablehttp.CheckRetry) *ldapi.Configuration {
 	cfg := ldapi.NewConfiguration()
-	cfg.Host = apiHost
+	if apiHost != "" {
+		parsedHost, err := url.Parse(apiHost)
+		if err == nil && parsedHost.Host != "" {
+			cfg.Host = parsedHost.Host
+			if parsedHost.Scheme != "" {
+				cfg.Scheme = parsedHost.Scheme
+			}
+		} else {
+			cfg.Host = strings.TrimPrefix(strings.TrimPrefix(apiHost, "https://"), "http://")
+		}
+	}
 	cfg.DefaultHeader = make(map[string]string)
 	cfg.UserAgent = fmt.Sprintf("launchdarkly-terraform-provider/%s", version)
 	cfg.HTTPClient = newRetryableClient(retryPolicy)
 	cfg.HTTPClient.Timeout = time.Duration(httpTimeoutSeconds) * time.Second
-	cfg.AddDefaultHeader("LD-API-Version", apiVersion)
+	// Views beta endpoints pass LDAPIVersion explicitly per request in the generated client.
+	// Setting a default beta API version header here would duplicate LD-API-Version.
+	if apiVersion != "" && apiVersion != BetaAPIVersion {
+		cfg.AddDefaultHeader("LD-API-Version", apiVersion)
+	}
 	return cfg
 }
 
@@ -86,7 +139,12 @@ func baseNewClient(token string, apiHost string, oauth bool, httpTimeoutSeconds 
 			Key: token,
 		}})
 	if oauth {
-		ctx = context.WithValue(context.Background(), ldapi.ContextAccessToken, token)
+		// v22 removed ContextAccessToken; OAuth tokens use the same Authorization header.
+		ctx = context.WithValue(context.Background(), ldapi.ContextAPIKeys, map[string]ldapi.APIKey{
+			"ApiKey": {
+				Key: token,
+			},
+		})
 	}
 
 	// TODO: remove this once we get the go client reset endpoint fixed
@@ -101,6 +159,8 @@ func baseNewClient(token string, apiHost string, oauth bool, httpTimeoutSeconds 
 		ctx:            ctx,
 		fallbackClient: fallbackClient,
 		semaphore:      semaphore.NewWeighted(int64(maxConcurrent)),
+		httpTimeout:    httpTimeoutSeconds,
+		maxConcurrency: maxConcurrent,
 	}, nil
 }
 

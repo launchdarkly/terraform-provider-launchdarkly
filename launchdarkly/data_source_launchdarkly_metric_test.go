@@ -6,9 +6,9 @@ import (
 	"regexp"
 	"testing"
 
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/acctest"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
-	ldapi "github.com/launchdarkly/api-client-go/v17"
+	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
+	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	ldapi "github.com/launchdarkly/api-client-go/v25"
 	"github.com/stretchr/testify/require"
 )
 
@@ -31,11 +31,11 @@ func testAccDataSourceMetricScaffold(client *Client, betaClient *Client, project
 		return nil, err
 	}
 
-	randomizationUnitsInput := make([]ldapi.RandomizationUnitInput, 0, len(metricBody.RandomizationUnits))
-	for _, randomizationUnit := range metricBody.RandomizationUnits {
+	randomizationUnitsInput := make([]ldapi.RandomizationUnitInput, 0, len(metricBody.AnalysisUnits))
+	for _, randomizationUnit := range metricBody.AnalysisUnits {
 		if randomizationUnit == "user" {
 			defaultTrue := true
-			defaultRandomizationUnit := *ldapi.NewRandomizationUnitInput(randomizationUnit, randomizationUnit)
+			defaultRandomizationUnit := *ldapi.NewRandomizationUnitInput(randomizationUnit)
 			defaultRandomizationUnit.Default = &defaultTrue
 			randomizationUnitsInput = append(randomizationUnitsInput, defaultRandomizationUnit)
 			continue
@@ -46,7 +46,7 @@ func testAccDataSourceMetricScaffold(client *Client, betaClient *Client, project
 		if err != nil {
 			return nil, err
 		}
-		randomizationUnitsInput = append(randomizationUnitsInput, *ldapi.NewRandomizationUnitInput(randomizationUnit, randomizationUnit))
+		randomizationUnitsInput = append(randomizationUnitsInput, *ldapi.NewRandomizationUnitInput(randomizationUnit))
 	}
 
 	// Update the project's experimentation settings to make the new context available for experiments
@@ -91,7 +91,7 @@ func TestAccDataSourceMetric_noMatchReturnsError(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config:      fmt.Sprintf(testAccDataSourceMetric, metricKey, project.Key),
@@ -125,8 +125,8 @@ func TestAccDataSourceMetric_exists(t *testing.T) {
 			Kind:      &metricUrlKind,
 			Substring: &metricUrlSubstring,
 		}},
-		Description:        ldapi.PtrString("a metric to test the terraform metric data source"),
-		RandomizationUnits: []string{"request", "user"},
+		Description:   ldapi.PtrString("a metric to test the terraform metric data source"),
+		AnalysisUnits: []string{"request", "user"},
 	}
 	metric, err := testAccDataSourceMetricScaffold(client, betaClient, projectKey, metricBody)
 	require.NoError(t, err)
@@ -141,7 +141,7 @@ func TestAccDataSourceMetric_exists(t *testing.T) {
 		PreCheck: func() {
 			testAccPreCheck(t)
 		},
-		Providers: testAccProviders,
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config: fmt.Sprintf(testAccDataSourceMetric, metricKey, projectKey),
@@ -154,8 +154,8 @@ func TestAccDataSourceMetric_exists(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, DESCRIPTION, *metric.Description),
 					resource.TestCheckResourceAttr(resourceName, ID, projectKey+"/"+metric.Key),
 					resource.TestCheckResourceAttr(resourceName, KIND, metric.Kind),
-					resource.TestCheckResourceAttr(resourceName, RANDOMIZATION_UNITS+".0", metric.RandomizationUnits[0]),
-					resource.TestCheckResourceAttr(resourceName, RANDOMIZATION_UNITS+".1", metric.RandomizationUnits[1]),
+					resource.TestCheckResourceAttr(resourceName, ANALYSIS_UNITS+".0", metric.AnalysisUnits[0]),
+					resource.TestCheckResourceAttr(resourceName, ANALYSIS_UNITS+".1", metric.AnalysisUnits[1]),
 					resource.TestCheckResourceAttr(resourceName, "urls.0.kind", metricUrlKind),
 					resource.TestCheckResourceAttr(resourceName, "urls.0.substring", metricUrlSubstring),
 				),

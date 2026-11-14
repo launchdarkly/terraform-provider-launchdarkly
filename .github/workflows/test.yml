@@ -2,11 +2,13 @@
 name: Test
 
 on:
-  pull_request: # this is for external contributions/forks. we have a check in place to ensure an LD user explicitly allows the tests to run for forks.
+  pull_request: # Fork PRs will only run the build job here. See test-fork-pr.yml for the label-gated workflow that runs generate + tests on forks.
   push:
-    branches: [main, preview]
-  schedule: # runs tests once a day on the main branch
+    branches:
+      - main
+  schedule: # cron runs on the default branch only (GitHub Actions limitation)
     - cron: "0 0 * * *"
+  workflow_dispatch: # allow manual runs against any branch
 
 # Testing only needs permissions to read the repository contents.
 permissions:
@@ -19,29 +21,39 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha}}
-      - uses: actions/setup-go@41dfa10bad2bb2ae585af6ee5bb4d7d973ad74ed # v5.1.0
+      - uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
         with:
           go-version-file: "go.mod"
           cache: true
       - run: go mod download
       - run: go build -v .
+      # Cross-checks every TestAcc* function against the acceptance matrices in
+      # this file and test-fork-pr.yml. Needs no LaunchDarkly credentials, so it
+      # runs here rather than in the token-gated test job (and therefore also on
+      # fork PRs). See launchdarkly/ci_matrix_test.go for why this is needed.
+      - name: Check acceptance-test matrix coverage
+        run: make matrixcheck
       - name: Run linters
-        uses: golangci/golangci-lint-action@971e284b6050e8a5849b72094c50ab08da042db8 # v6.1.1
+        uses: golangci/golangci-lint-action@82606bf257cbaff209d206a39f5134f0cfbfd2ee # v9.2.1
+        with:
+          version: v2.12.2
+          install-mode: goinstall
   
   generate:
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
       id-token: write
       contents: read
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
-      - uses: aws-actions/configure-aws-credentials@f24d7193d98baebaeacc7e2227925dd47cc267f5 # v4.2.0
+      - uses: aws-actions/configure-aws-credentials@e7f100cf4c008499ea8adda475de1042d6975c7b # v6.2.0
         with:
           audience: https://github.com/launchdarkly
           aws-region: us-east-1
@@ -52,12 +64,12 @@ jobs:
         with:
           parameterPairs: |
             /global/services/github/terraform-provider/launchdarkly-access-token = LAUNCHDARKLY_ACCESS_TOKEN
-      - uses: actions/setup-go@41dfa10bad2bb2ae585af6ee5bb4d7d973ad74ed # v5.1.0
+      - uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
         with:
           go-version-file: "go.mod"
           cache: true
       # We need the latest version of Terraform for our documentation generation to use
-      - uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3.1.2
+      - uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
         with:
           terraform_wrapper: false
       - run: make generate
@@ -68,6 +80,7 @@ jobs:
 
   # Run acceptance tests in a matrix with Terraform CLI versions
   test:
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     name: Acceptance Tests
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -77,35 +90,62 @@ jobs:
     env:
       TF_ACC: "1"
     strategy:
+      # Let every leg run even when one fails: with the default fail-fast a
+      # single red leg cancels the others before their tests execute, which
+      # hides their real status (and blocks re-running them individually).
+      fail-fast: false
       matrix:
+        # Keep this list identical to the test_case list in test-fork-pr.yml.
+        # TestCIMatrixCoversAcceptanceTests (launchdarkly/ci_matrix_test.go) fails
+        # the build job if the two drift apart, or if either list gains an entry
+        # that matches no test / loses coverage of a TestAcc* function.
         test_case:
+          - TestAccAIAgentGraph_
+          - TestAccAIConfig_
+          - TestAccAIConfigVariation
+          - TestAccAITool
           - TestAccDataSource
           - TestAccAccessToken
+          - TestAccAnnouncement_
           - TestAccAuditLogSubscription
+          - TestAccBigSegmentStoreIntegration_
+          - TestAccContextKind
           - TestAccCustomRole
           - TestAccDestination
-          - TestAccEnvironment
+          # Anchored with a trailing underscore so it does not also match
+          # TestAccEnvironmentReleasePlan_*.
+          - TestAccEnvironment_
+          - TestAccEnvironmentReleasePlan_
           - TestAccFeatureFlag_
           - TestAccFeatureFlagEnvironment
+          # Not covered by TestAccFeatureFlag_ — the trailing underscore in that
+          # prefix does not match TestAccFeatureFlagViewKeys_*.
+          - TestAccFeatureFlagViewKeys
+          - TestAccFlagImportConfiguration_
+          - TestAccFlagTemplates
           - TestAccFlagTrigger
-          - TestAccMetric
+          - TestAccIpAllowlistConfig
+          - TestAccIpAllowlistEntry
+          - TestAccIntegrationDeliveryConfiguration_
+          - TestAccMetricGroup_
+          - TestAccMetric_
+          - TestAccModelConfig
+          - TestAccOAuthClient_
           - TestAccProject
           - TestAccRelayProxy
-          - TestAccReleasePolicy_
+          - TestAccSdkKey_
           - TestAccSegment
-          - TestAccTeamMember_CreateGeneric
-          - TestAccTeamMember_UpdateGeneric
-          - TestAccTeamMember_CreateWithCustomRole
-          - TestAccTeamMember_UpdateWithCustomRole
+          - TestAccTeamMember_CreateAndUpdateGeneric
+          - TestAccTeamMember_WithCustomRole
           - TestAccTeam_
           - TestAccTeamRoleMapping_
           - TestAccView
           - TestAccWebhook
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
-      - uses: aws-actions/configure-aws-credentials@f24d7193d98baebaeacc7e2227925dd47cc267f5 # v4.2.0
+      - uses: aws-actions/configure-aws-credentials@e7f100cf4c008499ea8adda475de1042d6975c7b # v6.2.0
         with:
           audience: https://github.com/launchdarkly
           aws-region: us-east-1
@@ -116,11 +156,15 @@ jobs:
         with:
           parameterPairs: |
             /global/services/github/terraform-provider/launchdarkly-access-token = LAUNCHDARKLY_ACCESS_TOKEN
-      - uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0
+      - uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
         with:
           go-version-file: "go.mod"
-          cache: true
       - run: go mod download
+      - uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
+        with:
+          terraform_wrapper: false
+      - name: Set Terraform path for acceptance tests
+        run: echo "TF_ACC_TERRAFORM_PATH=$(command -v terraform)" >> "$GITHUB_ENV"
       - name: Run Test
         run: |
           echo "Running test case: ${{ matrix.test_case }}"
@@ -144,7 +188,7 @@ jobs:
 
   notify-slack-on-failure:
     name: Notify Slack on Failures
-    if: failure() && github.ref == 'refs/heads/main' || github.ref == 'refs/heads/preview'
+    if: failure() && github.ref == 'refs/heads/main'
     needs:
       - build
       - generate
@@ -153,7 +197,7 @@ jobs:
     steps:
       - name: Send GitHub trigger payload to Slack Workflow Builder
         id: slack
-        uses: slackapi/slack-github-action@485a9d42d3a73031f12ec201c457e2162c45d02d # v2.0.0
+        uses: slackapi/slack-github-action@45a88b9581bfab2566dc881e2cd66d334e621e2c # v3.0.3
         with:
           payload-delimiter: "_"
           webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
