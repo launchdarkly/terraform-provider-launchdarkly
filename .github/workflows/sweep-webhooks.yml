@@ -150,9 +150,8 @@ jobs:
                 | map(select(
                     ((.tags // []) | index("tf-acc")) != null
                     or (
-                      ((.tags // []) | index("terraform")) != null
-                      and ((.tags // []) | index("integrations")) != null
-                      and (.name == "terraform test" or .name == "terraform test v2" or .name == "test subscription")
+                      (.name == "terraform test" or .name == "terraform test v2" or .name == "test subscription")
+                      and all((.tags // [])[]; . == "integrations" or . == "terraform")
                     )
                   ))
                 | map(._id | select(type == "string") | select(test("^[0-9a-fA-F]{24}$")))
