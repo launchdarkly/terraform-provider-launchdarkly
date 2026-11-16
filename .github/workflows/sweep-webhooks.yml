@@ -1,0 +1,110 @@
+name: Sweep orphaned acceptance webhooks
+
+on:
+  schedule:
+    - cron: "0 14 * * *"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "List what would be deleted without deleting"
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: sweep-webhooks
+  cancel-in-progress: false
+
+jobs:
+  sweep:
+    name: Sweep stale acceptance webhooks
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: aws-actions/configure-aws-credentials@e7f100cf4c008499ea8adda475de1042d6975c7b # v6.2.0
+        with:
+          audience: https://github.com/launchdarkly
+          aws-region: us-east-1
+          role-to-assume: arn:aws:iam::061661829416:role/github-actions-terraform-provider-launchdarkly
+          role-session-name: GitHubActionsSweep_run-${{ github.run_id }}
+      - id: get-launchdarkly-access-token
+        uses: dkershner6/aws-ssm-getparameters-action@4fcb4872421f387a6c43058473acc1b22443fe13 # v2.0.3
+        with:
+          parameterPairs: |
+            /global/services/github/terraform-provider/launchdarkly-access-token = LAUNCHDARKLY_ACCESS_TOKEN
+      - name: Mask the LD token
+        run: echo "::add-mask::$LAUNCHDARKLY_ACCESS_TOKEN"
+
+      - name: Delete stale acceptance webhooks
+        env:
+          LD_TOKEN: ${{ env.LAUNCHDARKLY_ACCESS_TOKEN }}
+          DRY_RUN: ${{ inputs.dry_run }}
+        run: |
+          set -euo pipefail
+          API="https://app.launchdarkly.com/api/v2"
+          cutoff=$(($(date +%s) - 7200))
+          next="$API/webhooks"
+          candidates=""
+          pages=0
+          declare -A seen_pages=()
+
+          # Collect before deleting so pagination cannot skip items as offsets shift.
+          while [ -n "$next" ]; do
+            if [ -n "${seen_pages[$next]:-}" ] || [ "$pages" -ge 100 ]; then
+              echo "::error::Webhook pagination repeated or exceeded 100 pages; nothing deleted"
+              exit 1
+            fi
+            seen_pages[$next]=1
+            pages=$((pages + 1))
+            page="$(curl -sS -f --connect-timeout 10 --max-time 60 \
+              -H "Authorization: $LD_TOKEN" "$next")"
+            jq -e '.items | type == "array"' <<< "$page" > /dev/null
+            ids="$(jq -r '
+              .items[]
+              | select(
+                  ((.tags // []) | index("tf-acc")) != null
+                  or (
+                    ((.tags // []) | index("terraform")) != null
+                    and ((.url // "") | test("^https?://(webhooks\\.com|webhook\\.invalid|www\\.example\\.com)(:[0-9]+)?([/?#]|$)"; "i"))
+                  )
+                )
+              | ._id
+              | select(type == "string")
+              | select(test("^[0-9a-fA-F]{24}$"))
+            ' <<< "$page")"
+            candidates="$candidates $ids"
+            next="$(jq -r '._links.next.href // empty' <<< "$page")"
+            # Never forward the token outside this endpoint, even via a next link.
+            case "$next" in
+              "") ;;
+              /api/v2/webhooks\?*) next="https://app.launchdarkly.com$next" ;;
+              "$API/webhooks"\?*) ;;
+              *) echo "::error::Unexpected pagination link; nothing deleted"; exit 1 ;;
+            esac
+          done
+
+          swept=0 kept=0
+          for id in $candidates; do
+            created=$((16#${id:0:8}))
+            if [ "$created" -ge "$cutoff" ]; then
+              kept=$((kept + 1))
+              continue
+            fi
+            if [ "$DRY_RUN" = "true" ]; then
+              echo "would delete webhook $id"
+              swept=$((swept + 1))
+              continue
+            fi
+            code="$(curl -sS --connect-timeout 10 --max-time 60 -X DELETE \
+              -H "Authorization: $LD_TOKEN" "$API/webhooks/$id" \
+              -o /dev/null -w '%{http_code}')"
+            case "$code" in
+              2*|404) echo "swept webhook $id -> HTTP $code"; swept=$((swept + 1)) ;;
+              *) echo "::error::DELETE webhook $id returned HTTP $code"; exit 1 ;;
+            esac
+          done
+          echo "Sweep complete: $swept swept, $kept younger than 2 hours kept (dry_run=${DRY_RUN:-false})." | tee -a "$GITHUB_STEP_SUMMARY"

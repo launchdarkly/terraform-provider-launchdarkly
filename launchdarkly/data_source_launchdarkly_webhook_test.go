@@ -24,11 +24,11 @@ func testAccDataSourceWebhookCreate(client *Client, webhookName string) (*ldapi.
 	statementResources := []string{"proj/*"}
 	statementActions := []string{"updateOn"}
 	webhookBody := ldapi.WebhookPost{
-		Url:  "https://www.example.com",
+		Url:  "https://webhook.invalid",
 		Sign: false,
-		On:   true,
+		On:   false,
 		Name: ldapi.PtrString(webhookName),
-		Tags: []string{"terraform"},
+		Tags: []string{"terraform", "tf-acc"},
 		Statements: []ldapi.StatementPost{
 			{
 				Resources: statementResources,
@@ -106,8 +106,9 @@ func TestAccDataSourceWebhook_exists(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, ID, webhook.Id),
 					resource.TestCheckResourceAttr(resourceName, NAME, webhookName),
 					resource.TestCheckResourceAttr(resourceName, URL, webhook.Url),
-					resource.TestCheckResourceAttr(resourceName, ON, "true"),
-					resource.TestCheckResourceAttr(resourceName, "tags.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, ON, "false"),
+					resource.TestCheckResourceAttr(resourceName, "tags.#", "2"),
+					resource.TestCheckResourceAttr(resourceName, "tags.1", "tf-acc"),
 					resource.TestCheckResourceAttr(resourceName, "statements.#", "1"),
 					resource.TestCheckResourceAttr(resourceName, "statements.0.resources.0", "proj/*"),
 					resource.TestCheckResourceAttr(resourceName, "statements.0.actions.0", "updateOn"),
