@@ -89,11 +89,11 @@ resource "launchdarkly_webhook" "with_statements" {
 	statements = [{
 		actions   = ["*"]
 		effect    = "allow"
-		resources = ["proj/tf-acc-nonexistent:env/*:flag/*"]
+		resources = ["proj/tf-acc-nonexistent-updated:env/*:flag/*"]
 	}, {
 		actions   = ["*"]
 		effect    = "allow"
-		resources = ["proj/tf-acc-nonexistent:env/*:segment/*"]
+		resources = ["proj/tf-acc-nonexistent-updated:env/*:segment/*"]
 	}]
 } 
 `
@@ -334,12 +334,12 @@ func TestAccWebhook_UpdateWithStatements(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "statements.0.actions.#", "1"),
 					resource.TestCheckResourceAttr(resourceName, "statements.0.actions.0", "*"),
 					resource.TestCheckResourceAttr(resourceName, "statements.0.resources.#", "1"),
-					resource.TestCheckResourceAttr(resourceName, "statements.0.resources.0", "proj/tf-acc-nonexistent:env/*:flag/*"),
+					resource.TestCheckResourceAttr(resourceName, "statements.0.resources.0", "proj/tf-acc-nonexistent-updated:env/*:flag/*"),
 					resource.TestCheckResourceAttr(resourceName, "statements.1.effect", "allow"),
 					resource.TestCheckResourceAttr(resourceName, "statements.1.actions.#", "1"),
 					resource.TestCheckResourceAttr(resourceName, "statements.1.actions.0", "*"),
 					resource.TestCheckResourceAttr(resourceName, "statements.1.resources.#", "1"),
-					resource.TestCheckResourceAttr(resourceName, "statements.1.resources.0", "proj/tf-acc-nonexistent:env/*:segment/*"),
+					resource.TestCheckResourceAttr(resourceName, "statements.1.resources.0", "proj/tf-acc-nonexistent-updated:env/*:segment/*"),
 				),
 			},
 			{
