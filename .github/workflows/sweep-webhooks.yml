@@ -1,4 +1,4 @@
-name: Sweep orphaned acceptance webhooks
+name: Sweep orphaned acceptance webhooks and subscriptions
 
 on:
   schedule:
@@ -21,7 +21,7 @@ concurrency:
 
 jobs:
   sweep:
-    name: Sweep stale acceptance webhooks
+    name: Sweep stale acceptance webhooks and subscriptions
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -108,3 +108,92 @@ jobs:
             esac
           done
           echo "Sweep complete: $swept swept, $kept younger than 2 hours kept (dry_run=${DRY_RUN:-false})." | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Delete stale acceptance subscriptions
+        env:
+          LD_TOKEN: ${{ env.LAUNCHDARKLY_ACCESS_TOKEN }}
+          DRY_RUN: ${{ inputs.dry_run }}
+        run: |
+          set -euo pipefail
+          API="https://app.launchdarkly.com/api/v2"
+          cutoff=$(($(date +%s) - 7200))
+          candidates=""
+
+          for key in datadog dynatrace msteams slack splunk honeycomb; do
+            endpoint="$API/integrations/$key"
+            next="$endpoint"
+            pages=0
+            unset seen_pages
+            declare -A seen_pages=()
+
+            # Collect all pages and integration types before deleting.
+            while [ -n "$next" ]; do
+              if [ -n "${seen_pages[$next]:-}" ] || [ "$pages" -ge 100 ]; then
+                echo "::error::Subscription pagination repeated or exceeded 100 pages; nothing deleted"
+                exit 1
+              fi
+              seen_pages[$next]=1
+              pages=$((pages + 1))
+              page="$(curl -sS -f --connect-timeout 10 --max-time 60 \
+                -H "Authorization: $LD_TOKEN" "$next")"
+              ids="$(jq -er '
+                if (.items | type) != "array" then error("Invalid subscription collection")
+                else .items end
+                | map(
+                    if type != "object" then error("Invalid subscription")
+                    elif (.tags != null and ((.tags | type) != "array"))
+                    then error("Invalid subscription tags")
+                    elif any(.tags[]?; type != "string")
+                    then error("Invalid subscription tag")
+                    else . end
+                  )
+                | map(select(
+                    ((.tags // []) | index("tf-acc")) != null
+                    or (
+                      ((.tags // []) | index("terraform")) != null
+                      and ((.tags // []) | index("integrations")) != null
+                      and (.name == "terraform test" or .name == "terraform test v2" or .name == "test subscription")
+                    )
+                  ))
+                | map(._id | select(type == "string") | select(test("^[0-9a-fA-F]{24}$")))
+                | join(" ")
+              ' <<< "$page")"
+              for id in $ids; do
+                candidates="$candidates $key/$id"
+              done
+              next="$(jq -er '
+                ._links.next.href // ""
+                | if type == "string" then . else error("Invalid pagination link") end
+              ' <<< "$page")"
+              case "$next" in
+                "") ;;
+                "/api/v2/integrations/$key"\?*) next="https://app.launchdarkly.com$next" ;;
+                "$endpoint"\?*) ;;
+                *) echo "::error::Unexpected pagination link; nothing deleted"; exit 1 ;;
+              esac
+            done
+          done
+
+          swept=0 kept=0
+          for candidate in $candidates; do
+            key="${candidate%/*}"
+            id="${candidate##*/}"
+            created=$((16#${id:0:8}))
+            if [ "$created" -ge "$cutoff" ]; then
+              kept=$((kept + 1))
+              continue
+            fi
+            if [ "$DRY_RUN" = "true" ]; then
+              echo "would delete subscription $key/$id"
+              swept=$((swept + 1))
+              continue
+            fi
+            code="$(curl -sS --connect-timeout 10 --max-time 60 -X DELETE \
+              -H "Authorization: $LD_TOKEN" "$API/integrations/$key/$id" \
+              -o /dev/null -w '%{http_code}')"
+            case "$code" in
+              2*|404) echo "swept subscription $key/$id -> HTTP $code"; swept=$((swept + 1)) ;;
+              *) echo "::error::DELETE subscription $key/$id returned HTTP $code"; exit 1 ;;
+            esac
+          done
+          echo "Subscription sweep complete: $swept swept, $kept younger than 2 hours kept (dry_run=${DRY_RUN:-false})." | tee -a "$GITHUB_STEP_SUMMARY"

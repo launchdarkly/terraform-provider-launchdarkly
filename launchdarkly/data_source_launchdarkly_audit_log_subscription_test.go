@@ -28,7 +28,7 @@ data "launchdarkly_audit_log_subscription" "test" {
 )
 
 func testAccDataSourceAuditLogSubscriptionCreate(client *Client, integrationKey string, subscriptionBody ldapi.SubscriptionPost) (*ldapi.Integration, error) {
-	statementResources := []string{"proj/*"}
+	statementResources := []string{"proj/tf-acc-nonexistent:env/*:flag/*"}
 	statementActions := []string{"*"}
 	statements := []ldapi.StatementPost{{
 		Effect:    "allow",
@@ -86,6 +86,8 @@ func TestAccDataSourceAuditLogSubscription_exists(t *testing.T) {
 
 	subscriptionBody := ldapi.SubscriptionPost{
 		Name: "test subscription",
+		On:   ldapi.PtrBool(true),
+		Tags: []string{"tf-acc"},
 		Config: map[string]interface{}{
 			"apiKey":  "thisisasecretkey",
 			"hostURL": "https://api.datadoghq.com",
@@ -111,6 +113,10 @@ func TestAccDataSourceAuditLogSubscription_exists(t *testing.T) {
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttrSet(resourceName, "id"),
 					resource.TestCheckResourceAttr(resourceName, "id", *sub.Id),
+					resource.TestCheckResourceAttr(resourceName, ON, "true"),
+					resource.TestCheckResourceAttr(resourceName, "tags.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "tags.0", "tf-acc"),
+					resource.TestCheckResourceAttr(resourceName, "statements.0.resources.0", "proj/tf-acc-nonexistent:env/*:flag/*"),
 				),
 			},
 		},
@@ -129,6 +135,8 @@ func TestAccDataSourceAuditLogSubscription_Slack(t *testing.T) {
 
 	subscriptionBody := ldapi.SubscriptionPost{
 		Name: "test subscription",
+		On:   ldapi.PtrBool(false),
+		Tags: []string{"tf-acc"},
 		Config: map[string]interface{}{
 			"url": "https://hooks.slack.com/services/SOME-RANDOM-HOOK",
 		},
@@ -153,6 +161,10 @@ func TestAccDataSourceAuditLogSubscription_Slack(t *testing.T) {
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttrSet(resourceName, "id"),
 					resource.TestCheckResourceAttr(resourceName, "id", *sub.Id),
+					resource.TestCheckResourceAttr(resourceName, ON, "false"),
+					resource.TestCheckResourceAttr(resourceName, "tags.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "tags.0", "tf-acc"),
+					resource.TestCheckResourceAttr(resourceName, "statements.0.resources.0", "proj/tf-acc-nonexistent:env/*:flag/*"),
 					resource.TestCheckResourceAttr(resourceName, "config.url", "https://hooks.slack.com/services/SOME-RANDOM-HOOK"),
 				),
 			},

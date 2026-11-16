@@ -17,13 +17,14 @@ resource "launchdarkly_audit_log_subscription" "%s_tf_test" {
 	config = %s
 	tags = [
 		"integrations",
-		"terraform"
+		"terraform",
+		"tf-acc"
 	]
 	on = true
 	statements = [{
 		actions = ["*"]
 		effect = "deny"
-		resources = ["proj/*:env/*:flag/*"]
+		resources = ["proj/tf-acc-nonexistent:env/*:flag/*"]
 	}]
 }
 `
@@ -35,12 +36,13 @@ resource "launchdarkly_audit_log_subscription" "%s_tf_test" {
 	config = %s
 	on = false
 	tags = [
-		"integrations"
+		"integrations",
+		"tf-acc"
 	]
 	statements = [{
 		actions = ["*"]
 		effect = "allow"
-		resources = ["proj/*:env/production"]
+		resources = ["proj/tf-acc-nonexistent-updated:env/*:flag/*"]
 	}]
 }
 `
@@ -73,12 +75,13 @@ func TestAccAuditLogSubscription_CreateUpdateDatadog(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "config.api_key", "thisisasecretkey"),
 					resource.TestCheckResourceAttr(resourceName, "config.hide_member_details", "true"),
 					// resource.TestCheckResourceAttr(resourceName, "config.host_url", "https://api.datadoghq.com"),
-					resource.TestCheckResourceAttr(resourceName, "tags.#", "2"),
+					resource.TestCheckResourceAttr(resourceName, "tags.#", "3"),
 					resource.TestCheckResourceAttr(resourceName, "tags.0", "integrations"),
 					resource.TestCheckResourceAttr(resourceName, "tags.1", "terraform"),
+					resource.TestCheckResourceAttr(resourceName, "tags.2", "tf-acc"),
 					resource.TestCheckResourceAttr(resourceName, "statements.#", "1"),
 					resource.TestCheckResourceAttr(resourceName, "statements.0.actions.0", "*"),
-					resource.TestCheckResourceAttr(resourceName, "statements.0.resources.0", "proj/*:env/*:flag/*"),
+					resource.TestCheckResourceAttr(resourceName, "statements.0.resources.0", "proj/tf-acc-nonexistent:env/*:flag/*"),
 					resource.TestCheckResourceAttr(resourceName, "statements.0.effect", "deny"),
 				),
 			},
@@ -90,13 +93,14 @@ func TestAccAuditLogSubscription_CreateUpdateDatadog(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, INTEGRATION_KEY, integrationKey),
 					resource.TestCheckResourceAttr(resourceName, NAME, "terraform test v2"),
 					resource.TestCheckResourceAttr(resourceName, ON, "false"),
-					resource.TestCheckResourceAttr(resourceName, "tags.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "tags.#", "2"),
 					resource.TestCheckResourceAttr(resourceName, "tags.0", "integrations"),
+					resource.TestCheckResourceAttr(resourceName, "tags.1", "tf-acc"),
 					resource.TestCheckResourceAttr(resourceName, "statements.#", "1"),
 					resource.TestCheckResourceAttr(resourceName, "statements.0.actions.#", "1"),
 					resource.TestCheckResourceAttr(resourceName, "statements.0.actions.0", "*"),
 					resource.TestCheckResourceAttr(resourceName, "statements.0.effect", "allow"),
-					resource.TestCheckResourceAttr(resourceName, "statements.0.resources.0", "proj/*:env/production"),
+					resource.TestCheckResourceAttr(resourceName, "statements.0.resources.0", "proj/tf-acc-nonexistent-updated:env/*:flag/*"),
 				),
 			},
 		},
@@ -130,12 +134,13 @@ func TestAccAuditLogSubscription_CreateDynatrace(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "config.api_token", "verysecrettoken"),
 					resource.TestCheckResourceAttr(resourceName, "config.url", "https://launchdarkly.appdynamics.com"),
 					resource.TestCheckResourceAttr(resourceName, "config.entity", "APPLICATION_METHOD"),
-					resource.TestCheckResourceAttr(resourceName, "tags.#", "2"),
+					resource.TestCheckResourceAttr(resourceName, "tags.#", "3"),
 					resource.TestCheckResourceAttr(resourceName, "tags.0", "integrations"),
 					resource.TestCheckResourceAttr(resourceName, "tags.1", "terraform"),
+					resource.TestCheckResourceAttr(resourceName, "tags.2", "tf-acc"),
 					resource.TestCheckResourceAttr(resourceName, "statements.#", "1"),
 					resource.TestCheckResourceAttr(resourceName, "statements.0.actions.0", "*"),
-					resource.TestCheckResourceAttr(resourceName, "statements.0.resources.0", "proj/*:env/*:flag/*"),
+					resource.TestCheckResourceAttr(resourceName, "statements.0.resources.0", "proj/tf-acc-nonexistent:env/*:flag/*"),
 					resource.TestCheckResourceAttr(resourceName, "statements.0.effect", "deny"),
 				),
 			},
@@ -166,12 +171,13 @@ func TestAccAuditLogSubscription_CreateMSTeams(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, NAME, "terraform test"),
 					resource.TestCheckResourceAttr(resourceName, ON, "true"),
 					resource.TestCheckResourceAttr(resourceName, "config.url", "https://outlook.office.com/webhook/terraform-test"),
-					resource.TestCheckResourceAttr(resourceName, "tags.#", "2"),
+					resource.TestCheckResourceAttr(resourceName, "tags.#", "3"),
 					resource.TestCheckResourceAttr(resourceName, "tags.0", "integrations"),
 					resource.TestCheckResourceAttr(resourceName, "tags.1", "terraform"),
+					resource.TestCheckResourceAttr(resourceName, "tags.2", "tf-acc"),
 					resource.TestCheckResourceAttr(resourceName, "statements.#", "1"),
 					resource.TestCheckResourceAttr(resourceName, "statements.0.actions.0", "*"),
-					resource.TestCheckResourceAttr(resourceName, "statements.0.resources.0", "proj/*:env/*:flag/*"),
+					resource.TestCheckResourceAttr(resourceName, "statements.0.resources.0", "proj/tf-acc-nonexistent:env/*:flag/*"),
 					resource.TestCheckResourceAttr(resourceName, "statements.0.effect", "deny"),
 				),
 			},
@@ -203,12 +209,13 @@ func TestAccAuditLogSubscription_CreateSlack(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, NAME, "terraform test"),
 					resource.TestCheckResourceAttr(resourceName, ON, "true"),
 					resource.TestCheckResourceAttr(resourceName, "config.url", "https://hooks.slack.com/services/SOME-RANDOM-HOOK"),
-					resource.TestCheckResourceAttr(resourceName, "tags.#", "2"),
+					resource.TestCheckResourceAttr(resourceName, "tags.#", "3"),
 					resource.TestCheckResourceAttr(resourceName, "tags.0", "integrations"),
 					resource.TestCheckResourceAttr(resourceName, "tags.1", "terraform"),
+					resource.TestCheckResourceAttr(resourceName, "tags.2", "tf-acc"),
 					resource.TestCheckResourceAttr(resourceName, "statements.#", "1"),
 					resource.TestCheckResourceAttr(resourceName, "statements.0.actions.0", "*"),
-					resource.TestCheckResourceAttr(resourceName, "statements.0.resources.0", "proj/*:env/*:flag/*"),
+					resource.TestCheckResourceAttr(resourceName, "statements.0.resources.0", "proj/tf-acc-nonexistent:env/*:flag/*"),
 					resource.TestCheckResourceAttr(resourceName, "statements.0.effect", "deny"),
 				),
 			},
@@ -244,12 +251,13 @@ func TestAccAuditLogSubscription_CreateSplunk(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "config.base_url", "https://launchdarkly.splunk.com"),
 					resource.TestCheckResourceAttr(resourceName, "config.token", "averysecrettoken"),
 					resource.TestCheckResourceAttr(resourceName, "config.skip_ca_verification", "true"),
-					resource.TestCheckResourceAttr(resourceName, "tags.#", "2"),
+					resource.TestCheckResourceAttr(resourceName, "tags.#", "3"),
 					resource.TestCheckResourceAttr(resourceName, "tags.0", "integrations"),
 					resource.TestCheckResourceAttr(resourceName, "tags.1", "terraform"),
+					resource.TestCheckResourceAttr(resourceName, "tags.2", "tf-acc"),
 					resource.TestCheckResourceAttr(resourceName, "statements.#", "1"),
 					resource.TestCheckResourceAttr(resourceName, "statements.0.actions.0", "*"),
-					resource.TestCheckResourceAttr(resourceName, "statements.0.resources.0", "proj/*:env/*:flag/*"),
+					resource.TestCheckResourceAttr(resourceName, "statements.0.resources.0", "proj/tf-acc-nonexistent:env/*:flag/*"),
 					resource.TestCheckResourceAttr(resourceName, "statements.0.effect", "deny"),
 				),
 			},
