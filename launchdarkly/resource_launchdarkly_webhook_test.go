@@ -13,26 +13,31 @@ const (
 	testAccWebhookCreate = `
 resource "launchdarkly_webhook" "test" {
 	name    = "example-webhook"
-	url     = "http://webhooks.com"
-	tags    = [ "terraform" ]
-	on      = true
+	url     = "https://webhook.invalid"
+	tags    = [ "terraform", "tf-acc" ]
+	on      = false
 }	
 `
 
 	testAccWebhookCreateWithEnabled = `
 resource "launchdarkly_webhook" "test" {
 	name    = "example-webhook"
-	url     = "http://webhooks.com"
-	tags    = [ "terraform" ]
+	url     = "https://webhook.invalid"
+	tags    = [ "terraform", "tf-acc" ]
 	on = true
+	statements = [{
+		actions   = ["*"]
+		effect    = "allow"
+		resources = ["proj/tf-acc-nonexistent:env/*:flag/*"]
+	}]
 }	
 `
 
 	testAccWebhookUpdate = `
 resource "launchdarkly_webhook" "test" {
 	name   = "Example Webhook"
-	url    = "http://webhooks.com/updatedUrl"
-	tags   = [ "terraform", "updated" ]
+	url    = "https://webhook.invalid/updatedUrl"
+	tags   = [ "terraform", "tf-acc", "updated" ]
 	on     = false
 	secret = "SuperSecret"
 }
@@ -41,12 +46,13 @@ resource "launchdarkly_webhook" "test" {
 	testAccWebhookWithStatements = `
 resource "launchdarkly_webhook" "with_statements" {
 	name    = "Webhook with policy statements"
-	url     = "http://webhooks.com"
-	on      = true
+	url     = "https://webhook.invalid"
+	tags    = [ "terraform", "tf-acc" ]
+	on      = false
 	statements = [{
 		actions   = ["*"]	
 		effect    = "allow"
-		resources = ["proj/*:env/production:flag/*"]
+		resources = ["proj/tf-acc-nonexistent:env/*:flag/*"]
 	}]
 }
 `
@@ -54,20 +60,22 @@ resource "launchdarkly_webhook" "with_statements" {
 	testAccWebhookWithStatementsRemoved = `
 resource "launchdarkly_webhook" "with_statements" {
 	name    = "Webhook without statements"
-	url     = "http://webhooks.com"
-	on      = true
+	url     = "https://webhook.invalid"
+	tags    = [ "terraform", "tf-acc" ]
+	on      = false
 }
 `
 
 	testAccWebhookWithPolicyStatements = `
 resource "launchdarkly_webhook" "with_statements" {
 	name    = "Webhook with policy statements"
-	url     = "http://webhooks.com"
-	on      = true
+	url     = "https://webhook.invalid"
+	tags    = [ "terraform", "tf-acc" ]
+	on      = false
 	statements = [{
 		actions   = ["*"]	
 		effect    = "allow"
-		resources = ["proj/*:env/production:flag/*"]
+		resources = ["proj/tf-acc-nonexistent:env/*:flag/*"]
 	}]
 }
 `
@@ -75,16 +83,17 @@ resource "launchdarkly_webhook" "with_statements" {
 	testAccWebhookWithPolicyUpdate = `
 resource "launchdarkly_webhook" "with_statements" {
 	name    = "Webhook with policy statements"
-	url     = "http://webhooks.com"
-	on      = true
+	url     = "https://webhook.invalid"
+	tags    = [ "terraform", "tf-acc" ]
+	on      = false
 	statements = [{
 		actions   = ["*"]
 		effect    = "allow"
-		resources = ["proj/test:env/production:flag/*"]
+		resources = ["proj/tf-acc-nonexistent-updated:env/*:flag/*"]
 	}, {
 		actions   = ["*"]
 		effect    = "allow"
-		resources = ["proj/test:env/production:segment/*"]
+		resources = ["proj/tf-acc-nonexistent-updated:env/*:segment/*"]
 	}]
 } 
 `
@@ -92,13 +101,14 @@ resource "launchdarkly_webhook" "with_statements" {
 	testAccWebhookInvalidStatements = `
 resource "launchdarkly_webhook" "with_statements" {
 	name    = "Webhook with policy statements"
-	url     = "http://webhooks.com"
-	on      = true
+	url     = "https://webhook.invalid"
+	tags    = [ "terraform", "tf-acc" ]
+	on      = false
 	statements = [{
 		actions   = ["*"]
 		not_actions = ["*"]
 		effect    = "allow"
-		resources = ["proj/*:env/production:flag/*"]
+		resources = ["proj/tf-acc-nonexistent:env/*:flag/*"]
 	}]
 }
 `
@@ -117,10 +127,11 @@ func TestAccWebhook_Create(t *testing.T) {
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckWebhookExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, NAME, "example-webhook"),
-					resource.TestCheckResourceAttr(resourceName, URL, "http://webhooks.com"),
-					resource.TestCheckResourceAttr(resourceName, ON, "true"),
-					resource.TestCheckResourceAttr(resourceName, "tags.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, URL, "https://webhook.invalid"),
+					resource.TestCheckResourceAttr(resourceName, ON, "false"),
+					resource.TestCheckResourceAttr(resourceName, "tags.#", "2"),
 					resource.TestCheckResourceAttr(resourceName, "tags.0", "terraform"),
+					resource.TestCheckResourceAttr(resourceName, "tags.1", "tf-acc"),
 					resource.TestCheckResourceAttr(resourceName, "statements.#", "0"),
 				),
 			},
@@ -146,11 +157,13 @@ func TestAccWebhook_CreateWithEnabled(t *testing.T) {
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckWebhookExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, NAME, "example-webhook"),
-					resource.TestCheckResourceAttr(resourceName, URL, "http://webhooks.com"),
+					resource.TestCheckResourceAttr(resourceName, URL, "https://webhook.invalid"),
 					resource.TestCheckResourceAttr(resourceName, ON, "true"),
-					resource.TestCheckResourceAttr(resourceName, "tags.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "statements.0.resources.0", "proj/tf-acc-nonexistent:env/*:flag/*"),
+					resource.TestCheckResourceAttr(resourceName, "tags.#", "2"),
 					resource.TestCheckResourceAttr(resourceName, "tags.0", "terraform"),
-					resource.TestCheckResourceAttr(resourceName, "statements.#", "0"),
+					resource.TestCheckResourceAttr(resourceName, "tags.1", "tf-acc"),
+					resource.TestCheckResourceAttr(resourceName, "statements.#", "1"),
 				),
 			},
 			{
@@ -174,11 +187,13 @@ func TestAccWebhook_Update(t *testing.T) {
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckWebhookExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, NAME, "example-webhook"),
-					resource.TestCheckResourceAttr(resourceName, URL, "http://webhooks.com"),
+					resource.TestCheckResourceAttr(resourceName, URL, "https://webhook.invalid"),
 					resource.TestCheckResourceAttr(resourceName, ON, "true"),
-					resource.TestCheckResourceAttr(resourceName, "tags.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "statements.0.resources.0", "proj/tf-acc-nonexistent:env/*:flag/*"),
+					resource.TestCheckResourceAttr(resourceName, "tags.#", "2"),
 					resource.TestCheckResourceAttr(resourceName, "tags.0", "terraform"),
-					resource.TestCheckResourceAttr(resourceName, "statements.#", "0"),
+					resource.TestCheckResourceAttr(resourceName, "tags.1", "tf-acc"),
+					resource.TestCheckResourceAttr(resourceName, "statements.#", "1"),
 				),
 			},
 			{
@@ -186,10 +201,11 @@ func TestAccWebhook_Update(t *testing.T) {
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckWebhookExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, NAME, "example-webhook"),
-					resource.TestCheckResourceAttr(resourceName, URL, "http://webhooks.com"),
-					resource.TestCheckResourceAttr(resourceName, ON, "true"),
-					resource.TestCheckResourceAttr(resourceName, "tags.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, URL, "https://webhook.invalid"),
+					resource.TestCheckResourceAttr(resourceName, ON, "false"),
+					resource.TestCheckResourceAttr(resourceName, "tags.#", "2"),
 					resource.TestCheckResourceAttr(resourceName, "tags.0", "terraform"),
+					resource.TestCheckResourceAttr(resourceName, "tags.1", "tf-acc"),
 					resource.TestCheckResourceAttr(resourceName, "statements.#", "0"),
 				),
 			},
@@ -198,11 +214,12 @@ func TestAccWebhook_Update(t *testing.T) {
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckWebhookExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, NAME, "Example Webhook"),
-					resource.TestCheckResourceAttr(resourceName, URL, "http://webhooks.com/updatedUrl"),
+					resource.TestCheckResourceAttr(resourceName, URL, "https://webhook.invalid/updatedUrl"),
 					resource.TestCheckResourceAttr(resourceName, ON, "false"),
-					resource.TestCheckResourceAttr(resourceName, "tags.#", "2"),
+					resource.TestCheckResourceAttr(resourceName, "tags.#", "3"),
 					resource.TestCheckResourceAttr(resourceName, "tags.0", "terraform"),
-					resource.TestCheckResourceAttr(resourceName, "tags.1", "updated"),
+					resource.TestCheckResourceAttr(resourceName, "tags.1", "tf-acc"),
+					resource.TestCheckResourceAttr(resourceName, "tags.2", "updated"),
 					resource.TestCheckResourceAttr(resourceName, SECRET, "SuperSecret"),
 					resource.TestCheckResourceAttr(resourceName, "statements.#", "0"),
 				),
@@ -228,14 +245,16 @@ func TestAccWebhook_CreateWithStatements(t *testing.T) {
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckWebhookExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, NAME, "Webhook with policy statements"),
-					resource.TestCheckResourceAttr(resourceName, URL, "http://webhooks.com"),
-					resource.TestCheckResourceAttr(resourceName, ON, "true"),
+					resource.TestCheckResourceAttr(resourceName, "tags.#", "2"),
+					resource.TestCheckResourceAttr(resourceName, "tags.1", "tf-acc"),
+					resource.TestCheckResourceAttr(resourceName, URL, "https://webhook.invalid"),
+					resource.TestCheckResourceAttr(resourceName, ON, "false"),
 					resource.TestCheckResourceAttr(resourceName, "statements.#", "1"),
 					resource.TestCheckResourceAttr(resourceName, "statements.0.effect", "allow"),
 					resource.TestCheckResourceAttr(resourceName, "statements.0.actions.#", "1"),
 					resource.TestCheckResourceAttr(resourceName, "statements.0.actions.0", "*"),
 					resource.TestCheckResourceAttr(resourceName, "statements.0.resources.#", "1"),
-					resource.TestCheckResourceAttr(resourceName, "statements.0.resources.0", "proj/*:env/production:flag/*"),
+					resource.TestCheckResourceAttr(resourceName, "statements.0.resources.0", "proj/tf-acc-nonexistent:env/*:flag/*"),
 				),
 			},
 			{
@@ -260,14 +279,16 @@ func TestAccWebhook_CreateWithPolicyStatements(t *testing.T) {
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckWebhookExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, NAME, "Webhook with policy statements"),
-					resource.TestCheckResourceAttr(resourceName, URL, "http://webhooks.com"),
-					resource.TestCheckResourceAttr(resourceName, ON, "true"),
+					resource.TestCheckResourceAttr(resourceName, "tags.#", "2"),
+					resource.TestCheckResourceAttr(resourceName, "tags.1", "tf-acc"),
+					resource.TestCheckResourceAttr(resourceName, URL, "https://webhook.invalid"),
+					resource.TestCheckResourceAttr(resourceName, ON, "false"),
 					resource.TestCheckResourceAttr(resourceName, "statements.#", "1"),
 					resource.TestCheckResourceAttr(resourceName, "statements.0.effect", "allow"),
 					resource.TestCheckResourceAttr(resourceName, "statements.0.actions.#", "1"),
 					resource.TestCheckResourceAttr(resourceName, "statements.0.actions.0", "*"),
 					resource.TestCheckResourceAttr(resourceName, "statements.0.resources.#", "1"),
-					resource.TestCheckResourceAttr(resourceName, "statements.0.resources.0", "proj/*:env/production:flag/*"),
+					resource.TestCheckResourceAttr(resourceName, "statements.0.resources.0", "proj/tf-acc-nonexistent:env/*:flag/*"),
 				),
 			},
 		},
@@ -287,14 +308,16 @@ func TestAccWebhook_UpdateWithStatements(t *testing.T) {
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckWebhookExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, NAME, "Webhook with policy statements"),
-					resource.TestCheckResourceAttr(resourceName, URL, "http://webhooks.com"),
-					resource.TestCheckResourceAttr(resourceName, ON, "true"),
+					resource.TestCheckResourceAttr(resourceName, "tags.#", "2"),
+					resource.TestCheckResourceAttr(resourceName, "tags.1", "tf-acc"),
+					resource.TestCheckResourceAttr(resourceName, URL, "https://webhook.invalid"),
+					resource.TestCheckResourceAttr(resourceName, ON, "false"),
 					resource.TestCheckResourceAttr(resourceName, "statements.#", "1"),
 					resource.TestCheckResourceAttr(resourceName, "statements.0.effect", "allow"),
 					resource.TestCheckResourceAttr(resourceName, "statements.0.actions.#", "1"),
 					resource.TestCheckResourceAttr(resourceName, "statements.0.actions.0", "*"),
 					resource.TestCheckResourceAttr(resourceName, "statements.0.resources.#", "1"),
-					resource.TestCheckResourceAttr(resourceName, "statements.0.resources.0", "proj/*:env/production:flag/*"),
+					resource.TestCheckResourceAttr(resourceName, "statements.0.resources.0", "proj/tf-acc-nonexistent:env/*:flag/*"),
 				),
 			},
 			{
@@ -302,19 +325,21 @@ func TestAccWebhook_UpdateWithStatements(t *testing.T) {
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckWebhookExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, NAME, "Webhook with policy statements"),
-					resource.TestCheckResourceAttr(resourceName, URL, "http://webhooks.com"),
-					resource.TestCheckResourceAttr(resourceName, ON, "true"),
+					resource.TestCheckResourceAttr(resourceName, "tags.#", "2"),
+					resource.TestCheckResourceAttr(resourceName, "tags.1", "tf-acc"),
+					resource.TestCheckResourceAttr(resourceName, URL, "https://webhook.invalid"),
+					resource.TestCheckResourceAttr(resourceName, ON, "false"),
 					resource.TestCheckResourceAttr(resourceName, "statements.#", "2"),
 					resource.TestCheckResourceAttr(resourceName, "statements.0.effect", "allow"),
 					resource.TestCheckResourceAttr(resourceName, "statements.0.actions.#", "1"),
 					resource.TestCheckResourceAttr(resourceName, "statements.0.actions.0", "*"),
 					resource.TestCheckResourceAttr(resourceName, "statements.0.resources.#", "1"),
-					resource.TestCheckResourceAttr(resourceName, "statements.0.resources.0", "proj/test:env/production:flag/*"),
+					resource.TestCheckResourceAttr(resourceName, "statements.0.resources.0", "proj/tf-acc-nonexistent-updated:env/*:flag/*"),
 					resource.TestCheckResourceAttr(resourceName, "statements.1.effect", "allow"),
 					resource.TestCheckResourceAttr(resourceName, "statements.1.actions.#", "1"),
 					resource.TestCheckResourceAttr(resourceName, "statements.1.actions.0", "*"),
 					resource.TestCheckResourceAttr(resourceName, "statements.1.resources.#", "1"),
-					resource.TestCheckResourceAttr(resourceName, "statements.1.resources.0", "proj/test:env/production:segment/*"),
+					resource.TestCheckResourceAttr(resourceName, "statements.1.resources.0", "proj/tf-acc-nonexistent-updated:env/*:segment/*"),
 				),
 			},
 			{
@@ -322,8 +347,10 @@ func TestAccWebhook_UpdateWithStatements(t *testing.T) {
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckWebhookExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, NAME, "Webhook without statements"),
-					resource.TestCheckResourceAttr(resourceName, URL, "http://webhooks.com"),
-					resource.TestCheckResourceAttr(resourceName, ON, "true"),
+					resource.TestCheckResourceAttr(resourceName, "tags.#", "2"),
+					resource.TestCheckResourceAttr(resourceName, "tags.1", "tf-acc"),
+					resource.TestCheckResourceAttr(resourceName, URL, "https://webhook.invalid"),
+					resource.TestCheckResourceAttr(resourceName, ON, "false"),
 					resource.TestCheckResourceAttr(resourceName, "statements.#", "0"),
 				),
 			},
