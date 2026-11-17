@@ -9,6 +9,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
+	"github.com/hashicorp/terraform-plugin-framework/ephemeral"
 	"github.com/hashicorp/terraform-plugin-framework/provider"
 	"github.com/hashicorp/terraform-plugin-framework/provider/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -17,7 +18,8 @@ import (
 )
 
 var (
-	_ provider.Provider = &launchdarklyProvider{}
+	_ provider.Provider                       = &launchdarklyProvider{}
+	_ provider.ProviderWithEphemeralResources = &launchdarklyProvider{}
 )
 
 type launchdarklyProvider struct {
@@ -134,6 +136,7 @@ func (p *launchdarklyProvider) Configure(ctx context.Context, req provider.Confi
 		client.archiveFlagsOnDestroy = archiveOnDestroy
 		resp.ResourceData = client
 		resp.DataSourceData = client
+		resp.EphemeralResourceData = client
 		return
 	}
 
@@ -145,6 +148,7 @@ func (p *launchdarklyProvider) Configure(ctx context.Context, req provider.Confi
 	client.archiveFlagsOnDestroy = archiveOnDestroy
 	resp.ResourceData = client
 	resp.DataSourceData = client
+	resp.EphemeralResourceData = client
 }
 
 // DataSources defines the data sources implemented in the provider.
@@ -178,6 +182,17 @@ func (p *launchdarklyProvider) DataSources(_ context.Context) []func() datasourc
 		NewTeamMembersDataSource,
 		NewViewDataSource,
 		NewWebhookDataSource,
+	}
+}
+
+// EphemeralResources defines the ephemeral resources implemented in the
+// provider. Ephemeral resources are opened on every plan/apply and their
+// results are never persisted to plan or state, which makes them the
+// preferred way to read secrets such as SDK keys.
+func (p *launchdarklyProvider) EphemeralResources(_ context.Context) []func() ephemeral.EphemeralResource {
+	return []func() ephemeral.EphemeralResource{
+		NewEnvironmentKeysEphemeralResource,
+		NewSdkKeyEphemeralResource,
 	}
 }
 
