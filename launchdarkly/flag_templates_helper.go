@@ -1,7 +1,7 @@
 package launchdarkly
 
 import (
-	ldapi "github.com/launchdarkly/api-client-go/v25"
+	ldapi "github.com/launchdarkly/api-client-go/v26"
 )
 
 // getCurrentCSA reads the current default_client_side_availability from the API
