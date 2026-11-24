@@ -6,7 +6,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/types"
-	ldapi "github.com/launchdarkly/api-client-go/v25"
+	ldapi "github.com/launchdarkly/api-client-go/v26"
 )
 
 // Metric group kinds. A funnel metric group orders its metrics into a

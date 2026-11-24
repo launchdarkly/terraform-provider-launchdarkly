@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	ldapi "github.com/launchdarkly/api-client-go/v25"
+	ldapi "github.com/launchdarkly/api-client-go/v26"
 )
 
 // getRandomSleepDuration returns a duration between [0, maxDuration)
