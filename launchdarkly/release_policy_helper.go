@@ -9,7 +9,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
-	ldapi "github.com/launchdarkly/api-client-go/v25"
+	ldapi "github.com/launchdarkly/api-client-go/v26"
 )
 
 // Release methods supported by a release policy. A guarded release rolls out
